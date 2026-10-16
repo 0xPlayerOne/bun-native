@@ -1,0 +1,131 @@
+name: Bootstrap roadmap metadata
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/bootstrap-roadmap.yml]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: bootstrap-roadmap-metadata
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: github.repository == '0xPlayerOne/bunly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create missing milestones and labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          repo = os.environ['TARGET_REPOSITORY']
+          assert repo == '0xPlayerOne/bunly', 'Unexpected repository'
+          base = 'https://api.github.com/repos/' + repo
+          headers = {
+              'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'bunly-roadmap-bootstrap',
+          }
+
+          def api(path, data=None):
+              request = urllib.request.Request(
+                  base + path,
+                  data=None if data is None else json.dumps(data).encode(),
+                  headers=headers,
+                  method='GET' if data is None else 'POST',
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  result = json.load(response)
+              if data is not None:
+                  time.sleep(1)
+              return result
+
+          def collect(path):
+              result = []
+              page = 1
+              while True:
+                  items = api(path + ('&' if '?' in path else '?') + f'per_page=100&page={page}')
+                  result.extend(items)
+                  if len(items) < 100:
+                      return result
+                  page += 1
+
+          milestones = [
+              ('M1 - Foundations and architecture', 'CEF MVP. Establish the standalone Bun-first scope, monorepo, provenance, native-host and Bun API qualification, browser-independent contracts, and CI artifact strategy. Exit: runnable scaffolding and evidence-backed architecture decisions. Rust is provisional; no Tauri plugin, Bun fork, or application-native compilation requirement.'),
+              ('M2 - Baselines and comparison workbench', 'CEF MVP. Build equivalent fixtures, reproducible competitor benchmarks, lifecycle fault tests, and machine-readable result schemas before claiming improvements. Exit: pinned reference implementations and a repeatable baseline. Compare equal browser/security/workload configurations; unavailable competitor features are documented, not silently omitted.'),
+              ('M3 - Standalone CEF runtime', 'CEF MVP. Deliver native main-thread ownership, real Bun application execution, verified CEF artifacts, stable resource handles, secure app resources, and early macOS/Windows/Linux boot paths. Exit: packaged views start and shut down without orphan processes on the declared initial targets.'),
+              ('M4 - Secure IPC and browser sessions', 'CEF MVP. Implement typed validated RPC, authenticated per-view authority, capability enforcement, isolated browser sessions, and a measured transport choice. Exit: hostile-page and malformed-message tests pass; navigation revokes privileges; cancellation and session lifetime are explicit.'),
+              ('M5 - Streams, terminals, and responsiveness', 'CEF MVP. Implement bounded streams, PTY integration, descendant-process supervision, fair scheduling, and load tests. Exit: output is ordered and lossless where promised, memory is bounded, control traffic stays responsive, and no fixed-rate polling is required for the core transport.'),
+              ('M6 - Persistent development sessions', 'CEF MVP differentiator. Separate stable resources from replaceable application generations; implement controlled reload, rollback, cached dev hosts, and frontend/backend invalidation. Exit: supported backend edits preserve managed windows, sessions, and terminals through repeated successful and failed reloads without leaks. Experimental Bun APIs require qualification and a fallback.'),
+              ('M7 - Desktop capabilities and browser control', 'CEF MVP. Deliver the practical desktop API, embedded preview composition, downloads/uploads, engine-neutral browser actions, and input/accessibility/lifecycle conformance. Exit: the workbench supports the declared platform feature matrix; raw CEF/CDP details do not leak into the portable SDK.'),
+              ('M8 - Packaging and runtime distribution', 'CEF MVP. Assemble reproducible prebuilt-runtime apps, cache builds, sign/package declared targets, implement verified update/recovery foundations, and qualify Bun/CEF versions independently. Exit: applications build without a systems compiler and launch offline after installation; payload accounting is auditable. No unrequested public publishing or production deployment.'),
+              ('M9 - CEF MVP evidence and adoption', 'CEF MVP decision point. Complete equal-workload comparisons, an Electron migration example, executable docs, release-candidate automation, and a representative Adea slice. Exit: evidence supports at least one meaningful DX/iteration/UX advantage over Electrobun without unacceptable regressions; otherwise narrow or stop the effort. Benchmark targets are acceptance goals, not measured claims.'),
+              ('M10 - System-webview backends', 'Post-MVP. Add WebView2, WKWebView, and WebKitGTK adapters behind the existing contracts, with explicit capability matrices and independent build profiles. Exit: relevant conformance tests pass and native-webview artifacts contain no CEF. This milestone does not gate the CEF MVP.'),
+              ('M11 - Webview parity and optimization', 'Post-MVP. Classify Adea blockers as wrapper gaps, application dependencies, or engine/API limitations; improve native integration and portable automation; benchmark functional outcomes against CEF. Exit: per-platform gaps and measured tradeoffs are documented without promising universal Chromium parity.'),
+              ('M12 - CEF-free Adea qualification', 'Post-MVP research. Integrate a representative Adea build with system webviews, run workflow/security/offline conformance, and produce a per-platform CEF-free recommendation. Exit: evidence identifies supported workflows and remaining blockers. Do not change Adea production, remove CEF from shipping builds, or migrate Agent Sim as part of this roadmap.'),
+          ]
+          labels = {
+              'type:epic': ('5319e7', 'Roadmap and cross-workstream tracking'),
+              'type:architecture': ('5319e7', 'Architecture contracts and decisions'),
+              'type:spike': ('d4c5f9', 'Time-bounded technical qualification; record evidence'),
+              'type:feature': ('1d76db', 'Implement a runtime or developer capability'),
+              'type:test': ('0e8a16', 'Conformance, lifecycle, security, and regression tests'),
+              'type:benchmark': ('0e8a16', 'Reproducible comparative measurements'),
+              'type:infra': ('006b75', 'Repository, build, and artifact infrastructure'),
+              'type:docs': ('0075ca', 'Documentation and migration examples'),
+              'phase:mvp': ('0052cc', 'CEF-first MVP scope'),
+              'phase:webview': ('bfdadc', 'Post-MVP system-webview backend and parity work'),
+              'phase:adea': ('c5def5', 'Post-MVP CEF-free Adea qualification'),
+              'priority:p0': ('b60205', 'Foundational or security-critical work'),
+              'priority:p1': ('fbca04', 'Required outcome for its assigned milestone'),
+              'priority:p2': ('c2e0c6', 'Later qualification or optional optimization'),
+              'area:runtime': ('d4c5f9', 'Bun hosting and persistent resource management'),
+              'area:cef': ('c5def5', 'CEF initialization, helpers, and browser backend'),
+              'area:tooling': ('bfd4f2', 'CLI, development loop, and build configuration'),
+              'area:ipc': ('bfdadc', 'RPC, binary streams, and transport'),
+              'area:security': ('d93f0b', 'Trust boundaries, sandboxing, and supply chain'),
+              'area:reload': ('f9d0c4', 'Application generations and retained resources'),
+              'area:packaging': ('e4e669', 'Artifacts, installers, updates, and size'),
+              'area:platform': ('d4c5f9', 'OS integration and native portability'),
+              'area:webview': ('bfdadc', 'System webviews and engine-independent contracts'),
+              'area:dx': ('fef2c0', 'TypeScript application model and migration'),
+          }
+
+          existing_milestones = {x['title']: x for x in collect('/milestones?state=all')}
+          for title, description in milestones:
+              item = existing_milestones.get(title)
+              if item is None:
+                  item = api('/milestones', {'title': title, 'description': description, 'state': 'open'})
+              print(json.dumps({'kind': 'milestone', 'number': item['number'], 'title': title, 'url': item['html_url']}), flush=True)
+
+          existing_labels = {x['name'] for x in collect('/labels')}
+          for name, (color, description) in labels.items():
+              if name not in existing_labels:
+                  api('/labels', {'name': name, 'color': color, 'description': description})
+              print(json.dumps({'kind': 'label', 'name': name}), flush=True)
+
+          verified = collect('/milestones?state=all')
+          assert all(title in {x['title'] for x in verified} for title, _ in milestones)
+          assert set(labels) <= {x['name'] for x in collect('/labels')}
+          print('VERIFIED: 12 roadmap milestones and 24 planning labels. Existing metadata was not overwritten or deleted.', flush=True)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Bunly roadmap metadata\n\n')
+              for title, _ in milestones:
+                  item = next(x for x in verified if x['title'] == title)
+                  summary.write(f"- [{title}]({item['html_url']})\n")
+          PY
