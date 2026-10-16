@@ -1,4 +1,4 @@
-name: Bootstrap roadmap metadata
+name: Verify roadmap metadata
 
 on:
   push:
@@ -7,125 +7,142 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write
+  issues: read
 
 concurrency:
   group: bootstrap-roadmap-metadata
   cancel-in-progress: false
 
 jobs:
-  bootstrap:
+  audit:
     if: github.repository == '0xPlayerOne/bunly'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Create missing milestones and labels
+      - name: Verify issues, milestones, labels, and references
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
           python3 - <<'PY'
+          import collections
           import json
           import os
-          import time
+          import re
           import urllib.request
 
           repo = os.environ['TARGET_REPOSITORY']
-          assert repo == '0xPlayerOne/bunly', 'Unexpected repository'
-          base = 'https://api.github.com/repos/' + repo
+          assert repo == '0xPlayerOne/bunly'
           headers = {
               'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
               'Accept': 'application/vnd.github+json',
-              'Content-Type': 'application/json',
               'X-GitHub-Api-Version': '2022-11-28',
-              'User-Agent': 'bunly-roadmap-bootstrap',
+              'User-Agent': 'bunly-roadmap-audit',
           }
-
-          def api(path, data=None):
-              request = urllib.request.Request(
-                  base + path,
-                  data=None if data is None else json.dumps(data).encode(),
-                  headers=headers,
-                  method='GET' if data is None else 'POST',
-              )
-              with urllib.request.urlopen(request, timeout=30) as response:
-                  result = json.load(response)
-              if data is not None:
-                  time.sleep(1)
-              return result
-
           def collect(path):
-              result = []
+              out = []
               page = 1
               while True:
-                  items = api(path + ('&' if '?' in path else '?') + f'per_page=100&page={page}')
-                  result.extend(items)
-                  if len(items) < 100:
-                      return result
+                  sep = '&' if '?' in path else '?'
+                  url = f'https://api.github.com/repos/{repo}{path}{sep}per_page=100&page={page}'
+                  request = urllib.request.Request(url, headers=headers, method='GET')
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      rows = json.load(response)
+                  out.extend(rows)
+                  if len(rows) < 100:
+                      return out
                   page += 1
 
-          milestones = [
-              ('M1 - Foundations and architecture', 'CEF MVP. Establish the standalone Bun-first scope, monorepo, provenance, native-host and Bun API qualification, browser-independent contracts, and CI artifact strategy. Exit: runnable scaffolding and evidence-backed architecture decisions. Rust is provisional; no Tauri plugin, Bun fork, or application-native compilation requirement.'),
-              ('M2 - Baselines and comparison workbench', 'CEF MVP. Build equivalent fixtures, reproducible competitor benchmarks, lifecycle fault tests, and machine-readable result schemas before claiming improvements. Exit: pinned reference implementations and a repeatable baseline. Compare equal browser/security/workload configurations; unavailable competitor features are documented, not silently omitted.'),
-              ('M3 - Standalone CEF runtime', 'CEF MVP. Deliver native main-thread ownership, real Bun application execution, verified CEF artifacts, stable resource handles, secure app resources, and early macOS/Windows/Linux boot paths. Exit: packaged views start and shut down without orphan processes on the declared initial targets.'),
-              ('M4 - Secure IPC and browser sessions', 'CEF MVP. Implement typed validated RPC, authenticated per-view authority, capability enforcement, isolated browser sessions, and a measured transport choice. Exit: hostile-page and malformed-message tests pass; navigation revokes privileges; cancellation and session lifetime are explicit.'),
-              ('M5 - Streams, terminals, and responsiveness', 'CEF MVP. Implement bounded streams, PTY integration, descendant-process supervision, fair scheduling, and load tests. Exit: output is ordered and lossless where promised, memory is bounded, control traffic stays responsive, and no fixed-rate polling is required for the core transport.'),
-              ('M6 - Persistent development sessions', 'CEF MVP differentiator. Separate stable resources from replaceable application generations; implement controlled reload, rollback, cached dev hosts, and frontend/backend invalidation. Exit: supported backend edits preserve managed windows, sessions, and terminals through repeated successful and failed reloads without leaks. Experimental Bun APIs require qualification and a fallback.'),
-              ('M7 - Desktop capabilities and browser control', 'CEF MVP. Deliver the practical desktop API, embedded preview composition, downloads/uploads, engine-neutral browser actions, and input/accessibility/lifecycle conformance. Exit: the workbench supports the declared platform feature matrix; raw CEF/CDP details do not leak into the portable SDK.'),
-              ('M8 - Packaging and runtime distribution', 'CEF MVP. Assemble reproducible prebuilt-runtime apps, cache builds, sign/package declared targets, implement verified update/recovery foundations, and qualify Bun/CEF versions independently. Exit: applications build without a systems compiler and launch offline after installation; payload accounting is auditable. No unrequested public publishing or production deployment.'),
-              ('M9 - CEF MVP evidence and adoption', 'CEF MVP decision point. Complete equal-workload comparisons, an Electron migration example, executable docs, release-candidate automation, and a representative Adea slice. Exit: evidence supports at least one meaningful DX/iteration/UX advantage over Electrobun without unacceptable regressions; otherwise narrow or stop the effort. Benchmark targets are acceptance goals, not measured claims.'),
-              ('M10 - System-webview backends', 'Post-MVP. Add WebView2, WKWebView, and WebKitGTK adapters behind the existing contracts, with explicit capability matrices and independent build profiles. Exit: relevant conformance tests pass and native-webview artifacts contain no CEF. This milestone does not gate the CEF MVP.'),
-              ('M11 - Webview parity and optimization', 'Post-MVP. Classify Adea blockers as wrapper gaps, application dependencies, or engine/API limitations; improve native integration and portable automation; benchmark functional outcomes against CEF. Exit: per-platform gaps and measured tradeoffs are documented without promising universal Chromium parity.'),
-              ('M12 - CEF-free Adea qualification', 'Post-MVP research. Integrate a representative Adea build with system webviews, run workflow/security/offline conformance, and produce a per-platform CEF-free recommendation. Exit: evidence identifies supported workflows and remaining blockers. Do not change Adea production, remove CEF from shipping builds, or migrate Agent Sim as part of this roadmap.'),
-          ]
-          labels = {
-              'type:epic': ('5319e7', 'Roadmap and cross-workstream tracking'),
-              'type:architecture': ('5319e7', 'Architecture contracts and decisions'),
-              'type:spike': ('d4c5f9', 'Time-bounded technical qualification; record evidence'),
-              'type:feature': ('1d76db', 'Implement a runtime or developer capability'),
-              'type:test': ('0e8a16', 'Conformance, lifecycle, security, and regression tests'),
-              'type:benchmark': ('0e8a16', 'Reproducible comparative measurements'),
-              'type:infra': ('006b75', 'Repository, build, and artifact infrastructure'),
-              'type:docs': ('0075ca', 'Documentation and migration examples'),
-              'phase:mvp': ('0052cc', 'CEF-first MVP scope'),
-              'phase:webview': ('bfdadc', 'Post-MVP system-webview backend and parity work'),
-              'phase:adea': ('c5def5', 'Post-MVP CEF-free Adea qualification'),
-              'priority:p0': ('b60205', 'Foundational or security-critical work'),
-              'priority:p1': ('fbca04', 'Required outcome for its assigned milestone'),
-              'priority:p2': ('c2e0c6', 'Later qualification or optional optimization'),
-              'area:runtime': ('d4c5f9', 'Bun hosting and persistent resource management'),
-              'area:cef': ('c5def5', 'CEF initialization, helpers, and browser backend'),
-              'area:tooling': ('bfd4f2', 'CLI, development loop, and build configuration'),
-              'area:ipc': ('bfdadc', 'RPC, binary streams, and transport'),
-              'area:security': ('d93f0b', 'Trust boundaries, sandboxing, and supply chain'),
-              'area:reload': ('f9d0c4', 'Application generations and retained resources'),
-              'area:packaging': ('e4e669', 'Artifacts, installers, updates, and size'),
-              'area:platform': ('d4c5f9', 'OS integration and native portability'),
-              'area:webview': ('bfdadc', 'System webviews and engine-independent contracts'),
-              'area:dx': ('fef2c0', 'TypeScript application model and migration'),
+          issues = [x for x in collect('/issues?state=all') if 'pull_request' not in x]
+          by_number = {x['number']: x for x in issues}
+          milestones = {x['number']: x for x in collect('/milestones?state=all')}
+          labels = {x['name'] for x in collect('/labels')}
+          expected_counts = {1:6, 2:4, 3:6, 4:5, 5:5, 6:6, 7:5, 8:5, 9:5, 10:4, 11:4, 12:3}
+          expected_labels = {
+              'type:epic', 'type:architecture', 'type:spike', 'type:feature',
+              'type:test', 'type:benchmark', 'type:infra', 'type:docs',
+              'phase:mvp', 'phase:webview', 'phase:adea',
+              'priority:p0', 'priority:p1', 'priority:p2',
+              'area:runtime', 'area:cef', 'area:tooling', 'area:ipc',
+              'area:security', 'area:reload', 'area:packaging',
+              'area:platform', 'area:webview', 'area:dx',
           }
+          assert set(by_number) == set(range(1, 60)), 'Expected root and 58 implementation issues'
+          assert set(milestones) == set(expected_counts), 'Unexpected milestone set'
+          assert expected_labels <= labels, 'Missing planning labels'
+          assert all(x['state'] == 'open' for x in issues), 'Unexpected closed issue'
+          assert by_number[1]['milestone'] is None
+          assert 'type:epic' in {x['name'] for x in by_number[1]['labels']}
+          index = re.findall(r'^- \[ \] #(\d+)\b', by_number[1]['body'], flags=re.M)
+          assert collections.Counter(map(int, index)) == collections.Counter(range(2, 60)), 'Roadmap index mismatch'
 
-          existing_milestones = {x['title']: x for x in collect('/milestones?state=all')}
-          for title, description in milestones:
-              item = existing_milestones.get(title)
-              if item is None:
-                  item = api('/milestones', {'title': title, 'description': description, 'state': 'open'})
-              print(json.dumps({'kind': 'milestone', 'number': item['number'], 'title': title, 'url': item['html_url']}), flush=True)
+          counts = collections.Counter()
+          contextual_dependencies = {}
+          references_checked = 0
+          for n in range(2, 60):
+              item = by_number[n]
+              match = re.match(r'^\[M(\d+)\] ', item['title'])
+              assert match, f'Issue {n}: missing milestone prefix'
+              m = int(match.group(1))
+              assert item['milestone'] and item['milestone']['number'] == m, f'Issue {n}: wrong milestone'
+              counts[m] += 1
+              names = {x['name'] for x in item['labels']}
+              for prefix in ('type:', 'priority:', 'area:'):
+                  assert any(x.startswith(prefix) for x in names), f'Issue {n}: missing {prefix}'
+              phase = 'phase:mvp' if m <= 9 else 'phase:webview' if m <= 11 else 'phase:adea'
+              assert phase in names, f'Issue {n}: wrong phase'
+              body = item.get('body') or ''
+              for heading in ('## Outcome', '## Acceptance criteria', '## Dependencies', '## Validation'):
+                  assert heading in body, f'Issue {n}: missing {heading}'
+              assert '- [ ]' in body, f'Issue {n}: missing acceptance checklist'
+              refs = {int(x) for x in re.findall(r'(?<!\w)#(\d+)\b', body)}
+              assert refs <= set(by_number), f'Issue {n}: dangling references {refs - set(by_number)}'
+              assert n not in refs, f'Issue {n}: self-reference'
+              references_checked += len(refs)
+              section = body.split('## Dependencies', 1)[1].split('\n## ', 1)[0]
+              contextual_dependencies[n] = {int(x) for x in re.findall(r'(?<!\w)#(\d+)\b', section)} - {1}
+          assert dict(counts) == expected_counts, f'Count mismatch: {dict(counts)}'
 
-          existing_labels = {x['name'] for x in collect('/labels')}
-          for name, (color, description) in labels.items():
-              if name not in existing_labels:
-                  api('/labels', {'name': name, 'color': color, 'description': description})
-              print(json.dumps({'kind': 'label', 'name': name}), flush=True)
+          visiting, visited = set(), set()
+          def visit(node):
+              assert node not in visiting, f'Dependency-section reference cycle at issue {node}'
+              if node in visited:
+                  return
+              visiting.add(node)
+              for dependency in contextual_dependencies.get(node, set()):
+                  visit(dependency)
+              visiting.remove(node)
+              visited.add(node)
+          for n in contextual_dependencies:
+              visit(n)
 
-          verified = collect('/milestones?state=all')
-          assert all(title in {x['title'] for x in verified} for title, _ in milestones)
-          assert set(labels) <= {x['name'] for x in collect('/labels')}
-          print('VERIFIED: 12 roadmap milestones and 24 planning labels. Existing metadata was not overwritten or deleted.', flush=True)
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write('## Bunly roadmap metadata\n\n')
-              for title, _ in milestones:
-                  item = next(x for x in verified if x['title'] == title)
-                  summary.write(f"- [{title}]({item['html_url']})\n")
+          lines = []
+          for m in sorted(milestones):
+              item = milestones[m]
+              assert item['title'].startswith(f'M{m} - ')
+              assert item['state'] == 'open' and item['due_on'] is None
+              assert item['description'], f'Milestone {m}: missing description'
+              assert item['open_issues'] == counts[m] and item['closed_issues'] == 0
+              line = f"{item['title']}: {counts[m]} open tasks; {item['html_url']}"
+              lines.append(line)
+              print(line, flush=True)
+          summary = {
+              'issues': len(issues),
+              'roadmap_issues': 1,
+              'implementation_issues': 58,
+              'cef_mvp_tasks': sum(counts[m] for m in range(1, 10)),
+              'post_mvp_tasks': sum(counts[m] for m in range(10, 13)),
+              'milestones': len(milestones),
+              'planning_labels': len(expected_labels),
+              'issue_references_checked': references_checked,
+              'roadmap_index_complete': True,
+              'dependency_section_references_acyclic': True,
+              'metadata_validation': 'passed',
+          }
+          print('VERIFIED ' + json.dumps(summary, sort_keys=True), flush=True)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('## Bunly roadmap audit\n\n')
+              out.write('```json\n' + json.dumps(summary, indent=2) + '\n```\n\n')
+              out.write('\n'.join('- ' + line for line in lines) + '\n')
           PY
