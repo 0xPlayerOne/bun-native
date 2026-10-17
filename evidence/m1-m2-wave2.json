@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "repository": "0xPlayerOne/bunly",
+  "pullRequest": 62,
+  "sourceCommit": "07fbd9e943fdcc7e48aaa0aede47a8610e84628d",
+  "classification": "ci-smoke-and-correctness-not-performance-ranking",
+  "workflows": [
+    {"name":"foundation","runId":39001321270,"conclusion":"success","targets":["linux-x64","darwin-arm64","win32-x64"]},
+    {"name":"host-lifecycle","runId":39001321195,"conclusion":"success","targets":["linux-x64","darwin-arm64","win32-x64"]},
+    {"name":"kernel-counters","runId":39001321122,"conclusion":"success","targets":["linux-x64","darwin-arm64","win32-x64"],"windowsCounters":"unavailable-not-zero"},
+    {"name":"executable-development","runId":39001321184,"conclusion":"success","targets":["linux-x64","darwin-arm64","win32-x64"],"scenarios":5,"warmupsPerScenario":1,"measuredRepetitionsPerScenario":3},
+    {"name":"workbench-and-electron","runId":39001321183,"conclusion":"success","targets":["linux-x64"]},
+    {"name":"packaged-electrobun-cef","runId":39001321072,"conclusion":"success","targets":["darwin-arm64"],"executedScenarios":["app-launch","terminal-render"],"warmupsPerScenario":1,"measuredRepetitionsPerScenario":3}
+  ],
+  "versions": {"driverBun":"1.4.3","typescript":"7.0.2","nativeProbeRust":"1.85.1","psutil":"7.0.0","electrobun":"2.0.3-beta.26","electrobunObservedPackagedBun":"1.4.0","electrobunExactEngineVersion":null},
+  "preservedFailure": {"runId":39000777587,"target":"win32-x64","scenario":"Bun watch of system-temp generated project","result":"File reported outside project watch root","resolution":"Generate isolated project on checkout volume; not an upstream fix"},
+  "limits": ["No Bunly CEF runtime or managed reload implementation.","No controlled cross-competitor comparison.","Windows ETW counters unavailable.","Electrobun framework RPC disabled but Chromium process sandbox unverified.","Reduced user agent is not an exact CEF/Chromium binary version.","CI artifacts expire after 14 days; this ledger is not raw benchmark data."]
+}
