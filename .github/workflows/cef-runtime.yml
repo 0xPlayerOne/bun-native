@@ -18,10 +18,10 @@ jobs:
       - name: Capture contributor-only native tools for isolated checks
         shell: bash
         run: |
-          rustup toolchain install 1.90.0 --profile minimal --component rustfmt
-          cargo +1.90.0 fetch --manifest-path native/cef-host/Cargo.toml --target x86_64-unknown-linux-gnu
+          rustup toolchain install 1.91.0 --profile minimal --component rustfmt
+          cargo +1.91.0 fetch --manifest-path native/cef-host/Cargo.toml
           mkdir -p .bunly
-          tar -czf .bunly/rust-toolchain.tgz -C "$HOME/.rustup/toolchains/1.90.0-x86_64-unknown-linux-gnu" bin lib
+          tar -czf .bunly/rust-toolchain.tgz -C "$HOME/.rustup/toolchains/1.91.0-x86_64-unknown-linux-gnu" bin lib
           tar -czf .bunly/cargo-cache.tgz -C "$HOME/.cargo" registry git
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -58,14 +58,15 @@ jobs:
             ~/.cargo/git
             native/cef-host/target
             .bunly/cef-cache
-          key: ${{ runner.os }}-cef154-rust190-${{ hashFiles('native/cef-host/Cargo.toml') }}-${{ github.sha }}
+          key: ${{ runner.os }}-cef154-rust191-${{ hashFiles('native/cef-host/Cargo.toml') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-cef154-rust191-${{ hashFiles('native/cef-host/Cargo.toml') }}-
             ${{ runner.os }}-cef154-rust190-${{ hashFiles('native/cef-host/Cargo.toml') }}-
       - name: Native contributor prerequisites
         shell: bash
         run: |
           mkdir -p .bunly/cef-evidence
-          rustup toolchain install 1.90.0 --profile minimal --component rustfmt
+          rustup toolchain install 1.91.0 --profile minimal --component rustfmt
           if [ '${{ runner.os }}' = Linux ]; then
             sudo apt-get update -qq
             sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2t64 libgbm1 xvfb > .bunly/cef-evidence/prerequisites.log 2>&1
@@ -88,7 +89,7 @@ jobs:
       - name: Compile native host and helpers
         shell: bash
         run: |
-          cargo +1.90.0 build --manifest-path native/cef-host/Cargo.toml --features packaging --release > .bunly/cef-evidence/build.log 2>&1 || { tail -180 .bunly/cef-evidence/build.log; exit 1; }
+          cargo +1.91.0 build --manifest-path native/cef-host/Cargo.toml --features packaging --release > .bunly/cef-evidence/build.log 2>&1 || { tail -180 .bunly/cef-evidence/build.log; exit 1; }
           tail -10 .bunly/cef-evidence/build.log
       - name: Build TypeScript application without native compilation
         shell: bash
@@ -98,8 +99,8 @@ jobs:
       - name: Assemble contributor runtime bundle
         shell: bash
         env:
-          RUSTUP_TOOLCHAIN: 1.90.0
-        run: cargo +1.90.0 run --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
+          RUSTUP_TOOLCHAIN: 1.91.0
+        run: cargo +1.91.0 run --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
       - name: Run actual packaged application
         shell: bash
         run: |
