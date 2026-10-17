@@ -22,3 +22,7 @@ export function readDescriptor(value: unknown): BackendDescriptor {
   return Object.freeze({ name: v['name'] as BackendName, version: v['version'], contractVersion: CONTRACT_VERSION,
     capabilities: Object.freeze([...v['capabilities']] as Capability[]) });
 }
+
+export { RpcClient } from './rpc.ts';
+export type { RpcClientOptions } from './rpc.ts';
+export { rpcMessagePort } from './rpc-port.ts';

@@ -106,3 +106,6 @@ export function originOf(value: string): string {
   const url = new URL(normalizeUrl(value));
   return url.protocol === 'app:' ? `app://${url.host}` : url.origin;
 }
+
+export { RPC_VERSION, RPC_ERROR_CODES, DEFAULT_RPC_LIMITS, RpcError, defineRpc, procedure } from './rpc.ts';
+export type { RpcValue, JsonValue, Parser, RpcProcedure, RpcSchema, RpcInput, RpcOutput, RpcErrorCode, RpcLimits, RpcScheduler, RpcTransport, RpcCallOptions } from './rpc.ts';
