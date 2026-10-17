@@ -1,0 +1,141 @@
+name: M3 native CEF runtime
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cef-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contributor-snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Capture contributor-only native tools for isolated checks
+        shell: bash
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal --component rustfmt
+          cargo +1.91.0 fetch --manifest-path native/cef-host/Cargo.toml
+          mkdir -p .bunly
+          tar -czf .bunly/rust-toolchain.tgz -C "$HOME/.rustup/toolchains/1.91.0-x86_64-unknown-linux-gnu" bin lib
+          tar -czf .bunly/cargo-cache.tgz -C "$HOME/.cargo" registry git
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cef-rust-contributor
+          path: |
+            .bunly/rust-toolchain.tgz
+            .bunly/cargo-cache.tgz
+            native/cef-host/Cargo.lock
+          include-hidden-files: true
+          retention-days: 1
+  cef:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      CARGO_TERM_COLOR: never
+      CEF_PATH: ${{ github.workspace }}/.bunly/cef-cache
+      PYTHON: python
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        id: native-cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/cef-host/target
+            .bunly/cef-cache
+          key: ${{ runner.os }}-cef154-rust191-${{ hashFiles('native/cef-host/Cargo.toml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cef154-rust191-${{ hashFiles('native/cef-host/Cargo.toml') }}-
+            ${{ runner.os }}-cef154-rust190-${{ hashFiles('native/cef-host/Cargo.toml') }}-
+      - name: Native contributor prerequisites
+        shell: bash
+        run: |
+          mkdir -p .bunly/cef-evidence
+          rustup toolchain install 1.91.0 --profile minimal --component rustfmt
+          if [ '${{ runner.os }}' = Linux ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2t64 libgbm1 xvfb > .bunly/cef-evidence/prerequisites.log 2>&1
+          fi
+          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
+      - name: Configure Windows C++ toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $script = Join-Path $env:RUNNER_TEMP 'bunly-vs-env.cmd'
+          @('@echo off', ('call "' + $vs + '\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64 >nul'), 'if errorlevel 1 exit /b %errorlevel%', 'set') | Set-Content $script
+          $lines = & cmd.exe /c $script
+          if ($LASTEXITCODE -ne 0) { throw 'MSVC environment initialization failed' }
+          foreach ($line in $lines) {
+            if ($line -match '^(PATH|INCLUDE|LIB|LIBPATH|VCToolsInstallDir|WindowsSdkDir|WindowsSDKVersion|VSINSTALLDIR)=(.*)$') {
+              "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            }
+          }
+      - name: Compile native host and helpers
+        shell: bash
+        run: |
+          cargo +1.91.0 build --manifest-path native/cef-host/Cargo.toml --features packaging --release > .bunly/cef-evidence/build.log 2>&1 || { tail -180 .bunly/cef-evidence/build.log; exit 1; }
+          tail -10 .bunly/cef-evidence/build.log
+      - name: Build TypeScript application without native compilation
+        shell: bash
+        run: |
+          bun install --frozen-lockfile
+          bun scripts/build-cef-fixture.ts
+      - name: Assemble contributor runtime bundle
+        shell: bash
+        env:
+          RUSTUP_TOOLCHAIN: 1.91.0
+        run: cargo +1.91.0 run --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
+      - name: Run actual packaged application
+        shell: bash
+        run: |
+          if [ '${{ runner.os }}' = Linux ]; then
+            sandbox="$GITHUB_WORKSPACE/.bunly/cef-bundle/chrome-sandbox"
+            if [ -f "$sandbox" ]; then
+              sudo chown root:root "$sandbox"
+              sudo chmod 4755 "$sandbox"
+              export CHROME_DEVEL_SANDBOX="$sandbox"
+            fi
+            xvfb-run -a bun scripts/qualify-cef-runtime.ts
+          else
+            bun scripts/qualify-cef-runtime.ts
+          fi
+      - name: Preserve native build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .bunly/cef-evidence
+          if [ -f native/cef-host/Cargo.lock ]; then cp native/cef-host/Cargo.lock .bunly/cef-evidence/Cargo.lock; fi
+          find .bunly/cef-cache -name archive.json -exec cat {} \; > .bunly/cef-evidence/cef-archive.json || true
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: always() && steps.native-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/cef-host/target
+            .bunly/cef-cache
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: cef-native-${{ matrix.os }}
+          path: .bunly/cef-evidence/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
