@@ -58,11 +58,13 @@ export class MockBackend implements BrowserBackend {
     if (this.#registry.dispose(view, 'view')) this.#emit({ type: 'disposed', resource: view });
   }
   async closeWindow(window: WindowHandle): Promise<void> {
-    // Validate even on the idempotent path; a copied diagnostic ID is never sufficient.
+    // Revoke ownership before child-disposal callbacks can attempt reentrant creation.
+    // This also validates identity before any dependent resource is mutated.
+    if (!this.#registry.dispose(window, 'window')) return;
     for (const view of this.#registry.handles('view')) {
       if (this.#registry.get<'view', ViewRecord>(view, 'view').window === window) await this.disposeView(view);
     }
-    if (this.#registry.dispose(window, 'window')) this.#emit({ type: 'disposed', resource: window });
+    this.#emit({ type: 'disposed', resource: window });
   }
   async disposeSession(session: SessionHandle): Promise<void> {
     for (const view of this.#registry.handles('view')) {
