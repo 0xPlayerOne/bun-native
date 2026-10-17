@@ -91,9 +91,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             let (window, mut context) = STATE.with(|s| { let s = s.borrow(); let record = s.windows.get(&owner).ok_or("INVALID_HANDLE: window")?; if record.closing.is_some() { return Err("Window is closing"); } Ok::<_, &str>((record.window.clone().ok_or("Window not ready")?, s.sessions.get(&session).cloned().ok_or("INVALID_HANDLE: session")?)) })?;
             let id = next_id(); STATE.with(|s| { s.borrow_mut().views.insert(id, ViewRecord { view: None, browser: None, window: owner, session, create: request, navigate: None, close: None }); });
             let mut client = BunlyClient::new(id); let mut delegate = BunlyView::new(RuntimeStyle::ALLOY);
-            // Popup creation is denied by BunlyLife::on_before_popup. It is not
-            // a BrowserSettings field in the pinned CEF API.
-            let settings = BrowserSettings::default();
+            let settings = BrowserSettings { javascript_close_windows: cef::State::DISABLED, ..Default::default() };
             let Some(view) = browser_view_create(Some(&mut client), Some(&CefString::from(url.as_str())), Some(&settings), None, Some(&mut context), Some(&mut delegate)) else { STATE.with(|s| { s.borrow_mut().views.remove(&id); }); return Err("Browser view creation failed".into()); };
             STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&id) { r.view = Some(view.clone()); } });
             let mut native = View::from(&view); window.add_child_view(Some(&mut native));
@@ -143,6 +141,8 @@ wrap_browser_view_delegate! {
 wrap_client! {
     struct BunlyClient { id: u64 }
     impl Client {
+        fn permission_handler(&self) -> Option<PermissionHandler> { Some(DenyPermissions::new()) }
+        fn download_handler(&self) -> Option<DownloadHandler> { Some(DenyDownloads::new()) }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> { Some(BunlyLife::new(self.id)) }
         fn load_handler(&self) -> Option<LoadHandler> { Some(BunlyLoad::new(self.id)) }
         fn display_handler(&self) -> Option<DisplayHandler> { Some(BunlyDisplay::new(self.id)) }
@@ -152,25 +152,11 @@ wrap_client! {
 wrap_life_span_handler! {
     struct BunlyLife { id: u64 }
     impl LifeSpanHandler {
-        fn on_before_popup(
-            &self,
-            _browser: Option<&mut Browser>,
-            _frame: Option<&mut Frame>,
-            _popup_id: i32,
-            _target_url: Option<&CefString>,
-            _target_frame_name: Option<&CefString>,
-            _target_disposition: WindowOpenDisposition,
-            _user_gesture: i32,
-            _popup_features: Option<&PopupFeatures>,
-            _window_info: Option<&mut WindowInfo>,
-            _client: Option<&mut Option<Client>>,
-            _settings: Option<&mut BrowserSettings>,
-            _extra_info: Option<&mut Option<DictionaryValue>>,
-            _no_javascript_access: Option<&mut i32>,
-        ) -> i32 {
-            // Only the native command path may create managed windows/views.
-            1
-        }
+        fn on_before_popup(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, _popup_id: i32,
+            _target_url: Option<&CefString>, _target_frame_name: Option<&CefString>, _disposition: WindowOpenDisposition,
+            _gesture: i32, _features: Option<&PopupFeatures>, _window_info: Option<&mut WindowInfo>,
+            _client: Option<&mut Option<Client>>, _settings: Option<&mut BrowserSettings>,
+            _extra: Option<&mut Option<DictionaryValue>>, _no_access: Option<&mut i32>) -> i32 { 1 }
         fn on_after_created(&self, browser: Option<&mut Browser>) { if let Some(browser) = browser { let request = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.views.get_mut(&self.id).expect("registered view"); r.browser = Some(browser.clone()); r.create }); reply(request, json!({"id":self.id})); } }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id));
@@ -211,4 +197,22 @@ wrap_request_handler! {
             if !denied && frame.is_some_and(|f| f.is_main() != 0) { event("view.navigating", self.id, json!({"url":url})); } i32::from(denied)
         }
     }
+}
+// Until user-authorized permission/download APIs are implemented, deny them natively.
+wrap_permission_handler! {
+    struct DenyPermissions;
+    impl PermissionHandler {
+        fn on_request_media_access_permission(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
+            _origin: Option<&CefString>, _permissions: u32, callback: Option<&mut MediaAccessCallback>) -> i32 {
+            if let Some(callback) = callback { callback.cont(0); } 1
+        }
+        fn on_show_permission_prompt(&self, _browser: Option<&mut Browser>, _id: u64,
+            _origin: Option<&CefString>, _permissions: u32, callback: Option<&mut PermissionPromptCallback>) -> i32 {
+            if let Some(callback) = callback { callback.cont(PermissionRequestResult::DENY); } 1
+        }
+    }
+}
+wrap_download_handler! {
+    struct DenyDownloads;
+    impl DownloadHandler { fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { 0 } }
 }
