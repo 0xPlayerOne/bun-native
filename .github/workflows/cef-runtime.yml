@@ -8,6 +8,31 @@ concurrency:
   group: cef-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  contributor-snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - run: |
+          bun install --frozen-lockfile
+          mkdir -p .bunly
+          git archive HEAD -o .bunly/source.tar
+          tar -czf .bunly/dependencies.tgz node_modules packages/*/node_modules 2>/dev/null || test -f .bunly/dependencies.tgz
+          cp "$(command -v bun)" .bunly/contributor-bun
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cef-contributor-snapshot
+          path: |
+            .bunly/source.tar
+            .bunly/dependencies.tgz
+            .bunly/contributor-bun
+          include-hidden-files: true
+          retention-days: 1
   cef:
     strategy:
       fail-fast: false
@@ -40,29 +65,40 @@ jobs:
         shell: pwsh
         run: |
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-          $lines = cmd /s /c "`"`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 >nul && set`""
-          foreach ($line in $lines) { if ($line -match '^([^=]+)=(.*)$') { "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 } }
+          $script = Join-Path $env:RUNNER_TEMP 'bunly-vs-env.cmd'
+          @('@echo off', ('call "' + $vs + '\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64 >nul'), 'if errorlevel 1 exit /b %errorlevel%', 'set') | Set-Content $script
+          $lines = & cmd.exe /c $script
+          if ($LASTEXITCODE -ne 0) { throw 'MSVC environment initialization failed' }
+          foreach ($line in $lines) {
+            if ($line -match '^(PATH|INCLUDE|LIB|LIBPATH|VCToolsInstallDir|WindowsSdkDir|WindowsSDKVersion|VSINSTALLDIR)=(.*)$') {
+              "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            }
+          }
       - name: Compile native host and helpers
         shell: bash
         run: cargo +1.90.0 build --manifest-path native/cef-host/Cargo.toml --release
+      - name: Build TypeScript application without native compilation
+        shell: bash
+        run: |
+          bun install --frozen-lockfile
+          bun scripts/build-cef-fixture.ts
       - name: Preserve native build diagnostics
         if: always()
         shell: bash
         run: |
+          mkdir -p .bunly/cef-evidence
           if [ -f native/cef-host/Cargo.lock ]; then
-            echo NATIVE_LOCK_BEGIN
-            cat native/cef-host/Cargo.lock
-            echo NATIVE_LOCK_END
+            cp native/cef-host/Cargo.lock .bunly/cef-evidence/Cargo.lock
           fi
+          find .bunly/cef-cache -name archive.json -exec cat {} \; > .bunly/cef-evidence/cef-archive.json || true
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: cef-native-${{ matrix.os }}
           path: |
-            native/cef-host/Cargo.lock
+            .bunly/cef-evidence/**
             native/cef-host/target/release/bunly_host*
             native/cef-host/target/release/bunly_helper*
-            .bunly/cef-cache/**/archive.json
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
