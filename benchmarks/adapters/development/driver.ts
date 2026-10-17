@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { ownedChild, type OwnedChild } from '../../lib/owned-child.ts';
 import type { Trial, Variant } from '../../lib/results.ts';
@@ -13,7 +12,12 @@ export const DEVELOPMENT_SCENARIOS = ['warm-dev-launch', 'backend-edit', 'failed
 export async function developmentScenario(scenario: string): Promise<Pick<Trial, 'status' | 'reason' | 'correctness' | 'metrics'>> {
   if (!(DEVELOPMENT_SCENARIOS as readonly string[]).includes(scenario)) return { status: 'unsupported', reason: 'Bare Bun fixture has no desktop or frontend-HMR implementation',
     correctness: { passed: false, details: 'No desktop behavior simulated' }, metrics: {} };
-  const directory = await mkdtemp(join(tmpdir(), 'bunly-edit-fixture-'));
+  // Keep generated projects on the checkout volume. Bun 1.4.3's Windows
+  // watcher rejected the system-temp project despite explicit cwd/PWD.
+  // No application source is edited: only this newly created private fixture.
+  const parent = join(root, '.bunly/edit-fixtures');
+  await mkdir(parent, { recursive: true, mode: 0o700 });
+  const directory = await mkdtemp(join(parent, 'project-'));
   const token = randomBytes(24).toString('hex');
   let controller: OwnedChild | undefined;
   const metrics: Trial['metrics'] = {};
@@ -49,8 +53,6 @@ export async function developmentScenario(scenario: string): Promise<Pick<Trial,
       metrics['resumedItems'] = { value: 112, unit: 'count' };
     } else {
       const started = performance.now();
-      // Explicit cwd and a real project manifest avoid inheriting the caller's
-      // project root, especially across Windows drive boundaries.
       controller = ownedChild([process.execPath, '--cwd', directory, '--watch', './server.ts'], directory, environment);
       const initial: Record<string, unknown> = await controller.wait(value => value['event'] === 'ready');
       async function state(ready: Record<string, unknown>, increment = false): Promise<Record<string, unknown>> {
@@ -80,7 +82,7 @@ export async function developmentScenario(scenario: string): Promise<Pick<Trial,
         assert.equal(JSON.parse(await readFile(join(directory, 'state.json'), 'utf8')).counter, 1);
       }
     }
-    return { status: 'passed', reason: 'Executed isolated bare-Bun fixture; not a Bunly or competitor desktop improvement',
+    return { status: 'passed', reason: 'Executed workspace-local bare-Bun fixture; not a Bunly or competitor desktop improvement',
       correctness: { passed: true, details: 'Actual source edits/build/command behavior validated; persisted state is fixture-owned disk state, not preserved closures' }, metrics };
   } finally { await controller?.close(); await rm(directory, { recursive: true, force: true, maxRetries: 4, retryDelay: 100 }); }
 }

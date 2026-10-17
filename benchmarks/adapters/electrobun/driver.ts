@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createFixtureServer } from '../../fixtures/server.ts';
 import { fixtureBytes, checksum } from '../../fixtures/data.ts';
@@ -26,8 +26,10 @@ export async function electrobunScenario(scenario: string): Promise<Pick<Trial, 
     });
     const exitCode = await observer.exited;
     const observation = JSON.parse(await readFile(observationPath, 'utf8')) as { exitCode: number; timedOut: boolean; observedOrphans: number[]; stderr: string[]; peakTreeRssBytes: number; peakTreeThreads: number };
+    if (exitCode !== 0 || observation.exitCode !== 0 || observation.timedOut || observation.observedOrphans.length) throw new Error(JSON.stringify({ observationPath, observation }));
+    if (!await Bun.file(reportPath).exists()) throw new Error(JSON.stringify({ error: 'Missing runtime report', observationPath, stderr: observation.stderr }));
     const report = await Bun.file(reportPath).json() as Record<string, unknown>;
-    if (exitCode !== 0 || observation.exitCode !== 0 || observation.timedOut || observation.observedOrphans.length || report['passed'] !== true) throw new Error(JSON.stringify({ observationPath, report, stderr: observation.stderr }));
+    if (report['passed'] !== true) throw new Error(JSON.stringify({ report, observationPath }));
     assert.equal(report['scenario'], scenario);
     const fixture = report['fixture'] as Record<string, unknown>;
     assert.equal(fixture['nativeGlobalsAbsent'], true);
@@ -35,14 +37,14 @@ export async function electrobunScenario(scenario: string): Promise<Pick<Trial, 
     if (scenario === 'terminal-render') {
       const expected = fixtureBytes(); assert.equal(fixture['bytes'], expected.length); assert.equal(fixture['checksum'], checksum(expected));
     }
-    if (typeof report['runtimeVersion'] !== 'string' || typeof report['engineVersion'] !== 'string') throw new Error('Missing actual runtime identity');
+    if (typeof report['runtimeVersion'] !== 'string' || typeof report['userAgentVersion'] !== 'string') throw new Error('Missing actual runtime/user-agent observation');
+    assert.equal(report['engineVersion'], null, 'Reduced user agent must not masquerade as an exact engine identity');
     if (electrobunIdentity.runtimeVersion !== 'unverified' && electrobunIdentity.runtimeVersion !== report['runtimeVersion']) throw new Error('Packaged Bun changed within the run');
-    if (electrobunIdentity.engineVersion !== null && electrobunIdentity.engineVersion !== report['engineVersion']) throw new Error('Browser changed within the run');
-    electrobunIdentity.runtimeVersion = report['runtimeVersion']; electrobunIdentity.engineVersion = report['engineVersion'];
+    electrobunIdentity.runtimeVersion = report['runtimeVersion'];
     const metrics: Trial['metrics'] = { mainEntryToReport: { value: Number(report['mainEntryToReportMs']), unit: 'ms' },
       peakTreeRss: { value: observation.peakTreeRssBytes, unit: 'bytes' }, peakTreeThreads: { value: observation.peakTreeThreads, unit: 'count' } };
     if (scenario === 'terminal-render') metrics['terminalConsumedThenTwoFrames'] = { value: Number(fixture['terminalConsumedThenTwoFramesMs']), unit: 'ms' };
-    return { status: 'passed', reason: 'Actual packaged Electrobun/Bun/CEF launch with shared renderer; process sandbox remains unverified',
+    return { status: 'passed', reason: 'Actual packaged Electrobun/Bun/CEF launch; exact CEF identity and process sandbox remain unverified',
       correctness: { passed: true, details: 'Observed native launcher exit and renderer completion; terminal bytes/checksum validated where applicable' }, metrics };
-  } finally { await server.close(); await rm(reportPath + '.tmp', { force: true }); }
+  } finally { await server.close(); }
 }

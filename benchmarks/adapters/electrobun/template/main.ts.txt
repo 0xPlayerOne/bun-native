@@ -16,10 +16,12 @@ try {
   if (!response.ok) throw new Error('Completion transport failed: ' + response.status);
   const result = await response.json() as Record<string, unknown>;
   if (result['scenario'] !== scenario || result['passed'] !== true || window.renderer !== 'cef') throw new Error('Fixture did not complete: ' + JSON.stringify(result));
-  const engineVersion = String(result['userAgent']).match(/\bChrome\/([\d.]+)/)?.[1];
-  if (!engineVersion) throw new Error('CEF did not expose the expected Chromium user agent');
+  const userAgentVersion = String(result['userAgent']).match(/\bChrome\/([\d.]+)/)?.[1];
+  if (!userAgentVersion) throw new Error('CEF did not expose the expected Chromium user agent');
   const report = { schema: 1, passed: true, scenario, frameworkVersion: '2.0.3-beta.26',
-    runtimeVersion: Bun.version, engineVersion, mainEntryToReportMs: performance.now() - started,
+    runtimeVersion: Bun.version, engineVersion: null, userAgentVersion,
+    engineIdentityEvidence: 'User agent may be reduced; not an exact CEF/Chromium binary version',
+    mainEntryToReportMs: performance.now() - started,
     securityProfile: 'rpc-disabled+cef-process-sandbox-unverified', fixture: result };
   await Bun.write(reportPath, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
