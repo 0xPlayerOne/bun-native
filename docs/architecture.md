@@ -2,8 +2,8 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1 contracts and probes; production hosting remains conditional on qualification.
-**Scope:** Issues #2–#7. CEF implementation begins in M3.
+**Status:** M1 foundation and hosting decision accepted. Native browser, security and performance qualification remain separate milestone work.
+**Scope:** M1 issues #2–#7; subsequent milestones implement and qualify the CEF runtime.
 
 ## Product boundary
 
@@ -32,25 +32,25 @@ M8 work.
 
 ## Host decision
 
-The leading candidate is a prebuilt native library on the OS main thread with Bun
-application code on a Worker. The fallback is a small native executable owning a
-Bun subprocess. `native/host-probe` tests real ABI calls, binary input, notification
-queues, cross-thread callbacks, timers, cleanup, and process startup without CEF.
+The accepted baseline is a prebuilt Rust GUI/main-thread owner with **one supervised
+Bun 1.4.3 subprocess** for application TypeScript. This formalizes the initial CEF
+host's existing arrangement, without introducing a Tauri dependency or native
+compilation into application builds. Bounded asynchronous IPC keeps native
+operations on their owner thread. Host resources and service handlers have
+separate lifetimes; managed reconnection/reload still requires M6 implementation.
 
-The Rust fixture has no third-party crate dependencies. Rust is selected for this
-probe because a reproducible standard-library-only implementation is small enough
-to audit. It is not a requirement that all future platform shims use Rust.
+Node-API/Worker and C-ABI/FFI/Worker modes remain qualified feasibility alternatives.
+The tests stop native dispatch before destroying callback owners; neither a
+Worker nor an ABI makes native-memory corruption recoverable inside that address
+space. We do not select the smallest process count or claim a performance win
+from the fixture. See [ADR 0002](decisions/0002-host-qualification.md) and the
+[measured closeout](m1-completion.md) for costs, fault boundaries and revisit gates.
 
-FFI and Node-API are both tested. Node-API is implemented by Bun; it does not
-require shipping Node. The N-API probe deliberately resolves a small public ABI at
-runtime so it needs no Node headers or link-time Node library. This handwritten
-adapter is an experiment, not the production binding library. M3 must validate
-actual browser initialization, platform loops, sandboxing, and native extension
-compatibility before adopting a host model.
-
-Sources: [Bun Node-API](https://bun.com/docs/runtime/node-api),
-[Bun FFI](https://bun.com/docs/runtime/ffi),
-[Bun Workers](https://bun.com/docs/runtime/workers).
+M1 has actual Linux/macOS idle counters and all-target functional/resource data.
+Windows wakeup measurement is explicitly unsupported, not zero; its controlled
+performance/power claims remain gated by #9/#22. M3 owns actual browser/platform
+support; the architecture decision does not certify production sandbox or helper
+shutdown. The native core uses Rust, but platform shims need not share its language.
 
 ## Resource ownership
 

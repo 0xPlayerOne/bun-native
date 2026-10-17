@@ -2,7 +2,7 @@
 
 The Bun-native desktop framework.
 
-**Status:** Experimental M1/M2 foundation and qualification. No Bunly CEF desktop runtime yet.
+**Status:** Experimental. M1 foundations and host selection are complete; M2–M4 still have outstanding acceptance work. Initial CEF smoke paths exist, not a release-qualified desktop runtime.
 
 Bunly is building a standalone TypeScript-first desktop framework around real Bun,
 prebuilt native components, and managed backend reloads. Better iteration and
@@ -59,10 +59,11 @@ bun run artifact:probe
 
 The fixtures exercise native-main-thread/Bun-Worker handoff through FFI and
 Node-API, same-host Worker replacement, GC/reentrancy and failure cases, and a
-native-owner/Bun-subprocess fallback. They are **not CEF, AppKit, Win32 or GTK
-window implementations**. Process-tree RSS, threads, CPU and context switches are
-sampled with explicit limitations. Kernel wakeups remain a separate measurement
-gap. Artifact tests use ephemeral test keys, not production trust roots.
+native-owner/Bun-subprocess candidate selected by [ADR 0002](docs/decisions/0002-host-qualification.md).
+The probes themselves are **not CEF, AppKit, Win32 or GTK window implementations**.
+Process-tree resources and Linux/macOS kernel counters have recorded observations.
+Windows wakeup measurement remains explicitly unsupported. Artifact tests use
+ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-completion.md).
 
 ## Repository
 
@@ -85,8 +86,8 @@ gap. Artifact tests use ephemeral test keys, not production trust roots.
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
 [M1/M2 implementation notes](docs/m1-m2-progress.md)
 
-M1 establishes the foundation; M2 produces reproducible comparison infrastructure
-and competitor baselines. M3 implements Bunly's first visible CEF host. Later
+M1 establishes the accepted foundation and host decision. M2 completes reproducible
+comparison infrastructure and competitor baselines. M3 qualifies the visible CEF host. Later
 milestones add secure IPC, PTYs, managed reload, packaging, and native webviews.
 The M2 workbench does not imply those runtime capabilities already exist.
 
