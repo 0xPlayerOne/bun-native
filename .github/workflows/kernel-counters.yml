@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   kernel:
+    if: vars.CI_BILLING_PAUSED == 'false'
     strategy:
       fail-fast: false
       matrix:

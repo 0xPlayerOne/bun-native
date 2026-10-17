@@ -1,0 +1,15 @@
+{
+  ".": "0.1.0-dev.0",
+  "benchmarks/adapters/electrobun": "0.0.0",
+  "benchmarks/adapters/electron": "0.0.0",
+  "benchmarks/fixtures": "0.0.0",
+  "examples/workbench": "0.1.0-dev.0",
+  "native": "0.0.0",
+  "native/cef-host": "0.1.0",
+  "native/host-probe": "0.1.0",
+  "packages/artifacts": "0.1.0-dev.0",
+  "packages/cli": "0.1.0-dev.0",
+  "packages/client": "0.1.0-dev.0",
+  "packages/contracts": "0.1.0-dev.0",
+  "packages/runtime": "0.1.0-dev.0"
+}

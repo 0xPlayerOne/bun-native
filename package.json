@@ -1,17 +1,44 @@
 {
-  "name": "bunly-monorepo", "version": "0.1.0-dev.0", "private": true, "type": "module",
-  "packageManager": "bun@1.4.3", "engines": {"bun":"1.4.3"},
-  "workspaces": ["packages/*", "examples/*"],
-  "scripts": {
-    "check":"bun run typecheck && bun run lint && bun run boundaries && bun run test && bun run build",
-    "typecheck":"tsc --noEmit", "typecheck:browser":"tsc --noEmit -p tsconfig.browser.json",
-    "lint":"oxlint --deny-warnings packages scripts tests examples benchmarks", "boundaries":"bun scripts/check-boundaries.ts",
-    "test":"bun test tests", "build":"bun scripts/build.ts", "example":"bun examples/workbench/main.ts",
-    "native:build":"cargo build --locked --manifest-path native/Cargo.toml --release",
-    "native:test":"cargo test --locked --manifest-path native/Cargo.toml",
-    "qualify:host":"bun scripts/qualify-host.ts", "qualify:lifecycle":"bun scripts/qualify-lifecycle.ts",
-    "artifact:probe":"bun scripts/package-probe.ts", "workbench":"bun scripts/workbench.ts",
-    "benchmark":"bun scripts/benchmark.ts", "benchmark:smoke":"bun scripts/benchmark.ts record mock .bunly/benchmarks/mock.json"
+  "name": "bunly-monorepo",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "bun": "1.4.3"
   },
-  "devDependencies":{"@types/bun":"1.4.3","@types/node":"22.15.30","typescript":"7.0.2","oxlint":"1.18.0","oxc-parser":"0.154.0"}
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "check": "bun run typecheck && bun run lint && bun run boundaries && bun run test && bun run build",
+    "typecheck": "tsc --noEmit",
+    "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
+    "lint": "oxlint --deny-warnings packages scripts tests examples benchmarks",
+    "boundaries": "bun scripts/check-boundaries.ts",
+    "test": "bun test tests",
+    "build": "bun scripts/build.ts",
+    "example": "bun examples/workbench/main.ts",
+    "native:build": "cargo build --locked --manifest-path native/Cargo.toml --release",
+    "native:test": "cargo test --locked --manifest-path native/Cargo.toml",
+    "qualify:host": "bun scripts/qualify-host.ts",
+    "qualify:lifecycle": "bun scripts/qualify-lifecycle.ts",
+    "artifact:probe": "bun scripts/package-probe.ts",
+    "workbench": "bun scripts/workbench.ts",
+    "benchmark": "bun scripts/benchmark.ts",
+    "benchmark:smoke": "bun scripts/benchmark.ts record mock .bunly/benchmarks/mock.json",
+    "foundry:init": "bun scripts/sync-foundry.ts init",
+    "foundry:sync": "bun scripts/sync-foundry.ts sync",
+    "foundry:doctor": "bun --bun code-foundry doctor",
+    "foundry:plan": "bun --bun code-foundry plan --tier fast --json"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "@types/node": "22.15.30",
+    "code-foundry": "1.48.2",
+    "oxc-parser": "0.154.0",
+    "oxlint": "1.18.0",
+    "typescript": "7.0.2"
+  }
 }
