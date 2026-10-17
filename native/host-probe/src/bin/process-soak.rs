@@ -46,7 +46,7 @@ fn generation(bun: &str, script: &str, index: u32, fault: &str) -> Result<String
                 writeln!(input, "ack:{value}").map_err(|e| e.to_string())?;
                 input.flush().map_err(|e| e.to_string())?;
             } else if let Some(value) = line.strip_prefix("result:") {
-                let fields: Vec<u32> = value.split(':').map(str::parse).collect::<Result<_, _>>().map_err(|e| e.to_string())?;
+                let fields = value.split(':').map(str::parse::<u32>).collect::<Result<Vec<u32>, _>>().map_err(|e| e.to_string())?;
                 if fields.len() != 3 || fields[0] != received { return Err("invalid result".into()); }
                 let expected = if fault == "callback" { 8 } else { 256 };
                 if received != expected || (fault == "none" && (fields[1] < 15 || fields[2] == 0)) { return Err("incomplete workload".into()); }
@@ -77,7 +77,6 @@ fn generation(bun: &str, script: &str, index: u32, fault: &str) -> Result<String
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("--crash-fixture") {
-        // Isolated negative fixture: never loaded in a desktop application.
         std::process::abort();
     }
     if args.len() != 3 { eprintln!("Expected Bun executable and process-generation.ts"); std::process::exit(2); }
