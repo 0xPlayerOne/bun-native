@@ -32,7 +32,8 @@ jobs:
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
-      - run: python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
+      - run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
       - run: rustup toolchain install 1.85.1 --profile minimal
       - run: bun run native:build
       - run: bun scripts/qualify-lifecycle.ts
