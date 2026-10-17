@@ -6,6 +6,6 @@
     "noImplicitOverride": true, "noFallthroughCasesInSwitch": true, "noUnusedLocals": true,
     "noUnusedParameters": true, "skipLibCheck": true, "noEmit": true, "types": ["bun", "node"]
   },
-  "include": ["packages/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
+  "include": ["packages/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "examples/**/*.ts", "benchmarks/**/*.ts"],
   "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/boundaries/**"]
 }
