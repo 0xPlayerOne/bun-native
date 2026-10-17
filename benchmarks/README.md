@@ -1,86 +1,88 @@
 # Reproducible comparison workbench
 
-M2 infrastructure, not evidence of a Bunly desktop performance advantage.
+M2 infrastructure and explicitly scoped observations, not a Bunly performance win.
 
 ## Commands
 
 ```sh
 bun install --frozen-lockfile
-bun scripts/benchmark.ts record mock .bunly/benchmarks/mock.json
+bun run benchmark:smoke
 bun scripts/benchmark.ts report .bunly/benchmarks/mock.json
 bun scripts/benchmark.ts inventory path/to/installed/app
+bun scripts/bootstrap-benchmark-dependencies.ts
+bun run workbench
 ```
 
-The mock executes lifecycle/navigation contracts, a real local HTTP byte fixture,
-and deterministic fault contracts. Browser rendering, actual renderer crashes,
-frontend/backend reload, native startup, cold installation, application packaging,
-and signing are explicitly unsupported. They never receive fabricated zero timings.
+The mock runs real Bunly lifecycle/navigation contracts, a local HTTP byte fixture,
+and deterministic fault contracts. Rendering, renderer crashes, HMR, backend
+replacement, native startup, installation, app packaging and signing remain
+unsupported by that adapter. Missing work is never assigned zero-cost timings.
 
-## Interactive shared UI
+The interactive workbench uses pinned xterm.js, numbered ANSI output, a safe local
+form/preview, cancellation, and handler-to-frame timing. The iframe preview is not
+a native child view. There is no PTY before M5 or managed service reload before M6.
+After parser consumption the terminal scenario waits for two animation callbacks.
+This is a render opportunity, not measured physical input-to-photon latency.
 
-```sh
-bun install --cwd benchmarks/fixtures
-bun scripts/workbench.ts
-```
-
-Open the printed loopback URL. The UI uses the pinned xterm.js renderer, numbered
-ANSI output, a safe local form/browser fixture, cancellation, and an input-to-frame
-probe. The web-only preview is a sandboxed iframe, not an independently embedded
-native surface. Desktop adapters must supply native view evidence separately.
-There is no PTY until M5 and no managed service reload until M6.
-
-## Electron baseline
+## Real Electron adapter
 
 ```sh
-bun install --cwd benchmarks/adapters/electron
+bun scripts/bootstrap-benchmark-dependencies.ts --electron
 python -m pip install psutil==7.0.0
-bun scripts/benchmark.ts record electron .bunly/benchmarks/electron.json --trials=3 --warmups=1
+PYTHON=python bun scripts/benchmark.ts record electron .bunly/benchmarks/electron.json --trials=3 --warmups=1
 ```
 
-Install fixture dependencies first. The adapter pins Electron 44.8.0, uses an
-isolated temporary profile, denies popups/permissions, enables renderer sandboxing
-and context isolation, and never exposes its completion bridge in the independent
-browser window. It runs native lifecycle/navigation, first usable frame reporting,
-and actual xterm consumption/paint. Other scenarios stay unsupported.
+On Windows set the `PYTHON` environment variable using the shell's normal syntax.
+The bootstrap uses the checked-in nested Bun locks and explicitly installs the
+pinned Electron 44.8.0 binary using its upstream installer and checksums. Fixture
+packages are outside the consumer workspaces; Electron/xterm do not ship in Bunly.
 
-The Python observer captures the entire observed application process tree. The
-external deterministic fixture server and observer are measurement infrastructure,
-not an application backend. Their cost is excluded consistently; this does NOT
-benchmark Electron-versus-Bun main-process RPC or backend compute.
+The adapter uses an isolated temporary profile, independent browser windows,
+context isolation, Node-disabled pages and renderer sandbox verification. It runs
+startup-to-report, navigation, create/close, terminal parser/render opportunity,
+and an actual requested renderer crash observed by the parent. Other scenarios
+remain unsupported. No native crash is presented as successful ordinary operation.
 
-On Linux use a graphical session or Xvfb with an operational Chromium sandbox.
-Never add `--no-sandbox` to make one variant pass. Missing dependencies/sandbox or
-failed scenarios are recorded as failures, not silently omitted.
+The Python observer measures the known app process tree. The external local
+fixture server and observer are measurement infrastructure, excluded consistently.
+This is NOT a Node-versus-Bun backend-compute or desktop IPC benchmark.
 
-## Interpretation
+Use a graphical Linux session or Xvfb with a working Chromium sandbox. Never add
+`--no-sandbox` for a favorable comparison. Missing binaries, denied sandbox setup,
+and scenario failures produce explicit failures. CI is diagnostic, not controlled
+hardware evidence. The workflow's privileged sandbox-helper setup applies only
+to its disposable runner, not the developer's computer.
 
-Results contain exact scenario plans, repetitions, warmups, seeds, source/runtime/
-engine metadata, fixture hashes, raw samples, units, correctness, and explicit
-status. Shuffled variant order is seeded per repetition. Each variant has every
-requested trial, including unsupported outcomes. `--require-complete` makes an
-incomplete result matrix return a nonzero status. Ordinary `record` can save an
-incomplete report successfully but cannot label it comparative evidence.
+## Measurement rules
 
-Quantiles use linear interpolation; mean intervals use 1000 seeded percentile
-bootstrap resamples. Small sample sets and noisy CI runs are diagnostics, not
-marketing benchmarks. A confidence interval does not correct environmental bias.
+Runs include exact plans, warmups, repetitions, seeds, versions, fixture hashes,
+correctness and explicit trial status. Variant order is shuffled deterministically
+per repetition. Every declared scenario has all trials, including unsupported work.
+`--require-complete` returns nonzero for unsupported cases. Recording a partial
+matrix successfully does not certify a benchmark or comparative result.
 
-`compare` refuses mismatched fixtures, browsers, security, environments, failed or
-unsupported scenarios, and smoke/CI runs. To run controlled measurements supply
-BUNLY_BENCH_CONTROLLED=1 plus explicit BUNLY_BENCH_MACHINE, GPU, DISPLAY, and POWER
-metadata. Merely setting those variables does not establish experimental control.
-Report cold install, warm launch, edits, app assembly, signing, compression,
-installed bytes, first-run downloads, cache bytes, and RAM independently.
+Quantiles use linear interpolation; mean intervals use 1000 seeded bootstrap
+resamples. Small sample sets and noisy CI results cannot establish a speed claim.
+`compare` refuses mismatched fixtures, browsers, security, environments or scenario
+coverage and all smoke/CI runs. Controlled runs require explicit machine/GPU/
+display/power metadata via BUNLY_BENCH_* variables, but those variables alone are
+not evidence of experimental control.
+
+Separate cold install, warm launch, edits, build, signing, compression, logical
+installed bytes, first-run downloads, caches, and RAM. Inventory hashes can reveal
+duplicate content; they do not prove a duplicate is unnecessary.
 
 RSS sums may double-count shared pages. Sampling can miss brief descendants.
-Context switches are not kernel wakeups; unavailable metrics stay unavailable.
-The observer is allowed to clean up only descendants it observed with matching
-process creation times. A detected orphan remains a failed result after cleanup.
+Context switches are NOT kernel wakeups; unavailable metrics remain null. The
+observer cleans only known descendants with matching creation times, allows the
+same bounded exit grace for every adapter, and reports surviving children as
+failures even if cleanup succeeds. Raw reports preserve failed and negative cases.
 
 ## Remaining baseline work
 
-`references.json` pins inspected sources for Electrobun, Mirin, Butter, and
-Electron. Source pins alone are NOT executed baselines. Full Electrobun adapter
-qualification, packaged Bun/CEF inventory, and equivalent cold/build/edit/release
-measurements remain #10 work. Butter's native-webview profile belongs in a separate
-comparison class. Keep #9/#10 open until their required real measurements exist.
+`references.json` pins inspected Electrobun, Mirin, Butter and Electron sources.
+Only the executable adapters actually run count as baselines. Full Electrobun
+integration, Mirin/Butter supported subsets, packaged Bun/CEF inventory and the
+install/build/edit/release matrix remain #10 work. Butter belongs to a separate
+system-webview comparison class. Keep #9/#10 open while required measurements and
+competitor coverage are incomplete; do not extrapolate Bunly results from the mock.

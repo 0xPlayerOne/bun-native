@@ -6,7 +6,7 @@ const status = document.getElementById('status')!;
 const output = document.getElementById('results')!;
 const terminal = new win.Terminal({ cols: 96, rows: 18, scrollback: 2048 });
 terminal.open(document.getElementById('terminal')!);
-const inputDelays: number[] = [];
+const handlerToFrameDelays: number[] = [];
 let controller: AbortController | undefined;
 let running = false;
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -29,7 +29,8 @@ async function stream(): Promise<Record<string, unknown>> {
     } finally { reader.releaseLock(); }
     await frame(); await frame();
     if (bytes !== config.bytes || checksum !== config.checksum) throw new Error('Dropped or reordered terminal bytes');
-    return { passed: true, bytes, checksum, terminalConsumedAndPaintedMs: performance.now() - started, inputDelays };
+    return { passed: true, bytes, checksum, terminalConsumedThenTwoFramesMs: performance.now() - started, handlerToFrameDelays,
+      presentationEvidence: 'Terminal parser completion followed by two animation callbacks; not physical input-to-photon measurement' };
   } finally { running = false; }
 }
 document.getElementById('stream')!.addEventListener('click', () => {
@@ -39,7 +40,9 @@ document.getElementById('stream')!.addEventListener('click', () => {
 });
 document.getElementById('cancel')!.addEventListener('click', () => controller?.abort());
 document.getElementById('navigate')!.addEventListener('click', () => { (document.getElementById('preview') as HTMLIFrameElement).src = '/page/next'; });
-document.getElementById('input')!.addEventListener('input', () => { const started = performance.now(); requestAnimationFrame(() => inputDelays.push(performance.now() - started)); });
+document.getElementById('input')!.addEventListener('input', () => {
+  const started = performance.now(); requestAnimationFrame(() => { if (handlerToFrameDelays.length === 512) handlerToFrameDelays.shift(); handlerToFrameDelays.push(performance.now() - started); });
+});
 window.addEventListener('pagehide', () => { controller?.abort(); terminal.dispose(); }, { once: true });
 async function auto(): Promise<void> {
   await frame(); await frame(); status.textContent = 'Ready';
