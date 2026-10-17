@@ -60,7 +60,10 @@ impl Navigation {
         if let Some(request) = &start { self.busy = true; self.active = Some(request.clone()); }
         Transition { completed, start }
     }
+    /// Used for a closing view or a dispatch rejected before entering CEF.
+    /// No later loading callback is guaranteed in either case.
     pub fn cancel(&mut self) -> Vec<u64> {
+        self.busy = false;
         self.outcome = None;
         self.active.take().into_iter().chain(self.queued.take()).map(|r| r.id).collect()
     }
@@ -126,6 +129,12 @@ mod tests {
         assert_eq!(n.cancel(), vec![5]); assert!(n.loading(false).start.is_none());
         n.request(6, "app://ui/y".into()).unwrap(); assert_eq!(n.cancel(), vec![6]);
         assert!(n.cancel().is_empty()); assert!(n.loading(false).completed.is_none());
+    }
+    #[test]
+    fn rejected_dispatch_does_not_block_the_next_request() {
+        let mut n = ready(); assert!(n.request(1, "app://ui/index.html#fragment".into()).unwrap().is_some());
+        assert_eq!(n.cancel(), vec![1]);
+        assert_eq!(n.request(2, "app://ui/next.html".into()).unwrap().unwrap().id, 2);
     }
     #[test]
     fn allowed_redirect_updates_expected_document() {
