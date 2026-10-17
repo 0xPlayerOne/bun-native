@@ -109,3 +109,10 @@ export function originOf(value: string): string {
 
 export { RPC_VERSION, RPC_ERROR_CODES, DEFAULT_RPC_LIMITS, RpcError, defineRpc, procedure } from './rpc.ts';
 export type { RpcValue, JsonValue, Parser, RpcProcedure, RpcSchema, RpcInput, RpcOutput, RpcErrorCode, RpcLimits, RpcScheduler, RpcTransport, RpcCallOptions } from './rpc.ts';
+
+export { BinaryStreamSender, BinaryStreamReceiver } from './streams.ts';
+export type { BinaryStreamOptions, BinaryStreamWriter, BinaryStreamSink, StreamConsumerContext, StreamOutcome } from './streams.ts';
+export { StreamBudget } from './stream-budget.ts';
+export type { StreamBudgetLimits } from './stream-budget.ts';
+export { STREAM_VERSION, STREAM_CHUNK_BYTES, StreamError, StreamFramer, writeStreamPacket } from './stream-wire.ts';
+export type { StreamErrorCode } from './stream-wire.ts';
