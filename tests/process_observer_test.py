@@ -39,6 +39,9 @@ class ObserverTests(unittest.TestCase):
         result = observer.observe([sys.executable, '-c', code])
         self.assertGreaterEqual(result['observedProcesses'], 2)
         self.assertEqual(len(result['observedOrphans']), 1)
+        self.assertEqual(result['orphanDetails'][0]['pid'], result['observedOrphans'][0])
+        self.assertTrue(result['orphanDetails'][0]['name'])
+        self.assertNotIn('commandLine', result['orphanDetails'][0])
 
 
 if __name__ == '__main__':
