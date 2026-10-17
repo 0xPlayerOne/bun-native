@@ -1,6 +1,17 @@
-import { setTimeout as sleep } from 'node:timers/promises';
 /** Bounded controller for trusted test fixtures, not a production process supervisor. */
-export function ownedChild(command: string[], cwd: string, env: Record<string, string | undefined> = {}) {
+export interface OwnedChild {
+  readonly pid: number;
+  cursor(): number;
+  diagnostics(): string;
+  wait(predicate: (value: Record<string, unknown>) => boolean, after?: number, timeoutMs?: number): Promise<Record<string, unknown>>;
+  close(): Promise<void>;
+}
+async function beforeDeadline<T>(work: Promise<T>, milliseconds: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try { return await Promise.race([work.then(() => true), new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), milliseconds); })]); }
+  finally { if (timer) clearTimeout(timer); }
+}
+export function ownedChild(command: string[], cwd: string, env: Record<string, string | undefined> = {}): OwnedChild {
   const child = Bun.spawn(command, { cwd, env: { ...process.env, ...env }, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' });
   const records: { sequence: number; value: Record<string, unknown> }[] = [];
   let sequence = 0; let outputBytes = 0; let diagnostic = ''; let closed = false; let failure: Error | undefined;
@@ -35,7 +46,7 @@ export function ownedChild(command: string[], cwd: string, env: Record<string, s
   void child.exited.then(code => { record({ event: 'exit', code }); });
   return {
     pid: child.pid, cursor: () => sequence, diagnostics: () => diagnostic,
-    async wait(predicate: (value: Record<string, unknown>) => boolean, after = 0, timeoutMs = 8000) {
+    async wait(predicate, after = 0, timeoutMs = 8000): Promise<Record<string, unknown>> {
       if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 60000) throw new Error('Invalid fixture timeout');
       return await new Promise<Record<string, unknown>>((resolve, reject) => {
         const timer = setTimeout(() => finish(new Error('Fixture event deadline exceeded: ' + diagnostic.slice(-2000))), timeoutMs);
@@ -45,9 +56,11 @@ export function ownedChild(command: string[], cwd: string, env: Record<string, s
         }
         function check(): void {
           if (failure) { finish(failure); return; }
-          const match = records.find(item => item.sequence > after && predicate(item.value));
-          if (match) finish(undefined, match.value);
-          else if (closed) finish(new Error('Fixture closed before expected event'));
+          try {
+            const match = records.find(item => item.sequence > after && predicate(item.value));
+            if (match) finish(undefined, match.value);
+            else if (closed) finish(new Error('Fixture closed before expected event'));
+          } catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
         }
         changes.add(check); check();
       });
@@ -56,9 +69,11 @@ export function ownedChild(command: string[], cwd: string, env: Record<string, s
       if (closed) return;
       closed = true; notify();
       if (child.exitCode === null) child.kill();
-      const exit = await Promise.race([child.exited.then(() => true), sleep(2000).then(() => false)]);
-      if (!exit) { child.kill('SIGKILL'); await child.exited; }
-      await Promise.race([Promise.all(readers), sleep(1000)]);
+      if (!await beforeDeadline(child.exited, 2000)) {
+        child.kill('SIGKILL');
+        if (!await beforeDeadline(child.exited, 2000)) throw new Error('Fixture could not be reaped');
+      }
+      if (!await beforeDeadline(Promise.all(readers), 1000)) throw new Error('Fixture retained an output pipe');
       if (changes.size) throw new Error('Fixture retained waiters');
     },
   };

@@ -32,6 +32,7 @@ jobs:
         run: python scripts/observe-process.py --output .bunly/benchmarks/development-process-tree.json --timeout 180 -- bun scripts/qualify-development.ts
       - name: Require successful fixture and process-tree evidence
         run: |
+          bun scripts/print-benchmark-failures.ts
           bun -e 'const r=await Bun.file(".bunly/benchmarks/development-process-tree.json").json();if(r.exitCode!==0||r.timedOut||r.observedOrphans.length||!r.reports.some(x=>x.passed===true))throw new Error("Development fixtures failed")'
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

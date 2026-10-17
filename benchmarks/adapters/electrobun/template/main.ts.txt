@@ -1,0 +1,33 @@
+import { BrowserWindow } from 'electrobun/main';
+const started = performance.now();
+const origin = new URL(process.env['BUNLY_FIXTURE_ORIGIN'] ?? '');
+const token = process.env['BUNLY_REPORT_TOKEN'];
+const reportPath = process.env['BUNLY_REPORT_PATH'];
+const scenario = process.env['BUNLY_SCENARIO'];
+if (origin.protocol !== 'http:' || origin.hostname !== '127.0.0.1' || !token || !/^[a-f0-9]{48}$/.test(token) || !reportPath || !['app-launch', 'terminal-render'].includes(scenario ?? '')) throw new Error('Invalid isolated benchmark invocation');
+let window: BrowserWindow | undefined;
+try {
+  window = new BrowserWindow({ title: 'Bunly comparison workbench', frame: { width: 1120, height: 760 },
+    renderer: 'cef', sandbox: true,
+    url: origin.origin + '/?scenario=' + encodeURIComponent(scenario!) + '&completionToken=' + token });
+  const response = await fetch(new URL('/__benchmark/completion', origin), {
+    headers: { 'x-benchmark-token': token }, signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok) throw new Error('Completion transport failed: ' + response.status);
+  const result = await response.json() as Record<string, unknown>;
+  if (result['scenario'] !== scenario || result['passed'] !== true || window.renderer !== 'cef') throw new Error('Fixture did not complete: ' + JSON.stringify(result));
+  const engineVersion = String(result['userAgent']).match(/\bChrome\/([\d.]+)/)?.[1];
+  if (!engineVersion) throw new Error('CEF did not expose the expected Chromium user agent');
+  const report = { schema: 1, passed: true, scenario, frameworkVersion: '2.0.3-beta.26',
+    runtimeVersion: Bun.version, engineVersion, mainEntryToReportMs: performance.now() - started,
+    securityProfile: 'rpc-disabled+cef-process-sandbox-unverified', fixture: result };
+  await Bun.write(reportPath, JSON.stringify(report, null, 2) + '\n');
+  console.log(JSON.stringify(report));
+  window.close();
+} catch (error) {
+  const report = { schema: 1, passed: false, scenario, error: String(error), runtimeVersion: Bun.version };
+  await Bun.write(reportPath, JSON.stringify(report, null, 2) + '\n');
+  console.error(JSON.stringify(report));
+  window?.close();
+  process.exitCode = 1;
+}
