@@ -35,16 +35,22 @@ function exactKeys(value: Record<string, unknown>, keys: string[]): void {
 }
 function version(value: unknown): value is string { return typeof value==='string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$/.test(value); }
 function hash(value: unknown): value is string { return typeof value==='string' && /^[a-f0-9]{64}$/.test(value); }
-export function parseManifest(value: unknown): ArtifactManifest {
-  const m=record(value); exactKeys(m,['schema','identity','archive','files']);
-  const i=record(m['identity']); exactKeys(i,['kind','version','abi','backend','target','bun','nativeToolchain','cef']);
-  if (m['schema']!==1 || i['kind']!=='host-probe' || i['abi']!==1 || i['backend']!=='none' || i['cef']!==null ||
+function parseIdentity(value: unknown): ArtifactIdentity {
+  const i=record(value); exactKeys(i,['kind','version','abi','backend','target','bun','nativeToolchain','cef']);
+  if (i['kind']!=='host-probe' || i['abi']!==1 || i['backend']!=='none' || i['cef']!==null ||
       !version(i['version']) || !version(i['bun']) || typeof i['nativeToolchain']!=='string' || !/^rust-\d+\.\d+\.\d+$/.test(i['nativeToolchain']) ||
       !['darwin-arm64','linux-x64','win32-x64'].includes(i['target'] as string)) throw new ArtifactError('BAD_MANIFEST','Unsupported artifact identity');
+  return Object.freeze({...i}) as unknown as ArtifactIdentity;
+}
+export function parseManifest(value: unknown): ArtifactManifest {
+  const m=record(value); exactKeys(m,['schema','identity','archive','files']);
+  if (m['schema']!==1) throw new ArtifactError('BAD_MANIFEST','Unsupported artifact schema');
+  const identity=parseIdentity(m['identity']);
   const a=record(m['archive']); exactKeys(a,['url','size','sha256','format']);
   if (a['format']!=='ustar' || typeof a['url']!=='string' || !Number.isSafeInteger(a['size']) ||
       (a['size'] as number)<1024 || (a['size'] as number)>MAX_ARCHIVE_BYTES || !hash(a['sha256'])) throw new ArtifactError('BAD_MANIFEST','Invalid archive');
-  const url=new URL(a['url']);
+  let url: URL;
+  try { url=new URL(a['url']); } catch { throw new ArtifactError('BAD_MANIFEST','Invalid artifact URL'); }
   if (url.protocol!=='https:' || url.username || url.password || url.hash) throw new ArtifactError('BAD_MANIFEST','Artifact URL must be credential-free HTTPS');
   if (!Array.isArray(m['files']) || m['files'].length===0 || m['files'].length>1024) throw new ArtifactError('BAD_MANIFEST','Invalid file inventory');
   const files=m['files'].map((raw: unknown) => {
@@ -57,7 +63,7 @@ export function parseManifest(value: unknown): ArtifactManifest {
   if (new Set(names).size!==names.length || names.some(n=>names.some(other=>other.startsWith(n+'/'))))
     throw new ArtifactError('BAD_MANIFEST','Duplicate, case-colliding or overlapping artifact paths');
   if (files.reduce((sum,f)=>sum+f.size,0)>MAX_ARCHIVE_BYTES) throw new ArtifactError('BAD_MANIFEST','Oversized file inventory');
-  return Object.freeze({schema:1,identity:Object.freeze({...i}) as unknown as ArtifactIdentity,
+  return Object.freeze({schema:1,identity,
     archive:Object.freeze({...a}) as unknown as ArtifactManifest['archive'],files:Object.freeze(files)});
 }
 function decode64(value: unknown, max: number): Buffer {
@@ -75,8 +81,9 @@ export function verifyManifest(envelope: SignedManifest, trustRoots: Readonly<Re
     throw new ArtifactError('BAD_SIGNATURE','Manifest signature verification failed');
   let data: unknown; try { data=JSON.parse(payload.toString('utf8')); } catch { throw new ArtifactError('BAD_MANIFEST','Invalid manifest JSON'); }
   const manifest=parseManifest(data);
-  for (const field of Object.keys(expected) as (keyof ArtifactIdentity)[]) {
-    if (manifest.identity[field]!==expected[field]) throw new ArtifactError('IDENTITY_MISMATCH',`Unexpected artifact ${field}`);
+  const expectedIdentity=parseIdentity(expected);
+  for (const field of Object.keys(manifest.identity) as (keyof ArtifactIdentity)[]) {
+    if (manifest.identity[field]!==expectedIdentity[field]) throw new ArtifactError('IDENTITY_MISMATCH',`Unexpected artifact ${field}`);
   }
   return manifest;
 }

@@ -16,6 +16,9 @@ export class Registry {
     if (entry.disposed) throw new BunlyError('DISPOSED', `${kind} is disposed`);
     return entry.value as T;
   }
+  isDisposed<K extends ResourceKind>(handle: Handle<K>, kind: K): boolean {
+    return this.#lookup(handle, kind).disposed;
+  }
   dispose<K extends ResourceKind>(handle: Handle<K>, kind: K): boolean {
     const entry = this.#lookup(handle, kind);
     if (entry.disposed) return false;
