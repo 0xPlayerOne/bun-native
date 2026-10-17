@@ -26,3 +26,6 @@ export function readDescriptor(value: unknown): BackendDescriptor {
 export { RpcClient } from './rpc.ts';
 export type { RpcClientOptions } from './rpc.ts';
 export { rpcMessagePort } from './rpc-port.ts';
+
+export { BinaryStreamSender, BinaryStreamReceiver, StreamBudget, StreamError } from '../../contracts/src/index.ts';
+export type { BinaryStreamOptions, BinaryStreamWriter, BinaryStreamSink, StreamConsumerContext, StreamOutcome, StreamBudgetLimits, StreamErrorCode } from '../../contracts/src/index.ts';
