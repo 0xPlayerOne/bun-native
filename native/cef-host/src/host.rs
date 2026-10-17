@@ -33,7 +33,16 @@ fn quit_on_ui() {
 pub fn release() {
     STATE.with(|s| { let mut s = s.borrow_mut(); if !s.windows.is_empty() || !s.views.is_empty() { FAILED.store(true, Ordering::SeqCst); } s.windows.clear(); s.views.clear(); s.sessions.clear(); });
 }
-wrap_task! { struct CommandTask { value: Value } impl Task { fn execute(&self) { PENDING.fetch_sub(1, Ordering::SeqCst); let id = self.value.get("id").and_then(Value::as_u64).unwrap_or(0); if let Err(e) = dispatch(&self.value) { error(id, &e); } } }
+wrap_task! {
+    struct CommandTask { value: Value }
+    impl Task {
+        fn execute(&self) {
+            PENDING.fetch_sub(1, Ordering::SeqCst);
+            let id = self.value.get("id").and_then(Value::as_u64).unwrap_or(0);
+            if let Err(e) = dispatch(&self.value) { error(id, &e); }
+        }
+    }
+}
 wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui(); } } }
 wrap_app! {
     pub struct BunlyApp;
@@ -62,12 +71,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "hello" => { if string(args, "bun")? != "1.4.3" { fail("Packaged Bun version mismatch"); return Err("Bun version mismatch".into()); } reply(request, json!({"abi":1,"cef":"154.0.34"})); }
         "session.create" => {
             if string(args, "persistence")? != "ephemeral" { return Err("UNSUPPORTED_CAPABILITY: session.persistent".into()); }
+            if STATE.with(|s| s.borrow().sessions.len() >= 128) { return Err("Session capacity exceeded".into()); }
             let context = request_context_create_context(Some(&RequestContextSettings::default()), None).ok_or("Session creation failed")?;
             scheme::attach(&context);
             let id = next_id(); STATE.with(|s| { s.borrow_mut().sessions.insert(id, context); }); reply(request, json!({"id":id}));
         }
         "session.dispose" => { let id = number(args, "id")?; if STATE.with(|s| s.borrow().views.values().any(|v| v.session == id)) { return Err("RESOURCE_IN_USE: session".into()); } if STATE.with(|s| s.borrow_mut().sessions.remove(&id)).is_none() { return Err("INVALID_HANDLE: session".into()); } reply(request, Value::Null); }
         "window.create" => {
+            if STATE.with(|s| s.borrow().windows.len() >= 32) { return Err("Window capacity exceeded".into()); }
             let title = string(args, "title")?.to_owned(); let width = number(args, "width")?; let height = number(args, "height")?;
             if width > 32768 || height > 32768 { return Err("Invalid window dimensions".into()); }
             let id = next_id(); STATE.with(|s| { s.borrow_mut().windows.insert(id, WindowRecord { window: None, request, closing: None }); });
@@ -75,6 +86,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             if window_create_top_level(Some(&mut delegate)).is_none() { STATE.with(|s| { s.borrow_mut().windows.remove(&id); }); return Err("Window creation failed".into()); }
         }
         "view.create" => {
+            if STATE.with(|s| s.borrow().views.len() >= 128) { return Err("View capacity exceeded".into()); }
             let owner = number(args, "window")?; let session = number(args, "session")?; let url = checked_url(string(args, "url")?)?;
             let (window, mut context) = STATE.with(|s| { let s = s.borrow(); let record = s.windows.get(&owner).ok_or("INVALID_HANDLE: window")?; if record.closing.is_some() { return Err("Window is closing"); } Ok::<_, &str>((record.window.clone().ok_or("Window not ready")?, s.sessions.get(&session).cloned().ok_or("INVALID_HANDLE: session")?)) })?;
             let id = next_id(); STATE.with(|s| { s.borrow_mut().views.insert(id, ViewRecord { view: None, browser: None, window: owner, session, create: request, navigate: None, close: None }); });
@@ -118,7 +130,7 @@ wrap_window_delegate! {
         fn window_runtime_style(&self) -> RuntimeStyle { RuntimeStyle::ALLOY }
         fn on_window_created(&self, window: Option<&mut Window>) { if let Some(window) = window { let request = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.windows.get_mut(&self.id).expect("registered window"); r.window = Some(window.clone()); r.request }); window.set_title(Some(&CefString::from(self.title.as_str()))); window.show(); reply(request, json!({"id":self.id})); } }
         fn can_close(&self, _window: Option<&mut Window>) -> i32 { let browsers = STATE.with(|s| s.borrow().views.values().filter(|v| v.window == self.id).filter_map(|v| v.browser.clone()).collect::<Vec<_>>()); let mut allowed = true; for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } } i32::from(allowed) }
-        fn on_window_destroyed(&self, _window: Option<&mut Window>) { let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty()) { QUITTING.store(true, Ordering::SeqCst); quit_message_loop(); } }
+        fn on_window_destroyed(&self, _window: Option<&mut Window>) { let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { QUITTING.store(true, Ordering::SeqCst); quit_message_loop(); } }
     }
 }
 wrap_browser_view_delegate! {
@@ -139,7 +151,21 @@ wrap_life_span_handler! {
     struct BunlyLife { id: u64 }
     impl LifeSpanHandler {
         fn on_after_created(&self, browser: Option<&mut Browser>) { if let Some(browser) = browser { let request = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.views.get_mut(&self.id).expect("registered view"); r.browser = Some(browser.clone()); r.create }); reply(request, json!({"id":self.id})); } }
-        fn on_before_close(&self, _browser: Option<&mut Browser>) { let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id)); if let Some(record) = record { if let Some(request) = record.navigate { error(request, "Navigation cancelled by close"); } if let Some(request) = record.close { reply(request, Value::Null); } event("view.closed", self.id, Value::Null); let window = STATE.with(|s| s.borrow().windows.get(&record.window).filter(|r| r.closing.is_some() || QUITTING.load(Ordering::SeqCst)).and_then(|r| r.window.clone())); if let Some(window) = window { window.close(); } } }
+        fn on_before_close(&self, _browser: Option<&mut Browser>) {
+            let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id));
+            if let Some(record) = record {
+                if let Some(request) = record.navigate { error(request, "Navigation cancelled by close"); }
+                if let Some(request) = record.close { reply(request, Value::Null); }
+                event("view.closed", self.id, Value::Null);
+                let window = STATE.with(|s| s.borrow().windows.get(&record.window).and_then(|r| r.window.clone()));
+                if let Some(window) = window {
+                    if let Some(view) = record.view { let mut view = View::from(&view); window.remove_child_view(Some(&mut view)); }
+                    let closing = STATE.with(|s| s.borrow().windows.get(&record.window).is_some_and(|r| r.closing.is_some()));
+                    if closing || QUITTING.load(Ordering::SeqCst) { window.close(); }
+                }
+            }
+            if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { QUITTING.store(true, Ordering::SeqCst); quit_message_loop(); }
+        }
     }
 }
 wrap_load_handler! {

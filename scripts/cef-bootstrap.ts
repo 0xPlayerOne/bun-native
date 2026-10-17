@@ -1,7 +1,7 @@
 import { Console } from 'node:console';
-import { connectCefBackend, type CefBackend } from './cef.ts';
+import { connectCefBackend, type CefBackend } from '../packages/runtime/src/cef.ts';
 // Keep stdout exclusively for inherited host protocol before importing application code.
-globalThis.console = new Console({ stdout: process.stderr, stderr: process.stderr });
+Object.defineProperty(globalThis, 'console', { value: new Console({ stdout: process.stderr, stderr: process.stderr }), configurable: true });
 const backend = await connectCefBackend();
 try {
   const application = await import(new URL('./application.js', import.meta.url).href) as { default?: (host: CefBackend) => Promise<void> | void };

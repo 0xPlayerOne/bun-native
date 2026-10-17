@@ -5,7 +5,7 @@ const root = resolve(import.meta.dir, '..');
 const resources = join(root, 'native/cef-host/resources');
 await mkdir(join(resources, 'backend'), { recursive: true });
 await cp(join(root, 'examples/cef/public'), join(resources, 'public'), { recursive: true });
-for (const [entry, name] of [['packages/runtime/src/cef-entry.ts', 'main.js'], ['examples/cef/main.ts', 'application.js']] as const) {
+for (const [entry, name] of [['scripts/cef-bootstrap.ts', 'main.js'], ['examples/cef/main.ts', 'application.js']] as const) {
   const result = await Bun.build({ entrypoints: [join(root, entry)], outdir: join(resources, 'backend'), naming: name, target: 'bun', format: 'esm', minify: false });
   if (!result.success) throw new Error(`CEF application build failed: ${result.logs.join('\n')}`);
 }
