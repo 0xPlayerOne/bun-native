@@ -1,0 +1,5 @@
+{
+  "name": "bunly-electron-baseline", "version": "0.0.0", "private": true,
+  "main": "main.cjs", "dependencies": { "electron": "44.8.0" },
+  "trustedDependencies": ["electron"]
+}

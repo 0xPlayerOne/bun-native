@@ -1,0 +1,50 @@
+name: M1 lifecycle qualification
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHON: python
+concurrency:
+  group: qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lifecycle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: linux-x64
+          - os: macos-15
+            target: darwin-arm64
+          - os: windows-2022
+            target: win32-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
+          python tests/process_observer_test.py
+      - run: rustup toolchain install 1.85.1 --profile minimal
+      - run: bun run native:build
+      - run: bun scripts/qualify-lifecycle.ts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: lifecycle-${{ matrix.target }}
+          path: .bunly/qualification/lifecycle-*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
