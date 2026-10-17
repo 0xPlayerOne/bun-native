@@ -18,7 +18,7 @@ export class ArtifactError extends Error {
 }
 export function sha256(bytes: Uint8Array): string { return createHash('sha256').update(bytes).digest('hex'); }
 export function safeRelativePath(path: string): string {
-  if (typeof path !== 'string' || !path || Buffer.byteLength(path) > 240 || /[\\:<>"|?*\x00-\x1f\x7f]/.test(path) || path.startsWith('/'))
+  if (typeof path !== 'string' || !path || Buffer.byteLength(path) > 240 || /[\\:<>"|?*]/.test(path) || Array.from(path).some(c => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127) || path.startsWith('/'))
     throw new ArtifactError('UNSAFE_PATH', 'Invalid artifact path');
   for (const part of path.split('/')) {
     if (!part || part === '.' || part === '..' || /[. ]$/.test(part) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part))

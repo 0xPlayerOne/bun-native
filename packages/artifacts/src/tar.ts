@@ -1,7 +1,8 @@
 import { ArtifactError, MAX_ARCHIVE_BYTES, safeRelativePath } from './manifest.ts';
 export interface TarFile { readonly path: string; readonly bytes: Uint8Array }
 function octal(bytes: Uint8Array): number {
-  const text=Buffer.from(bytes).toString('ascii').replace(/\0.*$/s,'').trim();
+  const end = bytes.indexOf(0);
+  const text=Buffer.from(end < 0 ? bytes : bytes.subarray(0, end)).toString('ascii').trim();
   if (!/^[0-7]+$/.test(text)) throw new ArtifactError('BAD_ARCHIVE','Invalid tar numeric field');
   const n=parseInt(text,8); if (!Number.isSafeInteger(n)) throw new ArtifactError('BAD_ARCHIVE','Oversized tar numeric field'); return n;
 }

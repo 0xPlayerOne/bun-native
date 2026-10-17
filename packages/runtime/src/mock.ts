@@ -115,7 +115,9 @@ export class MockBackend implements BrowserBackend {
   }
   #emit(event: RuntimeEvent): void {
     const frozen = Object.freeze(event);
-    for (const listener of [...this.#listeners]) {
+    // Snapshot: subscriptions added during delivery begin with the next event.
+    const listeners = Array.from(this.#listeners);
+    for (const listener of listeners) {
       try { listener(frozen); } catch { this.#listenerErrors++; }
     }
   }
