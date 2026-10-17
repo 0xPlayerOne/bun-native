@@ -36,6 +36,12 @@ jobs:
       - name: Install pinned contributor compiler
         shell: bash
         run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Test navigation callback ordering without a browser dependency
+        shell: bash
+        run: |
+          mkdir -p .bunly
+          rustup run 1.91.0 rustc --edition=2021 --test native/cef-host/src/navigation.rs -o .bunly/navigation-tests${{ runner.os == 'Windows' && '.exe' || '' }}
+          .bunly/navigation-tests${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Typecheck native APIs without downloading or linking CEF
         shell: bash
         # Upstream's documentation feature skips browser acquisition/linking.

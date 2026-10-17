@@ -2,11 +2,13 @@ use cef::*;
 use serde_json::{json, Value};
 use std::{cell::RefCell, collections::BTreeMap, sync::atomic::{AtomicBool, AtomicUsize, Ordering}};
 use crate::{process, scheme};
+#[path = "navigation.rs"]
+mod navigation;
 pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
 static PENDING: AtomicUsize = AtomicUsize::new(0);
 struct WindowRecord { window: Option<Window>, request: u64, closing: Option<u64> }
-struct ViewRecord { view: Option<BrowserView>, browser: Option<Browser>, window: u64, session: u64, create: u64, navigate: Option<u64>, close: Option<u64> }
+struct ViewRecord { view: Option<BrowserView>, browser: Option<Browser>, window: u64, session: u64, create: u64, navigate: navigation::Navigation, close: Option<u64> }
 #[derive(Default)]
 struct HostState { next: u64, windows: BTreeMap<u64, WindowRecord>, views: BTreeMap<u64, ViewRecord>, sessions: BTreeMap<u64, RequestContext> }
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
@@ -32,6 +34,29 @@ fn quit_on_ui() {
 }
 pub fn release() {
     STATE.with(|s| { let mut s = s.borrow_mut(); if !s.windows.is_empty() || !s.views.is_empty() { FAILED.store(true, Ordering::SeqCst); } s.windows.clear(); s.views.clear(); s.sessions.clear(); });
+}
+fn cancel_navigation(id: u64, message: &str) {
+    let requests = STATE.with(|s| s.borrow_mut().views.get_mut(&id).map(|r| r.navigate.cancel()).unwrap_or_default());
+    for request in requests { error(request, message); }
+}
+fn issue_navigation(id: u64, request: navigation::Request) {
+    // Clone the native handle before entering CEF. Never retain a RefCell borrow
+    // across native calls, which may synchronously call back into this host.
+    let browser = STATE.with(|s| s.borrow().views.get(&id).filter(|r| r.close.is_none()).and_then(|r| r.browser.clone()));
+    let Some(browser) = browser else { cancel_navigation(id, "Browser unavailable during navigation"); return; };
+    let Some(frame) = browser.main_frame() else { cancel_navigation(id, "Missing main frame"); return; };
+    let current = CefString::from(&frame.url()).to_string();
+    if current == request.url {
+        browser.reload();
+    } else {
+        // Fragment-only loads do not have document-load callbacks in CEF. They
+        // require their own completion contract; do not leave a pending promise.
+        if let (Ok(mut old), Ok(mut new)) = (url::Url::parse(&current), url::Url::parse(&request.url)) {
+            old.set_fragment(None); new.set_fragment(None);
+            if old == new { cancel_navigation(id, "UNSUPPORTED_CAPABILITY: same-document navigation"); return; }
+        }
+        frame.load_url(Some(&CefString::from(request.url.as_str())));
+    }
 }
 wrap_task! {
     struct CommandTask { value: Value }
@@ -89,7 +114,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             if STATE.with(|s| s.borrow().views.len() >= 128) { return Err("View capacity exceeded".into()); }
             let owner = number(args, "window")?; let session = number(args, "session")?; let url = checked_url(string(args, "url")?)?;
             let (window, mut context) = STATE.with(|s| { let s = s.borrow(); let record = s.windows.get(&owner).ok_or("INVALID_HANDLE: window")?; if record.closing.is_some() { return Err("Window is closing"); } Ok::<_, &str>((record.window.clone().ok_or("Window not ready")?, s.sessions.get(&session).cloned().ok_or("INVALID_HANDLE: session")?)) })?;
-            let id = next_id(); STATE.with(|s| { s.borrow_mut().views.insert(id, ViewRecord { view: None, browser: None, window: owner, session, create: request, navigate: None, close: None }); });
+            let id = next_id(); STATE.with(|s| { s.borrow_mut().views.insert(id, ViewRecord { view: None, browser: None, window: owner, session, create: request, navigate: navigation::Navigation::default(), close: None }); });
             let mut client = BunlyClient::new(id); let mut delegate = BunlyView::new(RuntimeStyle::ALLOY);
             let settings = BrowserSettings { javascript_close_windows: cef::State::DISABLED, ..Default::default() };
             let Some(view) = browser_view_create(Some(&mut client), Some(&CefString::from(url.as_str())), Some(&settings), None, Some(&mut context), Some(&mut delegate)) else { STATE.with(|s| { s.borrow_mut().views.remove(&id); }); return Err("Browser view creation failed".into()); };
@@ -100,8 +125,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         }
         "view.navigate" => {
             let id = number(args, "id")?; let url = checked_url(string(args, "url")?)?;
-            let browser = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?; if r.close.is_some() { return Err("View is closing"); } if r.navigate.is_some() { return Err("Navigation already pending"); } let browser = r.browser.clone().ok_or("Browser not ready")?; r.navigate = Some(request); Ok(browser) })?;
-            browser.main_frame().ok_or("Missing main frame")?.load_url(Some(&CefString::from(url.as_str())));
+            let start = STATE.with(|s| {
+                let mut s = s.borrow_mut(); let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
+                if r.close.is_some() { return Err("View is closing"); }
+                if r.browser.is_none() { return Err("Browser not ready"); }
+                r.navigate.request(request, url)
+            })?;
+            if let Some(request) = start { issue_navigation(id, request); }
         }
         "view.dispose" => {
             let id = number(args, "id")?; let browser = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?; if r.close.is_some() { return Err("Close already pending"); } let browser = r.browser.clone().ok_or("Browser not ready")?; r.close = Some(request); Ok(browser) })?;
@@ -160,8 +190,8 @@ wrap_life_span_handler! {
         fn on_after_created(&self, browser: Option<&mut Browser>) { if let Some(browser) = browser { let request = STATE.with(|s| { let mut s = s.borrow_mut(); let r = s.views.get_mut(&self.id).expect("registered view"); r.browser = Some(browser.clone()); r.create }); reply(request, json!({"id":self.id})); } }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id));
-            if let Some(record) = record {
-                if let Some(request) = record.navigate { error(request, "Navigation cancelled by close"); }
+            if let Some(mut record) = record {
+                for request in record.navigate.cancel() { error(request, "Navigation cancelled by close"); }
                 if let Some(request) = record.close { reply(request, Value::Null); }
                 event("view.closed", self.id, Value::Null);
                 let window = STATE.with(|s| s.borrow().windows.get(&record.window).and_then(|r| r.window.clone()));
@@ -178,8 +208,32 @@ wrap_life_span_handler! {
 wrap_load_handler! {
     struct BunlyLoad { id: u64 }
     impl LoadHandler {
-        fn on_load_end(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, status: i32) { if let Some(frame) = frame { if frame.is_main() != 0 { let url = CefString::from(&frame.url()).to_string(); let request = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.navigate.take())); event("view.loaded", self.id, json!({"url":url,"status":status})); if let Some(request) = request { reply(request, json!({"url":url,"status":status})); } } } }
-        fn on_load_error(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, code: Errorcode, text: Option<&CefString>, _url: Option<&CefString>) { if frame.is_some_and(|f| f.is_main() != 0) { let request = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.navigate.take())); let message = text.map(|v| v.to_string()).unwrap_or_default(); if let Some(request) = request { error(request, &message); } event("view.load-error", self.id, json!({"code":code.get_raw(),"message":message})); } }
+        fn on_loading_state_change(&self, _browser: Option<&mut Browser>, loading: i32, _back: i32, _forward: i32) {
+            let closing = STATE.with(|s| s.borrow().views.get(&self.id).is_none_or(|r| r.close.is_some()));
+            if closing || QUITTING.load(Ordering::SeqCst) { cancel_navigation(self.id, "Navigation cancelled by close"); return; }
+            let transition = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).map(|r| r.navigate.loading(loading != 0)));
+            if let Some(transition) = transition {
+                if let Some((request, result)) = transition.completed {
+                    match result { Ok(value) => reply(request, json!({"url":value.url,"status":value.status})), Err(message) => error(request, &message) }
+                }
+                if let Some(request) = transition.start { issue_navigation(self.id, request); }
+            }
+        }
+        fn on_load_end(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, status: i32) {
+            if let Some(frame) = frame { if frame.is_main() != 0 {
+                let url = CefString::from(&frame.url()).to_string();
+                STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.loaded(&url, status); } });
+                event("view.loaded", self.id, json!({"url":url,"status":status}));
+            } }
+        }
+        fn on_load_error(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, code: Errorcode, text: Option<&CefString>, url: Option<&CefString>) {
+            if frame.is_some_and(|f| f.is_main() != 0) {
+                let message = text.map(|v| v.to_string()).unwrap_or_default();
+                let url = url.map(|v| v.to_string()).unwrap_or_default();
+                STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.failed(&url, message.clone()); } });
+                event("view.load-error", self.id, json!({"code":code.get_raw(),"message":message,"url":url}));
+            }
+        }
     }
 }
 wrap_display_handler! {
@@ -192,9 +246,12 @@ wrap_display_handler! {
 wrap_request_handler! {
     struct BunlyRequest { id: u64 }
     impl RequestHandler {
-        fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, _redirect: i32) -> i32 {
+        fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, redirect: i32) -> i32 {
             let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = checked_url(&url).is_err();
-            if !denied && frame.is_some_and(|f| f.is_main() != 0) { event("view.navigating", self.id, json!({"url":url})); } i32::from(denied)
+            if !denied && frame.is_some_and(|f| f.is_main() != 0) {
+                if redirect != 0 { STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.redirect(&url); } }); }
+                event("view.navigating", self.id, json!({"url":url}));
+            } i32::from(denied)
         }
     }
 }
