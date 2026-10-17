@@ -39,13 +39,7 @@ jobs:
           test "$(bun -e 'console.log(`${process.platform}-${process.arch}`)')" = "${{ matrix.target }}"
       - name: Install pinned dependencies
         id: dependencies
-        run: bun install
-      - name: Dependency lock evidence
-        if: matrix.target == 'linux-x64'
-        run: |
-          echo 'BUNLY_LOCK_BEGIN'
-          cat bun.lock
-          echo 'BUNLY_LOCK_END'
+        run: bun install --frozen-lockfile
       - name: Typecheck, lint, boundaries, tests, and compiler-free build
         run: |
           bun run check
