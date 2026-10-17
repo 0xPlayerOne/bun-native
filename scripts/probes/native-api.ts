@@ -7,7 +7,7 @@ export function loadNative(path:string,mode:'ffi'|'napi'):NativeApi {
  if(mode==='napi') {const module=createRequire(import.meta.url)(path) as Omit<NativeApi,'close'>;return {...module,close(){}};}
  const lib=dlopen(path,{
   bunly_probe_abi:{args:[],returns:FFIType.u32},bunly_probe_add:{args:[FFIType.u32,FFIType.u32],returns:FFIType.u32},
-  bunly_probe_checksum:{args:[FFIType.ptr,FFIType.usize],returns:FFIType.u32},bunly_probe_mark_main:{args:[],returns:FFIType.i32},
+  bunly_probe_checksum:{args:[FFIType.ptr,FFIType.u64],returns:FFIType.u32},bunly_probe_mark_main:{args:[],returns:FFIType.i32},
   bunly_probe_post:{args:[FFIType.u32],returns:FFIType.i32},bunly_probe_run:{args:[FFIType.u32],returns:FFIType.i32},
   bunly_probe_stop:{args:[],returns:FFIType.i32},bunly_probe_callback:{args:[FFIType.ptr],returns:FFIType.i32},
  });

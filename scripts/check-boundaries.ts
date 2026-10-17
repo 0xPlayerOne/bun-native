@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { parseSync } from 'oxc-parser';
 import { readdir,readFile } from 'node:fs/promises';
 import { resolve,dirname,relative,sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,7 +6,8 @@ const allowed:Record<string,readonly string[]>={contracts:[],client:['contracts'
 export function inspectSource(filename:string,source:string,root:string):string[] {
  const file=relative(root,filename).split(sep).join('/');const own=file.match(/^packages\/([^/]+)\//)?.[1];
  if(!own || !(own in allowed)) return [];const errors:string[]=[];const browser=own==='client'||own==='contracts';
- const parsed=ts.createSourceFile(filename,source,ts.ScriptTarget.Latest,true);
+ const parsed=parseSync(filename,source,{sourceType:'module'});
+ if(parsed.errors.length) return parsed.errors.map(error=>`${file}: parse error: ${error.message}`);
  const inspect=(specifier:string)=>{
   if(specifier.startsWith('.')) {
    const target=relative(root,resolve(dirname(filename),specifier)).split(sep).join('/');
@@ -17,16 +18,35 @@ export function inspectSource(filename:string,source:string,root:string):string[
    if(pkg!==own&&!allowed[own]!.includes(pkg))errors.push(`${file}: forbidden package ${specifier}`);
   }else if(browser)errors.push(`${file}: browser package imports ${specifier}`);
  };
- function walk(node:ts.Node):void {
-  if((ts.isImportDeclaration(node)||ts.isExportDeclaration(node))&&node.moduleSpecifier&&ts.isStringLiteral(node.moduleSpecifier))inspect(node.moduleSpecifier.text);
-  if(ts.isImportTypeNode(node)&&ts.isLiteralTypeNode(node.argument)&&ts.isStringLiteral(node.argument.literal))inspect(node.argument.literal.text);
-  if(ts.isCallExpression(node)&&(node.expression.kind===ts.SyntaxKind.ImportKeyword||(ts.isIdentifier(node.expression)&&node.expression.text==='require'))) {
-   const arg=node.arguments[0];if(arg&&ts.isStringLiteralLike(arg))inspect(arg.text);else errors.push(`${file}: non-literal module load cannot be boundary-checked`);
-  }
-  if(browser&&ts.isIdentifier(node)&&['Bun','process','require'].includes(node.text))errors.push(`${file}: browser package uses host global ${node.text}`);
-  ts.forEachChild(node,walk);
+ function object(value:unknown):Record<string,unknown>|undefined {
+  return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:undefined;
  }
- walk(parsed);return errors;
+ function literal(value:unknown):string|undefined {
+  const node=object(value);if(!node)return undefined;
+  if(typeof node['value']==='string')return node['value'];
+  if(node['type']==='TSLiteralType')return literal(node['literal']);
+  return undefined;
+ }
+ function moduleSource(value:unknown):void {
+  const source=literal(value);
+  if(source===undefined)errors.push(`${file}: non-literal module load cannot be boundary-checked`);else inspect(source);
+ }
+ function walk(value:unknown):void {
+  if(Array.isArray(value)){for(const child of value)walk(child);return;}
+  const node=object(value);if(!node)return;
+  const type=node['type'];
+  if(['ImportDeclaration','ExportNamedDeclaration','ExportAllDeclaration'].includes(type as string)&&node['source'])moduleSource(node['source']);
+  if(type==='ImportExpression')moduleSource(node['source']);
+  if(type==='TSImportType')moduleSource(node['source']??node['argument']);
+  if(type==='TSExternalModuleReference')moduleSource(node['expression']);
+  const callee=object(node['callee']);
+  if(type==='CallExpression'&&callee?.['type']==='Identifier'&&callee['name']==='require') {
+   const args=node['arguments'];moduleSource(Array.isArray(args)?args[0]:undefined);
+  }
+  if(browser&&type==='Identifier'&&['Bun','process','require'].includes(node['name'] as string))errors.push(`${file}: browser package uses host global ${node['name']}`);
+  for(const child of Object.values(node))if(child&&typeof child==='object')walk(child);
+ }
+ walk(parsed.program);return errors;
 }
 async function files(dir:string):Promise<string[]> {
  const result:string[]=[];for(const e of await readdir(dir,{withFileTypes:true})) {
