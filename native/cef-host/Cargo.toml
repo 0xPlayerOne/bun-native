@@ -2,10 +2,13 @@
 name = "bunly_host"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.90"
 publish = false
 license = "MIT"
 
 [workspace]
+# Honor the declared contributor MSRV when resolving optional packaging tools.
+resolver = "3"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
