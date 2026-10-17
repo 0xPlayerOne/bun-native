@@ -1,0 +1,23 @@
+name: Bug report
+description: Reproducible runtime, build, or lifecycle failure
+title: "bug: "
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include a minimal fixture, expected behavior, and actual behavior. Remove secrets and private page content.
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Environment
+      description: Bunly commit, developer and packaged Bun, backend/browser version, OS, CPU, and security configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Redacted logs, commands, and test results. Identify untested platforms.

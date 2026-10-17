@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "lib": ["ES2022", "DOM"], "module": "Preserve", "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true, "verbatimModuleSyntax": true, "strict": true,
+    "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true, "useUnknownInCatchVariables": true,
+    "noImplicitOverride": true, "noFallthroughCasesInSwitch": true, "noUnusedLocals": true,
+    "noUnusedParameters": true, "skipLibCheck": true, "noEmit": true, "types": ["bun", "node"]
+  },
+  "include": ["packages/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/boundaries/**"]
+}

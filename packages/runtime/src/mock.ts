@@ -1,0 +1,122 @@
+import { BunlyError, CONTRACT_VERSION, normalizeUrl, originOf, requireCapability, validateBounds } from '../../contracts/src/index.ts';
+import type { BackendDescriptor, BrowserBackend, Cookie, Diagnostics, DownloadRequest, DownloadResult, InputAction,
+  OperationOptions, RuntimeEvent, SessionHandle, SessionOptions, ViewHandle, ViewOptions, ViewState, ViewTrust,
+  WindowHandle, WindowOptions } from '../../contracts/src/index.ts';
+import { Registry } from './registry.ts';
+interface ViewRecord { window: WindowHandle; session: SessionHandle; state: ViewState }
+/** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
+export class MockBackend implements BrowserBackend {
+  readonly descriptor: BackendDescriptor = Object.freeze({ name: 'mock', version: '0.1.0-dev.0', contractVersion: CONTRACT_VERSION,
+    capabilities: Object.freeze(['window.lifecycle', 'view.navigate', 'session.ephemeral'] as const) });
+  readonly #registry = new Registry();
+  readonly #listeners = new Set<(event: RuntimeEvent) => void>();
+  #disposed = false;
+  #listenerErrors = 0;
+  async createSession(options: SessionOptions): Promise<SessionHandle> {
+    this.#active();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(options.partition) ||
+        !['ephemeral', 'persistent'].includes(options.persistence)) throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options');
+    requireCapability(this.descriptor, options.persistence === 'persistent' ? 'session.persistent' : 'session.ephemeral');
+    for (const h of this.#registry.handles('session')) {
+      if (this.#registry.get<'session', SessionOptions>(h, 'session').partition === options.partition)
+        throw new BunlyError('INVALID_ARGUMENT', 'Partition already has an owner');
+    }
+    const handle = this.#registry.create('session', Object.freeze({ ...options }));
+    this.#emit({ type: 'created', resource: handle });
+    return handle;
+  }
+  async createWindow(options: WindowOptions): Promise<WindowHandle> {
+    this.#active(); validateBounds(options.bounds);
+    if (typeof options.title !== 'string' || options.title.length > 1024) throw new BunlyError('INVALID_ARGUMENT', 'Invalid title');
+    const handle = this.#registry.create('window', Object.freeze({ ...options, bounds: Object.freeze({ ...options.bounds }) }));
+    this.#emit({ type: 'created', resource: handle }); return handle;
+  }
+  async createView(options: ViewOptions): Promise<ViewHandle> {
+    this.#active(); this.#registry.get(options.window, 'window'); this.#registry.get(options.session, 'session');
+    const url = normalizeUrl(options.url);
+    if (options.trust.kind !== 'application' && options.trust.kind !== 'remote') throw new BunlyError('INVALID_ARGUMENT', 'Invalid trust policy');
+    if (options.trust.kind === 'application' &&
+        (originOf(options.trust.origin) !== options.trust.origin || originOf(url) !== options.trust.origin || options.trust.origin === 'null'))
+      throw new BunlyError('PERMISSION_DENIED', 'Application origin must explicitly match the initial document');
+    const record: ViewRecord = { window: options.window, session: options.session,
+      state: this.#state(url, options.trust) };
+    const handle = this.#registry.create('view', record);
+    this.#emit({ type: 'created', resource: handle }); return handle;
+  }
+  async navigate(view: ViewHandle, value: string, options?: OperationOptions): Promise<ViewState> {
+    this.#active(); options?.signal?.throwIfAborted();
+    const record = this.#registry.get<'view', ViewRecord>(view, 'view');
+    const url = normalizeUrl(value);
+    const trust: ViewTrust = record.state.trust.kind === 'application' && originOf(url) === record.state.trust.origin
+      ? record.state.trust : { kind: 'remote' };
+    // Navigating back never implicitly restores a previously revoked application grant.
+    record.state = this.#state(url, trust);
+    this.#emit({ type: 'navigated', resource: view, state: record.state }); return record.state;
+  }
+  state(view: ViewHandle): ViewState { this.#active(); return this.#registry.get<'view', ViewRecord>(view, 'view').state; }
+  async disposeView(view: ViewHandle): Promise<void> {
+    if (this.#registry.dispose(view, 'view')) this.#emit({ type: 'disposed', resource: view });
+  }
+  async closeWindow(window: WindowHandle): Promise<void> {
+    // Validate even on the idempotent path; a copied diagnostic ID is never sufficient.
+    for (const view of this.#registry.handles('view')) {
+      if (this.#registry.get<'view', ViewRecord>(view, 'view').window === window) await this.disposeView(view);
+    }
+    if (this.#registry.dispose(window, 'window')) this.#emit({ type: 'disposed', resource: window });
+  }
+  async disposeSession(session: SessionHandle): Promise<void> {
+    for (const view of this.#registry.handles('view')) {
+      if (this.#registry.get<'view', ViewRecord>(view, 'view').session === session)
+        throw new BunlyError('RESOURCE_IN_USE', 'Dispose session views first');
+    }
+    if (this.#registry.dispose(session, 'session')) this.#emit({ type: 'disposed', resource: session });
+  }
+  async snapshot(view: ViewHandle, options?: OperationOptions): Promise<Uint8Array> {
+    this.state(view); options?.signal?.throwIfAborted(); requireCapability(this.descriptor, 'view.snapshot');
+    throw new Error('Unreachable');
+  }
+  async evaluate(view: ViewHandle, _script: string, options?: OperationOptions): Promise<unknown> {
+    this.state(view); options?.signal?.throwIfAborted(); requireCapability(this.descriptor, 'view.evaluate');
+    throw new Error('Unreachable');
+  }
+  async input(view: ViewHandle, _action: InputAction, options?: OperationOptions): Promise<void> {
+    this.state(view); options?.signal?.throwIfAborted(); requireCapability(this.descriptor, 'view.input');
+  }
+  async cookies(session: SessionHandle): Promise<readonly Cookie[]> {
+    this.#active(); this.#registry.get(session, 'session'); requireCapability(this.descriptor, 'session.cookies');
+    throw new Error('Unreachable');
+  }
+  async requestPermission(view: ViewHandle, _permission: string): Promise<'granted' | 'denied'> {
+    this.state(view); requireCapability(this.descriptor, 'permission.request'); throw new Error('Unreachable');
+  }
+  async download(view: ViewHandle, _request: DownloadRequest, options?: OperationOptions): Promise<DownloadResult> {
+    this.state(view); options?.signal?.throwIfAborted(); requireCapability(this.descriptor, 'download.manage'); throw new Error('Unreachable');
+  }
+  async extension(view: ViewHandle, _name: `${string}:${string}`, _input: unknown): Promise<unknown> {
+    this.state(view); requireCapability(this.descriptor, 'backend.extensions'); throw new Error('Unreachable');
+  }
+  onEvent(listener: (event: RuntimeEvent) => void): () => void {
+    this.#active(); this.#listeners.add(listener); return () => { this.#listeners.delete(listener); };
+  }
+  diagnostics(): Diagnostics {
+    return Object.freeze({ windows: this.#registry.handles('window').length, views: this.#registry.handles('view').length,
+      sessions: this.#registry.handles('session').length, listeners: this.#listeners.size, listenerErrors: this.#listenerErrors });
+  }
+  async dispose(): Promise<void> {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    for (const window of this.#registry.handles('window')) await this.closeWindow(window);
+    for (const session of this.#registry.handles('session')) await this.disposeSession(session);
+    this.#listeners.clear();
+  }
+  #active(): void { if (this.#disposed) throw new BunlyError('DISPOSED', 'Backend disposed'); }
+  #state(url: string, trust: ViewTrust): ViewState {
+    return Object.freeze({ url, documentId: crypto.randomUUID(), trust: Object.freeze({ ...trust }) });
+  }
+  #emit(event: RuntimeEvent): void {
+    const frozen = Object.freeze(event);
+    for (const listener of [...this.#listeners]) {
+      try { listener(frozen); } catch { this.#listenerErrors++; }
+    }
+  }
+}
