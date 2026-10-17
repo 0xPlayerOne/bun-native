@@ -4,7 +4,7 @@ export function random(seed: number): () => number {
   return () => { state = (Math.imul(1664525, state) + 1013904223) >>> 0; return state / 4294967296; };
 }
 export function quantile(values: readonly number[], probability: number): number {
-  if (!values.length || values.some(value => !Number.isFinite(value)) || probability < 0 || probability > 1) throw new Error('Invalid quantile input');
+  if (!values.length || values.some(value => !Number.isFinite(value)) || !Number.isFinite(probability) || probability < 0 || probability > 1) throw new Error('Invalid quantile input');
   const sorted = [...values].sort((a, b) => a - b);
   const position = (sorted.length - 1) * probability;
   const index = Math.floor(position);

@@ -42,8 +42,9 @@ export class FaultChannel {
   close(): void { this.#closed = true; this.navigate(); }
   async request(value: string, fault: Fault, timeoutMs = 50): Promise<string> {
     if (this.#closed) throw new Error('CHANNEL_CLOSED');
-    const request = this.ledger.acquire('request', 'fault-channel');
+    // Reserve before accepting the request; rejected overload cannot leak an owner.
     const release = this.ledger.reserve(new TextEncoder().encode(value).length);
+    const request = this.ledger.acquire('request', 'fault-channel');
     const generation = this.#generation;
     try {
       return await bounded(async signal => {

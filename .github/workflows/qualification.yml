@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  PYTHON: python
 concurrency:
   group: qualification-${{ github.ref }}
   cancel-in-progress: true
@@ -34,6 +36,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: |
           python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
+          python tests/process_observer_test.py
       - run: rustup toolchain install 1.85.1 --profile minimal
       - run: bun run native:build
       - run: bun scripts/qualify-lifecycle.ts
