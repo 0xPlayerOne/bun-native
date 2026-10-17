@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   portable:
+    if: vars.CI_BILLING_PAUSED != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -35,6 +36,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   electron:
+    if: vars.CI_BILLING_PAUSED != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

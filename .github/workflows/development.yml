@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   development:
+    if: vars.CI_BILLING_PAUSED != 'true'
     strategy:
       fail-fast: false
       matrix:

@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   electrobun:
+    if: vars.CI_BILLING_PAUSED != 'true'
     runs-on: macos-15
     timeout-minutes: 15
     defaults:

@@ -1,0 +1,2 @@
+# Contributor-only process observation; matches the native qualification workflows.
+psutil==7.0.0

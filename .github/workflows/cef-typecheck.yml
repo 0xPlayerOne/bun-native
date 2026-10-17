@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   check:
+    if: vars.CI_BILLING_PAUSED != 'true'
     name: CEF API check (${{ matrix.os }})
     strategy:
       fail-fast: false

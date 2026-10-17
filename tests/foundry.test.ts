@@ -1,0 +1,113 @@
+import { describe, test, expect } from 'bun:test';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { BILLING_GUARD, dependabotDirectories, guardWorkflow, verifyGithubLayout } from '../scripts/sync-foundry.ts';
+const root = resolve(import.meta.dir, '..');
+function yaml(source: string): Record<string, unknown> { return Bun.YAML.parse(source) as Record<string, unknown>; }
+
+describe('Code Foundry installation', () => {
+  test('keeps an exact development-only package and matching released runtime', async () => {
+    const pkg = await Bun.file(resolve(root, 'package.json')).json();
+    const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'));
+    expect(pkg.devDependencies['code-foundry']).toBe('1.48.2');
+    expect(pkg.dependencies?.['code-foundry']).toBeUndefined();
+    expect(config['runtime_ref']).toBe(`v${pkg.devDependencies['code-foundry']}`);
+    expect(config['package_manager']).toBe('bun');
+    expect(config['profile']).toBe('monorepo');
+    expect(config['languages']).toBe('typescript,rust,python');
+  });
+  test('keeps publishing opt-in and the existing license intact', async () => {
+    const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'));
+    expect(config['npm_publish']).toBe(false);
+    expect(String(config['features']).split(',')).not.toContain('release');
+    expect(config['license']).toBe('preserve');
+    expect(await readFile(resolve(root, 'LICENSE'), 'utf8')).toStartWith('MIT License');
+    const agents = await readFile(resolve(root, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('# Bunly implementation rules');
+    expect(agents).toContain('code-foundry-managed: pull-request-policy');
+  });
+  test('places generated content in .github with only one case-safe PR template', async () => {
+    await verifyGithubLayout(root);
+    const names = await readdir(resolve(root, '.github'));
+    expect(names.filter(name => name.toLowerCase() === 'pull_request_template.md')).toEqual(['PULL_REQUEST_TEMPLATE.md']);
+    expect(await readFile(resolve(root, '.github/CODEOWNERS'), 'utf8')).toContain('* @0xPlayerOne');
+  });
+  test('every custom and generated job honors the repository billing variable', async () => {
+    const directory = resolve(root, '.github/workflows');
+    for (const file of (await readdir(directory)).filter(name => /\.ya?ml$/.test(name))) {
+      const workflow = yaml(await readFile(resolve(directory, file), 'utf8'));
+      const jobs = workflow['jobs'] as Record<string, Record<string, unknown>>;
+      for (const [name, job] of Object.entries(jobs)) {
+        expect(String(job['if']), `${file}/${name}`).toContain(BILLING_GUARD);
+      }
+    }
+  });
+  test('pauses all updater ecosystems and selects actual independent manifest roots', async () => {
+    const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'));
+    expect(config['billing_paused']).toBe(true);
+    const updates = yaml(await readFile(resolve(root, '.github/dependabot.yml'), 'utf8'))['updates'] as Record<string, unknown>[];
+    for (const entry of updates) {
+      expect(entry['open-pull-requests-limit']).toBe(0);
+      expect((entry['schedule'] as Record<string, unknown>)['interval']).toBe('monthly');
+    }
+    expect(updates.find(entry => entry['package-ecosystem'] === 'cargo')?.['directories']).toEqual(['/native', '/native/cef-host']);
+    expect(updates.find(entry => entry['package-ecosystem'] === 'bun')?.['directories']).toEqual(['/', '/benchmarks/adapters/electron', '/benchmarks/adapters/electrobun', '/benchmarks/fixtures']);
+    for (const manifest of ['native/Cargo.toml', 'native/cef-host/Cargo.toml', 'requirements-dev.txt']) {
+      expect(await Bun.file(resolve(root, manifest)).exists()).toBe(true);
+    }
+  });
+  test('runs the installed hook through Bun and preserves machine-hook chaining', async () => {
+    const hook = await readFile(resolve(root, '.githooks/pre-commit'), 'utf8');
+    expect(hook).toContain('exec bun --bun code-foundry pre-commit');
+    expect(hook).toContain('CODE_FOUNDRY_HOOK_CHAIN=1');
+    expect(hook).not.toContain('exec node_modules/.bin/code-foundry pre-commit');
+  });
+});
+
+describe('Code Foundry overlay', () => {
+  test('guards jobs without modifying their steps, triggers, or permissions', () => {
+    const source = 'name: example\non:\n  pull_request:\npermissions:\n  contents: read\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: bun test\n  native:\n    runs-on: macos-15\n    steps:\n      - run: cargo test\n';
+    const guarded = guardWorkflow(source);
+    const actual = yaml(guarded);
+    const original = yaml(source);
+    const jobs = actual['jobs'] as Record<string, Record<string, unknown>>;
+    for (const job of Object.values(jobs)) { expect(job['if']).toBe(BILLING_GUARD); delete job['if']; }
+    expect(actual).toEqual(original);
+    expect(guardWorkflow(guarded)).toBe(guarded);
+  });
+  test('refuses to silently overwrite an authored job condition', () => {
+    expect(() => guardWorkflow('jobs:\n  run:\n    if: github.ref == "refs/heads/main"\n    runs-on: ubuntu-latest\n')).toThrow('Review the existing condition');
+  });
+  test('preserves generated billing-aware conditions', () => {
+    const source = `jobs:\n  run:\n    if: ${BILLING_GUARD} && github.event_name == 'push'\n    runs-on: ubuntu-latest\n`;
+    expect(guardWorkflow(source)).toBe(source);
+  });
+  test('changes only updater directories and retains upstream pause controls', () => {
+    const source = 'version: 2\nupdates:\n  - package-ecosystem: cargo\n    directory: /\n    open-pull-requests-limit: 0 # paused\n  - package-ecosystem: bun\n    directory: /\n    open-pull-requests-limit: 0 # paused\n';
+    const output = dependabotDirectories(source);
+    expect(output).toContain('    open-pull-requests-limit: 0 # paused');
+    expect(output).not.toContain('    directory: /\n');
+    expect(output).toContain('      - /native/cef-host');
+  });
+  test('fails closed on upstream template layout changes', () => {
+    expect(() => dependabotDirectories('updates:\n  - package-ecosystem: cargo\n    directory: /somewhere\n')).toThrow('Unexpected upstream cargo layout');
+  });
+  test('rejects misplaced, nested, and case-colliding GitHub content', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'bunly-foundry-layout-'));
+    try {
+      await mkdir(resolve(directory, '.guthub'));
+      await expect(verifyGithubLayout(directory)).rejects.toThrow('Misplaced GitHub content');
+      await rm(resolve(directory, '.guthub'), { recursive: true });
+      await mkdir(resolve(directory, '.github/.github'), { recursive: true });
+      await expect(verifyGithubLayout(directory)).rejects.toThrow('Nested');
+      await rm(resolve(directory, '.github/.github'), { recursive: true });
+      // Real case collisions are only constructible on a case-sensitive filesystem.
+      await writeFile(resolve(directory, '.github/example'), 'a');
+      await writeFile(resolve(directory, '.github/EXAMPLE'), 'b');
+      if ((await readdir(resolve(directory, '.github'))).length === 2) {
+        await expect(verifyGithubLayout(directory)).rejects.toThrow('Case-colliding');
+      }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+});
