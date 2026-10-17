@@ -1,7 +1,7 @@
 name: M1 foundation
 on:
   push:
-    branches: [main, feat/m1-foundation]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -38,6 +38,7 @@ jobs:
           test "$(bun --version)" = "1.4.3"
           test "$(bun -e 'console.log(`${process.platform}-${process.arch}`)')" = "${{ matrix.target }}"
       - name: Install pinned dependencies
+        id: dependencies
         run: bun install
       - name: Dependency lock evidence
         if: matrix.target == 'linux-x64'
@@ -52,14 +53,20 @@ jobs:
           bun run example
           bun packages/cli/dist/main.js doctor
       - name: Install framework-contributor toolchain
+        id: toolchain
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy
       - name: Build and test real native probe
+        id: native
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           cargo test --locked --manifest-path native/Cargo.toml
           cargo build --locked --manifest-path native/Cargo.toml --release
       - name: Qualify Bun FFI, Node-API, and subprocess handoff
+        if: ${{ !cancelled() && steps.native.outcome == 'success' }}
         run: bun run qualify:host
       - name: Package and consume verified native probe
+        if: ${{ !cancelled() && steps.native.outcome == 'success' }}
         run: bun run artifact:probe
       - name: Preserve qualification evidence and native artifacts
         if: always()

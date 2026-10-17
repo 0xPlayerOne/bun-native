@@ -36,7 +36,7 @@ export function readTar(bytes: Uint8Array): TarFile[] {
   if(!terminated) throw new ArtifactError('BAD_ARCHIVE','Missing archive terminator'); return files;
 }
 /** Deterministic fixture/native-probe packer; not a general-purpose tar implementation. */
-export function createTar(input: readonly TarFile[]): Uint8Array {
+export function createTar(input: readonly TarFile[]): Uint8Array<ArrayBuffer> {
   const chunks: Buffer[]=[];
   for(const file of [...input].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)) {
     safeRelativePath(file.path); if(Buffer.byteLength(file.path)>99) throw new ArtifactError('UNSAFE_PATH','Probe packer paths must fit a USTAR name');
