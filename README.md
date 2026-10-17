@@ -2,23 +2,76 @@
 
 The Bun-native desktop framework.
 
-**Status: experimental planning. Runtime implementation has not started.**
+**Status:** Experimental M1 foundation. No visible CEF desktop runtime yet.
 
-Bunly is exploring a standalone desktop runtime with a TypeScript-first application model, prebuilt native components, and managed backend reloads that preserve explicitly owned windows, browser sessions, and terminals.
+Bunly is building a standalone TypeScript-first desktop framework around real Bun,
+prebuilt native components, and managed backend reloads. The eventual objective is
+better iteration without giving up competitive native/browser efficiency. These
+are hypotheses, not measured product claims.
 
-CEF is the first browser backend. System-webview adapters and CEF-free Adea qualification are later work, not prerequisites for the initial MVP. Performance and size improvements are hypotheses to validate, not current product claims.
+## Run the foundation
 
-## Implementation roadmap
+Use Bun **1.4.3**. Application-side checks and the contract workbench do not need
+Rust, Zig, CMake, or a C++ compiler:
 
-The [roadmap issue](https://github.com/0xPlayerOne/bunly/issues/1) is the implementation index and source of truth for scope, dependencies, acceptance criteria, and decision points.
+```sh
+bun install --frozen-lockfile
+bun run check
+bun run typecheck:browser
+bun run example
+bun packages/cli/src/main.ts doctor
+```
 
-- [Milestones](https://github.com/0xPlayerOne/bunly/milestones): M1-M9 cover the CEF MVP; M10-M12 cover system webviews and Adea qualification.
-- [Issues](https://github.com/0xPlayerOne/bunly/issues): the initial plan contains 58 implementation tasks plus the roadmap issue.
+The current example uses an explicit **mock backend**. It exercises resource
+lifetimes, navigation, capability discovery, cancellation, and cleanup without
+opening a native window. Screenshot, evaluation, downloads, persistence, and input
+are declared contracts but return unsupported-capability errors in the mock.
 
-Start with [product scope](https://github.com/0xPlayerOne/bunly/issues/2), [repository scaffolding](https://github.com/0xPlayerOne/bunly/issues/3), and [upstream provenance](https://github.com/0xPlayerOne/bunly/issues/4) in parallel. [Host qualification](https://github.com/0xPlayerOne/bunly/issues/5) and reproducible benchmarks establish whether the proposed architecture is worth expanding.
+## Framework contributor probes
 
-## Principles
+Framework contributors, unlike future application consumers, need the pinned
+Rust toolchain to build the native qualification fixture:
 
-Application developers use real Bun TypeScript without compiling the native framework. Browser-specific details stay behind capability-based contracts. Security, accessibility, reliable cleanup, and complete output remain requirements when comparing performance.
+```sh
+bun run native:test
+bun run native:build
+bun run qualify:host
+bun run artifact:probe
+```
 
-The native implementation language is an engineering decision to qualify. Selective upstream code reuse must preserve its provenance and applicable notices. This project is not a Tauri plugin, a Bun fork, or a commitment to complete Electron compatibility.
+The probe tests a blocking native-main-thread/Bun-Worker arrangement through FFI
+and Node-API, plus a native-owner/Bun-subprocess fallback. It is **not** a CEF,
+AppKit, WebView2, or WebKitGTK implementation. Qualification reports identify
+exactly what ran. Artifact tests use ephemeral CI keys, not a production trust root.
+
+## Repository
+
+| Location | Responsibility |
+| --- | --- |
+| `packages/contracts` | Browser-safe SDK contracts and capability/version rules |
+| `packages/client` | Browser-side feature discovery; no native authority |
+| `packages/runtime` | Application entry point, opaque resource registry, mock backend |
+| `packages/artifacts` | Signed manifests, restricted archive verification, atomic cache |
+| `packages/cli` | Foundation diagnostics and explicit artifact resolution |
+| `native/host-probe` | Dependency-free Rust qualification fixture and Node-API/FFI ABI |
+| `examples/workbench` | Executable contract-only consumer example |
+| `tests` | Lifecycle, trust-contract, archive/cache, and import-boundary tests |
+| `docs` | Architecture decisions, provenance, limits, and validation evidence |
+
+## Roadmap
+
+[Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
+[Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
+[M1](https://github.com/0xPlayerOne/bunly/milestone/1)
+
+M1 establishes the foundation. M2 measures equivalent competitor workloads. M3
+implements the first visible CEF host. Later milestones add secure IPC, streams,
+managed reload, packaging, and platform qualification. System webviews follow the
+CEF MVP; browser-specific concepts must not leak into the portable API.
+
+Start with [architecture](docs/architecture.md), [decisions](docs/decisions/0001-foundation.md),
+[validation](docs/validation.md), and [contributing](CONTRIBUTING.md).
+
+This is not a Tauri plugin, a Bun fork, a new package manager, or a claim of full
+Electron compatibility. Private repository status and public publishing remain
+separate decisions. No Adea production settings are changed here.
