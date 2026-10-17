@@ -1,31 +1,66 @@
-/** Run upstream Code Foundry, then apply Bunly's small, deterministic layout overlay. */
-import { access, chmod, readFile, readdir, writeFile } from 'node:fs/promises';
+/** Run upstream Code Foundry, then apply Bunly's deterministic repository overlay. */
+import { access, chmod, lstat, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 export const BILLING_GUARD = "vars.CI_BILLING_PAUSED != 'true'";
-const OWNED_WORKFLOWS = [
-  'benchmarks.yml', 'cef-runtime.yml', 'cef-typecheck.yml', 'ci.yml',
-  'development.yml', 'electrobun.yml', 'kernel-counters.yml', 'qualification.yml',
-] as const;
+/** While the checked-in pause is enabled, only an explicit remote false can run jobs. */
+export const PAUSED_BILLING_GUARD = "vars.CI_BILLING_PAUSED == 'false'";
 
 function record(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected YAML mapping');
   return value as Record<string, unknown>;
 }
 
-/** Preserve authored jobs and their original conditions; never replace their steps. */
-export function guardWorkflow(source: string): string {
+/** A leading guard must apply to the whole expression, not only one side of an OR. */
+function hasTopLevelOr(expression: string): boolean {
+  let depth = 0;
+  let quoted = false;
+  for (let index = 0; index < expression.length; index++) {
+    const char = expression[index];
+    if (char === "'") {
+      if (quoted && expression[index + 1] === "'") { index++; continue; }
+      quoted = !quoted;
+    } else if (!quoted) {
+      if (char === '(') depth++;
+      if (char === ')' && --depth < 0) throw new Error('Unbalanced job condition');
+      if (depth === 0 && expression.slice(index, index + 2) === '||') return true;
+    }
+  }
+  if (depth !== 0 || quoted) throw new Error('Unbalanced job condition');
+  return false;
+}
+
+/** Preserve authored job steps and predicates; fail rather than rewrite an unknown layout. */
+export function guardWorkflow(source: string, paused = false): string {
   const jobs = record(record(Bun.YAML.parse(source))['jobs']);
+  const desired = paused ? PAUSED_BILLING_GUARD : BILLING_GUARD;
   let result = source;
   for (const [name, raw] of Object.entries(jobs)) {
     if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) throw new Error('Unsupported job name');
     const job = record(raw);
     const condition = job['if'];
-    if (typeof condition === 'string' && condition.includes(BILLING_GUARD)) continue;
-    if (condition !== undefined) throw new Error(`Review the existing condition for job ${name} before adding its billing guard`);
     const heading = `  ${name}:\n`;
     if (result.split(heading).length !== 2) throw new Error(`Cannot locate unambiguous job ${name}`);
-    result = result.replace(heading, `${heading}    if: ${BILLING_GUARD}\n`);
+    if (condition === undefined) {
+      result = result.replace(heading, `${heading}    if: ${desired}\n`);
+      continue;
+    }
+    if (typeof condition !== 'string') throw new Error(`Review the existing condition for job ${name} before adding its billing guard`);
+    const expression = condition.trim();
+    const previous = [BILLING_GUARD, PAUSED_BILLING_GUARD].find(guard => expression === guard || expression.startsWith(`${guard} && `));
+    if (!previous || hasTopLevelOr(expression)) throw new Error(`Review the existing condition for job ${name} before adding its billing guard`);
+    const start = result.indexOf(heading) + heading.length;
+    const rest = result.slice(start);
+    const boundary = rest.search(/^(?: {0,2}\S)/m);
+    const end = boundary < 0 ? result.length : start + boundary;
+    const block = result.slice(start, end);
+    const markers = [...block.matchAll(/^    if: (?:>[-+]?\n {6})?/gm)];
+    if (markers.length !== 1) throw new Error(`Review the YAML condition layout for job ${name}`);
+    const marker = markers[0]!;
+    const offset = marker.index! + marker[0].length;
+    if (block.slice(offset, offset + previous.length) !== previous) throw new Error(`Review the YAML condition layout for job ${name}`);
+    const updated = block.slice(0, offset) + desired + block.slice(offset + previous.length);
+    result = result.slice(0, start) + updated + result.slice(end);
   }
   return result;
 }
@@ -57,33 +92,51 @@ export function dependabotDirectories(source: string): string {
   return result;
 }
 
-export async function verifyGithubLayout(root: string): Promise<void> {
+async function inspectGithubPaths(root: string): Promise<void> {
   const entries = await readdir(root);
   for (const misplaced of ['.guthub', 'workflows', 'ISSUE_TEMPLATE', 'CODEOWNERS']) {
     if (entries.includes(misplaced)) throw new Error(`Misplaced GitHub content: ${misplaced}`);
   }
-  const github = await readdir(resolve(root, '.github'));
-  if (github.includes('.github')) throw new Error('Nested .github/.github is not supported');
-  if (new Set(github.map(name => name.toLowerCase())).size !== github.length) throw new Error('Case-colliding .github paths');
+  if (!entries.includes('.github')) return;
+  if ((await lstat(resolve(root, '.github'))).isSymbolicLink()) throw new Error('Linked .github directory is not supported');
+  async function visit(directory: string): Promise<void> {
+    const children = await readdir(directory, { withFileTypes: true });
+    if (new Set(children.map(entry => entry.name.toLowerCase())).size !== children.length) throw new Error(`Case-colliding .github paths in ${directory}`);
+    for (const entry of children) {
+      if (entry.name === '.github' || entry.name === '.guthub') throw new Error('Nested or misspelled .github directory is not supported');
+      if (entry.isSymbolicLink()) throw new Error('Linked .github content is not supported');
+      if (entry.isDirectory()) await visit(resolve(directory, entry.name));
+    }
+  }
+  await visit(resolve(root, '.github'));
+}
+
+export async function verifyGithubLayout(root: string): Promise<void> {
+  await inspectGithubPaths(root);
   for (const file of ['code-foundry.yml', 'CODEOWNERS', 'PULL_REQUEST_TEMPLATE.md', 'workflows/validation.yml']) {
     await access(resolve(root, '.github', file));
   }
 }
 
 export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'): Promise<void> {
+  // Reject malformed destinations before the upstream initializer writes anything.
+  await inspectGithubPaths(root);
   const cli = resolve(root, 'node_modules/code-foundry/src/cli.mjs');
   await access(cli);
   const child = Bun.spawn([process.execPath, cli, mode, '--target', root], { cwd: root, stdout: 'inherit', stderr: 'inherit' });
   if (await child.exited !== 0) throw new Error('Code Foundry synchronization failed');
+  const config = record(Bun.YAML.parse(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8')));
+  if (typeof config['billing_paused'] !== 'boolean') throw new Error('billing_paused must be explicitly true or false');
   const dependabot = resolve(root, '.github/dependabot.yml');
   await writeFile(dependabot, dependabotDirectories(await readFile(dependabot, 'utf8')));
-  for (const name of OWNED_WORKFLOWS) {
-    const file = resolve(root, '.github/workflows', name);
+  // Include generated callers and new custom lanes, not just the original eight workflows.
+  const workflows = resolve(root, '.github/workflows');
+  for (const name of (await readdir(workflows)).filter(name => /\.ya?ml$/.test(name)).sort()) {
+    const file = resolve(workflows, name);
     const before = await readFile(file, 'utf8');
-    const after = guardWorkflow(before);
+    const after = guardWorkflow(before, config['billing_paused']);
     if (before !== after) await writeFile(file, after);
   }
-  // Bunly already requires Bun. Do not add a global Node installation just to run its hook.
   const hook = resolve(root, '.githooks/pre-commit');
   const upstream = await readFile(hook, 'utf8');
   const invocation = 'exec node_modules/.bin/code-foundry pre-commit';
@@ -91,7 +144,7 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   await writeFile(hook, upstream.replace(invocation, 'exec bun --bun code-foundry pre-commit'));
   await chmod(hook, 0o755);
   await verifyGithubLayout(root);
-  console.log('Bunly overlay verified: .github layout, nested dependency manifests, billing guards, and Bun hook.');
+  console.log(`Bunly overlay verified: .github layout, dependency manifests, Bun hook, and ${config['billing_paused'] ? 'paused-by-default' : 'variable-controlled'} CI jobs.`);
 }
 
 if (import.meta.main) {

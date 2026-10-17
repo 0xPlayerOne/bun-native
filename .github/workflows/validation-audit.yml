@@ -18,7 +18,7 @@ jobs:
   # the protected default-branch cache.
   validation:
     name: Validation
-    if: vars.CI_BILLING_PAUSED != 'true'
+    if: vars.CI_BILLING_PAUSED == 'false'
     permissions:
       actions: read
       contents: read

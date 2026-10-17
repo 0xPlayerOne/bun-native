@@ -19,7 +19,7 @@ concurrency:
 jobs:
   enforce:
     name: Draft Guard / Enforce
-    if: vars.CI_BILLING_PAUSED != 'true'
+    if: vars.CI_BILLING_PAUSED == 'false'
     runs-on: ubuntu-slim
     timeout-minutes: 5
     steps:

@@ -23,10 +23,14 @@ Bunly-specific adjustments:
 
 - GitHub files remain under `.github/`, with a single case-safe
   `PULL_REQUEST_TEMPLATE.md` and no `.guthub` or nested `.github/.github`.
+  Preflight rejects misplaced directories, nested case collisions and linked
+  output paths before the upstream initializer writes files.
 - Dependabot covers the two independent native manifest roots, the root Bun
   workspace, and the three independently locked benchmark dependency projects.
-- Every existing qualification job reads the same `CI_BILLING_PAUSED` variable
-  as the generated workflows. Job steps and assertions are preserved.
+- Every qualification job and generated caller reads `CI_BILLING_PAUSED`.
+  Newly added custom workflows are included automatically. Unknown authored
+  conditions fail for review instead of silently losing their predicates.
+  Job steps, permissions, triggers and existing predicates are preserved.
 - The generated pre-commit hook runs the installed CLI through Bun, while
   retaining upstream machine-hook chaining. A global Node installation is not
   required for these repository scripts.
@@ -40,16 +44,37 @@ upstream layouts instead of guessing how to rewrite them.
 `.github/code-foundry.yml` currently sets `billing_paused: true`. Dependabot
 version-update PR limits are zero and its required schedule is monthly.
 
+The sync overlay also makes Actions **paused by default** when that checked-in
+setting is true. Each job requires `vars.CI_BILLING_PAUSED == 'false'` before its
+original conditions can permit execution. An unset variable therefore cannot
+accidentally enable jobs while the account has no minutes. This applies to
+ordinary jobs and reusable-workflow callers, before runner allocation.
+
+| Checked-in `billing_paused` | Repository variable | Job behavior |
+| --- | --- | --- |
+| `true` | Unset or `true` | Skipped |
+| `true` | `false` | Original conditions apply; explicit remote override |
+| `false` | Unset or `false` | Original conditions apply |
+| `false` | `true` | Skipped |
+
+An unexpected value is not an opt-in while paused. Sync retains multiline
+conditions and rejects a leading guard bypassed by a top-level OR. The pause
+is scheduling policy, not successful test evidence or a substitute for review.
+Already queued runs and workflows on branches without these guards are not
+cancelled or modified by this change. The fallback takes effect on branches
+containing the synced files; it is not yet on `main` until this PR is merged.
+
 The Actions repository variable is a separate GitHub setting:
 
 ```sh
 gh variable set CI_BILLING_PAUSED --repo 0xPlayerOne/bunly --body true
+gh variable get CI_BILLING_PAUSED --repo 0xPlayerOne/bunly
 ```
 
-This command was **not executed** through the available connection: its tools
-expose no Actions-variable write operation and no authenticated terminal was
-available. A checked-in YAML value does not create the repository variable.
-Do not report the remote setting as paused until its value has been read back.
+These remote commands were **not executed** through the available connection:
+its tools expose no Actions-variable write operation and the authorized desktop
+is offline. The checked-in fallback does not create a repository variable.
+Do not report the remote setting as changed until it has been read back.
 
 To resume intentionally, set the repository variable to `false`, set
 `billing_paused: false` in the configuration, and run `bun run foundry:sync`.
@@ -77,21 +102,31 @@ plan reports unavailable format/native tasks rather than pretending they ran.
 Native compilation, CEF execution, signing, and platform-specific qualification
 remain separate contributor work. The generic Code Foundry Rust hook currently
 assumes a root Cargo manifest; native edits must qualify that nested-workspace
-hook path before relying on it. Do not bypass a failing hook as a workaround.
+hook path before relying on it. Formatter/Python tools also need contributor
+installation before the corresponding hook checks can run. Do not bypass a
+failing hook as a workaround.
 
 ## Local validation
 
-The installed archive was obtained from Code Foundry's completed release
-qualification, not by starting a new Actions run. Its SHA-256 matches the
-published v1.48.2 release asset:
-`adac8eb62ca6d39d75967a416a66a5a42768be32fc653f26612bfd43da60adc9`.
-The committed lockfile retains the registry version and published SHA-512
+The installed archive came from Code Foundry's completed release qualification,
+not a new Actions run. The supplied artifact and pack metadata were checked:
+`adac8eb62ca6d39d75967a416a66a5a42768be32fc653f26612bfd43da60adc9`
+(SHA-256). The committed lock retains the registry version and published SHA-512
 integrity, with no local archive path or temporary registry URL.
 
-A frozen, offline Bun 1.4.3 install, repeated-sync hash comparison, browser-only
-typecheck, lint, boundary check, compiler-free build, and 12 new configuration
-regressions pass locally. The baseline test snapshot used for local checks
-contains 68 existing portable tests; these results do not requalify the later
-native/platform changes on main. Code Foundry doctor reports only the missing
-Cargo executable and consequent nested-manifest metadata checks in this Linux
-container. CI execution remains unavailable while the account has no minutes.
+For the resumed setup, all 27 existing `.github` file hashes were verified
+against PR #65 before applying the new pause overlay. The 24 configuration,
+layout and billing tests pass with actual Bun 1.4.3, as do strict TypeScript,
+Oxlint, browser boundary checks, browser-only typechecking and compiler-free
+SDK builds. Two additional real sync runs preserve identical hashes across
+186 source/configuration files in the local validation fixture.
+
+That fixture uses the retained offline snapshot: its 68 older portable tests
+plus 24 Foundry tests pass, but it is not the complete current-main suite.
+Unrelated newer runtime work is preserved in the remote base tree, not claimed
+retested. The package was rehydrated from the verified qualified archive;
+a fresh frozen offline install in this reset container still lacks its registry
+cache metadata. The prior installation's frozen-install result is recorded in
+PR #65, not newly claimed here. Code Foundry doctor reports missing Cargo and
+three consequent native manifest metadata errors. Native/platform tests and
+GitHub Actions were not run, retried or dispatched for this continuation.

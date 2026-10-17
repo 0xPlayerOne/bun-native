@@ -18,7 +18,7 @@ permissions:
 jobs:
   draft-pr:
     name: Draft PR
-    if: vars.CI_BILLING_PAUSED != 'true'
+    if: vars.CI_BILLING_PAUSED == 'false'
     uses: 0xPlayerOne/code-foundry/.github/workflows/draft-pr.yml@v1.48.2
     with:
       runner: ubuntu-slim

@@ -17,7 +17,7 @@ concurrency:
 jobs:
   cancel:
     name: Draft Control / Halt CI
-    if: vars.CI_BILLING_PAUSED != 'true'
+    if: vars.CI_BILLING_PAUSED == 'false'
     runs-on: ubuntu-slim
     timeout-minutes: 5
     steps:

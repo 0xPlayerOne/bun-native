@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { BILLING_GUARD, dependabotDirectories, guardWorkflow, verifyGithubLayout } from '../scripts/sync-foundry.ts';
+import { BILLING_GUARD, PAUSED_BILLING_GUARD, dependabotDirectories, guardWorkflow, verifyGithubLayout } from '../scripts/sync-foundry.ts';
 const root = resolve(import.meta.dir, '..');
 function yaml(source: string): Record<string, unknown> { return Bun.YAML.parse(source) as Record<string, unknown>; }
 
@@ -34,22 +34,28 @@ describe('Code Foundry installation', () => {
     expect(await readFile(resolve(root, '.github/CODEOWNERS'), 'utf8')).toContain('* @0xPlayerOne');
   });
   test('every custom and generated job honors the repository billing variable', async () => {
+    const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'));
+    const guard = config['billing_paused'] === true ? PAUSED_BILLING_GUARD : BILLING_GUARD;
     const directory = resolve(root, '.github/workflows');
     for (const file of (await readdir(directory)).filter(name => /\.ya?ml$/.test(name))) {
       const workflow = yaml(await readFile(resolve(directory, file), 'utf8'));
       const jobs = workflow['jobs'] as Record<string, Record<string, unknown>>;
       for (const [name, job] of Object.entries(jobs)) {
-        expect(String(job['if']), `${file}/${name}`).toContain(BILLING_GUARD);
+        expect(String(job['if']), `${file}/${name}`).toStartWith(guard);
       }
     }
   });
   test('pauses all updater ecosystems and selects actual independent manifest roots', async () => {
     const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'));
-    expect(config['billing_paused']).toBe(true);
+    expect(typeof config['billing_paused']).toBe('boolean');
     const updates = yaml(await readFile(resolve(root, '.github/dependabot.yml'), 'utf8'))['updates'] as Record<string, unknown>[];
     for (const entry of updates) {
-      expect(entry['open-pull-requests-limit']).toBe(0);
-      expect((entry['schedule'] as Record<string, unknown>)['interval']).toBe('monthly');
+      if (config['billing_paused']) {
+        expect(entry['open-pull-requests-limit']).toBe(0);
+        expect((entry['schedule'] as Record<string, unknown>)['interval']).toBe('monthly');
+      } else {
+        expect(Number(entry['open-pull-requests-limit'])).toBeGreaterThan(0);
+      }
     }
     expect(updates.find(entry => entry['package-ecosystem'] === 'cargo')?.['directories']).toEqual(['/native', '/native/cef-host']);
     expect(updates.find(entry => entry['package-ecosystem'] === 'bun')?.['directories']).toEqual(['/', '/benchmarks/adapters/electron', '/benchmarks/adapters/electrobun', '/benchmarks/fixtures']);
