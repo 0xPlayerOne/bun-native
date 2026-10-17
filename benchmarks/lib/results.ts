@@ -78,10 +78,18 @@ export function validateRun(input: unknown): BenchmarkRun {
   if (seen.size !== expected) throw new Error(`Incomplete result matrix: ${seen.size}/${expected}`);
   return input as BenchmarkRun;
 }
+function unknown(value: string | null): boolean { return value === null || /unknown|unverified/i.test(value); }
+function metadataReady(run: BenchmarkRun, variant: Variant): boolean {
+  const env = run.environment;
+  return env.runClass === 'controlled' &&
+    ![env.target, env.os, env.machineLabel, env.cpu, env.gpu, env.power, env.display, variant.runtimeVersion, variant.engineVersion, variant.securityProfile].some(unknown);
+}
 export function reportRun(input: unknown) {
   const run = validateRun(input);
   return run.variants.flatMap(variant => run.scenarios.map(scenario => {
-    const trials = run.trials.filter(trial => !trial.warmup && trial.variant === variant.id && trial.scenario === scenario);
+    const all = run.trials.filter(trial => trial.variant === variant.id && trial.scenario === scenario);
+    const trials = all.filter(trial => !trial.warmup);
+    const warmups = all.filter(trial => trial.warmup);
     const passed = trials.filter(trial => trial.status === 'passed');
     const metrics: Record<string, ReturnType<typeof summarize> & { unit: Unit }> = {};
     for (const name of new Set(passed.flatMap(trial => Object.keys(trial.metrics)))) {
@@ -90,8 +98,11 @@ export function reportRun(input: unknown) {
       metrics[name] = { ...summarize(entries.map(entry => entry!.value), run.seed), unit: entries[0]!.unit };
     }
     return { variant: variant.id, scenario, passed: passed.length, failed: trials.filter(trial => trial.status === 'failed').length,
-      unsupported: trials.filter(trial => trial.status === 'unsupported').length, metrics,
-      eligibleForPerformanceClaim: run.environment.runClass === 'controlled' && passed.length === run.repetitions };
+      unsupported: trials.filter(trial => trial.status === 'unsupported').length,
+      warmups: { passed: warmups.filter(trial => trial.status === 'passed').length,
+        failed: warmups.filter(trial => trial.status === 'failed').length,
+        unsupported: warmups.filter(trial => trial.status === 'unsupported').length }, metrics,
+      eligibleForPerformanceClaim: metadataReady(run, variant) && all.every(trial => trial.status === 'passed') };
   }));
 }
 export function compareRuns(beforeInput: unknown, afterInput: unknown, beforeId: string, afterId: string) {
@@ -102,10 +113,13 @@ export function compareRuns(beforeInput: unknown, afterInput: unknown, beforeId:
   if (before.fixtureSha256 !== after.fixtureSha256 || JSON.stringify(before.parameters) !== JSON.stringify(after.parameters)) reasons.push('Different fixture/workload');
   if (JSON.stringify(before.environment) !== JSON.stringify(after.environment)) reasons.push('Different environments');
   if (before.environment.runClass !== 'controlled' || after.environment.runClass !== 'controlled') reasons.push('Smoke/CI timings are not controlled performance evidence');
-  if ([before.environment, after.environment].some(env => [env.machineLabel, env.cpu, env.gpu, env.power, env.display].includes('unknown'))) reasons.push('Incomplete environment metadata');
-  if (!a.engineVersion || !b.engineVersion || a.engine !== b.engine || a.engineVersion !== b.engineVersion) reasons.push('Different or unverified browser engines');
-  if (a.securityProfile !== b.securityProfile || a.securityProfile === 'unverified') reasons.push('Different or unverified security');
+  if ([before.environment, after.environment].some(env => [env.target, env.os, env.machineLabel, env.cpu, env.gpu, env.power, env.display].some(unknown))) reasons.push('Incomplete environment metadata');
+  if (unknown(a.runtimeVersion) || unknown(b.runtimeVersion)) reasons.push('Unverified runtime identity');
+  if (unknown(a.engineVersion) || unknown(b.engineVersion) || a.engine !== b.engine || a.engineVersion !== b.engineVersion) reasons.push('Different or unverified browser engines');
+  if (a.securityProfile !== b.securityProfile || unknown(a.securityProfile) || unknown(b.securityProfile)) reasons.push('Different or unverified security');
   if (JSON.stringify(before.scenarios) !== JSON.stringify(after.scenarios)) reasons.push('Different scenario plans');
+  if (before.trials.some(trial => trial.variant === beforeId && trial.warmup && trial.status !== 'passed') ||
+      after.trials.some(trial => trial.variant === afterId && trial.warmup && trial.status !== 'passed')) reasons.push('Failed or unsupported warmup coverage');
   const left = reportRun(before).filter(row => row.variant === beforeId);
   const right = reportRun(after).filter(row => row.variant === afterId);
   if ([...left, ...right].some(row => row.failed || row.unsupported)) reasons.push('Incomplete successful workload coverage');

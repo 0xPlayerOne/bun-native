@@ -15,7 +15,7 @@ import psutil
 OUTPUT_LIMIT = 2 * 1024 * 1024
 
 
-def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
+def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_reader=None):
     if not command or timeout <= 0 or interval < 0.01 or max_samples < 1:
         raise ValueError('Invalid bounded observation options')
     started = time.monotonic()
@@ -31,8 +31,6 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
     lock = threading.Lock()
 
     def drain(stream, output, phases=False):
-        # A valid bounded JSON result may exceed 64 KiB. Do not split one report
-        # into invalid JSON lines; the global byte budget still caps memory.
         for raw in iter(lambda: stream.readline(OUTPUT_LIMIT + 1), b''):
             with lock:
                 state['bytes'] += len(raw)
@@ -75,7 +73,7 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
             try:
                 with proc.oneshot():
                     cpu = proc.cpu_times()
-                    row = {'pid': identity[0], 'rssBytes': proc.memory_info().rss,
+                    row = {'pid': identity[0], 'creationTime': identity[1], 'rssBytes': proc.memory_info().rss,
                            'threads': proc.num_threads(), 'cpuSeconds': cpu.user + cpu.system}
                     try:
                         switches = proc.num_ctx_switches()
@@ -86,6 +84,9 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
                         row['descriptors'] = proc.num_fds() if os.name != 'nt' else proc.num_handles()
                     except (psutil.Error, AttributeError, NotImplementedError):
                         row['descriptors'] = None
+                if counter_reader is not None:
+                    row['kernelCounters'] = counter_reader(identity[0])
+                if alive(identity, proc):
                     rows.append(row)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
@@ -115,8 +116,6 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
     except subprocess.TimeoutExpired:
         child.kill()
         code = child.wait(timeout=5)
-    # Normal browser helpers may complete shutdown slightly after the owner.
-    # The same bounded grace applies to every adapter; surviving children fail.
     grace = time.monotonic() + .5
     while time.monotonic() < grace and any(identity[0] != child.pid and alive(identity, proc) for identity, proc in known.items()):
         time.sleep(interval)
@@ -145,7 +144,7 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
             'accounting': {'intervalMs': interval * 1000, 'sampleCap': max_samples, 'exitGraceMs': 500,
                            'rss': 'sum of observed resident sets; shared pages may be counted more than once',
                            'descriptors': 'handles on Windows; file descriptors on POSIX',
-                           'wakeups': None, 'wakeupsUnavailable': 'psutil has no portable kernel-wakeup counter; context switches are not relabeled',
+                           'wakeups': None, 'wakeupsUnavailable': 'No generic portable wakeup value; optional provider-specific counters are separate',
                            'coverage': 'sampling can miss very short-lived descendants; known survivors are failures even if cleanup succeeds'},
             'environment': {'os': platform.system(), 'release': platform.release(), 'arch': platform.machine(),
                             'logicalCpus': psutil.cpu_count(), 'memoryBytes': psutil.virtual_memory().total,

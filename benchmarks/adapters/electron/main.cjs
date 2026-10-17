@@ -11,6 +11,8 @@ let mainWindow;
 let browserWindow;
 let done = false;
 let crashRequested = false;
+let loadCompleted = false;
+let rendererReady = false;
 let navigationMs = null;
 const watchdog = setTimeout(() => finish({ passed: false, error: 'Electron fixture deadline' }), 20000);
 function finish(result) {
@@ -23,15 +25,24 @@ function finish(result) {
     securityProfile: result.sandboxed === true ? 'sandboxed-renderer+context-isolation+node-disabled' : 'unverified' }));
   setImmediate(() => result.passed ? app.quit() : app.exit(1));
 }
+function requestCrashWhenReady() {
+  // Do not race an intentional crash with the initial loadURL promise. The
+  // renderer completion may reach the host before Electron settles navigation.
+  if (scenario !== 'renderer-crash' || done || crashRequested || !loadCompleted || !rendererReady) return;
+  crashRequested = true;
+  setImmediate(() => {
+    if (!done) mainWindow.webContents.forcefullyCrashRenderer();
+  });
+}
 process.once('uncaughtException', error => finish({ passed: false, error: String(error) }));
 ipcMain.handle('workbench:finish', (event, result) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || !event.senderFrame || event.senderFrame.parent ||
       new URL(event.senderFrame.url).origin !== origin.origin) throw new Error('Unauthorized fixture sender');
   if (!result || typeof result !== 'object' || typeof result.passed !== 'boolean' || JSON.stringify(result).length > 65536) throw new Error('Invalid result');
   if (result.passed && result.sandboxed !== true) { finish({ passed: false, error: 'Renderer sandbox was not active' }); return; }
-  if (scenario === 'renderer-crash' && result.passed && !crashRequested) {
-    crashRequested = true;
-    setImmediate(() => mainWindow.webContents.forcefullyCrashRenderer());
+  if (scenario === 'renderer-crash' && result.passed) {
+    rendererReady = true;
+    requestCrashWhenReady();
     return;
   }
   if (!crashRequested) finish(result);
@@ -63,4 +74,6 @@ app.whenReady().then(async () => {
     navigationMs = performance.now() - navigationStarted;
   }
   await mainWindow.loadURL(origin.origin + '/?scenario=' + encodeURIComponent(scenario));
+  loadCompleted = true;
+  requestCrashWhenReady();
 }).catch(error => finish({ passed: false, error: String(error) }));

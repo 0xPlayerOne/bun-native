@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "bunly-electrobun-baseline",
+      "dependencies": {
+        "electrobun": "2.0.3-beta.26",
+      },
+    },
+  },
+  "packages": {
+    "electrobun": ["electrobun@2.0.3-beta.26", "", { "bin": { "electrobun": "bin/electrobun.cjs" } }, "sha512-q7o5r+LzliD1JkaPOcMMsEdx+3wXMQUHCOXfbJrrq6tq2Cnfl/ThQ+s/SYf7XbU3LL9qA5e5P+dRPRgZjZSGGQ=="],
+  }
+}

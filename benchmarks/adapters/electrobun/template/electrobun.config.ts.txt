@@ -1,0 +1,13 @@
+import type { ElectrobunConfig } from 'electrobun';
+export default {
+  app: { name: 'BunlyBaseline', identifier: 'dev.bunly.benchmark.electrobun', version: '0.0.1' },
+  runtime: { exitOnLastWindowClosed: true },
+  build: {
+    mainProcess: 'bun',
+    buildFolder: 'build', artifactFolder: 'artifacts',
+    bun: { entrypoint: 'src/main.ts' },
+    mac: { bundleCEF: true, defaultRenderer: 'cef', bundleWGPU: false },
+    linux: { bundleCEF: true, defaultRenderer: 'cef', bundleWGPU: false },
+    win: { bundleCEF: true, defaultRenderer: 'cef', bundleWGPU: false },
+  },
+} satisfies ElectrobunConfig;

@@ -39,7 +39,9 @@ if (command === 'record') {
         let outcome: Pick<Trial, 'status' | 'reason' | 'correctness' | 'metrics'>;
         try { outcome = await (variant === 'mock' ? mockScenario(scenario) : electronScenario(scenario)); }
         catch (error) { outcome = { status: 'failed', reason: String(error), correctness: { passed: false, details: 'Execution failed; no successful timing recorded' }, metrics: {} }; }
-        trials.push({ variant, scenario, trial, warmup, ...outcome });
+        const result = { variant, scenario, trial, warmup, ...outcome };
+        trials.push(result);
+        if (result.status === 'failed') console.error(JSON.stringify({ failedTrialIncludingWarmup: result }));
       }
     }
   }
@@ -51,7 +53,7 @@ if (command === 'record') {
       gpu: process.env['BUNLY_BENCH_GPU'] ?? 'unknown', display: process.env['BUNLY_BENCH_DISPLAY'] ?? 'unknown', power: process.env['BUNLY_BENCH_POWER'] ?? 'unknown', machineLabel: process.env['BUNLY_BENCH_MACHINE'] ?? 'unknown' }, trials };
   validateRun(run); const path = resolve(root, destination); await mkdir(dirname(path), { recursive: true });
   await writeFile(path, JSON.stringify(run, null, 2) + '\n');
-  console.log(JSON.stringify({ result: destination, summary: reportRun(run) }, null, 2));
+  console.log(JSON.stringify({ result: destination, failedTrialsIncludingWarmups: trials.filter(trial => trial.status === 'failed'), summary: reportRun(run) }, null, 2));
   if (trials.some(trial => trial.status === 'failed')) process.exitCode = 1;
   else if (process.argv.includes('--require-complete') && trials.some(trial => trial.status === 'unsupported')) process.exitCode = 2;
 } else if (command === 'report') console.log(JSON.stringify(reportRun(JSON.parse(await readFile(argument, 'utf8'))), null, 2));

@@ -1,7 +1,7 @@
 interface TerminalRenderer { open(element: HTMLElement): void; write(data: Uint8Array | string, callback?: () => void): void; dispose(): void }
 interface FixtureConfig { count: number; width: number; bytes: number; checksum: number; token: string }
 interface HostBridge { finish(result: Record<string, unknown>): Promise<void>; readonly sandboxed: boolean }
-const win = window as unknown as { Terminal: new (options: Record<string, unknown>) => TerminalRenderer; workbenchHost?: HostBridge };
+const win = window as unknown as { Terminal: new (options: Record<string, unknown>) => TerminalRenderer; workbenchHost?: HostBridge; Bun?: unknown; require?: unknown; process?: unknown };
 const status = document.getElementById('status')!;
 const output = document.getElementById('results')!;
 const terminal = new win.Terminal({ cols: 96, rows: 18, scrollback: 2048 });
@@ -46,12 +46,23 @@ document.getElementById('input')!.addEventListener('input', () => {
 window.addEventListener('pagehide', () => { controller?.abort(); terminal.dispose(); }, { once: true });
 async function auto(): Promise<void> {
   await frame(); await frame(); status.textContent = 'Ready';
-  const scenario = new URL(location.href).searchParams.get('scenario');
-  if (!scenario || !win.workbenchHost) return;
+  const parameters = new URL(location.href).searchParams;
+  const scenario = parameters.get('scenario');
+  const token = parameters.get('completionToken');
+  if (!scenario || (!win.workbenchHost && !token)) return;
+  async function finish(result: Record<string, unknown>): Promise<void> {
+    const payload = { ...result, scenario, userAgent: navigator.userAgent,
+      nativeGlobalsAbsent: win.Bun === undefined && win.require === undefined && win.process === undefined };
+    if (win.workbenchHost) { await win.workbenchHost.finish({ ...payload, sandboxed: win.workbenchHost.sandboxed }); return; }
+    if (!token || !/^[a-f0-9]{48}$/.test(token)) throw new Error('Invalid completion token');
+    const response = await fetch('/__benchmark/completion', { method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-benchmark-token': token }, body: JSON.stringify(payload), signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error('Completion reporting rejected: ' + response.status);
+  }
   try {
     const result = scenario === 'terminal-render' ? await stream() : { passed: true, frameReadyMs: performance.now() };
-    await win.workbenchHost.finish({ ...result, scenario, sandboxed: win.workbenchHost.sandboxed });
-  } catch (error) { await win.workbenchHost.finish({ passed: false, scenario, error: String(error) }); }
+    await finish(result);
+  } catch (error) { await finish({ passed: false, error: String(error) }); }
 }
-void auto();
+void auto().catch(error => { output.textContent = String(error); status.textContent = 'Fixture failed'; });
 export {};
