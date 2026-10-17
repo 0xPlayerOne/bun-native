@@ -79,6 +79,28 @@ describe('portable lifecycle contract', () => {
     assert.throws(() => readDescriptor({...d,capabilities:['view.navigate','view.navigate']}), hasCode('INVALID_ARGUMENT'));
     assert.throws(() => defineApp({...config,id:'../../bad'}), hasCode('INVALID_ARGUMENT'));
   });
+  it('rejects reentrant view creation while its window is closing', async () => {
+    const b = new MockBackend(); const a = await startApp(b, config);
+    const attempts: Promise<void>[] = [];
+    b.onEvent(event => {
+      if (event.type === 'disposed' && event.resource === a.view) {
+        attempts.push(assert.rejects(b.createView({ window: a.window, session: a.session,
+          url: config.url, trust: { kind: 'remote' } }), hasCode('DISPOSED')));
+      }
+    });
+    await b.closeWindow(a.window); await Promise.all(attempts);
+    assert.equal(attempts.length, 1);
+    assert.equal(b.diagnostics().views, 0); await b.dispose();
+  });
+  it('does not deliver an in-progress event to a newly added listener', async () => {
+    const b = new MockBackend(); let calls = 0; let installed = false;
+    b.onEvent(() => {
+      if (!installed) { installed = true; b.onEvent(() => calls++); }
+    });
+    const session = await b.createSession({ persistence: 'ephemeral', partition: 'snapshot' });
+    assert.equal(calls, 0);
+    await b.disposeSession(session); assert.equal(calls, 1); await b.dispose();
+  });
   it('survives repeated lifecycle cycles without retained resources', async () => {
     const b = new MockBackend();
     for (let i=0; i<100; i++) {const a=await startApp(b,config); await a.dispose();}
