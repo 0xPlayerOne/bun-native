@@ -10,6 +10,7 @@ app.enableSandbox();
 let mainWindow;
 let browserWindow;
 let done = false;
+let crashRequested = false;
 let navigationMs = null;
 const watchdog = setTimeout(() => finish({ passed: false, error: 'Electron fixture deadline' }), 20000);
 function finish(result) {
@@ -28,7 +29,12 @@ ipcMain.handle('workbench:finish', (event, result) => {
       new URL(event.senderFrame.url).origin !== origin.origin) throw new Error('Unauthorized fixture sender');
   if (!result || typeof result !== 'object' || typeof result.passed !== 'boolean' || JSON.stringify(result).length > 65536) throw new Error('Invalid result');
   if (result.passed && result.sandboxed !== true) { finish({ passed: false, error: 'Renderer sandbox was not active' }); return; }
-  finish(result);
+  if (scenario === 'renderer-crash' && result.passed && !crashRequested) {
+    crashRequested = true;
+    setImmediate(() => mainWindow.webContents.forcefullyCrashRenderer());
+    return;
+  }
+  if (!crashRequested) finish(result);
 });
 app.on('window-all-closed', () => { if (!done) finish({ passed: false, error: 'Window closed before result' }); });
 app.whenReady().then(async () => {
@@ -38,7 +44,11 @@ app.whenReady().then(async () => {
     webPreferences: { ...preferences, preload: path.join(__dirname, 'preload.cjs') } });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event, url) => { if (new URL(url).origin !== origin.origin) event.preventDefault(); });
-  mainWindow.webContents.on('render-process-gone', (_event, details) => { if (!done) finish({ passed: false, error: 'Renderer failed: ' + details.reason }); });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    if (done) return;
+    if (crashRequested && ['crashed', 'killed'].includes(details.reason)) finish({ passed: true, sandboxed: true, observedRendererFailure: details.reason });
+    else finish({ passed: false, error: 'Unexpected renderer failure: ' + details.reason });
+  });
   if (scenario === 'navigation' || scenario === 'lifecycle') {
     browserWindow = new BrowserWindow({ width: 480, height: 320, show: true, webPreferences: preferences });
     browserWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
