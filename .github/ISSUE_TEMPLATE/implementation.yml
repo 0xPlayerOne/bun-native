@@ -1,0 +1,21 @@
+name: Implementation task
+description: Bounded milestone work with testable acceptance criteria
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and scope
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and validation
+      description: State automated fixtures and exact support claims. Do not require unrelated manual sign-off.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Actual prerequisites
+      description: Link only necessary dependencies; independent work can proceed in parallel.

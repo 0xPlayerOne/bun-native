@@ -1,0 +1,14 @@
+node_modules/
+**/dist/
+native/target/
+.bunly/
+coverage/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.dmp
+.DS_Store
