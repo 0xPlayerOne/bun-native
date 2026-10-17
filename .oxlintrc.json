@@ -5,7 +5,9 @@
     "suspicious": "off"
   },
   "ignorePatterns": [
-    "node_modules/**"
+    "node_modules/**",
+    "packages/*/dist/**",
+    "examples/*/dist/**"
   ],
   "rules": {
     "no-debugger": "error",
