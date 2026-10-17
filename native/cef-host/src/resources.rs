@@ -1,139 +1,922 @@
-//! Strict public-asset allowlist. No fallback to the application/backend directory.
-use serde::Deserialize;
+//! Strict public-asset allowlist. No fallback to backend code or the launch cwd.
+use serde::{
+    de::{self, MapAccess, Visitor},
+    Deserialize, Deserializer,
+};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, fs, io::Read, path::{Component, Path, PathBuf}};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt, fs,
+    io::Read,
+    path::{Component, Path, PathBuf},
+};
+
+pub const MAX_ASSET_BYTES: u64 = 32 * 1024 * 1024;
+pub const APP_CSP: &str = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
+
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Asset { pub bytes: u64, pub sha256: String }
+pub struct Asset {
+    pub bytes: u64,
+    pub sha256: String,
+}
 #[derive(Clone)]
-pub struct Assets { root: PathBuf, files: BTreeMap<String, Asset> }
+pub struct Assets {
+    root: PathBuf,
+    files: BTreeMap<String, Asset>,
+}
 #[derive(Debug, Clone)]
-pub struct AssetResponse { pub status: i32, pub body: Vec<u8>, pub mime: String, pub headers: Vec<(String,String)> }
-fn failure(status: i32) -> AssetResponse { AssetResponse { status, body: Vec::new(), mime: "text/plain".into(), headers: vec![("Cache-Control".into(), "no-store".into())] } }
+pub struct AssetResponse {
+    pub status: i32,
+    pub body: Vec<u8>,
+    pub mime: String,
+    pub headers: Vec<(String, String)>,
+}
+
+// serde's ordinary map deserializer keeps the last duplicate. A public inventory
+// is an allowlist, so ambiguous keys must instead invalidate the entire manifest.
+struct Inventory(BTreeMap<String, Asset>);
+impl<'de> Deserialize<'de> for Inventory {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Unique;
+        impl<'de> Visitor<'de> for Unique {
+            type Value = Inventory;
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a unique public asset inventory")
+            }
+            fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<Inventory, M::Error> {
+                let mut files = BTreeMap::new();
+                let mut folded = BTreeSet::new();
+                while let Some((name, asset)) = map.next_entry::<String, Asset>()? {
+                    if files.len() >= 10_000
+                        || !folded.insert(name.to_lowercase())
+                        || files.insert(name, asset).is_some()
+                    {
+                        return Err(de::Error::custom(
+                            "duplicate, case-colliding, or oversized asset inventory",
+                        ));
+                    }
+                }
+                Ok(Inventory(files))
+            }
+        }
+        deserializer.deserialize_map(Unique)
+    }
+}
+
+fn security_headers() -> Vec<(String, String)> {
+    [
+        ("Content-Security-Policy", APP_CSP),
+        ("X-Content-Type-Options", "nosniff"),
+        ("Cross-Origin-Resource-Policy", "same-origin"),
+        ("Referrer-Policy", "no-referrer"),
+        (
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), display-capture=(), usb=(), serial=()",
+        ),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.into(), v.into()))
+    .collect()
+}
+fn failure(status: i32) -> AssetResponse {
+    let mut headers = security_headers();
+    headers.push(("Cache-Control".into(), "no-store".into()));
+    headers.push(("Content-Length".into(), "0".into()));
+    if status == 405 {
+        headers.push(("Allow".into(), "GET, HEAD".into()));
+    }
+    AssetResponse {
+        status,
+        body: Vec::new(),
+        mime: "text/plain".into(),
+        headers,
+    }
+}
 fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
-    let file = fs::File::open(path).map_err(|e|e.to_string())?;
-    if file.metadata().map_err(|e|e.to_string())?.len() > limit { return Err("Asset exceeds byte limit".into()); }
+    let file = fs::File::open(path).map_err(|e| e.to_string())?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    if !metadata.is_file() || metadata.len() > limit {
+        return Err("Asset exceeds byte limit or is not a file".into());
+    }
     let mut data = Vec::new();
-    file.take(limit + 1).read_to_end(&mut data).map_err(|e|e.to_string())?;
-    if data.len() as u64 > limit { return Err("Asset grew beyond byte limit".into()); }
+    file.take(limit + 1)
+        .read_to_end(&mut data)
+        .map_err(|e| e.to_string())?;
+    if data.len() as u64 > limit {
+        return Err("Asset grew beyond byte limit".into());
+    }
     Ok(data)
 }
+
 pub fn safe_relative(value: &str) -> Result<PathBuf, String> {
-    if value.is_empty() || value.len() > 4096 || value.contains(['\\', ':', '\0', '?', '#']) { return Err("unsafe asset path".into()); }
-    if value.split('/').any(|p| p.is_empty() || p == "." || p == ".." || p.ends_with([' ', '.'])) { return Err("non-canonical path".into()); }
+    if value.is_empty()
+        || value.len() > 4096
+        || value
+            .chars()
+            .any(|c| c.is_control() || "\\:?#<>\"|*".contains(c))
+    {
+        return Err("unsafe asset path".into());
+    }
     for segment in value.split('/') {
-        let stem = segment.split('.').next().unwrap_or("").to_ascii_uppercase();
-        if ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"].contains(&stem.as_str())
-            || ((stem.starts_with("COM") || stem.starts_with("LPT")) && stem.len()==4 && stem.as_bytes()[3].is_ascii_digit()) {
+        if segment.is_empty() || segment.starts_with('.') || segment.ends_with([' ', '.']) {
+            return Err("non-canonical or hidden asset path".into());
+        }
+        let stem = segment
+            .split('.')
+            .next()
+            .unwrap_or("")
+            .trim_end_matches(' ')
+            .to_ascii_uppercase();
+        let device = ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"].contains(&stem.as_str());
+        let serial = stem
+            .strip_prefix("COM")
+            .or_else(|| stem.strip_prefix("LPT"));
+        if device
+            || serial.is_some_and(|s| {
+                s.chars().count() == 1 && s.chars().all(|c| c.is_ascii_digit() || "¹²³".contains(c))
+            })
+        {
             return Err("Windows device alias denied".into());
         }
     }
     let path = PathBuf::from(value);
-    if path.components().any(|p| !matches!(p, Component::Normal(_))) { return Err("absolute or parent path".into()); }
+    if path
+        .components()
+        .any(|p| !matches!(p, Component::Normal(_)))
+    {
+        return Err("absolute or parent path".into());
+    }
     Ok(path)
+}
+fn public_name(path: &Path) -> bool {
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let extension = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    !["ts", "tsx", "jsx", "map", "rs", "py", "pyc", "pem", "key"].contains(&extension.as_str())
+        && ![
+            "assets.json",
+            "runtime.json",
+            "package.json",
+            "package-lock.json",
+            "bun.lock",
+            "bun.lockb",
+            "cargo.toml",
+            "cargo.lock",
+            "tsconfig.json",
+        ]
+        .contains(&name.as_str())
 }
 fn checked_file(root: &Path, path: &Path) -> Result<PathBuf, String> {
     let mut current = root.to_owned();
     for part in path.components() {
         current.push(part);
-        if fs::symlink_metadata(&current).map_err(|e| e.to_string())?.file_type().is_symlink() { return Err("asset symlink denied".into()); }
+        if fs::symlink_metadata(&current)
+            .map_err(|e| e.to_string())?
+            .file_type()
+            .is_symlink()
+        {
+            return Err("asset symlink denied".into());
+        }
     }
     let full = fs::canonicalize(&current).map_err(|e| e.to_string())?;
-    if !full.starts_with(root) || !full.is_file() { return Err("asset escaped public root".into()); }
+    if !full.starts_with(root) || !full.is_file() {
+        return Err("asset escaped public root".into());
+    }
     Ok(full)
 }
+fn valid_escapes(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    let mut offset = 0;
+    while offset < bytes.len() {
+        if bytes[offset] == b'%' {
+            if offset + 2 >= bytes.len()
+                || !bytes[offset + 1].is_ascii_hexdigit()
+                || !bytes[offset + 2].is_ascii_hexdigit()
+            {
+                return false;
+            }
+            // Slash/backslash separators must be literal and canonical, never encoded.
+            if path[offset + 1..offset + 3].eq_ignore_ascii_case("2f")
+                || path[offset + 1..offset + 3].eq_ignore_ascii_case("5c")
+            {
+                return false;
+            }
+            offset += 3;
+        } else {
+            offset += 1;
+        }
+    }
+    true
+}
+fn mime(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "html" | "htm" => "text/html",
+        "js" | "mjs" => "text/javascript",
+        "css" => "text/css",
+        "json" => "application/json",
+        "webmanifest" => "application/manifest+json",
+        "wasm" => "application/wasm",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        "ico" => "image/x-icon",
+        "woff" => "font/woff",
+        "woff2" => "font/woff2",
+        "ttf" => "font/ttf",
+        "otf" => "font/otf",
+        "txt" => "text/plain",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        "mp3" => "audio/mpeg",
+        "ogg" => "audio/ogg",
+        "wav" => "audio/wav",
+        _ => "application/octet-stream",
+    }
+}
+fn matches_etag(condition: &str, etag: &str) -> bool {
+    if condition.trim() == "*" {
+        return true;
+    }
+    condition
+        .split(',')
+        .take(32)
+        .any(|part| part.trim().strip_prefix("W/").unwrap_or(part.trim()) == etag)
+}
+
 impl Assets {
     pub fn load(root: &Path) -> Result<Self, String> {
-        if fs::symlink_metadata(root).map_err(|e| e.to_string())?.file_type().is_symlink() { return Err("public root is a link".into()); }
+        if fs::symlink_metadata(root)
+            .map_err(|e| e.to_string())?
+            .file_type()
+            .is_symlink()
+        {
+            return Err("public root is a link".into());
+        }
         let root = fs::canonicalize(root).map_err(|e| e.to_string())?;
         let manifest = checked_file(&root, Path::new("assets.json"))?;
-        let raw = read_bounded(&manifest, 1024*1024)?;
-        let files: BTreeMap<String, Asset> = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
-        if files.is_empty() || files.len() > 10000 { return Err("invalid asset inventory".into()); }
+        let raw = read_bounded(&manifest, 1024 * 1024)?;
+        let Inventory(files) = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+        if files.is_empty() {
+            return Err("invalid asset inventory".into());
+        }
         for (name, asset) in &files {
             let path = safe_relative(name)?;
-            if name == "assets.json" || name.ends_with(".ts") || name.ends_with(".map") || name.starts_with('.') || asset.bytes > 32*1024*1024 || asset.sha256.len()!=64 || !asset.sha256.bytes().all(|b| b.is_ascii_hexdigit()) { return Err("invalid public asset".into()); }
+            if !public_name(&path)
+                || asset.bytes > MAX_ASSET_BYTES
+                || asset.sha256.len() != 64
+                || !asset
+                    .sha256
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            {
+                return Err("invalid public asset".into());
+            }
             let full = checked_file(&root, &path)?;
-            if fs::metadata(full).map_err(|e|e.to_string())?.len() != asset.bytes { return Err("asset size mismatch".into()); }
+            if fs::metadata(full).map_err(|e| e.to_string())?.len() != asset.bytes {
+                return Err("asset size mismatch".into());
+            }
         }
         Ok(Self { root, files })
     }
     pub fn response(&self, raw: &str, method: &str, range: &str) -> AssetResponse {
-        if method != "GET" && method != "HEAD" { return failure(405); }
-        let Some(tail) = raw.strip_prefix("app://ui/") else { return failure(403); };
-        let encoded = tail.split(['?', '#']).next().unwrap_or("");
-        let decoded = match percent_encoding::percent_decode_str(encoded).decode_utf8() { Ok(s)=>s, Err(_)=>return failure(400) };
-        let name = if decoded.is_empty() { "index.html" } else { decoded.as_ref() };
-        let path = match safe_relative(name) { Ok(p)=>p, Err(_)=>return failure(403) };
-        let Some(asset) = self.files.get(name) else { return failure(404); };
-        let full = match checked_file(&self.root, &path) { Ok(p)=>p, Err(_)=>return failure(403) };
-        let bytes = match read_bounded(&full, asset.bytes) { Ok(b) if b.len() as u64 == asset.bytes=>b, _=>return failure(500) };
-        if format!("{:x}",Sha256::digest(&bytes)) != asset.sha256 { return failure(500); }
-        let mime = match path.extension().and_then(|s|s.to_str()).unwrap_or("") {
-            "html"=>"text/html", "js"|"mjs"=>"text/javascript", "css"=>"text/css", "json"=>"application/json", "wasm"=>"application/wasm", "svg"=>"image/svg+xml", "png"=>"image/png", "jpg"|"jpeg"=>"image/jpeg", "woff2"=>"font/woff2", _=>"application/octet-stream"
-        };
-        let mut headers = vec![("Content-Security-Policy".into(), "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'".into()), ("X-Content-Type-Options".into(),"nosniff".into()), ("Cache-Control".into(),"no-cache".into()), ("ETag".into(),format!("\"{}\"",asset.sha256)), ("Accept-Ranges".into(),"bytes".into())];
-        let (status, start, end) = if range.is_empty() { (200,0,bytes.len()) } else {
-            match parse_range(range,bytes.len()) { Some((a,b))=>{ headers.push(("Content-Range".into(),format!("bytes {}-{}/{}",a,b-1,bytes.len()))); (206,a,b) }, None=>{ let mut r=failure(416); r.headers.push(("Content-Range".into(),format!("bytes */{}",bytes.len()))); return r; } }
-        };
-        headers.push(("Content-Length".into(),(end-start).to_string()));
-        AssetResponse { status, body: if method=="HEAD" {Vec::new()} else {bytes[start..end].to_vec()}, mime:mime.into(), headers }
+        self.conditional_response(raw, method, range, "", "")
     }
-}
-pub fn parse_range(range: &str, length: usize) -> Option<(usize,usize)> {
-    if length==0 {return None;}
-    let (left,right) = range.strip_prefix("bytes=")?.split_once('-')?;
-    if left.is_empty() { let suffix=right.parse::<usize>().ok()?; return (suffix>0).then_some((length.saturating_sub(suffix),length)); }
-    let start=left.parse::<usize>().ok()?;
-    let end=if right.is_empty(){length}else{right.parse::<usize>().ok()?.checked_add(1)?.min(length)};
-    (start<end && start<length).then_some((start,end))
-}
-#[cfg(test)] mod tests {
-    use super::*;
-    #[test] fn paths_reject_escape_and_windows_aliases() { for p in ["../secret","/root","a/../b","a//b","a\\b","C:secret","a.","a ","./foo",""] { assert!(safe_relative(p).is_err(),"{p}"); } assert!(safe_relative("assets/é.js").is_ok()); }
-    #[test] fn ranges_are_bounded() { assert_eq!(parse_range("bytes=1-3",5),Some((1,4))); assert_eq!(parse_range("bytes=-2",5),Some((3,5))); assert_eq!(parse_range("bytes=2-",5),Some((2,5))); for r in ["bytes=5-7","bytes=3-1","bytes=0-1,3-4","bytes=-0","items=0-1"]{assert_eq!(parse_range(r,5),None);} }
-}
-#[cfg(test)] mod file_tests {
-    use super::*;
-    use std::{sync::atomic::{AtomicU64,Ordering}, time::{SystemTime,UNIX_EPOCH}};
-    static NEXT:AtomicU64=AtomicU64::new(0);
-    struct Fixture(PathBuf);
-    impl Fixture {
-        fn new()->Self {
-            let directory=std::env::temp_dir().join(format!("bunly-resource-test-{}-{}-{}",std::process::id(),SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos(),NEXT.fetch_add(1,Ordering::SeqCst)));
-            fs::create_dir(&directory).unwrap();
-            fs::write(directory.join("index.html"),b"0123456789").unwrap();
-            let manifest=serde_json::json!({"index.html":{"bytes":10,"sha256":format!("{:x}",Sha256::digest(b"0123456789"))}});
-            fs::write(directory.join("assets.json"),manifest.to_string()).unwrap(); Self(directory)
+    /// Revalidate inventory bytes even for conditional requests. Cached browser
+    /// content cannot turn a changed/corrupt installed file into a valid 304.
+    pub fn conditional_response(
+        &self,
+        raw: &str,
+        method: &str,
+        range: &str,
+        if_none_match: &str,
+        if_range: &str,
+    ) -> AssetResponse {
+        if raw.len() > 8192
+            || range.len() > 128
+            || if_none_match.len() > 4096
+            || if_range.len() > 256
+        {
+            return failure(400);
+        }
+        if method != "GET" && method != "HEAD" {
+            return failure(405);
+        }
+        let Some(tail) = raw.strip_prefix("app://ui/") else {
+            return failure(403);
+        };
+        let encoded = tail.split(['?', '#']).next().unwrap_or("");
+        if !valid_escapes(encoded) {
+            return failure(400);
+        }
+        let decoded = match percent_encoding::percent_decode_str(encoded).decode_utf8() {
+            Ok(s) => s,
+            Err(_) => return failure(400),
+        };
+        let name = if decoded.is_empty() {
+            "index.html"
+        } else {
+            decoded.as_ref()
+        };
+        let path = match safe_relative(name) {
+            Ok(p) => p,
+            Err(_) => return failure(403),
+        };
+        let Some(asset) = self.files.get(name) else {
+            return failure(404);
+        };
+        let full = match checked_file(&self.root, &path) {
+            Ok(p) => p,
+            Err(_) => return failure(403),
+        };
+        let bytes = match read_bounded(&full, asset.bytes) {
+            Ok(b) if b.len() as u64 == asset.bytes => b,
+            _ => return failure(500),
+        };
+        if format!("{:x}", Sha256::digest(&bytes)) != asset.sha256 {
+            return failure(500);
+        }
+        let etag = format!("\"{}\"", asset.sha256);
+        let mut headers = security_headers();
+        headers.extend([
+            ("Cache-Control".into(), "no-cache".into()),
+            ("ETag".into(), etag.clone()),
+            ("Accept-Ranges".into(), "bytes".into()),
+        ]);
+        if !if_none_match.is_empty() && matches_etag(if_none_match, &etag) {
+            return AssetResponse {
+                status: 304,
+                body: Vec::new(),
+                mime: mime(&path).into(),
+                headers,
+            };
+        }
+        let length = bytes.len();
+        // Range applies only to GET. Unsupported validators make If-Range fall
+        // back to the complete representation, not an unverified partial result.
+        let partial = method == "GET"
+            && range
+                .split_once('=')
+                .is_some_and(|(unit, _)| unit.eq_ignore_ascii_case("bytes"))
+            && !range.contains(',')
+            && (if_range.is_empty() || if_range == etag);
+        let (status, start, end) = if partial {
+            match parse_range(range, length) {
+                Some((a, b)) => {
+                    headers.push((
+                        "Content-Range".into(),
+                        format!("bytes {}-{}/{}", a, b - 1, length),
+                    ));
+                    (206, a, b)
+                }
+                None => {
+                    let mut result = failure(416);
+                    result
+                        .headers
+                        .push(("Content-Range".into(), format!("bytes */{length}")));
+                    return result;
+                }
+            }
+        } else {
+            (200, 0, length)
+        };
+        headers.push(("Content-Length".into(), (end - start).to_string()));
+        let body = if method == "HEAD" {
+            Vec::new()
+        } else if start == 0 && end == length {
+            bytes
+        } else {
+            bytes[start..end].to_vec()
+        };
+        AssetResponse {
+            status,
+            body,
+            mime: mime(&path).into(),
+            headers,
         }
     }
-    impl Drop for Fixture { fn drop(&mut self){let _=fs::remove_dir_all(&self.0);} }
-    #[test]fn serves_only_hashed_manifest_members(){
-        let fixture=Fixture::new();let assets=Assets::load(&fixture.0).unwrap();
-        assert_eq!(assets.response("app://ui/index.html","GET","").body,b"0123456789");
-        for url in ["app://ui/assets.json","app://ui/backend/main.js","app://ui/not-found"]{assert_eq!(assets.response(url,"GET","").status,404);}
-        for url in ["app://other/index.html","app://ui/%2e%2e/secret","app://ui/a%5cb","app://ui/%FF"]{assert!(assets.response(url,"GET","").status>=400);}
-        assert_eq!(assets.response("app://ui/index.html","POST","").status,405);
-        assert_eq!(assets.response("app://ui/index.html","GET","bytes=2-5").body,b"2345");
-        assert!(assets.response("app://ui/index.html","HEAD","").body.is_empty());
+}
+pub fn parse_range(range: &str, length: usize) -> Option<(usize, usize)> {
+    if length == 0 || range.len() > 128 {
+        return None;
     }
-    #[test]fn modified_or_oversized_assets_fail_closed(){
-        let fixture=Fixture::new();let assets=Assets::load(&fixture.0).unwrap();
-        fs::write(fixture.0.join("index.html"),b"abcdefghij").unwrap();
-        assert_eq!(assets.response("app://ui/index.html","GET","").status,500);
-        fs::write(fixture.0.join("index.html"),b"0123456789overflow").unwrap();
+    let (unit, positions) = range.split_once('=')?;
+    if !unit.eq_ignore_ascii_case("bytes") {
+        return None;
+    }
+    let (left, right) = positions.split_once('-')?;
+    if !left
+        .bytes()
+        .chain(right.bytes())
+        .all(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    if left.is_empty() {
+        let suffix = right.parse::<usize>().ok()?;
+        return (suffix > 0).then_some((length.saturating_sub(suffix), length));
+    }
+    let start = left.parse::<usize>().ok()?;
+    let end = if right.is_empty() {
+        length
+    } else {
+        right.parse::<usize>().ok()?.min(length - 1) + 1
+    };
+    (start < end && start < length).then_some((start, end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn paths_reject_escape_and_windows_aliases() {
+        for p in [
+            "../secret",
+            "/root",
+            "a/../b",
+            "a//b",
+            "a\\b",
+            "C:secret",
+            "a.",
+            "a ",
+            "./foo",
+            "",
+        ] {
+            assert!(safe_relative(p).is_err(), "{p}");
+        }
+        assert!(safe_relative("assets/é.js").is_ok());
+    }
+    #[test]
+    fn ranges_are_bounded() {
+        assert_eq!(parse_range("bytes=1-3", 5), Some((1, 4)));
+        assert_eq!(parse_range("bytes=-2", 5), Some((3, 5)));
+        assert_eq!(parse_range("bytes=2-", 5), Some((2, 5)));
+        for r in [
+            "bytes=5-7",
+            "bytes=3-1",
+            "bytes=0-1,3-4",
+            "bytes=-0",
+            "items=0-1",
+        ] {
+            assert_eq!(parse_range(r, 5), None);
+        }
+    }
+}
+#[cfg(test)]
+mod file_tests {
+    use super::*;
+    use std::{
+        sync::atomic::{AtomicU64, Ordering},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new() -> Self {
+            let directory = std::env::temp_dir().join(format!(
+                "bunly-resource-test-{}-{}-{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos(),
+                NEXT.fetch_add(1, Ordering::SeqCst)
+            ));
+            fs::create_dir(&directory).unwrap();
+            fs::write(directory.join("index.html"), b"0123456789").unwrap();
+            let manifest = serde_json::json!({"index.html":{"bytes":10,"sha256":format!("{:x}",Sha256::digest(b"0123456789"))}});
+            fs::write(directory.join("assets.json"), manifest.to_string()).unwrap();
+            Self(directory)
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    #[test]
+    fn serves_only_hashed_manifest_members() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        assert_eq!(
+            assets.response("app://ui/index.html", "GET", "").body,
+            b"0123456789"
+        );
+        for url in [
+            "app://ui/assets.json",
+            "app://ui/backend/main.js",
+            "app://ui/not-found",
+        ] {
+            assert_eq!(assets.response(url, "GET", "").status, 404);
+        }
+        for url in [
+            "app://other/index.html",
+            "app://ui/%2e%2e/secret",
+            "app://ui/a%5cb",
+            "app://ui/%FF",
+        ] {
+            assert!(assets.response(url, "GET", "").status >= 400);
+        }
+        assert_eq!(
+            assets.response("app://ui/index.html", "POST", "").status,
+            405
+        );
+        assert_eq!(
+            assets
+                .response("app://ui/index.html", "GET", "bytes=2-5")
+                .body,
+            b"2345"
+        );
+        assert!(assets
+            .response("app://ui/index.html", "HEAD", "")
+            .body
+            .is_empty());
+    }
+    #[test]
+    fn modified_or_oversized_assets_fail_closed() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        fs::write(fixture.0.join("index.html"), b"abcdefghij").unwrap();
+        assert_eq!(
+            assets.response("app://ui/index.html", "GET", "").status,
+            500
+        );
+        fs::write(fixture.0.join("index.html"), b"0123456789overflow").unwrap();
         assert!(Assets::load(&fixture.0).is_err());
-        assert_eq!(assets.response("app://ui/index.html","GET","").status,500);
+        assert_eq!(
+            assets.response("app://ui/index.html", "GET", "").status,
+            500
+        );
     }
-    #[test]fn device_aliases_are_not_public_files(){for name in ["nul.txt","AUX","con.js","a/COM1","lpt9.json"]{assert!(safe_relative(name).is_err());}}
+    #[test]
+    fn device_aliases_are_not_public_files() {
+        for name in ["nul.txt", "AUX", "con.js", "a/COM1", "lpt9.json"] {
+            assert!(safe_relative(name).is_err());
+        }
+    }
     #[cfg(unix)]
-    #[test]fn symlinked_assets_and_manifests_are_rejected(){
-        let fixture=Fixture::new();let assets=Assets::load(&fixture.0).unwrap();
-        fs::rename(fixture.0.join("index.html"),fixture.0.join("real.html")).unwrap();
-        std::os::unix::fs::symlink("real.html",fixture.0.join("index.html")).unwrap();
-        assert_eq!(assets.response("app://ui/index.html","GET","").status,403);
-        fs::rename(fixture.0.join("assets.json"),fixture.0.join("real.json")).unwrap();
-        std::os::unix::fs::symlink("real.json",fixture.0.join("assets.json")).unwrap();
+    #[test]
+    fn symlinked_assets_and_manifests_are_rejected() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        fs::rename(fixture.0.join("index.html"), fixture.0.join("real.html")).unwrap();
+        std::os::unix::fs::symlink("real.html", fixture.0.join("index.html")).unwrap();
+        assert_eq!(
+            assets.response("app://ui/index.html", "GET", "").status,
+            403
+        );
+        fs::rename(fixture.0.join("assets.json"), fixture.0.join("real.json")).unwrap();
+        std::os::unix::fs::symlink("real.json", fixture.0.join("assets.json")).unwrap();
         assert!(Assets::load(&fixture.0).is_err());
+    }
+
+    fn header<'a>(response: &'a AssetResponse, name: &str) -> Option<&'a str> {
+        response
+            .headers
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.as_str())
+    }
+    #[test]
+    fn head_ignores_ranges_but_retains_representation_length() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for range in ["", "bytes=2-5", "bytes=500-900", "not-a-range"] {
+            let response = assets.response("app://ui/index.html", "HEAD", range);
+            assert_eq!(response.status, 200);
+            assert!(response.body.is_empty());
+            assert_eq!(header(&response, "Content-Length"), Some("10"));
+            assert_eq!(header(&response, "Content-Range"), None);
+        }
+    }
+    #[test]
+    fn conditional_requests_revalidate_both_get_and_head() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        let first = assets.response("app://ui/index.html", "GET", "");
+        let tag = header(&first, "ETag").unwrap();
+        for method in ["GET", "HEAD"] {
+            for validator in [
+                tag.to_owned(),
+                format!("W/{tag}"),
+                format!("\"other\", {tag}"),
+                "*".into(),
+            ] {
+                let result = assets.conditional_response(
+                    "app://ui/index.html",
+                    method,
+                    "bytes=2-5",
+                    &validator,
+                    "",
+                );
+                assert_eq!(result.status, 304);
+                assert!(result.body.is_empty());
+                assert_eq!(header(&result, "ETag"), Some(tag));
+                assert_eq!(header(&result, "Content-Length"), None);
+            }
+        }
+        fs::write(fixture.0.join("index.html"), b"abcdefghij").unwrap();
+        assert_eq!(
+            assets
+                .conditional_response("app://ui/index.html", "GET", "", tag, "")
+                .status,
+            500
+        );
+    }
+    #[test]
+    fn if_range_requires_an_exact_strong_validator() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        let first = assets.response("app://ui/index.html", "GET", "");
+        let tag = header(&first, "ETag").unwrap();
+        for validator in [
+            "\"other\"".to_owned(),
+            format!("W/{tag}"),
+            "Wed, 21 Oct 2015 07:28:00 GMT".into(),
+        ] {
+            let result = assets.conditional_response(
+                "app://ui/index.html",
+                "GET",
+                "bytes=2-5",
+                "",
+                &validator,
+            );
+            assert_eq!(result.status, 200);
+            assert_eq!(result.body, b"0123456789");
+        }
+        assert_eq!(
+            assets
+                .conditional_response("app://ui/index.html", "GET", "bytes=2-5", "", tag)
+                .body,
+            b"2345"
+        );
+    }
+    #[test]
+    fn all_failure_paths_retain_security_headers_and_no_store() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for (url, method, range) in [
+            ("app://ui/missing", "GET", ""),
+            ("app://evil/index.html", "GET", ""),
+            ("app://ui/index.html", "POST", ""),
+            ("app://ui/%FF", "GET", ""),
+            ("app://ui/index.html", "GET", "bytes=99-100"),
+        ] {
+            let result = assets.response(url, method, range);
+            assert!(result.status >= 400);
+            assert!(result.body.is_empty());
+            assert_eq!(header(&result, "Content-Security-Policy"), Some(APP_CSP));
+            assert_eq!(header(&result, "X-Content-Type-Options"), Some("nosniff"));
+            assert_eq!(
+                header(&result, "Cross-Origin-Resource-Policy"),
+                Some("same-origin")
+            );
+            assert_eq!(header(&result, "Cache-Control"), Some("no-store"));
+            assert_eq!(header(&result, "Content-Length"), Some("0"));
+        }
+        assert_eq!(
+            header(&assets.response("app://ui/index.html", "PUT", ""), "Allow"),
+            Some("GET, HEAD")
+        );
+    }
+    #[test]
+    fn nested_hidden_files_source_maps_and_private_configs_are_not_public() {
+        let fixture = Fixture::new();
+        for name in [
+            "nested/.env",
+            "nested/.git/config",
+            "application.TS",
+            "source.tsx",
+            "source.MAP",
+            "keys/private.pem",
+            "keys/private.key",
+            "nested/package.json",
+            "runtime.json",
+        ] {
+            let record = serde_json::json!({name:{"bytes":10,"sha256":format!("{:x}",Sha256::digest(b"0123456789"))}});
+            fs::write(fixture.0.join("assets.json"), record.to_string()).unwrap();
+            assert!(Assets::load(&fixture.0).is_err(), "{name}");
+        }
+    }
+    #[test]
+    fn duplicate_and_case_colliding_manifests_fail_without_selecting_a_winner() {
+        let fixture = Fixture::new();
+        let hash = format!("{:x}", Sha256::digest(b"0123456789"));
+        for key in ["index.html", "INDEX.HTML"] {
+            fs::write(fixture.0.join("assets.json"),format!(r#"{{"index.html":{{"bytes":10,"sha256":"{hash}"}},"{key}":{{"bytes":10,"sha256":"{hash}"}}}}"#)).unwrap();
+            assert!(Assets::load(&fixture.0).is_err());
+        }
+    }
+    #[test]
+    fn malformed_and_encoded_path_separators_are_rejected() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for path in [
+            "%",
+            "%2",
+            "%zz",
+            "a%2fb",
+            "a%2Fb",
+            "a%5Cb",
+            "%00",
+            "%0A",
+            "%2eenv",
+            "a/%2e%2e/b",
+            "a//b",
+            "a%3Ab",
+            "%C0%AF",
+            "%ED%A0%80",
+        ] {
+            assert!(
+                assets
+                    .response(&format!("app://ui/{path}"), "GET", "")
+                    .status
+                    >= 400,
+                "{path}"
+            );
+        }
+    }
+    #[test]
+    fn authority_and_protocol_variations_never_fall_back_to_disk() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for url in [
+            "app://ui.evil/index.html",
+            "app://ui@evil/index.html",
+            "app://evil@ui/index.html",
+            "app://ui:80/index.html",
+            "file:///index.html",
+            "https://ui/index.html",
+            "app://ui\\evil/index.html",
+            "//ui/index.html",
+        ] {
+            assert_eq!(assets.response(url, "GET", "").status, 403, "{url}");
+        }
+        fs::write(fixture.0.join("secret.txt"), b"not public").unwrap();
+        assert_eq!(
+            assets.response("app://ui/secret.txt", "GET", "").status,
+            404
+        );
+    }
+    #[test]
+    fn root_queries_and_fragments_use_only_the_manifest_member() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for url in [
+            "app://ui/",
+            "app://ui/?secret=../backend/main.js",
+            "app://ui/index.html#../../secret",
+        ] {
+            assert_eq!(assets.response(url, "GET", "").body, b"0123456789");
+        }
+    }
+    #[test]
+    fn range_grammar_is_unsigned_bounded_and_single_part() {
+        for value in [
+            "bytes=+0-4",
+            "bytes=0-+4",
+            "bytes= 0-4",
+            "bytes=0-4 ",
+            "bytes=-",
+            "bytes=1--2",
+            "bytes=1-2,3-4",
+            "bytes=1.0-2",
+            "bytes=1e1-2",
+        ] {
+            assert_eq!(parse_range(value, 10), None, "{value}");
+        }
+        assert_eq!(
+            parse_range(&format!("bytes=0-{}", usize::MAX), 10),
+            Some((0, 10))
+        );
+        assert_eq!(parse_range("bytes=-100", 10), Some((0, 10)));
+    }
+    #[test]
+    fn range_and_metadata_limits_precede_allocating_an_asset() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        assert_eq!(
+            assets
+                .response(&format!("app://ui/{}", "a".repeat(8192)), "GET", "")
+                .status,
+            400
+        );
+        assert_eq!(
+            assets
+                .response("app://ui/index.html", "GET", &"x".repeat(129))
+                .status,
+            400
+        );
+        assert_eq!(
+            assets
+                .conditional_response("app://ui/index.html", "GET", "", &"x".repeat(4097), "")
+                .status,
+            400
+        );
+        assert_eq!(
+            assets
+                .conditional_response("app://ui/index.html", "GET", "", "", &"x".repeat(257))
+                .status,
+            400
+        );
+    }
+    #[test]
+    fn portable_names_reject_extra_windows_aliases_and_controls() {
+        for path in [
+            "CON .txt",
+            "COM¹.txt",
+            "LPT².json",
+            "sub/PRN .js",
+            "x\ny",
+            "x\ry",
+            "a\u{7f}",
+            "a<b",
+            "a>b",
+            "a|b",
+            "a*b",
+            "a\"b",
+        ] {
+            assert!(safe_relative(path).is_err(), "{path:?}");
+        }
+    }
+    #[test]
+    fn multimedia_and_font_mimes_are_explicit() {
+        for (path, expected) in [
+            ("module.MJS", "text/javascript"),
+            ("font.woff", "font/woff"),
+            ("font.woff2", "font/woff2"),
+            ("font.ttf", "font/ttf"),
+            ("image.avif", "image/avif"),
+            ("image.webp", "image/webp"),
+            ("sound.mp3", "audio/mpeg"),
+            ("movie.mp4", "video/mp4"),
+            ("data.wasm", "application/wasm"),
+            ("app.webmanifest", "application/manifest+json"),
+            ("data.unknown", "application/octet-stream"),
+        ] {
+            assert_eq!(mime(Path::new(path)), expected);
+        }
+    }
+    #[test]
+    fn empty_assets_work_except_for_byte_ranges() {
+        let fixture = Fixture::new();
+        fs::write(fixture.0.join("index.html"), b"").unwrap();
+        fs::write(fixture.0.join("assets.json"),serde_json::json!({"index.html":{"bytes":0,"sha256":format!("{:x}",Sha256::digest(b""))}}).to_string()).unwrap();
+        let assets = Assets::load(&fixture.0).unwrap();
+        let result = assets.response("app://ui/index.html", "GET", "");
+        assert_eq!(result.status, 200);
+        assert_eq!(header(&result, "Content-Length"), Some("0"));
+        let result = assets.response("app://ui/index.html", "GET", "bytes=0-");
+        assert_eq!(result.status, 416);
+        assert_eq!(header(&result, "Content-Range"), Some("bytes */0"));
+    }
+    #[cfg(unix)]
+    #[test]
+    fn replaced_parent_directories_cannot_redirect_reads() {
+        let fixture = Fixture::new();
+        fs::create_dir(fixture.0.join("scripts")).unwrap();
+        fs::write(fixture.0.join("scripts/main.js"), b"0123456789").unwrap();
+        fs::write(fixture.0.join("assets.json"),serde_json::json!({"scripts/main.js":{"bytes":10,"sha256":format!("{:x}",Sha256::digest(b"0123456789"))}}).to_string()).unwrap();
+        let assets = Assets::load(&fixture.0).unwrap();
+        fs::rename(fixture.0.join("scripts"), fixture.0.join("other")).unwrap();
+        std::os::unix::fs::symlink("other", fixture.0.join("scripts")).unwrap();
+        assert_eq!(
+            assets
+                .response("app://ui/scripts/main.js", "GET", "")
+                .status,
+            403
+        );
+    }
+    #[test]
+    fn unknown_range_units_and_unsupported_multipart_fall_back_to_the_full_asset() {
+        let fixture = Fixture::new();
+        let assets = Assets::load(&fixture.0).unwrap();
+        for range in ["items=0-1", "bytes=0-1,4-5"] {
+            let response = assets.response("app://ui/index.html", "GET", range);
+            assert_eq!(response.status, 200);
+            assert_eq!(response.body, b"0123456789");
+        }
+        assert_eq!(
+            assets
+                .response("app://ui/index.html", "GET", "BYTES=2-5")
+                .body,
+            b"2345"
+        );
     }
 }

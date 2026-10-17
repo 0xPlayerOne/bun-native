@@ -1,11 +1,36 @@
+use crate::resources::{AssetResponse, Assets};
 use cef::*;
-use std::{cell::Cell,path::PathBuf,sync::{Arc,OnceLock}};
-use crate::resources::{Assets,AssetResponse};
-static ASSETS:OnceLock<Assets>=OnceLock::new();
-pub fn load(root:PathBuf)->Result<(),String>{ASSETS.set(Assets::load(&root)?).map_err(|_|"Assets already configured".into())}
-pub fn register(registrar:Option<&mut SchemeRegistrar>){if let Some(r)=registrar {r.add_custom_scheme(Some(&CefString::from("app")),(SchemeOptions::STANDARD.get_raw()|SchemeOptions::SECURE.get_raw()|SchemeOptions::CORS_ENABLED.get_raw()|SchemeOptions::FETCH_ENABLED.get_raw()) as i32);}}
-pub fn attach(context:&RequestContext){let mut factory=AppFactory::new();context.register_scheme_handler_factory(Some(&CefString::from("app")),Some(&CefString::from("ui")),Some(&mut factory));}
-wrap_scheme_handler_factory!{
+use std::{
+    cell::Cell,
+    path::PathBuf,
+    sync::{Arc, OnceLock},
+};
+static ASSETS: OnceLock<Assets> = OnceLock::new();
+pub fn load(root: PathBuf) -> Result<(), String> {
+    ASSETS
+        .set(Assets::load(&root)?)
+        .map_err(|_| "Assets already configured".into())
+}
+pub fn register(registrar: Option<&mut SchemeRegistrar>) {
+    if let Some(r) = registrar {
+        r.add_custom_scheme(
+            Some(&CefString::from("app")),
+            (SchemeOptions::STANDARD.get_raw()
+                | SchemeOptions::SECURE.get_raw()
+                | SchemeOptions::CORS_ENABLED.get_raw()
+                | SchemeOptions::FETCH_ENABLED.get_raw()) as i32,
+        );
+    }
+}
+pub fn attach(context: &RequestContext) {
+    let mut factory = AppFactory::new();
+    context.register_scheme_handler_factory(
+        Some(&CefString::from("app")),
+        Some(&CefString::from("ui")),
+        Some(&mut factory),
+    );
+}
+wrap_scheme_handler_factory! {
     struct AppFactory;
     impl SchemeHandlerFactory{
         fn create(&self,_browser:Option<&mut Browser>,_frame:Option<&mut Frame>,_scheme:Option<&CefString>,request:Option<&mut Request>)->Option<ResourceHandler>{
@@ -13,14 +38,16 @@ wrap_scheme_handler_factory!{
             let url=CefString::from(&request.url()).to_string();
             let method=CefString::from(&request.method()).to_string();
             let range=CefString::from(&request.header_by_name(Some(&CefString::from("Range")))).to_string();
-            let result=ASSETS.get()?.response(&url,&method,&range);
+            let if_none_match=CefString::from(&request.header_by_name(Some(&CefString::from("If-None-Match")))).to_string();
+            let if_range=CefString::from(&request.header_by_name(Some(&CefString::from("If-Range")))).to_string();
+            let result=ASSETS.get()?.conditional_response(&url,&method,&range,&if_none_match,&if_range);
             // CEF wrapper state must be cloneable; share the immutable response
             // instead of copying the entire public asset for each wrapper clone.
             Some(AssetHandler::new(Arc::new(result),Cell::new(0)))
         }
     }
 }
-wrap_resource_handler!{
+wrap_resource_handler! {
     struct AssetHandler{result:Arc<AssetResponse>,position:Cell<usize>}
     impl ResourceHandler{
         fn open(&self,_request:Option<&mut Request>,handle:Option<&mut i32>,_callback:Option<&mut Callback>)->i32{if let Some(h)=handle{*h=1;}1}
