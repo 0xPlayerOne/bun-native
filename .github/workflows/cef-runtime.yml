@@ -1,0 +1,68 @@
+name: M3 native CEF runtime
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cef-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cef:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      CARGO_TERM_COLOR: never
+      CEF_PATH: ${{ github.workspace }}/.bunly/cef-cache
+      PYTHON: python
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - name: Native contributor prerequisites
+        shell: bash
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          if [ '${{ runner.os }}' = Linux ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2t64 libgbm1 xvfb
+          fi
+          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
+      - name: Configure Windows C++ toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $lines = cmd /s /c "`"`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 >nul && set`""
+          foreach ($line in $lines) { if ($line -match '^([^=]+)=(.*)$') { "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 } }
+      - name: Compile native host and helpers
+        shell: bash
+        run: cargo +1.90.0 build --manifest-path native/cef-host/Cargo.toml --release
+      - name: Preserve native build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native/cef-host/Cargo.lock ]; then
+            echo NATIVE_LOCK_BEGIN
+            cat native/cef-host/Cargo.lock
+            echo NATIVE_LOCK_END
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: cef-native-${{ matrix.os }}
+          path: |
+            native/cef-host/Cargo.lock
+            native/cef-host/target/release/bunly_host*
+            native/cef-host/target/release/bunly_helper*
+            .bunly/cef-cache/**/archive.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
