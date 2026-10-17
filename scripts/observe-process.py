@@ -1,4 +1,4 @@
-"""Bounded, out-of-process measurement. psutil is a contributor-only dependency.
+"""Bounded process-tree observation. psutil is a contributor-only dependency.
 RSS sums may double-count shared pages. Context switches are NOT kernel wakeups.
 Only descendants observed with their creation time are eligible for cleanup.
 """
@@ -12,24 +12,31 @@ import time
 from pathlib import Path
 import psutil
 
+OUTPUT_LIMIT = 2 * 1024 * 1024
+
 
 def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
-    if not command or timeout <= 0 or interval < 0.01:
+    if not command or timeout <= 0 or interval < 0.01 or max_samples < 1:
         raise ValueError('Invalid bounded observation options')
     started = time.monotonic()
     child = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, start_new_session=os.name != 'nt')
-    root = psutil.Process(child.pid)
-    known = {(root.pid, root.create_time()): root}
+    try:
+        root = psutil.Process(child.pid)
+        known = {(root.pid, root.create_time()): root}
+    except psutil.NoSuchProcess:
+        root, known = None, {}
     lines, errors, samples = [], [], []
     state = {'phase': 'startup', 'bytes': 0, 'overflow': False}
     lock = threading.Lock()
 
     def drain(stream, output, phases=False):
-        for raw in iter(lambda: stream.readline(65536), b''):
+        # A valid bounded JSON result may exceed 64 KiB. Do not split one report
+        # into invalid JSON lines; the global byte budget still caps memory.
+        for raw in iter(lambda: stream.readline(OUTPUT_LIMIT + 1), b''):
             with lock:
                 state['bytes'] += len(raw)
-                if state['bytes'] > 2 * 1024 * 1024:
+                if state['bytes'] > OUTPUT_LIMIT:
                     state['overflow'] = True
                     continue
                 text = raw.decode('utf-8', errors='replace').rstrip()
@@ -37,9 +44,9 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
                 if phases:
                     try:
                         item = json.loads(text)
-                        if item.get('event') == 'phase':
+                        if isinstance(item, dict) and item.get('event') == 'phase':
                             state['phase'] = str(item.get('phase', 'unknown'))
-                    except (ValueError, AttributeError):
+                    except ValueError:
                         pass
         stream.close()
 
@@ -56,8 +63,9 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
 
     def snapshot():
         try:
-            for proc in root.children(recursive=True):
-                known[(proc.pid, proc.create_time())] = proc
+            if root is not None:
+                for proc in root.children(recursive=True):
+                    known[(proc.pid, proc.create_time())] = proc
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
         rows = []
@@ -107,8 +115,11 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
     except subprocess.TimeoutExpired:
         child.kill()
         code = child.wait(timeout=5)
-    for reader in readers:
-        reader.join(timeout=2)
+    # Normal browser helpers may complete shutdown slightly after the owner.
+    # The same bounded grace applies to every adapter; surviving children fail.
+    grace = time.monotonic() + .5
+    while time.monotonic() < grace and any(identity[0] != child.pid and alive(identity, proc) for identity, proc in known.items()):
+        time.sleep(interval)
     survivors = [identity[0] for identity, proc in known.items() if identity[0] != child.pid and alive(identity, proc)]
     for identity, proc in known.items():
         if identity[0] in survivors and alive(identity, proc):
@@ -116,6 +127,8 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
                 proc.kill()
             except psutil.Error:
                 pass
+    for reader in readers:
+        reader.join(timeout=2)
     reports = []
     for line in lines:
         try:
@@ -129,7 +142,7 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000):
             'stderr': errors[-20:], 'observedOrphans': survivors, 'observedProcesses': len(known),
             'peakTreeRssBytes': max((s['rssBytes'] for s in samples), default=0),
             'peakTreeThreads': max((s['threads'] for s in samples), default=0),
-            'accounting': {'intervalMs': interval * 1000, 'sampleCap': max_samples,
+            'accounting': {'intervalMs': interval * 1000, 'sampleCap': max_samples, 'exitGraceMs': 500,
                            'rss': 'sum of observed resident sets; shared pages may be counted more than once',
                            'descriptors': 'handles on Windows; file descriptors on POSIX',
                            'wakeups': None, 'wakeupsUnavailable': 'psutil has no portable kernel-wakeup counter; context switches are not relabeled',

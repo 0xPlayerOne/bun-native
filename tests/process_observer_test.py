@@ -16,6 +16,15 @@ class ObserverTests(unittest.TestCase):
         self.assertGreater(result['peakTreeRssBytes'], 0)
         self.assertEqual(result['observedOrphans'], [])
 
+    def test_large_bounded_json_report_is_not_split(self):
+        result = observer.observe([sys.executable, '-c', 'import json; print(json.dumps({"passed":True,"data":"x"*100000}))'])
+        self.assertTrue(result['reports'][-1]['passed'])
+        self.assertEqual(len(result['reports'][-1]['data']), 100000)
+
+    def test_output_overflow_is_not_success(self):
+        result = observer.observe([sys.executable, '-c', 'print("x"*3000000)'])
+        self.assertTrue(result['outputOverflow'])
+
     def test_hang_is_bounded_and_not_a_success(self):
         result = observer.observe([sys.executable, '-c', 'import time; time.sleep(30)'], timeout=.15)
         self.assertTrue(result['timedOut'])
