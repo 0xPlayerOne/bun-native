@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fixtureBytes, terminalChunk, WORKLOAD, checksum } from './data.ts';
 import { service } from '../../examples/workbench/service.ts';
+import { completionChannel, type CompletionOptions } from '../lib/completion.ts';
 const MAX_BODY = 1024 * 1024;
 export interface FixtureAssets { html?: string; script?: string; terminalJs?: string; terminalCss?: string }
 function escape(value: string): string { return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)); }
@@ -16,8 +17,9 @@ async function body(request: IncomingMessage): Promise<Uint8Array> {
   }
   return Buffer.concat(chunks);
 }
-export async function createFixtureServer(assets: FixtureAssets = {}) {
+export async function createFixtureServer(assets: FixtureAssets = {}, options: { completion?: CompletionOptions } = {}) {
   const token = randomBytes(24).toString('hex');
+  const complete = options.completion ? completionChannel(options.completion) : undefined;
   const active = new Set<AbortController>();
   let origin = '';
   function send(response: ServerResponse, status: number, data: string | Uint8Array, contentType = 'application/json'): void {
@@ -32,6 +34,7 @@ export async function createFixtureServer(assets: FixtureAssets = {}) {
       if (request.headers.host !== new URL(origin).host || (request.headers.origin && request.headers.origin !== origin)) { send(response, 403, JSON.stringify({ error: 'ORIGIN_DENIED' })); return; }
       const url = new URL(request.url ?? '/', origin);
       const method = request.method ?? 'GET';
+      if (complete && await complete(request, response, url, controller.signal)) return;
       if (url.pathname === '/' && method === 'GET') { send(response, 200, assets.html ?? '<h1>Bunly local fixture server</h1>', 'text/html; charset=utf-8'); return; }
       const staticAssets: Record<string, [string | undefined, string]> = {
         '/ui.js': [assets.script, 'text/javascript'], '/vendor/xterm.js': [assets.terminalJs, 'text/javascript'], '/vendor/xterm.css': [assets.terminalCss, 'text/css'] };

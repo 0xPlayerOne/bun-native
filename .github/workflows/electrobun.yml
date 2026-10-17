@@ -23,23 +23,22 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
-      - name: Install exact baseline tooling and preserve generated lock
+      - name: Install locked baseline tooling
         run: |
           bun install --frozen-lockfile
           bun install --cwd benchmarks/fixtures --frozen-lockfile
-          bun install --cwd benchmarks/adapters/electrobun
-          echo ELECTROBUN_LOCK_BEGIN
-          cat benchmarks/adapters/electrobun/bun.lock
-          echo ELECTROBUN_LOCK_END
+          bun install --cwd benchmarks/adapters/electrobun --frozen-lockfile
           python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
       - name: Prepare and build using upstream prebuilt tooling
         run: bun scripts/prepare-electrobun.ts
+      - name: Run the packaged native launcher and shared terminal fixture
+        run: bun scripts/qualify-electrobun.ts
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: electrobun-macos-evidence
           path: |
-            .bunly/benchmarks/*json
+            .bunly/benchmarks/electrobun*.json
             benchmarks/adapters/electrobun/bun.lock
           include-hidden-files: true
           if-no-files-found: error
