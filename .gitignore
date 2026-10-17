@@ -12,3 +12,5 @@ coverage/
 *.pfx
 *.dmp
 .DS_Store
+native/cef-host/target/
+native/cef-host/resources/

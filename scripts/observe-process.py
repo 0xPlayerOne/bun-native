@@ -120,6 +120,25 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_rea
     while time.monotonic() < grace and any(identity[0] != child.pid and alive(identity, proc) for identity, proc in known.items()):
         time.sleep(interval)
     survivors = [identity[0] for identity, proc in known.items() if identity[0] != child.pid and alive(identity, proc)]
+    orphan_details = []
+    for identity, proc in known.items():
+        if identity[0] not in survivors or not alive(identity, proc):
+            continue
+        detail = {'pid': identity[0], 'creationTime': identity[1], 'name': None,
+                  'parentPid': None, 'browserRole': None}
+        try:
+            detail['name'] = proc.name()[:256]
+            detail['parentPid'] = proc.ppid()
+            # Only retain an allowlisted browser role, never the full command
+            # line (which may contain URLs, paths or application credentials).
+            roles = {'renderer', 'gpu-process', 'utility', 'zygote', 'crashpad-handler'}
+            for arg in proc.cmdline():
+                if arg.startswith('--type=') and arg[7:] in roles:
+                    detail['browserRole'] = arg[7:]
+                    break
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            detail['identityDetailsUnavailable'] = True
+        orphan_details.append(detail)
     for identity, proc in known.items():
         if identity[0] in survivors and alive(identity, proc):
             try:
@@ -138,7 +157,7 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_rea
             pass
     return {'schema': 1, 'exitCode': code, 'timedOut': timed_out, 'outputOverflow': state['overflow'],
             'elapsedMs': (time.monotonic() - started) * 1000, 'samples': samples, 'reports': reports,
-            'stderr': errors[-20:], 'observedOrphans': survivors, 'observedProcesses': len(known),
+            'stderr': errors[-20:], 'observedOrphans': survivors, 'orphanDetails': orphan_details, 'observedProcesses': len(known),
             'peakTreeRssBytes': max((s['rssBytes'] for s in samples), default=0),
             'peakTreeThreads': max((s['threads'] for s in samples), default=0),
             'accounting': {'intervalMs': interval * 1000, 'sampleCap': max_samples, 'exitGraceMs': 500,
@@ -162,5 +181,5 @@ if __name__ == '__main__':
     destination = Path(options.output)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps({key: result[key] for key in ('exitCode', 'timedOut', 'observedOrphans', 'observedProcesses', 'peakTreeRssBytes', 'peakTreeThreads')}))
+    print(json.dumps({key: result[key] for key in ('exitCode', 'timedOut', 'observedOrphans', 'orphanDetails', 'observedProcesses', 'peakTreeRssBytes', 'peakTreeThreads')}))
     raise SystemExit(1 if result['timedOut'] or result['outputOverflow'] or result['observedOrphans'] else 0)

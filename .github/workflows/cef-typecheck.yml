@@ -1,0 +1,50 @@
+name: M3 CEF API typecheck
+on:
+  pull_request:
+    paths:
+      - 'native/cef-host/**'
+      - '.github/workflows/cef-typecheck.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cef-typecheck-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    name: CEF API check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      CARGO_TERM_COLOR: never
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.bunly/cef-typecheck
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .bunly/cef-typecheck
+          key: ${{ runner.os }}-cef-api-rust191-${{ hashFiles('native/cef-host/Cargo.toml', 'native/cef-host/Cargo.lock') }}
+      - name: Install pinned contributor compiler
+        shell: bash
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Test navigation callback ordering without a browser dependency
+        shell: bash
+        run: |
+          mkdir -p .bunly
+          rustup run 1.91.0 rustc --edition=2021 --test native/cef-host/src/navigation.rs -o .bunly/navigation-tests${{ runner.os == 'Windows' && '.exe' || '' }}
+          .bunly/navigation-tests${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Typecheck native APIs without downloading or linking CEF
+        shell: bash
+        # Upstream's documentation feature skips browser acquisition/linking.
+        # These artifacts are never packaged or executed; the separate native
+        # workflow must still build and run with real CEF and sandbox support.
+        run: cargo +1.91.0 check --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,cef/dox
