@@ -1,0 +1,54 @@
+# Bunly repository tooling. App builds remain Bun-only; native qualification is separate.
+version: 1
+profile: monorepo
+languages: typescript,rust,python
+package_manager: bun
+toolchain: native
+runtime_repository: 0xPlayerOne/code-foundry
+# Code Foundry v1.48.2, pinned to the immutable release source.
+runtime_ref: v1.48.2
+features: validation,draft-pr,dependabot
+draft_protection: true
+billing_paused: true
+billing_lanes: false
+dependency_updater: dependabot
+codeql: false
+dependency_review: false
+license: preserve
+sync_mode: overlay
+custom_workflows: preserve
+git_workflow: direct
+merge_strategy: squash
+release_merge_strategy: squash
+npm_publish: false
+post_release: false
+codeql_rust_shards: '["all"]'
+codeql_rust_threads: 1
+codeql_rust_max_parallel: 1
+runner: ubuntu-latest
+ci_runner: ubuntu-latest
+test_runner: ubuntu-latest
+unit_runner: ubuntu-latest
+performance_runner: ubuntu-latest
+security_runner: ubuntu-slim
+codeql_runner: ubuntu-latest
+pr_runner: ubuntu-slim
+release_runner: ubuntu-slim
+performance: auto
+performance_command:
+performance_profile:
+performance_budget_file: performance-package-budgets.json
+prune_standard: false
+cache_packages: auto
+cache_build: auto
+required_capabilities:
+coverage_enforcement: auto
+coverage_minimum: 80
+coverage_metrics: lines
+coverage_report:
+turbo_remote: auto
+monorepo_tool: auto
+release_type: node
+post_release_workflow:
+post_release_mode: auto
+opencode_security_model:

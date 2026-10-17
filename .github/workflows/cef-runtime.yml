@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   contributor-snapshot:
+    if: vars.CI_BILLING_PAUSED == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -33,6 +34,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
   cef:
+    if: vars.CI_BILLING_PAUSED == 'false'
     strategy:
       fail-fast: false
       matrix:

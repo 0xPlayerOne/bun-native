@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bump-minor-pre-major": true,
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance"
+    },
+    {
+      "type": "revert",
+      "section": "Reverts"
+    },
+    {
+      "type": "deps",
+      "section": "Dependencies"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation"
+    },
+    {
+      "type": "test",
+      "section": "Tests"
+    },
+    {
+      "type": "ci",
+      "section": "CI"
+    },
+    {
+      "type": "refactor",
+      "section": "Maintenance"
+    },
+    {
+      "type": "chore",
+      "section": "Maintenance"
+    }
+  ],
+  "pull-request-title-pattern": "chore(main): release ${version}",
+  "group-pull-request-title-pattern": "chore(main): release ${version}",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "bunly-monorepo"
+    },
+    "benchmarks/adapters/electrobun": {
+      "release-type": "node",
+      "package-name": "bunly-electrobun-baseline"
+    },
+    "benchmarks/adapters/electron": {
+      "release-type": "node",
+      "package-name": "bunly-electron-baseline"
+    },
+    "benchmarks/fixtures": {
+      "release-type": "node",
+      "package-name": "bunly-benchmark-fixtures"
+    },
+    "examples/workbench": {
+      "release-type": "node",
+      "package-name": "@bunly/workbench"
+    },
+    "native": {
+      "release-type": "rust"
+    },
+    "native/cef-host": {
+      "release-type": "rust",
+      "package-name": "bunly_host"
+    },
+    "native/host-probe": {
+      "release-type": "rust",
+      "package-name": "bunly-host-probe"
+    },
+    "packages/artifacts": {
+      "release-type": "node",
+      "package-name": "@bunly/artifacts"
+    },
+    "packages/cli": {
+      "release-type": "node",
+      "package-name": "@bunly/cli"
+    },
+    "packages/client": {
+      "release-type": "node",
+      "package-name": "@bunly/client"
+    },
+    "packages/contracts": {
+      "release-type": "node",
+      "package-name": "@bunly/contracts"
+    },
+    "packages/runtime": {
+      "release-type": "node",
+      "package-name": "@bunly/runtime"
+    }
+  }
+}
