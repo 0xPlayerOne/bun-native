@@ -79,10 +79,19 @@ export function validateRun(input: unknown): BenchmarkRun {
   return input as BenchmarkRun;
 }
 function unknown(value: string | null): boolean { return value === null || /unknown|unverified/i.test(value); }
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical((value as Record<string, unknown>)[key])).join(',') + '}';
+  return JSON.stringify(value);
+}
+function browserKnown(variant: Variant): boolean {
+  return variant.engine === 'none' ? variant.engineVersion === null : !unknown(variant.engineVersion);
+}
+function pinnedSource(run: BenchmarkRun): boolean { return /^[a-f0-9]{40}$/.test(run.sourceCommit); }
 function metadataReady(run: BenchmarkRun, variant: Variant): boolean {
   const env = run.environment;
-  return env.runClass === 'controlled' &&
-    ![env.target, env.os, env.machineLabel, env.cpu, env.gpu, env.power, env.display, variant.runtimeVersion, variant.engineVersion, variant.securityProfile].some(unknown);
+  return env.runClass === 'controlled' && pinnedSource(run) && browserKnown(variant) &&
+    ![env.target, env.os, env.machineLabel, env.cpu, env.gpu, env.power, env.display, variant.runtimeVersion, variant.securityProfile].some(unknown);
 }
 export function reportRun(input: unknown) {
   const run = validateRun(input);
@@ -110,12 +119,13 @@ export function compareRuns(beforeInput: unknown, afterInput: unknown, beforeId:
   const a = before.variants.find(variant => variant.id === beforeId); const b = after.variants.find(variant => variant.id === afterId);
   const reasons: string[] = [];
   if (!a || !b) throw new Error('Unknown comparison variant');
-  if (before.fixtureSha256 !== after.fixtureSha256 || JSON.stringify(before.parameters) !== JSON.stringify(after.parameters)) reasons.push('Different fixture/workload');
-  if (JSON.stringify(before.environment) !== JSON.stringify(after.environment)) reasons.push('Different environments');
+  if (before.fixtureSha256 !== after.fixtureSha256 || canonical(before.parameters) !== canonical(after.parameters)) reasons.push('Different fixture/workload');
+  if (canonical(before.environment) !== canonical(after.environment)) reasons.push('Different environments');
   if (before.environment.runClass !== 'controlled' || after.environment.runClass !== 'controlled') reasons.push('Smoke/CI timings are not controlled performance evidence');
   if ([before.environment, after.environment].some(env => [env.target, env.os, env.machineLabel, env.cpu, env.gpu, env.power, env.display].some(unknown))) reasons.push('Incomplete environment metadata');
+  if (!pinnedSource(before) || !pinnedSource(after)) reasons.push('Unpinned benchmark source');
   if (unknown(a.runtimeVersion) || unknown(b.runtimeVersion)) reasons.push('Unverified runtime identity');
-  if (unknown(a.engineVersion) || unknown(b.engineVersion) || a.engine !== b.engine || a.engineVersion !== b.engineVersion) reasons.push('Different or unverified browser engines');
+  if (!browserKnown(a) || !browserKnown(b) || a.engine !== b.engine || a.engineVersion !== b.engineVersion) reasons.push('Different or unverified browser engines');
   if (a.securityProfile !== b.securityProfile || unknown(a.securityProfile) || unknown(b.securityProfile)) reasons.push('Different or unverified security');
   if (JSON.stringify(before.scenarios) !== JSON.stringify(after.scenarios)) reasons.push('Different scenario plans');
   if (before.trials.some(trial => trial.variant === beforeId && trial.warmup && trial.status !== 'passed') ||
@@ -123,6 +133,13 @@ export function compareRuns(beforeInput: unknown, afterInput: unknown, beforeId:
   const left = reportRun(before).filter(row => row.variant === beforeId);
   const right = reportRun(after).filter(row => row.variant === afterId);
   if ([...left, ...right].some(row => row.failed || row.unsupported)) reasons.push('Incomplete successful workload coverage');
+  for (const row of left) {
+    const other = right.find(candidate => candidate.scenario === row.scenario);
+    if (!other || canonical(Object.keys(row.metrics).sort()) !== canonical(Object.keys(other.metrics).sort()) ||
+        Object.entries(row.metrics).some(([name, stats]) => other.metrics[name]?.unit !== stats.unit)) {
+      reasons.push('Different metric coverage or units'); break;
+    }
+  }
   if (reasons.length) return { comparable: false, reasons, changes: [] };
   const changes = left.flatMap(row => Object.entries(row.metrics).map(([metric, stats]) => {
     const next = right.find(other => other.scenario === row.scenario)?.metrics[metric];

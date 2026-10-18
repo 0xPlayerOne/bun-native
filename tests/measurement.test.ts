@@ -8,7 +8,7 @@ import { validateRun, reportRun, compareRuns, type BenchmarkRun } from '../bench
 import { inventory } from '../benchmarks/lib/inventory.ts';
 function fixture(): BenchmarkRun {
   return { schema: 1, createdAt: '2026-10-17T00:00:00Z', fixtureSha256: 'a'.repeat(64), seed: 42, repetitions: 2, warmups: 0,
-    scenarios: ['stream'], parameters: { count: 256 }, sourceCommit: 'test-fixture',
+    scenarios: ['stream'], parameters: { count: 256 }, sourceCommit: 'c'.repeat(40),
     environment: { runClass: 'controlled', target: 'test', os: 'test', cpu: 'fixture', logicalCpus: 2, memoryBytes: 1024, gpu: 'fixture', display: 'fixture', power: 'ac', machineLabel: 'fixture-machine' },
     variants: [{ id: 'a', framework: 'fixture', version: '1', sourceCommit: 'b'.repeat(40), runtime: 'fixture', runtimeVersion: '1', engine: 'fixture', engineVersion: '1', securityProfile: 'isolated', configuration: 'default' }],
     trials: [0, 1].map(trial => ({ variant: 'a', scenario: 'stream', trial, warmup: false, status: 'passed', reason: 'fixture', correctness: { passed: true, details: 'bytes verified' }, metrics: { latency: { value: 10 + trial, unit: 'ms' } } })) };

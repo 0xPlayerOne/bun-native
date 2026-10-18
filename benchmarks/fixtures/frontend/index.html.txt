@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Bunly frontend edit fixture</title></head>
+<body><h1>Frontend edit fixture</h1><output id="revision"></output><output id="generation"></output>
+<label>Retained input <input id="retained" autocomplete="off"></label>
+<button id="increment" type="button">Increment</button><output id="count">0</output>
+<script type="module" src="./main.ts"></script></body></html>
