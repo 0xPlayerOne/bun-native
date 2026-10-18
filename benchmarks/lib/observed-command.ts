@@ -55,6 +55,8 @@ async function boundedText(stream: ReadableStream<Uint8Array>): Promise<string> 
 export function observedCommand(command: readonly string[], options: {
   readonly cwd: string; readonly output: string; readonly timeoutMs?: number;
   readonly env?: Readonly<Record<string, string | undefined>>; readonly redact?: readonly string[]; readonly signal?: AbortSignal;
+  /** Trusted interpreter invocation, useful for deterministic startup qualification. */
+  readonly observerCommand?: readonly string[];
 }): ObservedCommand {
   if (!command.length || command.some(value => typeof value !== 'string' || !value.length || value.includes('\0'))) throw new Error('Invalid trusted command');
   const timeoutMs = options.timeoutMs ?? 30000;
@@ -63,11 +65,24 @@ export function observedCommand(command: readonly string[], options: {
   if (secrets.some(secret => !/^[a-f0-9]{48}$/.test(secret))) throw new Error('Invalid redaction credential');
   options.signal?.throwIfAborted();
   const root = resolve(import.meta.dir, '../..'), path = resolve(options.output), observationId = randomBytes(24).toString('hex');
-  const child = Bun.spawn([process.env['PYTHON'] ?? 'python', join(root, 'scripts/observe-process.py'), '--output', path,
-    '--timeout', String(timeoutMs / 1000), '--observation-id', observationId, '--', ...command], {
-    cwd: options.cwd, env: { ...process.env, ...options.env }, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+  const interpreter = options.observerCommand ?? [process.env['PYTHON'] ?? 'python'];
+  if (!interpreter.length || interpreter.length > 16 || interpreter.some(arg => typeof arg !== 'string' || !arg || arg.includes('\0') || arg.length > 8192)) throw new Error('Invalid observer interpreter');
+  const child = Bun.spawn([...interpreter, join(root, 'scripts/observe-process.py'), '--output', path,
+    '--timeout', String(timeoutMs / 1000), '--observation-id', observationId, '--control-id', observationId, '--', ...command], {
+    cwd: options.cwd, env: { ...process.env, ...options.env }, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe',
   });
-  const stop = () => { if (child.exitCode === null) child.kill('SIGTERM'); };
+  // Buffered pipe input survives interpreter startup and works on Windows, where
+  // TerminateProcess cannot provide Python's graceful SIGTERM cleanup semantics.
+  let stopRequested = false;
+  const stop = () => {
+    if (stopRequested || child.exitCode !== null) return;
+    stopRequested = true;
+    try { child.stdin.write('cancel ' + observationId + '\n'); child.stdin.end(); }
+    catch { /* A missing cancellation/report is a failure, never a cleanup pass. */ }
+  };
+  // Last-resort watchdog: an unresponsive observer is not allowed to wait forever.
+  // Its missing report makes cleanup unknown and callers retain the fixture.
+  const watchdog = setTimeout(() => { if (child.exitCode === null) child.kill('SIGKILL'); }, timeoutMs + 15000);
   options.signal?.addEventListener('abort', stop, { once: true });
   if (options.signal?.aborted) stop();
   const outputs = Promise.all([boundedText(child.stdout), boundedText(child.stderr)]);
@@ -87,7 +102,10 @@ export function observedCommand(command: readonly string[], options: {
     if (report.observationId !== observationId) throw new Error('Stale or mismatched process observation');
     if (exit !== 0 && !report.timedOut && !report.cancelled && !report.outputOverflow && !report.observedOrphans.length && !report.cleanupSurvivors.length) throw new Error('Observer failed independently of its child: ' + stdout.slice(-1000));
     return report;
-  })().finally(() => options.signal?.removeEventListener('abort', stop));
+  })().finally(() => {
+    clearTimeout(watchdog); options.signal?.removeEventListener('abort', stop);
+    try { child.stdin.end(); } catch { /* Already closed with process exit. */ }
+  });
   void result.catch(() => {});
   return { result, path };
 }

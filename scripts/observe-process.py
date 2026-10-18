@@ -190,15 +190,39 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True)
     parser.add_argument('--timeout', type=float, default=30)
     parser.add_argument('--observation-id')
+    parser.add_argument('--control-id')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     options = parser.parse_args()
     if options.observation_id is not None and (len(options.observation_id) != 48 or
             any(char not in '0123456789abcdef' for char in options.observation_id)):
         parser.error('Invalid observation identity')
+    if options.control_id is not None and options.control_id != options.observation_id:
+        parser.error('Control identity must match the observation identity')
     command = options.command[1:] if options.command[:1] == ['--'] else options.command
     stop_event = threading.Event()
     signal.signal(signal.SIGTERM, lambda _number, _frame: stop_event.set())
     signal.signal(signal.SIGINT, lambda _number, _frame: stop_event.set())
+    if options.control_id is not None:
+        # Read the private parent pipe without holding sys.stdin's buffered lock
+        # during interpreter shutdown. Input sent before startup remains buffered.
+        def control():
+            packet = bytearray()
+            try:
+                while len(packet) <= 128 and b'\n' not in packet:
+                    part = os.read(0, 128 - len(packet) + 1)
+                    if not part:
+                        # Losing the controlling parent also requests cleanup.
+                        stop_event.set()
+                        return
+                    packet.extend(part)
+                if bytes(packet) == ('cancel ' + options.control_id + '\n').encode('ascii'):
+                    stop_event.set()
+                else:
+                    # Malformed private control input must never leave work running.
+                    stop_event.set()
+            except OSError:
+                stop_event.set()
+        threading.Thread(target=control, daemon=True).start()
     result = observe(command, options.timeout, stop_event=stop_event)
     if options.observation_id is not None:
         result['observationId'] = options.observation_id
