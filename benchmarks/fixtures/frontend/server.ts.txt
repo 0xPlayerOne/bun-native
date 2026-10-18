@@ -1,0 +1,16 @@
+import page from './index.html';
+const server = Bun.serve({
+  hostname: '127.0.0.1', port: 0,
+  development: { hmr: true, console: false },
+  routes: { '/': page },
+  fetch(request) {
+    const url = new URL(request.url);
+    if (url.hostname !== '127.0.0.1') return new Response('Forbidden', { status: 403 });
+    if (url.pathname === '/health') return Response.json({ bun: Bun.version, kind: 'bare-bun-frontend-fixture' });
+    return new Response('Not found', { status: 404 });
+  },
+});
+console.log(JSON.stringify({ event: 'ready', origin: server.url.origin, bun: Bun.version }));
+const close = () => { server.stop(true); process.exit(0); };
+process.on('SIGTERM', close);
+process.on('SIGINT', close);

@@ -1,0 +1,16 @@
+import { BrowserWindow } from 'electrobun/main';
+import { configuration, register, waitForQuit, reportFailure } from './host.ts';
+import { revision } from './revision.ts';
+const config = configuration();
+let window: BrowserWindow | undefined;
+try {
+  await register(config, { revision, framework: 'Electrobun', frameworkVersion: '2.0.3-beta.26',
+    runtimeVersion: Bun.version, engineVersion: null, sandbox: 'unverified' });
+  window = new BrowserWindow({ title: 'Bunly desktop edit workbench', frame: { width: 800, height: 480 },
+    renderer: 'cef', sandbox: true, url: config.origin + '/#token=' + config.rendererToken });
+  if (window.renderer !== 'cef') throw new Error('Expected CEF; no system-webview fallback');
+  await waitForQuit(config);
+} catch (error) {
+  // Do not emit a page URL, authorization token, or inherited environment.
+  reportFailure(error); process.exitCode = 1;
+} finally { window?.close(); }

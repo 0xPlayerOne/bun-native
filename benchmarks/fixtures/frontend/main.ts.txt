@@ -1,0 +1,23 @@
+import { revision } from './revision.ts';
+const root = document.documentElement;
+// A new document must get a different identity. HMR may re-evaluate this module,
+// but must not erase input, recreate the page, or accumulate click handlers.
+root.dataset.document ??= crypto.randomUUID();
+const generation = Number(root.dataset.generation ?? '0') + 1;
+root.dataset.generation = String(generation);
+root.dataset.revision = revision;
+document.querySelector('#revision')!.textContent = revision;
+document.querySelector('#generation')!.textContent = String(generation);
+const button = document.querySelector<HTMLButtonElement>('#increment')!;
+const increment = () => {
+  const count = document.querySelector('#count')!;
+  count.textContent = String(Number(count.textContent) + 1);
+};
+button.addEventListener('click', increment);
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  import.meta.hot.on('bun:error', () => {
+    root.dataset.compileErrors = String(Number(root.dataset.compileErrors ?? '0') + 1);
+  });
+  import.meta.hot.dispose(() => button.removeEventListener('click', increment));
+}

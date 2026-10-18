@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import platform
+import signal
 import subprocess
 import threading
 import time
@@ -15,7 +16,7 @@ import psutil
 OUTPUT_LIMIT = 2 * 1024 * 1024
 
 
-def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_reader=None):
+def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_reader=None, stop_event=None):
     if not command or timeout <= 0 or interval < 0.01 or max_samples < 1:
         raise ValueError('Invalid bounded observation options')
     started = time.monotonic()
@@ -96,14 +97,24 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_rea
                 'rssBytes': sum(row['rssBytes'] for row in rows), 'threads': sum(row['threads'] for row in rows)}
 
     timed_out = False
+    cancelled = False
     while child.poll() is None:
+        if stop_event is not None and stop_event.is_set():
+            cancelled = True
+            break
         if len(samples) < max_samples:
             samples.append(snapshot())
         if time.monotonic() - started > timeout or state['overflow']:
             timed_out = True
             break
         time.sleep(interval)
-    if timed_out:
+    if timed_out or cancelled:
+        # Discover still-owned descendants once more before interrupting the
+        # root. This is bounded sampling, not a claim of kernel process tracking.
+        if len(samples) < max_samples:
+            samples.append(snapshot())
+        else:
+            snapshot()
         for identity, proc in reversed(list(known.items())):
             if alive(identity, proc):
                 try:
@@ -145,6 +156,10 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_rea
                 proc.kill()
             except psutil.Error:
                 pass
+    cleanup_deadline = time.monotonic() + 1
+    while time.monotonic() < cleanup_deadline and any(alive(identity, proc) for identity, proc in known.items()):
+        time.sleep(interval)
+    cleanup_survivors = [identity[0] for identity, proc in known.items() if alive(identity, proc)]
     for reader in readers:
         reader.join(timeout=2)
     reports = []
@@ -155,9 +170,9 @@ def observe(command, timeout=30.0, interval=0.025, max_samples=4000, counter_rea
                 reports.append(value)
         except ValueError:
             pass
-    return {'schema': 1, 'exitCode': code, 'timedOut': timed_out, 'outputOverflow': state['overflow'],
+    return {'schema': 1, 'exitCode': code, 'timedOut': timed_out, 'cancelled': cancelled, 'cleanupSurvivors': cleanup_survivors, 'outputOverflow': state['overflow'],
             'elapsedMs': (time.monotonic() - started) * 1000, 'samples': samples, 'reports': reports,
-            'stderr': errors[-20:], 'observedOrphans': survivors, 'orphanDetails': orphan_details, 'observedProcesses': len(known),
+            'stdoutTail': lines[-40:], 'stderr': errors[-20:], 'observedOrphans': survivors, 'orphanDetails': orphan_details, 'observedProcesses': len(known),
             'peakTreeRssBytes': max((s['rssBytes'] for s in samples), default=0),
             'peakTreeThreads': max((s['threads'] for s in samples), default=0),
             'accounting': {'intervalMs': interval * 1000, 'sampleCap': max_samples, 'exitGraceMs': 500,
@@ -174,12 +189,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True)
     parser.add_argument('--timeout', type=float, default=30)
+    parser.add_argument('--observation-id')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     options = parser.parse_args()
+    if options.observation_id is not None and (len(options.observation_id) != 48 or
+            any(char not in '0123456789abcdef' for char in options.observation_id)):
+        parser.error('Invalid observation identity')
     command = options.command[1:] if options.command[:1] == ['--'] else options.command
-    result = observe(command, options.timeout)
+    stop_event = threading.Event()
+    signal.signal(signal.SIGTERM, lambda _number, _frame: stop_event.set())
+    signal.signal(signal.SIGINT, lambda _number, _frame: stop_event.set())
+    result = observe(command, options.timeout, stop_event=stop_event)
+    if options.observation_id is not None:
+        result['observationId'] = options.observation_id
     destination = Path(options.output)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({key: result[key] for key in ('exitCode', 'timedOut', 'observedOrphans', 'orphanDetails', 'observedProcesses', 'peakTreeRssBytes', 'peakTreeThreads')}))
-    raise SystemExit(1 if result['timedOut'] or result['outputOverflow'] or result['observedOrphans'] else 0)
+    raise SystemExit(1 if result['timedOut'] or result['cancelled'] or result['outputOverflow'] or result['observedOrphans'] or result['cleanupSurvivors'] else 0)

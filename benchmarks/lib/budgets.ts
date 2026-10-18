@@ -10,9 +10,16 @@ export interface StageMeasure {
 }
 export interface StageLedger { readonly sourceCommit: string; readonly entries: readonly StageMeasure[] }
 export function validateStageLedger(input: StageLedger): StageLedger {
+  if (!input || typeof input !== 'object' || Array.isArray(input) || typeof input.sourceCommit !== 'string' ||
+      !Array.isArray(input.entries) || Object.keys(input).some(key => !['sourceCommit', 'entries'].includes(key))) throw new Error('Invalid stage ledger');
   if (!/^[a-f0-9]{40}$/.test(input.sourceCommit)) throw new Error('Unpinned stage source');
   const seen = new Set<string>();
   for (const entry of input.entries) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
+        Object.keys(entry).some(key => !['stage', 'outcome', 'durationMs', 'reason', 'bytes'].includes(key))) throw new Error('Invalid stage entry');
+    if (!['measured', 'unsupported', 'failed'].includes(entry.outcome)) throw new Error('Unknown stage outcome');
+    if (entry.reason !== undefined && typeof entry.reason !== 'string') throw new Error('Invalid stage reason');
+    if (entry.bytes !== undefined && (!entry.bytes || typeof entry.bytes !== 'object' || Array.isArray(entry.bytes))) throw new Error('Invalid byte object');
     if (!STAGES.includes(entry.stage)) throw new Error('Unknown measurement stage');
     if (seen.has(entry.stage)) throw new Error('Duplicate measurement stage');
     seen.add(entry.stage);
@@ -24,7 +31,7 @@ export function validateStageLedger(input: StageLedger): StageLedger {
     }
     for (const [name, value] of Object.entries(entry.bytes ?? {})) {
       if (!['installed', 'compressedInstaller', 'firstRunDownload', 'cache', 'update'].includes(name) ||
-          !Number.isSafeInteger(value) || value < 0) throw new Error('Invalid byte accounting');
+          typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('Invalid byte accounting');
     }
     if (entry.bytes && entry.stage !== 'distribution') throw new Error('Distribution bytes require their own stage');
   }
