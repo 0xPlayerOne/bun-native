@@ -13,7 +13,7 @@ export interface DesktopStep {
   readonly timings: Readonly<Record<string, number>>;
 }
 export interface DesktopEditAdapter {
-  readonly kind: 'desktop' | 'harness-test'; readonly artifactKind: 'main-bundle' | 'application-directory'; readonly framework: string; readonly version: string;
+  readonly kind: 'desktop' | 'harness-test'; readonly artifactKind: 'main-bundle' | 'application-directory' | 'standalone-executable'; readonly framework: string; readonly version: string;
   readonly html: string; readonly javascript: string;
   readonly workbenchAssets?: FixtureAssets;
   readonly state: { readonly token: string; readonly counter: number };
@@ -23,7 +23,7 @@ export interface DesktopEditAdapter {
   launch(configuration: DesktopLaunch): Promise<ObservedCommand>;
 }
 export interface DesktopEditResult {
-  readonly passed: boolean; readonly kind: 'desktop' | 'harness-test'; readonly artifactKind: 'main-bundle' | 'application-directory';
+  readonly passed: boolean; readonly kind: 'desktop' | 'harness-test'; readonly artifactKind: 'main-bundle' | 'application-directory' | 'standalone-executable';
   readonly steps: readonly DesktopStep[]; readonly cleanupFailures: readonly string[];
 }
 export function assertExpectedCompileFailure(report: CommandObservation): void {

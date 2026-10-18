@@ -21,7 +21,7 @@ export function desktopEditStages(result: DesktopEditResult | null, setupFailure
       validation: { passed, evidence } });
     rows[rows.findIndex(row => row.stage === stage)] = record;
   }
-  if (result.artifactKind === 'application-directory') observed('app-assembly', 'initial-build');
+  if (result.artifactKind === 'application-directory' || result.artifactKind === 'standalone-executable') observed('app-assembly', 'initial-build');
   observed('backend-edit', 'backend-edit');
   // An initial fixture launch is retained in steps, not relabeled as warmed dev
   // or an installed first run. Signing, networking and update costs stay absent.
