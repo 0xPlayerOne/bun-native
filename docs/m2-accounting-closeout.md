@@ -97,3 +97,54 @@ native first-run/update, input, stream and reference evidence. No older evidence
 is overwritten, promoted to a stronger run class, or made browser-equivalent.
 No GitHub Actions dispatch, CI billing change, runtime/SDK change, package
 publication or Adea change is part of this closeout.
+
+## October 19 execution and final disposition
+
+The final one-warmup/three-repetition run passed from clean commit
+`3b853f19d59befcbcae1ce946f5dacb186b882d8`. Each repetition observed two app
+identities plus four independently attributed WebKit XPC identities, required
+all three engine-service roles throughout its samples, and independently checked
+the registered app's exit. Native wakeup counters were observed in every run.
+The prior four successful qualification runs are also retained, with their own
+source commit rather than relabeled as the final implementation.
+
+| Final repetition | Samples | Sampled interval (ms) | Simultaneous attributed RSS peak (bytes) |
+| ---------------- | ------: | --------------------: | ---------------------------------------: |
+| Warmup           |      37 |                4956.0 |                                277692416 |
+| 0                |      33 |                4923.9 |                                281608192 |
+| 1                |      36 |                4932.7 |                                277544960 |
+| 2                |      33 |                4786.3 |                                280412160 |
+
+The final profile recorded Butter source 1.6.3, actual Bun 1.4.3, macOS build
+25G241 and system WebKit 21624.5.1.11.3. The installed WebKit manifest is not a
+per-process loaded-library attestation. Native responsibility and coalition
+checks establish the resource association described above, not security-policy
+equivalence to CEF. The local wrapper/profile difference remains explicit.
+
+An actual shell-shared Python process was also submitted to the collector. It
+was rejected with `app-is-not-self-responsible` and exit status 1. This negative
+qualification is retained as a rejection, not as a passing memory measurement.
+
+The separate prerequisite check took three consecutive one-second samples under
+the unchanged policy: **23.8%, 32.1%, 34.2% total CPU**, all on AC, all above 10%.
+The native code-signing identity query completed and exposed **zero Developer ID
+Application identities**. No identity was selected or used and no private key
+was read. Neither prerequisite is silently waived by these accounting results.
+
+Preserved records and original/redacted/compressed hashes are in
+`evidence/m2-closeout/manifest.json`. Each accounting report retains complete raw
+sample arrays and per-trial summaries. Recomputing
+`macos_app_accounting.reduce_samples(trial['accounting']['samples'])` exactly
+reproduces each summary. The four final runs and four earlier runs are distinct;
+within-run samples are not counted as independent repetitions. Private paths and
+ephemeral fixture credentials are consistently redacted before committing.
+
+Full-checkout validation: **412 TypeScript tests**, **103 Python tests** (including
+14 new attribution tests), typechecks, lint, browser boundaries and compiler-free
+builds pass. Touched Python/Oxfmt formatting and normal commit gates pass. These
+are not new Bunly Rust/CEF, Windows/Linux or Developer ID signing results.
+
+**Closeout status:** M1 and all six M1 issues are already closed. M2 has only #9
+open. Its existing measurement infrastructure, actual installed updater and new
+macOS accounting evidence are delivered, but certificate-backed signing and quiet
+controlled calibration still need successful execution before #9/M2 closure.

@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "classification": "local-accounting-qualification-not-controlled-calibration",
+  "reports": [
+    {
+      "name": "webkit-initial",
+      "path": "webkit-initial.json.gz",
+      "originalSha256": "79e9ebd3d2a3471a7f15bf57c6abcfde6d601fb91c15d5899936d228f828c367",
+      "redactedSha256": "09d4a647a2efee5e9e18cb35c1ee157334a3256af9ca307282b898f04779d679",
+      "storedSha256": "05bef270e7a785e907610a2ee7c30f4ef916d75658d5a49048d513f6da7edc22",
+      "uncompressedBytes": 6147089
+    },
+    {
+      "name": "webkit-qualified",
+      "path": "webkit-qualified.json.gz",
+      "originalSha256": "79ea5131b3ef3596df8f54e86ad348fef3751bf36f74d8608ed268ffbd8bb01d",
+      "redactedSha256": "a6e7ab2954eb050492c4b1e3e2201246168e3b118e9bf44c3cc5ba5f55d65ea5",
+      "storedSha256": "a860a01b3a7da623d7229bbe74b3acdf6a85bb9eca3e69c6bf169116cd67a83b",
+      "uncompressedBytes": 7415190
+    },
+    {
+      "name": "preflight",
+      "path": "preflight.json.gz",
+      "originalSha256": "f70789adaaba459db118cade66caad18ca5766f032e5d219f00875de54631284",
+      "redactedSha256": "f70789adaaba459db118cade66caad18ca5766f032e5d219f00875de54631284",
+      "storedSha256": "e1b502dcfa865db123cdc08418c3ae3ccffb1ac3e8998b438e0f42937c3e7bd8",
+      "uncompressedBytes": 1574
+    },
+    {
+      "name": "ambiguous-root",
+      "path": "ambiguous-root.json.gz",
+      "originalSha256": "6817b86846dff36fdc715e3c6fba9d3df3b51783eb21df426e8de86335ff7aa9",
+      "redactedSha256": "6817b86846dff36fdc715e3c6fba9d3df3b51783eb21df426e8de86335ff7aa9",
+      "storedSha256": "2b41bc94a79d500f0f9e7543ded3b79f61647fa68740d249bebf9225a9a8163a",
+      "uncompressedBytes": 111
+    }
+  ],
+  "executionSources": [
+    {
+      "commit": "ab082e8b53893a5b749a19dfbc5de49a64f8491e",
+      "files": {
+        "scripts/qualify-webkit-accounting.ts": {
+          "sha256": "2371c17cbe059958c0f08648a3b6ace61be84dd25f99f6c7c4cfec8ea9eabc4e",
+          "gitBlob": "d2a1cd68be149cab3fa5bb651b4d2674cff91d0f"
+        },
+        "scripts/macos_app_accounting.py": {
+          "sha256": "7a0d6097f97963c6be440a987f04da7bd87a387d0a5fdb51c69f56caaa1e2439",
+          "gitBlob": "49a43cdb4fd444edbd561d62714f3831e216fa1e"
+        },
+        "scripts/registered_app.py": {
+          "sha256": "aae6dab88c4419e8d8a92353455ee246871d1a2a6f8a66dc207d048dae498449",
+          "gitBlob": "9860cf9ccdbf2b6c704ccdcc2ba1a259bced15e9"
+        },
+        "scripts/kernel_counters.py": {
+          "sha256": "c6af56dc8ef372b39d06e22c42c168e0a1272cc52c98ac50ac4e0defbdd2cd6b",
+          "gitBlob": "b3b6923bfe5818e2eebea7e7c8d7849e9fa21961"
+        },
+        "scripts/summarize_runtime_observation.py": {
+          "sha256": "084a2f9f480ae9793e722532b69d339928c9f616d681850ac79bbeeb4d54d9f4",
+          "gitBlob": "cdfcb3d56720ca98057ba090fd0ce6248c82afde"
+        },
+        "scripts/webkit_identity.py": {
+          "sha256": "0f6a8031d3f1a30bbe3127d1f6d46f97e2276a5e77d3505e7cef9f4e61291e4b",
+          "gitBlob": "a8c6128a4c30a4c20bbaf868648423be56df65de"
+        },
+        "benchmarks/fixtures/desktop-edit/host.ts.txt": {
+          "sha256": "5190954c72027e99dca481d28321a17ae9c37eac891dbf952ca6acef6618c09e",
+          "gitBlob": "dc9a22b1d31da516d174467c01f9c46d5f742c7c"
+        },
+        "benchmarks/fixtures/desktop-edit/butter.ts.txt": {
+          "sha256": "e4984a2ecaab666ea29da1a38383d2aab5d7d4951eca50706582bce6f632288c",
+          "gitBlob": "a12809fc477cbc8c9049c3f88f5021c450e29319"
+        },
+        "benchmarks/lib/workbench-desktop.ts": {
+          "sha256": "9048568934bf8bf30977556671a47ef53d469ff479900a0e36316e966acdf3a1",
+          "gitBlob": "2c1c2110c81e3ab9e5f1b18030d5710ec3ab8736"
+        }
+      }
+    },
+    {
+      "commit": "3b853f19d59befcbcae1ce946f5dacb186b882d8",
+      "files": {
+        "scripts/qualify-webkit-accounting.ts": {
+          "sha256": "b7fd682da7353193d798f053cc34e97eb971ad3674f987cc931bf19052c119f1",
+          "gitBlob": "ddc70810634ac6705873e9d5ffe082a7f44cb972"
+        },
+        "scripts/macos_app_accounting.py": {
+          "sha256": "7a0d6097f97963c6be440a987f04da7bd87a387d0a5fdb51c69f56caaa1e2439",
+          "gitBlob": "49a43cdb4fd444edbd561d62714f3831e216fa1e"
+        },
+        "scripts/registered_app.py": {
+          "sha256": "aae6dab88c4419e8d8a92353455ee246871d1a2a6f8a66dc207d048dae498449",
+          "gitBlob": "9860cf9ccdbf2b6c704ccdcc2ba1a259bced15e9"
+        },
+        "scripts/kernel_counters.py": {
+          "sha256": "c6af56dc8ef372b39d06e22c42c168e0a1272cc52c98ac50ac4e0defbdd2cd6b",
+          "gitBlob": "b3b6923bfe5818e2eebea7e7c8d7849e9fa21961"
+        },
+        "scripts/summarize_runtime_observation.py": {
+          "sha256": "084a2f9f480ae9793e722532b69d339928c9f616d681850ac79bbeeb4d54d9f4",
+          "gitBlob": "cdfcb3d56720ca98057ba090fd0ce6248c82afde"
+        },
+        "scripts/webkit_identity.py": {
+          "sha256": "0f6a8031d3f1a30bbe3127d1f6d46f97e2276a5e77d3505e7cef9f4e61291e4b",
+          "gitBlob": "a8c6128a4c30a4c20bbaf868648423be56df65de"
+        },
+        "benchmarks/fixtures/desktop-edit/host.ts.txt": {
+          "sha256": "5190954c72027e99dca481d28321a17ae9c37eac891dbf952ca6acef6618c09e",
+          "gitBlob": "dc9a22b1d31da516d174467c01f9c46d5f742c7c"
+        },
+        "benchmarks/fixtures/desktop-edit/butter.ts.txt": {
+          "sha256": "e4984a2ecaab666ea29da1a38383d2aab5d7d4951eca50706582bce6f632288c",
+          "gitBlob": "a12809fc477cbc8c9049c3f88f5021c450e29319"
+        },
+        "benchmarks/lib/workbench-desktop.ts": {
+          "sha256": "9048568934bf8bf30977556671a47ef53d469ff479900a0e36316e966acdf3a1",
+          "gitBlob": "2c1c2110c81e3ab9e5f1b18030d5710ec3ab8736"
+        }
+      }
+    }
+  ],
+  "summarySha256": "9254c156f834a1347cac23fa80cddef1da289f9f6cab23c9dd01d1b19034e556"
+}
