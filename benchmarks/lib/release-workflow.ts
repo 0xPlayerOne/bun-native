@@ -4,6 +4,7 @@ import { lstat, mkdir, realpath } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { BYTE_CATEGORIES, directoryBytes, fileBytes, unavailableBytes, validateByteMatrix, type ByteCategory, type ByteObservation } from './accounting.ts';
 import { assertCleanCommand, observedCommand, type CommandObservation } from './observed-command.ts';
+import { transferArtifact, transferBytes, validateArtifactTransfer, type ArtifactTransfer, type TransferReport } from './artifact-transfer.ts';
 import { STAGES, unsupportedStage, validateStage, validateStageMatrix, type StageName, type StageRecord } from './stages.ts';
 
 export interface ReleaseOutput {
@@ -14,6 +15,8 @@ export interface ReleaseOutput {
   readonly fresh: boolean;
 }
 export interface ReleaseTask {
+  /** Explicit benchmark-owned transfer before commands; never inferred from cache size. */
+  readonly transfer?: ArtifactTransfer;
   readonly dependsOn: readonly StageName[];
   readonly commands: readonly (readonly string[])[];
   readonly verify: readonly string[];
@@ -48,6 +51,7 @@ export interface ReleaseWorkflowReport {
   readonly stages: readonly StageRecord[];
   readonly bytes: readonly ByteObservation[];
   readonly commands: readonly ReleaseCommand[];
+  readonly transfers: readonly { readonly stage: StageName; readonly report: TransferReport }[];
   readonly blockedBy: Readonly<Partial<Record<StageName, readonly StageName[]>>>;
   readonly cleanupEstablished: boolean;
 }
@@ -65,7 +69,7 @@ export function validateReleasePlan(input: unknown): ReleasePlan {
   if (typeof input['sourceCommit'] !== 'string' || !/^[a-f0-9]{40}$/.test(input['sourceCommit'])) throw new Error('Unpinned release source');
   const tasks = input['tasks'], unsupported = input['unsupported'];
   if ([...Object.keys(tasks), ...Object.keys(unsupported)].some(s => !STAGES.includes(s as StageName))) throw new Error('Unknown stage');
-  const categories = new Set<string>();
+  const categories = new Set<string>(), transferPaths = new Set<string>();
   for (const stage of STAGES) {
     const task = tasks[stage], reason = unsupported[stage];
     if ((task !== undefined) === (reason !== undefined)) throw new Error('Every stage needs exactly one disposition');
@@ -75,6 +79,18 @@ export function validateReleasePlan(input: unknown): ReleasePlan {
         !task['commands'].length || task['commands'].length > 32 || !Array.isArray(task['outputs']) || task['outputs'].length > 5 ||
         !Number.isSafeInteger(task['timeoutMs']) || Number(task['timeoutMs']) < 100 || Number(task['timeoutMs']) > 600000) throw new Error('Invalid release task');
     task['commands'].forEach(command); command(task['verify']);
+    if (task['transfer'] !== undefined) {
+      const transfer = validateArtifactTransfer(task['transfer']);
+      if ((stage !== 'first-run' || transfer.category !== 'first-run-download') &&
+          (stage !== 'update' || transfer.category !== 'update')) throw new Error('Transfer category must match first-run or update stage');
+      if (categories.has(transfer.category)) throw new Error('A byte category must have one declared measurement boundary');
+      categories.add(transfer.category);
+      const path = transfer.path.toLowerCase();
+      for (const existing of transferPaths) if (path === existing || path.startsWith(existing + '/') || existing.startsWith(path + '/')) {
+        throw new Error('Transfer destinations must be distinct and non-overlapping');
+      }
+      transferPaths.add(path);
+    }
     const environment = task['environment'];
     if (environment !== undefined && (!object(environment) || Object.keys(environment).length > 32 || Object.entries(environment).some(([key, value]) =>
       !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || key.startsWith('BUNLY_BENCH_') || typeof value !== 'string' || value.includes('\0') || value.length > 16384))) throw new Error('Invalid trusted stage environment');
@@ -87,6 +103,14 @@ export function validateReleasePlan(input: unknown): ReleasePlan {
       if (categories.has(String(output['category']))) throw new Error('A byte category must have one declared measurement boundary');
       categories.add(String(output['category']));
       if ((output['category'] === 'installer' || output['category'] === 'update') && !output['fresh']) throw new Error('Distribution artifacts must be fresh');
+    }
+  }
+  // Even differently cased paths or ancestor directories may alias on a target.
+  // Output inventory boundaries must not overlap controller-owned transfers.
+  for (const task of Object.values(tasks) as ReleaseTask[]) for (const output of task.outputs) {
+    const path = output.path.toLowerCase();
+    for (const transfer of transferPaths) if (path === transfer || path.startsWith(transfer + '/') || transfer.startsWith(path + '/')) {
+      throw new Error('Output boundary overlaps a transfer destination');
     }
   }
   const visiting = new Set<string>(), done = new Set<string>();
@@ -125,7 +149,7 @@ export function verifyReceipt(report: CommandObservation, stage: StageName, nonc
       typeof receipt['evidence'] !== 'string' || !receipt['evidence'].length || receipt['evidence'].length > 4096) throw new Error('Invalid or stale verification receipt');
   return receipt['evidence'];
 }
-/** No shell interpolation, no automatic download, and no implicit signing identity. */
+/** No shell interpolation, implicit download, or implicit signing identity. */
 export async function runReleaseWorkflow(input: unknown, options: {
   readonly workspace: string; readonly output: string; readonly signal?: AbortSignal;
 }): Promise<ReleaseWorkflowReport> {
@@ -135,6 +159,7 @@ export async function runReleaseWorkflow(input: unknown, options: {
   const runId = randomBytes(24).toString('hex');
   const destination = join(output, runId); await mkdir(destination, { mode: 0o700 });
   const commands: ReleaseCommand[] = [], stages = new Map<StageName, StageRecord>();
+  const transfers: { stage: StageName; report: TransferReport }[] = [];
   const bytes = new Map<ByteCategory, ByteObservation>(BYTE_CATEGORIES.map(category => [category, unavailableBytes(category,
     category === 'first-run-download' ? 'Child-process downloads are not traced; cache deltas are not network bytes' : 'No completed stage measured this category')]));
   const blockedBy: Partial<Record<StageName, readonly StageName[]>> = {};
@@ -178,6 +203,15 @@ export async function runReleaseWorkflow(input: unknown, options: {
           if (exists) throw new Error('Fresh output already exists: ' + result.path);
         }
       }
+      if (task.transfer) {
+        const report = await transferArtifact(task.transfer, { workspace, timeoutMs: task.timeoutMs, signal: controller.signal });
+        transfers.push({ stage: name, report });
+        if (!report.cleanupEstablished) cleanupEstablished = false;
+        if (report.status !== 'passed') throw new Error(report.errorCode ?? 'Artifact transfer failed');
+        // Received bytes remain measured even if the subsequent app launch fails.
+        // They cannot make the stage pass or account for unobserved child traffic.
+        bytes.set(task.transfer.category, transferBytes(report));
+      }
       for (const args of task.commands) await execute(args, 'execute');
       const evidence = verifyReceipt(await execute(task.verify, 'verify'), name, nonce);
       const measured: ByteObservation[] = [];
@@ -204,5 +238,5 @@ export async function runReleaseWorkflow(input: unknown, options: {
   return { schema: 1, runId, framework: plan.framework, version: plan.version, sourceCommit: plan.sourceCommit, runClass: 'local-smoke',
     passed: Object.keys(plan.tasks).length > 0 && Object.keys(plan.tasks).every(name => stages.get(name as StageName)?.status === 'passed') && cleanupEstablished,
     fullStageCoverage: rows.every(row => row.status === 'passed'), stages: rows, bytes: validateByteMatrix([...bytes.values()]),
-    commands: commands.map(row => ({ ...row, report: relative(output, join(destination, row.report)) })), blockedBy, cleanupEstablished };
+    commands: commands.map(row => ({ ...row, report: relative(output, join(destination, row.report)) })), transfers, blockedBy, cleanupEstablished };
 }
