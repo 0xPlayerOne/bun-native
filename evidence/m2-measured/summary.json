@@ -1,0 +1,561 @@
+{
+  "matrix": {
+    "schema": 1,
+    "executionSourceCommit": "effe77bceea0b1cc9e96a21155da703d7b78c052",
+    "configuredAcceptancePassed": true,
+    "prePostConditionsPassed": false,
+    "controlledPerformanceEligible": false,
+    "equivalentEngineComparisonEligible": false,
+    "references": [
+      {
+        "adapter": "electron",
+        "identity": {
+          "framework": "Electron",
+          "version": "44.8.0",
+          "runtimeVersion": "24.22.0",
+          "engine": "chromium",
+          "engineVersion": "152.0.7977.167"
+        },
+        "measuredTrials": 3,
+        "warmups": 1,
+        "metrics": {
+          "buildMs": {
+            "count": 3,
+            "mean": 90.08573566667717,
+            "p50": 87.7792080000072,
+            "p95": 97.44093300001842,
+            "p99": 98.29975300001941,
+            "min": 83.96354100000462,
+            "max": 98.51445800001966,
+            "standardDeviation": 7.544690105840472,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "launchToRendererMs": {
+            "count": 3,
+            "mean": 612.3930830000027,
+            "p50": 531.4623750000028,
+            "p95": 843.8543244,
+            "p99": 871.6224976799998,
+            "min": 427.15233300000546,
+            "max": 878.5645409999997,
+            "standardDeviation": 236.33785140322627,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "backendEditToUsableMs": {
+            "count": 3,
+            "mean": 897.6733189999844,
+            "p50": 848.2184159999597,
+            "p95": 994.245966599998,
+            "p99": 1007.2261933200015,
+            "min": 834.3302909999911,
+            "max": 1010.4712500000023,
+            "standardDeviation": 97.93237428152804,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleCpuPercentOneCore": {
+            "count": 3,
+            "mean": 0.22219584307870371,
+            "p50": 0.21886087786619135,
+            "p95": 0.26563725232748053,
+            "p99": 0.26979515227959516,
+            "min": 0.17689202410229599,
+            "max": 0.2708346272676238,
+            "standardDeviation": 0.047060011337610896,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleObservedTreeRssBytes": {
+            "count": 3,
+            "mean": 567388842.6666666,
+            "p50": 569851904.0,
+            "p95": 571680358.4,
+            "p99": 571842887.68,
+            "min": 560431104,
+            "max": 571883520,
+            "standardDeviation": 6110602.376859857,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "packageIdleWakeupsPerSecond": {
+            "count": 3,
+            "mean": 0.6752318076781366,
+            "p50": 0.0,
+            "p95": 1.8231258807309687,
+            "p99": 1.9851815145737217,
+            "min": 0.0,
+            "max": 2.02569542303441,
+            "standardDeviation": 1.1695357977851095,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "interruptWakeupsPerSecond": {
+            "count": 3,
+            "mean": 17.421079469228488,
+            "p50": 14.356602296975923,
+            "p95": 22.76623303424993,
+            "p99": 23.513755766452064,
+            "min": 14.205999661206938,
+            "max": 23.700636449502596,
+            "standardDeviation": 5.4387771778091,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          }
+        },
+        "installedFileBytes": null,
+        "systemBusyPercent": [50.5, 47.5, 29.8, 23.5, 27.4, 55.5, 25.8, 34.1],
+        "memoryBoundary": "Observed descendant RSS sum, shared pages may be counted twice",
+        "buildBoundary": "Main TypeScript bundle, not complete Electron assembly"
+      },
+      {
+        "adapter": "electrobun",
+        "identity": {
+          "framework": "Electrobun",
+          "version": "2.0.3-beta.26",
+          "runtimeVersion": "1.4.0",
+          "engine": "chromium",
+          "engineVersion": "147.0.7727.118"
+        },
+        "measuredTrials": 3,
+        "warmups": 1,
+        "metrics": {
+          "buildMs": {
+            "count": 3,
+            "mean": 1632.7944166666712,
+            "p50": 1621.9553750000196,
+            "p95": 1765.6464878000145,
+            "p99": 1778.419031160014,
+            "min": 1494.81570799998,
+            "max": 1781.6121670000139,
+            "standardDeviation": 143.70513505761747,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "launchToRendererMs": {
+            "count": 3,
+            "mean": 714.9594999999972,
+            "p50": 685.1647080000257,
+            "p95": 831.6257957999915,
+            "p99": 844.6445591599884,
+            "min": 611.8145419999782,
+            "max": 847.8992499999877,
+            "standardDeviation": 120.82960961868412,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "backendEditToUsableMs": {
+            "count": 3,
+            "mean": 2637.5752639999846,
+            "p50": 2682.465124999988,
+            "p95": 2755.5881377999963,
+            "p99": 2762.087961159997,
+            "min": 2466.547749999969,
+            "max": 2763.712916999997,
+            "standardDeviation": 153.58420763538285,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleCpuPercentOneCore": {
+            "count": 3,
+            "mean": 3.2805814111311657,
+            "p50": 3.2554077539981012,
+            "p95": 3.9492175760678707,
+            "p99": 4.01088956025185,
+            "min": 2.560028923097551,
+            "max": 4.026307556297845,
+            "standardDeviation": 0.7334633885239403,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleObservedTreeRssBytes": {
+            "count": 3,
+            "mean": 683240106.6666666,
+            "p50": 683409408.0,
+            "p95": 684308889.6,
+            "p99": 684388843.52,
+            "min": 681902080,
+            "max": 684408832,
+            "standardDeviation": 1261922.5822043654,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "packageIdleWakeupsPerSecond": {
+            "count": 3,
+            "mean": 0.20193679429359881,
+            "p50": 0.0,
+            "p95": 0.5452293445927168,
+            "p99": 0.5936941752231806,
+            "min": 0.0,
+            "max": 0.6058103828807965,
+            "standardDeviation": 0.3497647876340981,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "interruptWakeupsPerSecond": {
+            "count": 3,
+            "mean": 162.10426088835607,
+            "p50": 170.2834499731913,
+            "p95": 170.78302017246529,
+            "p99": 170.82742641240074,
+            "min": 145.19080471949232,
+            "max": 170.8385279723846,
+            "standardDeviation": 14.650111862315375,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          }
+        },
+        "installedFileBytes": {
+          "count": 3,
+          "mean": 386724412,
+          "p50": 386724412.0,
+          "p95": 386724412.0,
+          "p99": 386724412.0,
+          "min": 386724412,
+          "max": 386724412,
+          "standardDeviation": 0.0,
+          "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+        },
+        "systemBusyPercent": [34.2, 36.8, 32.7, 38.6, 34.3, 35.2, 31.9, 34.3],
+        "memoryBoundary": "Observed descendant RSS sum, shared pages may be counted twice",
+        "buildBoundary": "Actual upstream application build"
+      },
+      {
+        "adapter": "mirin",
+        "identity": {
+          "framework": "Mirin",
+          "version": "0.1.0-alpha.26",
+          "runtimeVersion": "1.4.3",
+          "engine": "chromium",
+          "engineVersion": "148.0.7778.218"
+        },
+        "measuredTrials": 3,
+        "warmups": 1,
+        "metrics": {
+          "buildMs": {
+            "count": 3,
+            "mean": 4956.2231386666535,
+            "p50": 4844.106957999989,
+            "p95": 5317.976045200007,
+            "p99": 5360.097741840009,
+            "min": 4653.934291999962,
+            "max": 5370.6281660000095,
+            "standardDeviation": 371.26817225929716,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "launchToRendererMs": {
+            "count": 3,
+            "mean": 693.7749303333306,
+            "p50": 610.3459159999911,
+            "p95": 851.4991916000203,
+            "p99": 872.9350383200228,
+            "min": 592.6848749999772,
+            "max": 878.2940000000235,
+            "standardDeviation": 160.04200509646662,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "backendEditToUsableMs": {
+            "count": 3,
+            "mean": 2566.4100140000132,
+            "p50": 2567.053209000005,
+            "p95": 2717.3497584000024,
+            "p99": 2730.7094516800025,
+            "min": 2398.1274580000318,
+            "max": 2734.0493750000023,
+            "standardDeviation": 167.96188214916438,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleCpuPercentOneCore": {
+            "count": 3,
+            "mean": 1.8863186023318326,
+            "p50": 1.9427545376323754,
+            "p95": 2.029275722031388,
+            "p99": 2.036966493977967,
+            "min": 1.6773120823985104,
+            "max": 2.038889186964612,
+            "standardDeviation": 0.18727856719746838,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleObservedTreeRssBytes": {
+            "count": 3,
+            "mean": 891699200,
+            "p50": 889372672.0,
+            "p95": 896686489.6,
+            "p99": 897336606.72,
+            "min": 888225792,
+            "max": 897499136,
+            "standardDeviation": 5055519.423033799,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "packageIdleWakeupsPerSecond": {
+            "count": 3,
+            "mean": 4.217971442290793,
+            "p50": 0.604772608405779,
+            "p95": 10.362435850128428,
+            "p99": 11.229783693837108,
+            "min": 0.6025210637023205,
+            "max": 11.446620654764278,
+            "standardDeviation": 6.260193954272387,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "interruptWakeupsPerSecond": {
+            "count": 3,
+            "mean": 213.5076583914116,
+            "p50": 204.4554809496541,
+            "p95": 230.543552255133,
+            "p99": 232.8624919267311,
+            "min": 202.62526737995012,
+            "max": 233.44222684463065,
+            "standardDeviation": 17.28807927416284,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          }
+        },
+        "installedFileBytes": {
+          "count": 3,
+          "mean": 390205352,
+          "p50": 390205352.0,
+          "p95": 390205352.0,
+          "p99": 390205352.0,
+          "min": 390205352,
+          "max": 390205352,
+          "standardDeviation": 0.0,
+          "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+        },
+        "systemBusyPercent": [41.6, 44.1, 20.7, 34.1, 22.4, 40.7, 25.8, 60.6],
+        "memoryBoundary": "Observed descendant RSS sum, shared pages may be counted twice",
+        "buildBoundary": "Actual upstream application build"
+      },
+      {
+        "adapter": "butter",
+        "identity": {
+          "framework": "Butter",
+          "version": "1.6.3",
+          "runtimeVersion": "1.4.3",
+          "engine": "system-webkit",
+          "engineVersion": "21624.5.1.11.3"
+        },
+        "measuredTrials": 3,
+        "warmups": 1,
+        "metrics": {
+          "buildMs": {
+            "count": 3,
+            "mean": 8311.722055666678,
+            "p50": 8212.257750000019,
+            "p95": 9606.586425600006,
+            "p99": 9730.526752320005,
+            "min": 6961.396583000009,
+            "max": 9761.511834000004,
+            "standardDeviation": 1402.704963916862,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "launchToRendererMs": {
+            "count": 3,
+            "mean": 740.0961526666651,
+            "p50": 740.7472079999861,
+            "p95": 840.8942958000116,
+            "p99": 849.7962591600138,
+            "min": 627.5194999999949,
+            "max": 852.0217500000144,
+            "standardDeviation": 112.25254103383631,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "backendEditToUsableMs": {
+            "count": 3,
+            "mean": 5850.934222333337,
+            "p50": 5849.027000000002,
+            "p95": 5863.37671250001,
+            "p99": 5864.652242500011,
+            "min": 5838.804541999998,
+            "max": 5864.971125000011,
+            "standardDeviation": 13.18713916077783,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleCpuPercentOneCore": {
+            "count": 3,
+            "mean": 0.8729041934987006,
+            "p50": 0.5816650002980246,
+            "p95": 1.4037152775071746,
+            "p99": 1.476786413259099,
+            "min": 0.5419933830009973,
+            "max": 1.49505419719708,
+            "standardDeviation": 0.5391627116475699,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "idleObservedTreeRssBytes": {
+            "count": 3,
+            "mean": 126386176,
+            "p50": 126386176.0,
+            "p95": 126695833.6,
+            "p99": 126723358.72,
+            "min": 126042112,
+            "max": 126730240,
+            "standardDeviation": 344064.0,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "packageIdleWakeupsPerSecond": {
+            "count": 3,
+            "mean": 5.393999974948816,
+            "p50": 1.413948983678401,
+            "p95": 13.432640745419082,
+            "p99": 14.500968902018254,
+            "min": 0.0,
+            "max": 14.768050941168047,
+            "standardDeviation": 8.148891738762275,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          },
+          "interruptWakeupsPerSecond": {
+            "count": 3,
+            "mean": 197.50027515732867,
+            "p50": 152.7267731193348,
+            "p95": 274.1788635380549,
+            "p99": 284.97460490860783,
+            "min": 152.10051210140514,
+            "max": 287.67354025124604,
+            "standardDeviation": 78.09296609803643,
+            "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+          }
+        },
+        "installedFileBytes": {
+          "count": 3,
+          "mean": 71242384,
+          "p50": 71242384.0,
+          "p95": 71242384.0,
+          "p99": 71242384.0,
+          "min": 71242384,
+          "max": 71242384,
+          "standardDeviation": 0.0,
+          "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+        },
+        "systemBusyPercent": [44.9, 60.3, 31.4, 32.2, 32.8, 33.9, 49, 49.1],
+        "memoryBoundary": "Observed descendants only; WKWebView launchd/XPC services excluded",
+        "buildBoundary": "Actual upstream application build"
+      }
+    ],
+    "reason": "Different engine/security cohorts; pre/post samples do not establish controlled isolation; thresholds are not recalibrated"
+  },
+  "installed": {
+    "warmups": 1,
+    "repetitions": 3,
+    "firstRunMs": {
+      "count": 3,
+      "mean": 5971.701236333333,
+      "p50": 5246.236917000002,
+      "p95": 7910.124079499999,
+      "p99": 8146.914049499999,
+      "min": 4462.755249999998,
+      "max": 8206.111541999999,
+      "standardDeviation": 1974.3107509162098,
+      "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+    },
+    "updateAndRelaunchMs": {
+      "count": 3,
+      "mean": 8600.868736,
+      "p50": 8573.925458999998,
+      "p95": 10398.890295300002,
+      "p99": 10561.109391860002,
+      "min": 6627.0165830000005,
+      "max": 10601.664166000002,
+      "standardDeviation": 1987.460768768421,
+      "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+    },
+    "initialDownloadBytes": [141670524, 141493186, 141662804],
+    "updateDownloadBytes": [141670562, 141492958, 141663021]
+  },
+  "latencyTrials": [
+    {
+      "trial": 0,
+      "inputHandlerToFrameMs": {
+        "count": 120,
+        "mean": 2.3375,
+        "p50": 2.100000023841858,
+        "p95": 6.099999904632568,
+        "p99": 6.280999970436096,
+        "min": 0,
+        "max": 6.5,
+        "standardDeviation": 2.114816159620878,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "inputEventToFrameMs": {
+        "count": 120,
+        "mean": 2.468333335717519,
+        "p50": 2.200000047683716,
+        "p95": 6.199999821186066,
+        "p99": 6.381000113487244,
+        "min": 0.09999990463256836,
+        "max": 6.700000047683716,
+        "standardDeviation": 2.0967354799013345,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "terminalParserCallbackMs": {
+        "count": 41,
+        "mean": 0.792682921014181,
+        "p50": 0.5,
+        "p95": 2.299999952316284,
+        "p99": 5.279999923706061,
+        "min": 0.09999990463256836,
+        "max": 7,
+        "standardDeviation": 1.1613333290324468,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      }
+    },
+    {
+      "trial": 1,
+      "inputHandlerToFrameMs": {
+        "count": 120,
+        "mean": 3.5483333468437195,
+        "p50": 3.600000023841858,
+        "p95": 7.009999990463256,
+        "p99": 7.5,
+        "min": 0,
+        "max": 7.599999904632568,
+        "standardDeviation": 2.2183718364691853,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "inputEventToFrameMs": {
+        "count": 120,
+        "mean": 3.6433333377043406,
+        "p50": 3.6500000953674316,
+        "p95": 7.105000126361847,
+        "p99": 7.5809999227523805,
+        "min": 0.09999990463256836,
+        "max": 7.700000047683716,
+        "standardDeviation": 2.211267284974474,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "terminalParserCallbackMs": {
+        "count": 42,
+        "mean": 0.6166666235242572,
+        "p50": 0.40000009536743164,
+        "p95": 1.5849999070167529,
+        "p99": 3.6879999804496646,
+        "min": 0,
+        "max": 5,
+        "standardDeviation": 0.789849220287556,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      }
+    },
+    {
+      "trial": 2,
+      "inputHandlerToFrameMs": {
+        "count": 120,
+        "mean": 3.843333339691162,
+        "p50": 3.850000023841858,
+        "p95": 7.299999964237213,
+        "p99": 7.681000020503998,
+        "min": 0,
+        "max": 8.5,
+        "standardDeviation": 2.3097067009190058,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "inputEventToFrameMs": {
+        "count": 120,
+        "mean": 3.9375,
+        "p50": 3.950000047683716,
+        "p95": 7.299999964237213,
+        "p99": 7.762000181674957,
+        "min": 0.20000004768371582,
+        "max": 8.600000143051147,
+        "standardDeviation": 2.303634781248661,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      },
+      "terminalParserCallbackMs": {
+        "count": 38,
+        "mean": 0.6842105074932701,
+        "p50": 0.40000009536743164,
+        "p95": 1.6999998450279237,
+        "p99": 3.652999987602242,
+        "min": 0,
+        "max": 4.799999952316284,
+        "standardDeviation": 0.8072396450085244,
+        "method": "linear-interpolated descriptive quantiles; not independent per-event confidence intervals"
+      }
+    }
+  ]
+}

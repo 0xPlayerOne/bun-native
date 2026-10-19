@@ -185,3 +185,7 @@ runs and full install/edit/release/byte-accounting matrices remain #8/#9/#10 wor
 Butter belongs to a separate system-webview comparison class. Windows kernel
 instrumentation and final host-risk acceptance remain #5 work. None of these
 qualification scripts implements Bunly's actual CEF host or managed backend reload.
+
+## Measured macOS references and installed updater
+
+See [the measured acceptance report](../docs/m2-comparative-acceptance.md) for the pinned four-framework matrix, native idle counters, trusted-input/terminal measurements, and actual Mirin installed-update transactions. Run `python scripts/report_reference_acceptance.py` to verify preserved evidence and regenerate its descriptive summaries. These observations do not establish matched-engine speedups or a controlled calibration; #9 retains explicit signing and measurement limitations.
