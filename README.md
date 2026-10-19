@@ -2,7 +2,7 @@
 
 The Bun-native desktop framework.
 
-**Status:** Experimental. M1 foundations and host selection are complete; M2–M4 still have outstanding acceptance work. Initial CEF smoke paths exist, not a release-qualified desktop runtime.
+**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3–M4 remain in progress; this is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
 
 Bunly is building a standalone TypeScript-first desktop framework around real Bun,
 prebuilt native components, and managed backend reloads. Better iteration and
@@ -67,18 +67,18 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 
 ## Repository
 
-| Location | Responsibility |
-| --- | --- |
-| `packages/contracts` | Browser-safe contracts and capability/version rules |
-| `packages/client` | Browser-side discovery; no native authority |
-| `packages/runtime` | Application entry point, registry and mock backend |
-| `packages/artifacts` | Authenticated manifests, archive verification and cache |
-| `packages/cli` | Foundation diagnostics and artifact resolution |
-| `native/host-probe` | Original Node-API/FFI and native subprocess fixtures |
-| `examples/workbench` | Mock consumer and shared browser workbench UI |
-| `benchmarks` | Deterministic fixtures, reports, inventory and adapters |
-| `tests` | Contracts, artifacts, faults, result validation and real process tests |
-| `docs` | Architecture, provenance and qualification boundaries |
+| Location             | Responsibility                                                         |
+| -------------------- | ---------------------------------------------------------------------- |
+| `packages/contracts` | Browser-safe contracts and capability/version rules                    |
+| `packages/client`    | Browser-side discovery; no native authority                            |
+| `packages/runtime`   | Application entry point, registry and mock backend                     |
+| `packages/artifacts` | Authenticated manifests, archive verification and cache                |
+| `packages/cli`       | Foundation diagnostics and artifact resolution                         |
+| `native/host-probe`  | Original Node-API/FFI and native subprocess fixtures                   |
+| `examples/workbench` | Mock consumer and shared browser workbench UI                          |
+| `benchmarks`         | Deterministic fixtures, reports, inventory and adapters                |
+| `tests`              | Contracts, artifacts, faults, result validation and real process tests |
+| `docs`               | Architecture, provenance and qualification boundaries                  |
 
 ## Roadmap and evidence
 
