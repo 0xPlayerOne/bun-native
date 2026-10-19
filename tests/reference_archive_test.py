@@ -1,12 +1,15 @@
 """Real archive checks on synthetic app files, not native installer acceptance."""
+
 import importlib.util
 import io
-from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location("reference_archive", Path(__file__).resolve().parents[1] / "scripts/reference_archive.py")
+SPEC = importlib.util.spec_from_file_location(
+    "reference_archive", Path(__file__).resolve().parents[1] / "scripts/reference_archive.py"
+)
 module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(module)
 
@@ -44,6 +47,26 @@ class ArchiveTests(unittest.TestCase):
         (self.app / "escape").symlink_to("../outside")
         with self.assertRaises(ValueError):
             module.create(self.app, self.archive)
+
+    def test_ancestor_alias_keeps_internal_links_valid(self):
+        alias = self.root / "parent-alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        (self.app / "current").symlink_to("assets")
+        module.create(alias / "App", self.archive)
+        self.assertEqual(module.verify(self.app, self.archive), 5)
+
+    def test_direct_root_link_remains_rejected(self):
+        alias = self.root / "linked-app"
+        alias.symlink_to(self.app, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            module.inventory(alias)
+
+    def test_aliased_output_inside_source_is_rejected(self):
+        alias = self.root / "parent-alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            module.create(self.app, alias / "App" / "nested.tar.gz")
+        self.assertFalse((self.app / "nested.tar.gz").exists())
 
     def test_stale_destination_is_not_overwritten(self):
         self.archive.write_bytes(b"existing")
