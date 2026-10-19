@@ -1,0 +1,239 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "baseCommit": "2204937da2875984976d49fb5730a3181b257206",
+  "classification": "local-smoke",
+  "performanceEligible": false,
+  "environment": {
+    "os": "macOS 26.7.1",
+    "build": "25G241",
+    "architecture": "arm64",
+    "chip": "Apple M2 Max",
+    "memoryGiB": 64,
+    "display": "Screen Sharing Virtual Display 1920x1080 @60Hz",
+    "power": "AC at setup; not continuously monitored",
+    "bun": "1.4.3+c6da4a4d3",
+    "python": "3.11.15",
+    "psutil": "7.0.0",
+    "playwright": "1.57.0"
+  },
+  "redaction": "Home/checkout paths replaced. Ephemeral 48-hex fixture values are consistently pseudonymized; timing, outcome and stable content hashes are retained. Stored bytes differ from original reports.",
+  "limitations": [
+    "Source contained authored uncommitted changes during these runs; original source fields retained, not upgraded to clean.",
+    "Local smoke on a virtual display, not calibrated controlled performance.",
+    "Browser versions, sandbox and packaging profiles differ; no speed comparison is authorized by these results.",
+    "No Developer ID signing, notarization, installed desktop updater transaction or Windows/Linux acceptance."
+  ],
+  "reports": [
+    {
+      "id": "frontend",
+      "file": "frontend.json.gz",
+      "originalSha256": "a02476fbdf1fdf64c0c03dc94d0c9d8d4aadda50c0fe852bec771af675c13f96",
+      "redactedSha256": "5e6e78b6237c51846acf1b5f57a65cbed66313e11cfbaf5b4c23f9ccd0a4a26d",
+      "storedSha256": "ef219fb55273a8d3320c6640766ed2283e82c8c96939b14747600860c7286351",
+      "bytes": 1091
+    },
+    {
+      "id": "electron-edits",
+      "file": "electron-edits.json.gz",
+      "originalSha256": "1f7215401eba9c8a7865be293b3c2cdd7f143afcd414e401525309afaa73109b",
+      "redactedSha256": "9edf54d789d5e801186bbb6adf9277226888a7bf0c90d5fe9f0dcca35d6452d5",
+      "storedSha256": "a9a845052fe9314439e38e59bb0fadc8ac7a5b8944deb9e7806e2688e17dadf3",
+      "bytes": 27977
+    },
+    {
+      "id": "electrobun-edits",
+      "file": "electrobun-edits.json.gz",
+      "originalSha256": "2400c2470f990a2ba415c74efa052a2e930bda0247c6980be93018e4d5e0033a",
+      "redactedSha256": "827cfd4bc0bebded9a1adf22aa5f9560b8423ae829e1f9443ae91a31b5df992b",
+      "storedSha256": "427799244e053e6c90e8fe96dd8e3527b440927e8a78a2840fe526e7ee2e89b7",
+      "bytes": 95079
+    },
+    {
+      "id": "mirin-edits",
+      "file": "mirin-edits.json.gz",
+      "originalSha256": "787c483be2a400838cf6582826845130c0eb9b3989768a88abcb372f0a21c9b9",
+      "redactedSha256": "e9540910895f181dbe7d4973ff75336ee1a02e9032acff07f81d61f984b9e64b",
+      "storedSha256": "62589c1fb842c198d42b1a446365719d0e6ecae58b8947b27c372ed3fc89a913",
+      "bytes": 22498
+    },
+    {
+      "id": "butter-source-edits",
+      "file": "butter-source-edits.json.gz",
+      "originalSha256": "aad43cce3c87738fa130c74707ac77861710fb68744c3853bdd02872f5f0425f",
+      "redactedSha256": "d723581f6862895bf26f1dcd95389f840b3c5d99a41da5685b2881eebee1494e",
+      "storedSha256": "25e5cfcd2ffba7caa0f85fe95a411abd9047b1b4489f5e5210252f0963198af7",
+      "bytes": 22870
+    },
+    {
+      "id": "mirin-release",
+      "file": "mirin-release.json.gz",
+      "originalSha256": "1eadefe729b343419a683cdef3daaf11cbcf88401a0ed88e47b99ffb038708e1",
+      "redactedSha256": "712a41e7bb93e8a173e2c77dc7cdd08854563d42b024c49621862515c7539c91",
+      "storedSha256": "8e02e24118cc422d82ff94bf3474ca2370e2274922d500fe26a52d7f1fbeb35d",
+      "bytes": 25223
+    },
+    {
+      "id": "electron-baseline",
+      "file": "electron-baseline.json.gz",
+      "originalSha256": "ab6178d11d1f42c05e6e1f91afb8abe5ed767c1353f9b72850059f49ecd25cf5",
+      "redactedSha256": "a92f3bffedf05e7f6a737aac2d38c9aaeb643a1c0a41332513b394b1928176de",
+      "storedSha256": "72e3bc8a4ed1f5b430cde84c9c59ef03955f0df7a35d9938cb7a64bb30c6b2bb",
+      "bytes": 2316
+    },
+    {
+      "id": "electrobun-baseline",
+      "file": "electrobun-baseline.json.gz",
+      "originalSha256": "71dd1cd4ba8269d113def3ddc9cf5b0ff53028620d5f10fbfb4afdb1c72962f9",
+      "redactedSha256": "3cbeb17185cda1d4196d8345eb6b968780c9c3b70b5f66c8264864886b2aa01a",
+      "storedSha256": "6f27c909f6ab9348d40e4ab5c0694589efbeb61c660eb15d5c258789fc17e842",
+      "bytes": 1607
+    },
+    {
+      "id": "development",
+      "file": "development.json.gz",
+      "originalSha256": "3ba72f8cac2ad1d0dfedae569d38472d9b2da72f91f264dc646b3858e76c7e4c",
+      "redactedSha256": "a30a3b643de8cbf836cfe56cbc9b0ea13203fcce3b75200937d1f66d6d4e501c",
+      "storedSha256": "2e2a957c1ced0a97e7e9975306ec043e74a2aae73392282b5e9285556838cde2",
+      "bytes": 1494
+    },
+    {
+      "id": "frontend-before-fix",
+      "file": "frontend-before-fix.json.gz",
+      "originalSha256": "e9f6083734efe37b6ce7e55a592563b01daa63dd11c5e91ace0ff1936f32582c",
+      "redactedSha256": "8c4b7b2832015349f848f5a1ddca3c0d524dcebb29c95d65439962879b5abd59",
+      "storedSha256": "c18f951cc3fd4ea975311f52d1c148e71854d84dc71d2f20d239fce879866e78",
+      "bytes": 684
+    },
+    {
+      "id": "electrobun-before-fix",
+      "file": "electrobun-before-fix.json.gz",
+      "originalSha256": "01db53ea08b109e0b7e8c308f04d6733acb2b5e7ab82ec13189f69c667c5f3fa",
+      "redactedSha256": "17ea99b784efe2ca35eadab26c7faefc3087c85937eb1b697e089564cf87f66d",
+      "storedSha256": "4d852b0557f0466799a1e053448c197fbf3c4758748f36b93b5de2c3b5378388",
+      "bytes": 19668
+    },
+    {
+      "id": "mirin-before-fix",
+      "file": "mirin-before-fix.json.gz",
+      "originalSha256": "f2dea4ab45ddd93b42aa3c707f9d15232462b02ddd804a644ddb0fa98d9e9669",
+      "redactedSha256": "fe80d5285bba5bb3447a63e925317756b98ce9a03eaa3cabadefc1b9281c4272",
+      "storedSha256": "a926b973314daccbd699107ddd858a81f3f34f263f2a72cf213aad7175943fe3",
+      "bytes": 9501
+    },
+    {
+      "id": "butter-before-helper",
+      "file": "butter-before-helper.json.gz",
+      "originalSha256": "d7ff30c05a1d2350839a170ad7457e21ef685e5ca3093022cc8f2ca79751f0d1",
+      "redactedSha256": "62c55e6a77072035af40293964cb068bceca4e821a953005015250d4fda63d88",
+      "storedSha256": "467e1a4b76cfbfbd6a6dd93a22420261dc204e57bb0211ab82aeca37b38c4708",
+      "bytes": 9205
+    },
+    {
+      "id": "butter-helper",
+      "file": "butter-helper.json.gz",
+      "originalSha256": "4ebc62c6cc237c6b0dfe33fc5d8379f48c16aaef983b6149a51f24307dd0bc83",
+      "redactedSha256": "c72b928ce7e25ee68d8e613fea2d4857a843c143de96757eaca64178b9cac4a6",
+      "storedSha256": "6b2e9aaf341845c67cfa3ede5e6720f21474cacae8d81319895f71a5bc1a4b69",
+      "bytes": 1301
+    },
+    {
+      "id": "sandbox-observations",
+      "file": "sandbox-observations.json.gz",
+      "redactedSha256": "26e5a59c08e4a51c1898661246f477e4c8adc6a1e96156f568e3d5f5fbfc2bf5",
+      "storedSha256": "99e2c388cb4b8671368b6ad980bfad7a8f654a3f6a57f3d5223707a1fb6e37f7",
+      "bytes": 7820,
+      "selection": "Allowlisted fields from real raw owned-process samples, original report digest in each row"
+    }
+  ],
+  "sourceFiles": {
+    "benchmarks/adapters/desktop-edit/driver.ts": {
+      "sha256": "fdc8ecd6ff2b25e11380abac57f905b238ed586400b75eaa84e3fba4520737a2",
+      "gitBlob": "b3970f357c3d9ff8eabbf7228d5e7fbe7145c3c3"
+    },
+    "benchmarks/adapters/development/driver.ts": {
+      "sha256": "f72904e68b113ed5b63a75016cb04766dfb93d96fe359a7c9c7bb4ac7877edc8",
+      "gitBlob": "3d2667f530067e2e425ef278707aa53cccbc73cf"
+    },
+    "benchmarks/adapters/frontend/driver.py": {
+      "sha256": "810945dc159cd9750ae7fc38c952b739e1c91a44bd82d47ec0a7bb555ca5a31a",
+      "gitBlob": "6a538c91e70e18a5e788cdfd01717a1469b330a8"
+    },
+    "benchmarks/adapters/references/driver.ts": {
+      "sha256": "10bcbf7321833c0abb065d1b9a504d61396e3d3e3fcbd904d1b808b826e95422",
+      "gitBlob": "60db7154bcb495a5b1c4b1a354b4ce96b4f2d4dc"
+    },
+    "benchmarks/adapters/references/locks/README.md": {
+      "sha256": "aa403e294e010899c94457b67cfcdff4bca6bd59b0742d46ce34cff7be69b5e6",
+      "gitBlob": "09ef23cbea8dbffff2d1b08bc910b5c09a77009e"
+    },
+    "benchmarks/adapters/references/locks/butter-source.bun.lock": {
+      "sha256": "0f53bcfba440af6cac2bb2d5e5dfdd7008f54f867aecb663c17ce7480bc03be9",
+      "gitBlob": "15ded69042de84e5be52b96c2c25642f64bb5bd7"
+    },
+    "benchmarks/adapters/references/locks/mirin.bun.lock": {
+      "sha256": "2a0271a07b6c0b45f16cfadae1089883295eae7aa91798152ba2c98fb9cd17dc",
+      "gitBlob": "8136257d75642c6477a71dc2372f2c4c3070d3d3"
+    },
+    "benchmarks/adapters/references/release-plan.ts": {
+      "sha256": "7e6b56c610df9c35a60feaca5a41d50a04e3b05d06778f7def26953dbca57421",
+      "gitBlob": "89ba2a14f0546a2f5ba1c0a1b18475d7d5c32eaf"
+    },
+    "benchmarks/fixtures/development/server.ts.txt": {
+      "sha256": "1f0e24d41e6e4d0bde7bc88f8a8d324d9f127ebfe80cea6b7624d7d5c4845657",
+      "gitBlob": "2d395ded4e334338f84ee7f3a8feb028075b7b9e"
+    },
+    "benchmarks/fixtures/frontend/main.ts.txt": {
+      "sha256": "d360c0643e0fc2f855dce07ae33945ba83778957ab95b077907a1a3353996c98",
+      "gitBlob": "34d3e255cc5d5ef8a8b88c2526cbdf8c91b29e57"
+    },
+    "benchmarks/lib/desktop-edits.ts": {
+      "sha256": "1ff643031e6d3270e7a57405e0fe756a3c9ca2f7aa86266d648d706f402479ef",
+      "gitBlob": "2caabd73b4cd22b9d6cbbb798c11c3ebad82eaf5"
+    },
+    "bun.lock": {
+      "sha256": "236549b7d9f0ffadd11491000eaf95738ccddd36fdbdb67f5f2784646689142f",
+      "gitBlob": "f18a4719d1c6fa44387f80ae1a85ddc95dacc681"
+    },
+    "package.json": {
+      "sha256": "de0896a8d4a2b3bcc322e1fbd6afb255cad6ad3e3d3c71709981500e32e132cf",
+      "gitBlob": "fcfa38c4fdcb2fcfab7fd3a2f97f10511320716b"
+    },
+    "scripts/macos_sandbox.py": {
+      "sha256": "fac72928bc1e2cd922d7bbeb5b55a2cc37dc67e5e3fa663981a98b0034155f8c",
+      "gitBlob": "1243b7075616c4c3e5334d1d81ca34e9a0222d7e"
+    },
+    "scripts/observe-process.py": {
+      "sha256": "b560dc94f9b25501e28ee0391cfd39478a6fc3055edc963950890ecb77c6c34f",
+      "gitBlob": "05616b6a179071a5e429bf080bcc5f2d6e7af869"
+    },
+    "scripts/reference_archive.py": {
+      "sha256": "81ec681717ceee16f691a6994ac18f66585d063291e8fd3996139efd209b32a0",
+      "gitBlob": "37aa516d048b6057baca0b8d2e417e9361a41130"
+    },
+    "tests/desktop-edits.test.ts": {
+      "sha256": "118e35a5ae300a1f64fb041d99dc24ae18e10bf409ba6b765be10b44a89e158d",
+      "gitBlob": "62383dfd49b4876db48048d68b05c654fa06184d"
+    },
+    "tests/development-crash.test.ts": {
+      "sha256": "07562162b81bbc48dc26e1a3ff2e3764916a17dd25200ced82127968a2d9a979",
+      "gitBlob": "762d5cac740315e61ad9082f2e61c555e446fcaa"
+    },
+    "tests/frontend_driver_test.py": {
+      "sha256": "b933ec800f9d76a373853ff26212772870e195c39ed9e7cddb0a72f5dce94550",
+      "gitBlob": "c66faebcfc23cb311537dae0e5dc566c51544ab3"
+    },
+    "tests/macos_sandbox_test.py": {
+      "sha256": "3b346936e53ba084ca921cabbcb36b8fea35d07b4790331ed508ad1cf46cfc1d",
+      "gitBlob": "70630a0362c09751608c2cb10c0bc7cbd7c76f5f"
+    },
+    "tests/reference-release-plan.test.ts": {
+      "sha256": "4e002619c2b72768b93055a688da02da9ac1387f7b68fcc39f3f8d89f878aab8",
+      "gitBlob": "39062a1fb54b016af3b135678c2b8294437bb45b"
+    },
+    "tests/reference_archive_test.py": {
+      "sha256": "ee1f38a58e7e4fa977930f554cbc130de3654c5c0b705207aae2c572db20a32f",
+      "gitBlob": "985e58f0196ff297e68ba6d9ae63d3d7d4a11319"
+    }
+  }
+}

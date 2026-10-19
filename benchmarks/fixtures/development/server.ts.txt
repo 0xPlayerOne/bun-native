@@ -14,6 +14,11 @@ const server = Bun.serve({
   fetch(request) {
     const url = new URL(request.url);
     if (request.headers.get('x-fixture-token') !== token || (request.headers.has('origin') && request.headers.get('origin') !== url.origin)) return new Response('Denied', { status: 403 });
+    // Explicit private fault fixture; absent from ordinary dev/build scenarios.
+    if (url.pathname === '/crash' && request.method === 'POST' && process.env['BUNLY_FIXTURE_ALLOW_FAILURE'] === '1') {
+      setTimeout(() => process.exit(86), 10);
+      return new Response('Scheduled test failure', { status: 202 });
+    }
     if (url.pathname !== '/state' || !['GET', 'POST'].includes(request.method)) return new Response('Not found', { status: 404 });
     let counter = readState();
     if (request.method === 'POST') {

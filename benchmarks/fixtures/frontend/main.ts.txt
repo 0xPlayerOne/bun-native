@@ -16,8 +16,5 @@ const increment = () => {
 button.addEventListener('click', increment);
 if (import.meta.hot) {
   import.meta.hot.accept();
-  import.meta.hot.on('bun:error', () => {
-    root.dataset.compileErrors = String(Number(root.dataset.compileErrors ?? '0') + 1);
-  });
   import.meta.hot.dispose(() => button.removeEventListener('click', increment));
 }
