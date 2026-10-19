@@ -42,6 +42,15 @@ export async function waitForQuit(config: ReturnType<typeof configuration>) {
     if (!response.ok) throw new Error('Fixture command channel closed');
     const value = await response.json();
     if (value.command === 'quit') return;
+    if (value.command === 'observe-idle') {
+      if (!Number.isSafeInteger(value.milliseconds) || value.milliseconds < 250 || value.milliseconds > 10000) throw new Error('Invalid idle interval');
+      // No command polling occurs in the measured idle interval.
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(JSON.stringify({event:'phase',phase:'idle'}));
+      await new Promise(resolve => setTimeout(resolve, value.milliseconds));
+      console.log(JSON.stringify({event:'phase',phase:'idle-finished'}));
+      continue;
+    }
     if (value.command !== 'continue') throw new Error('Unknown fixture command');
   }
   throw new Error('Desktop fixture deadline');

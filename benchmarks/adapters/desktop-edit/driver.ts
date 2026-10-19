@@ -33,6 +33,8 @@ import {
   validateByteMatrix,
   type ByteObservation,
 } from '../../lib/accounting.ts'
+import { fileBytes } from '../../lib/accounting.ts'
+import { cefIdentityFromObservation, type CefIdentity } from '../../lib/cef-identity.ts'
 export type DesktopAdapterName = 'electron' | 'electrobun'
 const root = resolve(import.meta.dir, '../../..')
 const templates = join(root, 'benchmarks/fixtures/desktop-edit')
@@ -54,6 +56,7 @@ interface CommandRecord {
   readonly observation: CommandObservation | null
 }
 export interface DesktopEditTrial {
+  readonly engineIdentity: CefIdentity | null
   readonly adapter: DesktopAdapterName
   readonly passed: boolean
   readonly result: DesktopEditResult | null
@@ -95,7 +98,8 @@ async function macApplication(
 export async function desktopEditTrial(
   name: DesktopAdapterName,
   output: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  idleObservationMs?: number
 ): Promise<DesktopEditTrial> {
   if (!Object.hasOwn(DESKTOP_ADAPTERS, name)) throw new Error('Unknown desktop adapter')
   const identity = DESKTOP_ADAPTERS[name],
@@ -107,6 +111,7 @@ export async function desktopEditTrial(
   let result: DesktopEditResult | null = null,
     setupFailure: string | null = null,
     retainedFixture: string | null = null
+  let engineIdentity: CefIdentity | null = null
   let application: string | undefined,
     executable = ''
   const unavailable = (
@@ -294,7 +299,10 @@ export async function desktopEditTrial(
         )
       },
     }
-    result = await runDesktopEdits(adapter, signal ? { signal } : {})
+    result = await runDesktopEdits(adapter, {
+      ...(signal ? { signal } : {}),
+      ...(idleObservationMs === undefined ? {} : { idleObservationMs }),
+    })
     if (application) {
       const installed = await directoryBytes(
         'installed',
@@ -302,6 +310,28 @@ export async function desktopEditTrial(
         'Actual generated Electrobun application directory after the final build; logical file bytes, not RAM'
       )
       bytes = bytes.map((row) => (row.category === 'installed' ? installed : row))
+      const library = await realpath(
+        join(
+          application,
+          'Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework'
+        )
+      )
+      const binary = await fileBytes(
+        'installed',
+        library,
+        'Hash-pin the actual packaged CEF library'
+      )
+      engineIdentity = cefIdentityFromObservation(
+        await command('cef-identity', [
+          process.env['PYTHON'] ?? 'python3',
+          join(root, 'scripts/probe_cef_identity.py'),
+          '--library',
+          library,
+          '--sha256',
+          binary.sha256!,
+        ]).result,
+        binary.sha256!
+      )
     }
     validateByteMatrix(bytes)
   } catch (error) {
@@ -325,6 +355,7 @@ export async function desktopEditTrial(
     }
   }
   return {
+    engineIdentity,
     adapter: name,
     passed: setupFailure === null && result?.passed === true,
     result,

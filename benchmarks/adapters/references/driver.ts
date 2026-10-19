@@ -46,6 +46,7 @@ export async function referenceDesktopTrial(
     readonly installation: string
     readonly lockSha256: string
     readonly output: string
+    readonly idleObservationMs?: number
     readonly signal?: AbortSignal
   }
 ) {
@@ -63,6 +64,7 @@ export async function referenceDesktopTrial(
     retainedFixture: string | null = null
   let artifact: ReferenceArtifact | undefined
   let engineIdentity: CefIdentity | null = null
+  let systemWebKit: Record<string, unknown> | null = null
   let bytes: readonly ByteObservation[] = BYTE_CATEGORIES.map((category) =>
     unavailableBytes(category, 'This edit run did not collect this distribution category')
   )
@@ -191,7 +193,20 @@ export async function referenceDesktopTrial(
         )
       },
     }
-    result = await runDesktopEdits(adapter, options.signal ? { signal: options.signal } : {})
+    result = await runDesktopEdits(adapter, {
+      ...(options.signal ? { signal: options.signal } : {}),
+      ...(options.idleObservationMs === undefined
+        ? {}
+        : { idleObservationMs: options.idleObservationMs }),
+    })
+    if (artifact && name === 'butter' && process.platform === 'darwin') {
+      const observation = await command('webkit-identity', [
+        process.env['PYTHON'] ?? 'python3',
+        join(root, 'scripts/webkit_identity.py'),
+      ]).result
+      if (observation.exitCode !== 0) throw new Error('Installed WebKit identification failed')
+      systemWebKit = JSON.parse(observation.stdoutTail.at(-1)!) as Record<string, unknown>
+    }
     if (artifact) {
       const description =
         'Actual ' +
@@ -259,6 +274,7 @@ export async function referenceDesktopTrial(
     referenceSource: spec.sourceCommit,
     runClass: 'local-smoke',
     engineIdentity,
+    systemWebKit,
     processSandbox: 'unverified',
     passed: failure === null && result?.passed === true,
     result,
