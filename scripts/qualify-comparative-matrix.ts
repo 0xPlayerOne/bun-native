@@ -6,6 +6,7 @@ import { desktopEditTrial } from '../benchmarks/adapters/desktop-edit/driver.ts'
 import { referenceDesktopTrial } from '../benchmarks/adapters/references/driver.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 import { schedule } from '../benchmarks/lib/statistics.ts'
+import { referenceTrialComplete } from '../benchmarks/lib/reference-completion.ts'
 const root = resolve(import.meta.dir, '..'),
   python = process.env['PYTHON'] ?? 'python3'
 const adapters = ['electron', 'electrobun', 'mirin', 'butter'] as const
@@ -120,7 +121,7 @@ for (const warmup of [true, false])
   }
 report.passed =
   trials.length === adapters.length * (repetitions + warmups) &&
-  trials.every((t) => (t['result'] as { passed?: boolean } | undefined)?.passed === true)
+  trials.every(referenceTrialComplete)
 Object.assign(report, { sourceAfter: sourceIdentity(root) })
 await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n', {
   mode: 0o600,
