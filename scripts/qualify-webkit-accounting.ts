@@ -22,6 +22,7 @@ const root = resolve(import.meta.dir, '..')
 const python = process.env['PYTHON'] ?? 'python3'
 const templates = join(root, 'benchmarks/fixtures/desktop-edit')
 const repetitions = Number(process.argv[2] ?? 3)
+if (Bun.version !== '1.4.3') throw new Error('Use the pinned Bun 1.4.3 for this profile')
 if (process.platform !== 'darwin' || process.arch !== 'arm64')
   throw new Error('This qualified wrapper profile requires macOS arm64')
 if (
@@ -38,6 +39,8 @@ const sourceBefore = sourceIdentity(root)
 const trials: Record<string, unknown>[] = []
 const report = {
   schema: 1,
+  createdAt: new Date().toISOString(),
+  driverBun: Bun.version,
   profile: 'butter-source-helper-primed+launchservices-wrapper+local-adhoc',
   runClass: 'local-smoke',
   sourceBefore,
@@ -194,6 +197,28 @@ async function run(trial: number, warmup: boolean) {
       }),
     ])
     row['workbench'] = ready.workbench
+    row['hostRuntime'] = {
+      framework: ready.host.framework,
+      frameworkVersion: ready.host.frameworkVersion,
+      runtimeVersion: ready.host.runtimeVersion,
+      reportedSandbox: ready.host.sandbox,
+    }
+    const webkit = await command(
+      'system-webkit-identity',
+      [python, join(root, 'scripts/webkit_identity.py')],
+      root
+    )
+    const nativeIdentities = webkit.stdoutTail
+      .map((line) => {
+        try {
+          return JSON.parse(line)
+        } catch {
+          return null
+        }
+      })
+      .filter((value) => value?.provider === 'system-webkit-framework-plist')
+    assert.equal(nativeIdentities.length, 1)
+    row['systemWebKit'] = nativeIdentities[0]
     registered = observedCommand(
       [
         python,
