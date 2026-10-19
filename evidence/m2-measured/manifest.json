@@ -195,6 +195,24 @@
       "redactedSha256": "eb0a0958f58864e8208baeed11361b815f33ccab0eaf0d6d6f14ec53430ac1cd",
       "storedSha256": "b6c3a168848fbf5f66b167dcbcda447071819411b0cee49abdad5cafb7801651",
       "classification": "fresh-isolated-frozen-preparation-on-same-machine"
+    },
+    {
+      "name": "reproduce-mirin-app",
+      "file": "reproduce-mirin-app.json.gz",
+      "originalSha256": "cb1685e2c808c96f8571a139e8928ca57153edd41d93d8dc0cf3299092cac8f3",
+      "redactedSha256": "593f48abf8a294e777bf6720852c17e2998954423a0b0e5d6b966eb9393023df",
+      "storedSha256": "f9f8d7035348cf4500e90b2c0cb7ddf7aaa260b675942ccfa9dd87db542af88d",
+      "classification": "actual fresh-isolated-install desktop replay on same physical Mac",
+      "executionSourceCommit": "3d4f1bb862f16820897dc946a4154cb4c54cbca3"
+    },
+    {
+      "name": "reproduce-butter-app",
+      "file": "reproduce-butter-app.json.gz",
+      "originalSha256": "f58b24fc743d1888a45a1428d98fb20495c9c258cb9487885ed8a767ac5fe80a",
+      "redactedSha256": "db71ac813248d44351b03e1cdfeadc63696eeda44902549e4ed862818c02c521",
+      "storedSha256": "b41ad54ebb25487f8dc46f77d2256360f43c111744f6bfb07b0bcec69c74fbf1",
+      "classification": "actual fresh-isolated-install desktop replay on same physical Mac",
+      "executionSourceCommit": "3d4f1bb862f16820897dc946a4154cb4c54cbca3"
     }
   ],
   "redaction": "Home/checkout paths replaced; per-launch 48-hex values mapped deterministically; metrics, result classes, source and artifact hashes unchanged",

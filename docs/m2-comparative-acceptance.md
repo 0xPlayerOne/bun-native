@@ -186,3 +186,7 @@ No Actions dispatch/retry, billing change, global toolchain change, production c
 No new Bunly Rust/CEF build, Windows/Linux run, Developer ID signing, notarization,
 physical-display latency measurement, or dedicated quiet-hardware calibration is
 inferred from these checks.
+
+### Fresh-environment replay
+
+Both new frozen installations were also used to execute their complete five-step desktop edit sequences. Mirin and the explicitly source/helper-primed Butter profile passed again from clean commit `3d4f1bb862f16820897dc946a4154cb4c54cbca3`. Their raw command/application reports are retained as `reproduce-mirin-app` and `reproduce-butter-app`. This is a second isolated installation on the same physical Mac, not a claim of a second hardware/platform qualification.
