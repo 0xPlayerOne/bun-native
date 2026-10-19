@@ -2,6 +2,7 @@
 
 **Scope:** Closeout after merged PR #76. M1 is closed; #8, #10 and #11 are closed. #9 is the remaining M2 issue.
 **Classification:** Executable accounting qualification. Not a controlled performance ranking or production release approval.
+**Current disposition:** See [M2 completion](m2-completion.md) for the subsequent owner-approved signing exclusion and measurement-infrastructure closeout. The historical prerequisite failures below remain unchanged and are not performance passes.
 
 ## OS-owned WebKit processes
 
