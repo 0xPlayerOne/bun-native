@@ -314,7 +314,22 @@ if __name__ == "__main__":
         from macos_sandbox import presence
 
         sandbox_reader = presence
-    result = observe(command, options.timeout, stop_event=stop_event, sandbox_reader=sandbox_reader)
+    counter_reader = None
+    if os.getenv("BUNLY_KERNEL_COUNTERS") == "1":
+        from kernel_counters import sample_counters
+
+        counter_reader = sample_counters
+    result = observe(
+        command,
+        options.timeout,
+        stop_event=stop_event,
+        sandbox_reader=sandbox_reader,
+        counter_reader=counter_reader,
+    )
+    if counter_reader is not None:
+        from kernel_counters import summarize_counters
+
+        result["kernelMeasurements"] = summarize_counters(result["samples"])
     if options.observation_id is not None:
         result["observationId"] = options.observation_id
     destination = Path(options.output)

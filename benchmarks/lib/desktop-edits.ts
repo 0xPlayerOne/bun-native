@@ -100,10 +100,21 @@ export function desktopExitFailure(report: CommandObservation): Error {
 /** Every started command is reaped before a replacement or fixture cleanup. */
 export async function runDesktopEdits(
   adapter: DesktopEditAdapter,
-  options: { readonly readinessTimeoutMs?: number; readonly signal?: AbortSignal } = {}
+  options: {
+    readonly readinessTimeoutMs?: number
+    readonly signal?: AbortSignal
+    readonly idleObservationMs?: number
+  } = {}
 ): Promise<DesktopEditResult> {
   if (adapter.kind === 'desktop' && !adapter.workbenchAssets)
     throw new Error('Desktop qualification requires the shared workbench')
+  if (
+    options.idleObservationMs !== undefined &&
+    (!Number.isSafeInteger(options.idleObservationMs) ||
+      options.idleObservationMs < 250 ||
+      options.idleObservationMs > 10000)
+  )
+    throw new Error('Invalid idle interval')
   const steps: DesktopStep[] = [],
     cleanupFailures: string[] = []
   let active:
@@ -178,7 +189,14 @@ export async function runDesktopEdits(
         timings['buildAndReapMs'] = performance.now() - t
       } else if (name === 'initial-launch') {
         last = await launch('initial')
+        timings['launchToRendererMs'] = performance.now() - start
         observations.push(last)
+        if (options.idleObservationMs !== undefined) {
+          active!.probe.requestIdle(options.idleObservationMs)
+          await Bun.sleep(options.idleObservationMs + 1700)
+          options.signal?.throwIfAborted()
+          timings['requestedIdleMs'] = options.idleObservationMs
+        }
       } else {
         const revision =
           name === 'backend-edit' ? 'edited' : name === 'failed-edit' ? 'broken' : 'repaired'
