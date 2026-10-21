@@ -2,8 +2,8 @@
 
 Explicit functional qualification without changing shipping deadlines or sandbox policy.
 
-**Scope:** M3 #13 Windows and #14 Linux after merged #80.
-**Status:** Linux #14 has completed the declared Debian 12 / X11 functional acceptance below. Windows #13 remains open pending actual native execution; cross-compilation is not acceptance.
+**Scope:** M3 #13 Windows and #14 Linux; historical qualification and hosted closeout.
+**Status:** Declared Windows and Linux native functional acceptance is supplied. The hosted completion below supersedes the historical Windows setup blocker; cross-compilation alone is not acceptance.
 
 ## Deadline profiles
 
@@ -49,10 +49,10 @@ startup pass, a native-hardware performance result, a physical input/DPI test,
 or proof of hardware GPU acceleration. Preserve failed standard-profile results
 and initial prerequisite failures alongside any later qualified executions.
 
-All work uses private benchmark VMs and contributor-built native artifacts.
+Earlier bring-up used private benchmark VMs and contributor-built artifacts.
+The hosted completion below now supplies disposable native cloud execution.
 Consumers run prebuilt executables and bundled Bun; they never compile Rust as
-part of the smoke script. No hosted Actions job is dispatched and the billing
-pause remains in effect.
+part of the smoke script. Automatic CI remains paused; manual dispatch is explicit.
 
 ## Executed Linux closeout
 
@@ -134,7 +134,7 @@ hardware-input or acceleration qualification. Required native libraries, X11,
 user namespaces and available Chromium sandbox support are prerequisites rather
 than capabilities to disable after a failure.
 
-## Remaining Windows boundary
+## Historical Windows boundary before hosted execution
 
 The Windows x64 contributor-built bootstrap, application DLL, pinned CEF and Bun
 artifacts, strict token/job observer, and executable platform runners exist.
@@ -148,7 +148,7 @@ No Linux result, portable test, or Windows cross-compilation closes that gap.
 M3 therefore remains open with Windows as its only outstanding platform issue
 once the Linux closeout lands.
 
-## Closeout validation
+## Historical Linux closeout validation
 
 The complete macOS checkout passes `bun run check` with **465 tests and 6,588
 assertions across 52 files**, browser-only typechecking, compiler-free SDK builds,
@@ -164,3 +164,42 @@ configuration was changed by the evidence closeout. The fault-fixture and replay
 changes in PR #82 are contributor testing code, not additional application-runtime
 payloads. #14 can close on merge of that tested implementation and evidence;
 #13 and the M3 milestone must remain open.
+
+## Hosted completion — October 21, 2026
+
+The manual workflow in [cloud qualification](manual-native-qualification.md) was
+executed on all three standard hosted platforms. Windows run `39660076479`
+completed from clean source `307d511e7df820abb6493e67de93aa80a890f54b` on
+`windows-2022` x64. Its native acceptance ran under a temporary **standard user**,
+not the administrative build account. No local VM, manual password entry, or
+sandbox downgrade was required.
+
+Windows passed all ten prebuilt positive/rejection cases, 100 native lifecycle
+cycles, real development-origin isolation with zero forbidden requests, and all
+four backend/renderer/GPU failure cases. Positive launches used a compiler-free
+PATH and an unrelated Unicode/space-containing installation path. Read-only
+observations record low-integrity restricted/AppContainer tokens and job
+membership for isolated renderer, GPU and utility processes; this is sampled
+isolation evidence, not continuous attestation of every subprocess.
+
+The exact exported native identity is CEF 154.0.34 / Chromium 154.0.8037.98,
+commit 3633, with bundled Bun 1.4.3. Successful exits have no timeouts, surviving
+orphans or forced backend exit being accepted as success. These runs use the
+**standard** deadlines, not the emulated-functional extension.
+
+`evidence/m3-windows` permanently retains the five raw report collections,
+content hashes, exact execution-source identities and reproducible acceptance
+summary. Replay with `python scripts/report_m3_platform.py evidence/m3-windows`.
+The hosted run/artifact IDs and successful macOS/Linux runs are indexed in
+`evidence/m3-hosted-runs.json`. Initial portable-test failures remain linked there;
+their fixes correct platform-specific test assumptions, not production policies.
+
+The declared Windows profile is the hosted Windows Server 2022 x64 environment.
+Window resize/focus APIs and lifecycle are qualified; physical keyboard/IME,
+monitor/DPI transitions, accessibility, hardware acceleration and desktop-client
+release conformance remain #38/#43 work. These limitations match the scope of
+initial M3 platform bring-up rather than certifying all Windows installations.
+
+This implementation/evidence closes #13 on merge. M3 then has no open issues;
+see [M3 completion](m3-completion.md). Automatic CI remains paused, while explicit
+manual runs now operate independently. No local container was restarted.

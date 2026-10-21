@@ -252,6 +252,16 @@ class PlatformEvidenceTests(unittest.TestCase):
         directory = Path(__file__).resolve().parents[1] / "evidence/m3-linux"
         self.assertEqual(verify(directory), json.loads((directory / "summary.json").read_text()))
 
+    def test_preserved_windows_reports_reproduce_the_declared_summary(self):
+        # Replays real hosted Windows results; never substitutes for executing Windows.
+        directory = Path(__file__).resolve().parents[1] / "evidence/m3-windows"
+        result = verify(directory)
+        self.assertEqual(result, json.loads((directory / "summary.json").read_text()))
+        self.assertEqual(result["deadlineProfile"], "standard")
+        self.assertEqual(result["prebuiltTrials"], 10)
+        self.assertEqual(result["faultCases"], 4)
+        self.assertFalse(result["performanceQualified"])
+
 
 if __name__ == "__main__":
     unittest.main()

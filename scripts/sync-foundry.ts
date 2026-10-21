@@ -6,6 +6,8 @@ import { resolve } from 'node:path'
 export const BILLING_GUARD = "vars.CI_BILLING_PAUSED != 'true'"
 /** While the checked-in pause is enabled, only an explicit remote false can run jobs. */
 export const PAUSED_BILLING_GUARD = "vars.CI_BILLING_PAUSED == 'false'"
+/** Explicit maintainer dispatch is independent of the automatic-CI budget switch. */
+export const MANUAL_DISPATCH_GUARD = "github.event_name == 'workflow_dispatch'"
 
 function record(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -37,13 +39,22 @@ function hasTopLevelOr(expression: string): boolean {
 
 /** Preserve authored job steps and predicates; fail rather than rewrite an unknown layout. */
 export function guardWorkflow(source: string, paused = false): string {
-  const jobs = record(record(Bun.YAML.parse(source))['jobs'])
+  const workflow = record(Bun.YAML.parse(source))
+  const jobs = record(workflow['jobs'])
   const desired = paused ? PAUSED_BILLING_GUARD : BILLING_GUARD
   let result = source
   for (const [name, raw] of Object.entries(jobs)) {
     if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) throw new Error('Unsupported job name')
     const job = record(raw)
     const condition = job['if']
+    if (condition === MANUAL_DISPATCH_GUARD) {
+      const triggers = record(workflow['on'])
+      if (!Object.hasOwn(triggers, 'workflow_dispatch'))
+        throw new Error('Manual job requires an explicit workflow_dispatch trigger')
+      // This exact predicate cannot run on PR, push, schedule, or workflow_call.
+      // Do not accept OR expressions or weaken the ordinary billing guard.
+      continue
+    }
     const heading = `  ${name}:\n`
     if (result.split(heading).length !== 2) throw new Error(`Cannot locate unambiguous job ${name}`)
     if (condition === undefined) {

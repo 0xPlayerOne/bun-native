@@ -6,6 +6,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import psutil
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from registered_app import verify
 from summarize_runtime_observation import summarize
@@ -41,7 +43,9 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(result["counterResets"], 1)
 
     def test_real_process_executable_match(self):
-        process, created = verify(os.getpid(), sys.executable)
+        # macOS framework Python may exec a binary distinct from its launcher.
+        # Keep the production exact-path check; use the actual OS executable here.
+        process, created = verify(os.getpid(), psutil.Process().exe())
         self.assertEqual(process.pid, os.getpid())
         self.assertGreater(created, 0)
         with self.assertRaises(ValueError):

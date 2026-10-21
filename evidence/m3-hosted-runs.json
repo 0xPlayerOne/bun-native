@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "scope": "standard-hosted-functional-not-performance",
+  "runs": [
+    {
+      "runId": 39659641250,
+      "artifactId": 12373052457,
+      "artifactDigest": "sha256:586b92e8eeaaba08c6c65497baf838dc691414657f833c28004bd1bf94277f7b",
+      "sourceCommit": "1dea25122ea1e1a9f5db827440232c215adf6ec1",
+      "target": "linux-x64",
+      "suite": "full",
+      "passed": true,
+      "steps": [
+        {
+          "name": "prebuilt",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "development",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "faults",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "prebuiltTrials": 12,
+      "faultCases": 4
+    },
+    {
+      "runId": 39660081412,
+      "artifactId": 12372978315,
+      "artifactDigest": "sha256:744368a4829f74b0885ce94dc1818446f0b51bebc213d3984ca078d3a5901360",
+      "sourceCommit": "307d511e7df820abb6493e67de93aa80a890f54b",
+      "target": "darwin-arm64",
+      "suite": "full",
+      "passed": true,
+      "steps": [
+        {
+          "name": "prebuilt",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "development",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "faults",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "prebuiltTrials": 11,
+      "faultCases": 4
+    },
+    {
+      "runId": 39660076479,
+      "artifactId": 12374610580,
+      "artifactDigest": "sha256:7de5ec10714b146d374668779c7857101bcd800595fa7a93f975a156ab185f8b",
+      "sourceCommit": "307d511e7df820abb6493e67de93aa80a890f54b",
+      "target": "win32-x64",
+      "suite": "full",
+      "passed": true,
+      "steps": [
+        {
+          "name": "prebuilt",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "development",
+          "exitCode": 0,
+          "passed": true
+        },
+        {
+          "name": "faults",
+          "exitCode": 0,
+          "passed": true
+        }
+      ],
+      "prebuiltTrials": 10,
+      "faultCases": 4
+    }
+  ],
+  "retainedInitialFailures": [
+    {
+      "runId": 39659474976,
+      "platform": "windows",
+      "phase": "portable-python",
+      "reason": "Unix-only symlink fixture and newline expectation; fixed in 307d511"
+    },
+    {
+      "runId": 39659645607,
+      "platform": "macos",
+      "phase": "portable-python",
+      "reason": "Framework Python launcher differs from actual process executable; fixture fixed in 307d511"
+    }
+  ]
+}
