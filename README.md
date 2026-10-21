@@ -82,6 +82,8 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 
 ## Roadmap and evidence
 
+The [M3 native acceptance report](docs/m3-runtime-acceptance.md) records the actual macOS CEF, packaged-origin, resource-lifecycle and full-runtime acquisition qualification, with Windows/Linux native acceptance explicitly separate.
+
 [Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
 [M1/M2 implementation notes](docs/m1-m2-progress.md)

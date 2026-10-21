@@ -15,6 +15,7 @@ library is entered by CEF's supplied sandbox bootstrap through RunWinMain.
 Direct unsandboxed Windows execution is rejected. CEF Views supplies native
 window/view composition; no Tauri application framework is involved.
 
-The contributor pipeline initially resolves its dependency lock for inspection.
-Production artifact trust and final portability acceptance are not established
-by merely compiling this crate. See the PR validation evidence.
+The independent Cargo lock is committed and contributor checks use Rust 1.91.0.
+Production artifact trust and portability are not established by compilation alone.
+See ../../docs/m3-runtime-acceptance.md for acquisition, shutdown, origin policy,
+platform boundaries and executable qualification commands.
