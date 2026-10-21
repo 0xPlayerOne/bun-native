@@ -227,9 +227,11 @@ pub fn start() -> Result<(), String> {
     let startup = thread::spawn(|| {
         if let Some((lock, wake)) = HANDSHAKE.get() {
             let (ready, timeout) = wake
-                .wait_timeout_while(lock.lock().unwrap(), Duration::from_secs(10), |ready| {
-                    !*ready && !STOPPING.load(Ordering::SeqCst)
-                })
+                .wait_timeout_while(
+                    lock.lock().unwrap(),
+                    crate::deadlines::current().startup(),
+                    |ready| !*ready && !STOPPING.load(Ordering::SeqCst),
+                )
                 .unwrap();
             if timeout.timed_out() && !*ready && !expected_exit() {
                 crate::host::fail("Bun startup handshake deadline exceeded");
@@ -239,7 +241,9 @@ pub fn start() -> Result<(), String> {
     THREADS
         .set(Mutex::new(vec![writer, reader, startup, supervisor]))
         .map_err(|_| "thread owners already initialized")?;
-    emit(json!({"v":1,"event":"ready","abi":1,"cef":"154.0.34","host":"native-owner-bun-process"}));
+    emit(
+        json!({"v":1,"event":"ready","abi":1,"cef":"154.0.34","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms()}}),
+    );
     Ok(())
 }
 pub fn stop() {
@@ -255,7 +259,7 @@ pub fn stop() {
     }
     if let Some(child) = CHILD.get() {
         if let Ok(mut child) = child.lock() {
-            let end = Instant::now() + Duration::from_secs(2);
+            let end = Instant::now() + crate::deadlines::current().backend_exit();
             let mut exited = false;
             #[cfg(unix)]
             let mut identity_reserved = true;

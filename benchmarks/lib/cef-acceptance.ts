@@ -13,7 +13,10 @@ export function nativeEvents(report: CommandObservation): Record<string, unknown
   }
   return result
 }
-export function acceptNativeSmoke(report: CommandObservation): void {
+export function acceptNativeSmoke(
+  report: CommandObservation,
+  expectedProfile?: 'standard' | 'emulated-functional'
+): void {
   assertCleanCommand(report)
   const events = nativeEvents(report)
   const smoke = events.filter((event) => event['event'] === 'bunly.native.smoke')
@@ -33,6 +36,8 @@ export function acceptNativeSmoke(report: CommandObservation): void {
     diagnostics['sessions'] !== 1
   )
     throw new Error('Native resource counts did not converge')
+  if (expectedProfile !== undefined && diagnostics['deadlineProfile'] !== expectedProfile)
+    throw new Error('Native runtime did not attest the declared deadline profile')
   if (
     !events.some(
       (event) =>

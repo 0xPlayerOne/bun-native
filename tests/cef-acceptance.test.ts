@@ -76,3 +76,20 @@ test('startup rejection must be the intended native error, not any crash', () =>
   expect(() => acceptNativeRejection(report, 'Missing helper')).toThrow()
   expect(() => acceptNativeRejection({ ...report, exitCode: -9 }, 'Unsafe command-line')).toThrow()
 })
+
+test('native qualification cannot relabel a standard or unreported deadline profile', () => {
+  expect(() => acceptNativeSmoke(clean(), 'emulated-functional')).toThrow('deadline profile')
+  const report = clean()
+  const smoke = JSON.parse(report.stderr[0]!)
+  smoke.diagnostics.deadlineProfile = 'standard'
+  const standard = { ...report, stderr: [JSON.stringify(smoke), ...report.stderr.slice(1)] }
+  expect(() => acceptNativeSmoke(standard, 'standard')).not.toThrow()
+  expect(() => acceptNativeSmoke(standard, 'emulated-functional')).toThrow('deadline profile')
+  smoke.diagnostics.deadlineProfile = 'emulated-functional'
+  expect(() =>
+    acceptNativeSmoke(
+      { ...report, stderr: [JSON.stringify(smoke), ...report.stderr.slice(1)] },
+      'emulated-functional'
+    )
+  ).not.toThrow()
+})

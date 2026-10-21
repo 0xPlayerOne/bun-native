@@ -2,6 +2,7 @@
 use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
+mod deadlines;
 mod handshake;
 pub mod host;
 #[cfg(target_os = "macos")]
@@ -21,6 +22,7 @@ pub struct Paths {
     pub bun: PathBuf,
     pub entry: PathBuf,
     pub dev_origin: Option<String>,
+    pub(crate) deadlines: deadlines::DeadlineProfile,
 }
 pub static PATHS: OnceLock<Paths> = OnceLock::new();
 #[derive(Deserialize)]
@@ -32,6 +34,8 @@ struct Config {
     cef_version: String,
     #[serde(default)]
     development_origin: Option<String>,
+    #[serde(default)]
+    qualification_profile: deadlines::DeadlineProfile,
 }
 pub fn browser_app() -> App {
     host::BunlyApp::new()
@@ -199,8 +203,13 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
             bun,
             entry,
             dev_origin,
+            deadlines: config.qualification_profile,
         })
         .map_err(|_| "Host cannot be initialized twice")?;
+    eprintln!(
+        "{}",
+        serde_json::json!({"event":"bunly.runtime.profile", "profile":config.qualification_profile.name(), "startupTimeoutMs":config.qualification_profile.startup().as_millis(), "requestTimeoutMs":config.qualification_profile.requests_ms()})
+    );
     #[cfg(target_os = "macos")]
     let _keychain_policy = keychain::NonInteractiveKeychain::enter()?;
     #[cfg(target_os = "macos")]
