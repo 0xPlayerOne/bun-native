@@ -1,4 +1,4 @@
-"""Synthetic parser tests only; successful tests do not establish OS execution."""
+"""Parser tests and replay of preserved native evidence; no browser execution in this suite."""
 
 import copy
 import json
@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from report_m3_platform import FAULTS, POSITIVES, REJECTIONS, isolation, validate
+from report_m3_platform import FAULTS, POSITIVES, REJECTIONS, isolation, validate, verify
 
 
 def process(code, records):
@@ -229,6 +229,28 @@ class PlatformEvidenceTests(unittest.TestCase):
         report["development"]["deniedRequests"] = 1
         with self.assertRaises(ValueError):
             validate("linux-x64", "emulated-functional", report)
+
+    def test_gpu_recovery_requires_actual_injection_acknowledgement(self):
+        report = fixture()
+        trial = next(t for t in report["faults"]["trials"] if t["mode"] == "gpu-exit")
+        trial["observation"]["stderr"] = [
+            line
+            for line in trial["observation"]["stderr"]
+            if "bunly.native.gpu-injection-acknowledged" not in line
+        ]
+        with self.assertRaisesRegex(ValueError, "actual GPU injection"):
+            validate("linux-x64", "emulated-functional", report)
+
+    def test_wrong_native_engine_version_cannot_inherit_passing_results(self):
+        report = fixture()
+        report["identity"]["chromiumVersion"] = "154.0.0.0"
+        with self.assertRaisesRegex(ValueError, "actual CEF identity"):
+            validate("linux-x64", "emulated-functional", report)
+
+    def test_preserved_linux_reports_reproduce_the_declared_summary(self):
+        # Replays real historical records; this test does not launch a browser.
+        directory = Path(__file__).resolve().parents[1] / "evidence/m3-linux"
+        self.assertEqual(verify(directory), json.loads((directory / "summary.json").read_text()))
 
 
 if __name__ == "__main__":
