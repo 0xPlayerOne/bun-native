@@ -1,11 +1,18 @@
 // AppKit protocol integration adapted from cef-rs cefsimple at
 // 163744c8286d5f593d89202c7807751a7898db28. See provenance/cef-host.md.
 use cef::application_mac::{CefAppProtocol, CrAppControlProtocol, CrAppProtocol};
-use objc2::{define_class, extern_methods, msg_send, DefinedClass, MainThreadMarker, rc::Retained, runtime::{AnyObject, Bool}};
+use objc2::{
+    define_class, extern_methods, msg_send,
+    rc::Retained,
+    runtime::{AnyObject, Bool},
+    DefinedClass, MainThreadMarker,
+};
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSEvent};
 use std::cell::Cell;
 #[derive(Default)]
-pub struct AppIvars { handling: Cell<Bool> }
+pub struct AppIvars {
+    handling: Cell<Bool>,
+}
 define_class!(
     #[unsafe(super(NSApplication))]
     #[ivars = AppIvars]
@@ -31,7 +38,10 @@ define_class!(
     unsafe impl CefAppProtocol for BunlyApplication {}
 );
 impl BunlyApplication {
-    extern_methods!(#[unsafe(method(sharedApplication))] fn shared_application() -> Retained<Self>;);
+    extern_methods!(
+        #[unsafe(method(sharedApplication))]
+        fn shared_application() -> Retained<Self>;
+    );
 }
 pub fn setup() -> Retained<BunlyApplication> {
     let _main = MainThreadMarker::new().expect("AppKit must run on OS main thread");

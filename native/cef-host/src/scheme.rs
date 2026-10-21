@@ -13,13 +13,13 @@ pub fn load(root: PathBuf) -> Result<(), String> {
 }
 pub fn register(registrar: Option<&mut SchemeRegistrar>) {
     if let Some(r) = registrar {
-        r.add_custom_scheme(
-            Some(&CefString::from("app")),
-            (SchemeOptions::STANDARD.get_raw()
-                | SchemeOptions::SECURE.get_raw()
-                | SchemeOptions::CORS_ENABLED.get_raw()
-                | SchemeOptions::FETCH_ENABLED.get_raw()) as i32,
-        );
+        let options = SchemeOptions::STANDARD.get_raw()
+            | SchemeOptions::SECURE.get_raw()
+            | SchemeOptions::CORS_ENABLED.get_raw()
+            | SchemeOptions::FETCH_ENABLED.get_raw();
+        #[cfg(not(target_os = "windows"))]
+        let options = options as i32;
+        r.add_custom_scheme(Some(&CefString::from("app")), options);
     }
 }
 pub fn attach(context: &RequestContext) {

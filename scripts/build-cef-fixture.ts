@@ -1,21 +1,117 @@
-import { cp, mkdir, readFile, readdir, writeFile, copyFile, chmod } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { join, resolve } from 'node:path';
-const root = resolve(import.meta.dir, '..');
-const resources = join(root, 'native/cef-host/resources');
-await mkdir(join(resources, 'backend'), { recursive: true });
-await cp(join(root, 'examples/cef/public'), join(resources, 'public'), { recursive: true });
-for (const [entry, name] of [['scripts/cef-bootstrap.ts', 'main.js'], ['examples/cef/main.ts', 'application.js']] as const) {
-  const result = await Bun.build({ entrypoints: [join(root, entry)], outdir: join(resources, 'backend'), naming: name, target: 'bun', format: 'esm', minify: false });
-  if (!result.success) throw new Error(`CEF application build failed: ${result.logs.join('\n')}`);
+/** Application bundling only. CEF/native artifacts are built separately by contributors. */
+import {
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+  copyFile,
+  chmod,
+  lstat,
+  mkdtemp,
+  rename,
+  rm,
+} from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { join, resolve } from 'node:path'
+const root = resolve(import.meta.dir, '..'),
+  parent = join(root, 'native/cef-host')
+const resources = join(parent, 'resources')
+const args = process.argv.slice(2)
+if (args.some((a) => !a.startsWith('--dev-origin=')) || args.length > 1)
+  throw new Error('Only --dev-origin=http://127.0.0.1:PORT is supported')
+const developmentOrigin = args[0]?.slice('--dev-origin='.length)
+if (developmentOrigin !== undefined) {
+  const url = new URL(developmentOrigin)
+  if (
+    url.protocol !== 'http:' ||
+    url.hostname !== '127.0.0.1' ||
+    !url.port ||
+    url.origin !== developmentOrigin
+  )
+    throw new Error('Development origin must be an exact explicit loopback origin')
 }
-const bun = join(resources, process.platform === 'win32' ? 'bun.exe' : 'bun');
-await copyFile(process.execPath, bun); if (process.platform !== 'win32') await chmod(bun, 0o755);
-const files: Record<string, { bytes: number; sha256: string }> = {};
-for (const path of (await readdir(join(resources, 'public'))).sort()) {
-  if (path === 'assets.json') continue;
-  const data = await readFile(join(resources, 'public', path)); files[path] = { bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') };
+const stage = await mkdtemp(join(parent, '.resources-stage-'))
+try {
+  await mkdir(join(stage, 'backend'))
+  await cp(join(root, 'examples/cef/public'), join(stage, 'public'), {
+    recursive: true,
+    dereference: false,
+  })
+  for (const [entry, name] of [
+    ['scripts/cef-bootstrap.ts', 'main.js'],
+    ['examples/cef/main.ts', 'application.js'],
+  ] as const) {
+    const result = await Bun.build({
+      entrypoints: [join(root, entry)],
+      outdir: join(stage, 'backend'),
+      naming: name,
+      target: 'bun',
+      format: 'esm',
+      minify: false,
+    })
+    if (!result.success) throw new Error(`CEF application build failed: ${result.logs.join('\n')}`)
+  }
+  const bun = join(stage, process.platform === 'win32' ? 'bun.exe' : 'bun')
+  await copyFile(process.execPath, bun)
+  if (process.platform !== 'win32') await chmod(bun, 0o755)
+  const files: Record<string, { bytes: number; sha256: string }> = {}
+  async function inventory(prefix = '') {
+    for (const name of (await readdir(join(stage, 'public', prefix))).sort()) {
+      const path = prefix ? prefix + '/' + name : name,
+        full = join(stage, 'public', path),
+        stat = await lstat(full)
+      if (stat.isSymbolicLink()) throw new Error('Public asset symlinks are not permitted')
+      if (stat.isDirectory()) {
+        await inventory(path)
+        continue
+      }
+      if (path === 'assets.json' || !stat.isFile())
+        throw new Error('Reserved or nonregular public input')
+      const bytes = await readFile(full)
+      files[path] = {
+        bytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      }
+    }
+  }
+  await inventory()
+  await writeFile(join(stage, 'public/assets.json'), JSON.stringify(files, null, 2) + '\n')
+  await writeFile(
+    join(stage, 'runtime.json'),
+    JSON.stringify({
+      schema: 1,
+      protocol: 1,
+      bun_version: Bun.version,
+      cef_version: '154.0.34',
+      ...(developmentOrigin ? { development_origin: developmentOrigin } : {}),
+    }) + '\n'
+  )
+  // Only this generated tree is replaced, so deleted sources cannot survive a rebuild.
+  const old = resources + '.previous-' + crypto.randomUUID()
+  let previous = false
+  try {
+    await rename(resources, old)
+    previous = true
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+  }
+  try {
+    await rename(stage, resources)
+  } catch (e) {
+    if (previous) await rename(old, resources)
+    throw e
+  }
+  if (previous) await rm(old, { recursive: true })
+  console.log(
+    JSON.stringify({
+      resources,
+      nativeCompilation: false,
+      bun: Bun.version,
+      developmentOrigin: developmentOrigin ?? null,
+      publicAssets: Object.keys(files),
+    })
+  )
+} finally {
+  await rm(stage, { recursive: true, force: true })
 }
-await writeFile(join(resources, 'public/assets.json'), JSON.stringify(files, null, 2) + '\n');
-await writeFile(join(resources, 'runtime.json'), JSON.stringify({ schema: 1, protocol: 1, bun_version: Bun.version, cef_version: '154.0.34' }) + '\n');
-console.log(JSON.stringify({ resources, nativeCompilation: false, bun: Bun.version, publicAssets: Object.keys(files) }));
