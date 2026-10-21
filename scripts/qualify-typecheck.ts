@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, realpathSync } from 'node:fs'
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
-import { join, relative, resolve, sep } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 
 const root = resolve(import.meta.dir, '..')
@@ -87,12 +87,34 @@ try {
       output
         .split(/\r?\n/)
         .map((path) => path.trim())
-        .filter((path) => path.startsWith(root + sep) && !path.includes(sep + 'node_modules' + sep))
-        .map((path) => relative(root, path).split(sep).join('/'))
+        .filter((path) => isAbsolute(path) && existsSync(path))
+        // TypeScript emits forward slashes even when Windows' cwd uses backslashes.
+        // Resolve actual files before containment checks; never compare path prefixes.
+        .map((path) => relative(realpathSync(root), realpathSync(path)).split(sep))
+        .filter(
+          (parts) =>
+            parts.length > 0 &&
+            parts[0] !== '..' &&
+            !isAbsolute(parts.join(sep)) &&
+            !parts.includes('node_modules')
+        )
+        .map((parts) => parts.join('/'))
         .sort()
     const expected = sources(tsc.output)
     assert.ok(expected.length, 'Empty reference source set')
     assert.deepEqual(sources(native.output), expected, name + ': source coverage differs')
+    if (process.platform === 'win32') {
+      assert.deepEqual(
+        sources(tsc.output.replaceAll('\\', '/')),
+        expected,
+        'Windows slash normalization changed coverage'
+      )
+      assert.deepEqual(
+        sources(native.output.replaceAll('\\', '/')),
+        expected,
+        'Windows native slash normalization changed coverage'
+      )
+    }
     results.push({ name: name + '-coverage', diagnostics: 0, files: expected.length })
   }
   const cases: {
