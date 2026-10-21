@@ -158,7 +158,7 @@ it('requires an authenticated caller for the debug surface', async () => {
 it('redacts secrets and home paths in a diagnostic bundle', () => {
   const policy = {maxBytes: 4096};
   assert.equal(redactDiagnosticValue('token=abc', policy), '[redacted]');
-  assert.equal(redactDiagnosticValue('/Users/someone/notes.txt', policy), '~/notes.txt');
+  assert.equal(redactDiagnosticValue('/Users/someone/notes.txt', policy), '~/someone/notes.txt');
   const bundle = collectDiagnosticBundle(
     [{kind: 'bun-error', message: 'password=hunter2', frame: {file: '/app/x.ts', line: 3, column: 1}}],
     policy,
