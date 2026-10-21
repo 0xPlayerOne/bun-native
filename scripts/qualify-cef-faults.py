@@ -4,11 +4,11 @@ import argparse
 import importlib.util
 import json
 import os
+import secrets
 import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -40,20 +40,43 @@ def signed(app):
     )
 
 
+def readiness(path, nonce, mode):
+    """A fresh private marker follows real page readiness, not a guessed startup delay."""
+    try:
+        if path.is_symlink() or path.stat().st_size > 4096:
+            return False
+        value = json.loads(path.read_text())
+        return (
+            set(value) == {"mode", "nonce", "pid"}
+            and value["nonce"] == nonce
+            and value["mode"] == mode
+            and type(value["pid"]) is int
+            and value["pid"] > 0
+        )
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", type=Path)
     parser.add_argument("--bun", required=True)
     args = parser.parse_args()
-    if sys.platform != "darwin":
-        raise SystemExit("This private native-fault execution profile requires macOS")
+    if sys.platform not in ("darwin", "linux", "win32"):
+        raise SystemExit("Unsupported native-fault platform")
+    mac = sys.platform == "darwin"
     parent = ROOT / ".bunly/m3/faults"
     parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="run-", dir=parent))
-    app = work / "Fault.app"
-    shutil.copytree(args.app.resolve(strict=True), app, symlinks=True)
-    binary = app / "Contents/MacOS/bunly_host"
-    application = app / "Contents/Resources/backend/application.js"
+    source = args.app.absolute()
+    if source.is_symlink():
+        raise ValueError("Prebuilt entry must not be a symbolic link")
+    source = source.resolve(strict=True)
+    app = work / ("Fault.app" if mac else "Fault Unicode é Ω")
+    shutil.copytree(source if mac else source.parent, app, symlinks=True)
+    binary = app / "Contents/MacOS/bunly_host" if mac else app / source.name
+    helper_root = app / "Contents/Frameworks" if mac else app
+    application = app / ("Contents/Resources" if mac else "resources") / "backend/application.js"
     result = subprocess.run(
         [
             args.bun,
@@ -70,16 +93,27 @@ def main():
     )
     if result.returncode:
         raise RuntimeError(result.stderr)
-    signed(app)
+    if mac:
+        signed(app)
     reports = []
     for mode in ("backend-exit", "backend-tree-exit", "renderer-exit", "gpu-exit"):
         os.environ["BUNLY_CEF_FAULT"] = mode
         os.environ["BUNLY_CACHE_DIR"] = str(work / (mode + "-profile"))
-        started = time.monotonic()
+        nonce = secrets.token_hex(24)
+        ready_path = work / (mode + ".ready.json")
+        os.environ["BUNLY_CEF_FAULT_READY"] = str(ready_path)
+        os.environ["BUNLY_CEF_FAULT_NONCE"] = nonce
         injected = []
         root_identity = []
 
-        def sample(pid, mode=mode, injected=injected, root_identity=root_identity, started=started):
+        def sample(
+            pid,
+            mode=mode,
+            injected=injected,
+            root_identity=root_identity,
+            ready_path=ready_path,
+            nonce=nonce,
+        ):
             try:
                 process = psutil.Process(pid)
                 if (
@@ -91,12 +125,12 @@ def main():
                     mode not in ("backend-exit", "backend-tree-exit")
                     and not injected
                     and root_identity
-                    and time.monotonic() - started > 1.5
+                    and readiness(ready_path, nonce, mode)
                 ):
                     expected = "renderer" if mode == "renderer-exit" else "gpu-process"
                     if "--type=" + expected in process.cmdline():
                         executable = Path(process.exe()).resolve()
-                        if executable.is_relative_to(app / "Contents/Frameworks"):
+                        if executable.is_relative_to(helper_root):
                             owner = psutil.Process(root_identity[0][0])
                             if owner.create_time() == root_identity[0][1] and any(
                                 child.pid == pid for child in owner.children(recursive=True)
@@ -197,7 +231,8 @@ def main():
         )
     result = {
         "schema": 1,
-        "profile": "real-macos-private-process-faults",
+        "profile": "real-native-private-process-faults",
+        "platform": sys.platform,
         "passed": all(r["passed"] for r in reports),
         "trials": reports,
     }
