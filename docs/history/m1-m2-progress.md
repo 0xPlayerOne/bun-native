@@ -1,5 +1,7 @@
 # M1/M2 continuation
 
+**Record type:** Historical checkpoint. Current status and commands are in [the documentation index](../README.md).
+
 Qualification, workbench, and evidence boundaries.
 
 **Status:** Implementation in PR #61. See the PR for the final checked commit and CI runs.

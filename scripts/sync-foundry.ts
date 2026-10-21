@@ -3,6 +3,9 @@ import { nativeHookInvocation } from './native-pre-commit.ts'
 import { access, chmod, lstat, readFile, readdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
+/** Verified release source, not a floating tag resolved during CI execution. */
+export const FOUNDRY_SOURCE = '0b5374bc59599b53e298bcf461d7727a9938b3ae'
+export const FOUNDRY_VERSION = '1.48.2'
 export const BILLING_GUARD = "vars.CI_BILLING_PAUSED != 'true'"
 /** While the checked-in pause is enabled, only an explicit remote false can run jobs. */
 export const PAUSED_BILLING_GUARD = "vars.CI_BILLING_PAUSED == 'false'"
@@ -130,8 +133,22 @@ export function dependabotDirectories(source: string): string {
 
 async function inspectGithubPaths(root: string): Promise<void> {
   const entries = await readdir(root)
-  for (const misplaced of ['.guthub', 'workflows', 'ISSUE_TEMPLATE', 'CODEOWNERS']) {
-    if (entries.includes(misplaced)) throw new Error(`Misplaced GitHub content: ${misplaced}`)
+  const misplacedNames = new Set([
+    '.guthub',
+    'workflows',
+    'issue_template',
+    'pull_request_template',
+    'codeowners',
+    'contributing.md',
+    'code_of_conduct.md',
+    'security.md',
+    'pull_request_template.md',
+  ])
+  for (const entry of entries) {
+    if (misplacedNames.has(entry.toLowerCase()))
+      throw new Error(`Misplaced GitHub content: ${entry}; consolidate under .github/`)
+    if (entry.toLowerCase() === '.github' && entry !== '.github')
+      throw new Error('Non-canonical .github directory casing')
   }
   if (!entries.includes('.github')) return
   if ((await lstat(resolve(root, '.github'))).isSymbolicLink())
@@ -148,6 +165,20 @@ async function inspectGithubPaths(root: string): Promise<void> {
     }
   }
   await visit(resolve(root, '.github'))
+  const templates = resolve(root, '.github/ISSUE_TEMPLATE')
+  const names = new Set<string>()
+  for (const file of await readdir(templates).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return []
+    throw error
+  })) {
+    if (!/\.ya?ml$/.test(file) || file === 'config.yml') continue
+    const template = record(Bun.YAML.parse(await readFile(resolve(templates, file), 'utf8')))
+    const title = template['name']
+    if (typeof title !== 'string' || !title.trim()) throw new Error('Missing issue form name')
+    const key = title.trim().toLowerCase()
+    if (names.has(key)) throw new Error(`Duplicate issue form: ${title}`)
+    names.add(key)
+  }
 }
 
 export async function verifyGithubLayout(root: string): Promise<void> {
@@ -155,6 +186,9 @@ export async function verifyGithubLayout(root: string): Promise<void> {
   for (const file of [
     'code-foundry.yml',
     'CODEOWNERS',
+    'CONTRIBUTING.md',
+    'CODE_OF_CONDUCT.md',
+    'SECURITY.md',
     'PULL_REQUEST_TEMPLATE.md',
     'workflows/validation.yml',
   ]) {
@@ -162,9 +196,69 @@ export async function verifyGithubLayout(root: string): Promise<void> {
   }
 }
 
+/** Pin only the known Foundry release; a version change requires reviewed source identity. */
+export function pinFoundryWorkflow(source: string): string {
+  return source
+    .replace(
+      /(uses: 0xPlayerOne\/code-foundry\/\.github\/workflows\/[^\s@]+)@([^\s#]+)/g,
+      (_match, path: string, ref: string) => {
+        if (ref !== `v${FOUNDRY_VERSION}` && ref !== FOUNDRY_SOURCE)
+          throw new Error('Unreviewed Code Foundry workflow source')
+        return `${path}@${FOUNDRY_SOURCE}`
+      }
+    )
+    .replace(/^(\s+runtime-ref: )([^\s#]+)$/gm, (_match, prefix: string, ref: string) => {
+      if (ref !== `v${FOUNDRY_VERSION}` && ref !== FOUNDRY_SOURCE)
+        throw new Error('Unreviewed Code Foundry runtime source')
+      return prefix + FOUNDRY_SOURCE
+    })
+}
+
+export function customizeBugReport(source: string): string {
+  return source.replace(
+    'Include the commit, branch, runtime/tool versions, operating system, and affected app or package.',
+    'Include the commit, developer and packaged Bun versions, browser/backend version, OS/CPU, security profile, affected package, and untested platforms. Redact private page content.'
+  )
+}
+
+async function checkedConfig(root: string): Promise<Record<string, unknown>> {
+  const config = record(
+    Bun.YAML.parse(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
+  )
+  const pkg = record(JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')))
+  const installed = record(
+    JSON.parse(await readFile(resolve(root, 'node_modules/code-foundry/package.json'), 'utf8'))
+  )
+  if (
+    record(pkg['devDependencies'])['code-foundry'] !== FOUNDRY_VERSION ||
+    installed['version'] !== FOUNDRY_VERSION ||
+    config['runtime_ref'] !== FOUNDRY_SOURCE ||
+    config['runtime_repository'] !== '0xPlayerOne/code-foundry'
+  )
+    throw new Error('Code Foundry package, runtime and reviewed source pins disagree')
+  if (typeof config['billing_paused'] !== 'boolean')
+    throw new Error('billing_paused must be explicitly true or false')
+  return config
+}
+
+/** Read-only validation of the repository overlay, in addition to upstream doctor. */
+export async function verifyFoundryState(root: string): Promise<void> {
+  await verifyGithubLayout(root)
+  const config = await checkedConfig(root)
+  const workflows = resolve(root, '.github/workflows')
+  for (const name of (await readdir(workflows)).filter((name) => /\.ya?ml$/.test(name))) {
+    const text = await readFile(resolve(workflows, name), 'utf8')
+    if (pinFoundryWorkflow(guardWorkflow(text, config['billing_paused'] as boolean)) !== text)
+      throw new Error(`Foundry overlay drift: ${name}; run bun run foundry:sync`)
+  }
+  const hook = await readFile(resolve(root, '.githooks/pre-commit'), 'utf8')
+  if (!hook.includes(nativeHookInvocation)) throw new Error('Missing native-aware Bun commit gate')
+}
+
 export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'): Promise<void> {
   // Reject malformed destinations before the upstream initializer writes anything.
   await inspectGithubPaths(root)
+  await checkedConfig(root)
   const cli = resolve(root, 'node_modules/code-foundry/src/cli.mjs')
   await access(cli)
   const child = Bun.spawn([process.execPath, cli, mode, '--target', root], {
@@ -173,11 +267,7 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
     stderr: 'inherit',
   })
   if ((await child.exited) !== 0) throw new Error('Code Foundry synchronization failed')
-  const config = record(
-    Bun.YAML.parse(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
-  )
-  if (typeof config['billing_paused'] !== 'boolean')
-    throw new Error('billing_paused must be explicitly true or false')
+  const config = await checkedConfig(root)
   const dependabot = resolve(root, '.github/dependabot.yml')
   await writeFile(dependabot, dependabotDirectories(await readFile(dependabot, 'utf8')))
   // Include generated callers and new custom lanes, not just the original eight workflows.
@@ -185,7 +275,7 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   for (const name of (await readdir(workflows)).filter((name) => /\.ya?ml$/.test(name)).sort()) {
     const file = resolve(workflows, name)
     const before = await readFile(file, 'utf8')
-    const after = guardWorkflow(before, config['billing_paused'])
+    const after = pinFoundryWorkflow(guardWorkflow(before, config['billing_paused'] as boolean))
     if (before !== after) await writeFile(file, after)
   }
   const hook = resolve(root, '.githooks/pre-commit')
@@ -195,7 +285,9 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
     throw new Error('Unexpected upstream hook; inspect before adapting it')
   await writeFile(hook, upstream.replace(invocation, nativeHookInvocation))
   await chmod(hook, 0o755)
-  await verifyGithubLayout(root)
+  const bug = resolve(root, '.github/ISSUE_TEMPLATE/bug_report.yml')
+  await writeFile(bug, customizeBugReport(await readFile(bug, 'utf8')))
+  await verifyFoundryState(root)
   console.log(
     `Bunly overlay verified: .github layout, dependency manifests, Bun hook, and ${config['billing_paused'] ? 'paused-by-default' : 'variable-controlled'} CI jobs.`
   )
@@ -203,7 +295,22 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
 
 if (import.meta.main) {
   const mode = process.argv[2] ?? 'sync'
-  if (!['init', 'sync'].includes(mode) || process.argv.length > 3)
-    throw new Error('Use bun scripts/sync-foundry.ts [init|sync]')
-  await syncFoundry(resolve(import.meta.dir, '..'), mode as 'init' | 'sync')
+  if (!['init', 'sync', 'doctor'].includes(mode) || process.argv.length > 3)
+    throw new Error('Use bun scripts/sync-foundry.ts [init|sync|doctor]')
+  const root = resolve(import.meta.dir, '..')
+  if (mode === 'doctor') {
+    await verifyFoundryState(root)
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        resolve(root, 'node_modules/code-foundry/src/cli.mjs'),
+        'doctor',
+        '--target',
+        root,
+      ],
+      { cwd: root, stdout: 'inherit', stderr: 'inherit' }
+    )
+    if (await child.exited) throw new Error('Code Foundry doctor failed')
+    console.log('Bunly layout, reviewed workflow pins and native-aware gate verified.')
+  } else await syncFoundry(root, mode as 'init' | 'sync')
 }

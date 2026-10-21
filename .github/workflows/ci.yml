@@ -3,15 +3,16 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: foundation-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   foundation:
-    if: vars.CI_BILLING_PAUSED == 'false'
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     strategy:
       fail-fast: false
       matrix:
@@ -34,10 +35,17 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Install process-observer prerequisites
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
+          python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - name: Validate runtime and target
         run: |
           test "$(bun --version)" = "1.4.3"
-          test "$(bun -e 'console.log(`${process.platform}-${process.arch}`)')" = "${{ matrix.target }}"
+          test "$(bun -e 'console.log(process.platform + "-" + process.arch)')" = "${{ matrix.target }}"
       - name: Install pinned dependencies
         id: dependencies
         run: bun install --frozen-lockfile

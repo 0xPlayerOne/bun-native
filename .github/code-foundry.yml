@@ -6,7 +6,7 @@ package_manager: bun
 toolchain: native
 runtime_repository: 0xPlayerOne/code-foundry
 # Code Foundry v1.48.2, pinned to the immutable release source.
-runtime_ref: v1.48.2
+runtime_ref: 0b5374bc59599b53e298bcf461d7727a9938b3ae
 features: validation,draft-pr,dependabot
 draft_protection: true
 billing_paused: true
