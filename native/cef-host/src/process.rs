@@ -15,7 +15,7 @@ static CHILD: OnceLock<Mutex<Child>> = OnceLock::new();
 static OUTPUT: OnceLock<Mutex<Option<SyncSender<Value>>>> = OnceLock::new();
 static THREADS: OnceLock<Mutex<Vec<JoinHandle<()>>>> = OnceLock::new();
 static HANDSHAKE: OnceLock<(Mutex<bool>, Condvar)> = OnceLock::new();
-pub fn handshake() {
+fn handshake() {
     if let Some((lock, wake)) = HANDSHAKE.get() {
         if let Ok(mut ready) = lock.lock() {
             *ready = true;
@@ -69,6 +69,10 @@ pub fn emit(value: Value) {
 }
 pub fn start() -> Result<(), String> {
     let paths = crate::PATHS.get().ok_or("missing runtime paths")?;
+    // Install the latch before either reader or child can deliver readiness.
+    HANDSHAKE
+        .set((Mutex::new(false), Condvar::new()))
+        .map_err(|_| "Handshake already initialized")?;
     let mut command = Command::new(&paths.bun);
     command
         .arg(&paths.entry)
@@ -175,6 +179,7 @@ pub fn start() -> Result<(), String> {
     let reader = thread::spawn(move || {
         let mut reader = BufReader::new(output);
         let mut last_id = 0_u64;
+        let mut negotiation = crate::handshake::Handshake::default();
         loop {
             let mut bytes = Vec::new();
             let read = (&mut reader).take(65537).read_until(b'\n', &mut bytes);
@@ -204,12 +209,21 @@ pub fn start() -> Result<(), String> {
                 break;
             }
             last_id = id;
-            crate::host::enqueue(value);
+            match negotiation.accept(&value) {
+                Ok(true) => {
+                    // ABI negotiation uses immutable metadata only. Waiting for a
+                    // GPU-busy UI queue must not consume the backend-start deadline.
+                    handshake();
+                    emit(json!({"v":1,"id":id,"ok":true,"value":{"abi":1,"cef":"154.0.34"}}));
+                }
+                Ok(false) => crate::host::enqueue(value),
+                Err(error) => {
+                    crate::host::fail(error);
+                    break;
+                }
+            }
         }
     });
-    HANDSHAKE
-        .set((Mutex::new(false), Condvar::new()))
-        .map_err(|_| "Handshake already initialized")?;
     let startup = thread::spawn(|| {
         if let Some((lock, wake)) = HANDSHAKE.get() {
             let (ready, timeout) = wake
