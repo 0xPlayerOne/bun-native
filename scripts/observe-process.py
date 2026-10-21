@@ -118,7 +118,9 @@ def observe(
                 if counter_reader is not None:
                     row["kernelCounters"] = counter_reader(identity[0])
                 if sandbox_reader is not None:
-                    field = "linuxSandbox" if sys.platform == "linux" else "seatbelt"
+                    field = {"linux": "linuxSandbox", "win32": "windowsSandbox"}.get(
+                        sys.platform, "seatbelt"
+                    )
                     roles = {"renderer", "gpu-process", "utility", "zygote", "crashpad-handler"}
                     row["browserRole"] = None
                     try:
@@ -129,10 +131,13 @@ def observe(
                         row[field] = sandbox_reader(identity[0])
                     except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
                         row[field] = {
-                            "provider": "linux-proc-status-v1"
-                            if sys.platform == "linux"
-                            else "macos-seatbelt-presence",
+                            "provider": {
+                                "linux": "linux-proc-status-v1",
+                                "win32": "windows-token-job-v1",
+                            }.get(sys.platform, "macos-seatbelt-presence"),
                             "active": None,
+                            "available": False,
+                            "isolationObserved": None,
                             "error": "unavailable",
                         }
                 if alive(identity, proc):
@@ -317,6 +322,8 @@ if __name__ == "__main__":
     if os.getenv("BUNLY_BENCH_SANDBOX") == "1":
         if sys.platform == "linux":
             from linux_sandbox import presence
+        elif sys.platform == "win32":
+            from windows_sandbox import presence
         else:
             from macos_sandbox import presence
         sandbox_reader = presence
