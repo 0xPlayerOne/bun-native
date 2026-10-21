@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { pageTimeout } from './page-readiness.ts'
+import { waitForGpuInjection } from './fault-ack.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 export default async function fault(backend: CefBackend): Promise<void> {
   const mode = process.env['BUNLY_CEF_FAULT']
+  const faultDeadlineMs = pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
   if (!['backend-exit', 'backend-tree-exit', 'renderer-exit', 'gpu-exit'].includes(mode ?? ''))
     throw new Error('Explicit native qualification fault required')
   const session = await backend.createSession({
@@ -36,10 +38,7 @@ export default async function fault(backend: CefBackend): Promise<void> {
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
-    timer = setTimeout(
-      () => reject(new Error('Fault fixture page deadline')),
-      pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
-    )
+    timer = setTimeout(() => reject(new Error('Fault fixture page deadline')), faultDeadlineMs)
     await page
     console.error(JSON.stringify({ event: 'bunly.fault.ready', mode, pid: process.pid }))
     const ready = process.env['BUNLY_CEF_FAULT_READY']
@@ -73,7 +72,7 @@ export default async function fault(backend: CefBackend): Promise<void> {
           new Promise<never>((_, bad) => {
             deadline = setTimeout(
               () => bad(new Error('Native renderer failure did not close the host')),
-              10000
+              faultDeadlineMs
             )
           }),
         ])
@@ -86,7 +85,12 @@ export default async function fault(backend: CefBackend): Promise<void> {
         if (deadline) clearTimeout(deadline)
       }
     }
-    await Bun.sleep(3000)
+    const injected = process.env['BUNLY_CEF_FAULT_INJECTED']
+    assert.ok(injected, 'Private GPU fault injection receipt path required')
+    await waitForGpuInjection(injected, process.env['BUNLY_CEF_FAULT_NONCE'] ?? '', faultDeadlineMs)
+    console.error(
+      JSON.stringify({ event: 'bunly.native.gpu-injection-acknowledged', passed: true })
+    )
     const extra = await backend.createView({
       window,
       session,
