@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import {
   BILLING_GUARD,
+  FOUNDRY_SOURCE,
   PAUSED_BILLING_GUARD,
   MANUAL_DISPATCH_GUARD,
   dependabotDirectories,
@@ -21,7 +22,7 @@ describe('Code Foundry installation', () => {
     const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
     expect(pkg.devDependencies['code-foundry']).toBe('1.48.2')
     expect(pkg.dependencies?.['code-foundry']).toBeUndefined()
-    expect(config['runtime_ref']).toBe(`v${pkg.devDependencies['code-foundry']}`)
+    expect(config['runtime_ref']).toBe(FOUNDRY_SOURCE)
     expect(config['package_manager']).toBe('bun')
     expect(config['profile']).toBe('monorepo')
     expect(config['languages']).toBe('typescript,rust,python')

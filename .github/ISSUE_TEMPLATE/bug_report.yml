@@ -7,7 +7,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Include the commit, branch, runtime/tool versions, operating system, and affected app or package.
+      description: Include the commit, developer and packaged Bun versions, browser/backend version, OS/CPU, security profile, affected package, and untested platforms. Redact private page content.
       placeholder: |
         Commit:
         Branch:

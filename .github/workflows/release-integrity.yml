@@ -16,7 +16,7 @@ jobs:
     # Enable only after an administrator enables immutable releases. This is a
     # post-publication verifier, not a substitute for the GitHub repository setting.
     if: vars.CI_BILLING_PAUSED == 'false' && (vars.REQUIRE_IMMUTABLE_RELEASES == 'true' || github.event_name == 'workflow_dispatch')
-    uses: 0xPlayerOne/code-foundry/.github/workflows/release-integrity.yml@v1.48.2
+    uses: 0xPlayerOne/code-foundry/.github/workflows/release-integrity.yml@0b5374bc59599b53e298bcf461d7727a9938b3ae
     with:
-      runtime-ref: v1.48.2
+      runtime-ref: 0b5374bc59599b53e298bcf461d7727a9938b3ae
       tag: ${{ github.event.release.tag_name || inputs.tag }}

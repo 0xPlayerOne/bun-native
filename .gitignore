@@ -94,6 +94,5 @@ native/target/
 *.dmp
 native/cef-host/target/
 native/cef-host/resources/
-
 # The source package is not generated build output.
 !packages/artifacts/

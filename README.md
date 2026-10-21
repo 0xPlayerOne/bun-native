@@ -88,15 +88,15 @@ The [M3 closeout](docs/m3-completion.md) records the declared macOS, Windows and
 
 [Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
-[M1/M2 implementation notes](docs/m1-m2-progress.md)
+[M1/M2 implementation notes](docs/history/m1-m2-progress.md)
 
 M1 establishes the accepted foundation and host decision. M2 completes reproducible
 comparison infrastructure and competitor baselines. M3 qualifies the visible CEF host. Later
 milestones add secure IPC, PTYs, managed reload, packaging, and native webviews.
 The M2 workbench does not imply those runtime capabilities already exist.
 
-Start with [architecture](docs/architecture.md), [host decision](docs/decisions/0002-host-qualification.md),
-[validation](docs/validation.md), and [contributing](CONTRIBUTING.md).
+Start with [the documentation index](docs/README.md), [architecture](docs/architecture.md), [host decision](docs/decisions/0002-host-qualification.md),
+[validation](docs/validation.md), and [contributing](.github/CONTRIBUTING.md).
 
 This is not a Tauri plugin, Bun fork, package manager, or full Electron clone.
 No production Adea settings, repository visibility, or public publishing are changed.

@@ -1,5 +1,7 @@
 # M2 reference and release-runner validation
 
+**Record type:** Historical checkpoint. Current status and commands are in [the documentation index](../README.md).
+
 **Base:** `e8722cd305d97904d01d22504e20287212636df9` (merged #71).
 **Scope:** Executable reference adapters and stage tooling for #8/#9/#10.
 **Status:** Source implementation checked locally; M2 remains open.
@@ -23,17 +25,17 @@
 Environment: Linux x64, Bun `1.4.3+c6da4a4d3`, retained hash-verified dependency
 snapshot, Python 3.11 and psutil 7.2.2. No fresh dependency install is claimed.
 
-| Command | Result |
-| --- | --- |
-| `bun run check` | 184 tests passed; TypeScript, Oxlint, browser AST boundaries and compiler-free builds passed. |
-| `bun run typecheck:browser` | Passed. |
-| `python tests/cef_identity_test.py` | Eight passed; loader contracts and hash/error cases. |
-| `python tests/reference_archive_test.py` | Eight passed; real archive contents, links, stale outputs and changes. |
-| `python tests/process_observer_test.py` | Six existing process-observer cases passed. |
-| `bun scripts/qualify-cef-inspector.ts` | Three actual native ABI fixture cases passed: version calls, wrong-hash rejection and isolated abort. The fixture is not CEF. |
-| `bun scripts/qualify-observed-commands.ts` | Seven actual process cases passed, including cancellation, timeout, overflow and orphan cleanup. |
-| `bun scripts/qualify-development.ts` | Twenty bare-Bun executions passed: one warmup plus three trials of five scenarios. Not desktop HMR. |
-| Python compile checks | Observer, native inspector and archive utility passed. |
+| Command                                    | Result                                                                                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`                            | 184 tests passed; TypeScript, Oxlint, browser AST boundaries and compiler-free builds passed.                                 |
+| `bun run typecheck:browser`                | Passed.                                                                                                                       |
+| `python tests/cef_identity_test.py`        | Eight passed; loader contracts and hash/error cases.                                                                          |
+| `python tests/reference_archive_test.py`   | Eight passed; real archive contents, links, stale outputs and changes.                                                        |
+| `python tests/process_observer_test.py`    | Six existing process-observer cases passed.                                                                                   |
+| `bun scripts/qualify-cef-inspector.ts`     | Three actual native ABI fixture cases passed: version calls, wrong-hash rejection and isolated abort. The fixture is not CEF. |
+| `bun scripts/qualify-observed-commands.ts` | Seven actual process cases passed, including cancellation, timeout, overflow and orphan cleanup.                              |
+| `bun scripts/qualify-development.ts`       | Twenty bare-Bun executions passed: one warmup plus three trials of five scenarios. Not desktop HMR.                           |
+| Python compile checks                      | Observer, native inspector and archive utility passed.                                                                        |
 
 The new TypeScript tests include three deliberate early-abort timings (0/5/100 ms)
 with a real Python interpreter whose observer entry is delayed by 750 ms. They

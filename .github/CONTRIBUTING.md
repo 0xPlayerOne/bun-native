@@ -1,4 +1,31 @@
-# Contributing
+# Contributing to Bunly
+
+## Bunly development setup
+
+Use the pinned Bun 1.4.3 and `bun install --frozen-lockfile`. Run
+`bun run check` and `bun run typecheck:browser` for the application-side code;
+these do not invoke a systems compiler. `bun run example` is the explicit mock
+contract fixture, not a native desktop application.
+
+Native contributors use two independent, locked Cargo workspaces: the M1 probe
+under `native/` (Rust 1.85.1) and the CEF host under `native/cef-host/` (Rust 1.91.0).
+Follow [native acceptance](../docs/m3-runtime-acceptance.md) and
+[manual hosted qualification](../docs/manual-native-qualification.md) rather
+than substituting cross-compilation for actual platform execution. Application
+consumers use prebuilt artifacts; they do not silently compile native code.
+
+Run `bun run foundry:sync` for repository tooling and `bun run foundry:doctor`
+to verify the result. Do not use an unpinned global Foundry or overwrite authored
+policy with `--force`. This file is the sole contribution guide; keep GitHub
+policies and issue/PR templates under `.github/`.
+
+Report the exact source commit, developer and packaged Bun versions, browser
+version, OS/CPU, security profile, and redacted diagnostics. Preserve failed and
+unsupported outcomes. Record copied code in `docs/provenance.md`; never weaken
+isolation, cleanup, accessibility or workload correctness for a favorable score.
+Production signing, publishing and Adea changes require separate authorization.
+Private fixture keys are not production trust roots. Keep credentials, browser
+binaries, VM disks, crash dumps and local experiments out of Git.
 
 <!-- code-foundry-managed: config-aware-policy -->
 
