@@ -9,6 +9,7 @@ import os
 import platform
 import signal
 import subprocess
+import sys
 import threading
 import time
 from contextlib import suppress
@@ -117,6 +118,9 @@ def observe(
                 if counter_reader is not None:
                     row["kernelCounters"] = counter_reader(identity[0])
                 if sandbox_reader is not None:
+                    field = {"linux": "linuxSandbox", "win32": "windowsSandbox"}.get(
+                        sys.platform, "seatbelt"
+                    )
                     roles = {"renderer", "gpu-process", "utility", "zygote", "crashpad-handler"}
                     row["browserRole"] = None
                     try:
@@ -124,11 +128,16 @@ def observe(
                             if arg.startswith("--type=") and arg[7:] in roles:
                                 row["browserRole"] = arg[7:]
                                 break
-                        row["seatbelt"] = sandbox_reader(identity[0])
+                        row[field] = sandbox_reader(identity[0])
                     except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
-                        row["seatbelt"] = {
-                            "provider": "macos-seatbelt-presence",
+                        row[field] = {
+                            "provider": {
+                                "linux": "linux-proc-status-v1",
+                                "win32": "windows-token-job-v1",
+                            }.get(sys.platform, "macos-seatbelt-presence"),
                             "active": None,
+                            "available": False,
+                            "isolationObserved": None,
                             "error": "unavailable",
                         }
                 if alive(identity, proc):
@@ -311,8 +320,12 @@ if __name__ == "__main__":
         threading.Thread(target=control, daemon=True).start()
     sandbox_reader = None
     if os.getenv("BUNLY_BENCH_SANDBOX") == "1":
-        from macos_sandbox import presence
-
+        if sys.platform == "linux":
+            from linux_sandbox import presence
+        elif sys.platform == "win32":
+            from windows_sandbox import presence
+        else:
+            from macos_sandbox import presence
         sandbox_reader = presence
     counter_reader = None
     if os.getenv("BUNLY_KERNEL_COUNTERS") == "1":

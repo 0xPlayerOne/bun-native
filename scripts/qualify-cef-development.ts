@@ -1,13 +1,20 @@
 /** Verify explicit development origin and redirect/subresource denial using real CEF. */
 import assert from 'node:assert/strict'
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
-import { resolve, join } from 'node:path'
+import { resolve, join, dirname, basename } from 'node:path'
 import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
 const root = resolve(import.meta.dir, '..'),
   appArgument = process.argv[2],
   python = process.env['PYTHON'] ?? 'python3'
-if (process.platform !== 'darwin' || !appArgument)
-  throw new Error('Pass the private prebuilt macOS fixture app')
+if (
+  !['darwin-arm64', 'linux-x64', 'win32-x64'].includes(`${process.platform}-${process.arch}`) ||
+  !appArgument ||
+  process.argv.length !== 3
+)
+  throw new Error(
+    'Pass a prebuilt app directory on macOS, or the native executable on Linux/Windows'
+  )
+const mac = process.platform === 'darwin'
 await mkdir(join(root, '.bunly/m3/development'), { recursive: true, mode: 0o700 })
 const work = await mkdtemp(join(root, '.bunly/m3/development/run-'))
 let deniedRequests = 0
@@ -40,13 +47,18 @@ const allowed = Bun.serve({
     )
   },
 })
-const app = join(work, 'Dev.app')
-await cp(resolve(appArgument), app, { recursive: true, dereference: false })
-const resources = join(app, 'Contents/Resources')
+const app = join(work, mac ? 'Dev.app' : 'Development Unicode é Ω')
+await cp(mac ? resolve(appArgument) : dirname(resolve(appArgument)), app, {
+  recursive: true,
+  dereference: false,
+})
+const resources = join(app, mac ? 'Contents/Resources' : 'resources')
+const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(appArgument))
 const report: Record<string, unknown> = {
   schema: 1,
   passed: false,
   profile: 'explicit-development-origin-native-policy',
+  target: `${process.platform}-${process.arch}`,
   deniedRequests: 0,
 }
 try {
@@ -60,19 +72,21 @@ try {
     naming: 'application.js',
   })
   assert.equal(build.success, true)
-  const helper = join(work, 'sign.py')
-  await writeFile(
-    helper,
-    `import sys,subprocess\nfrom pathlib import Path\nsys.path.insert(0,${JSON.stringify(join(root, 'scripts'))})\nfrom qualify_adhoc_signing import targets\nfor p in targets(Path(${JSON.stringify(app)})):subprocess.run(['/usr/bin/codesign','--force','--sign','-',str(p)],check=True,capture_output=True)\n`
-  )
-  assertCleanCommand(
-    await observedCommand([python, helper], {
-      cwd: root,
-      output: join(work, 'sign.process.json'),
-      timeoutMs: 30000,
-    }).result
-  )
-  const observation = await observedCommand([join(app, 'Contents/MacOS/bunly_host')], {
+  if (mac) {
+    const helper = join(work, 'sign.py')
+    await writeFile(
+      helper,
+      `import sys,subprocess\nfrom pathlib import Path\nsys.path.insert(0,${JSON.stringify(join(root, 'scripts'))})\nfrom qualify_adhoc_signing import targets\nfor p in targets(Path(${JSON.stringify(app)})):subprocess.run(['/usr/bin/codesign','--force','--sign','-',str(p)],check=True,capture_output=True)\n`
+    )
+    assertCleanCommand(
+      await observedCommand([python, helper], {
+        cwd: root,
+        output: join(work, 'sign.process.json'),
+        timeoutMs: 30000,
+      }).result
+    )
+  }
+  const observation = await observedCommand([executable], {
     cwd: work,
     output: join(work, 'native.process.json'),
     timeoutMs: 30000,

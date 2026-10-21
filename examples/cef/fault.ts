@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { writeFile } from 'node:fs/promises'
+import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 export default async function fault(backend: CefBackend): Promise<void> {
   const mode = process.env['BUNLY_CEF_FAULT']
@@ -35,6 +37,18 @@ export default async function fault(backend: CefBackend): Promise<void> {
     })
     await page
     console.error(JSON.stringify({ event: 'bunly.fault.ready', mode, pid: process.pid }))
+    const ready = process.env['BUNLY_CEF_FAULT_READY']
+    if (ready !== undefined) {
+      const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
+      assert.ok(
+        isAbsolute(ready) && /^[a-f0-9]{48}$/.test(nonce),
+        'Invalid private fault readiness configuration'
+      )
+      await writeFile(ready, JSON.stringify({ mode, nonce, pid: process.pid }), {
+        flag: 'wx',
+        mode: 0o600,
+      })
+    }
     if (mode === 'backend-tree-exit') {
       const descendant = Bun.spawn([process.execPath, '-e', 'setInterval(() => {}, 1000)'], {
         stdin: 'ignore',

@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, rename, writeFile, lstat } from 'node:fs/
 import { basename, dirname, join, resolve } from 'node:path'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
-import { observedCommand } from '../benchmarks/lib/observed-command.ts'
+import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
 import {
   acceptNativeSmoke,
   acceptNativeRejection,
@@ -58,7 +58,11 @@ try {
     ? join(application, 'Contents/MacOS/bunly_host')
     : join(application, basename(source))
   const resources = join(application, mac ? 'Contents/Resources' : 'resources')
-  async function execute(name: string, args: string[] = [], changes: Record<string, string> = {}) {
+  async function execute(
+    name: string,
+    args: string[] = [],
+    changes: Record<string, string | undefined> = {}
+  ) {
     const observation = await observedCommand([executable, ...args], {
       cwd: unrelated,
       output: join(work, name + '.process.json'),
@@ -103,6 +107,29 @@ try {
     acceptNativeRejection(await execute('missing-bun'), 'Installed Bun or backend missing')
   } finally {
     await rename(bun + '.absent', bun)
+  }
+  if (process.platform === 'linux') {
+    acceptNativeRejection(
+      await execute('missing-display', [], { DISPLAY: undefined }),
+      'requires an X11 DISPLAY'
+    )
+    const library = join(application, 'libcef.so')
+    await rename(library, library + '.absent')
+    try {
+      const missing = await execute('missing-cef-library', [], { LD_LIBRARY_PATH: undefined })
+      assertCleanCommand(missing, 127)
+      assert.ok(
+        missing.stderr.some((line) => /libcef\.so.*cannot open shared object file/.test(line)),
+        'Missing native dependency must name the actual CEF library'
+      )
+      assert.equal(
+        nativeEvents(missing).length,
+        0,
+        'The system loader must fail before host or browser startup'
+      )
+    } finally {
+      await rename(library + '.absent', library)
+    }
   }
   if (mac) {
     const helper = join(
