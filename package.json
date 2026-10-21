@@ -26,7 +26,7 @@
     "benchmark:smoke": "bun scripts/benchmark.ts record mock .bunly/benchmarks/mock.json",
     "foundry:init": "bun scripts/sync-foundry.ts init",
     "foundry:sync": "bun scripts/sync-foundry.ts sync",
-    "foundry:doctor": "bun --bun code-foundry doctor",
+    "foundry:doctor": "bun scripts/sync-foundry.ts doctor",
     "foundry:plan": "bun --bun code-foundry plan --tier fast --json"
   },
   "devDependencies": {

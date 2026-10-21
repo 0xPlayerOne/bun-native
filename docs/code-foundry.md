@@ -1,132 +1,95 @@
 # Code Foundry
 
-Repository tooling, separate from the Bunly desktop runtime.
+Reproducible repository policy without adding a desktop runtime dependency.
 
-**Package:** `code-foundry@1.48.2`, an exact development dependency.
-**Runtime:** `0xPlayerOne/code-foundry@v1.48.2`.
-**Source:** `0b5374bc59599b53e298bcf461d7727a9938b3ae`.
-**Profile:** Bun monorepo with TypeScript, Rust, and Python contributor code.
+**Package:** `code-foundry@1.48.2`, development-only and exactly locked.
+**Release source:** `0b5374bc59599b53e298bcf461d7727a9938b3ae` (`v1.48.2`).
+**Scope:** GitHub layout, generated policy, contributor hooks and CI configuration.
 
-## Commands
+## Supported commands
 
 ```sh
 bun install --frozen-lockfile
-bun run foundry:init
 bun run foundry:sync
 bun run foundry:doctor
 bun run foundry:plan
 ```
 
-Use the repository scripts rather than bare `code-foundry sync`. The wrapper
-calls the unmodified installed CLI from the repository root, then applies these
-Bunly-specific adjustments:
+Use the repository wrapper, not an unpinned global command or `--force`.
+`foundry:sync` runs the installed upstream generator and then reapplies the
+reviewed Bunly overlay. `foundry:init` provides the same path for initial setup.
+The wrapper checks that the installed package, declared dependency and configured
+release agree before invoking upstream. Updating Foundry requires reviewing its
+release source and changing the pinned version/SHA together.
 
-- GitHub files remain under `.github/`, with a single case-safe
-  `PULL_REQUEST_TEMPLATE.md` and no `.guthub` or nested `.github/.github`.
-  Preflight rejects misplaced directories, nested case collisions and linked
-  output paths before the upstream initializer writes files.
-- Dependabot covers the two independent native manifest roots, the root Bun
-  workspace, and the three independently locked benchmark dependency projects.
-- Every qualification job and generated caller reads `CI_BILLING_PAUSED`.
-  Newly added custom workflows are included automatically. Unknown authored
-  conditions fail for review instead of silently losing their predicates.
-  Job steps, permissions, triggers and existing predicates are preserved.
-- The generated pre-commit hook runs the installed CLI through Bun, while
-  retaining upstream machine-hook chaining. A global Node installation is not
-  required for these repository scripts.
+`foundry:doctor` verifies both upstream health and the repository-specific layout,
+workflow pins, billing predicates and native-aware commit hook. A successful
+upstream doctor alone is not evidence that the custom overlay is intact. The
+pinned upstream doctor emits a tag-format warning for the immutable SHA. The
+SHA was checked against the actual `v1.48.2` release ref; the warning is retained,
+not hidden, while the doctor exits successfully.
 
-The generated baseline is reapplied before each overlay. Repeated repository
-syncs produce identical final file contents. The wrapper fails on unexpected
-upstream layouts instead of guessing how to rewrite them.
+## Canonical layout
 
-## Billing pause
+GitHub policy lives in `.github/`: contribution and security policies, code of
+conduct, CODEOWNERS, one pull-request template, issue forms and workflows.
+`AGENTS.md`, README, license/notices and language toolchain configuration remain
+at the repository root. There is no second root contribution guide or second bug
+form. Bunly-specific guidance is outside upstream-managed document blocks, so
+sync retains it.
 
-`.github/code-foundry.yml` currently sets `billing_paused: true`. Dependabot
-version-update PR limits are zero and its required schedule is monthly.
+Preflight rejects misplaced or incorrectly cased policy files, `.guthub`, nested
+GitHub directories, symlinked output paths, case collisions, and duplicate issue
+form names **before** invoking the generator. Conflicting authored files are not
+automatically deleted: consolidate their content deliberately, then rerun sync.
 
-The sync overlay also makes Actions **paused by default** when that checked-in
-setting is true. Each job requires `vars.CI_BILLING_PAUSED == 'false'` before its
-original conditions can permit execution. An unset variable therefore cannot
-accidentally enable jobs while the account has no minutes. This applies to
-ordinary jobs and reusable-workflow callers, before runner allocation.
+The overlay also preserves the separate native/benchmark Dependabot roots,
+Bunly-specific environment fields in the bug form, and exact reviewed Foundry
+workflow/runtime SHA pins. Unknown conditions or upstream layouts fail for review
+instead of silently overwriting authored behavior.
 
-| Checked-in `billing_paused` | Repository variable | Job behavior |
-| --- | --- | --- |
-| `true` | Unset or `true` | Skipped |
-| `true` | `false` | Original conditions apply; explicit remote override |
-| `false` | Unset or `false` | Original conditions apply |
-| `false` | `true` | Skipped |
+## Hooks and native workspaces
 
-An unexpected value is not an opt-in while paused. Sync retains multiline
-conditions and rejects a leading guard bypassed by a top-level OR. The pause
-is scheduling policy, not successful test evidence or a substitute for review.
-Already queued runs and workflows on branches without these guards are not
-cancelled or modified by this change. The fallback takes effect on branches
-containing the synced files; it is not yet on `main` until this PR is merged.
+Sync enables the repository-local `.githooks` directory using upstream's chaining
+mechanism. The previous machine-level hook directory is retained locally, and
+other hook names delegate to it; no global hook setting is changed. Machine-local
+delegates are ignored by Git.
 
-The Actions repository variable is a separate GitHub setting:
+The committed pre-commit gate uses Bun and preserves the installed Foundry
+format/lint/type/Python checks. `scripts/native-pre-commit.ts` routes Cargo checks
+to Bunly's independent workspaces rather than assuming a root Cargo manifest.
+A failing check is not grounds to bypass hooks. Passing the change-aware hook is
+not a substitute for the full validation and platform suites.
 
-```sh
-gh variable set CI_BILLING_PAUSED --repo 0xPlayerOne/bunly --body true
-gh variable get CI_BILLING_PAUSED --repo 0xPlayerOne/bunly
-```
+## CI policy
 
-These remote commands were **not executed** through the available connection:
-its tools expose no Actions-variable write operation and the authorized desktop
-is offline. The checked-in fallback does not create a repository variable.
-Do not report the remote setting as changed until it has been read back.
+Automatic CI remains paused through `billing_paused: true` and the existing
+`CI_BILLING_PAUSED` repository variable. The repository being public does not
+implicitly resume every historical workflow. Manual native qualification is the
+explicit, owner-authorized exception; see
+[manual native qualification](manual-native-qualification.md).
 
-To resume intentionally, set the repository variable to `false`, set
-`billing_paused: false` in the configuration, and run `bun run foundry:sync`.
-This does not add paid minutes or change GitHub billing limits. No branch rules,
-required checks, repository permissions, or publishing settings are changed.
-The upstream `code-foundry ci pause` command also modifies managed branch-rule
-checks and cancels runs; it is deliberately not used as a variable-only setter.
+| Checked-in pause | Repository variable                  | Automatic jobs            |
+| ---------------- | ------------------------------------ | ------------------------- |
+| `true`           | Unset or anything other than `false` | Skipped                   |
+| `true`           | `false`                              | Original predicates apply |
+| `false`          | Unset or anything other than `true`  | Original predicates apply |
+| `false`          | `true`                               | Skipped                   |
 
-## Preserved policies and limitations
+Only the exact `github.event_name == 'workflow_dispatch'` predicate, accompanied
+by a declared dispatch trigger, is exempt. An OR-expression cannot bypass the
+billing guard. The overlay preserves these policies on every sync.
 
-The existing MIT `LICENSE` is unchanged. Code Foundry's own license and template
-notices remain applicable to its material; see `NOTICE`. Existing Bunly agent
-instructions precede the managed Code Foundry policy blocks. Authored documents,
-the original issue templates, and the eight native/benchmark workflows remain.
+No publishing feature, production credential, repository visibility change,
+branch-rule change, or automatic-CI resume is part of synchronization. Release
+configuration files remain inert until release features are explicitly enabled.
+CodeQL/Dependency Review and version-update PR policy remain explicit configuration
+choices; this cleanup does not silently enable additional cloud jobs.
 
-`features` selects validation, draft-PR tooling, and paused dependency updates.
-Automatic releases and npm publishing are not enabled. Private-repository
-CodeQL and Dependency Review are explicitly off; no paid security service is
-enabled. Billing-lane consolidation is left off during initial qualification.
+## Verification
 
-The existing TypeScript compiler and Oxlint versions/rules are retained. The
-baseline formatter configuration is installed, but no new formatter binary or
-whole-repository formatting migration is introduced by this change. The fast
-plan reports unavailable format/native tasks rather than pretending they ran.
-Native compilation, CEF execution, signing, and platform-specific qualification
-remain separate contributor work. The generic Code Foundry Rust hook currently
-assumes a root Cargo manifest; native edits must qualify that nested-workspace
-hook path before relying on it. Formatter/Python tools also need contributor
-installation before the corresponding hook checks can run. Do not bypass a
-failing hook as a workaround.
-
-## Local validation
-
-The installed archive came from Code Foundry's completed release qualification,
-not a new Actions run. The supplied artifact and pack metadata were checked:
-`adac8eb62ca6d39d75967a416a66a5a42768be32fc653f26612bfd43da60adc9`
-(SHA-256). The committed lock retains the registry version and published SHA-512
-integrity, with no local archive path or temporary registry URL.
-
-For the resumed setup, all 27 existing `.github` file hashes were verified
-against PR #65 before applying the new pause overlay. The 24 configuration,
-layout and billing tests pass with actual Bun 1.4.3, as do strict TypeScript,
-Oxlint, browser boundary checks, browser-only typechecking and compiler-free
-SDK builds. Two additional real sync runs preserve identical hashes across
-186 source/configuration files in the local validation fixture.
-
-That fixture uses the retained offline snapshot: its 68 older portable tests
-plus 24 Foundry tests pass, but it is not the complete current-main suite.
-Unrelated newer runtime work is preserved in the remote base tree, not claimed
-retested. The package was rehydrated from the verified qualified archive;
-a fresh frozen offline install in this reset container still lacks its registry
-cache metadata. The prior installation's frozen-install result is recorded in
-PR #65, not newly claimed here. Code Foundry doctor reports missing Cargo and
-three consequent native manifest metadata errors. Native/platform tests and
-GitHub Actions were not run, retried or dispatched for this continuation.
+The post-M3 audit runs two real sync passes and compares final file-content hashes,
+including custom workflow and hook output. The duplicate-layout, pin-integrity,
+manual-dispatch and hook tests run in `bun run check`. The review record is in
+[the foundation audit](foundation-audit.md). Historical milestone evidence is
+retained separately and is not rewritten by synchronization.

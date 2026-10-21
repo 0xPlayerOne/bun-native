@@ -2,8 +2,8 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1 foundation and hosting decision accepted. Native browser, security and performance qualification remain separate milestone work.
-**Scope:** M1 issues #2–#7; subsequent milestones implement and qualify the CEF runtime.
+**Status:** M1–M3 are complete for their declared acceptance profiles. M4 renderer authority and session security are not yet qualified.
+**Scope:** Accepted host architecture and boundaries. See [M3 completion](m3-completion.md) for native platform evidence and limitations.
 
 ## Product boundary
 
@@ -112,8 +112,10 @@ for small native probes, not CEF acquisition. Extraction uses a new private
 staging directory, known manifest modes, exclusive file creation, and atomic
 rename. Failed operations clean their staging and lock. A stale lock after process
 crash times out rather than risk deleting another writer's lock; inspect/remove
-it only after confirming no writer is active. Hard crash/power-loss recovery and
-general release archives require additional M3/M8 work.
+it only after confirming no writer is active. The M3 CEF cache is a separate authenticated full-runtime path with archive
+containment, exclusive staging, leases, corruption checks and offline reuse; see
+[M3 runtime acceptance](m3-runtime-acceptance.md). Production update recovery
+and power-loss guarantees remain M8 work.
 
 The cache assumes a private per-user directory. It rejects observed symlinks but
 is not a defense against a hostile same-user process racing filesystem changes.
@@ -130,5 +132,6 @@ browser versions, sandbox settings, frontend assets, and workload correctness.
 Provisional goals: roughly 2x better warmed backend iteration or elimination of
 disruptive relaunches; no unexplained material startup/memory regression (initial
 review threshold around 10%); bounded, lossless required streams. These are
-hypotheses to calibrate in M2, not M1 benchmark results. M9 decides continue,
+hypotheses, not measured Bunly advantages. M2 supplies local baselines and
+measurement infrastructure; quiet controlled calibration remains M9 work. M9 decides continue,
 narrow, or stop against Electrobun, not only smaller experimental projects.

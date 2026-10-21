@@ -1,5 +1,7 @@
 # M2 workbench integration validation
 
+**Record type:** Historical checkpoint. Current status and commands are in [the documentation index](../README.md).
+
 Repository delivery of the saved M2 implementation and shared-renderer integration.
 
 **Base:** `1f22cff6d9be40a08b38a3012e61df5f051da9e0` (merged PR #70).
@@ -35,16 +37,16 @@ hashes; their different platform and security configurations remain non-comparab
 Environment: Linux x64, actual Bun `1.4.3+c6da4a4d3`, retained authenticated dependency
 snapshot, local Python/psutil 7.2.2. No new frozen dependency installation is claimed.
 
-| Check | Result |
-| --- | --- |
-| `bun run check` | 170 passed, 0 failed, 381 assertions across 25 files; strict TypeScript, Oxlint, browser-boundary AST checks and compiler-free builds passed. |
-| `bun run typecheck:browser` | Passed. |
-| `bun test tests/desktop-navigation.test.ts tests/workbench-desktop.test.ts` | 12 passed, 56 assertions. HTTP and exact-template policy tests, not browser rendering. |
-| `bun test tests/source-identity.test.ts` | Three passed using isolated real Git fixtures. |
-| `bun scripts/qualify-observed-commands.ts` | Seven actual process cases passed: output, Bun compile rejection, timeout, cancellation, orphan cleanup, overflow and credential redaction. |
-| `python tests/process_observer_test.py` | Six passed. |
-| `bun scripts/qualify-development.ts` | 20 actual bare-Bun executions passed (one warmup plus three trials for five scenarios). Not desktop HMR. |
-| `bun scripts/verify-m2-baselines.ts` | Both exact historical reports verified; comparison rejected. These are not new competitor executions. |
+| Check                                                                       | Result                                                                                                                                        |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`                                                             | 170 passed, 0 failed, 381 assertions across 25 files; strict TypeScript, Oxlint, browser-boundary AST checks and compiler-free builds passed. |
+| `bun run typecheck:browser`                                                 | Passed.                                                                                                                                       |
+| `bun test tests/desktop-navigation.test.ts tests/workbench-desktop.test.ts` | 12 passed, 56 assertions. HTTP and exact-template policy tests, not browser rendering.                                                        |
+| `bun test tests/source-identity.test.ts`                                    | Three passed using isolated real Git fixtures.                                                                                                |
+| `bun scripts/qualify-observed-commands.ts`                                  | Seven actual process cases passed: output, Bun compile rejection, timeout, cancellation, orphan cleanup, overflow and credential redaction.   |
+| `python tests/process_observer_test.py`                                     | Six passed.                                                                                                                                   |
+| `bun scripts/qualify-development.ts`                                        | 20 actual bare-Bun executions passed (one warmup plus three trials for five scenarios). Not desktop HMR.                                      |
+| `bun scripts/verify-m2-baselines.ts`                                        | Both exact historical reports verified; comparison rejected. These are not new competitor executions.                                         |
 
 The portable source set consists of the retained 68-test baseline, four unchanged
 PR #70 tests, and 98 M2 test cases. Nineteen of those M2 cases were added during

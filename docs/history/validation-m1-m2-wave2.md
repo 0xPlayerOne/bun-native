@@ -1,5 +1,7 @@
 # M1/M2 second continuation
 
+**Record type:** Historical checkpoint. Current status and commands are in [the documentation index](../README.md).
+
 Executable competitor and development evidence, with explicit measurement boundaries.
 
 **Status:** Tested increment in PR #62; M1/M2 are not declared complete.
@@ -74,6 +76,7 @@ performance claim regardless of successful correctness checks.
 
 Kernel providers use documented/public kernel interfaces, not new native code in
 the application. References for field meanings/layout:
+
 - https://github.com/torvalds/linux/blob/v6.8/kernel/sched/debug.c
 - https://github.com/torvalds/linux/blob/v6.8/kernel/sched/stats.h
 - https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/resource.h

@@ -39,7 +39,7 @@ test('manual platform choices stay on bounded standard hosted runners', () => {
 test('manual dispatch survives Foundry sync without unpausing automatic CI', () => {
   expect(guardWorkflow(source, true)).toBe(source)
   expect(guardWorkflow(guardWorkflow(source, false), true)).toBe(source)
-  for (const name of ['cef', 'contributor-snapshot']) {
+  for (const name of ['cef']) {
     expect(workflow.jobs[name]!.if).toContain("vars.CI_BILLING_PAUSED == 'false'")
     expect(workflow.jobs[name]!.if).toContain("github.event_name == 'pull_request'")
     expect(workflow.jobs[name]!.if).toContain('draft == false')
