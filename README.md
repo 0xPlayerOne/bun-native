@@ -2,7 +2,7 @@
 
 The Bun-native desktop framework.
 
-**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3–M4 remain in progress; this is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
+**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete; M4 remains in progress. This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
 
 Bunly is building a standalone TypeScript-first desktop framework around real Bun,
 prebuilt native components, and managed backend reloads. Better iteration and
@@ -84,7 +84,7 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 
 [Manual cloud qualification](docs/manual-native-qualification.md) runs portable or native tests on disposable Windows, Linux, and macOS runners without restarting local VMs or enabling automatic CI.
 
-The [M3 native acceptance report](docs/m3-runtime-acceptance.md) records the actual macOS CEF, packaged-origin, resource-lifecycle and full-runtime acquisition qualification, with Windows/Linux native acceptance explicitly separate.
+The [M3 closeout](docs/m3-completion.md) records the declared macOS, Windows and Linux native functional acceptance, packaged resources, lifecycle and verified acquisition. Hosted smoke results do not establish hardware-input, GPU performance or release qualification.
 
 [Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
