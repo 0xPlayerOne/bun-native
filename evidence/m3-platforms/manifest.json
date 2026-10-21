@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "linuxRuntimeQualified": false,
+  "windowsRuntimeQualified": false,
+  "linux": {
+    "path": "linux-attempt.json.gz",
+    "storedSha256": "db7a1269b65647503de1da70cb3407be797f70ac74dc083cfa2ca006909704fd",
+    "uncompressedSha256": "a910cfcb78817b557b1471dd0eda8d3cbe559309fd0a375f1a03ea39866e19d1",
+    "uncompressedBytes": 41704
+  },
+  "compileChecks": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "passed": true,
+      "mode": "Clippy/all-targets/packaging/cef-dox; not linking or native execution",
+      "privateLogSha256": "c5dde8e476642ee905a98abf0851ae1d4b3b4e7ffff8923b9a471ce2c7d069ee"
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "passed": true,
+      "mode": "Clippy/all-targets/packaging/cef-dox; not linking or native execution",
+      "privateLogSha256": "428304bfbd2e6ff4dae76f26a837c3fbe5a518caa872b8a24e8e899732166807"
+    }
+  ],
+  "linuxBuildLogSha256": "07730abc91bc94ebb84a27a7035ddcfc8b3d6e249cf50ca9f21898f40a3eb402",
+  "linuxUnitLogSha256": "2b9e1f47e5e759224392f8cafde9581461cd7325aaf9d310cb1a8cdb5028463a"
+}
