@@ -2,6 +2,7 @@
 use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
+mod handshake;
 pub mod host;
 #[cfg(target_os = "macos")]
 mod keychain;

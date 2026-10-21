@@ -1,39 +1,13 @@
 import assert from 'node:assert/strict'
+import { packagedPageReadiness, pageTimeout } from './page-readiness.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 export default async function main(backend: CefBackend): Promise<void> {
   let ticks = 0
   const timer = setInterval(() => {
     ticks++
   }, 5)
-  let clearPageWait = () => {}
-  const pageResult = new Promise<void>((resolve, reject) => {
-    const deadline = setTimeout(() => {
-      remove()
-      reject(new Error('Packaged module did not complete'))
-    }, 10000)
-    const remove = backend.observe((event) => {
-      if (
-        event.event === 'view.console' &&
-        String(event.data?.['message']).startsWith('BUNLY_ASSET_TEST_FAILED')
-      ) {
-        clearTimeout(deadline)
-        remove()
-        reject(new Error(String(event.data?.['message'])))
-      }
-      if (event.event === 'view.console' && event.data?.['message'] === 'BUNLY_ASSET_TEST_OK') {
-        clearTimeout(deadline)
-        remove()
-        resolve()
-      }
-    })
-    clearPageWait = () => {
-      clearTimeout(deadline)
-      remove()
-    }
-  })
-  // Startup may fail before this promise is awaited; cleanup must not create a
-  // second unhandled rejection that obscures the original native failure.
-  void pageResult.catch(() => {})
+  const pageDeadlineMs = pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
+  const page = packagedPageReadiness((listener) => backend.observe(listener), pageDeadlineMs)
   try {
     const session = await backend.createSession({ partition: 'smoke', persistence: 'ephemeral' })
     const window = await backend.createWindow({
@@ -46,7 +20,7 @@ export default async function main(backend: CefBackend): Promise<void> {
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
-    await pageResult
+    await page.wait()
     assert.ok(ticks > 0, 'Bun timers must progress while CEF runs')
     await backend.resizeWindow(window, 1000, 700)
     await backend.showWindow(window, false)
@@ -125,6 +99,7 @@ export default async function main(backend: CefBackend): Promise<void> {
     console.log(
       JSON.stringify({
         event: 'bunly.native.smoke',
+        pageDeadlineMs,
         passed: true,
         cycles: 20,
         timers: ticks,
@@ -140,6 +115,6 @@ export default async function main(backend: CefBackend): Promise<void> {
     } else await backend.dispose()
   } finally {
     clearInterval(timer)
-    clearPageWait()
+    page.close()
   }
 }

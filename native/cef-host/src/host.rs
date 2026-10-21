@@ -319,14 +319,6 @@ fn dispatch(command: &Value) -> Result<(), String> {
         return Err("Host is shutting down".into());
     }
     match operation {
-        "hello" => {
-            if string(args, "bun")? != "1.4.3" {
-                fail("Packaged Bun version mismatch");
-                return Err("Bun version mismatch".into());
-            }
-            process::handshake();
-            reply(request, json!({"abi":1,"cef":"154.0.34"}));
-        }
         "session.create" => {
             if string(args, "persistence")? != "ephemeral" {
                 return Err("UNSUPPORTED_CAPABILITY: session.persistent".into());
