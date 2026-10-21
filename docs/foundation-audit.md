@@ -82,16 +82,52 @@ or process was stopped, and no local VM was restarted.
   qualification are recorded in the pull request. A cloud run is not implied by
   local tests or historical evidence replay.
 
+## Fresh hosted verification
+
+Full native run **39667418111** passed on all three hosted targets from clean
+commit `599348a819781f6d5d28465e73d7d8fd4bfb6d02`. It exercised the patched native
+lockfile and shared hosted qualification code with the normal deadline profile.
+Downloaded Windows/Linux reports were independently replayed with the strict
+platform validator; macOS packaged and fault outcomes were checked as well.
+
+| Target      | Prebuilt cases | Lifecycle cycles | Actual fault cases | Native Rust tests |
+| ----------- | -------------: | ---------------: | -----------------: | ----------------: |
+| Windows x64 |             10 |              100 |                  4 |                38 |
+| Linux x64   |             12 |              100 |                  4 |                42 |
+| macOS arm64 |             11 |              100 |                  4 |                43 |
+
+All three passed development-origin isolation with zero forbidden requests.
+These are functional regressions, not performance or physical-input claims.
+
+Final-head portable run **39668257634**, from clean
+`d1c0deccf914e548ec75d602d11b9d51b76f959c`, also passed on all three platforms.
+Linux/macOS passed 483 TypeScript tests; Windows passed 480 with its three
+pre-existing platform-specific symlink skips. All three passed 145 Python tests,
+strict typechecking, browser boundaries and compiler-free builds. The difference
+between those execution sources is the legacy foundation CI prerequisite/trigger
+fix, its regression test and this audit documentation, not native runtime behavior.
+
+All workflows pass actionlint. Two further real sync passes on the committed tree
+leave it clean. Ordinary automatic CI remains paused; its new orchestration is
+statically checked and shares the executed hosted smoke runner, but the automatic
+job itself was not dispatched as a claimed fresh pass. Final record-only edits
+do not alter any tested executable source.
+
+Run records:
+https://github.com/0xPlayerOne/bunly/actions/runs/39667418111 and
+https://github.com/0xPlayerOne/bunly/actions/runs/39668257634.
+
 ## Repository settings requiring an explicit policy decision
 
 Read-only GitHub inspection at this checkpoint reports a public repository,
 Dependabot security updates enabled, secret scanning and secret-scanning push
-protection disabled, and no active rules returned for `main`. Automatic CI is
+protection disabled, private vulnerability reporting disabled, and no active
+protection or required status checks on `main`. Automatic CI is
 still paused. Local hooks and manually run tests therefore are not equivalent
 to enforced server-side merge or secret-protection gates.
 
 Recommended next administrative work is enabling the available secret scanning
-and push-protection controls, then adopting branch protections and required
+and push-protection controls and private reporting, then adopting branch protections and required
 status checks backed by an intentionally resumed validation workflow. Do not
 require a check whose workflow is still paused. This codebase audit does not
 change those settings implicitly, and their absence is not hidden by the local
