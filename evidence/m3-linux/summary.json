@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "target": "linux-x64",
+  "deadlineProfile": "emulated-functional",
+  "passed": true,
+  "prebuiltTrials": 12,
+  "lifecycleCycles": 100,
+  "faultCases": 4,
+  "forbiddenDevelopmentRequests": 0,
+  "isolationObservations": {
+    "installed-0": {
+      "observedIdentities": 54,
+      "isolatedIdentities": 45,
+      "argvRoles": ["zygote"]
+    },
+    "installed-1": {
+      "observedIdentities": 53,
+      "isolatedIdentities": 46,
+      "argvRoles": ["zygote"]
+    },
+    "installed-2": {
+      "observedIdentities": 54,
+      "isolatedIdentities": 47,
+      "argvRoles": ["zygote"]
+    },
+    "last-window": {
+      "observedIdentities": 51,
+      "isolatedIdentities": 44,
+      "argvRoles": ["zygote"]
+    },
+    "restored-installation": {
+      "observedIdentities": 51,
+      "isolatedIdentities": 44,
+      "argvRoles": ["zygote"]
+    }
+  },
+  "performanceQualified": false,
+  "hardwareGpuQualified": false,
+  "physicalInputDpiQualified": false
+}

@@ -13,6 +13,7 @@ from contextlib import suppress
 from pathlib import Path
 
 import psutil
+from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -110,7 +111,9 @@ def main():
         os.environ["BUNLY_CACHE_DIR"] = str(work / (mode + "-profile"))
         nonce = secrets.token_hex(24)
         ready_path = work / (mode + ".ready.json")
+        injected_path = work / (mode + ".injected.json")
         os.environ["BUNLY_CEF_FAULT_READY"] = str(ready_path)
+        os.environ["BUNLY_CEF_FAULT_INJECTED"] = str(injected_path)
         os.environ["BUNLY_CEF_FAULT_NONCE"] = nonce
         injected = []
         root_identity = []
@@ -121,13 +124,15 @@ def main():
             injected=injected,
             root_identity=root_identity,
             ready_path=ready_path,
+            injected_path=injected_path,
             nonce=nonce,
         ):
             try:
                 process = psutil.Process(pid)
                 if (
-                    pid not in [v[0] for v in root_identity]
+                    not root_identity
                     and Path(process.exe()).resolve() == binary
+                    and not any(arg.startswith("--type=") for arg in process.cmdline())
                 ):
                     root_identity.append((pid, process.create_time()))
                 if (
@@ -137,19 +142,39 @@ def main():
                     and readiness(ready_path, nonce, mode)
                 ):
                     expected = "renderer" if mode == "renderer-exit" else "gpu-process"
-                    if "--type=" + expected in process.cmdline():
-                        executable = Path(process.exe()).resolve()
-                        if executable.is_relative_to(helper_root):
+                    executable = Path(process.exe()).resolve()
+                    if executable.is_relative_to(helper_root):
+                        identity = process.create_time()
+                        evidence = helper_role(process)
+                        if evidence is not None and evidence["role"] == expected:
                             owner = psutil.Process(root_identity[0][0])
-                            if owner.create_time() == root_identity[0][1] and any(
-                                child.pid == pid for child in owner.children(recursive=True)
+                            if (
+                                owner.create_time() == root_identity[0][1]
+                                and any(
+                                    child.pid == pid for child in owner.children(recursive=True)
+                                )
+                                and process.create_time() == identity
                             ):
-                                identity = process.create_time()
-                                if process.create_time() == identity:
-                                    injected.append(
-                                        {"pid": pid, "creationTime": identity, "role": expected}
+                                injected.append(
+                                    {
+                                        "pid": pid,
+                                        "creationTime": identity,
+                                        "role": expected,
+                                        "roleEvidence": evidence,
+                                    }
+                                )
+                                process.kill()
+                                with injected_path.open("x", encoding="utf-8") as receipt:
+                                    json.dump(
+                                        {
+                                            "mode": mode,
+                                            "nonce": nonce,
+                                            "pid": pid,
+                                            "creationTime": identity,
+                                            "role": expected,
+                                        },
+                                        receipt,
                                     )
-                                    process.kill()
             except (psutil.Error, OSError):
                 pass
             return {

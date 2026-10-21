@@ -101,7 +101,12 @@ python scripts/report_m3_acceptance.py
 
 The verifier rejects incomplete/duplicate trials, missing clean shutdown, forced exit, unobserved faults, incomplete offline acquisition and failed disposable-volume cleanup. The native reports explicitly do **not** claim Windows or Linux runtime acceptance.
 
-## Platform disposition
+## Historical platform disposition at PR #78
+
+The Linux limitation below records that earlier execution environment. Current
+Linux acceptance and the still-open Windows boundary are documented in
+[M3 native platform acceptance](m3-native-platform-acceptance.md); the failed
+container result is not discarded or relabeled.
 
 **#12, #15, #16 and #17:** implementation and declared macOS/shared-runtime acceptance are supplied. They can close when this PR lands. This does not introduce persistent sessions, a renderer-native authority bridge, native PTYs, production signing or release publication.
 
