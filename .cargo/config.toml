@@ -1,0 +1,5 @@
+# Framework-contributor Windows builds ship without a machine-installed MSVC CRT.
+# Target-scoped flags do not affect host build scripts or other platform artifacts.
+# Application consumers still select prebuilt binaries; they do not compile Rust.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
