@@ -93,3 +93,11 @@ including custom workflow and hook output. The duplicate-layout, pin-integrity,
 manual-dispatch and hook tests run in `bun run check`. The review record is in
 [the foundation audit](foundation-audit.md). Historical milestone evidence is
 retained separately and is not rewritten by synchronization.
+
+## Formatting after synchronization
+
+The wrapper applies the pinned Oxfmt configuration to Foundry-managed output
+after the repository overlay. Sync does not reformat application source or
+historical evidence. `bun run format:check` verifies the complete maintained
+source tree and runs as the first step of `bun run check`. See
+[formatting](formatting.md) for separate Python/Rust commands.

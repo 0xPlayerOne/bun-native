@@ -4,13 +4,14 @@ The caller must explicitly select trusted installed bytes and pin their SHA-256.
 This is version inspection, NOT sandbox attestation or publisher authentication.
 Public ABI: chromiumembedded/cef/include/cef_version_info.h, cef_version_info(0..7).
 """
+
 import argparse
 import ctypes
 import hashlib
 import json
-from pathlib import Path
 import re
 import stat
+from pathlib import Path
 
 
 def verified_library(filename, expected):
@@ -25,7 +26,10 @@ def verified_library(filename, expected):
         while chunk := source.read(64 * 1024):
             digest.update(chunk)
     after = path.lstat()
-    identity = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
     if identity(before) != identity(after) or digest.hexdigest() != expected:
         raise ValueError("Native library identity mismatch")
     return path.resolve(), identity(after)
@@ -38,7 +42,11 @@ def inspect(filename, expected):
     version.argtypes = [ctypes.c_int]
     version.restype = ctypes.c_int
     parts = [version(index) for index in range(8)]
-    if any(not isinstance(n, int) or n < 0 or n > 2**31 - 1 for n in parts) or not parts[0] or not parts[4]:
+    if (
+        any(not isinstance(n, int) or n < 0 or n > 2**31 - 1 for n in parts)
+        or not parts[0]
+        or not parts[4]
+    ):
         raise ValueError("Invalid exported CEF version components")
     full = None
     try:
@@ -55,10 +63,17 @@ def inspect(filename, expected):
     _, after_identity = verified_library(filename, expected)
     if identity != after_identity:
         raise ValueError("Native library changed during inspection")
-    return {"event": "cef-binary-identity", "schema": 1, "sha256": expected,
-            "cefVersion": ".".join(map(str, parts[:3])), "cefCommitNumber": parts[3],
-            "chromiumVersion": ".".join(map(str, parts[4:])), "fullVersion": full,
-            "source": "exported-api", "sandbox": "unverified"}
+    return {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": expected,
+        "cefVersion": ".".join(map(str, parts[:3])),
+        "cefCommitNumber": parts[3],
+        "chromiumVersion": ".".join(map(str, parts[4:])),
+        "fullVersion": full,
+        "source": "exported-api",
+        "sandbox": "unverified",
+    }
 
 
 if __name__ == "__main__":
@@ -71,4 +86,4 @@ if __name__ == "__main__":
     except (OSError, AttributeError, ValueError) as error:
         # Never print loader paths, environment variables or arbitrary native text.
         print(json.dumps({"event": "cef-identity-failure", "error": type(error).__name__}))
-        raise SystemExit(1)
+        raise SystemExit(1) from None

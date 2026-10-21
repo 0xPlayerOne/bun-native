@@ -8,7 +8,7 @@
   ],
   "type": "module",
   "scripts": {
-    "check": "bun run typecheck && bun run lint && bun run boundaries && bun run test && bun run build",
+    "check": "bun run format:check && bun run typecheck && bun run lint && bun run boundaries && bun run test && bun run build",
     "typecheck": "bun --check --tsconfig-override tsconfig.json",
     "typecheck:browser": "bun --check --tsconfig-override tsconfig.browser.json",
     "lint": "oxlint --deny-warnings packages scripts tests examples benchmarks",
@@ -30,7 +30,15 @@
     "foundry:plan": "bun --bun code-foundry plan --tier fast --json",
     "typecheck:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
     "typecheck:browser:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.browser.json",
-    "qualify:typecheck": "bun scripts/qualify-typecheck.ts"
+    "qualify:typecheck": "bun scripts/qualify-typecheck.ts",
+    "format": "bun --bun oxfmt --config .oxfmtrc.json --write .",
+    "format:check": "bun --bun oxfmt --config .oxfmtrc.json --check .",
+    "format:python": "ruff format scripts tests benchmarks/adapters/frontend",
+    "format:python:check": "ruff format --check scripts tests benchmarks/adapters/frontend",
+    "format:native": "cargo +1.85.1 fmt --manifest-path native/Cargo.toml && cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml",
+    "format:native:check": "cargo +1.85.1 fmt --manifest-path native/Cargo.toml --check && cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check",
+    "format:all": "bun run format && bun run format:python && bun run format:native",
+    "format:all:check": "bun run format:check && bun run format:python:check && bun run format:native:check"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

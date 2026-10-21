@@ -29,6 +29,12 @@ capabilities, cancellation, and cleanup. It does not open a native window.
 `benchmark:smoke` writes a complete scenario matrix with unsupported operations
 identified rather than assigned invented zero-cost timings.
 
+## Formatting
+
+Run `bun run format` to apply Oxfmt and `bun run format:check` to verify it.
+`bun run check` enforces formatting before the other checks. See
+[formatting](docs/formatting.md) for Python/Rust commands and preserved evidence.
+
 ## Interactive comparison workbench
 
 ```sh

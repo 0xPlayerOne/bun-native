@@ -63,6 +63,7 @@ jobs:
         id: native
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
+          cargo fmt --manifest-path native/Cargo.toml --check
           cargo test --locked --manifest-path native/Cargo.toml
           cargo build --locked --manifest-path native/Cargo.toml --release
       - name: Qualify Bun FFI, Node-API, and subprocess handoff

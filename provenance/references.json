@@ -1,10 +1,48 @@
 {
- "schema":1,
- "references":[
-  {"repository":"https://github.com/Netko-Labs/mirin","commit":"c60fa09a7ae94368e22188cb8ff0b38a910a9f24","paths":["LICENSE","docs/architecture.md","packages/mirin/src/host.ts","packages/mirin-cli/src/dev.ts"],"relationship":"reference-only","importedPaths":[],"license":"MIT","licenseUrl":"https://github.com/Netko-Labs/mirin/blob/c60fa09a7ae94368e22188cb8ff0b38a910a9f24/LICENSE"},
-  {"repository":"https://github.com/blackboardsh/electrobun","commit":"c4bbeca07829d9b1634d31598ef6091fb19ace2a","paths":["LICENSE","README.md","package/src/shared/rpc.test.ts"],"relationship":"reference-only","importedPaths":[],"license":"MIT","licenseUrl":"https://github.com/blackboardsh/electrobun/blob/c4bbeca07829d9b1634d31598ef6091fb19ace2a/LICENSE"},
-  {"repository":"https://github.com/wess/butter","commit":"a735ddf2eac8f4fe4a98370fc4ccf4373db797d9","paths":["LICENSE","src/cli/dev.ts","src/cli/compile.ts","docs/reference/architecture.md"],"relationship":"reference-only","importedPaths":[],"license":"MIT","licenseUrl":"https://github.com/wess/butter/blob/a735ddf2eac8f4fe4a98370fc4ccf4373db797d9/LICENSE"}
- ],
- "unselectedCandidates":["https://github.com/tauri-apps/cef-rs","https://github.com/chromiumembedded/cef","https://github.com/tauri-apps/wry"],
- "note":"Candidates have no approved vendored code or binary pin. Exact licenses and release notices must be reviewed before import."
+  "schema": 1,
+  "references": [
+    {
+      "repository": "https://github.com/Netko-Labs/mirin",
+      "commit": "c60fa09a7ae94368e22188cb8ff0b38a910a9f24",
+      "paths": [
+        "LICENSE",
+        "docs/architecture.md",
+        "packages/mirin/src/host.ts",
+        "packages/mirin-cli/src/dev.ts"
+      ],
+      "relationship": "reference-only",
+      "importedPaths": [],
+      "license": "MIT",
+      "licenseUrl": "https://github.com/Netko-Labs/mirin/blob/c60fa09a7ae94368e22188cb8ff0b38a910a9f24/LICENSE"
+    },
+    {
+      "repository": "https://github.com/blackboardsh/electrobun",
+      "commit": "c4bbeca07829d9b1634d31598ef6091fb19ace2a",
+      "paths": ["LICENSE", "README.md", "package/src/shared/rpc.test.ts"],
+      "relationship": "reference-only",
+      "importedPaths": [],
+      "license": "MIT",
+      "licenseUrl": "https://github.com/blackboardsh/electrobun/blob/c4bbeca07829d9b1634d31598ef6091fb19ace2a/LICENSE"
+    },
+    {
+      "repository": "https://github.com/wess/butter",
+      "commit": "a735ddf2eac8f4fe4a98370fc4ccf4373db797d9",
+      "paths": [
+        "LICENSE",
+        "src/cli/dev.ts",
+        "src/cli/compile.ts",
+        "docs/reference/architecture.md"
+      ],
+      "relationship": "reference-only",
+      "importedPaths": [],
+      "license": "MIT",
+      "licenseUrl": "https://github.com/wess/butter/blob/a735ddf2eac8f4fe4a98370fc4ccf4373db797d9/LICENSE"
+    }
+  ],
+  "unselectedCandidates": [
+    "https://github.com/tauri-apps/cef-rs",
+    "https://github.com/chromiumembedded/cef",
+    "https://github.com/tauri-apps/wry"
+  ],
+  "note": "Candidates have no approved vendored code or binary pin. Exact licenses and release notices must be reviewed before import."
 }

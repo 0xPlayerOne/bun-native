@@ -32,6 +32,7 @@ The existing `qualify-development.ts` remains the bare-Bun backend edit/build an
 command-reconnect reference. Neither fixture implements Bunly managed reload.
 
 Reference API contracts:
+
 - https://bun.com/docs/bundler/fullstack
 - https://bun.com/docs/bundler/hot-reloading
 

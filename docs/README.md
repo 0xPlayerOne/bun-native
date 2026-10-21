@@ -54,3 +54,6 @@ completion reports and issue tracker for present status.
 
 [Bun-native tooling](bun-tooling.md) documents the qualified checker, bounded file reads,
 concurrent builds, measured results and retained security boundaries.
+
+[Formatting](formatting.md) documents the repository-wide Oxfmt gate and the
+separate Python/Rust contributor formatters.

@@ -1,7 +1,20 @@
 {
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": false,
   "singleQuote": true,
   "trailingComma": "es5",
   "printWidth": 100,
-  "ignorePatterns": ["CHANGELOG.md", ".github/.code-foundry", ".github/actions/", "plugin.json"]
+  "ignorePatterns": [
+    "CHANGELOG.md",
+    ".github/.code-foundry",
+    ".github/actions/",
+    "plugin.json",
+    "evidence/**",
+    ".bunly/**"
+  ],
+  "tabWidth": 2,
+  "endOfLine": "lf",
+  "sortImports": false,
+  "sortPackageJson": false,
+  "embeddedLanguageFormatting": "off"
 }

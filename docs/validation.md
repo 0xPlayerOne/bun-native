@@ -17,7 +17,7 @@ python -m unittest discover -s tests -p '*_test.py'
 
 Use Bun 1.4.3 and a Python environment installed from `requirements-dev.txt` and
 `benchmarks/adapters/frontend/requirements.txt`. Set `PYTHON` to that interpreter
-for subprocess-based fixtures. `bun run check` includes strict types, lint,
+for subprocess-based fixtures. `bun run check` includes repository-wide Oxfmt verification, Bun-native strict types, lint,
 browser AST boundaries, unit tests and compiler-free SDK builds. Repository
 hygiene tests also verify canonical GitHub paths and reviewed workflow pins.
 
@@ -88,7 +88,8 @@ baseline. `.gitleaksignore` contains only reviewed exact historical fingerprints
 for SHA-256 report digests; no credential category or entire evidence directory
 is excluded. An audit with no known findings is not a proof of security.
 
-Run Oxfmt and Ruff on edited files and retain the normal commit checks. Changes
+Run `bun run format:check` and `bun run format:python:check`, and retain the normal commit checks.
+See [formatting](formatting.md) for the complete contributor commands and scope. Changes
 to native code, runtime dependencies or qualification orchestration require the
 relevant fresh hosted runs in addition to local checks. M4's renderer authority,
 persistent sessions and permission boundaries remain separate acceptance work.

@@ -197,10 +197,11 @@ jobs:
         run: |
           mkdir -p .bunly/hosted-evidence
           bun install --frozen-lockfile
-          python -m pip install --disable-pip-version-check -r requirements-dev.txt -r benchmarks/adapters/frontend/requirements.txt
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt -r benchmarks/adapters/frontend/requirements.txt -r requirements-format.txt
           python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - name: Portable checks
         run: |
+          bun run format:python:check 2>&1 | tee .bunly/hosted-evidence/python-format.log
           bun run check 2>&1 | tee .bunly/hosted-evidence/check.log
           bun run typecheck:browser 2>&1 | tee .bunly/hosted-evidence/browser.log
           bun run qualify:typecheck 2>&1 | tee .bunly/hosted-evidence/typecheck-equivalence.log
@@ -241,6 +242,7 @@ jobs:
         if: inputs.suite != 'portable'
         run: |
           bun scripts/build-cef-fixture.ts
+          cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check
           cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release 2>&1 | tee .bunly/hosted-evidence/build.log
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib 2>&1 | tee .bunly/hosted-evidence/native-tests.log
           cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"

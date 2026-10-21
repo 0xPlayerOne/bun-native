@@ -1,4 +1,7 @@
-import { main } from './index.ts';
-try { await main(process.argv.slice(2)); } catch(error) {
-  console.error(error instanceof Error?error.message:String(error));process.exitCode=1;
+import { main } from './index.ts'
+try {
+  await main(process.argv.slice(2))
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exitCode = 1
 }

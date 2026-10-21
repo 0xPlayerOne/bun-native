@@ -1,8 +1,56 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bunly comparison workbench</title><link rel="stylesheet" href="/vendor/xterm.css">
-<style>body{margin:24px;font:15px system-ui;background:#11151d;color:#e5eaf3}header{display:flex;justify-content:space-between;gap:20px}main{display:grid;grid-template-columns:1fr 1fr;gap:20px}section{min-width:0;padding:16px;border:1px solid #3f4756;border-radius:8px}button,input{font:inherit;padding:7px;margin:4px}iframe{width:100%;height:220px;border:0;background:white}#terminal{height:360px}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#acb5c5}</style>
-<script src="/vendor/xterm.js" defer></script><script src="/ui.js" defer></script></head>
-<body><header><div><h1>Bunly workbench</h1><p>Shared frontend, deterministic local fixtures.</p></div><p id="status" role="status">Loading</p></header>
-<main><section><h2>Terminal workload</h2><p><button id="stream">Render numbered stream</button><button id="cancel">Cancel stream</button></p><div id="terminal" aria-label="Terminal output"></div><small>Real xterm.js renderer. This workload is a deterministic byte producer, not a PTY or shell.</small></section>
-<section><h2>Browser fixture</h2><iframe id="preview" src="/page/form" sandbox="allow-scripts allow-forms" title="Unprivileged local browser fixture"></iframe><p><button id="navigate">Navigate fixture</button><label>Interaction probe <input id="input" placeholder="Type while streaming"></label></p><h2>Results</h2><pre id="results">No measurement yet.</pre><small id="mode">Web preview: the iframe is not a native embedded view. Desktop adapters open their own independent browser view.</small></section></main></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bunly comparison workbench</title>
+    <link rel="stylesheet" href="/vendor/xterm.css" />
+    <style>
+      body{margin:24px;font:15px system-ui;background:#11151d;color:#e5eaf3}header{display:flex;justify-content:space-between;gap:20px}main{display:grid;grid-template-columns:1fr 1fr;gap:20px}section{min-width:0;padding:16px;border:1px solid #3f4756;border-radius:8px}button,input{font:inherit;padding:7px;margin:4px}iframe{width:100%;height:220px;border:0;background:white}#terminal{height:360px}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#acb5c5}
+    </style>
+    <script src="/vendor/xterm.js" defer></script>
+    <script src="/ui.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Bunly workbench</h1>
+        <p>Shared frontend, deterministic local fixtures.</p>
+      </div>
+      <p id="status" role="status">Loading</p>
+    </header>
+    <main>
+      <section>
+        <h2>Terminal workload</h2>
+        <p>
+          <button id="stream">Render numbered stream</button
+          ><button id="cancel">Cancel stream</button>
+        </p>
+        <div id="terminal" aria-label="Terminal output"></div>
+        <small
+          >Real xterm.js renderer. This workload is a deterministic byte producer, not a PTY or
+          shell.</small
+        >
+      </section>
+      <section>
+        <h2>Browser fixture</h2>
+        <iframe
+          id="preview"
+          src="/page/form"
+          sandbox="allow-scripts allow-forms"
+          title="Unprivileged local browser fixture"
+        ></iframe>
+        <p>
+          <button id="navigate">Navigate fixture</button
+          ><label>Interaction probe <input id="input" placeholder="Type while streaming" /></label>
+        </p>
+        <h2>Results</h2>
+        <pre id="results">No measurement yet.</pre>
+        <small id="mode"
+          >Web preview: the iframe is not a native embedded view. Desktop adapters open their own
+          independent browser view.</small
+        >
+      </section>
+    </main>
+  </body>
+</html>
