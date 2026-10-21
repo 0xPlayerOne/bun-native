@@ -9,7 +9,7 @@
  * The printed table is the authority for the wrapper-side state; the matrix
  * document cites this script as the reproducer.
  */
-import {readdirSync, readFileSync, statSync} from 'node:fs';
+import {readdirSync, readFileSync} from 'node:fs';
 import {join, relative} from 'node:path';
 
 export const WORKFLOWS = [
