@@ -7,37 +7,37 @@
  */
 
 export type DiagnosticRecord = {
-  kind: 'bun-error' | 'renderer-log' | 'rpc-stage' | 'reload-stage';
-  message: string;
-  at?: string;
-  frame?: {file: string; line: number; column: number};
-};
+  kind: 'bun-error' | 'renderer-log' | 'rpc-stage' | 'reload-stage'
+  message: string
+  at?: string
+  frame?: { file: string; line: number; column: number }
+}
 
 export type DiagnosticPolicy = {
-  maxBytes: number;
-  redaction?: string;
-};
+  maxBytes: number
+  redaction?: string
+}
 
-const SECRET_PATTERN = /(token|secret|password|passwd|api[_-]?key|authorization|credential)/i;
-const HOME_PATTERN = /^\/(?:home|Users|root)\//;
+const SECRET_PATTERN = /(token|secret|password|passwd|api[_-]?key|authorization|credential)/i
+const HOME_PATTERN = /^\/(?:home|Users|root)\//
 
 /** Redacts one value: secrets become the marker, home paths lose their prefix. */
 export function redactDiagnosticValue(value: unknown, policy: DiagnosticPolicy): unknown {
   if (typeof value === 'string') {
-    if (SECRET_PATTERN.test(value)) return policy.redaction ?? '[redacted]';
-    return value.replace(HOME_PATTERN, '~/');
+    if (SECRET_PATTERN.test(value)) return policy.redaction ?? '[redacted]'
+    return value.replace(HOME_PATTERN, '~/')
   }
-  if (Array.isArray(value)) return value.map((entry) => redactDiagnosticValue(entry, policy));
+  if (Array.isArray(value)) return value.map((entry) => redactDiagnosticValue(entry, policy))
   if (value !== null && typeof value === 'object') {
-    const redacted: Record<string, unknown> = {};
+    const redacted: Record<string, unknown> = {}
     for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
       redacted[key] = SECRET_PATTERN.test(key)
-        ? policy.redaction ?? '[redacted]'
-        : redactDiagnosticValue(entry, policy);
+        ? (policy.redaction ?? '[redacted]')
+        : redactDiagnosticValue(entry, policy)
     }
-    return redacted;
+    return redacted
   }
-  return value;
+  return value
 }
 
 /**
@@ -47,33 +47,33 @@ export function redactDiagnosticValue(value: unknown, policy: DiagnosticPolicy):
  * never invented.
  */
 export function renderSourceMappedFrame(
-  frame: {file: string; line: number; column: number},
-  sourceMap: {sources: readonly string[]; mappings: string} | undefined,
-): {file: string; line: number; column: number} {
-  if (sourceMap === undefined || sourceMap.mappings.length === 0) return frame;
-  return {...frame, file: sourceMap.sources[0] ?? frame.file};
+  frame: { file: string; line: number; column: number },
+  sourceMap: { sources: readonly string[]; mappings: string } | undefined
+): { file: string; line: number; column: number } {
+  if (sourceMap === undefined || sourceMap.mappings.length === 0) return frame
+  return { ...frame, file: sourceMap.sources[0] ?? frame.file }
 }
 
 /** Builds a bounded, redacted diagnostic bundle. */
 export function collectDiagnosticBundle(
   records: readonly DiagnosticRecord[],
   policy: DiagnosticPolicy,
-  sourceMap?: {sources: readonly string[]; mappings: string},
-): {records: DiagnosticRecord[]; bytes: number; truncated: boolean} {
-  const redacted = records.map((record) => ({
-    ...record,
-    message: String(redactDiagnosticValue(record.message, policy)),
-    frame: record.frame === undefined ? undefined : renderSourceMappedFrame(record.frame, sourceMap),
-  }));
-  const bytes = Buffer.byteLength(JSON.stringify(redacted), 'utf8');
-  if (bytes <= policy.maxBytes) return {records: redacted, bytes, truncated: false};
-  const kept: DiagnosticRecord[] = [];
-  let size = 0;
+  sourceMap?: { sources: readonly string[]; mappings: string }
+): { records: DiagnosticRecord[]; bytes: number; truncated: boolean } {
+  const redacted = records.map((record): DiagnosticRecord => {
+    const message = String(redactDiagnosticValue(record.message, policy))
+    if (record.frame === undefined) return { ...record, message }
+    return { ...record, message, frame: renderSourceMappedFrame(record.frame, sourceMap) }
+  })
+  const bytes = Buffer.byteLength(JSON.stringify(redacted), 'utf8')
+  if (bytes <= policy.maxBytes) return { records: redacted, bytes, truncated: false }
+  const kept: DiagnosticRecord[] = []
+  let size = 0
   for (const record of redacted) {
-    const recordBytes = Buffer.byteLength(JSON.stringify(record), 'utf8');
-    if (size + recordBytes > policy.maxBytes) break;
-    kept.push(record);
-    size += recordBytes;
+    const recordBytes = Buffer.byteLength(JSON.stringify(record), 'utf8')
+    if (size + recordBytes > policy.maxBytes) break
+    kept.push(record)
+    size += recordBytes
   }
-  return {records: kept, bytes: size, truncated: true};
+  return { records: kept, bytes: size, truncated: true }
 }
