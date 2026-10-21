@@ -65,3 +65,11 @@ export { RpcServer } from './rpc.ts'
 export type { RpcContext, RpcHandlers, RpcServerOptions } from './rpc.ts'
 export { RpcViewAuthority } from './rpc-authority.ts'
 export type { NativeRpcFrame, RpcIdentity, RpcLease, RpcAuthorityOptions } from './rpc-authority.ts'
+export { runBackendConformance, summarizeConformance } from './conformance.ts'
+export type {
+  ConformanceArea,
+  ConformanceCheck,
+  ConformanceOptions,
+  ConformanceReport,
+  ConformanceStatus,
+} from './conformance.ts'

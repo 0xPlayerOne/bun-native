@@ -1,40 +1,15 @@
 /** Engine-independent contracts. This package must remain browser-safe. */
-export const CONTRACT_VERSION = 1 as const
-export const CAPABILITIES = [
-  'window.lifecycle',
-  'view.navigate',
-  'session.ephemeral',
-  'session.persistent',
-  'session.cookies',
-  'permission.request',
-  'download.manage',
-  'view.snapshot',
-  'view.evaluate',
-  'view.input',
-  'backend.extensions',
-] as const
-export type Capability = (typeof CAPABILITIES)[number]
-export type BackendName = 'mock' | 'cef' | 'webview2' | 'wkwebview' | 'webkitgtk'
-export type ErrorCode =
-  | 'INVALID_ARGUMENT'
-  | 'INVALID_HANDLE'
-  | 'DISPOSED'
-  | 'RESOURCE_IN_USE'
-  | 'UNSUPPORTED_CAPABILITY'
-  | 'VERSION_MISMATCH'
-  | 'PERMISSION_DENIED'
-export class BunlyError extends Error {
-  readonly code: ErrorCode
-  constructor(code: ErrorCode, message: string) {
-    super(message)
-    this.code = code
-    this.name = 'BunlyError'
-  }
-}
+export * from './core.ts'
+export * from './profiles.ts'
+import { BunlyError, CONTRACT_VERSION } from './core.ts'
+import { PROFILE_CAPABILITY_VERSION } from './profiles.ts'
+import type { BackendName, Capability } from './core.ts'
 export interface BackendDescriptor {
   readonly name: BackendName
   readonly version: string
   readonly contractVersion: typeof CONTRACT_VERSION
+  /** The capability metadata version the backend was written against. */
+  readonly capabilityVersion: number
   readonly capabilities: readonly Capability[]
 }
 declare const handleBrand: unique symbol
@@ -141,6 +116,12 @@ export function requireCapability(descriptor: BackendDescriptor, capability: Cap
     throw new BunlyError(
       'VERSION_MISMATCH',
       `Expected contract ${CONTRACT_VERSION}, got ${descriptor.contractVersion}`
+    )
+  }
+  if (descriptor.capabilityVersion !== PROFILE_CAPABILITY_VERSION) {
+    throw new BunlyError(
+      'VERSION_MISMATCH',
+      `Expected capability metadata ${PROFILE_CAPABILITY_VERSION}, got ${descriptor.capabilityVersion}`
     )
   }
   if (!descriptor.capabilities.includes(capability)) {

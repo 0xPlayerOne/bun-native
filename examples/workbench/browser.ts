@@ -3,6 +3,7 @@ const descriptor = readDescriptor({
   name: 'mock',
   version: '0.1.0-dev.0',
   contractVersion: 1,
+  capabilityVersion: 1,
   capabilities: ['window.lifecycle', 'view.navigate', 'session.ephemeral'],
 })
 const output = document.querySelector('#output')
