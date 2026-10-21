@@ -218,5 +218,141 @@
     "Early typecheck/build timings precede added test fixtures and formatting; no controlled performance claim",
     "No application startup, steady-state CPU/RAM, bundle-size or competitor performance claim",
     "Parallelizing the entire check suite was evaluated but is not adopted"
-  ]
+  ],
+  "localMeasurementImplementationCommit": "f42917669f5c07c4f8e5c54c4374415db2bd0cb9",
+  "finalCheckerQualificationCommit": "d75dbfee9fc36806df32ce8fae970e898911c190",
+  "cloudQualification": {
+    "firstFullRun": {
+      "runId": 39676452547,
+      "sourceCommit": "f42917669f5c07c4f8e5c54c4374415db2bd0cb9",
+      "overallConclusion": "failure",
+      "passedNativePlatforms": ["linux-x64", "darwin-arm64"],
+      "failedPlatform": "win32-x64",
+      "failure": "Checker comparison used platform-dependent path prefixes; application checks passed, but empty reference coverage correctly failed qualification."
+    },
+    "windowsFullRun": {
+      "runId": 39676950594,
+      "sourceCommit": "d75dbfee9fc36806df32ce8fae970e898911c190",
+      "conclusion": "success",
+      "summary": [
+        {
+          "artifact": "native-win32-x64-full-39676950594-1",
+          "sourceCommit": "d75dbfee9fc36806df32ce8fae970e898911c190",
+          "acceptance": {
+            "schema": 1,
+            "target": "win32-x64",
+            "deadlineProfile": "standard",
+            "passed": true,
+            "prebuiltTrials": 10,
+            "lifecycleCycles": 100,
+            "faultCases": 4,
+            "forbiddenDevelopmentRequests": 0,
+            "isolationObservations": {
+              "installed-0": {
+                "observedIdentities": 12,
+                "isolatedIdentities": 8,
+                "argvRoles": ["gpu-process", "renderer", "utility"]
+              },
+              "installed-1": {
+                "observedIdentities": 12,
+                "isolatedIdentities": 8,
+                "argvRoles": ["gpu-process", "renderer", "utility"]
+              },
+              "installed-2": {
+                "observedIdentities": 11,
+                "isolatedIdentities": 7,
+                "argvRoles": ["gpu-process", "renderer", "utility"]
+              },
+              "last-window": {
+                "observedIdentities": 12,
+                "isolatedIdentities": 8,
+                "argvRoles": ["gpu-process", "renderer", "utility"]
+              },
+              "restored-installation": {
+                "observedIdentities": 11,
+                "isolatedIdentities": 7,
+                "argvRoles": ["gpu-process", "renderer", "utility"]
+              }
+            },
+            "performanceQualified": false,
+            "hardwareGpuQualified": false,
+            "physicalInputDpiQualified": false
+          },
+          "checkerCases": 23,
+          "nativeTests": [
+            "test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+          ],
+          "reportSha256": {
+            "qualification.json": "afd3225640096d669a6d42b4d6477e8ba0ead978db544ef4af7942f99a67df5f",
+            "typecheck-equivalence.log": "d25aed74eb280240ca898286e7173a25f068d0ba2ce4d39f80d877b6d30a3d79",
+            "native-tests.log": "fa2cb1fd9a4b41b542a7260f1705cb2f182454cbc5ede5b17e3107de6c0df555"
+          }
+        }
+      ]
+    },
+    "finalPortableRun": {
+      "runId": 39677300791,
+      "sourceCommit": "d75dbfee9fc36806df32ce8fae970e898911c190",
+      "conclusion": "success",
+      "platforms": [
+        {
+          "artifact": "native-darwin-arm64-portable-39677300791-1",
+          "checkerPassed": true,
+          "checkerCases": 23,
+          "rootFiles": 179,
+          "browserFiles": 12,
+          "bunTests": [
+            ["491", "pass"],
+            ["0", "fail"]
+          ],
+          "pythonTests": ["145"],
+          "reportSha256": {
+            "browser.log": "e4675fc0e13f3d37f7c37680f2e6d0392b7ce4ac4dfa673884096d65c1cfb449",
+            "typecheck-equivalence.log": "fcc4dfd90e647a9d1dfa3e5ee6e1e5a9bc6a33d4ed92de41f447fb0138d70611",
+            "check.log": "941e8bb417ce19eec2a47469c81f957b83562518c1ffc9b427376dea134cd4b1",
+            "python.log": "eed1f712069702806cf087feedd41d4fe83de290749ca481378f6000c8ad12a0"
+          }
+        },
+        {
+          "artifact": "native-linux-x64-portable-39677300791-1",
+          "checkerPassed": true,
+          "checkerCases": 23,
+          "rootFiles": 179,
+          "browserFiles": 12,
+          "bunTests": [
+            ["491", "pass"],
+            ["0", "fail"]
+          ],
+          "pythonTests": ["145"],
+          "reportSha256": {
+            "browser.log": "37c2112b292bc943ad56dcbbb5165c6fd12a907a9ca969202adb6d01c46d2b78",
+            "typecheck-equivalence.log": "fcc4dfd90e647a9d1dfa3e5ee6e1e5a9bc6a33d4ed92de41f447fb0138d70611",
+            "check.log": "571b1f2733df50186f5cf3016583842809f99fd9a96f81609d029f8cc83dd731",
+            "python.log": "8c0f0ca24204910678b6a49106a934fd7708e71933bb8a3855e6c20c2cee37f5"
+          }
+        },
+        {
+          "artifact": "native-win32-x64-portable-39677300791-1",
+          "checkerPassed": true,
+          "checkerCases": 23,
+          "rootFiles": 179,
+          "browserFiles": 12,
+          "bunTests": [
+            ["487", "pass"],
+            ["4", "skip"],
+            ["0", "fail"]
+          ],
+          "pythonTests": ["145"],
+          "reportSha256": {
+            "browser.log": "0c90a6b5ef1c5261eeca7f309b4d2a5d498306e6bcba256daa8f296aec90557f",
+            "typecheck-equivalence.log": "d25aed74eb280240ca898286e7173a25f068d0ba2ce4d39f80d877b6d30a3d79",
+            "check.log": "ea3473a3bb69920a692720cf1d5a117402b8f83f73ac944876343eeef495d4e8",
+            "python.log": "bfbb9072b29a80309267b0b64ed8c650ad9938ba5a14b6c6125a0571b8b8dd09"
+          }
+        }
+      ]
+    },
+    "nativeImplementationUnchangedByFollowup": true,
+    "performanceQualified": false
+  }
 }

@@ -109,3 +109,36 @@ existing implementations. Browser-safe packages do not gain Bun dependencies.
 This work does not claim faster desktop startup/rendering, reduced CEF bundle
 size, lower application RAM, competitor superiority, or M4/M5 security/PTY
 acceptance. Those need their respective workloads and platform qualification.
+
+## Executed qualification
+
+The complete local checkout passes 491 TypeScript tests and 145 Python tests,
+plus browser-only checking, lint, builds, Foundry doctor, workflow syntax,
+formatting and normal commit hooks. Eight new tooling tests cover output
+identity, stale-file removal, failed-build cleanup/repair, cryptographic hashes,
+duplicate groups, link policy, AST scanning and the native checker entrypoints.
+
+Final-source portable run `39677300791` passes on Windows, Linux and macOS.
+Each platform passes all 23 checker comparisons with the same 179 repository
+source files and 12 browser files. Linux/macOS pass all 491 TypeScript tests;
+Windows passes 487 with four explicit symlink-fixture skips. All three pass
+145 Python tests. No native application capability is inferred from a skip.
+
+Full native Linux/macOS jobs passed in run `39676452547`, executing clean
+`f42917669f5c07c4f8e5c54c4374415db2bd0cb9`. Its first Windows job failed the
+new comparison's path-prefix assumption; this failure is retained. The fix
+normalizes actual files before containment/coverage comparison. It does not
+accept an empty file set, suppress compiler errors, or change the compiler.
+
+Full Windows run `39676950594` then passed from clean
+`d75dbfee9fc36806df32ce8fae970e898911c190`; the only intervening code change
+was that comparison helper. The native runtime, build and inventory code is
+identical between these commits. Native qualification covered 12 Linux,
+11 macOS and 10 Windows prebuilt cases, 100 lifecycle cycles and four actual
+process faults per platform, with zero forbidden development-origin requests.
+The runs retain standard deadlines and the existing browser sandbox policies.
+
+Windows remains standard-user execution. These are hosted functional tests,
+not native-hardware performance, physical input/DPI or production-signing
+qualification. Automatic CI stays paused; all reported runs were explicit
+manual dispatches. M4 was not advanced.
