@@ -21,7 +21,10 @@ Repository hygiene, reproducible tooling and narrowly scoped security maintenanc
 | Automatic native cache could restore broad, older compiled output               | Cache immutable download inputs with exact target/lock keys, require `--locked`, and save only after successful qualification.                                          |
 | Old checkpoint documents looked like current setup instructions                 | Move superseded snapshots to `docs/history`, preserve their content/context, and add current documentation and validation indexes.                                      |
 
-The ordinary CEF lane also subscribes to the ready-for-review transition while
+The older foundation CI lane now explicitly installs its Python process-observer
+requirements before portable integration tests. Its runtime-target check avoids
+a shell-lint ambiguity; main/manual runs are not cancelled by newer executions.
+Both it and the ordinary CEF lane subscribe to the ready-for-review transition while
 retaining its billing/draft guards. Diagnostic collection is cancellation-aware.
 No security checks, acceptance cases or sandbox protections are removed.
 
@@ -66,7 +69,7 @@ or process was stopped, and no local VM was restarted.
 
 ## Validation
 
-- The full local application/repository suite passes 482 tests; the Python suite
+- The full local application/repository suite passes 483 tests; the Python suite
   passes 145 tests. Browser-only typechecking and compiler-free builds pass.
 - Patched native CEF tests pass 43 cases; locked packaging Clippy with warnings
   denied and Rust formatting pass under Rust 1.91.0.

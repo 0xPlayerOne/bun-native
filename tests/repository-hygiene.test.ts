@@ -112,3 +112,28 @@ test('obsolete toolchain snapshot and weaker CEF smoke runner stay removed', asy
   expect(automatic).toContain('build --locked')
   expect(automatic).not.toContain('if: always()')
 })
+
+test('foundation CI provides the process observer before portable integration tests', async () => {
+  const source = await readFile(resolve(root, '.github/workflows/ci.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: { foundation: { steps: Record<string, unknown>[]; if: string } }
+    on: { pull_request: { types: string[] } }
+    concurrency: Record<string, string>
+  }
+  const steps = workflow.jobs.foundation.steps
+  const setup = steps.findIndex((step) => String(step['uses']).startsWith('actions/setup-python@'))
+  const install = steps.findIndex(
+    (step) => step['name'] === 'Install process-observer prerequisites'
+  )
+  const checks = steps.findIndex((step) => String(step['run']).includes('bun run check'))
+  expect(setup).toBeGreaterThanOrEqual(0)
+  expect(install).toBeGreaterThan(setup)
+  expect(checks).toBeGreaterThan(install)
+  expect(String(steps[install]!['run'])).toContain('-r requirements-dev.txt')
+  expect(String(steps[install]!['run'])).toContain('PYTHON=')
+  expect(workflow.on.pull_request.types).toContain('ready_for_review')
+  expect(workflow.jobs.foundation.if).toContain('draft == false')
+  expect(workflow.concurrency['cancel-in-progress']).toContain(
+    "github.event_name == 'pull_request'"
+  )
+})
