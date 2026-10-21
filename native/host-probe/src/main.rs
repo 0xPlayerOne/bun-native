@@ -3,6 +3,34 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
+// Keep fallible protocol work separate from the owner that always reaps the child.
+// This also lets the pinned Clippy recognize every cleanup path without suppressions.
+fn handshake(
+    rx: &mpsc::Receiver<String>,
+    stdin: &mut std::process::ChildStdin,
+) -> Result<u32, String> {
+    if rx
+        .recv_timeout(Duration::from_secs(10))
+        .map_err(|e| e.to_string())?
+        != "ready"
+    {
+        return Err("missing ready".into());
+    }
+    stdin.write_all(b"ping\n").map_err(|e| e.to_string())?;
+    stdin.flush().map_err(|e| e.to_string())?;
+    let response = rx
+        .recv_timeout(Duration::from_secs(10))
+        .map_err(|e| e.to_string())?;
+    let ticks = response
+        .strip_prefix("pong:")
+        .ok_or("invalid response")?
+        .parse::<u32>()
+        .map_err(|e| e.to_string())?;
+    if ticks == 0 {
+        return Err("Bun timer did not run".into());
+    }
+    Ok(ticks)
+}
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
@@ -32,29 +60,7 @@ fn main() {
             }
         }
     });
-    let result = (|| -> Result<u32, String> {
-        if rx
-            .recv_timeout(Duration::from_secs(10))
-            .map_err(|e| e.to_string())?
-            != "ready"
-        {
-            return Err("missing ready".into());
-        }
-        stdin.write_all(b"ping\n").map_err(|e| e.to_string())?;
-        stdin.flush().map_err(|e| e.to_string())?;
-        let response = rx
-            .recv_timeout(Duration::from_secs(10))
-            .map_err(|e| e.to_string())?;
-        let ticks = response
-            .strip_prefix("pong:")
-            .ok_or("invalid response")?
-            .parse::<u32>()
-            .map_err(|e| e.to_string())?;
-        if ticks == 0 {
-            return Err("Bun timer did not run".into());
-        }
-        Ok(ticks)
-    })();
+    let result = handshake(&rx, &mut stdin);
     drop(stdin);
     if result.is_err() {
         let _ = child.kill();

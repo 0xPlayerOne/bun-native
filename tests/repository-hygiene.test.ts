@@ -129,11 +129,104 @@ test('foundation CI provides the process observer before portable integration te
   expect(setup).toBeGreaterThanOrEqual(0)
   expect(install).toBeGreaterThan(setup)
   expect(checks).toBeGreaterThan(install)
-  expect(String(steps[install]!['run'])).toContain('-r requirements-dev.txt')
+  expect(String(steps[install]!['run'])).toContain('-r requirements.txt')
   expect(String(steps[install]!['run'])).toContain('PYTHON=')
   expect(workflow.on.pull_request.types).toContain('ready_for_review')
   expect(workflow.jobs.foundation.if).toContain('draft == false')
   expect(workflow.concurrency['cancel-in-progress']).toContain(
     "github.event_name == 'pull_request'"
   )
+})
+
+test('Foundry installs a complete pinned Python environment and restricts discovery to owned tests', async () => {
+  const requirements = await readFile(resolve(root, 'requirements.txt'), 'utf8')
+  for (const file of [
+    'requirements-dev.txt',
+    'requirements-format.txt',
+    'benchmarks/adapters/frontend/requirements.txt',
+  ]) {
+    expect(requirements).toContain('-r ' + file)
+    expect(await Bun.file(resolve(root, file)).exists()).toBe(true)
+  }
+  expect(requirements).toContain('pytest==9.1.1')
+  const pytest = await readFile(resolve(root, 'pytest.ini'), 'utf8')
+  expect(pytest).toContain('testpaths = tests')
+  expect(pytest).toContain('python_files = *_test.py')
+  expect(pytest).toContain('--strict-config --strict-markers')
+  const config = Bun.YAML.parse(
+    await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8')
+  ) as Record<string, unknown>
+  expect(config['required_capabilities']).toBe('format,lint,type_check,build,unit')
+})
+
+test('local and hosted portable validation share the complete application and Python command', async () => {
+  const pkg = await Bun.file(resolve(root, 'package.json')).json()
+  for (const command of [
+    'check',
+    'typecheck:browser',
+    'format:python:check',
+    'lint:python',
+    'test:python',
+    'qualify:typecheck',
+  ]) {
+    expect(pkg.scripts['check:portable'].split(' && ')).toContain('bun run ' + command)
+  }
+  for (const file of ['ci.yml', 'cef-runtime.yml', 'benchmarks.yml']) {
+    const text = await readFile(resolve(root, '.github/workflows', file), 'utf8')
+    const check = text.indexOf('bun run check:portable')
+    expect(check, file).toBeGreaterThan(0)
+    expect(text.slice(0, check), file).toContain('-r requirements.txt')
+    expect(text.slice(0, check), file).toContain('actions/setup-python@')
+    expect(text.slice(0, check), file).toContain('PYTHON=')
+  }
+  expect(pkg.scripts['check:ci']).toContain('code-foundry check --tier audit')
+  expect(pkg.scripts.check).not.toContain('cargo')
+})
+
+test('custom qualification jobs respect drafts and do not cancel manual runs when CI resumes', async () => {
+  for (const file of [
+    'benchmarks.yml',
+    'development.yml',
+    'electrobun.yml',
+    'kernel-counters.yml',
+    'qualification.yml',
+    'cef-typecheck.yml',
+  ]) {
+    const text = await readFile(resolve(root, '.github/workflows', file), 'utf8')
+    const workflow = Bun.YAML.parse(text) as {
+      on: { pull_request: { types: string[] } }
+      concurrency: Record<string, unknown>
+      jobs: Record<string, { if: string }>
+    }
+    expect(workflow.on.pull_request.types, file).toContain('ready_for_review')
+    expect(workflow.concurrency['cancel-in-progress'], file).toBe(
+      "${{ github.event_name == 'pull_request' }}"
+    )
+    for (const job of Object.values(workflow.jobs)) {
+      expect(job.if, file).toStartWith("vars.CI_BILLING_PAUSED == 'false'")
+      expect(job.if, file).toContain('github.event.pull_request.draft == false')
+    }
+    expect(text, file).not.toContain('if: always()')
+    if (file !== 'cef-typecheck.yml') expect(text, file).toContain('actions/setup-python@')
+  }
+})
+
+test('automatic and manual CEF builds both enforce native formatting, lint, and tests', async () => {
+  const workflow = Bun.YAML.parse(
+    await readFile(resolve(root, '.github/workflows/cef-runtime.yml'), 'utf8')
+  ) as {
+    jobs: Record<string, { steps: { run?: string }[] }>
+  }
+  for (const name of ['cef', 'manual-native']) {
+    const commands = workflow.jobs[name]!.steps.map((step) => step.run ?? '').join('\n')
+    expect(commands, name).toContain('--component clippy')
+    expect(commands, name).toContain(
+      'cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check'
+    )
+    expect(commands, name).toContain('cargo +1.91.0 clippy --locked')
+    expect(commands, name).toContain('--features packaging -- -D warnings')
+    expect(commands, name).toContain(
+      'cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib'
+    )
+  }
 })

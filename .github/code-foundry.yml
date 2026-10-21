@@ -41,7 +41,7 @@ performance_budget_file: performance-package-budgets.json
 prune_standard: false
 cache_packages: auto
 cache_build: auto
-required_capabilities:
+required_capabilities: format,lint,type_check,build,unit
 coverage_enforcement: auto
 coverage_minimum: 80
 coverage_metrics: lines

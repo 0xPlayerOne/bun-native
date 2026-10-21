@@ -1,95 +1,147 @@
 # Validation
 
-Current contributor checks and the limits of their evidence.
+One local and hosted validation contract, with explicit platform boundaries.
 
-**Scope:** M1–M3 foundation, runtime and repository hygiene.
-**Policy:** Use exact lockfiles; failed or unsupported checks are not passes.
+**Scope:** M1–M3 foundation, tooling and repository hygiene.
+**Policy:** Use committed dependency pins; failures and unsupported cases are not passes.
 
-## Application and repository checks
+## Contributor setup
+
+Use Bun 1.4.3 and Python 3.11. On macOS/Linux:
 
 ```sh
 bun install --frozen-lockfile
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+export PYTHON="$(command -v python)"
+```
+
+On Windows, activate `.venv\Scripts\Activate.ps1` and set
+`$env:PYTHON = (Get-Command python).Source` after creating the environment.
+The complete requirements file includes the existing observer, Ruff, and
+frontend manifests plus pytest for Code Foundry. None ships in the desktop app.
+pytest runs the existing unittest suite; it does not replace its assertions.
+Discovery is restricted to `tests/*_test.py`, not downloaded repositories or caches.
+
+## Fast edits and complete portable checks
+
+```sh
+bun run format:check
+bun run typecheck
+bun run lint
+bun run build
+bun run check:portable
+```
+
+The first four commands need only Bun and installed JavaScript dependencies.
+`check:portable` includes `check` (format, native typecheck, lint, AST boundaries,
+Bun tests and SDK builds), browser-only checking, Python format/lint/tests, and
+the independent 23-case TypeScript checker qualification. Process-based tests
+need the selected Python environment. No systems compiler is invoked.
+
+Foundation CI and the manual hosted portable lane use this same command. Their
+Python prerequisites are installed before testing, not after. Formatting and
+lint failures are fatal; optional test tools are not silently skipped.
+
+## Foundry and workflow validation
+
+Install `actionlint` as a contributor tool, then run:
+
+```sh
+bun run foundry:sync
 bun run foundry:doctor
-bun run check
-bun run typecheck:browser
-python -m unittest discover -s tests -p '*_test.py'
+bun run check:ci
 ```
 
-Use Bun 1.4.3 and a Python environment installed from `requirements-dev.txt` and
-`benchmarks/adapters/frontend/requirements.txt`. Set `PYTHON` to that interpreter
-for subprocess-based fixtures. `bun run check` includes repository-wide Oxfmt verification, Bun-native strict types, lint,
-browser AST boundaries, unit tests and compiler-free SDK builds. Repository
-hygiene tests also verify canonical GitHub paths and reviewed workflow pins.
+`check:ci` executes the actual installed Code Foundry audit, then browser-only
+checking, AST boundaries, checker equivalence and workflow syntax/ShellCheck.
+It is not merely a dry-run plan. `format`, `lint`, `type_check`, `build` and
+`unit` are required Foundry capabilities. Its discovered E2E tests are reported
+separately; they are not proof of a native browser or controlled performance.
+Unimplemented integration, smoke, eval and performance categories remain
+explicitly inapplicable in Foundry. Dedicated native/benchmark workflows below
+supply their own actual acceptance rather than no-op package scripts.
 
-Native compilation is deliberately separate. Framework contributors can run:
+The application edit loop does not run Foundry, both compilers, or native builds
+on every change. Commit hooks remain staged-file-aware. Repeated Foundry syncs
+must leave no tracked changes and preserve the formatting gate.
+
+## Native framework checks
+
+Install the pinned Rust 1.85.1 (M1 probe) and 1.91.0 (CEF) toolchains with rustfmt
+and Clippy. Configure the trusted CEF distribution as described in
+[native acceptance](m3-runtime-acceptance.md), then run:
 
 ```sh
-bun run native:test
-bun run native:build
-cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
-cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
-cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check
+bun run check:ci:native
+cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
+  --all-targets --features packaging,cef/dox --target-dir .bunly/cef-typecheck
+bun run qualify:host
+bun run qualify:lifecycle
+bun run artifact:probe
+bun scripts/qualify-kernel.ts
 ```
 
-The first two commands use the M1 probe workspace and its root Rust 1.85.1 pin;
-the CEF workspace uses the explicit Rust 1.91.0 contributor toolchain. CEF tests
-need a matching native CEF distribution; follow
-[native acceptance](m3-runtime-acceptance.md) for setup. Application developers
-must not be forced to install these compilers to run prebuilt apps.
+The combined native command formats, lints with warnings denied, tests and builds
+both real workspaces. The CEF documentation-feature check uses a separate target
+directory and never substitutes for an actual CEF build or launch. The native
+commit hook selects the correct compiler for each workspace, including changes
+to shared Cargo configuration. Application consumers still use prebuilt binaries.
 
-## Hosted platform qualification
+For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 
 ```sh
-gh workflow run cef-runtime.yml --repo 0xPlayerOne/bunly --ref main \
-  -f platform=all -f suite=full
+bun scripts/qualify-cef-prebuilt.ts /path/to/bunly_host.app
+bun scripts/qualify-cef-development.ts /path/to/bunly_host.app
+python scripts/qualify-cef-faults.py /path/to/bunly_host.app --bun "$(command -v bun)"
 ```
 
-The [manual workflow guide](manual-native-qualification.md) covers platform
-selection, portable/smoke/full suites, timeouts, diagnostic artifacts and the
-standard-user Windows worker. Full runs execute native prebuilt, origin-policy
-and process-fault scenarios. They are functional CI evidence, not controlled
-performance, production signing or physical input/DPI certification.
+Use the underlying local entrypoints; do not spoof `GITHUB_ACTIONS` to run the
+hosted-only wrapper. Windows/Linux sandbox and GUI results cannot be inferred
+from a Mac run or cross-compilation. No production signing account is needed
+for the local macOS functional fixture, and no distribution approval is implied.
 
-The ordinary CEF PR lane uses the same hosted smoke implementation, rather than
-the retired weaker standalone smoke script. Its existing billing/draft guards
-remain in force. The obsolete offline Rust/Cargo snapshot-export job is removed;
-no current job consumed those archives.
+## Benchmark and development jobs
 
-## Reproduce preserved acceptance
+The separately locked reference dependencies are not installed by root Bun install:
 
 ```sh
-python scripts/summarize_m1.py --help
-python scripts/report_reference_acceptance.py
-python scripts/report_m3_acceptance.py
-python scripts/report_m3_platform.py evidence/m3-linux
-python scripts/report_m3_platform.py evidence/m3-windows
+bun scripts/bootstrap-benchmark-dependencies.ts
+bun run benchmark:smoke
+bun scripts/qualify-development.ts
+bun scripts/benchmark.ts record electron .bunly/benchmarks/electron-local.json --trials=3 --warmups=1
 ```
 
-Replays validate historical observations and hashes; they do not launch a new
-browser or establish acceptance for later runtime changes. Failed/noisy trials
-and exact engine/security profiles remain in the evidence. See the M1, M2 and M3
-completion reports for accepted scope and deferred work.
+On the declared macOS arm64 Electrobun profile, install its separate frozen lock,
+then run `bun scripts/prepare-electrobun.ts` and `bun scripts/qualify-electrobun.ts`.
+Preserve rejected and unsupported scenarios. A passing functional fixture is not
+a controlled performance comparison. No sandbox or managed browser policy may
+be disabled to make a reference pass.
 
-## Security and workflow review
+## Security and historical evidence
 
-When the contributor tools are installed, also run:
+Run `bun audit` for the root and each separately locked benchmark project,
+`cargo audit --file native/Cargo.lock`,
+`cargo audit --file native/cef-host/Cargo.lock`, and
+`pip-audit -r requirements.txt` with the contributor audit tools installed.
+Run `gitleaks git . --redact`; its exclusions are exact reviewed historical
+report-digest fingerprints, never a whole credential category.
 
-```sh
-bun audit
-cargo audit --file native/Cargo.lock
-cargo audit --file native/cef-host/Cargo.lock
-gitleaks git . --redact
-actionlint .github/workflows/cef-runtime.yml .github/workflows/cef-typecheck.yml
-```
+Use `scripts/report_reference_acceptance.py`, `scripts/report_m3_acceptance.py`
+and `scripts/report_m3_platform.py evidence/m3-{linux,windows}` to replay preserved
+evidence. Replays validate recorded hashes/results; they are not fresh executions.
+Historical evidence and lockfiles are never reformatted to hide drift.
 
-The benchmark projects have independent Bun locks and require separate audits.
-Do not automatically rewrite their historical version pins while preserving a
-baseline. `.gitleaksignore` contains only reviewed exact historical fingerprints
-for SHA-256 report digests; no credential category or entire evidence directory
-is excluded. An audit with no known findings is not a proof of security.
+## CI administration and non-local checks
 
-Run `bun run format:check` and `bun run format:python:check`, and retain the normal commit checks.
-See [formatting](formatting.md) for the complete contributor commands and scope. Changes
-to native code, runtime dependencies or qualification orchestration require the
-relevant fresh hosted runs in addition to local checks. M4's renderer authority,
-persistent sessions and permission boundaries remain separate acceptance work.
+Automatic jobs remain paused until the owner enables `CI_BILLING_PAUSED=false`.
+Local checks do not set that variable or dispatch workflows. The existing
+[manual platform workflow](manual-native-qualification.md) remains independently
+available for explicit Windows/Linux/macOS execution.
+
+Draft qualification jobs do not allocate runners; readiness triggers validation.
+Manual runs are not cancelled by another dispatch through a PR cancellation rule.
+Release integrity, production signing, GitHub draft automation, optional hosted
+security services and server-side protections require their actual environments
+and authorization. A local green result does not claim those actions ran.
