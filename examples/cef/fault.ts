@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { pageTimeout } from './page-readiness.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
@@ -27,7 +28,7 @@ export default async function fault(backend: CefBackend): Promise<void> {
     if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') finish()
     if (text.startsWith('BUNLY_ASSET_TEST_FAILED')) reject(new Error(text))
   })
-  const timer = setTimeout(() => reject(new Error('Fault fixture page deadline')), 10000)
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
     await backend.createView({
       window,
@@ -35,6 +36,10 @@ export default async function fault(backend: CefBackend): Promise<void> {
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
+    timer = setTimeout(
+      () => reject(new Error('Fault fixture page deadline')),
+      pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
+    )
     await page
     console.error(JSON.stringify({ event: 'bunly.fault.ready', mode, pid: process.pid }))
     const ready = process.env['BUNLY_CEF_FAULT_READY']
@@ -92,7 +97,7 @@ export default async function fault(backend: CefBackend): Promise<void> {
     assert.equal(loaded.url, 'app://ui/index.html')
     console.error(JSON.stringify({ event: 'bunly.native.gpu-recovered', passed: true }))
   } finally {
-    clearTimeout(timer)
+    if (timer) clearTimeout(timer)
     off()
     await backend.dispose()
   }

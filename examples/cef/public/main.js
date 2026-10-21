@@ -1,3 +1,4 @@
+import { observePolicyViolations } from './nested/policy-violations.mjs'
 const check = (condition, message) => {
   if (!condition) throw new Error(message)
 }
@@ -92,26 +93,22 @@ try {
       typeof globalThis.bunly === 'undefined',
     'Native authority leaked to page'
   )
-  const violations = []
-  const listener = (e) => violations.push(e.violatedDirective)
-  document.addEventListener('securitypolicyviolation', listener)
-  await fetch('https://blocked.invalid/').then(
-    () => {
-      throw new Error('Remote fetch escaped CSP')
-    },
-    () => {}
-  )
+  const policy = observePolicyViolations(document)
   const foreign = document.createElement('iframe')
-  foreign.src = 'https://blocked.invalid/'
-  document.body.append(foreign)
-  await new Promise((resolve) => setTimeout(resolve, 100))
-  foreign.remove()
-  document.removeEventListener('securitypolicyviolation', listener)
-  check(
-    violations.some((v) => v.startsWith('connect-src')) &&
-      violations.some((v) => v.startsWith('frame-src')),
-    'Cross-origin page restrictions missing'
-  )
+  try {
+    await fetch('https://blocked.invalid/').then(
+      () => {
+        throw new Error('Remote fetch escaped CSP')
+      },
+      (error) => check(error instanceof TypeError, 'Remote fetch failed for an unexpected reason')
+    )
+    foreign.src = 'https://blocked.invalid/'
+    document.body.append(foreign)
+    await policy.completion
+  } finally {
+    foreign.remove()
+    policy.dispose()
+  }
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   console.log('BUNLY_ASSET_TEST_OK')
 } catch (error) {

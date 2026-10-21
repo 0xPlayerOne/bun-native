@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { pageTimeout } from './page-readiness.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 export default async function development(backend: CefBackend): Promise<void> {
   const origin = process.env['BUNLY_TEST_ORIGIN']
@@ -24,7 +25,7 @@ export default async function development(backend: CefBackend): Promise<void> {
     if (text === 'DEV_TEST_OK') yes()
     else if (text.startsWith('DEV_TEST_FAILED:')) no(new Error(text))
   })
-  const deadline = setTimeout(() => no(new Error('Development page did not complete')), 12000)
+  let deadline: ReturnType<typeof setTimeout> | undefined
   try {
     const view = await backend.createView({
       window,
@@ -32,6 +33,12 @@ export default async function development(backend: CefBackend): Promise<void> {
       url: origin + '/',
       trust: { kind: 'remote' },
     })
+    deadline = setTimeout(
+      () => no(new Error('Development page did not complete')),
+      process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'] === undefined
+        ? 12000
+        : pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
+    )
     await loaded
     const next = await backend.navigate(view, origin + '/allowed-redirect')
     assert.equal(next.url, origin + '/next')
@@ -41,7 +48,7 @@ export default async function development(backend: CefBackend): Promise<void> {
     assert.equal(recovery.url, origin + '/next')
     console.error(JSON.stringify({ event: 'bunly.native.development', passed: true }))
   } finally {
-    clearTimeout(deadline)
+    if (deadline) clearTimeout(deadline)
     listener()
     await backend.dispose()
   }

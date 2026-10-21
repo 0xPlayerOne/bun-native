@@ -1,5 +1,6 @@
 /** Run an already built runtime from a private Unicode installation with no compiler PATH. */
 import assert from 'node:assert/strict'
+import { cefQualificationOptions, qualificationConfig } from '../benchmarks/lib/cef-profile.ts'
 import { cp, mkdir, mkdtemp, readFile, rename, writeFile, lstat } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import { inventory } from '../benchmarks/lib/inventory.ts'
@@ -11,9 +12,8 @@ import {
   nativeEvents,
 } from '../benchmarks/lib/cef-acceptance.ts'
 const root = resolve(import.meta.dir, '..'),
-  sourceArgument = process.argv[2]
-if (!sourceArgument || process.argv.length !== 3)
-  throw new Error('Usage: bun scripts/qualify-cef-prebuilt.ts <app-directory-or-native-executable>')
+  qualification = cefQualificationOptions(process.argv.slice(2)),
+  sourceArgument = qualification.artifact
 if (!['darwin-arm64', 'linux-x64', 'win32-x64'].includes(`${process.platform}-${process.arch}`))
   throw new Error('Unsupported M3 target; native execution is never silently emulated')
 const source = resolve(sourceArgument),
@@ -41,6 +41,8 @@ const report: Record<string, unknown> = {
   passed: false,
   trials,
   noCompilerPath: true,
+  deadlineProfile: qualification.profile,
+  processTimeoutMs: qualification.processTimeoutMs,
   limitations: [
     'macOS uses a local ad-hoc signed prebuild, not distribution signing',
     'Other platforms must execute this runner natively; cross-compilation is not acceptance',
@@ -58,6 +60,12 @@ try {
     ? join(application, 'Contents/MacOS/bunly_host')
     : join(application, basename(source))
   const resources = join(application, mac ? 'Contents/Resources' : 'resources')
+  const runtimePath = join(resources, 'runtime.json')
+  const runtimeConfig = qualificationConfig(
+    JSON.parse(await readFile(runtimePath, 'utf8')),
+    qualification.emulated
+  )
+  if (qualification.emulated) await writeFile(runtimePath, JSON.stringify(runtimeConfig))
   async function execute(
     name: string,
     args: string[] = [],
@@ -66,20 +74,22 @@ try {
     const observation = await observedCommand([executable, ...args], {
       cwd: unrelated,
       output: join(work, name + '.process.json'),
-      timeoutMs: 60000,
+      timeoutMs: qualification.processTimeoutMs,
       env: {
         PATH: emptyPath,
         BUNLY_CACHE_DIR: join(work, name + '-profile'),
         BUNLY_BENCH_SANDBOX: '1',
+        BUNLY_TEST_PAGE_TIMEOUT_MS: String(qualification.pageTimeoutMs),
         ...changes,
       },
     }).result
     trials.push({ name, observation })
     return observation
   }
-  for (let trial = 0; trial < 3; trial++) acceptNativeSmoke(await execute('installed-' + trial))
+  for (let trial = 0; trial < 3; trial++)
+    acceptNativeSmoke(await execute('installed-' + trial), qualification.profile)
   const lastWindow = await execute('last-window', [], { BUNLY_TEST_LAST_WINDOW: '1' })
-  acceptNativeSmoke(lastWindow)
+  acceptNativeSmoke(lastWindow, qualification.profile)
   assert.ok(
     nativeEvents(lastWindow).some(
       (event) => event['event'] === 'bunly.native.last-window' && event['passed'] === true
@@ -143,7 +153,7 @@ try {
       await rename(helper + '.absent', helper)
     }
   }
-  acceptNativeSmoke(await execute('restored-installation'))
+  acceptNativeSmoke(await execute('restored-installation'), qualification.profile)
   assert.deepEqual(
     await inventory(sourceDirectory),
     original,
