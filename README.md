@@ -82,6 +82,8 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 
 ## Roadmap and evidence
 
+[Manual cloud qualification](docs/manual-native-qualification.md) runs portable or native tests on disposable Windows, Linux, and macOS runners without restarting local VMs or enabling automatic CI.
+
 The [M3 native acceptance report](docs/m3-runtime-acceptance.md) records the actual macOS CEF, packaged-origin, resource-lifecycle and full-runtime acquisition qualification, with Windows/Linux native acceptance explicitly separate.
 
 [Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
