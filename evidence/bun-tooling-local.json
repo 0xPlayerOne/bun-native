@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "baselineCommit": "11d98e2fd69a043f494df859a92aba9a2d1e0adf",
+  "bun": "1.4.3",
+  "typescript": "7.0.2",
+  "platform": "darwin-arm64",
+  "classification": "local-development-not-controlled",
+  "nativeRuntimeChanged": false,
+  "sourceSha256": {
+    "scripts/build.ts": "22cad564b3483453b0d2850f01a6c6139ccd390f6c563266cf19dbc952f13947",
+    "scripts/check-boundaries.ts": "460dc909bec2aa7e57d5882dd0647dca684fdfc3739fab51b6c0d76121a0c3ba",
+    "scripts/qualify-typecheck.ts": "2f87aceda33c027dd42890c24b6b67b4f646dde7a8afa11d1c2ca9f2bf29f740",
+    "benchmarks/lib/inventory.ts": "ac2ae4564db17aa76d685b1e9dfa834bd325f6b545aeb382e44eb1a8ba2ed74b",
+    "tests/tooling-native.test.ts": "76a00d8891eb7cde8532f1443afcbc2a956a2ca2d35ab200ec32fb8bec0627ab",
+    "package.json": "3a92115c098314042b6c73a7e1349f4b9e9170ce8b17b7f43c38083e07f7136c"
+  },
+  "typecheck": {
+    "warmups": 1,
+    "repetitions": 6,
+    "samplesMs": {
+      "tsc-root": [
+        306.83920811861753, 340.146791189909, 322.093416005373, 273.87741720303893,
+        318.3877500705421, 368.3972500730306
+      ],
+      "bun-root": [
+        152.7644998859614, 162.04270883463323, 169.38462480902672, 162.1429999358952,
+        155.41741694323719, 147.27354096248746
+      ],
+      "tsc-browser": [
+        108.76579117029905, 123.92083392478526, 126.66275002993643, 137.13495805859566,
+        128.70379188098013, 116.13979190587997
+      ],
+      "bun-browser": [
+        56.92966701462865, 98.83691696450114, 49.602708080783486, 77.63887499459088,
+        68.5904580168426, 74.616959085688
+      ],
+      "build": [
+        86.64787490852177, 76.95124996826053, 61.92158302292228, 107.09366598166525,
+        89.25762516446412, 100.70983413606882
+      ],
+      "boundaries": [
+        106.81962501257658, 75.22050011903048, 85.38329205475748, 102.96633397229016,
+        98.54391706176102, 89.10045796073973
+      ]
+    },
+    "medianMs": {
+      "tsc-root": 320.24058303795755,
+      "bun-root": 158.7300628889352,
+      "tsc-browser": 125.29179197736084,
+      "bun-browser": 71.6037085512653,
+      "build": 87.95275003649294,
+      "boundaries": 93.82218751125038
+    }
+  },
+  "buildAndBoundaries": {
+    "classification": "paired-local-development-not-controlled",
+    "samplesMs": {
+      "build-old": [
+        98.08170900000002, 95.74366700000003, 99.50158399999998, 95.03604199999982,
+        122.6502909999998, 112.34316699999968, 167.17812499999997, 90.31858299999973
+      ],
+      "build-new": [
+        79.370167, 83.40324999999993, 80.57787500000013, 96.09950000000023, 115.7677920000002,
+        97.53625000000011, 115.0247499999999, 91.89166700000007
+      ],
+      "boundary-old": [
+        116.51587500000005, 120.97066699999992, 123.75004099999987, 133.80491599999988,
+        134.61133300000006, 99.67266600000002, 105.0374999999999, 119.99079200000028
+      ],
+      "boundary-new": [
+        103.20345799999997, 111.82433400000002, 100.61862500000007, 119.779125, 121.20679200000018,
+        103.45879200000007, 100.24570799999965, 98.94658400000012
+      ]
+    },
+    "mediansMs": {
+      "build-old": 98.7916465,
+      "build-new": 93.99558350000015,
+      "boundary-old": 120.48072950000011,
+      "boundary-new": 103.33112500000001
+    },
+    "outputHashesIdentical": true,
+    "outputFiles": 15
+  },
+  "inventory": {
+    "classification": "paired-local-synthetic-not-controlled",
+    "bun": "1.4.3",
+    "platform": "darwin",
+    "arch": "arm64",
+    "warmups": 1,
+    "repetitions": 8,
+    "files": 129,
+    "logicalBytes": 68157440,
+    "samplesMs": {
+      "baseline": [
+        52.98320799999999, 59.42916600000001, 50.79162500000001, 50.48466700000006,
+        51.07670800000005, 50.776416999999924, 48.416000000000054, 48.719167000000084
+      ],
+      "native": [
+        50.022583, 52.20529099999999, 50.33470799999998, 49.87633400000004, 49.12766599999998,
+        48.63220899999999, 48.47270800000001, 49.76933399999996
+      ]
+    },
+    "medianMs": {
+      "baseline": 50.78402099999997,
+      "native": 49.822834
+    },
+    "equalOutputs": 9,
+    "limitations": [
+      "Synthetic fixture, not desktop UX, RSS, startup or bundle-size measurement",
+      "SHA-256 algorithm and complete inventory output unchanged",
+      "Warm filesystem cache; no machine-load or power gate"
+    ]
+  },
+  "checkerQualification": {
+    "schema": 1,
+    "bun": "1.4.3",
+    "typescript": "7.0.2",
+    "passed": true,
+    "cases": [
+      {
+        "name": "tsconfig.json",
+        "diagnostics": 0
+      },
+      {
+        "name": "tsconfig.json-coverage",
+        "diagnostics": 0,
+        "files": 179
+      },
+      {
+        "name": "tsconfig.browser.json",
+        "diagnostics": 0
+      },
+      {
+        "name": "tsconfig.browser.json-coverage",
+        "diagnostics": 0,
+        "files": 12
+      },
+      {
+        "name": "valid-generics",
+        "diagnostics": 0
+      },
+      {
+        "name": "assignment",
+        "diagnostics": 1
+      },
+      {
+        "name": "unchecked-index",
+        "diagnostics": 1
+      },
+      {
+        "name": "exact-optional",
+        "diagnostics": 1
+      },
+      {
+        "name": "unknown-catch",
+        "diagnostics": 1
+      },
+      {
+        "name": "override",
+        "diagnostics": 1
+      },
+      {
+        "name": "unused",
+        "diagnostics": 1
+      },
+      {
+        "name": "declarations",
+        "diagnostics": 1
+      },
+      {
+        "name": "browser-bun",
+        "diagnostics": 1
+      },
+      {
+        "name": "browser-process",
+        "diagnostics": 1
+      },
+      {
+        "name": "browser-dom",
+        "diagnostics": 0
+      },
+      {
+        "name": "syntax",
+        "diagnostics": 2
+      },
+      {
+        "name": "missing-import",
+        "diagnostics": 1
+      },
+      {
+        "name": "expect-error-valid",
+        "diagnostics": 0
+      },
+      {
+        "name": "expect-error-unused",
+        "diagnostics": 1
+      },
+      {
+        "name": "extends-and-exclude",
+        "diagnostics": 0
+      },
+      {
+        "name": "script-shadowing",
+        "diagnostics": 1
+      },
+      {
+        "name": "unbuilt-reference-graph",
+        "diagnostics": 1
+      },
+      {
+        "name": "repaired-reference-graph",
+        "diagnostics": 0
+      }
+    ]
+  },
+  "limitations": [
+    "Measured before review commit; source hashes identify the retained implementation",
+    "Early typecheck/build timings precede added test fixtures and formatting; no controlled performance claim",
+    "No application startup, steady-state CPU/RAM, bundle-size or competitor performance claim",
+    "Parallelizing the entire check suite was evaluated but is not adopted"
+  ]
+}

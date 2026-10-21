@@ -1,0 +1,111 @@
+# Bun-native tooling
+
+Measured developer-tool improvements without changing the desktop trust boundary.
+
+**Runtime:** Bun 1.4.3; embedded and reference TypeScript 7.0.2.
+**Scope:** Type checking, package/example builds, boundary inspection, and maintainer file inventories.
+**Evidence:** `evidence/bun-tooling-local.json`. These are descriptive local timings, not controlled M9 performance results.
+
+## Native type checking
+
+The normal project commands now invoke Bun's built-in checker:
+
+```sh
+bun run typecheck
+bun run typecheck:browser
+bun run check
+```
+
+Their underlying commands are `bun --check --tsconfig-override tsconfig.json` and
+`bun --check --tsconfig-override tsconfig.browser.json`. The explicit invocation
+matters: on the pinned runtime, `bun check` resolves our package's `check` script.
+The currently documented `--no-script` spelling did not bypass that script in
+our 1.4.3 executable. Do not replace the qualified command with that spelling.
+The browser configuration still has no Node/Bun ambient globals. The full check
+sequence and AST security boundary checks remain enabled.
+
+Keep `typescript@7.0.2` for editor tooling, the independent reference checker and
+future declaration emission. Bun's checker does not emit declaration files.
+The reference scripts run the pinned TypeScript launcher through Bun rather
+than requiring Node to launch it:
+
+```sh
+bun run typecheck:reference
+bun run typecheck:browser:reference
+bun run qualify:typecheck
+```
+
+Qualification compares both complete project file sets, diagnostic source
+identity/position/code and exit status. Its fixtures cover strict assignment,
+unchecked indexed access, exact optional properties, unknown catch values,
+overrides, unused variables, generated declarations, missing imports, parser
+errors, `@ts-expect-error`, browser globals, DOM types, inherited configuration,
+exclusions, and the package-script collision. Unbuilt project references and a
+repaired reference graph are checked separately. It verifies that native
+checking emits no files and removes its temporary fixtures on completion.
+
+The 23-case qualification runs in the existing manual hosted workflow on every
+selected platform, including its `portable` suite. It is intentionally not
+part of the ordinary edit-loop command, where running both compilers repeatedly
+would defeat the improvement.
+
+## Builds and native file APIs
+
+The fixed, independent package targets now overlap their `Bun.build` calls.
+The workbench's Bun/browser entrypoints also build independently. Every owned
+writer settles before success or failure is returned. Failed builds still fail;
+the next successful build removes stale package and workbench output. Targets,
+source maps and emitted code are unchanged; the actual 15-file output inventory
+was byte-identical in paired measurements.
+
+Boundary inspection uses bounded batches of at most 16 native `Bun.file().text()`
+reads and native JSON reads for package manifests. The existing Oxc AST walker,
+import rules, source-extension coverage and early pruning of generated/dependency
+directories are retained. Diagnostics stay deterministic. No regex replaces AST
+inspection, and no generic glob starts traversing browser or dependency caches.
+
+Maintainer file inventories stream through `Bun.file().stream()` and
+`Bun.CryptoHasher('sha256')`. Files are not buffered wholesale. Digests, ordering,
+link handling and byte-accounting semantics remain unchanged. Additional size
+and file-identity checks reject observed mutations. Duplicate-content grouping
+appends to existing arrays rather than repeatedly copying a growing group.
+This removes quadratic grouping work for duplicate-heavy asset inventories.
+The inventory is not a sandbox against a hostile same-user filesystem race.
+
+## Observed timings
+
+The paired Mac measurements used one warmup, alternating order and six measured
+repetitions for checking; build/boundary and synthetic inventory measurements
+used eight. The workstation was not exclusively reserved and no background-load
+or thermal gate was imposed. Raw samples, commands' relevant configurations and
+source identities are retained in the evidence file.
+
+| Operation                             | Previous median | New median | Interpretation                                            |
+| ------------------------------------- | --------------: | ---------: | --------------------------------------------------------- |
+| Root type check                       |        320.2 ms |   158.7 ms | About 2.0x faster in this local sample                    |
+| Browser-only type check               |        125.3 ms |    71.6 ms | About 1.75x faster in this local sample                   |
+| Boundary inspection                   |        120.5 ms |   103.3 ms | Lower local latency; unchanged AST rules                  |
+| SDK/example build                     |         98.8 ms |    94.0 ms | Small, noisy difference; no material speedup claim        |
+| 129-file / 65 MiB synthetic inventory |         50.8 ms |    49.8 ms | Essentially unchanged here, with stronger mutation checks |
+
+The reference checker was launched through Bun for the comparison, not charged
+an extra Node startup. Tests remain sequential. An experiment running all static
+checks concurrently was not adopted: each native checker/linter can already
+use multiple cores, and oversubscription is not a reliable optimization.
+
+## Deliberate non-changes
+
+Bun 1.4.3 has no built-in `lint` or `fmt` command in the tested executable. Keep
+the pinned Oxlint/Oxfmt tools instead of switching to an unqualified canary or
+weakening lint rules. The Rust compiler, CEF version, packaged Bun and root
+lockfile remain unchanged.
+
+The project already uses Bun's bundler, test runner, HTTP server, subprocess and
+YAML APIs in their appropriate places. Native file reads do not justify replacing
+exclusive filesystem creation, atomic rename, cryptographic verification, OS
+sandbox observation or process-tree cleanup. Those mechanisms retain their
+existing implementations. Browser-safe packages do not gain Bun dependencies.
+
+This work does not claim faster desktop startup/rendering, reduced CEF bundle
+size, lower application RAM, competitor superiority, or M4/M5 security/PTY
+acceptance. Those need their respective workloads and platform qualification.

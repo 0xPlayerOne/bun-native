@@ -21,6 +21,9 @@ bun packages/cli/src/main.ts doctor
 bun run benchmark:smoke
 ```
 
+Type checks use Bun's native TypeScript checker; editor/reference TypeScript stays pinned.
+See [Bun-native tooling](docs/bun-tooling.md) for qualification, measurements and API choices.
+
 `example` exercises the explicit mock backend: resource lifetime, navigation,
 capabilities, cancellation, and cleanup. It does not open a native window.
 `benchmark:smoke` writes a complete scenario matrix with unsupported operations

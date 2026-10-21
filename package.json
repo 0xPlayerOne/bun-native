@@ -9,8 +9,8 @@
   "type": "module",
   "scripts": {
     "check": "bun run typecheck && bun run lint && bun run boundaries && bun run test && bun run build",
-    "typecheck": "tsc --noEmit",
-    "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
+    "typecheck": "bun --check --tsconfig-override tsconfig.json",
+    "typecheck:browser": "bun --check --tsconfig-override tsconfig.browser.json",
     "lint": "oxlint --deny-warnings packages scripts tests examples benchmarks",
     "boundaries": "bun scripts/check-boundaries.ts",
     "test": "bun test tests",
@@ -27,7 +27,10 @@
     "foundry:init": "bun scripts/sync-foundry.ts init",
     "foundry:sync": "bun scripts/sync-foundry.ts sync",
     "foundry:doctor": "bun scripts/sync-foundry.ts doctor",
-    "foundry:plan": "bun --bun code-foundry plan --tier fast --json"
+    "foundry:plan": "bun --bun code-foundry plan --tier fast --json",
+    "typecheck:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "typecheck:browser:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.browser.json",
+    "qualify:typecheck": "bun scripts/qualify-typecheck.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
