@@ -106,7 +106,7 @@ fn bound_shutdown() {
             let (done, timeout) = wake
                 .wait_timeout_while(
                     lock.lock().unwrap(),
-                    std::time::Duration::from_secs(8),
+                    crate::deadlines::current().shutdown(),
                     |done| !*done,
                 )
                 .unwrap();
@@ -553,7 +553,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"pending":PENDING.load(Ordering::SeqCst)}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name()}) });
             reply(request, value);
         }
         "quit" => {

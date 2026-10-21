@@ -61,6 +61,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", type=Path)
     parser.add_argument("--bun", required=True)
+    parser.add_argument("--emulated-functional", action="store_true")
     args = parser.parse_args()
     if sys.platform not in ("darwin", "linux", "win32"):
         raise SystemExit("Unsupported native-fault platform")
@@ -77,6 +78,14 @@ def main():
     binary = app / "Contents/MacOS/bunly_host" if mac else app / source.name
     helper_root = app / "Contents/Frameworks" if mac else app
     application = app / ("Contents/Resources" if mac else "resources") / "backend/application.js"
+    config_path = application.parent.parent / "runtime.json"
+    config = json.loads(config_path.read_text())
+    if "qualification_profile" in config:
+        raise ValueError("Source prebuild already has a qualification profile")
+    if args.emulated_functional:
+        config["qualification_profile"] = "emulated-functional"
+        config_path.write_text(json.dumps(config))
+        os.environ["BUNLY_TEST_PAGE_TIMEOUT_MS"] = "60000"
     result = subprocess.run(
         [
             args.bun,
@@ -152,7 +161,9 @@ def main():
                 "sampledScopes": 0,
             }
 
-        data = observer.observe([str(binary)], timeout=25, counter_reader=sample)
+        data = observer.observe(
+            [str(binary)], timeout=300 if args.emulated_functional else 25, counter_reader=sample
+        )
         text = "\n".join(data["stderr"])
         clean = not any(
             data[k]
@@ -233,6 +244,7 @@ def main():
         "schema": 1,
         "profile": "real-native-private-process-faults",
         "platform": sys.platform,
+        "deadlineProfile": "emulated-functional" if args.emulated_functional else "standard",
         "passed": all(r["passed"] for r in reports),
         "trials": reports,
     }

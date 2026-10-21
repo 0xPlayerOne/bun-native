@@ -1,15 +1,16 @@
 /** Verify explicit development origin and redirect/subresource denial using real CEF. */
 import assert from 'node:assert/strict'
+import { cefQualificationOptions, qualificationConfig } from '../benchmarks/lib/cef-profile.ts'
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { resolve, join, dirname, basename } from 'node:path'
 import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
 const root = resolve(import.meta.dir, '..'),
-  appArgument = process.argv[2],
+  qualification = cefQualificationOptions(process.argv.slice(2)),
+  appArgument = qualification.artifact,
   python = process.env['PYTHON'] ?? 'python3'
 if (
   !['darwin-arm64', 'linux-x64', 'win32-x64'].includes(`${process.platform}-${process.arch}`) ||
-  !appArgument ||
-  process.argv.length !== 3
+  !appArgument
 )
   throw new Error(
     'Pass a prebuilt app directory on macOS, or the native executable on Linux/Windows'
@@ -59,10 +60,14 @@ const report: Record<string, unknown> = {
   passed: false,
   profile: 'explicit-development-origin-native-policy',
   target: `${process.platform}-${process.arch}`,
+  deadlineProfile: qualification.profile,
   deniedRequests: 0,
 }
 try {
-  const config = JSON.parse(await readFile(join(resources, 'runtime.json'), 'utf8'))
+  const config = qualificationConfig(
+    JSON.parse(await readFile(join(resources, 'runtime.json'), 'utf8')),
+    qualification.emulated
+  )
   config.development_origin = allowed.url.origin
   await writeFile(join(resources, 'runtime.json'), JSON.stringify(config))
   const build = await Bun.build({
@@ -89,9 +94,10 @@ try {
   const observation = await observedCommand([executable], {
     cwd: work,
     output: join(work, 'native.process.json'),
-    timeoutMs: 30000,
+    timeoutMs: qualification.emulated ? 300000 : 30000,
     env: {
       BUNLY_TEST_ORIGIN: allowed.url.origin,
+      BUNLY_TEST_PAGE_TIMEOUT_MS: String(qualification.pageTimeoutMs),
       BUNLY_TEST_DENIED_ORIGIN: blocked,
       BUNLY_CACHE_DIR: join(work, 'cache'),
     },

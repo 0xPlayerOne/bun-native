@@ -351,61 +351,69 @@ test('a stream that fails after bytes arrived cannot leave a reusable cache entr
     const retry = await resolveCefRuntime(o)
     expect(retry.cacheHit).toBe(false)
   }))
-test('a signed development grant cannot masquerade as a production cached prebuild', async () =>
-  temp(async (root) => {
-    const f = fixture()
-    const conf = f.files.find((p) => p.path === 'resources/runtime.json')!
-    conf.bytes = Buffer.from(
-      JSON.stringify({
-        schema: 1,
-        protocol: 1,
-        bun_version: '1.4.3',
-        cef_version: '154.0.34',
-        development_origin: 'http://127.0.0.1:8080',
-      })
-    )
-    const members = f.manifest.members.map((m) =>
-      m.path === conf.path
-        ? {
-            ...m,
-            type: 'file' as const,
-            mode: 0o600,
-            size: conf.bytes.length,
-            sha256: digest(conf.bytes),
+for (const grant of [
+  { development_origin: 'http://127.0.0.1:8080' },
+  { qualification_profile: 'emulated-functional' },
+])
+  test(
+    'a signed development or qualification grant cannot masquerade as a production prebuild: ' +
+      Object.keys(grant)[0],
+    async () =>
+      temp(async (root) => {
+        const f = fixture()
+        const conf = f.files.find((p) => p.path === 'resources/runtime.json')!
+        conf.bytes = Buffer.from(
+          JSON.stringify({
+            schema: 1,
+            protocol: 1,
+            bun_version: '1.4.3',
+            cef_version: '154.0.34',
+            ...grant,
+          })
+        )
+        const members = f.manifest.members.map((m) =>
+          m.path === conf.path
+            ? {
+                ...m,
+                type: 'file' as const,
+                mode: 0o600,
+                size: conf.bytes.length,
+                sha256: digest(conf.bytes),
+              }
+            : m
+        )
+        const tar = Buffer.concat([
+          ...members.flatMap((m) => {
+            const parts = [runtimeTarHeader(m)]
+            if (m.type === 'file') {
+              parts.push(f.files.find((v) => v.path === m.path)!.bytes)
+              const pad = (512 - (m.size % 512)) % 512
+              if (pad) parts.push(Buffer.alloc(pad))
+            }
+            return parts
+          }),
+          Buffer.alloc(1024),
+        ])
+        const bytes = gzipSync(tar),
+          manifest = {
+            ...f.manifest,
+            members,
+            archive: {
+              ...f.manifest.archive,
+              size: bytes.length,
+              sha256: digest(bytes),
+              tarBytes: tar.length,
+            },
           }
-        : m
-    )
-    const tar = Buffer.concat([
-      ...members.flatMap((m) => {
-        const parts = [runtimeTarHeader(m)]
-        if (m.type === 'file') {
-          parts.push(f.files.find((v) => v.path === m.path)!.bytes)
-          const pad = (512 - (m.size % 512)) % 512
-          if (pad) parts.push(Buffer.alloc(pad))
-        }
-        return parts
-      }),
-      Buffer.alloc(1024),
-    ])
-    const bytes = gzipSync(tar),
-      manifest = {
-        ...f.manifest,
-        members,
-        archive: {
-          ...f.manifest.archive,
-          size: bytes.length,
-          sha256: digest(bytes),
-          tarBytes: tar.length,
-        },
-      }
-    await expect(
-      resolveCefRuntime({
-        ...options(root),
-        envelope: envelope(manifest),
-        fetcher: async () => new Response(new Uint8Array(bytes)),
+        await expect(
+          resolveCefRuntime({
+            ...options(root),
+            envelope: envelope(manifest),
+            fetcher: async () => new Response(new Uint8Array(bytes)),
+          })
+        ).rejects.toThrow('enables development')
       })
-    ).rejects.toThrow('enables development')
-  }))
+  )
 test('runtime directory permission tampering is rejected before reuse', async () =>
   temp(async (root) => {
     if (process.platform === 'win32') return // POSIX mode permissions are not a Windows security model.
