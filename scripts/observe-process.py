@@ -286,6 +286,16 @@ def observe(
         code = child.wait(timeout=5)
     root_exit = time.monotonic()
     grace = root_exit + 0.5
+    if not timed_out and not cancelled and cleanup_observer is not None:
+        on_root_exit = getattr(cleanup_observer, "on_root_exit", None)
+        if on_root_exit is not None:
+            try:
+                # Diagnostic fault controls may act only after wait() has
+                # completed the root's exit/reparenting transition.
+                on_root_exit(root_exit)
+            except Exception:
+                state["observerFailure"] = "cleanup-observer-failed"
+                cancelled = True
     if clone_cleanup is not None and not timed_out and not cancelled:
         clone_cleanup.discover_clones()
         for identity, proc in clone_cleanup.recover_after_exit():

@@ -68,12 +68,24 @@ class SlowCleanup:
         self.thread = None
         self.stop = threading.Event()
         self.failure = None
+        self.root_exit_monotonic = None
+        self.suspended_monotonic = None
         self.resumed_after_root_exit_ms = None
+        self.held_ms = None
         self.stopped_observed = False
+
+    def on_root_exit(self, monotonic_time):
+        # Called by the observer only after Popen.wait() has completed. Merely
+        # failing to inspect a live root is not evidence that exit has finished.
+        self.root_exit_monotonic = monotonic_time
 
     def __call__(self, tracker):
         self.tracker = tracker
-        if self.identity is not None or self.failure is not None:
+        if (
+            self.root_exit_monotonic is None
+            or self.identity is not None
+            or self.failure is not None
+        ):
             return
         # The callback must not raise into the observer while an owned process
         # is suspended. Its failure is retained as a failed qualification.
@@ -82,14 +94,18 @@ class SlowCleanup:
                 if not tracker.grant(identity) or tracker.state(identity) != "running":
                     continue
                 process = observer.owned_process(identity)
-                if process is None:
+                # Chromium uses a separate process group. Stopping it before
+                # parent exit can make orphanpg send SIGHUP/SIGCONT and kill it.
+                # Require both the observer's post-wait marker and reparenting.
+                if process is None or process.ppid() != 1:
                     continue
                 self.identity, self.tracker = identity, tracker
                 process.suspend()
                 self.stopped_observed = (
                     psutil.Process(identity[0]).status() == psutil.STATUS_STOPPED
                 )
-                self.thread = threading.Thread(target=self.resume_after_exit, daemon=True)
+                self.suspended_monotonic = time.monotonic()
+                self.thread = threading.Thread(target=self.resume_after_delay, daemon=True)
                 self.thread.start()
                 break
         except Exception:
@@ -106,26 +122,27 @@ class SlowCleanup:
                 process = observer.owned_process(self.identity)
                 if process is not None:
                     process.resume()
+                    return True
         except (psutil.Error, OSError, ValueError):
             self.failure = "identity-bound-resume-failed"
+        return False
 
-    def resume_after_exit(self):
+    def resume_after_delay(self):
         try:
-            root_identity = (self.tracker.root_pid, self.tracker.root_birth)
-            deadline = time.monotonic() + 35
-            while observer.owned_process(root_identity) is not None:
-                if self.stop.wait(0.01) or time.monotonic() >= deadline:
-                    self.failure = "root-exit-not-observed-before-resume"
-                    return
-            root_exit = time.monotonic()
+            # Hold for a full interval after the observed suspension, not just
+            # until an offset from root exit that may already have elapsed.
             if self.stop.wait(0.75):
                 self.failure = "slow-cleanup-interrupted"
                 return
             if self.tracker.state(self.identity) != "running":
                 self.failure = "suspended-helper-identity-lost"
                 return
-            self.resume()
-            self.resumed_after_root_exit_ms = (time.monotonic() - root_exit) * 1000
+            if not self.resume():
+                self.failure = "identity-bound-resume-failed"
+                return
+            resumed = time.monotonic()
+            self.held_ms = (resumed - self.suspended_monotonic) * 1000
+            self.resumed_after_root_exit_ms = (resumed - self.root_exit_monotonic) * 1000
         except (psutil.Error, OSError, ValueError, TypeError):
             self.failure = "slow-cleanup-observation-failed"
         finally:
@@ -143,9 +160,13 @@ class SlowCleanup:
         return {
             "injected": self.identity is not None,
             "stoppedObserved": self.stopped_observed,
+            "suspendedAfterRootExit": self.suspended_monotonic is not None
+            and self.root_exit_monotonic is not None
+            and self.suspended_monotonic >= self.root_exit_monotonic,
+            "heldMs": self.held_ms,
             "resumedAfterRootExitMs": self.resumed_after_root_exit_ms,
             "failure": self.failure,
-            "method": "identity-checked-SIGSTOP-and-SIGCONT; 750ms after observed root exit",
+            "method": "identity-checked-SIGSTOP-after-parent-wait-and-reparenting; 750ms hold then SIGCONT",
         }
 
 
@@ -217,6 +238,9 @@ def run_trial(app, work, label, mode, index, stop_event):
         qualified = (
             qualified
             and delay["stoppedObserved"]
+            and delay["suspendedAfterRootExit"]
+            and delay["heldMs"] is not None
+            and delay["heldMs"] >= 750
             and delay["resumedAfterRootExitMs"] is not None
             and delay["resumedAfterRootExitMs"] >= 750
             and cleanup["resources"]["sampleCount"] > 0

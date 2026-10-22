@@ -132,10 +132,28 @@ python scripts/qualify-macos-clone-cleanup.py \
 The runner creates private APFS clone copies, records executable and configuration
 fingerprints, and executes the existing 20-cycle native smoke. Each app is tested
 under prompt cleanup and deliberately delayed cleanup. The delayed case suspends
-only an independently verified owned helper, observes root exit, waits 750 ms, then
-revalidates identity before resuming it. A bounded `finally` path attempts to resume
+only an independently verified owned helper after the observer has reaped the root
+with `wait()` and the helper has been reparented to PID 1. It holds that process for
+at least 750 ms after the observed suspension, then revalidates identity before
+resuming it. The report records both the held interval and time since observed root
+exit. This is a controlled suspension, not a claim of 750 ms additional cleanup
+latency: Chromium's existing sleep interval can elapse while the process is stopped.
+A bounded `finally` path attempts to resume
 the same owned process if observation is interrupted. No runtime timeout or Chromium
 security feature is changed.
+
+The initial injector stopped the helper before root exit. Its retained baseline
+slow-case evidence showed a stopped helper disappearing at root exit while its clone
+remained. Apple's pinned
+[XNU `orphanpg` implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_proc.c)
+and the [POSIX process-exit rule](https://pubs.opengroup.org/onlinepubs/009695299/functions/exit.html)
+specify hangup and continue signals for a newly orphaned group containing a stopped
+member. Because Chromium starts this helper in a separate process group, that rule
+supports the inference that the pre-exit fault injection terminated the helper. The
+observer cannot attest this helper's exit code; the signal cause is an inference,
+not a captured exit status. The failed attempt and its private app copies remain
+failure evidence. The corrected injector waits for completed root exit before it
+sends any stop signal; a subsequent successful run does not erase the old failure.
 
 Each of the four combinations must positively observe a clone and a helper, verify
 removal and exit, and preserve normal native shutdown. The delayed case also requires

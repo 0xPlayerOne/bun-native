@@ -55,6 +55,7 @@ async function main() {
     if (kind === 'range') headers['Range'] = 'bytes=128-4223'
     if (kind === 'conditional') headers['If-None-Match'] = '"' + PROFILE_ASSET_SHA256 + '"'
     activeRequests++
+    let stage = 'fetch'
     try {
       const response = await fetch('/asset.bin?kind=' + kind + '&round=' + round, {
         method: kind === 'head' ? 'HEAD' : 'GET',
@@ -62,15 +63,23 @@ async function main() {
         headers,
         signal: controller.signal,
       })
+      stage = 'headers'
       const expectedStatus = kind === 'conditional' ? 304 : kind === 'range' ? 206 : 200
       if (response.status !== expectedStatus)
         throw new Error('Unexpected asset status: ' + kind + '/' + response.status)
       if (response.headers.get('ETag') !== '"' + PROFILE_ASSET_SHA256 + '"')
         throw new Error('Asset validator changed')
+      stage = 'body'
       const body = new Uint8Array(await response.arrayBuffer())
+      stage = 'length'
       const expectedBytes = kind === 'full' ? PROFILE_ASSET_BYTES : kind === 'range' ? 4096 : 0
       if (body.length !== expectedBytes) throw new Error('Unexpected retained response bytes')
       return body
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.name + ': ' + error.message : String(error)
+      throw new Error(
+        'Asset ' + kind + ' round=' + round + ' stage=' + stage + ': ' + detail.slice(0, 160)
+      )
     } finally {
       activeRequests--
     }
