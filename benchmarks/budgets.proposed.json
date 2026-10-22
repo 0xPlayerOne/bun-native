@@ -1,4 +1,20 @@
 [
-  { "scenario": "app-launch", "metric": "peakTreeRss", "unit": "bytes", "statistic": "mean", "direction": "lower", "maxRegressionPercent": 10, "minimumSamples": 10 },
-  { "scenario": "terminal-render", "metric": "terminalConsumedThenTwoFrames", "unit": "ms", "statistic": "p95", "direction": "lower", "maxRegressionPercent": 10, "minimumSamples": 30 }
+  {
+    "scenario": "app-launch",
+    "metric": "peakTreeRss",
+    "unit": "bytes",
+    "statistic": "mean",
+    "direction": "lower",
+    "maxRegressionPercent": 10,
+    "minimumSamples": 10
+  },
+  {
+    "scenario": "terminal-render",
+    "metric": "terminalConsumedThenTwoFrames",
+    "unit": "ms",
+    "statistic": "p95",
+    "direction": "lower",
+    "maxRegressionPercent": 10,
+    "minimumSamples": 30
+  }
 ]

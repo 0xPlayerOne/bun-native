@@ -46,11 +46,11 @@ protocol work forward does not close them.
 
 ## Acceptance mapping
 
-| Issue | Implemented here | Still needs integration/evidence |
-| --- | --- | --- |
-| #18 | Versioned envelopes, inferred routes, independent parsers, sanitized errors, monotonic IDs, binary bodies, cancellation/deadlines, disconnect/reload behavior and bounded admission/delivery/execution | Native renderer integration and platform execution are deliberately separate; the portable implementation is covered by local tests. |
-| #19 | Host-side lease checks, native-known identity contract, no frontend authority fields, revocation and reconnect-safe budgets | Actual native frame attestation/injection, remote-page attempts in CEF, navigation-start hooks, and loopback authentication if that transport is selected. |
-| #22 | One acknowledged, bounded MessagePort implementation to compare | Representative CEF transport measurements and production selection; no comparative performance claim. |
+| Issue | Implemented here                                                                                                                                                                                       | Still needs integration/evidence                                                                                                                           |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #18   | Versioned envelopes, inferred routes, independent parsers, sanitized errors, monotonic IDs, binary bodies, cancellation/deadlines, disconnect/reload behavior and bounded admission/delivery/execution | Native renderer integration and platform execution are deliberately separate; the portable implementation is covered by local tests.                       |
+| #19   | Host-side lease checks, native-known identity contract, no frontend authority fields, revocation and reconnect-safe budgets                                                                            | Actual native frame attestation/injection, remote-page attempts in CEF, navigation-start hooks, and loopback authentication if that transport is selected. |
+| #22   | One acknowledged, bounded MessagePort implementation to compare                                                                                                                                        | Representative CEF transport measurements and production selection; no comparative performance claim.                                                      |
 
 See [application RPC](rpc.md) for APIs, serialization limits, timing rules,
 capacity behavior and the native integration contract. PR closure should not be

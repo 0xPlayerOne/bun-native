@@ -59,27 +59,27 @@ observed processes and can double-count shared pages. "Startup" is the first
 externally observed idle marker (a sampled upper bound), **not** exact readiness,
 CEF startup, or a displayed frame. Generations are not independent repetitions.
 
-| Target | Model | First idle observed, ms | Idle median tree RSS, MiB | Peak concurrent processes | Peak idle threads |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Linux x64 | FFI + Worker | 66.34 | 44.99 | 1 | 10 |
-| Linux x64 | Node-API + Worker | 64.03 | 45.28 | 1 | 10 |
-| Linux x64 | Native + Bun process | 34.51 | 28.28 | 2 | 6 |
-| macOS arm64 | FFI + Worker | 180.12 | 50.70 | 1 | 12 |
-| macOS arm64 | Node-API + Worker | 140.75 | 58.17 | 1 | 12 |
-| macOS arm64 | Native + Bun process | 151.60 | 18.95 | 2 | 8 |
-| Windows x64 | FFI + Worker | 78.00 | 47.07 | 1 | 11 |
-| Windows x64 | Node-API + Worker | 63.00 | 47.41 | 1 | 11 |
-| Windows x64 | Native + Bun process | 94.00 | 27.30 | 2 | 12 |
+| Target      | Model                | First idle observed, ms | Idle median tree RSS, MiB | Peak concurrent processes | Peak idle threads |
+| ----------- | -------------------- | ----------------------: | ------------------------: | ------------------------: | ----------------: |
+| Linux x64   | FFI + Worker         |                   66.34 |                     44.99 |                         1 |                10 |
+| Linux x64   | Node-API + Worker    |                   64.03 |                     45.28 |                         1 |                10 |
+| Linux x64   | Native + Bun process |                   34.51 |                     28.28 |                         2 |                 6 |
+| macOS arm64 | FFI + Worker         |                  180.12 |                     50.70 |                         1 |                12 |
+| macOS arm64 | Node-API + Worker    |                  140.75 |                     58.17 |                         1 |                12 |
+| macOS arm64 | Native + Bun process |                  151.60 |                     18.95 |                         2 |                 8 |
+| Windows x64 | FFI + Worker         |                   78.00 |                     47.07 |                         1 |                11 |
+| Windows x64 | Node-API + Worker    |                   63.00 |                     47.41 |                         1 |                11 |
+| Windows x64 | Native + Bun process |                   94.00 |                     27.30 |                         2 |                12 |
 
 Separate kernel runs, idle-phase observations only. Each entry is **observed
 counter delta / sampled matched-identity duration**, not a lifetime count.
 
-| Target / counter | FFI + Worker | Node-API + Worker | Native + Bun process |
-| --- | ---: | ---: | ---: |
-| Linux scheduler wakeups | 323 / 4.024 s | 314 / 4.150 s | 130 / 4.305 s |
-| macOS package-idle wakeups | 100 / 2.880 s | 102 / 3.099 s | 30 / 2.881 s |
-| macOS interrupt wakeups | 270 / 2.880 s | 281 / 3.099 s | 116 / 2.881 s |
-| Windows | Unavailable | Unavailable | Unavailable |
+| Target / counter           |  FFI + Worker | Node-API + Worker | Native + Bun process |
+| -------------------------- | ------------: | ----------------: | -------------------: |
+| Linux scheduler wakeups    | 323 / 4.024 s |     314 / 4.150 s |        130 / 4.305 s |
+| macOS package-idle wakeups | 100 / 2.880 s |     102 / 3.099 s |         30 / 2.881 s |
+| macOS interrupt wakeups    | 270 / 2.880 s |     281 / 3.099 s |        116 / 2.881 s |
+| Windows                    |   Unavailable |       Unavailable |          Unavailable |
 
 The JSON also retains work-phase counters, sample counts, observed idle CPU,
 peak memory, and both runs' environment metadata. Provider semantics differ;

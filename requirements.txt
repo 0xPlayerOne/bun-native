@@ -1,0 +1,6 @@
+# Complete contributor/CI environment; no Python dependency ships in the desktop app.
+-r requirements-dev.txt
+-r requirements-format.txt
+-r benchmarks/adapters/frontend/requirements.txt
+# Code Foundry invokes pytest for the existing unittest.TestCase suite.
+pytest==9.1.1

@@ -11,6 +11,7 @@ https://github.com/rust-lang/rust/tree/1.85.1
 Its source has no third-party Cargo dependencies.
 
 M2 benchmark-only dependencies are separated from consumer workspaces:
+
 - Electron 44.8.0 and its runtime/download dependencies, under `benchmarks/adapters/electron`.
 - Electrobun 2.0.3-beta.26's published bootstrap and downloaded devkit, under `benchmarks/adapters/electrobun` and generated `.bunly` data.
 - xterm 5.5.0 under `benchmarks/fixtures`.

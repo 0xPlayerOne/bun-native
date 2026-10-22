@@ -1,118 +1,230 @@
 /** Engine-independent contracts. This package must remain browser-safe. */
-export const CONTRACT_VERSION = 1 as const;
+export const CONTRACT_VERSION = 1 as const
 export const CAPABILITIES = [
-  'window.lifecycle', 'view.navigate', 'session.ephemeral', 'session.persistent',
-  'session.cookies', 'permission.request', 'download.manage', 'view.snapshot',
-  'view.evaluate', 'view.input', 'backend.extensions',
-] as const;
-export type Capability = (typeof CAPABILITIES)[number];
-export type BackendName = 'mock' | 'cef' | 'webview2' | 'wkwebview' | 'webkitgtk';
-export type ErrorCode = 'INVALID_ARGUMENT' | 'INVALID_HANDLE' | 'DISPOSED' |
-  'RESOURCE_IN_USE' | 'UNSUPPORTED_CAPABILITY' | 'VERSION_MISMATCH' | 'PERMISSION_DENIED';
+  'window.lifecycle',
+  'view.navigate',
+  'session.ephemeral',
+  'session.persistent',
+  'session.cookies',
+  'permission.request',
+  'download.manage',
+  'view.snapshot',
+  'view.evaluate',
+  'view.input',
+  'backend.extensions',
+] as const
+export type Capability = (typeof CAPABILITIES)[number]
+export type BackendName = 'mock' | 'cef' | 'webview2' | 'wkwebview' | 'webkitgtk'
+export type ErrorCode =
+  | 'INVALID_ARGUMENT'
+  | 'INVALID_HANDLE'
+  | 'DISPOSED'
+  | 'RESOURCE_IN_USE'
+  | 'UNSUPPORTED_CAPABILITY'
+  | 'VERSION_MISMATCH'
+  | 'PERMISSION_DENIED'
 export class BunlyError extends Error {
-  readonly code: ErrorCode;
+  readonly code: ErrorCode
   constructor(code: ErrorCode, message: string) {
-    super(message);
-    this.code = code;
-    this.name = 'BunlyError';
+    super(message)
+    this.code = code
+    this.name = 'BunlyError'
   }
 }
 export interface BackendDescriptor {
-  readonly name: BackendName;
-  readonly version: string;
-  readonly contractVersion: typeof CONTRACT_VERSION;
-  readonly capabilities: readonly Capability[];
+  readonly name: BackendName
+  readonly version: string
+  readonly contractVersion: typeof CONTRACT_VERSION
+  readonly capabilities: readonly Capability[]
 }
-declare const handleBrand: unique symbol;
-export type ResourceKind = 'window' | 'view' | 'session';
+declare const handleBrand: unique symbol
+export type ResourceKind = 'window' | 'view' | 'session'
 /** Opaque in-process handle. Its public ID is diagnostic data, never authority. */
 export interface Handle<K extends ResourceKind> {
-  readonly id: string;
-  readonly kind: K;
-  readonly [handleBrand]: K;
+  readonly id: string
+  readonly kind: K
+  readonly [handleBrand]: K
 }
-export type WindowHandle = Handle<'window'>;
-export type ViewHandle = Handle<'view'>;
-export type SessionHandle = Handle<'session'>;
-export interface Bounds { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
-export interface WindowOptions { readonly title: string; readonly bounds: Bounds }
-export interface SessionOptions { readonly persistence: 'ephemeral' | 'persistent'; readonly partition: string }
-export type ViewTrust = { readonly kind: 'remote' } | { readonly kind: 'application'; readonly origin: string };
+export type WindowHandle = Handle<'window'>
+export type ViewHandle = Handle<'view'>
+export type SessionHandle = Handle<'session'>
+export interface Bounds {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+export interface WindowOptions {
+  readonly title: string
+  readonly bounds: Bounds
+}
+export interface SessionOptions {
+  readonly persistence: 'ephemeral' | 'persistent'
+  readonly partition: string
+}
+export type ViewTrust =
+  | { readonly kind: 'remote' }
+  | { readonly kind: 'application'; readonly origin: string }
 export interface ViewOptions {
-  readonly window: WindowHandle;
-  readonly session: SessionHandle;
-  readonly url: string;
-  readonly trust: ViewTrust;
+  readonly window: WindowHandle
+  readonly session: SessionHandle
+  readonly url: string
+  readonly trust: ViewTrust
 }
-export interface ViewState { readonly url: string; readonly documentId: string; readonly trust: ViewTrust }
-export interface OperationOptions { readonly signal?: AbortSignal }
-export type InputAction = { readonly type: 'text'; readonly text: string } |
-  { readonly type: 'pointer'; readonly x: number; readonly y: number; readonly button: 'left' | 'right' };
-export interface Cookie { readonly name: string; readonly value: string; readonly domain: string; readonly secure: boolean }
-export interface DownloadRequest { readonly url: string; readonly suggestedName?: string }
-export interface DownloadResult { readonly status: 'completed' | 'cancelled'; readonly bytesWritten: number }
+export interface ViewState {
+  readonly url: string
+  readonly documentId: string
+  readonly trust: ViewTrust
+}
+export interface OperationOptions {
+  readonly signal?: AbortSignal
+}
+export type InputAction =
+  | { readonly type: 'text'; readonly text: string }
+  | {
+      readonly type: 'pointer'
+      readonly x: number
+      readonly y: number
+      readonly button: 'left' | 'right'
+    }
+export interface Cookie {
+  readonly name: string
+  readonly value: string
+  readonly domain: string
+  readonly secure: boolean
+}
+export interface DownloadRequest {
+  readonly url: string
+  readonly suggestedName?: string
+}
+export interface DownloadResult {
+  readonly status: 'completed' | 'cancelled'
+  readonly bytesWritten: number
+}
 export type RuntimeEvent =
-  { readonly type: 'created' | 'disposed'; readonly resource: Handle<ResourceKind> } |
-  { readonly type: 'navigated'; readonly resource: ViewHandle; readonly state: ViewState };
-export interface Diagnostics { readonly windows: number; readonly views: number; readonly sessions: number; readonly listeners: number; readonly listenerErrors: number }
+  | { readonly type: 'created' | 'disposed'; readonly resource: Handle<ResourceKind> }
+  | { readonly type: 'navigated'; readonly resource: ViewHandle; readonly state: ViewState }
+export interface Diagnostics {
+  readonly windows: number
+  readonly views: number
+  readonly sessions: number
+  readonly listeners: number
+  readonly listenerErrors: number
+}
 export interface BrowserBackend {
-  readonly descriptor: BackendDescriptor;
-  createSession(options: SessionOptions): Promise<SessionHandle>;
-  createWindow(options: WindowOptions): Promise<WindowHandle>;
-  createView(options: ViewOptions): Promise<ViewHandle>;
-  navigate(view: ViewHandle, url: string, options?: OperationOptions): Promise<ViewState>;
-  state(view: ViewHandle): ViewState;
-  closeWindow(window: WindowHandle): Promise<void>;
-  disposeView(view: ViewHandle): Promise<void>;
-  disposeSession(session: SessionHandle): Promise<void>;
-  snapshot(view: ViewHandle, options?: OperationOptions): Promise<Uint8Array>;
-  evaluate(view: ViewHandle, script: string, options?: OperationOptions): Promise<unknown>;
-  input(view: ViewHandle, action: InputAction, options?: OperationOptions): Promise<void>;
-  cookies(session: SessionHandle): Promise<readonly Cookie[]>;
-  requestPermission(view: ViewHandle, permission: string): Promise<'granted' | 'denied'>;
-  download(view: ViewHandle, request: DownloadRequest, options?: OperationOptions): Promise<DownloadResult>;
-  extension(view: ViewHandle, name: `${string}:${string}`, input: unknown): Promise<unknown>;
-  onEvent(listener: (event: RuntimeEvent) => void): () => void;
-  diagnostics(): Diagnostics;
-  dispose(): Promise<void>;
+  readonly descriptor: BackendDescriptor
+  createSession(options: SessionOptions): Promise<SessionHandle>
+  createWindow(options: WindowOptions): Promise<WindowHandle>
+  createView(options: ViewOptions): Promise<ViewHandle>
+  navigate(view: ViewHandle, url: string, options?: OperationOptions): Promise<ViewState>
+  state(view: ViewHandle): ViewState
+  closeWindow(window: WindowHandle): Promise<void>
+  disposeView(view: ViewHandle): Promise<void>
+  disposeSession(session: SessionHandle): Promise<void>
+  snapshot(view: ViewHandle, options?: OperationOptions): Promise<Uint8Array>
+  evaluate(view: ViewHandle, script: string, options?: OperationOptions): Promise<unknown>
+  input(view: ViewHandle, action: InputAction, options?: OperationOptions): Promise<void>
+  cookies(session: SessionHandle): Promise<readonly Cookie[]>
+  requestPermission(view: ViewHandle, permission: string): Promise<'granted' | 'denied'>
+  download(
+    view: ViewHandle,
+    request: DownloadRequest,
+    options?: OperationOptions
+  ): Promise<DownloadResult>
+  extension(view: ViewHandle, name: `${string}:${string}`, input: unknown): Promise<unknown>
+  onEvent(listener: (event: RuntimeEvent) => void): () => void
+  diagnostics(): Diagnostics
+  dispose(): Promise<void>
 }
 export function requireCapability(descriptor: BackendDescriptor, capability: Capability): void {
   if (descriptor.contractVersion !== CONTRACT_VERSION) {
-    throw new BunlyError('VERSION_MISMATCH', `Expected contract ${CONTRACT_VERSION}, got ${descriptor.contractVersion}`);
+    throw new BunlyError(
+      'VERSION_MISMATCH',
+      `Expected contract ${CONTRACT_VERSION}, got ${descriptor.contractVersion}`
+    )
   }
   if (!descriptor.capabilities.includes(capability)) {
-    throw new BunlyError('UNSUPPORTED_CAPABILITY', `${descriptor.name} does not implement ${capability}`);
+    throw new BunlyError(
+      'UNSUPPORTED_CAPABILITY',
+      `${descriptor.name} does not implement ${capability}`
+    )
   }
 }
 export function validateBounds(value: Bounds): void {
-  const numbers = [value.x, value.y, value.width, value.height];
-  if (!numbers.every(Number.isFinite) || value.width <= 0 || value.height <= 0 || value.width > 32768 || value.height > 32768) {
-    throw new BunlyError('INVALID_ARGUMENT', 'Bounds must be finite, with dimensions in (0, 32768]');
+  const numbers = [value.x, value.y, value.width, value.height]
+  if (
+    !numbers.every(Number.isFinite) ||
+    value.width <= 0 ||
+    value.height <= 0 ||
+    value.width > 32768 ||
+    value.height > 32768
+  ) {
+    throw new BunlyError('INVALID_ARGUMENT', 'Bounds must be finite, with dimensions in (0, 32768]')
   }
 }
 /** URL validation is not an origin grant. Native adapters must validate redirects too. */
 export function normalizeUrl(value: string): string {
-  let url: URL;
-  try { url = new URL(value); } catch { throw new BunlyError('INVALID_ARGUMENT', 'Expected an absolute URL'); }
-  if (!['app:', 'https:', 'http:', 'about:'].includes(url.protocol) || url.username || url.password ||
-      (url.protocol === 'about:' && url.href !== 'about:blank') ||
-      (url.protocol === 'app:' && (!url.hostname || url.port))) {
-    throw new BunlyError('INVALID_ARGUMENT', 'Unsupported or credential-bearing URL');
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new BunlyError('INVALID_ARGUMENT', 'Expected an absolute URL')
   }
-  return url.href;
+  if (
+    !['app:', 'https:', 'http:', 'about:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    (url.protocol === 'about:' && url.href !== 'about:blank') ||
+    (url.protocol === 'app:' && (!url.hostname || url.port))
+  ) {
+    throw new BunlyError('INVALID_ARGUMENT', 'Unsupported or credential-bearing URL')
+  }
+  return url.href
 }
 /** Custom app origins are explicit; URL.origin would return the opaque string "null". */
 export function originOf(value: string): string {
-  const url = new URL(normalizeUrl(value));
-  return url.protocol === 'app:' ? `app://${url.host}` : url.origin;
+  const url = new URL(normalizeUrl(value))
+  return url.protocol === 'app:' ? `app://${url.host}` : url.origin
 }
 
-export { RPC_VERSION, RPC_ERROR_CODES, DEFAULT_RPC_LIMITS, RpcError, defineRpc, procedure } from './rpc.ts';
-export type { RpcValue, JsonValue, Parser, RpcProcedure, RpcSchema, RpcInput, RpcOutput, RpcErrorCode, RpcLimits, RpcScheduler, RpcTransport, RpcCallOptions } from './rpc.ts';
+export {
+  RPC_VERSION,
+  RPC_ERROR_CODES,
+  DEFAULT_RPC_LIMITS,
+  RpcError,
+  defineRpc,
+  procedure,
+} from './rpc.ts'
+export type {
+  RpcValue,
+  JsonValue,
+  Parser,
+  RpcProcedure,
+  RpcSchema,
+  RpcInput,
+  RpcOutput,
+  RpcErrorCode,
+  RpcLimits,
+  RpcScheduler,
+  RpcTransport,
+  RpcCallOptions,
+} from './rpc.ts'
 
-export { BinaryStreamSender, BinaryStreamReceiver } from './streams.ts';
-export type { BinaryStreamOptions, BinaryStreamWriter, BinaryStreamSink, StreamConsumerContext, StreamOutcome } from './streams.ts';
-export { StreamBudget } from './stream-budget.ts';
-export type { StreamBudgetLimits } from './stream-budget.ts';
-export { STREAM_VERSION, STREAM_CHUNK_BYTES, StreamError, StreamFramer, writeStreamPacket } from './stream-wire.ts';
-export type { StreamErrorCode } from './stream-wire.ts';
+export { BinaryStreamSender, BinaryStreamReceiver } from './streams.ts'
+export type {
+  BinaryStreamOptions,
+  BinaryStreamWriter,
+  BinaryStreamSink,
+  StreamConsumerContext,
+  StreamOutcome,
+} from './streams.ts'
+export { StreamBudget } from './stream-budget.ts'
+export type { StreamBudgetLimits } from './stream-budget.ts'
+export {
+  STREAM_VERSION,
+  STREAM_CHUNK_BYTES,
+  StreamError,
+  StreamFramer,
+  writeStreamPacket,
+} from './stream-wire.ts'
+export type { StreamErrorCode } from './stream-wire.ts'

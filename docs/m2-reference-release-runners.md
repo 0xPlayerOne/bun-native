@@ -12,10 +12,10 @@ The reference adapters invoke the upstream CLI and produced executable. They do 
 replace a missing runtime with a mock, compile a private native fork, or silently
 select a different browser. All data is from private generated local fixtures.
 
-| Adapter | Exact packages | Browser/profile |
-| --- | --- | --- |
-| Mirin | `mirinjs` and `@mirinjs/cli` 0.1.0-alpha.26 | CEF; installed application directory |
-| Butter | `butterframework` 1.6.3 | System webview; standalone compiled executable |
+| Adapter | Exact packages                              | Browser/profile                                |
+| ------- | ------------------------------------------- | ---------------------------------------------- |
+| Mirin   | `mirinjs` and `@mirinjs/cli` 0.1.0-alpha.26 | CEF; installed application directory           |
+| Butter  | `butterframework` 1.6.3                     | System webview; standalone compiled executable |
 
 `benchmarks/adapters/references/*.package.json` describe separate contributor-only
 depots. On a network-enabled qualification machine, copy the chosen manifest to a

@@ -1,0 +1,2 @@
+# Contributor-only formatter; never bundled in a Bunly application.
+ruff==0.15.22

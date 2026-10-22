@@ -39,3 +39,12 @@ test('hook and Foundry sync retain machine guards and native routing', async () 
   expect(hook).toContain('CODE_FOUNDRY_HOOK_CHAIN=1')
   expect(sync).toContain('nativeHookInvocation')
 })
+
+test('native gates use each workspace compiler pin, including compiler configuration changes', () => {
+  const commands = nativeCommands(['.cargo/config.toml'], '/repo')
+  expect(commands).toHaveLength(4)
+  for (const { command } of commands) {
+    expect(command[1]).toBe(command.includes('native/cef-host/Cargo.toml') ? '+1.91.0' : '+1.85.1')
+  }
+  expect(nativeManifests(['rust-toolchain.toml'])).toEqual(['native/Cargo.toml'])
+})

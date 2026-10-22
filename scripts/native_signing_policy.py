@@ -1,4 +1,5 @@
 """Strict public signing-policy parsing and immutable artifact inventories."""
+
 import copy
 import hashlib
 import json
@@ -26,22 +27,29 @@ def pairs(items):
 
 
 def digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True,
-                                     separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def hex_value(value, length):
-    return isinstance(value, str) and re.fullmatch(r"[a-fA-F0-9]{%d}" % length, value) is not None
+    return isinstance(value, str) and re.fullmatch(rf"[a-fA-F0-9]{{{length}}}", value) is not None
 
 
 def relative_name(value):
     if not isinstance(value, str) or not value or len(value) > 1024:
         raise SigningError("invalid-relative-path")
     parts = value.split("/")
-    if value.startswith("/") or any(p in ("", ".", "..") for p in parts) or any(
-        ord(c) < 32 or ord(c) == 127 or c in '\\:*?"<>|' for c in value
-    ) or any(p.endswith((" ", ".")) or re.fullmatch(
-        r"(?i)(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\..*)?", p) for p in parts):
+    if (
+        value.startswith("/")
+        or any(p in ("", ".", "..") for p in parts)
+        or any(ord(c) < 32 or ord(c) == 127 or c in '\\:*?"<>|' for c in value)
+        or any(
+            p.endswith((" ", "."))
+            or re.fullmatch(r"(?i)(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\..*)?", p)
+            for p in parts
+        )
+    ):
         raise SigningError("invalid-relative-path")
     return value
 
@@ -75,14 +83,21 @@ def read_json(path):
 
 def validate_policy(value):
     common = {"schema", "platform", "artifact", "certificateSha1", "targets"}
-    if not isinstance(value, dict) or type(value.get("schema")) is not int or value.get("schema") != 1:
+    if (
+        not isinstance(value, dict)
+        or type(value.get("schema")) is not int
+        or value.get("schema") != 1
+    ):
         raise SigningError("invalid-signing-policy")
     platform = value.get("platform")
     extra = {"teamId", "bundleIdentifier"} if platform == "darwin" else {"signtool", "timestampUrl"}
     if platform not in ("darwin", "win32") or set(value) != common | extra:
         raise SigningError("invalid-signing-policy-fields")
     artifact = relative_name(value["artifact"])
-    if artifact.casefold() in (RECEIPT, ".benchmark-native-signing") or artifact.casefold().startswith((".benchmark-native-signing/", RECEIPT + "/")):
+    if artifact.casefold() in (
+        RECEIPT,
+        ".benchmark-native-signing",
+    ) or artifact.casefold().startswith((".benchmark-native-signing/", RECEIPT + "/")):
         raise SigningError("artifact-overlaps-signing-metadata")
     if not hex_value(value["certificateSha1"], 40):
         raise SigningError("explicit-certificate-required")
@@ -104,36 +119,67 @@ def validate_policy(value):
         seen.add(name.casefold())
         entitlements = target.get("entitlements")
         if entitlements is not None:
-            if platform != "darwin" or not isinstance(entitlements, dict) or set(entitlements) != {"path", "sha256"}:
+            if (
+                platform != "darwin"
+                or not isinstance(entitlements, dict)
+                or set(entitlements) != {"path", "sha256"}
+            ):
                 raise SigningError("invalid-entitlements")
             relative_name(entitlements["path"])
-            if not hex_value(entitlements["sha256"], 64) or entitlements["path"] == artifact or entitlements["path"].startswith(artifact + "/"):
+            if (
+                not hex_value(entitlements["sha256"], 64)
+                or entitlements["path"] == artifact
+                or entitlements["path"].startswith(artifact + "/")
+            ):
                 raise SigningError("entitlements-must-be-pinned-outside-artifact")
         if platform == "win32" and PurePosixPath(name).suffix.lower() not in (".exe", ".dll"):
             raise SigningError("authenticode-target-must-be-pe")
     if platform == "darwin":
         if not artifact.endswith(".app") or targets[-1]["path"] != artifact:
             raise SigningError("root-app-must-be-signed-last")
-        if not isinstance(value["teamId"], str) or re.fullmatch(r"[A-Z0-9]{10}", value["teamId"]) is None:
+        if (
+            not isinstance(value["teamId"], str)
+            or re.fullmatch(r"[A-Z0-9]{10}", value["teamId"]) is None
+        ):
             raise SigningError("invalid-team-id")
-        if not isinstance(value["bundleIdentifier"], str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}", value["bundleIdentifier"]) is None:
+        if (
+            not isinstance(value["bundleIdentifier"], str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{1,254}", value["bundleIdentifier"]) is None
+        ):
             raise SigningError("invalid-bundle-id")
     else:
         tool = value["signtool"]
-        if not isinstance(tool, dict) or set(tool) != {"path", "sha256"} or not isinstance(tool["path"], str) or not hex_value(tool["sha256"], 64):
+        if (
+            not isinstance(tool, dict)
+            or set(tool) != {"path", "sha256"}
+            or not isinstance(tool["path"], str)
+            or not hex_value(tool["sha256"], 64)
+        ):
             raise SigningError("pinned-signtool-required")
         # Validate Windows absolute paths even when generating the plan on Linux.
         if not re.fullmatch(r"[A-Za-z]:[/\\][^\x00\r\n]+[\\/]signtool\.exe", tool["path"], re.I):
             raise SigningError("absolute-sdk-signtool-required")
         timestamp = value["timestampUrl"]
-        if not isinstance(timestamp, str) or len(timestamp) > 2048 or any(c.isspace() or ord(c) < 32 for c in timestamp):
+        if (
+            not isinstance(timestamp, str)
+            or len(timestamp) > 2048
+            or any(c.isspace() or ord(c) < 32 for c in timestamp)
+        ):
             raise SigningError("explicit-https-timestamp-required")
         try:
             url = urlsplit(timestamp)
             _port = url.port
         except ValueError as error:
             raise SigningError("invalid-timestamp-url") from error
-        if not url or url.scheme != "https" or not url.hostname or url.username or url.password or url.fragment or url.query:
+        if (
+            not url
+            or url.scheme != "https"
+            or not url.hostname
+            or url.username
+            or url.password
+            or url.fragment
+            or url.query
+        ):
             raise SigningError("explicit-https-timestamp-required")
     return copy.deepcopy(value)
 
@@ -145,7 +191,9 @@ def load_policy(workspace, name, expected_sha256):
     if hashlib.sha256(raw).hexdigest() != expected_sha256.lower():
         raise SigningError("policy-digest-mismatch")
     policy = validate_policy(value)
-    if name.casefold() == policy["artifact"].casefold() or name.casefold().startswith(policy["artifact"].casefold() + "/"):
+    if name.casefold() == policy["artifact"].casefold() or name.casefold().startswith(
+        policy["artifact"].casefold() + "/"
+    ):
         raise SigningError("policy-inside-artifact")
     return policy
 
@@ -172,7 +220,11 @@ def snapshot(root):
         row = {"mode": stat.S_IMODE(info.st_mode)}
         if stat.S_ISLNK(info.st_mode):
             target = os.readlink(path)
-            if path == root or Path(target).is_absolute() or not path.resolve(strict=True).is_relative_to(root.resolve()):
+            if (
+                path == root
+                or Path(target).is_absolute()
+                or not path.resolve(strict=True).is_relative_to(root.resolve())
+            ):
                 raise SigningError("escaping-artifact-link")
             row.update(kind="link", target=target)
         elif getattr(info, "st_file_attributes", 0) & 0x400:
@@ -192,11 +244,19 @@ def snapshot(root):
                         raise SigningError("artifact-changed")
                     sha.update(data)
             after = path.lstat()
-            if count != info.st_size or (info.st_ino, info.st_size, info.st_mtime_ns, info.st_mode) != (after.st_ino, after.st_size, after.st_mtime_ns, after.st_mode):
+            if count != info.st_size or (
+                info.st_ino,
+                info.st_size,
+                info.st_mtime_ns,
+                info.st_mode,
+            ) != (after.st_ino, after.st_size, after.st_mtime_ns, after.st_mode):
                 raise SigningError("artifact-changed")
             row.update(kind="file", bytes=count, sha256=sha.hexdigest())
         else:
             raise SigningError("unsupported-artifact-member")
         result[name] = row
-    return {"sha256": digest(result), "logicalBytes": sum(r.get("bytes", 0) for r in result.values()), "members": len(result)}
-
+    return {
+        "sha256": digest(result),
+        "logicalBytes": sum(r.get("bytes", 0) for r in result.values()),
+        "members": len(result),
+    }

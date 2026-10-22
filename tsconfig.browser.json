@@ -1,6 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": [], "lib": ["ES2022", "DOM"] },
-  "include": ["packages/contracts/src/**/*.ts", "packages/client/src/**/*.ts", "examples/workbench/browser.ts"],
+  "include": [
+    "packages/contracts/src/**/*.ts",
+    "packages/client/src/**/*.ts",
+    "examples/workbench/browser.ts"
+  ],
   "exclude": ["**/dist/**", "**/node_modules/**"]
 }

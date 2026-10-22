@@ -4,6 +4,7 @@ macOS uses codesign; Windows uses an explicitly pinned SDK SignTool and a
 separate Authenticode verifier. Linux is unsupported, not an ad-hoc substitute.
 The benchmark workspace and operating-system toolchain must be trusted.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,19 +21,40 @@ import time
 from pathlib import Path, PurePosixPath
 
 from native_signing_policy import (
-    MAX_JSON, RECEIPT, SigningError, contained, hex_value, load_policy, pairs,
-    read_json, relative_name, snapshot, validate_policy,
+    MAX_JSON,
+    RECEIPT,
+    SigningError,
+    contained,
+    hex_value,
+    load_policy,
+    pairs,
+    read_json,
+    relative_name,
+    snapshot,
+    validate_policy,
 )
 
-
-STAGES = frozenset(("cold-install", "warm-dev-launch", "frontend-edit", "backend-edit",
-                    "app-assembly", "release-sign", "installer-compress", "first-run", "update"))
+STAGES = frozenset(
+    (
+        "cold-install",
+        "warm-dev-launch",
+        "frontend-edit",
+        "backend-edit",
+        "app-assembly",
+        "release-sign",
+        "installer-compress",
+        "first-run",
+        "update",
+    )
+)
 SIGNING_SCRIPT = Path(__file__).resolve()
 
 
 def native_command(args):
     """Bounded captured output; the outer M2 observer owns descendant cancellation."""
-    child = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    child = subprocess.Popen(
+        args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     buffers = [bytearray(), bytearray()]
     overflow = threading.Event()
 
@@ -47,8 +69,10 @@ def native_command(args):
         finally:
             stream.close()
 
-    readers = [threading.Thread(target=drain, args=(stream, buffer), daemon=True)
-               for stream, buffer in zip((child.stdout, child.stderr), buffers)]
+    readers = [
+        threading.Thread(target=drain, args=(stream, buffer), daemon=True)
+        for stream, buffer in zip((child.stdout, child.stderr), buffers, strict=False)
+    ]
     for reader in readers:
         reader.start()
     try:
@@ -67,24 +91,49 @@ def native_command(args):
 
 
 def requirement(policy, target):
-    value = ('anchor apple generic and certificate leaf = H"' + policy["certificateSha1"] +
-             '" and certificate leaf[subject.OU] = "' + policy["teamId"] + '"')
+    value = (
+        'anchor apple generic and certificate leaf = H"'
+        + policy["certificateSha1"]
+        + '" and certificate leaf[subject.OU] = "'
+        + policy["teamId"]
+        + '"'
+    )
     if target["path"] == policy["artifact"]:
         value += ' and identifier "' + policy["bundleIdentifier"] + '"'
     return value
 
 
 def mac_sign_command(policy, target, path, workspace):
-    args = ["/usr/bin/codesign", "--force", "--sign", policy["certificateSha1"],
-            "--timestamp", "--options", "runtime"]
+    args = [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        policy["certificateSha1"],
+        "--timestamp",
+        "--options",
+        "runtime",
+    ]
     if "entitlements" in target:
         args += ["--entitlements", str(contained(workspace, target["entitlements"]["path"]))]
     return args + [str(path)]
 
 
 def windows_sign_command(policy, path):
-    return [policy["signtool"]["path"], "sign", "/s", "My", "/sha1", policy["certificateSha1"],
-            "/fd", "SHA256", "/tr", policy["timestampUrl"], "/td", "SHA256", str(path)]
+    return [
+        policy["signtool"]["path"],
+        "sign",
+        "/s",
+        "My",
+        "/sha1",
+        policy["certificateSha1"],
+        "/fd",
+        "SHA256",
+        "/tr",
+        policy["timestampUrl"],
+        "/td",
+        "SHA256",
+        str(path),
+    ]
 
 
 def mac_metadata(text, policy):
@@ -101,9 +150,17 @@ def windows_metadata(text, policy):
         value = json.loads(text, object_pairs_hook=pairs)
     except (ValueError, TypeError) as error:
         raise SigningError("invalid-authenticode-result") from error
-    if not isinstance(value, dict) or value.get("status") != "Valid" or value.get("type") != "Authenticode" or value.get("timestamped") is not True:
+    if (
+        not isinstance(value, dict)
+        or value.get("status") != "Valid"
+        or value.get("type") != "Authenticode"
+        or value.get("timestamped") is not True
+    ):
         raise SigningError("valid-timestamped-authenticode-required")
-    if not isinstance(value.get("thumbprint"), str) or value["thumbprint"].upper() != policy["certificateSha1"].upper():
+    if (
+        not isinstance(value.get("thumbprint"), str)
+        or value["thumbprint"].upper() != policy["certificateSha1"].upper()
+    ):
         raise SigningError("wrong-authenticode-signer")
 
 
@@ -112,10 +169,15 @@ def validate_app_bundle(workspace, name, expected_identifier=None):
     if not plist.is_file() or plist.stat().st_size > MAX_JSON:
         raise SigningError("invalid-app-plist")
     value = plistlib.loads(plist.read_bytes())
-    if not isinstance(value, dict) or (expected_identifier is not None and value.get("CFBundleIdentifier") != expected_identifier):
+    if not isinstance(value, dict) or (
+        expected_identifier is not None and value.get("CFBundleIdentifier") != expected_identifier
+    ):
         raise SigningError("wrong-app-bundle-id")
     executable = value.get("CFBundleExecutable")
-    if not isinstance(executable, str) or relative_name(executable) != PurePosixPath(executable).name:
+    if (
+        not isinstance(executable, str)
+        or relative_name(executable) != PurePosixPath(executable).name
+    ):
         raise SigningError("invalid-bundle-executable")
     binary = contained(workspace, name + "/Contents/MacOS/" + executable)
     if not binary.is_file() or binary.stat().st_nlink != 1:
@@ -148,7 +210,11 @@ def preflight(policy, workspace):
         if "entitlements" in target:
             info = target["entitlements"]
             file = contained(workspace, info["path"])
-            if not file.is_file() or file.stat().st_size > MAX_JSON or hashlib.sha256(file.read_bytes()).hexdigest() != info["sha256"].lower():
+            if (
+                not file.is_file()
+                or file.stat().st_size > MAX_JSON
+                or hashlib.sha256(file.read_bytes()).hexdigest() != info["sha256"].lower()
+            ):
                 raise SigningError("entitlements-hash-mismatch")
             if not isinstance(plistlib.loads(file.read_bytes()), dict):
                 raise SigningError("invalid-entitlements-plist")
@@ -157,7 +223,11 @@ def preflight(policy, workspace):
 
 def context():
     nonce, run_id = os.getenv("BUNLY_BENCH_NONCE"), os.getenv("BUNLY_BENCH_RUN_ID")
-    if os.getenv("BUNLY_BENCH_STAGE") != "release-sign" or not hex_value(nonce, 48) or not hex_value(run_id, 48):
+    if (
+        os.getenv("BUNLY_BENCH_STAGE") != "release-sign"
+        or not hex_value(nonce, 48)
+        or not hex_value(run_id, 48)
+    ):
         raise SigningError("release-sign-context-required")
     return {"nonce": nonce, "runId": run_id}
 
@@ -166,14 +236,35 @@ def verify_native(policy, workspace, run=native_command):
     for target in policy["targets"]:
         path = contained(workspace, target["path"])
         if policy["platform"] == "darwin":
-            run(["/usr/bin/codesign", "--verify", "--deep", "--strict", "--verbose=2", "-R=" + requirement(policy, target), str(path)])
+            run(
+                [
+                    "/usr/bin/codesign",
+                    "--verify",
+                    "--deep",
+                    "--strict",
+                    "--verbose=2",
+                    "-R=" + requirement(policy, target),
+                    str(path),
+                ]
+            )
             stdout, stderr = run(["/usr/bin/codesign", "--display", "--verbose=4", str(path)])
             mac_metadata(stdout + stderr, policy)
         else:
             run([policy["signtool"]["path"], "verify", "/pa", "/all", "/tw", "/v", str(path)])
-            powershell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
-            stdout, _ = run([str(powershell), "-NoProfile", "-NonInteractive", "-File",
-                             str(SIGNING_SCRIPT.with_name("verify_authenticode.ps1")), "-Target", str(path)])
+            powershell = (
+                Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"  # noqa: SIM112 -- Windows-defined spelling
+            )
+            stdout, _ = run(
+                [
+                    str(powershell),
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-File",
+                    str(SIGNING_SCRIPT.with_name("verify_authenticode.ps1")),
+                    "-Target",
+                    str(path),
+                ]
+            )
             windows_metadata(stdout, policy)
 
 
@@ -199,20 +290,38 @@ def execute(action, workspace, policy_name, policy_hash):
         started = time.monotonic()
         for target in policy["targets"]:
             path = contained(workspace, target["path"])
-            args = mac_sign_command(policy, target, path, workspace) if policy["platform"] == "darwin" else windows_sign_command(policy, path)
+            args = (
+                mac_sign_command(policy, target, path, workspace)
+                if policy["platform"] == "darwin"
+                else windows_sign_command(policy, path)
+            )
             native_command(args)
         signing_ms = (time.monotonic() - started) * 1000
         after = snapshot(artifact)
-        receipt = {"schema": 1, **ctx, "policySha256": policy_hash.lower(), "platform": policy["platform"],
-                   "before": before, "after": after, "targetCount": len(policy["targets"]),
-                   "signCommandsMs": signing_ms}
+        receipt = {
+            "schema": 1,
+            **ctx,
+            "policySha256": policy_hash.lower(),
+            "platform": policy["platform"],
+            "before": before,
+            "after": after,
+            "targetCount": len(policy["targets"]),
+            "signCommandsMs": signing_ms,
+        }
         # Exclusive output: a previous trial cannot become this trial's receipt.
         fd = os.open(receipt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as output:
             json.dump(receipt, output, sort_keys=True)
         return {"event": "native-signing-applied", "targets": len(policy["targets"])}
     receipt, _ = read_json(receipt_path)
-    if not isinstance(receipt, dict) or receipt.get("schema") != 1 or any(receipt.get(k) != v for k, v in ctx.items()) or receipt.get("policySha256") != policy_hash.lower() or receipt.get("platform") != policy["platform"] or receipt.get("targetCount") != len(policy["targets"]):
+    if (
+        not isinstance(receipt, dict)
+        or receipt.get("schema") != 1
+        or any(receipt.get(k) != v for k, v in ctx.items())
+        or receipt.get("policySha256") != policy_hash.lower()
+        or receipt.get("platform") != policy["platform"]
+        or receipt.get("targetCount") != len(policy["targets"])
+    ):
         raise SigningError("stale-or-mismatched-signing-receipt")
     before = snapshot(artifact)
     if before != receipt.get("after"):
@@ -220,19 +329,34 @@ def execute(action, workspace, policy_name, policy_hash):
     verify_native(policy, workspace)
     if snapshot(artifact) != before:
         raise SigningError("artifact-changed-during-verification")
-    return {"event": "benchmark-verification", "stage": "release-sign", "nonce": ctx["nonce"], "passed": True,
-            "evidence": f"Native signature verification for {len(policy['targets'])} explicit targets; pinned signer, timestamp and exact signed inventory. Not notarization, SmartScreen or runtime acceptance."}
+    return {
+        "event": "benchmark-verification",
+        "stage": "release-sign",
+        "nonce": ctx["nonce"],
+        "passed": True,
+        "evidence": f"Native signature verification for {len(policy['targets'])} explicit targets; pinned signer, timestamp and exact signed inventory. Not notarization, SmartScreen or runtime acceptance.",
+    }
 
 
 def attach(plan, policy, policy_name, policy_hash, interpreter, script=str(SIGNING_SCRIPT)):
     """Add a real signing stage; measure installed bytes after signing, not before."""
     policy = validate_policy(policy)
     relative_name(policy_name)
-    if not hex_value(policy_hash, 64) or not isinstance(plan, dict) or type(plan.get("schema")) is not int or plan.get("schema") != 1:
+    if (
+        not hex_value(policy_hash, 64)
+        or not isinstance(plan, dict)
+        or type(plan.get("schema")) is not int
+        or plan.get("schema") != 1
+    ):
         raise SigningError("invalid-signing-plan-input")
     result = copy.deepcopy(plan)
     tasks, unsupported = result.get("tasks"), result.get("unsupported")
-    if not isinstance(tasks, dict) or not isinstance(unsupported, dict) or set(tasks) & set(unsupported) or set(tasks) | set(unsupported) != STAGES:
+    if (
+        not isinstance(tasks, dict)
+        or not isinstance(unsupported, dict)
+        or set(tasks) & set(unsupported)
+        or set(tasks) | set(unsupported) != STAGES
+    ):
         raise SigningError("complete-stage-dispositions-required")
     if "release-sign" in tasks or "app-assembly" not in tasks:
         raise SigningError("unconfigured-signing-and-assembly-required")
@@ -248,8 +372,13 @@ def attach(plan, policy, policy_name, policy_hash, interpreter, script=str(SIGNI
     if installed[0].get("fresh") is True:
         assembly["commands"].insert(0, [interpreter, script, "fresh", policy_name, policy_hash])
     outputs = [{**installed[0], "fresh": False}]
-    tasks["release-sign"] = {"dependsOn": ["app-assembly"], "commands": [[interpreter, script, "sign", policy_name, policy_hash]],
-                              "verify": [interpreter, script, "verify", policy_name, policy_hash], "outputs": outputs, "timeoutMs": 600000}
+    tasks["release-sign"] = {
+        "dependsOn": ["app-assembly"],
+        "commands": [[interpreter, script, "sign", policy_name, policy_hash]],
+        "verify": [interpreter, script, "verify", policy_name, policy_hash],
+        "outputs": outputs,
+        "timeoutMs": 600000,
+    }
     # Signing must see the actual user's configured keychain/store, not a synthetic
     # benchmark HOME. Never import a key into the benchmark's isolated home.
     del unsupported["release-sign"]
@@ -291,7 +420,9 @@ def prepare(base, workspace, policy_file, expected_hash):
         fd = os.open(capsule / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(fd, "wb") as output:
             output.write(data)
-    result = attach(base, policy, ".benchmark-native-signing/policy.json", copied_hash, sys.executable)
+    result = attach(
+        base, policy, ".benchmark-native-signing/policy.json", copied_hash, sys.executable
+    )
     return result
 
 
@@ -326,8 +457,22 @@ def main():
         else:
             print(json.dumps(execute(args.action, Path.cwd(), args.policy, args.policy_sha256)))
         return 0
-    except (SigningError, OSError, subprocess.SubprocessError, plistlib.InvalidFileException, UnicodeError) as error:
-        print(json.dumps({"event": "native-signing-failed", "code": str(error) if isinstance(error, SigningError) else type(error).__name__}), file=sys.stderr)
+    except (
+        SigningError,
+        OSError,
+        subprocess.SubprocessError,
+        plistlib.InvalidFileException,
+        UnicodeError,
+    ) as error:
+        print(
+            json.dumps(
+                {
+                    "event": "native-signing-failed",
+                    "code": str(error) if isinstance(error, SigningError) else type(error).__name__,
+                }
+            ),
+            file=sys.stderr,
+        )
         return 1
 
 

@@ -69,16 +69,16 @@ protocol version 1 is not a promise that incompatible schemas are equivalent.
 
 ## Budgets and overload behavior
 
-| Resource | Default |
-| --- | ---: |
-| Complete packet | 1 MiB |
-| JSON metadata | 64 KiB |
-| Client outstanding requests per connection | 64 |
-| Serialized sender queue, including in-flight bytes | 2 MiB / 128 packets |
-| Active handler invocations per server | 64 |
+| Resource                                             |                 Default |
+| ---------------------------------------------------- | ----------------------: |
+| Complete packet                                      |                   1 MiB |
+| JSON metadata                                        |                  64 KiB |
+| Client outstanding requests per connection           |                      64 |
+| Serialized sender queue, including in-flight bytes   |     2 MiB / 128 packets |
+| Active handler invocations per server                |                      64 |
 | Host-authority active invocations across generations | 128 total / 64 per view |
-| Default call deadline / maximum accepted duration | 10 seconds / 60 seconds |
-| In-flight transport drain deadline | 5 seconds |
+| Default call deadline / maximum accepted duration    | 10 seconds / 60 seconds |
+| In-flight transport drain deadline                   |               5 seconds |
 
 All options are checked against hard ceilings. Limits are application-layer
 budgets, not a claim that total browser/OS memory is capped by these values.
@@ -104,14 +104,14 @@ the authority on its end-to-end deadline, so network delay is not mistaken for a
 shared clock. Expiry is rechecked before transmission, before/after result parsing,
 and on reply receipt; delayed timer callbacks cannot convert late work to success.
 
-| Event | Behavior |
-| --- | --- |
-| Cancellation or client deadline | Reject locally, withdraw unsent work, otherwise enqueue cancellation without retry. |
-| Server deadline | Abort the handler signal and send one deadline error; ignore a late result. |
-| Duplicate/late reply for an issued ID | Ignore; IDs are never reused and no unbounded tombstone set is retained. |
-| Future unsolicited reply or replayed request | Close the connection as a protocol failure. |
-| Navigation, frame replacement, view close or service teardown | Revoke authority, abort active work, close its connection, settle pending client calls. |
-| Disconnect, write failure, missing acknowledgement or shutdown | Close locally, reject pending requests, release queued packets/listeners/timers. |
+| Event                                                          | Behavior                                                                                |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Cancellation or client deadline                                | Reject locally, withdraw unsent work, otherwise enqueue cancellation without retry.     |
+| Server deadline                                                | Abort the handler signal and send one deadline error; ignore a late result.             |
+| Duplicate/late reply for an issued ID                          | Ignore; IDs are never reused and no unbounded tombstone set is retained.                |
+| Future unsolicited reply or replayed request                   | Close the connection as a protocol failure.                                             |
+| Navigation, frame replacement, view close or service teardown  | Revoke authority, abort active work, close its connection, settle pending client calls. |
+| Disconnect, write failure, missing acknowledgement or shutdown | Close locally, reject pending requests, release queued packets/listeners/timers.        |
 
 Transport closure is reported as DISCONNECTED to the opposite endpoint; the
 host's `server.closed` retains REVOKED for an authority revocation. Queued results

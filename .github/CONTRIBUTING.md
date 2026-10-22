@@ -4,7 +4,12 @@
 
 Use the pinned Bun 1.4.3 and `bun install --frozen-lockfile`. Run
 `bun run check` and `bun run typecheck:browser` for the application-side code;
-these do not invoke a systems compiler. `bun run example` is the explicit mock
+these do not invoke a systems compiler. The process-observer tests need Python:
+create/activate `.venv`, install `requirements.txt`, and set `PYTHON` to that
+interpreter. `bun run check:portable` is the shared local/hosted complete gate;
+`bun run check:ci` also runs the real Foundry audit and installed `actionlint`.
+See [validation](../docs/validation.md) for native and platform-specific checks.
+`bun run example` is the explicit mock
 contract fixture, not a native desktop application.
 
 Native contributors use two independent, locked Cargo workspaces: the M1 probe

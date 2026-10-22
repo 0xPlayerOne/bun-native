@@ -3,11 +3,11 @@
 These dependencies are test infrastructure, not Bunly distribution payloads.
 No competitor implementation source is copied into this adapter code.
 
-| Dependency | Pin | Use | Retained provenance |
-| --- | --- | --- | --- |
-| @xterm/xterm | 5.5.0 | Shared real terminal renderer | fixtures/bun.lock integrity; installed package metadata and LICENSE |
-| electron | 44.8.0 | Actual baseline runtime | adapters/electron/bun.lock, upstream binary installer/checksums, references.json source commit |
-| psutil | 7.0.0 | Contributor-only external observer | Explicit CI/command pin; installed package metadata and license |
+| Dependency   | Pin    | Use                                | Retained provenance                                                                            |
+| ------------ | ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| @xterm/xterm | 5.5.0  | Shared real terminal renderer      | fixtures/bun.lock integrity; installed package metadata and LICENSE                            |
+| electron     | 44.8.0 | Actual baseline runtime            | adapters/electron/bun.lock, upstream binary installer/checksums, references.json source commit |
+| psutil       | 7.0.0  | Contributor-only external observer | Explicit CI/command pin; installed package metadata and license                                |
 
 Transitive npm dependencies are frozen in each adapter's Bun lock. These locks
 are intentionally independent of the consumer SDK lock so normal Bunly development

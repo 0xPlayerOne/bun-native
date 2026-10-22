@@ -8,17 +8,17 @@ Feasibility evidence and a final host selection, not desktop release certificati
 
 ## Acceptance mapping
 
-| M1 work | Delivered evidence / boundary |
-| --- | --- |
-| #2: standalone scope | ADR 0001 and architecture; Bun TypeScript application model, no Tauri plugin or private Bun fork. |
-| #3: monorepo | Existing contracts/client/runtime/artifacts/CLI/example packages, pinned consumer toolchain and compiler-free application build. |
-| #4: provenance | Existing provenance inventory and upstream notices. This closeout copies no competitor code. |
-| #5: hosting | All three candidates and three target classes have functional/fault evidence; startup/resource observations and actual Linux/macOS idle counters are consolidated. ADR 0002 selects the process baseline and explicitly declines Windows power-measurement support until qualified. |
-| #6: portable contracts | Existing opaque resource handles, capability/version rules and browser-boundary tests. Real document authentication is M4, not a claim of these contracts. |
-| #7: artifact foundation | Existing signed probe manifests, bounded extraction and verified prebuilt/offline consumer fixtures. Full CEF acquisition remains #16. |
+| M1 work                 | Delivered evidence / boundary                                                                                                                                                                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #2: standalone scope    | ADR 0001 and architecture; Bun TypeScript application model, no Tauri plugin or private Bun fork.                                                                                                                                                                                   |
+| #3: monorepo            | Existing contracts/client/runtime/artifacts/CLI/example packages, pinned consumer toolchain and compiler-free application build.                                                                                                                                                    |
+| #4: provenance          | Existing provenance inventory and upstream notices. This closeout copies no competitor code.                                                                                                                                                                                        |
+| #5: hosting             | All three candidates and three target classes have functional/fault evidence; startup/resource observations and actual Linux/macOS idle counters are consolidated. ADR 0002 selects the process baseline and explicitly declines Windows power-measurement support until qualified. |
+| #6: portable contracts  | Existing opaque resource handles, capability/version rules and browser-boundary tests. Real document authentication is M4, not a claim of these contracts.                                                                                                                          |
+| #7: artifact foundation | Existing signed probe manifests, bounded extraction and verified prebuilt/offline consumer fixtures. Full CEF acquisition remains #16.                                                                                                                                              |
 
 The historical unchecked wording in #5 must be read with its final closeout:
-Windows wakeups were not measured. The unresolved *support decision* is now made
+Windows wakeups were not measured. The unresolved _support decision_ is now made
 and justified in ADR 0002; no unavailable value is converted into zero. M1 is a
 host feasibility milestone. Required platform/browser and controlled-performance
 acceptance for M2–M4/M9 remains open and is not satisfied by this closeout.

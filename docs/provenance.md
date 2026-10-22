@@ -7,13 +7,13 @@ Record what is reused, what is referenced, and what is actually shipped.
 
 ## Reference audit
 
-| Source | Inspected design | Reuse decision |
-| --- | --- | --- |
-| Mirin | Bun bootstrap, native-main-thread/Worker handoff, CEF helpers, development assembly | Reference host pattern; evaluate narrow CEF integration imports in M3, not the complete SDK/CLI |
-| Electrobun | Prebuilt native components, Worker handoff, typed RPC, browser profiles and reload lifecycle | Principal executable benchmark; do not copy its alternative runtime/package tooling into Bunly |
-| Butter | Separate native shim, framed shared memory, polling, generated compiler bootstrap | Reference tradeoffs; do not inherit duplicated generated transport or extraction design |
-| cef-rs / CEF | Candidate browser bindings and official embedding contracts | Dependency candidates only; pin and audit exact source/binary versions before M3 |
-| Wry | Candidate system-webview integrations | Post-MVP candidate; not linked or bundled in M1 |
+| Source       | Inspected design                                                                             | Reuse decision                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Mirin        | Bun bootstrap, native-main-thread/Worker handoff, CEF helpers, development assembly          | Reference host pattern; evaluate narrow CEF integration imports in M3, not the complete SDK/CLI |
+| Electrobun   | Prebuilt native components, Worker handoff, typed RPC, browser profiles and reload lifecycle | Principal executable benchmark; do not copy its alternative runtime/package tooling into Bunly  |
+| Butter       | Separate native shim, framed shared memory, polling, generated compiler bootstrap            | Reference tradeoffs; do not inherit duplicated generated transport or extraction design         |
+| cef-rs / CEF | Candidate browser bindings and official embedding contracts                                  | Dependency candidates only; pin and audit exact source/binary versions before M3                |
+| Wry          | Candidate system-webview integrations                                                        | Post-MVP candidate; not linked or bundled in M1                                                 |
 
 Exact reference revisions and license URLs are recorded in
 `provenance/references.json` and `benchmarks/references.json`. Upstream claims are
