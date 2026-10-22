@@ -61,7 +61,11 @@ export class RpcChannel {
   send(packet: Uint8Array, signal?: AbortSignal, beforeSend?: () => void): Promise<void> {
     if (this.#reason) return Promise.reject(this.#reason)
     if (signal?.aborted) return Promise.reject(new RpcError('CANCELLED', 'RPC send cancelled'))
-    if (!(packet instanceof Uint8Array) || packet.byteLength > this.limits.maxFrameBytes)
+    if (
+      !(packet instanceof Uint8Array) ||
+      !(packet.buffer instanceof ArrayBuffer) ||
+      packet.byteLength > this.limits.maxFrameBytes
+    )
       return Promise.reject(new RpcError('PROTOCOL_ERROR', 'RPC packet too large'))
     if (
       this.#bytes + packet.byteLength > this.limits.maxQueuedBytes ||
@@ -71,7 +75,8 @@ export class RpcChannel {
     }
     return new Promise<void>((resolve, reject) => {
       const item: Outgoing = {
-        packet: packet.slice(),
+        // Uint8Array construction copies Buffer inputs too; Buffer.slice only aliases.
+        packet: new Uint8Array(packet),
         bytes: packet.byteLength,
         resolve,
         reject,

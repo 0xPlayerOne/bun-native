@@ -1,6 +1,9 @@
 import { RPC_VERSION, RPC_ERROR_CODES, RpcError, validProcedure } from './rpc.ts'
 import type { RpcEnvelope, RpcLimits } from './rpc.ts'
 const MAGIC = 0x424c5250 // BLRP, network byte order; followed by metadata/body byte lengths.
+// The parsed-data fast path must use the parser captured by this trusted module,
+// not a later application replacement of JSON.parse.
+const parseJson = JSON.parse
 const encoder = new TextEncoder()
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
 function invalid(message = 'Invalid RPC packet'): never {
@@ -15,8 +18,8 @@ function keys(value: Record<string, unknown>, expected: readonly string[]): void
   if (actual.length !== expected.length || actual.some((key) => !expected.includes(key))) invalid()
 }
 /** Reject lossy/non-data serialization, excessive structure, and accessor execution. */
-function jsonData(value: unknown, budget: number): void {
-  const ancestors = new Set<object>()
+function jsonData(value: unknown, budget: number, parsed = false): void {
+  const ancestors = parsed ? undefined : new Set<object>()
   let nodes = 0,
     units = 0
   function visit(v: unknown, depth: number): void {
@@ -28,31 +31,38 @@ function jsonData(value: unknown, budget: number): void {
     } else if (typeof v === 'string') {
       units += v.length
     } else if (v && typeof v === 'object') {
-      if (ancestors.has(v)) invalid('Cyclic RPC JSON')
-      const proto = Object.getPrototypeOf(v)
-      if (
-        Array.isArray(v) ? proto !== Array.prototype : proto !== Object.prototype && proto !== null
-      )
-        invalid('RPC expects plain JSON or a top-level Uint8Array')
-      if (Array.isArray(v) && (v.length > 10_000 || Object.keys(v).length !== v.length))
-        invalid('RPC arrays must be dense')
-      const descriptors = Object.getOwnPropertyDescriptors(v)
-      if (Object.getOwnPropertySymbols(v).length) invalid('RPC JSON cannot contain symbols')
-      ancestors.add(v)
-      for (const [key, property] of Object.entries(descriptors)) {
-        if (Array.isArray(v) && key === 'length') continue
-        if (
-          !property.enumerable ||
-          !('value' in property) ||
-          ['__proto__', 'constructor', 'prototype'].includes(key)
-        )
+      const array = Array.isArray(v)
+      let descriptors: PropertyDescriptorMap | undefined
+      if (!parsed) {
+        if (ancestors!.has(v)) invalid('Cyclic RPC JSON')
+        const proto = Object.getPrototypeOf(v)
+        if (array ? proto !== Array.prototype : proto !== Object.prototype && proto !== null)
+          invalid('RPC expects plain JSON or a top-level Uint8Array')
+        if (array && (v.length > 10_000 || Object.keys(v).length !== v.length))
+          invalid('RPC arrays must be dense')
+        descriptors = Object.getOwnPropertyDescriptors(v)
+        if (Object.getOwnPropertySymbols(v).length) invalid('RPC JSON cannot contain symbols')
+        ancestors!.add(v)
+      }
+      // Only decodeRpc may select parsed=true, immediately after native JSON.parse
+      // without a reviver. Untrusted in-process inputs still use descriptors.
+      for (const key of Object.keys(descriptors ?? v)) {
+        if (descriptors && array && key === 'length') continue
+        if (['__proto__', 'constructor', 'prototype'].includes(key))
           invalid('RPC JSON contains an unsupported property')
-        if (Array.isArray(v) && !/^(0|[1-9][0-9]*)$/.test(key)) invalid()
+        let child: unknown
+        if (descriptors) {
+          const property = descriptors[key]!
+          if (!property.enumerable || !('value' in property))
+            invalid('RPC JSON contains an unsupported property')
+          if (array && !/^(0|[1-9][0-9]*)$/.test(key)) invalid()
+          child = property.value
+        } else child = (v as Record<string, unknown>)[key]
         units += key.length + 3
         if (units > budget) invalid('RPC metadata limit')
-        visit(property.value, depth + 1)
+        visit(child, depth + 1)
       }
-      ancestors.delete(v)
+      ancestors?.delete(v)
     } else invalid('RPC value is not JSON data')
     if (units > budget) invalid('RPC metadata limit')
   }
@@ -118,12 +128,17 @@ export function decodeRpc(packet: Uint8Array, limits: RpcLimits): RpcEnvelope {
     invalid()
   let raw: unknown
   try {
-    raw = JSON.parse(decoder.decode(packet.subarray(12, 12 + headerLength)))
+    raw = parseJson(decoder.decode(packet.subarray(12, 12 + headerLength)))
   } catch {
     return invalid('Invalid RPC UTF-8 or JSON')
   }
-  jsonData(raw, limits.maxMetadataBytes)
-  return readEnvelope(object(raw), bodyLength, limits, () => packet.slice(12 + headerLength))
+  jsonData(raw, limits.maxMetadataBytes, true)
+  return readEnvelope(
+    object(raw),
+    bodyLength,
+    limits,
+    () => new Uint8Array(packet.subarray(12 + headerLength))
+  )
 }
 function readEnvelope(
   data: Record<string, unknown>,

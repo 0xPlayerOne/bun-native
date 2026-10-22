@@ -179,36 +179,88 @@ export class NativeTransport {
   }
   async #read(): Promise<void> {
     const decoder = new TextDecoder('utf-8', { fatal: true })
-    let buffered = ''
+    // Scan delimiters in bytes once. Repeated UTF-8 decoding, string concatenation
+    // and byteLength/indexOf on the accumulated prefix are quadratic on short reads.
+    // Allocate only for a split frame; retain at most one 64 KiB scratch buffer.
+    let partial: Buffer | undefined
+    let used = 0
     let processed = 0
+    const append = (bytes: Buffer) => {
+      const needed = used + bytes.length
+      if (!partial || partial.length < needed) {
+        const next = Buffer.allocUnsafe(
+          Math.min(65536, Math.max(1024, needed, (partial?.length ?? 0) * 2))
+        )
+        if (partial) partial.copy(next, 0, 0, used)
+        partial = next
+      }
+      bytes.copy(partial, used)
+      used = needed
+    }
+    const consume = async (text: string) => {
+      let start = 0
+      for (;;) {
+        const end = text.indexOf('\n', start)
+        if (end < 0) break
+        const completed = this.#receive(object(JSON.parse(text.slice(start, end))))
+        start = end + 1
+        // Publish resolved creation ownership before consuming the next lifecycle event.
+        if (completed) await Promise.resolve()
+        if (this.#closed) return
+        if (++processed % 32 === 0) await new Promise<void>((resolve) => setImmediate(resolve))
+      }
+    }
     try {
       for await (const chunk of this.#input) {
         if (this.#closed) return
         const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array)
-        for (let offset = 0; offset < bytes.length; offset += 16384) {
-          buffered += decoder.decode(bytes.subarray(offset, offset + 16384), { stream: true })
-          for (;;) {
-            const end = buffered.indexOf('\n')
-            if (end < 0) break
-            const line = buffered.slice(0, end)
-            buffered = buffered.slice(end + 1)
-            if (Buffer.byteLength(line) > 65535) throw new Error('Native input frame exceeds limit')
-            const completed = this.#receive(object(JSON.parse(line)))
-            // Publish resolved ownership before processing the next native lifecycle event.
-            // call() returns the actual pending promise, not an extra async adoption layer.
-            if (completed) await Promise.resolve()
-            if (this.#closed) return
-            if (++processed % 32 === 0) await new Promise<void>((resolve) => setImmediate(resolve))
+        let offset = 0
+        while (offset < bytes.length) {
+          if (!used) {
+            // Batched short events keep one decoder invocation per bounded block.
+            // An LF-terminated <=16 KiB prefix cannot contain an oversized frame.
+            const batch = bytes.subarray(offset, offset + 16384)
+            const last = batch.lastIndexOf(10)
+            if (last >= 0) {
+              await consume(decoder.decode(batch.subarray(0, last + 1), { stream: true }))
+              if (this.#closed) return
+              offset += last + 1
+              continue
+            }
           }
-          if (Buffer.byteLength(buffered) > 65535)
-            throw new Error('Unterminated native frame exceeds limit')
+          // Restrict the search itself: malformed huge input is rejected without
+          // scanning beyond the maximum remaining frame capacity.
+          const window = bytes.subarray(offset, offset + 65536 - used)
+          const newline = window.indexOf(10)
+          const end = newline < 0 ? -1 : offset + newline
+          const length = newline < 0 ? window.length : newline
+          if (used + length > 65535)
+            throw new Error(
+              end < 0
+                ? 'Unterminated native frame exceeds limit'
+                : 'Native input frame exceeds limit'
+            )
+          if (end < 0) {
+            append(bytes.subarray(offset))
+            break
+          }
+          // Include LF so fatal UTF-8 rejects an unfinished codepoint at the boundary.
+          let frame = bytes.subarray(offset, end + 1)
+          if (used) {
+            append(frame)
+            frame = partial!.subarray(0, used)
+            used = 0
+          }
+          offset = end + 1
+          // Preserve decoder stream/BOM semantics; each byte is decoded only once.
+          await consume(decoder.decode(frame, { stream: true }))
+          if (this.#closed) return
         }
       }
-      buffered += decoder.decode()
+      if (used) decoder.decode(partial!.subarray(0, used), { stream: true })
+      decoder.decode()
       if (!this.#closed)
-        this.fail(
-          new Error(buffered.length ? 'Truncated native frame at EOF' : 'Native host disconnected')
-        )
+        this.fail(new Error(used ? 'Truncated native frame at EOF' : 'Native host disconnected'))
     } catch (error) {
       this.fail(error)
     }
