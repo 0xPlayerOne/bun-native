@@ -4,11 +4,15 @@ type Entry = { kind: ResourceKind; value: unknown; disposed: boolean }
 /** Identity equality, not caller-provided strings. This is not an IPC authenticator. */
 export class Registry {
   readonly #entries = new WeakMap<object, Entry>()
-  readonly #live = new Set<Handle<ResourceKind>>()
+  readonly #live = {
+    window: new Set<Handle<ResourceKind>>(),
+    view: new Set<Handle<ResourceKind>>(),
+    session: new Set<Handle<ResourceKind>>(),
+  }
   create<K extends ResourceKind, T>(kind: K, value: T): Handle<K> {
     const handle = Object.freeze({ kind, id: crypto.randomUUID() }) as Handle<K>
     this.#entries.set(handle, { kind, value, disposed: false })
-    this.#live.add(handle)
+    this.#live[kind].add(handle)
     return handle
   }
   get<K extends ResourceKind, T>(handle: Handle<K>, kind: K): T {
@@ -24,11 +28,14 @@ export class Registry {
     if (entry.disposed) return false
     entry.disposed = true
     entry.value = undefined
-    this.#live.delete(handle)
+    this.#live[kind].delete(handle)
     return true
   }
   handles<K extends ResourceKind>(kind: K): Handle<K>[] {
-    return [...this.#live].filter((h): h is Handle<K> => h.kind === kind)
+    return [...this.#live[kind]] as Handle<K>[]
+  }
+  count(kind: ResourceKind): number {
+    return this.#live[kind].size
   }
   #lookup(handle: object, kind: ResourceKind): Entry {
     const entry =

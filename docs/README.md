@@ -10,6 +10,7 @@ Current architecture and contributor guides, with historical evidence kept disti
 [Contributing](../.github/CONTRIBUTING.md) is the single contribution policy.
 [Validation](validation.md) lists current commands and evidence limits.
 [Code Foundry](code-foundry.md) explains deterministic sync and contributor hooks.
+[Runtime foundation audit](runtime-foundation-audit.md) records ownership/cache fixes and local hot-path measurements.
 [Manual native qualification](manual-native-qualification.md) runs disposable
 Windows, Linux and macOS cloud tests without local VMs.
 

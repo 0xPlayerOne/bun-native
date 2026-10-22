@@ -81,7 +81,8 @@ async function writeAll(file: FileHandle, bytes: Uint8Array, signal: AbortSignal
 async function hashFile(
   path: string,
   expected: Extract<CefMember, { type: 'file' }>,
-  signal: AbortSignal
+  signal: AbortSignal,
+  buffer: Buffer
 ) {
   const first = await lstat(path)
   if (
@@ -93,8 +94,7 @@ async function hashFile(
   )
     cefError('INTEGRITY_ERROR', 'Runtime member metadata differs from manifest')
   const f = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
-  const hash = createHash('sha256'),
-    buffer = Buffer.alloc(65536)
+  const hash = createHash('sha256')
   let size = 0
   try {
     const actual = await f.stat()
@@ -130,6 +130,7 @@ export async function validateCefDirectory(
   manifest: CefRuntimeManifest,
   signal: AbortSignal
 ): Promise<void> {
+  signal.throwIfAborted()
   const st = await lstat(root)
   if (
     !st.isDirectory() ||
@@ -140,6 +141,8 @@ export async function validateCefDirectory(
   const canonical = await realpath(root),
     members = new Map(manifest.members.map((f) => [f.path, f]))
   const pending = ['']
+  // Validation is sequential: reuse one bounded buffer across all signed members.
+  const buffer = Buffer.alloc(65536)
   let found = 0
   while (pending.length) {
     const prefix = pending.pop()!
@@ -159,7 +162,7 @@ export async function validateCefDirectory(
         )
           cefError('INTEGRITY_ERROR', 'Invalid runtime directory')
         pending.push(name)
-      } else if (expected.type === 'file') await hashFile(path, expected, signal)
+      } else if (expected.type === 'file') await hashFile(path, expected, signal, buffer)
       else {
         if (!info.isSymbolicLink() || (await readlink(path)) !== expected.target)
           cefError('INTEGRITY_ERROR', 'Invalid cached runtime link')
@@ -170,9 +173,11 @@ export async function validateCefDirectory(
     }
   }
   if (found !== members.size) cefError('INTEGRITY_ERROR', 'Incomplete cached runtime')
+  signal.throwIfAborted()
   const config = JSON.parse(
     await readFile(join(root, manifest.layout.resources, 'runtime.json'), 'utf8')
   ) as Record<string, unknown>
+  signal.throwIfAborted()
   if (
     !config ||
     Array.isArray(config) ||
@@ -278,10 +283,12 @@ async function download(
       cefError('INTEGRITY_ERROR', 'Unexpected transport encoding/length')
     }
     const reader = res.body.getReader(),
-      file = await open(path, 'wx', 0o600),
       hash = createHash('sha256')
+    let file: FileHandle | undefined
     let size = 0
     try {
+      // The body is already owned; even an exclusive-open failure must cancel/unlock it.
+      file = await open(path, 'wx', 0o600)
       for (;;) {
         signal.throwIfAborted()
         const next = await abortable(reader.read(), signal, () => {
@@ -301,7 +308,7 @@ async function download(
     } finally {
       void reader.cancel().catch(() => {})
       reader.releaseLock()
-      await file.close()
+      await file?.close()
     }
   }
   cefError('DOWNLOAD_FAILED', 'Too many runtime archive redirects')
@@ -506,7 +513,7 @@ export async function resolveCefRuntime(
         0n
       ) +
       BigInt(reserve)
-    if (stats.bsize <= 0n || stats.bavail * stats.bsize < required)
+    if (stats.bavail * stats.bsize < required)
       cefError('INSUFFICIENT_DISK_SPACE', `Full CEF acquisition requires ${required} free bytes`)
     stage = join(root, '.cef-' + key + '.txn-' + randomBytes(12).toString('hex'))
     await mkdir(stage, { mode: 0o700 })
@@ -535,21 +542,33 @@ export async function withCefRuntime<T>(
   options: CefResolveOptions,
   run: (directory: string, manifest: CefRuntimeManifest) => Promise<T>
 ): Promise<T> {
-  const result = await resolveCefRuntime(options),
-    signal = operation(options),
-    root = await rootDirectory(options.cacheRoot)
-  const unlock = await kernelLock(
-    join(root, result.manifest.archive.sha256 + '.lock'),
-    signal,
-    true
-  )
+  const manifest = verifyCefManifest(options.envelope, options.trustRoots, options.expected),
+    signal = operation(options)
+  signal.throwIfAborted()
+  const reserve = options.reserveBytes ?? 32 * 1024 * 1024
+  if (!Number.isSafeInteger(reserve) || reserve < 0)
+    cefError('INVALID_ARGUMENT', 'Invalid disk reserve')
+  const root = await rootDirectory(options.cacheRoot),
+    key = manifest.archive.sha256,
+    directory = join(root, key),
+    lock = join(root, key + '.lock')
+  // A published runtime with its persistent lock needs only a shared lease.
+  // Taking an exclusive acquisition lock here would serialize application lifetimes.
+  if (!(await exists(directory)) || !(await exists(lock))) {
+    // Cold acquisition remains exclusive. The original deadline covers the whole operation.
+    await resolveCefRuntime({ ...options, signal })
+  }
+  const unlock = await kernelLock(lock, signal, true)
   try {
-    await validateCefDirectory(result.directory, result.manifest, signal)
-    return await run(result.directory, result.manifest)
+    // Verify every byte while holding the lease. Never trust a prior validation or metadata cache.
+    await validateCefDirectory(directory, manifest, signal)
+    signal.throwIfAborted()
+    return await run(directory, manifest)
   } finally {
     await unlock()
   }
 }
+
 export async function removeCefRuntime(options: CefResolveOptions): Promise<void> {
   const manifest = verifyCefManifest(options.envelope, options.trustRoots, options.expected),
     signal = operation(options),
