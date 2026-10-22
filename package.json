@@ -45,7 +45,11 @@
     "check:workflows": "actionlint",
     "check:ci": "bun run foundry:doctor && bun --bun code-foundry check --tier audit --timeout 600 && bun run typecheck:browser && bun run boundaries && bun run qualify:typecheck && bun run check:workflows",
     "lint:native": "cargo +1.85.1 clippy --locked --manifest-path native/Cargo.toml --all-targets -- -D warnings && cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings",
-    "check:ci:native": "bun run format:native:check && bun run lint:native && bun run native:test && bun run native:build && cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib && cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release"
+    "check:ci:native": "bun run format:native:check && bun run lint:native && bun run native:test && bun run native:build && cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib && cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release",
+    "check:foundation": "bun test tests/foundation-lifecycle.test.ts tests/foundation-profile.test.ts tests/native-transport-audit.test.ts tests/packet-ownership.test.ts tests/rpc.test.ts tests/streams.test.ts",
+    "profile:foundation": "bun scripts/profile-foundation.ts",
+    "profile:foundation:cpu": "bun --cpu-prof --cpu-prof-md --cpu-prof-dir=.bunly/profiles scripts/profile-foundation.ts",
+    "profile:foundation:native": "bun scripts/profile-foundation-native.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

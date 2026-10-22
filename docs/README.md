@@ -12,6 +12,8 @@ Current architecture and contributor guides, with historical evidence kept disti
 [Code Foundry](code-foundry.md) explains deterministic sync and contributor hooks.
 [Runtime foundation audit](runtime-foundation-audit.md) records ownership/cache fixes and local hot-path measurements.
 [Message-path audit](message-path-audit.md) covers buffer ownership, bounded framing and RPC decoding.
+[Pre-M4 foundation](pre-m4-foundation.md) records the asset, lifecycle and regression pass.
+[Foundation performance](foundation-performance.md) documents maintained checks and explicit profiling.
 [Manual native qualification](manual-native-qualification.md) runs disposable
 Windows, Linux and macOS cloud tests without local VMs.
 
@@ -35,6 +37,10 @@ coverage outside its stated profile.
 [RPC](rpc.md), [streams](streams.md), and [provenance](provenance.md) describe their
 implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
 [M5 progress](m5-progress.md) are partial implementation notes, not closeout claims.
+
+[Native assets](native-assets.md) specifies asynchronous verification and resource
+bounds. [macOS clone cleanup](macos-clone-cleanup.md) documents the narrow helper
+ownership policy and the executable baseline/current qualification command.
 
 Contributor programs under `scripts/` serve live workflows, tests or documented
 reproduction paths. They are not application payloads merely because they are in

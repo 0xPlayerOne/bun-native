@@ -5,6 +5,7 @@ Only descendants observed with their creation time are eligible for cleanup.
 
 import argparse
 import json
+import math
 import os
 import platform
 import signal
@@ -17,7 +18,53 @@ from pathlib import Path
 
 import psutil
 
+# runpy/importlib callers do not necessarily place this file's directory on
+# sys.path. Resolve our own trusted siblings independently of the launch cwd.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 OUTPUT_LIMIT = 2 * 1024 * 1024
+
+
+def owned_process(identity):
+    """Use a fresh kernel identity; cached Process objects may refer to a reused PID."""
+    try:
+        current = psutil.Process(identity[0])
+        if (
+            current.create_time() == identity[1]
+            and current.is_running()
+            and current.status() != psutil.STATUS_ZOMBIE
+        ):
+            return current
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+    return None
+
+
+def kill_owned(identity):
+    current = owned_process(identity)
+    if current is not None:
+        with suppress(psutil.Error):
+            current.kill()
+
+
+def post_exit_resources(samples):
+    selected = [sample for sample in samples if sample["phase"] == "post-exit-cleanup"]
+    cpu_seconds = 0.0
+    matched = 0
+    for previous, current in zip(selected, selected[1:], strict=False):
+        old = {(row["pid"], row["creationTime"]): row for row in previous["processes"]}
+        for row in current["processes"]:
+            before = old.get((row["pid"], row["creationTime"]))
+            if before is not None and row["cpuSeconds"] >= before["cpuSeconds"]:
+                cpu_seconds += row["cpuSeconds"] - before["cpuSeconds"]
+                matched += 1
+    return {
+        "sampleCount": len(selected),
+        "peakRssBytes": max((sample["rssBytes"] for sample in selected), default=None),
+        "peakThreads": max((sample["threads"] for sample in selected), default=None),
+        "sampledCpuSeconds": cpu_seconds if matched else None,
+        "accounting": "post-exit samples; adjacent same-PID/birth CPU deltas; gaps and exits are not zero CPU",
+    }
 
 
 def observe(
@@ -28,9 +75,22 @@ def observe(
     counter_reader=None,
     stop_event=None,
     sandbox_reader=None,
+    cleanup_observer=None,
 ):
-    if not command or timeout <= 0 or interval < 0.01 or max_samples < 1:
+    if (
+        not command
+        or not math.isfinite(timeout)
+        or not math.isfinite(interval)
+        or timeout <= 0
+        or interval < 0.01
+        or max_samples < 1
+    ):
         raise ValueError("Invalid bounded observation options")
+    clone_cleanup = None
+    if sys.platform == "darwin":
+        from macos_clone_cleanup import for_command
+
+        clone_cleanup = for_command(command)
     started = time.monotonic()
     child = subprocess.Popen(
         command,
@@ -41,15 +101,19 @@ def observe(
     )
     try:
         root = psutil.Process(child.pid)
-        known = {(root.pid, root.create_time()): root}
+        root_identity = (root.pid, root.create_time())
+        known = {root_identity: root}
     except psutil.NoSuchProcess:
-        root, known = None, {}
-    lines, errors, samples = [], [], []
-    state = {"phase": "startup", "bytes": 0, "overflow": False}
+        root, root_identity, known = None, None, {}
+    if clone_cleanup is not None:
+        clone_cleanup.bind(root)
+    lines, errors, samples, event_times = [], [], [], []
+    state = {"phase": "startup", "bytes": 0, "overflow": False, "observerFailure": None}
     lock = threading.Lock()
 
     def drain(stream, output, phases=False):
         for raw in iter(lambda: stream.readline(OUTPUT_LIMIT + 1), b""):
+            received = time.monotonic()
             with lock:
                 state["bytes"] += len(raw)
                 if state["bytes"] > OUTPUT_LIMIT:
@@ -57,13 +121,28 @@ def observe(
                     continue
                 text = raw.decode("utf-8", errors="replace").rstrip()
                 output.append(text)
-                if phases:
-                    try:
-                        item = json.loads(text)
-                        if isinstance(item, dict) and item.get("event") == "phase":
+                try:
+                    item = json.loads(text)
+                    if isinstance(item, dict):
+                        if phases and item.get("event") == "phase":
                             state["phase"] = str(item.get("phase", "unknown"))
-                    except ValueError:
-                        pass
+                        # One allowlisted receipt timestamp supports startup
+                        # profiling. No payload, identity or authority is taken
+                        # from this optional diagnostic event.
+                        if (
+                            not phases
+                            and not event_times
+                            and item.get("event") == "bunly.foundation.ready"
+                        ):
+                            event_times.append(
+                                {
+                                    "event": "bunly.foundation.ready",
+                                    "elapsedMs": (received - started) * 1000,
+                                    "stream": "stderr",
+                                }
+                            )
+                except (ValueError, RecursionError):
+                    pass
         stream.close()
 
     readers = [
@@ -74,22 +153,32 @@ def observe(
         reader.start()
 
     def alive(identity, proc):
-        try:
-            return (
-                proc.create_time() == identity[1]
-                and proc.is_running()
-                and proc.status() != psutil.STATUS_ZOMBIE
-            )
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return False
+        return owned_process(identity) is not None
 
-    def snapshot():
+    def snapshot(phase_override=None):
         try:
-            if root is not None:
-                for proc in root.children(recursive=True):
+            current_root = owned_process(root_identity) if root_identity is not None else None
+            if current_root is not None:
+                descendants = current_root.children(recursive=True)
+                # Revalidate before admitting newly discovered descendants.
+                if owned_process(root_identity) is None:
+                    descendants = []
+                for proc in descendants:
                     known[(proc.pid, proc.create_time())] = proc
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
+        if clone_cleanup is not None:
+            clone_cleanup.discover_clones()
+            for identity, proc in list(known.items()):
+                if identity[0] != child.pid:
+                    clone_cleanup.remember(identity, proc)
+            if cleanup_observer is not None:
+                try:
+                    cleanup_observer(clone_cleanup)
+                except Exception:
+                    # A qualification callback cannot strand suspended/owned
+                    # children by escaping the normal bounded cleanup path.
+                    state["observerFailure"] = "cleanup-observer-failed"
         rows = []
         for identity, proc in list(known.items()):
             if not alive(identity, proc):
@@ -121,7 +210,14 @@ def observe(
                     field = {"linux": "linuxSandbox", "win32": "windowsSandbox"}.get(
                         sys.platform, "seatbelt"
                     )
-                    roles = {"renderer", "gpu-process", "utility", "zygote", "crashpad-handler"}
+                    roles = {
+                        "renderer",
+                        "gpu-process",
+                        "utility",
+                        "zygote",
+                        "crashpad-handler",
+                        "code-sign-clone-cleanup",
+                    }
                     row["browserRole"] = None
                     try:
                         for arg in proc.cmdline():
@@ -148,7 +244,7 @@ def observe(
             phase = state["phase"]
         return {
             "elapsedMs": (time.monotonic() - started) * 1000,
-            "phase": phase,
+            "phase": phase_override or phase,
             "processes": rows,
             "rssBytes": sum(row["rssBytes"] for row in rows),
             "threads": sum(row["threads"] for row in rows),
@@ -156,12 +252,19 @@ def observe(
 
     timed_out = False
     cancelled = False
+    # Keep room for the bounded post-exit window while continuing identity
+    # discovery even when the ordinary sample budget is exhausted.
+    reserve = min(max_samples, int(3.0 / interval) + 2) if clone_cleanup is not None else 0
     while child.poll() is None:
         if stop_event is not None and stop_event.is_set():
             cancelled = True
             break
-        if len(samples) < max_samples:
-            samples.append(snapshot())
+        sample = snapshot()
+        if len(samples) < max_samples - reserve:
+            samples.append(sample)
+        if state["observerFailure"] is not None:
+            cancelled = True
+            break
         if time.monotonic() - started > timeout or state["overflow"]:
             timed_out = True
             break
@@ -173,20 +276,35 @@ def observe(
             samples.append(snapshot())
         else:
             snapshot()
-        for identity, proc in reversed(list(known.items())):
-            if alive(identity, proc):
-                with suppress(psutil.Error):
-                    proc.kill()
+        for identity, _proc in reversed(list(known.items())):
+            kill_owned(identity)
         child.kill()
     try:
         code = child.wait(timeout=5)
     except subprocess.TimeoutExpired:
         child.kill()
         code = child.wait(timeout=5)
-    grace = time.monotonic() + 0.5
+    root_exit = time.monotonic()
+    grace = root_exit + 0.5
+    if clone_cleanup is not None and not timed_out and not cancelled:
+        clone_cleanup.discover_clones()
+        for identity, proc in clone_cleanup.recover_after_exit():
+            known[identity] = proc
+        # Always take one post-exit observation, including a cleanup child that
+        # reparented between the last descendant sample and root exit.
+        sample = snapshot("post-exit-cleanup")
+        if len(samples) < max_samples:
+            samples.append(sample)
+        if state["observerFailure"] is not None:
+            cancelled = True
     while time.monotonic() < grace and any(
         identity[0] != child.pid and alive(identity, proc) for identity, proc in known.items()
     ):
+        if clone_cleanup is not None and len(samples) < max_samples:
+            samples.append(snapshot("post-exit-cleanup"))
+        if state["observerFailure"] is not None:
+            cancelled = True
+            break
         time.sleep(interval)
     survivors = [
         identity[0]
@@ -209,7 +327,14 @@ def observe(
             detail["parentPid"] = proc.ppid()
             # Only retain an allowlisted browser role, never the full command
             # line (which may contain URLs, paths or application credentials).
-            roles = {"renderer", "gpu-process", "utility", "zygote", "crashpad-handler"}
+            roles = {
+                "renderer",
+                "gpu-process",
+                "utility",
+                "zygote",
+                "crashpad-handler",
+                "code-sign-clone-cleanup",
+            }
             for arg in proc.cmdline():
                 if arg.startswith("--type=") and arg[7:] in roles:
                     detail["browserRole"] = arg[7:]
@@ -217,10 +342,51 @@ def observe(
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             detail["identityDetailsUnavailable"] = True
         orphan_details.append(detail)
+    post_exit = None
+    if clone_cleanup is not None and not timed_out and not cancelled:
+        # Ordinary descendants are judged at 500 ms, even if they exit during the
+        # separate proven-cleanup window. No role-only blanket exception.
+        eligible = {identity for identity in clone_cleanup.helpers if clone_cleanup.grant(identity)}
+        for identity, proc in known.items():
+            if identity[0] in survivors and identity not in eligible and alive(identity, proc):
+                kill_owned(identity)
+        deadline = root_exit + 3.0
+        while eligible and time.monotonic() < deadline:
+            if all(clone_cleanup.complete(identity) for identity in eligible):
+                break
+            if (stop_event is not None and stop_event.is_set()) or state["observerFailure"]:
+                cancelled = True
+                break
+            if any(clone_cleanup.state(identity) == "invalid" for identity in eligible):
+                break
+            if len(samples) < max_samples:
+                samples.append(snapshot("post-exit-cleanup"))
+            time.sleep(interval)
+        within_deadline = time.monotonic() <= deadline
+        completed = {
+            identity[0]
+            for identity in eligible
+            if within_deadline and clone_cleanup.complete(identity)
+        }
+        survivors = [pid for pid in survivors if pid not in completed]
+        orphan_details = [row for row in orphan_details if row["pid"] not in completed]
+        post_exit = clone_cleanup.report((time.monotonic() - root_exit) * 1000)
+        post_exit["resources"] = post_exit_resources(samples)
+        if eligible and not within_deadline:
+            post_exit["passed"] = False
+            post_exit["qualified"] = False
+            post_exit["status"] = "failed"
+    if clone_cleanup is not None and (timed_out or cancelled):
+        # Interruption does not attest clone removal, even if owned processes
+        # were killed successfully. Preserve the evidence and retain the fixture.
+        post_exit = clone_cleanup.report((time.monotonic() - root_exit) * 1000)
+        post_exit["resources"] = post_exit_resources(samples)
+        post_exit["passed"] = False
+        post_exit["qualified"] = False
+        post_exit["status"] = "failed"
     for identity, proc in known.items():
         if identity[0] in survivors and alive(identity, proc):
-            with suppress(psutil.Error):
-                proc.kill()
+            kill_owned(identity)
     cleanup_deadline = time.monotonic() + 1
     while time.monotonic() < cleanup_deadline and any(
         alive(identity, proc) for identity, proc in known.items()
@@ -239,7 +405,10 @@ def observe(
             pass
     return {
         "schema": 1,
+        **({"postExitCleanup": post_exit} if post_exit is not None else {}),
         "exitCode": code,
+        "eventTimes": event_times,
+        "observerFailure": state["observerFailure"],
         "timedOut": timed_out,
         "cancelled": cancelled,
         "cleanupSurvivors": cleanup_survivors,
@@ -371,5 +540,6 @@ if __name__ == "__main__":
         or result["outputOverflow"]
         or result["observedOrphans"]
         or result["cleanupSurvivors"]
+        or result.get("postExitCleanup", {}).get("passed") is False
         else 0
     )

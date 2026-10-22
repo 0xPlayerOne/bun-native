@@ -2,6 +2,7 @@
 use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
+mod asset_service;
 mod deadlines;
 mod handshake;
 pub mod host;
@@ -115,7 +116,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .as_deref()
         .map(policy::development_origin)
         .transpose()?;
-    scheme::load(resources.join("public"))?;
+    let asset_service = scheme::load(resources.join("public"))?;
     #[cfg(target_os = "macos")]
     for suffix in ["", " (GPU)", " (Renderer)", " (Plugin)", " (Alerts)"] {
         let name = format!(
@@ -238,6 +239,8 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     run_message_loop();
     process::stop();
     host::release();
+    // Stop work and fence continuations before the CEF runtime is disposed.
+    drop(asset_service);
     shutdown();
     eprintln!(
         "{}",

@@ -3,9 +3,13 @@
 import importlib.util
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 spec = importlib.util.spec_from_file_location(
     "observer", Path(__file__).parents[1] / "scripts/observe-process.py"
@@ -15,6 +19,77 @@ spec.loader.exec_module(observer)
 
 
 class ObserverTests(unittest.TestCase):
+    def test_nonfinite_time_bounds_are_rejected_before_starting_a_process(self):
+        with patch.object(observer.subprocess, "Popen") as spawn:
+            for option in ("timeout", "interval"):
+                for value in (float("nan"), float("inf"), float("-inf")):
+                    with self.subTest(option=option, value=value), self.assertRaises(ValueError):
+                        observer.observe(
+                            [sys.executable, "-c", "raise RuntimeError"], **{option: value}
+                        )
+            spawn.assert_not_called()
+
+    def test_interrupted_recognized_native_run_retains_failed_cleanup_evidence(self):
+        def fail_callback(_tracker):
+            raise RuntimeError("controlled qualification callback failure")
+
+        for mode in ("timeout", "cancel", "callback"):
+            with self.subTest(mode=mode):
+                tracker = Mock()
+                tracker.report.return_value = {
+                    "passed": True,
+                    "qualified": False,
+                    "status": "not-observed",
+                    "helpers": [],
+                    "observedClones": 0,
+                }
+                stop = threading.Event()
+                if mode == "cancel":
+                    stop.set()
+                with (
+                    patch.object(observer.sys, "platform", "darwin"),
+                    patch("macos_clone_cleanup.for_command", return_value=tracker),
+                ):
+                    result = observer.observe(
+                        [sys.executable, "-c", "import time; time.sleep(30)"],
+                        timeout=0.15 if mode == "timeout" else 5,
+                        stop_event=stop,
+                        cleanup_observer=fail_callback if mode == "callback" else None,
+                    )
+                cleanup = result["postExitCleanup"]
+                self.assertEqual(cleanup["status"], "failed")
+                self.assertFalse(cleanup["passed"])
+                self.assertFalse(cleanup["qualified"])
+                self.assertIn("resources", cleanup)
+                self.assertEqual(result["cleanupSurvivors"], [])
+                self.assertEqual(result["timedOut"], mode == "timeout")
+                self.assertEqual(result["cancelled"], mode != "timeout")
+                if mode == "callback":
+                    self.assertEqual(result["observerFailure"], "cleanup-observer-failed")
+
+    def test_reused_pid_is_never_signalled_through_stale_ownership(self):
+        foreign = Mock()
+        foreign.create_time.return_value = 99.0
+        with patch.object(observer.psutil, "Process", return_value=foreign):
+            self.assertIsNone(observer.owned_process((123, 1.0)))
+            observer.kill_owned((123, 1.0))
+        foreign.kill.assert_not_called()
+
+    def test_cleanup_metrics_do_not_join_reused_pid_lifetimes(self):
+        def sample(birth, cpu):
+            return {
+                "phase": "post-exit-cleanup",
+                "rssBytes": 123,
+                "threads": 2,
+                "processes": [{"pid": 9, "creationTime": birth, "cpuSeconds": cpu}],
+            }
+
+        result = observer.post_exit_resources([sample(1.0, 1.0), sample(2.0, 99.0)])
+        self.assertIsNone(result["sampledCpuSeconds"])
+        self.assertEqual(result["peakRssBytes"], 123)
+        result = observer.post_exit_resources([sample(1.0, 1.0), sample(1.0, 1.25)])
+        self.assertEqual(result["sampledCpuSeconds"], 0.25)
+
     def test_real_process_is_observed(self):
         # Wait for two actual sampler visits instead of assuming a 150 ms sleep
         # outlasts interpreter/sampler startup on a busy or emulated machine.
@@ -48,7 +123,9 @@ class ObserverTests(unittest.TestCase):
                 "print(json.dumps({'passed':True}))"
             )
             result = observer.observe(
-                [sys.executable, "-c", code, str(release)], timeout=12, counter_reader=sampled
+                [sys.executable, "-c", code, str(release)],
+                timeout=12,
+                counter_reader=sampled,
             )
         self.assertGreaterEqual(visits, 2)
         self.assertEqual(result["exitCode"], 0)
@@ -67,6 +144,23 @@ class ObserverTests(unittest.TestCase):
         )
         self.assertTrue(result["reports"][-1]["passed"])
         self.assertEqual(len(result["reports"][-1]["data"]), 100000)
+
+    def test_ready_receipt_is_one_bounded_monotonic_stderr_diagnostic(self):
+        code = (
+            'import json,sys,time; event={"event":"bunly.foundation.ready","payload":"private"}; '
+            "print(json.dumps(event),flush=True); time.sleep(.05); "
+            "print(json.dumps(event),file=sys.stderr,flush=True); "
+            "print(json.dumps(event),file=sys.stderr,flush=True)"
+        )
+        result = observer.observe([sys.executable, "-c", code])
+        self.assertEqual(len(result["eventTimes"]), 1)
+        marker = result["eventTimes"][0]
+        self.assertEqual(set(marker), {"event", "elapsedMs", "stream"})
+        self.assertEqual(marker["event"], "bunly.foundation.ready")
+        self.assertEqual(marker["stream"], "stderr")
+        self.assertGreaterEqual(marker["elapsedMs"], 0)
+        self.assertLessEqual(marker["elapsedMs"], result["elapsedMs"])
+        self.assertEqual(result["observedOrphans"], [])
 
     def test_output_overflow_is_not_success(self):
         result = observer.observe([sys.executable, "-c", 'print("x"*3000000)'])
@@ -93,6 +187,19 @@ class ObserverTests(unittest.TestCase):
         self.assertEqual(result["orphanDetails"][0]["pid"], result["observedOrphans"][0])
         self.assertTrue(result["orphanDetails"][0]["name"])
         self.assertNotIn("commandLine", result["orphanDetails"][0])
+
+    def test_real_role_only_process_keeps_strict_orphan_policy(self):
+        code = (
+            'import subprocess,sys,time; subprocess.Popen([sys.executable,"-c",'
+            '"import time; time.sleep(30)","--type=code-sign-clone-cleanup",'
+            '"--unique-temp-dir-suffix=abc123"],stdout=subprocess.DEVNULL,'
+            "stderr=subprocess.DEVNULL); time.sleep(.3)"
+        )
+        result = observer.observe([sys.executable, "-c", code])
+        self.assertEqual(len(result["observedOrphans"]), 1)
+        self.assertEqual(result["accounting"]["exitGraceMs"], 500)
+        self.assertEqual(result["orphanDetails"][0]["browserRole"], "code-sign-clone-cleanup")
+        self.assertEqual(result["cleanupSurvivors"], [])
 
 
 if __name__ == "__main__":

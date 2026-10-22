@@ -3,6 +3,15 @@ import { randomBytes } from 'node:crypto'
 import { lstat, readFile, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 export interface CommandObservation {
+  readonly postExitCleanup?: {
+    readonly schema: 1
+    readonly profile: 'macos-verified-code-sign-clone-v1'
+    readonly passed: boolean
+    readonly qualified: boolean
+    readonly status: 'not-observed' | 'completed' | 'failed'
+    readonly elapsedMs: number
+    readonly limitMs: 3000
+  }
   readonly observationId?: string
   readonly exitCode: number
   readonly timedOut: boolean
@@ -77,6 +86,111 @@ export function validateCommandObservation(input: unknown): CommandObservation {
   }
   if (!v['environment'] || typeof v['environment'] !== 'object' || Array.isArray(v['environment']))
     throw new Error('Missing observer environment')
+  if (v['postExitCleanup'] !== undefined) {
+    const cleanup = v['postExitCleanup'] as Record<string, unknown>
+    if (
+      !cleanup ||
+      typeof cleanup !== 'object' ||
+      Array.isArray(cleanup) ||
+      cleanup['schema'] !== 1 ||
+      cleanup['profile'] !== 'macos-verified-code-sign-clone-v1' ||
+      typeof cleanup['passed'] !== 'boolean' ||
+      typeof cleanup['qualified'] !== 'boolean' ||
+      !['not-observed', 'completed', 'failed'].includes(String(cleanup['status'])) ||
+      cleanup['limitMs'] !== 3000 ||
+      typeof cleanup['elapsedMs'] !== 'number' ||
+      !Number.isFinite(cleanup['elapsedMs']) ||
+      cleanup['elapsedMs'] < 0
+    )
+      throw new Error('Invalid post-exit cleanup accounting')
+    const helpers = cleanup['helpers']
+    if (
+      !Number.isSafeInteger(cleanup['observedClones']) ||
+      Number(cleanup['observedClones']) < 0 ||
+      Number(cleanup['observedClones']) > 256 ||
+      !Array.isArray(helpers) ||
+      helpers.length > 8
+    )
+      throw new Error('Invalid cleanup identity bounds')
+    const identities = new Set<string>()
+    const kernelIdentities = new Set<string>()
+    const recovery = cleanup['recovery'] as Record<string, unknown> | undefined
+    if (
+      recovery !== undefined &&
+      (!recovery ||
+        typeof recovery !== 'object' ||
+        Array.isArray(recovery) ||
+        typeof recovery['attempted'] !== 'boolean' ||
+        recovery['candidateLimit'] !== 4096 ||
+        recovery['scanLimit'] !== 1 ||
+        !Number.isSafeInteger(recovery['candidates']) ||
+        Number(recovery['candidates']) < 0 ||
+        Number(recovery['candidates']) > 4096 ||
+        (!recovery['attempted'] && recovery['candidates'] !== 0))
+    )
+      throw new Error('Invalid bounded kernel identity recovery')
+    for (const input of helpers) {
+      if (!input || typeof input !== 'object' || Array.isArray(input))
+        throw new Error('Invalid cleanup helper identity')
+      const helper = input as Record<string, unknown>
+      if (
+        !Number.isSafeInteger(helper['pid']) ||
+        Number(helper['pid']) < 1 ||
+        typeof helper['creationTime'] !== 'number' ||
+        !Number.isFinite(helper['creationTime']) ||
+        helper['creationTime'] < 0 ||
+        helper['role'] !== 'code-sign-clone-cleanup' ||
+        ![
+          'observed-root-child-and-matching-clone-inode',
+          'retained-kernel-parent-and-matching-clone-inode',
+        ].includes(String(helper['ownership'])) ||
+        typeof helper['executableSha256'] !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(helper['executableSha256']) ||
+        typeof helper['processExited'] !== 'boolean' ||
+        typeof helper['cloneRemoved'] !== 'boolean' ||
+        typeof helper['completed'] !== 'boolean' ||
+        helper['completed'] !== (helper['processExited'] && helper['cloneRemoved']) ||
+        (cleanup['passed'] && !helper['completed'])
+      )
+        throw new Error('Invalid cleanup helper evidence')
+      if (helper['ownership'] === 'retained-kernel-parent-and-matching-clone-inode') {
+        const kernel = helper['kernelIdentity'] as Record<string, unknown>
+        const uniqueId = (value: unknown): value is string =>
+          typeof value === 'string' &&
+          /^[1-9][0-9]{0,19}$/.test(value) &&
+          BigInt(value) <= 18446744073709551615n
+        if (
+          !kernel ||
+          typeof kernel !== 'object' ||
+          Array.isArray(kernel) ||
+          !uniqueId(kernel['rootUniqueId']) ||
+          !uniqueId(kernel['uniqueId']) ||
+          !uniqueId(kernel['parentUniqueId']) ||
+          kernel['parentUniqueId'] !== kernel['rootUniqueId'] ||
+          kernel['uniqueId'] === kernel['rootUniqueId'] ||
+          recovery?.['attempted'] !== true
+        )
+          throw new Error('Invalid retained kernel parent identity')
+        if (kernelIdentities.has(kernel['uniqueId']))
+          throw new Error('Duplicate retained kernel helper identity')
+        kernelIdentities.add(kernel['uniqueId'])
+      } else if (helper['kernelIdentity'] !== undefined) {
+        throw new Error('Unexpected kernel identity for sampled ancestry')
+      }
+      const identity = String(helper['pid']) + ':' + helper['creationTime']
+      if (identities.has(identity)) throw new Error('Duplicate cleanup helper identity')
+      identities.add(identity)
+    }
+    const qualified =
+      cleanup['passed'] && Number(cleanup['observedClones']) > 0 && helpers.length > 0
+    if (
+      cleanup['qualified'] !== qualified ||
+      cleanup['status'] !==
+        (qualified ? 'completed' : cleanup['passed'] ? 'not-observed' : 'failed') ||
+      (qualified && cleanup['elapsedMs'] > 3000)
+    )
+      throw new Error('Inconsistent cleanup qualification outcome')
+  }
   return input as CommandObservation
 }
 export function assertCleanCommand(value: CommandObservation, expectedExit = 0): void {
@@ -85,7 +199,8 @@ export function assertCleanCommand(value: CommandObservation, expectedExit = 0):
     value.cancelled ||
     value.outputOverflow ||
     value.observedOrphans.length ||
-    value.cleanupSurvivors.length
+    value.cleanupSurvivors.length ||
+    value.postExitCleanup?.passed === false
   )
     throw new Error('Command timeout, output overflow, or surviving descendant')
   if (value.exitCode !== expectedExit) throw new Error('Unexpected command exit: ' + value.exitCode)
@@ -94,7 +209,12 @@ export function assertCleanCommand(value: CommandObservation, expectedExit = 0):
 export function observationsPermitFixtureRemoval(
   values: readonly (CommandObservation | null)[]
 ): boolean {
-  return values.every((value) => value !== null && value.cleanupSurvivors.length === 0)
+  return values.every(
+    (value) =>
+      value !== null &&
+      value.cleanupSurvivors.length === 0 &&
+      value.postExitCleanup?.passed !== false
+  )
 }
 async function boundedText(stream: ReadableStream<Uint8Array>): Promise<string> {
   const reader = stream.getReader()
@@ -216,7 +336,8 @@ export function observedCommand(
       !report.cancelled &&
       !report.outputOverflow &&
       !report.observedOrphans.length &&
-      !report.cleanupSurvivors.length
+      !report.cleanupSurvivors.length &&
+      report.postExitCleanup?.passed !== false
     )
       throw new Error('Observer failed independently of its child: ' + stdout.slice(-1000))
     return report
