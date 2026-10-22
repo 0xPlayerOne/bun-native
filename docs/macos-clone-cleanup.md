@@ -31,6 +31,14 @@ main and helper executable identities and SHA-256 hashes. Hashing uses a 64 KiB 
 rejects links and files above 64 MiB, and verifies that the opened file and final path
 still match. It binds the launched host to that prelaunch provenance.
 
+The same prelaunch step snapshots at most 256 names and directory identities in
+the fixture's clone namespace. Every preexisting name is excluded from this launch,
+including a suffix that disappears and is later reused. A failed earlier run can
+leave a clone with the same main-executable inode; that clone must neither hide a
+new suffix nor count as the new run's cleanup work. Discovery continues after an
+initial candidate and never replaces a retained clone-directory identity. An
+overfull, substituted or inaccessible namespace fails closed.
+
 An additional window of at most three seconds from observed root exit is available
 only when all of the following are established:
 
@@ -44,8 +52,9 @@ only when all of the following are established:
 - The argument list has exactly the pinned role and one valid six-character clone
   suffix. Additional or conflicting flags cannot qualify a process.
 - The matching clone was independently observed under the private fixture namespace,
-  with its main executable hard-linked to the launched host. Namespace and clone
-  directory identities remain bound throughout observation.
+  under a name absent from the prelaunch snapshot, with its main executable
+  hard-linked to the launched host. Namespace and clone directory identities remain
+  bound throughout observation.
 
 The observer can discover at most 256 namespace entries and qualify at most eight
 helpers. Namespace substitution, changed executable content, missing provenance and
@@ -98,6 +107,11 @@ Completion requires both disappearance of the same process identity and removal 
 the exact bound clone directory. A substituted or vanished parent namespace cannot
 prove cleanup. A process that exits while leaving its clone behind still fails.
 Killing a stuck helper later does not turn its earlier failed observation into a pass.
+The report's bounded `cloneInventory.prelaunchEntries` count records preexisting
+namespace entries separately from `observedClones`, which counts only new candidates.
+Those earlier entries are never deleted or counted toward this run's completion;
+their retained failure reports remain unchanged. A new but unpaired clone still
+prevents successful completion while its directory remains.
 
 Sampling continues through post-exit cleanup. The report records elapsed time, peak
 sampled RSS and threads, descriptors in process rows, and CPU deltas between adjacent
@@ -172,7 +186,8 @@ bun test tests/observed-command.test.ts
 ```
 
 These cover file and namespace substitution, PID reuse, foreign users/executables,
-arbitrary flags, missing completion, bounded inventory, callback failure, and a real
+arbitrary flags, missing completion, bounded prelaunch and current inventories,
+old failed clones followed by a new launch, suffix reuse, callback failure, and a real
 role-only child that must still fail the ordinary orphan policy. On macOS an
 unprivileged real-process test also verifies retained parent identity after reparenting.
 Earlier issue #88

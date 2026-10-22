@@ -91,6 +91,11 @@ const cleanup = () => ({
   limitMs: 3000,
   elapsedMs: 750,
   observedClones: 1,
+  cloneInventory: {
+    prelaunchEntries: 0,
+    entryLimit: 256,
+    scope: 'new-names-after-prelaunch-snapshot',
+  },
   passed: true,
   qualified: true,
   status: 'completed',
@@ -140,6 +145,33 @@ test('missing cleanup observation remains distinct from a qualified native clean
   })
   expect(observation.postExitCleanup?.qualified).toBe(false)
   expect(() => assertCleanCommand(observation)).not.toThrow()
+})
+test('cleanup inventory requires bounded prelaunch scoping even when prior clones remain', () => {
+  expect(() =>
+    validateCommandObservation({
+      ...input(),
+      postExitCleanup: {
+        ...cleanup(),
+        cloneInventory: { ...cleanup().cloneInventory, prelaunchEntries: 1 },
+      },
+    })
+  ).not.toThrow()
+  for (const cloneInventory of [
+    undefined,
+    null,
+    [],
+    { ...cleanup().cloneInventory, scope: 'same-executable' },
+    { ...cleanup().cloneInventory, entryLimit: 257 },
+    { ...cleanup().cloneInventory, prelaunchEntries: -1 },
+    { ...cleanup().cloneInventory, prelaunchEntries: 257 },
+    { ...cleanup().cloneInventory, prelaunchEntries: '1' },
+  ])
+    expect(() =>
+      validateCommandObservation({
+        ...input(),
+        postExitCleanup: { ...cleanup(), cloneInventory },
+      })
+    ).toThrow()
 })
 test('retained kernel ancestry uses bounded lossless IDs and an explicit proof kind', () => {
   const retained = {

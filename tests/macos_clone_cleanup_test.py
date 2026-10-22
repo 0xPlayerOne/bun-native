@@ -57,11 +57,6 @@ class ProvenanceTests(unittest.TestCase):
         self.helper.write_bytes(b"fixture helper")
         self.namespace = self.base / "clones"
         self.namespace.mkdir(mode=0o700)
-        self.clone = self.namespace / "code_sign_clone.abc123"
-        self.clone.mkdir(mode=0o700)
-        cloned_main = self.clone / (self.app.name + ".bundle") / "Contents/MacOS/bunly_host"
-        cloned_main.parent.mkdir(parents=True)
-        os.link(self.main, cloned_main)
         self.root = SimpleNamespace(
             pid=100,
             create_time=lambda: 1.0,
@@ -95,6 +90,7 @@ class ProvenanceTests(unittest.TestCase):
         self.patch = patch("macos_clone_cleanup.psutil.Process", side_effect=lookup)
         self.patch.start()
         self.tracker = CloneCleanup(self.app, self.helper, self.namespace)
+        self.clone = self.create_clone("abc123")
         self.tracker.bind(self.root)
         self.tracker.discover_clones()
 
@@ -106,6 +102,14 @@ class ProvenanceTests(unittest.TestCase):
         self.tracker.remember((101, 2.0), self.proc)
         self.assertIn((101, 2.0), self.tracker.helpers)
 
+    def create_clone(self, suffix):
+        clone = self.namespace / ("code_sign_clone." + suffix)
+        clone.mkdir(mode=0o700)
+        cloned_main = clone / (self.app.name + ".bundle") / "Contents/MacOS/bunly_host"
+        cloned_main.parent.mkdir(parents=True)
+        os.link(self.main, cloned_main)
+        return clone
+
     def retained_tracker(self):
         self.kernel_rows = {
             100: KernelIdentity(1000, 500, 1, b"a" * 16),
@@ -114,7 +118,9 @@ class ProvenanceTests(unittest.TestCase):
         self.kernel = Mock()
         self.kernel.identity.side_effect = lambda pid: self.kernel_rows.get(pid)
         self.kernel.same_uid_pids.return_value = [101]
+        shutil.rmtree(self.clone)
         tracker = CloneCleanup(self.app, self.helper, self.namespace, kernel=self.kernel)
+        self.clone = self.create_clone("abc123")
         tracker.bind(self.root)
         tracker.discover_clones()
         self.parent = 1
@@ -200,6 +206,88 @@ class ProvenanceTests(unittest.TestCase):
         self.assertNotIn(str(self.base), str(result))
         self.assertEqual(len(result["helpers"][0]["executableSha256"]), 64)
 
+    def test_prior_failed_clone_does_not_hide_or_become_the_new_launch_clone(self):
+        old_report = self.tracker.report(3000)
+        self.assertFalse(old_report["passed"])
+        old_identity = self.tracker.clones["abc123"].identity
+        current = CloneCleanup(self.app, self.helper, self.namespace)
+        current.bind(self.root)
+        current.discover_clones()
+        self.assertEqual(current.clones, {})
+        fresh = self.create_clone("def456")
+        self.args[2] = "--unique-temp-dir-suffix=def456"
+        current.discover_clones()
+        current.remember((101, 2.0), self.proc)
+        self.assertEqual(set(current.clones), {"def456"})
+        self.assertTrue(current.grant((101, 2.0)))
+        shutil.rmtree(fresh)
+        del self.processes[101]
+        self.assertTrue(current.complete((101, 2.0)))
+        report = current.report(750)
+        self.assertTrue(report["qualified"])
+        self.assertEqual(report["observedClones"], 1)
+        self.assertEqual(
+            report["cloneInventory"],
+            {
+                "prelaunchEntries": 1,
+                "entryLimit": MAX_CLONES,
+                "scope": "new-names-after-prelaunch-snapshot",
+            },
+        )
+        self.assertEqual((self.clone.stat().st_dev, self.clone.stat().st_ino), old_identity)
+        self.assertEqual(old_report["status"], "failed")
+        self.assertFalse(self.tracker.report(3000)["passed"])
+
+    def test_preexisting_suffix_cannot_qualify_even_when_recreated_after_launch(self):
+        current = CloneCleanup(self.app, self.helper, self.namespace)
+        current.bind(self.root)
+        for recreate in (False, True):
+            if recreate:
+                self.clone.rename(self.base / "old-clone")
+                self.create_clone("abc123")
+            current.discover_clones()
+            current.remember((101, 2.0), self.proc)
+            self.assertEqual(current.clones, {})
+            self.assertEqual(current.helpers, {})
+            self.assertFalse(current.grant((101, 2.0)))
+            self.assertFalse(current.report(500)["qualified"])
+
+    def test_retained_parent_recovery_pairs_only_the_new_clone_after_a_prior_failure(self):
+        kernel = Mock()
+        root_identity = KernelIdentity(1000, 500, 1, b"a" * 16)
+        helper_identity = KernelIdentity(1001, 1000, 1, b"b" * 16)
+        kernel.identity.side_effect = lambda pid: {100: root_identity, 101: helper_identity}[pid]
+        kernel.same_uid_pids.return_value = [101]
+        current = CloneCleanup(self.app, self.helper, self.namespace, kernel=kernel)
+        current.bind(self.root)
+        self.create_clone("def456")
+        self.args[2] = "--unique-temp-dir-suffix=def456"
+        self.parent = 1
+        del self.processes[100]
+        current.discover_clones()
+        self.assertEqual(current.recover_after_exit(), [((101, 2.0), self.proc)])
+        self.assertTrue(current.grant((101, 2.0)))
+        self.assertEqual(current.helpers[(101, 2.0)], "def456")
+        self.assertEqual(set(current.clones), {"def456"})
+        self.assertEqual(
+            current.report(500)["helpers"][0]["ownership"],
+            "retained-kernel-parent-and-matching-clone-inode",
+        )
+        self.assertTrue(self.clone.exists())
+
+    def test_discovery_keeps_searching_after_a_current_clone_was_found(self):
+        fresh = self.create_clone("def456")
+        self.args[2] = "--unique-temp-dir-suffix=def456"
+        self.tracker.discover_clones()
+        self.qualify()
+        self.assertEqual(set(self.tracker.clones), {"abc123", "def456"})
+        self.assertEqual(self.tracker.clones["def456"].path, fresh)
+        self.assertEqual(self.tracker.helpers[(101, 2.0)], "def456")
+        # A new but unpaired clone still prevents successful completion.
+        shutil.rmtree(fresh)
+        del self.processes[101]
+        self.assertFalse(self.tracker.report(750)["passed"])
+
     def test_clone_removal_without_helper_exit_does_not_pass(self):
         self.qualify()
         shutil.rmtree(self.clone)
@@ -276,6 +364,12 @@ class ProvenanceTests(unittest.TestCase):
         del self.processes[101]
         self.assertIsNone(self.tracker.clone_removed("abc123"))
         self.assertFalse(self.tracker.report(1000)["passed"])
+        self.tracker.discover_clones()
+        self.assertTrue(self.tracker.invalid)
+        self.assertNotEqual(
+            self.tracker.clones["abc123"].identity,
+            (self.clone.stat().st_dev, self.clone.stat().st_ino),
+        )
 
     def test_foreign_inode_or_symlink_never_establishes_clone_ownership(self):
         self.tracker.clones.clear()
@@ -319,6 +413,28 @@ class ProvenanceTests(unittest.TestCase):
         self.tracker.discover_clones()
         self.assertTrue(self.tracker.invalid)
         self.assertEqual(self.tracker.clones, {})
+
+    def test_prelaunch_namespace_inventory_has_the_same_fixed_bound(self):
+        for index in range(MAX_CLONES):
+            (self.namespace / f"unrelated-{index}").touch()
+        current = CloneCleanup(self.app, self.helper, self.namespace)
+        self.assertTrue(current.invalid)
+        self.assertLessEqual(len(current.prelaunch_entries), MAX_CLONES)
+        current.bind(self.root)
+        current.discover_clones()
+        current.remember((101, 2.0), self.proc)
+        self.assertEqual(current.helpers, {})
+        self.assertFalse(current.report(0)["passed"])
+
+    def test_cumulative_clone_inventory_stays_bounded_across_discovery_samples(self):
+        shutil.rmtree(self.clone)
+        for index in range(MAX_CLONES):
+            clone = self.create_clone(f"{index:06d}")
+            self.tracker.discover_clones()
+            shutil.rmtree(clone)
+        self.assertTrue(self.tracker.invalid)
+        self.assertEqual(len(self.tracker.clones), MAX_CLONES)
+        self.assertFalse(self.tracker.report(0)["passed"])
 
     def test_digest_rejects_links_and_oversized_executables(self):
         linked = self.base / "linked-helper"

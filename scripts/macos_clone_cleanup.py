@@ -95,6 +95,7 @@ class CloneCleanup:
         self.helper_stamp, self.helper_hash = executable_digest(self.helper)
         self.namespace = Path(namespace)
         self.namespace_identity = None
+        self.prelaunch_entries = {}
         self.clones = {}
         self.ancestry = set()
         self.helpers = {}
@@ -103,6 +104,24 @@ class CloneCleanup:
         self.recovery_attempted = False
         self.recovery_candidates = 0
         self.invalid = False
+        # Another launch of this exact app may have left a clone with the same
+        # main inode. Record the bounded namespace before Popen, not on the
+        # first sample after launch, so that it cannot become this run's clone.
+        try:
+            for path in self.namespace_entries():
+                try:
+                    info = path.lstat()
+                    identity = (info.st_dev, info.st_ino)
+                except FileNotFoundError:
+                    identity = None
+                # Exclude the name even if another cleanup removed it during
+                # the snapshot. Reusing an old suffix never grants ownership.
+                self.prelaunch_entries[path.name] = identity
+        except FileNotFoundError:
+            if self.namespace_identity is not None:
+                self.invalid = True
+        except (OSError, ValueError):
+            self.invalid = True
 
     def bind(self, root):
         if root is None:
@@ -139,24 +158,38 @@ class CloneCleanup:
         if digest != self.helper_hash:
             raise ValueError("helper-content-changed")
 
+    def namespace_entries(self):
+        namespace_identity = private_directory(self.namespace)
+        if self.namespace_identity not in (None, namespace_identity):
+            raise ValueError("clone-namespace-substituted")
+        self.namespace_identity = namespace_identity
+        with os.scandir(self.namespace) as entries:
+            paths = [Path(entry.path) for entry in itertools.islice(entries, MAX_CLONES + 1)]
+        if len(paths) > MAX_CLONES:
+            raise ValueError("clone-namespace-overfull")
+        if private_directory(self.namespace) != namespace_identity:
+            raise ValueError("clone-namespace-substituted-during-scan")
+        return paths
+
     def discover_clones(self):
         # One namespace belonging to this fixture, never another browser's storage.
-        if self.clones or self.root_pid is None or self.invalid:
+        if self.root_pid is None or self.invalid:
             return
         try:
-            namespace_identity = private_directory(self.namespace)
-            if self.namespace_identity not in (None, namespace_identity):
-                raise ValueError("clone-namespace-substituted")
-            self.namespace_identity = namespace_identity
-            with os.scandir(self.namespace) as entries:
-                paths = [Path(entry.path) for entry in itertools.islice(entries, MAX_CLONES + 1)]
-            if len(paths) > MAX_CLONES:
-                self.invalid = True
-                return
-            for path in paths:
-                if not re.fullmatch(r"code_sign_clone\." + SUFFIX_PATTERN, path.name):
+            for path in self.namespace_entries():
+                if path.name in self.prelaunch_entries or not re.fullmatch(
+                    r"code_sign_clone\." + SUFFIX_PATTERN, path.name
+                ):
                     continue
-                identity = private_directory(path)
+                try:
+                    identity = private_directory(path)
+                except FileNotFoundError:
+                    continue
+                suffix = path.name[len("code_sign_clone.") :]
+                if suffix in self.clones:
+                    if identity != self.clones[suffix].identity:
+                        raise ValueError("tracked-clone-directory-substituted")
+                    continue
                 for name in (self.app.name, self.app.name + ".bundle"):
                     cloned = path / name / "Contents/MacOS/bunly_host"
                     try:
@@ -171,14 +204,19 @@ class CloneCleanup:
                             )
                         ):
                             continue
-                        if file_stamp(cloned)[:2] == self.main_identity:
-                            self.clones[path.name[len("code_sign_clone.") :]] = Clone(
-                                path, identity
-                            )
+                        matching = file_stamp(cloned)[:2] == self.main_identity
                     except (OSError, ValueError):
                         continue
+                    if matching:
+                        if len(self.clones) >= MAX_CLONES:
+                            raise ValueError("tracked-clone-inventory-overfull")
+                        self.clones[suffix] = Clone(path, identity)
+                        break
         except FileNotFoundError:
-            return  # The optional Chromium clone has not been created yet.
+            # An absent namespace before it was ever observed is optional;
+            # disappearance of a bound namespace cannot prove any completion.
+            if self.namespace_identity is not None:
+                self.invalid = True
         except (OSError, ValueError):
             self.invalid = True
 
@@ -379,6 +417,11 @@ class CloneCleanup:
             "limitMs": 3000,
             "elapsedMs": elapsed_ms,
             "observedClones": len(self.clones),
+            "cloneInventory": {
+                "prelaunchEntries": len(self.prelaunch_entries),
+                "entryLimit": MAX_CLONES,
+                "scope": "new-names-after-prelaunch-snapshot",
+            },
             "helpers": rows,
             "passed": passed,
             "qualified": qualified,

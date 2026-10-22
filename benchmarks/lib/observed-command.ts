@@ -11,6 +11,11 @@ export interface CommandObservation {
     readonly status: 'not-observed' | 'completed' | 'failed'
     readonly elapsedMs: number
     readonly limitMs: 3000
+    readonly cloneInventory: {
+      readonly prelaunchEntries: number
+      readonly entryLimit: 256
+      readonly scope: 'new-names-after-prelaunch-snapshot'
+    }
   }
   readonly observationId?: string
   readonly exitCode: number
@@ -112,6 +117,18 @@ export function validateCommandObservation(input: unknown): CommandObservation {
       helpers.length > 8
     )
       throw new Error('Invalid cleanup identity bounds')
+    const inventory = cleanup['cloneInventory'] as Record<string, unknown>
+    if (
+      !inventory ||
+      typeof inventory !== 'object' ||
+      Array.isArray(inventory) ||
+      inventory['entryLimit'] !== 256 ||
+      inventory['scope'] !== 'new-names-after-prelaunch-snapshot' ||
+      !Number.isSafeInteger(inventory['prelaunchEntries']) ||
+      Number(inventory['prelaunchEntries']) < 0 ||
+      Number(inventory['prelaunchEntries']) > 256
+    )
+      throw new Error('Invalid prelaunch clone inventory')
     const identities = new Set<string>()
     const kernelIdentities = new Set<string>()
     const recovery = cleanup['recovery'] as Record<string, unknown> | undefined
