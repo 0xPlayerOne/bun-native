@@ -1082,6 +1082,120 @@ mod streaming_tests {
     use std::io::{self, Cursor};
 
     #[test]
+    fn sha256_standard_vectors_use_independent_expected_digests() {
+        // RFC 6234 section 8.5 supplies the abc, long-message and million-a
+        // SHA-256 vectors; the empty digest is also fixed independently.
+        // Never derive these expected values with the backend under test.
+        let million = vec![b'a'; 1_000_000];
+        for (bytes, expected) in [
+            (
+                b"".as_slice(),
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            ),
+            (
+                b"abc".as_slice(),
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            ),
+            (
+                b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".as_slice(),
+                "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+            ),
+            (
+                million.as_slice(),
+                "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0",
+            ),
+        ] {
+            let asset = Asset {
+                bytes: bytes.len() as u64,
+                sha256: expected.into(),
+            };
+            let body = verified_body(
+                Cursor::new(bytes),
+                &asset,
+                0..bytes.len(),
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(body, bytes);
+        }
+    }
+
+    #[test]
+    fn sha256_known_digests_survive_padding_block_and_worker_chunk_boundaries() {
+        struct ShortReads<'a> {
+            input: Cursor<&'a [u8]>,
+            maximum: usize,
+        }
+        impl Read for ShortReads<'_> {
+            fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+                let count = output.len().min(self.maximum);
+                self.input.read(&mut output[..count])
+            }
+        }
+        // Independent Python hashlib SHA-256 values for
+        // bytes(offset % 251 for offset in range(length)); no test-time digest
+        // computation by sha2. Cover SHA padding/blocks and the 64 KiB worker.
+        for (length, expected) in [
+            (
+                55,
+                "463eb28e72f82e0a96c0a4cc53690c571281131f672aa229e0d45ae59b598b59",
+            ),
+            (
+                56,
+                "da2ae4d6b36748f2a318f23e7ab1dfdf45acdc9d049bd80e59de82a60895f562",
+            ),
+            (
+                63,
+                "29af2686fd53374a36b0846694cc342177e428d1647515f078784d69cdb9e488",
+            ),
+            (
+                64,
+                "fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108",
+            ),
+            (
+                65,
+                "4bfd2c8b6f1eec7a2afeb48b934ee4b2694182027e6d0fc075074f2fabb31781",
+            ),
+            (
+                65535,
+                "dda402a2c028f0cbbdbc5c6ebae965eed9c75f71236e7022b0386d3455d5ae2f",
+            ),
+            (
+                65536,
+                "4b640d85ab3ba30fd02c9fc9db4a8928f416322ad27022ea58a65aaee68a4df2",
+            ),
+            (
+                65537,
+                "237356e18b503616912abb8ffaed3a72591e397d4ac294c4637917d48a3f529d",
+            ),
+            (
+                131073,
+                "dd84db969f4ff2abb79c8c2fbc06e8d8e02c46d6481c958e057f7ad7a24c58a7",
+            ),
+        ] {
+            let bytes: Vec<u8> = (0..length).map(|offset| (offset % 251) as u8).collect();
+            let asset = Asset {
+                bytes: length as u64,
+                sha256: expected.into(),
+            };
+            let retain = length - 17..length;
+            for maximum in [1, 63, 64, 65, 65535, 65536] {
+                let reader = ShortReads {
+                    input: Cursor::new(bytes.as_slice()),
+                    maximum,
+                };
+                let body =
+                    verified_body(reader, &asset, retain.clone(), &AtomicBool::new(false)).unwrap();
+                assert_eq!(
+                    body,
+                    bytes[retain.clone()],
+                    "length={length}, read={maximum}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn metadata_and_ranges_do_not_retain_the_full_file() {
         let bytes = vec![0x5a; 4 * 1024 * 1024];
         let asset = Asset {

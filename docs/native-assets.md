@@ -81,6 +81,28 @@ overhead, and CEF's own buffers are additional costs. No full-file copy is creat
 to extract a range. Admission rejects overload with 503 instead of starting more
 threads or building an unbounded queue.
 
+### SHA-256 backend selection
+
+The macOS AArch64 host enables the `asm` feature of the existing pinned
+`sha2 = 0.10.9`. This selects RustCrypto's upstream SHA-256 implementation using
+ARM SHA instructions; it does not change the digest, the complete-file check, or
+the response's verification barrier. Other host targets keep their existing
+feature selection. No application-time compiler or additional runtime is needed.
+
+The upstream AArch64 dispatcher selects hardware or software through
+`cpufeatures`. On Apple ARM64, the pinned `cpufeatures = 0.2.17` treats SHA-256
+instructions as a platform guarantee and returns true; this is not a macOS
+runtime hardware probe. The upstream software backend remains available through
+`force-soft` for qualification. No global CPU feature flags or custom cryptography
+are introduced. The feature also activates the upstream optional `sha2-asm`
+dependency, recorded in the native lockfile and dependency audit.
+
+Fixed expected digests cover standard SHA-256 vectors and input lengths around
+padding, 64-byte block, and 64 KiB verification-buffer boundaries, including
+short reads and retained ranges. Expected hashes are independent of the backend
+being tested. A controlled hash workload can establish the cost of verification;
+it does not establish a desktop startup or interaction-latency improvement.
+
 ## Cancellation and shutdown
 
 Each pending job has a cancellable queue token. Cancel removes a job that has not
@@ -138,6 +160,13 @@ cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
 cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
 ```
 
+To exercise the upstream software implementation against the same fixed digest
+checks without changing the installed feature selection:
+
+```sh
+cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features sha2/force-soft sha256_
+```
+
 These checks establish deterministic resource and integrity behavior. Actual
 packaged CEF execution is still required to qualify the asynchronous API boundary.
 The explicit native profile gates success on nine sequential range/conditional
@@ -159,6 +188,9 @@ selection remain separate acceptance work.
 - [Pinned CEF range parsing, skip, and response-length handling](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/net_service/stream_reader_url_loader.cc).
 - [Pinned CEF response-header construction](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/common/net_service/net_service_util.cc).
 - [Pinned CEF request-context fallback API](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/include/cef_request_context_handler.h).
+- [Pinned SHA-256 backend selection](https://github.com/RustCrypto/hashes/blob/sha2-v0.10.9/sha2/src/sha256.rs) and [AArch64 dispatcher](https://github.com/RustCrypto/hashes/blob/sha2-v0.10.9/sha2/src/sha256/aarch64.rs).
+- [Pinned Apple ARM64 CPU-feature contract](https://github.com/RustCrypto/utils/blob/cpufeatures-v0.2.17/cpufeatures/src/aarch64.rs).
+- [RFC 6234 SHA-256 test vectors](https://www.rfc-editor.org/rfc/rfc6234.html#section-8.5).
 
 This change does not alter the documented private-installation filesystem threat
 model. Observed symlinks are rejected; hostile same-user filesystem races and
