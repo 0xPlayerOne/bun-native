@@ -3,6 +3,7 @@ import { decodeStream, StreamError } from './stream-wire.ts'
 import type { StreamFrame } from './stream-wire.ts'
 interface Write {
   packet: Uint8Array
+  readonly bytes: number
   resolve: () => void
   reject: (error: StreamError) => void
   before: () => boolean
@@ -69,14 +70,23 @@ export class StreamLink {
     }
     return new Promise((resolve, reject) => {
       this.#bytes += packet.length
-      this.#queue.push({ packet, before, drained, resolve, reject, released: false })
+      this.#queue.push({
+        packet,
+        bytes: packet.byteLength,
+        before,
+        drained,
+        resolve,
+        reject,
+        released: false,
+      })
       this.#pump()
     })
   }
   #release(item: Write): void {
     if (item.released) return
     item.released = true
-    this.#bytes -= item.packet.length
+    // A transferable adapter may already have detached item.packet.
+    this.#bytes -= item.bytes
     item.drained()
   }
   #pump(): void {
