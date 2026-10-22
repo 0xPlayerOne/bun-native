@@ -111,3 +111,33 @@ This audit fixes demonstrated defects and removes measured hot-path waste. It
 is not a proof that the complete codebase has no remaining bugs. M4 renderer
 identity, permissions and session acceptance, production signing, and later
 platform/performance qualification keep their existing milestone owners.
+
+## Executed native closeout
+
+Clean code commit `7c076457330d1b09c58c5b806cb2d7c8f759376d` passed fresh local
+macOS arm64 qualification using a newly assembled, explicitly ad-hoc-signed app.
+All 11 prebuilt installation/startup/rejection/restoration cases passed. The five
+positive runs completed 100 lifecycle cycles; development-origin isolation saw
+zero forbidden requests, and all four actual backend/backend-tree/renderer/GPU
+fault cases passed with standard deadlines.
+
+Complete-size acquisition also passed: one trusted-local HTTPS download of
+183,769,830 archive bytes, 421,677,568 expanded tar bytes and 531 declared members.
+The acquired runtime launched offline with an empty compiler PATH for 20 further
+lifecycle cycles. Cache inode reuse, active-lease cleanup refusal, tamper rejection
+and explicit removal all passed. The measured synthetic cache workload above is
+separate from this actual complete-CEF functional test.
+
+The code checkout remained clean throughout these runs. No timeout or observed
+orphan counted as success. Audit-owned duplicate app copies, profiles, temporary
+archive and ephemeral TLS key/certificate were removed after process inspection;
+raw reports remain under `.bunly/runtime-audit/` and the original per-run locations.
+One fresh reusable bundle is retained. No other app, container, or Docker resource
+was touched. No native Windows/Linux or hosted Actions rerun is claimed.
+
+Final local Foundry audit, both native workspaces, formatting, workflow syntax,
+root/benchmark Bun audits, both Cargo audits and the Python requirements audit
+passed. Two real syncs were unchanged across 479 files, and the 86 pre-existing
+evidence/lock files remained byte-identical. The Git secret scan used the existing
+exact historical digest exclusions and found no new matches. The known Foundry
+release-SHA-versus-tag warning remains informational and visible.
