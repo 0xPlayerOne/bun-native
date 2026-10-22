@@ -8009,6 +8009,576 @@
           }
         },
         "sourceStateLimitation": "Source checkpoints are recorded as dirty; fingerprinted harness files were unchanged. Supplied native-bundle provenance is recorded separately."
+      },
+      {
+        "record": "foundation-native-crashpad-1.json",
+        "rawRecordSha256": "14b1e7f757faf4f2091305ca8ec4eb45bb469a93693f98add55f56311ed5ec6a",
+        "passed": false,
+        "failure": "Command timeout, output overflow, or surviving descendant",
+        "classification": "diagnostic-only",
+        "developerBun": "1.4.3",
+        "target": "darwin-arm64",
+        "samples": 5,
+        "warmups": 1,
+        "sourceBefore": {
+          "commit": "2f47c9a90490c309451735e63bc42751b2095995",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "2f47c9a90490c309451735e63bc42751b2095995",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceHashes": {
+          "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+          ".bunly/pre-m4/profile-native-crashpad.ts": "fb3c472ca75af6b4769cca532197b35ab98664c0fbcbfd1ae645fc70e73a495f",
+          "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+          "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+          "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+          "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+          "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+          "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+          "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+          "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+          "benchmarks/lib/observed-command.ts": "cdd3e645cf0d7d13523e9271839d47d93afdf0de619b14a4d258114f37ba1570",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "sourceHashesAfter": {
+          "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+          ".bunly/pre-m4/profile-native-crashpad.ts": "fb3c472ca75af6b4769cca532197b35ab98664c0fbcbfd1ae645fc70e73a495f",
+          "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+          "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+          "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+          "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+          "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+          "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+          "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+          "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+          "benchmarks/lib/observed-command.ts": "cdd3e645cf0d7d13523e9271839d47d93afdf0de619b14a4d258114f37ba1570",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "inputArtifact": {
+          "logicalInstalledBytes": 412875520,
+          "entryCount": 262,
+          "selectedEntries": [
+            {
+              "path": "Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework",
+              "bytes": 232371968,
+              "kind": "file",
+              "sha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39"
+            },
+            {
+              "path": "Contents/Frameworks/bunly_host Helper.app/Contents/MacOS/bunly_host Helper",
+              "bytes": 1384064,
+              "kind": "file",
+              "sha256": "def5a50ebfae87a6971c4a52c9eb2384bdb6196a751b081e54cf7991d6b0a22b"
+            },
+            {
+              "path": "Contents/MacOS/bunly_host",
+              "bytes": 1615696,
+              "kind": "file",
+              "sha256": "37da36cbe5de9e326c5ea2f18e3862664f690e0b1df65ac762d655ffa13a77b9"
+            },
+            {
+              "path": "Contents/Resources/backend/application.js",
+              "bytes": 6266,
+              "kind": "file",
+              "sha256": "8665677df5284635c413302cb0b91a68a740656282d17901f3d85ace06f2779a"
+            },
+            {
+              "path": "Contents/Resources/backend/main.js",
+              "bytes": 28135,
+              "kind": "file",
+              "sha256": "2059b9490c660be3a1ee810ff817050866572d58f4c9694f32f441ab33f6a33d"
+            },
+            {
+              "path": "Contents/Resources/bun",
+              "bytes": 70469600,
+              "kind": "file",
+              "sha256": "a224f77cf933ce870d9b4d9cc990fd3434bdc9f8989fe3185dd8b58bd5d0a49f"
+            },
+            {
+              "path": "Contents/Resources/public/assets.json",
+              "bytes": 767,
+              "kind": "file",
+              "sha256": "d671ac26efaf27ba85ce36eed7e53e9b729e460b114fe4fcc14f655c845c4c86"
+            },
+            {
+              "path": "Contents/Resources/runtime.json",
+              "bytes": 73,
+              "kind": "file",
+              "sha256": "cfe7ff0e8ec94adf8e918f610f8406bd34c19364c54d563cd12c310c8803d76d"
+            }
+          ],
+          "symlinkTargetsOmitted": true,
+          "completeInventoryJsonSha256": "2dddcaa3de4441fe33ab01ecc23795914a49cb7e5e1d1837bdaa407fcb3e9cdd",
+          "inventoryDigestSerialization": "Python JSON sorted keys, separators comma/colon, ensure_ascii=true, UTF-8"
+        },
+        "preparedArtifact": {
+          "logicalInstalledBytes": 421270209,
+          "entryCount": 260,
+          "selectedEntries": [
+            {
+              "path": "Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework",
+              "bytes": 232371968,
+              "kind": "file",
+              "sha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39"
+            },
+            {
+              "path": "Contents/Frameworks/bunly_host Helper.app/Contents/MacOS/bunly_host Helper",
+              "bytes": 1384064,
+              "kind": "file",
+              "sha256": "def5a50ebfae87a6971c4a52c9eb2384bdb6196a751b081e54cf7991d6b0a22b"
+            },
+            {
+              "path": "Contents/MacOS/bunly_host",
+              "bytes": 1615696,
+              "kind": "file",
+              "sha256": "a7ae696f156512e88f1dfe823391fbf979aee04f6cb900d791852a2445dd7675"
+            },
+            {
+              "path": "Contents/Resources/backend/application.js",
+              "bytes": 7745,
+              "kind": "file",
+              "sha256": "12530d5d579f006dcf40dda243ff2c9e2d70363456670c2256ed5c85880f7708"
+            },
+            {
+              "path": "Contents/Resources/backend/main.js",
+              "bytes": 28135,
+              "kind": "file",
+              "sha256": "2059b9490c660be3a1ee810ff817050866572d58f4c9694f32f441ab33f6a33d"
+            },
+            {
+              "path": "Contents/Resources/bun",
+              "bytes": 70469600,
+              "kind": "file",
+              "sha256": "a224f77cf933ce870d9b4d9cc990fd3434bdc9f8989fe3185dd8b58bd5d0a49f"
+            },
+            {
+              "path": "Contents/Resources/public/asset.bin",
+              "bytes": 8388608,
+              "kind": "file",
+              "sha256": "b4dc7b26baa48d0e780658b929d8fc269bde6220208833724e0a8d6a8deb490b"
+            },
+            {
+              "path": "Contents/Resources/public/assets.json",
+              "bytes": 316,
+              "kind": "file",
+              "sha256": "f78ba94bc62d7c689a06cafbf60c306e390a9c559c547e0fb1823bdcf8bb180b"
+            },
+            {
+              "path": "Contents/Resources/public/profile.js",
+              "bytes": 11691,
+              "kind": "file",
+              "sha256": "dd74831acea29aa99583d4b9af5055bcae51c9d95c9810714cbbd045242e9457"
+            },
+            {
+              "path": "Contents/Resources/runtime.json",
+              "bytes": 73,
+              "kind": "file",
+              "sha256": "cfe7ff0e8ec94adf8e918f610f8406bd34c19364c54d563cd12c310c8803d76d"
+            }
+          ],
+          "symlinkTargetsOmitted": true,
+          "completeInventoryJsonSha256": "1cada4d58b7a896364df176d82e55ce7417219b8159f7ce1dff4fac6a027dc61",
+          "inventoryDigestSerialization": "Python JSON sorted keys, separators comma/colon, ensure_ascii=true, UTF-8"
+        },
+        "performanceAccepted": false,
+        "diagnosticOnly": true,
+        "attempts": [
+          {
+            "name": "warmup-0-fresh-profile",
+            "variant": "fresh-profile",
+            "trial": 0,
+            "warmup": true,
+            "passed": false,
+            "process": {
+              "rawReportSha256": "794ffb764e2e68a638ed9f4bbc9a5fbb84f417a529dcac6404881070b73b076b",
+              "exitCode": 2,
+              "timedOut": false,
+              "cancelled": false,
+              "outputOverflow": false,
+              "elapsedMs": 13571.38912496157,
+              "observerFailure": null,
+              "observerFailureFieldPresent": true,
+              "observedOrphanCount": 0,
+              "cleanupSurvivorCount": 0,
+              "cleanup": {
+                "schema": 1,
+                "profile": "macos-verified-code-sign-clone-v1",
+                "limitMs": 3000,
+                "elapsedMs": 8.51275003515184,
+                "observedClones": 1,
+                "passed": false,
+                "qualified": false,
+                "status": "failed",
+                "verification": "sampled identity and exact clone removal, not helper exit-code attestation",
+                "cloneInventory": {
+                  "prelaunchEntries": 42,
+                  "entryLimit": 256,
+                  "scope": "new-names-after-prelaunch-snapshot"
+                },
+                "recovery": {
+                  "attempted": true,
+                  "candidates": 633,
+                  "candidateLimit": 4096,
+                  "scanLimit": 1
+                },
+                "resources": {
+                  "sampleCount": 1,
+                  "peakRssBytes": 0,
+                  "peakThreads": 0,
+                  "sampledCpuSeconds": null,
+                  "accounting": "post-exit samples; adjacent same-PID/birth CPU deltas; gaps and exits are not zero CPU"
+                },
+                "helpers": []
+              },
+              "eventScope": "Retained stdoutTail and stderr only; absent markers are not proof of nonoccurrence",
+              "shutdownPhases": [
+                {
+                  "stream": "stderr",
+                  "phase": "process-stop",
+                  "state": "start"
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "process-stop",
+                  "state": "complete",
+                  "durationMs": 10
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "host-release",
+                  "state": "start"
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "host-release",
+                  "state": "complete",
+                  "durationMs": 0
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "asset-service-stop",
+                  "state": "start"
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "asset-service-stop",
+                  "state": "complete",
+                  "durationMs": 0
+                },
+                {
+                  "stream": "stderr",
+                  "phase": "cef-shutdown",
+                  "state": "start"
+                }
+              ],
+              "teardownWatchdogObservedInRetainedOutput": true,
+              "backendExits": [
+                {
+                  "stream": "stderr",
+                  "code": 0,
+                  "forced": false
+                }
+              ],
+              "hostShutdowns": [],
+              "performanceAccepted": false,
+              "readinessObservations": [
+                {
+                  "event": "bunly.foundation.ready",
+                  "elapsedMs": 1485.9976670704782,
+                  "stream": "stderr"
+                }
+              ],
+              "retainedFoundationResultCount": 1,
+              "assetAndInteractionSubcheck": {
+                "measurement": {
+                  "kind": "result",
+                  "schema": 1,
+                  "samples": 32,
+                  "activeElapsedMs": 568,
+                  "syntheticInputEvents": 64,
+                  "assetSemantics": 9,
+                  "idle": {
+                    "backgroundSamples": 0,
+                    "inputToFrameMs": [
+                      16.1,
+                      16.5,
+                      16.7,
+                      16.6,
+                      16.6,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.5,
+                      16.8,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.5,
+                      16.7,
+                      16.3,
+                      17.1,
+                      28.3,
+                      5,
+                      16.2,
+                      17.1
+                    ],
+                    "frameIntervalsMs": [
+                      16.8,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.6,
+                      16.8,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.2,
+                      17.1,
+                      16.6,
+                      16.7,
+                      16.2,
+                      17.1
+                    ]
+                  },
+                  "active": {
+                    "backgroundSamples": 32,
+                    "inputToFrameMs": [
+                      21.7,
+                      11.6,
+                      22.7,
+                      10.7,
+                      22.3,
+                      11.1,
+                      16.8,
+                      16.5,
+                      16.7,
+                      16.6,
+                      16.6,
+                      16.8,
+                      16.5,
+                      16.7,
+                      16.9,
+                      16.3,
+                      16.8,
+                      16.8,
+                      16.5,
+                      16.6,
+                      16.7,
+                      20.7,
+                      12.7,
+                      22.6,
+                      10.7,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.6,
+                      17.8,
+                      15.5,
+                      16.8
+                    ],
+                    "frameIntervalsMs": [
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.8,
+                      16.6,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.7,
+                      16.7,
+                      16.6,
+                      16.8,
+                      16.6,
+                      16.7
+                    ]
+                  },
+                  "counts": {
+                    "full": 16,
+                    "range": 26,
+                    "head": 29,
+                    "conditional": 30
+                  },
+                  "requestMs": {
+                    "full": [
+                      37.5,
+                      34.6,
+                      32.9,
+                      37.4,
+                      39.6,
+                      30.6,
+                      31.9,
+                      32,
+                      36.4,
+                      35.6,
+                      38.5,
+                      35.1,
+                      42.7,
+                      30.7,
+                      31.8,
+                      39.8
+                    ],
+                    "range": [
+                      12.5,
+                      25.4,
+                      21.5,
+                      21.5,
+                      24.2,
+                      22.3,
+                      15.1,
+                      22.6,
+                      16.5,
+                      18.1,
+                      12.3,
+                      21.1,
+                      17.7,
+                      25.6,
+                      35.9,
+                      15,
+                      20.7,
+                      24,
+                      15,
+                      18.9,
+                      16.9,
+                      41.7,
+                      30.4,
+                      15.8,
+                      17,
+                      22.7
+                    ],
+                    "head": [
+                      19.2,
+                      18.3,
+                      10,
+                      24.6,
+                      17.8,
+                      18.5,
+                      19.9,
+                      22.7,
+                      17,
+                      15.6,
+                      17.1,
+                      15,
+                      17,
+                      11.2,
+                      17.3,
+                      20.7,
+                      19.1,
+                      18.4,
+                      28.1,
+                      8.9,
+                      30.3,
+                      16.9,
+                      18.3,
+                      24.3,
+                      23.2,
+                      25.5,
+                      31.8,
+                      12.1,
+                      27.7
+                    ],
+                    "conditional": [
+                      19.9,
+                      17.7,
+                      21.5,
+                      12.8,
+                      17.3,
+                      15.6,
+                      13.1,
+                      24,
+                      15.5,
+                      23.8,
+                      10.7,
+                      19.9,
+                      10.2,
+                      21.8,
+                      16.5,
+                      15.8,
+                      13.5,
+                      25.7,
+                      20.1,
+                      12.4,
+                      26.7,
+                      18.9,
+                      28.4,
+                      15.4,
+                      27.1,
+                      15.6,
+                      19.7,
+                      27.1,
+                      19.7,
+                      20.1
+                    ]
+                  }
+                },
+                "startupStages": {
+                  "sessionMs": 98.26883299999999,
+                  "windowMs": 342.38925,
+                  "viewMs": 157.98454200000003,
+                  "focusMs": 14.007916000000023,
+                  "backendToReadyMs": 797.971708
+                },
+                "scope": "Observed workload result only; not an accepted launch or performance distribution"
+              }
+            }
+          }
+        ],
+        "observationStage": "app-launch-attempts",
+        "rawClassification": "diagnostic-native-foundation-crashpad"
       }
     ],
     "shutdownInvestigation": {
@@ -8119,7 +8689,251 @@
       "sourceReferenceProvenance": "Selected source bytes independently checked against the retained Chromium 154.0.8037.98 source manifest before curation",
       "sourceManifestSha256": "cbf712afafffa4d5e0ebcec6ca10c6fc08ed0498bb8b037d12540daacc912dc9",
       "limitation": "These captures do not establish the utility's blocking operation, the full watchdog timeline, or a shutdown fix"
+    },
+    "crashpadInvestigation": {
+      "classification": "diagnostic-only",
+      "profileRecord": "foundation-native-crashpad-1.json",
+      "qualificationEligible": false,
+      "performanceAccepted": false,
+      "rootCauseEstablished": false,
+      "capture": "Local Crashpad dump at the ordinary Chromium teardown-watchdog expiry; no live debugger attached",
+      "configurationSha256": "27ce942efae9848c9ff15ce27700448631e5199d38be4a11ccd697737ee962da",
+      "crashUploadEnabled": false,
+      "pruningPolicyIsNotAHardAllocationCap": true,
+      "preparedMainSha256": "a7ae696f156512e88f1dfe823391fbf979aee04f6cb900d791852a2445dd7675",
+      "cefSha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39",
+      "mainModuleUuid": "4EC0550F-9766-3800-A149-67763E46062F",
+      "cefModuleUuid": "4C4C448E-5555-3144-A180-7DB8F7267284",
+      "privateMinidump": {
+        "bytes": 1309904,
+        "sha256": "524326b7b7ee803d3256e738be85f6567d285962cb4bfea076b0889b16f61d1f",
+        "contentsPublished": false
+      },
+      "artifacts": {
+        "driver": {
+          "bytes": 15666,
+          "sha256": "fb3c472ca75af6b4769cca532197b35ab98664c0fbcbfd1ae645fc70e73a495f"
+        },
+        "runStatus": {
+          "bytes": 497,
+          "sha256": "203102f8aae57715324436d4b03e3148c9e5d53ca2763a3528aebd73196e19b3"
+        },
+        "databaseInventory": {
+          "bytes": 470,
+          "sha256": "3a75078e40fe9743cf229f6377f1837c1f2ae723f09831f5a04ac08944abfeb9"
+        },
+        "offlineStacks": {
+          "bytes": 190735,
+          "sha256": "105f52453e81cf14c4cb289e587636497056b440d5cedb67b20b676ef9f1e0fd"
+        },
+        "mainDisassembly": {
+          "bytes": 25363,
+          "sha256": "664606bdf14d9e4f1d979975ce104b4c43583f63824b6da337c1ed0280ccd6c7"
+        },
+        "poolDisassembly": {
+          "bytes": 27047,
+          "sha256": "cb942fb691741c2a38825a10a9bc4defc580ba3f3eaf572775f40590aeb06651"
+        },
+        "expandedSecurityThreadStacks": {
+          "bytes": 10680,
+          "sha256": "305d81a043649372067cbaf8377697a6216d376dbf1b3c4e31622a57dc3f09e3"
+        },
+        "waitPrologue": {
+          "bytes": 1884,
+          "sha256": "1b7d9d3417d0c0ee21fcf32b4940ee559334f76fb540c7a05e1d856f70904290"
+        },
+        "recoveredStackSlots": {
+          "bytes": 2089,
+          "sha256": "7d81e7c2b7318f7b00652ae6061aa77a842f4de458b63f8f0edc61e734d476a3"
+        },
+        "memoryCoverage": {
+          "bytes": 1398,
+          "sha256": "ecbec2bb6e51b35e94f73dc0e4a1e0e6b59a9371affe7736199056d201841bcc"
+        },
+        "workerDisassembly": {
+          "bytes": 27035,
+          "sha256": "64c9475b6ed420804540d08e4437fa9d653894b378ddac384228bc46fa75b54f"
+        },
+        "threadNames": {
+          "bytes": 2559,
+          "sha256": "072c0ca72b77ae716e2cc43039558792a7aee331ab3fbd714513abe6ad2d5f8a"
+        },
+        "binaryLiterals": {
+          "bytes": 606,
+          "sha256": "62b471fc1e38e00c14b4ac8405f5e458054ee7aa91f5f904b74e87fccad3d2a3"
+        }
+      },
+      "mainThreadInference": {
+        "basis": "Captured stack, exact-module disassembly, embedded source literals, and pinned Chromium 154.0.8037.98 source",
+        "outerToInner": [
+          "BrowserMainLoop::ShutdownThreadsAndCleanUp",
+          "ThreadPoolImpl::Shutdown",
+          "TaskTracker::CompleteShutdown",
+          "WaitableEvent::Wait / TimedWait(Max)",
+          "WaitableEvent::TimedWaitImpl",
+          "Mach message wait"
+        ],
+        "cefFileProgramCountersOuterToInner": [
+          "0x171bd00",
+          "0x20ef710",
+          "0x20cb2ec",
+          "0x20cb33c",
+          "0x21344cc"
+        ],
+        "threadPoolShutdownTailCallHasNoSeparateFrame": true,
+        "networkServiceCleanupPrecedesCapturedGate": true,
+        "timeSpentAtEitherGateEstablished": false
+      },
+      "shutdownState": {
+        "trackerAndEventPointersRecoveredFromSavedStackSlots": true,
+        "requiredHeapMemoryPresent": false,
+        "blockerCountAvailable": false,
+        "blockingTaskIdentified": false,
+        "zeroBlockersInferred": false,
+        "memoryRangeEntriesIncludingDuplicatedThreadStacks": 84,
+        "meaningOfCounter": "Running SKIP_ON_SHUTDOWN tasks plus queued/running BLOCK_SHUTDOWN task-source registrations; not a count of individual tasks"
+      },
+      "workerObservation": {
+        "capturedThreads": 42,
+        "identifiedChromiumWorkersWaitingForWork": 21,
+        "observationScope": "Single capture; idle workers do not establish that no queued or starting work blocks shutdown",
+        "securityKeychainThreadsHaveDirectTaskTrackerWorkerAncestry": false,
+        "startupThreadBlockingRole": "unidentified"
+      },
+      "limitations": [
+        "The final wait location does not attribute the full watchdog interval or establish its cause.",
+        "The minidump lacks the heap needed to recover TaskTracker state; the counter is unavailable, not zero.",
+        "Ordinary watchdog and observer deadlines remained active, but local crash capture changes process and I/O activity.",
+        "Post-exit clone cleanup also reported failure; no helper exemption or cleanup pass is inferred from zero observed orphans."
+      ]
+    },
+    "debuggerCapabilityCheckpoint": {
+      "classification": "auxiliary-debugger-capability-checkpoint",
+      "qualificationEligible": false,
+      "artifacts": {
+        "stubExecutable": {
+          "bytes": 33744,
+          "sha256": "c9a55a527855cb7dcb8088d5295c8952fce3c92370178d54c05a0a6e150a7d50"
+        },
+        "explicitDetachStatus": {
+          "bytes": 1647,
+          "sha256": "f1ef769a484cb463070d492f0197f996691493fb63ce907e23386db7732cc2f8"
+        },
+        "initialDisconnectStatus": {
+          "bytes": 377,
+          "sha256": "769829a06ac0b58d5a7f0f2c2034f084899b0481f694752952cb0b7fcd0d15d6"
+        },
+        "initialDisconnectLog": {
+          "bytes": 891,
+          "sha256": "af296208fea3aba328d53eee7681aee5f02012b832ade39e101327ca3ac41d70"
+        },
+        "correctedDisconnectCommand": {
+          "bytes": 959,
+          "sha256": "c4ef967874fecb8587957bea2b85888d196cf0da012acffd8db15846ff5b7653"
+        },
+        "correctedAttachMarker": {
+          "bytes": 59,
+          "sha256": "639b1c24e005a8e9b5a44c2eff114efdbcb5ab67300115e3b8a14e16a3e1ce52"
+        },
+        "correctedDisconnectLog": {
+          "bytes": 861,
+          "sha256": "b6c0099bd4ecd9481ee961ffb5cd1274a800b473ffbd07cefc97bfb3abda10f7"
+        },
+        "cleanupRequests": {
+          "bytes": 432,
+          "sha256": "3e3a391db2c384ff48e48fea9b4d0186dd82dca969db2290f58ccc5741fa9974"
+        },
+        "postCleanupInventory": {
+          "bytes": 731,
+          "sha256": "6682dfe5f0b3738aa7ea89b82d947ff6b0bb66bb94918fe06ce10884b95bcb8c"
+        },
+        "coordinatorThreadState": {
+          "bytes": 513,
+          "sha256": "7fcd708a0bf78dd00ca6a2cfaca174ec2b8635c96e794f04a0f0916df9d0dd4b"
+        },
+        "coordinatorThreadReader": {
+          "bytes": 882,
+          "sha256": "d2bf8526109e369d6fda655785d33592daa95b9c22a80348af334b4ed14c5236"
+        },
+        "prewarmedCoordinator": {
+          "bytes": 14015,
+          "sha256": "43026a6a26daf4fe6d3fead7014c70c09faef95c770f117660914172d55fd1e3"
+        },
+        "prewarmedCapture": {
+          "bytes": 19194,
+          "sha256": "763e3e9e6d544b0742df6a3fbb8edbc6e1a6d7384d03dcbd0cf14a66a2bde98b"
+        },
+        "prewarmedObserverTap": {
+          "bytes": 8198,
+          "sha256": "a9499a5ce37cfba8ef35d77b6ba3a4b8dff59ae2f70763b470200c044a7466ca"
+        },
+        "prewarmedDriver": {
+          "bytes": 4303,
+          "sha256": "370d2bfdae68759479ab297fec03e93a2b419829a2ac6b59f23f7564435e8952"
+        },
+        "offlinePrewarmStatus": {
+          "bytes": 325,
+          "sha256": "928bfe56a4186d978abbbea6b09ae3e4c16ec6a029a351ebcd686b6aad29ddba"
+        },
+        "offlinePrewarmLog": {
+          "bytes": 4334,
+          "sha256": "be76e26cc795d3e301d44e4db73a21619b5a743e4f0aa1c2a1b501b20ead3259"
+        }
+      },
+      "bunlyAppLaunches": 0,
+      "bunlyLiveAttachments": 0,
+      "stubBehavior": "Disposable owned C process with a 30-second sleep; debugger script slept for 20 seconds after attachment",
+      "explicitDetach": {
+        "completed": true,
+        "stubReaped": true,
+        "elapsedSeconds": 5.858625624794513
+      },
+      "hardDisconnectAttempts": [
+        {
+          "outcome": "failed-before-attach",
+          "reason": "Initial LLDB command omitted its script prefix",
+          "stubReaped": true
+        },
+        {
+          "outcome": "blocked-during-process-metadata-collection",
+          "attachMarkerPresent": true,
+          "hardDisconnectOfLiveDebuggerEstablished": false,
+          "finalStatusAvailable": false,
+          "exactBlockedKernelCallEstablished": false,
+          "coordinatorThreadState": {
+            "runState": 4,
+            "name": "uninterruptible",
+            "threadCount": 1,
+            "identityVerifiedBeforeAndAfter": true,
+            "readerTimeoutSeconds": 5,
+            "readerExitCode": 0
+          },
+          "verifiedOwnedKillRequests": 3,
+          "cleanupStatus": "exit-and-reaping-unresolved",
+          "secondaryOwnedPsQueryAlsoUnresolved": true
+        }
+      ],
+      "prewarmedCapture": {
+        "offlineRehearsalCompleted": true,
+        "executedAgainstBunly": false,
+        "status": "not-run-pending-environment-recovery-and-cleanup-proof"
+      },
+      "limitations": [
+        "An explicit successful detach does not prove the hard-timeout or debugger-disconnect path.",
+        "The debugger and target may have entered exit before the cleanup signals; list membership does not establish running survivors.",
+        "The bounded thread-state helper completed, but this does not make every process-metadata kernel call time bounded.",
+        "Public XNU source semantics were reviewed without establishing an exact match to the installed Darwin kernel or its blocked instruction.",
+        "No production shutdown fix or relationship to the earlier Chromium failure is established by this environment issue.",
+        "Live Mac app/debugger validation is paused. No broader process cleanup, reboot, deadline extension or system-setting change was performed."
+      ]
     }
+  },
+  "nativeAttemptSummary": {
+    "profileInvocations": 11,
+    "appLaunchAttempts": 15,
+    "preparationFailures": 2,
+    "successfulProfileInvocations": 0,
+    "auxiliaryDebuggerProbesExcluded": true
   },
   "knownBlocker": {
     "event": "Teardown watchdog expired; recording dump and terminating.",
@@ -8501,7 +9315,9 @@
     "Stale clones from failed launches hid later helpers; bounded prelaunch name exclusion fixes new-run attribution without deleting old clones.",
     "Earlier Bun 1.4.4 profiles are excluded from the pinned Bun 1.4.3 performance checkpoint.",
     "The first network-sampled diagnostic failed during preparation without an app launch; it is not a shutdown or performance result.",
-    "Successful standalone shutdown diagnostics and the four-case cleanup matrix do not resolve the intermittent complete native-profile failure."
+    "Successful standalone shutdown diagnostics and the four-case cleanup matrix do not resolve the intermittent complete native-profile failure.",
+    "The ordinary watchdog Crashpad run failed after completing the workload. Its final stack identifies a ThreadPool shutdown wait, but required heap state is absent.",
+    "A separate disposable debugger probe stalled during metadata collection. Cleanup remains unresolved after verified owned kill requests; no live Bunly attachment or native qualification resulted."
   ],
   "limitations": [
     "No production signing or release qualification",

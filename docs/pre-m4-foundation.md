@@ -7,6 +7,8 @@ Bounded native asset work, lifecycle qualification, and maintained regression ch
 **Validation checkpoint:** Clean source `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`, 2026-10-22.
 **Status:** Local test suites and the four-case macOS helper qualification pass.
 The full native profile still fails the CEF shutdown watchdog; merge and M4 remain blocked.
+Live Mac validation is also paused after a separate disposable debugger probe
+stalled in a kernel wait; its cleanup remains unresolved.
 
 Draft PR #89 remains open. At the earlier push checkpoints, the billing-pause
 flag was true and checked hosted jobs were skipped. After the 17:14:19Z push,
@@ -155,24 +157,25 @@ for the native Rust SHA feature.
 
 ### Native qualification and shutdown diagnostics
 
-The evidence checkpoint contains ten native profiling invocations: six retained
-qualification records and four instrumented diagnostic records. Together they
-contain fourteen app-launch attempts and two preparation failures. All ten
+The evidence checkpoint contains eleven native profiling invocations: six retained
+qualification records and five instrumented diagnostic records. Together they
+contain fifteen app-launch attempts and two preparation failures. All eleven
 invocations failed to complete their planned profiling run. The table uses the
 suffix of each `foundation-native-*.json` record:
 
-| Record              | Retained app launches | Outcome                                                                                                                                                   |
-| ------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `current-1`         | 0                     | Preparation failed because the supplied fixture lacked backend resources.                                                                                 |
-| `current-2`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
-| `current-3`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
-| `baseline-1`        | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
-| `current-4`         | 1                     | Asset and interaction checks completed; CEF shutdown reached the watchdog.                                                                                |
-| `current-5`         | 2                     | First warmup exited cleanly; second completed the workload and reached the watchdog.                                                                      |
-| `sampled-1`         | 5                     | Four app launches exited cleanly; the fifth completed the workload and reached the watchdog.                                                              |
-| `network-sampled-1` | 0                     | Preparation failed without a signing-observer report; no app trial occurred.                                                                              |
-| `network-sampled-2` | 1                     | First warmup completed the workload and reached the watchdog.                                                                                             |
-| `combined-1`        | 2                     | Fresh-profile warmup exited cleanly; reused-profile warmup completed the workload and reached the watchdog. Both late root captures had empty callgraphs. |
+| Record              | Retained app launches | Outcome                                                                                                                                                    |
+| ------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current-1`         | 0                     | Preparation failed because the supplied fixture lacked backend resources.                                                                                  |
+| `current-2`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                         |
+| `current-3`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                         |
+| `baseline-1`        | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                         |
+| `current-4`         | 1                     | Asset and interaction checks completed; CEF shutdown reached the watchdog.                                                                                 |
+| `current-5`         | 2                     | First warmup exited cleanly; second completed the workload and reached the watchdog.                                                                       |
+| `sampled-1`         | 5                     | Four app launches exited cleanly; the fifth completed the workload and reached the watchdog.                                                               |
+| `network-sampled-1` | 0                     | Preparation failed without a signing-observer report; no app trial occurred.                                                                               |
+| `network-sampled-2` | 1                     | First warmup completed the workload and reached the watchdog.                                                                                              |
+| `combined-1`        | 2                     | Fresh-profile warmup exited cleanly; reused-profile warmup completed the workload and reached the watchdog. Both late root captures had empty callgraphs.  |
+| `crashpad-1`        | 1                     | First warmup completed the workload and reached the watchdog. A local minidump identifies the final thread-pool wait; post-exit clone cleanup also failed. |
 
 Completed workloads in these later records include the four asset lanes, all nine
 response-semantics checks and all 32 active input observations with the required
@@ -220,6 +223,61 @@ the run because the evidence JSON was untracked. Its fingerprinted harness files
 were unchanged. The supplied native app still comes from the separately recorded
 clean `a3e6ee0e8f1065889980c90e0d5111d878ff05a8` checkpoint; the dirty diagnostic
 checkout is not relabeled as a clean qualification run.
+
+#### Subsequent Crashpad diagnostic
+
+A subsequent diagnostic enabled local Crashpad reporting only in a private app
+copy, with no upload endpoint or forwarding to the macOS crash reporter. The
+ordinary Chromium watchdog, observer deadlines and profiling workload remained
+in place. The watchdog produced a usable minidump. Crashpad changes process and
+I/O activity, so this run remains diagnostic evidence alongside the earlier
+failures. The run used clean source `2f47c9a90490c309451735e63bc42751b2095995`
+and the native artifact from the build checkpoint recorded above.
+
+Matching module identity, captured addresses, disassembly of the exact binary and
+Chromium `154.0.8037.98` source identify the final main-thread stack as
+[`ThreadPoolImpl::Shutdown`](https://github.com/chromium/chromium/blob/154.0.8037.98/base/task/thread_pool/thread_pool_impl.cc#L424-L469)
+calling
+[`TaskTracker::CompleteShutdown`](https://github.com/chromium/chromium/blob/154.0.8037.98/base/task/thread_pool/task_tracker.cc#L233-L258),
+which waits for its shutdown event through
+[`WaitableEvent` and a Mach message receive](https://github.com/chromium/chromium/blob/154.0.8037.98/base/synchronization/waitable_event_apple.cc).
+This is a later shutdown stage than the NetworkService cleanup wait identified
+in the earlier captures.
+
+All 21 identified Chromium worker threads were waiting for work at the capture
+instant. That observation does not establish a zero blocker count:
+[`TaskTracker` accounts for queued as well as running work](https://github.com/chromium/chromium/blob/154.0.8037.98/base/task/thread_pool/task_tracker.cc#L107-L195).
+Recovered stack values consistently identify the tracker and event, but the
+minidump omits the heap memory needed to read the tracker state. The remaining
+blocker count and responsible task are therefore unknown. A single snapshot
+also cannot measure time spent at this gate or divide the watchdog interval
+between NetworkService cleanup, thread-pool shutdown and other phases. It does
+not establish a thread-pool deadlock or a production fix. The raw dump remains
+private; the public evidence contains its length, digest and reviewed findings.
+
+#### Paused live-state capture and environment cleanup
+
+A separate disposable C-stub/LLDB probe was intended to test hard-disconnect
+cleanup before the proposed Bunly live-state capture. Its coordinator stalled during
+process-metadata collection; the exact blocked call was not captured. A later
+bounded inspection verified the same kernel process identity and found its
+sole thread in the state defined as
+[`TH_STATE_UNINTERRUPTIBLE`](https://github.com/apple-oss-distributions/xnu/blob/ac9718fb1af618d5ce8678d0dc6e8a58f252216f/osfmk/mach/thread_info.h).
+This establishes the observed thread state. The installed kernel's exact source
+revision, wait channel and cause were not established.
+
+Verified `SIGKILL` requests targeted the owned coordinator and its unreaped
+direct children, but completed exit and reaping have not been confirmed. The
+probe does not establish that disconnecting LLDB safely resumes its target.
+No Bunly application was launched or attached by this probe, and the planned
+live-state capture remains unexecuted. These auxiliary probes are excluded from
+the native profile and app-launch counts above. Further Mac application and
+debugger launches are paused while this environment cleanup remains unresolved.
+
+This environment failure establishes no cause for the earlier CEF watchdog
+failure. Offline analysis, diagnostic-harness review and mock tests supply no
+native qualification pass. No shutdown deadline, Chromium security-cloning
+policy or system setting was relaxed.
 
 No startup or interaction distribution from these invocations is accepted.
 Captured timings remain diagnostic observations while shutdown qualification is
