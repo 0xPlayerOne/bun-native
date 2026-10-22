@@ -2,9 +2,49 @@
   "schema": 1,
   "purpose": "Pinned source references. Source inspection is not a successful runtime benchmark.",
   "references": [
-    {"id":"electrobun","repository":"blackboardsh/electrobun","commit":"c4bbeca07829d9b1634d31598ef6091fb19ace2a","package":"electrobun","version":"2.0.3-beta.26","role":"principal competitor","packagedBun":"unverified until artifact inspection","engineVersion":null,"paths":["package/package.json","package/src/shared/rpc.test.ts"]},
-    {"id":"mirin","repository":"Netko-Labs/mirin","commit":"c60fa09a7ae94368e22188cb8ff0b38a910a9f24","package":"mirinjs","version":"0.1.0-alpha.26","role":"CEF architecture reference","packagedBun":"unverified until artifact inspection","engineVersion":null,"paths":["packages/mirin/package.json","packages/mirin-cli/src/dev.ts"]},
-    {"id":"butter","repository":"wess/butter","commit":"a735ddf2eac8f4fe4a98370fc4ccf4373db797d9","package":"butterframework","version":"1.6.3","role":"system-webview transport reference","packagedBun":"unverified until artifact inspection","engineVersion":null,"paths":["package.json","src/cli/dev.ts","src/cli/compile.ts"]},
-    {"id":"electron","repository":"electron/electron","commit":"60169b45c12488c6fda237af7f6425526a7ce5f0","package":"electron","version":"44.8.0","role":"Chromium and migration baseline","runtime":"Node","engineVersion":null,"paths":[]}
+    {
+      "id": "electrobun",
+      "repository": "blackboardsh/electrobun",
+      "commit": "c4bbeca07829d9b1634d31598ef6091fb19ace2a",
+      "package": "electrobun",
+      "version": "2.0.3-beta.26",
+      "role": "principal competitor",
+      "packagedBun": "unverified until artifact inspection",
+      "engineVersion": null,
+      "paths": ["package/package.json", "package/src/shared/rpc.test.ts"]
+    },
+    {
+      "id": "mirin",
+      "repository": "Netko-Labs/mirin",
+      "commit": "c60fa09a7ae94368e22188cb8ff0b38a910a9f24",
+      "package": "mirinjs",
+      "version": "0.1.0-alpha.26",
+      "role": "CEF architecture reference",
+      "packagedBun": "unverified until artifact inspection",
+      "engineVersion": null,
+      "paths": ["packages/mirin/package.json", "packages/mirin-cli/src/dev.ts"]
+    },
+    {
+      "id": "butter",
+      "repository": "wess/butter",
+      "commit": "a735ddf2eac8f4fe4a98370fc4ccf4373db797d9",
+      "package": "butterframework",
+      "version": "1.6.3",
+      "role": "system-webview transport reference",
+      "packagedBun": "unverified until artifact inspection",
+      "engineVersion": null,
+      "paths": ["package.json", "src/cli/dev.ts", "src/cli/compile.ts"]
+    },
+    {
+      "id": "electron",
+      "repository": "electron/electron",
+      "commit": "60169b45c12488c6fda237af7f6425526a7ce5f0",
+      "package": "electron",
+      "version": "44.8.0",
+      "role": "Chromium and migration baseline",
+      "runtime": "Node",
+      "engineVersion": null,
+      "paths": []
+    }
   ]
 }

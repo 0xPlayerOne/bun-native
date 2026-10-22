@@ -1,6 +1,7 @@
 name: M2 workbench and benchmark qualification
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
 permissions:
   contents: read
@@ -8,10 +9,10 @@ env:
   PYTHON: python
 concurrency:
   group: benchmarks-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   portable:
-    if: vars.CI_BILLING_PAUSED == 'false'
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -21,14 +22,21 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Install process-observer prerequisites
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements.txt
+          python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - run: bun install --frozen-lockfile
-      - run: bun run check
+      - run: bun run check:portable
       - run: |
-          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
           python tests/process_observer_test.py
       - run: bun run benchmark:smoke
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: m2-mock-evidence
           path: .bunly/benchmarks/*.json
@@ -36,7 +44,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   electron:
-    if: vars.CI_BILLING_PAUSED == 'false'
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -46,13 +54,20 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Install process-observer prerequisites
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
+          python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - run: |
           bun install --frozen-lockfile
           bun install --cwd benchmarks/fixtures --frozen-lockfile
           bun install --cwd benchmarks/adapters/electron --frozen-lockfile
           bun benchmarks/adapters/electron/node_modules/electron/install.js
       - run: |
-          python -m pip install --disable-pip-version-check --only-binary=:all: psutil==7.0.0
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2t64 libgbm1
       - name: Configure sandbox helper in the disposable runner
@@ -64,7 +79,7 @@ jobs:
       - name: Run real Electron scenarios without disabling isolation
         run: xvfb-run -a bun scripts/benchmark.ts record electron .bunly/benchmarks/electron.json --trials=3 --warmups=1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: m2-electron-evidence
           path: |

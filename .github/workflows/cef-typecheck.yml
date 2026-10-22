@@ -1,6 +1,7 @@
 name: M3 CEF API typecheck
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - 'native/cef-host/**'
       - '.github/workflows/cef-typecheck.yml'
@@ -9,10 +10,10 @@ permissions:
   contents: read
 concurrency:
   group: cef-typecheck-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   check:
-    if: vars.CI_BILLING_PAUSED == 'false'
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     name: CEF API check (${{ matrix.os }})
     strategy:
       fail-fast: false

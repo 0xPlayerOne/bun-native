@@ -1,1 +1,10 @@
-{"name":"@bunly/workbench","version":"0.1.0-dev.0","private":true,"type":"module","dependencies":{"@bunly/runtime":"workspace:*","@bunly/client":"workspace:*"}}
+{
+  "name": "@bunly/workbench",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@bunly/runtime": "workspace:*",
+    "@bunly/client": "workspace:*"
+  }
+}

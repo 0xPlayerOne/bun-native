@@ -93,3 +93,29 @@ including custom workflow and hook output. The duplicate-layout, pin-integrity,
 manual-dispatch and hook tests run in `bun run check`. The review record is in
 [the foundation audit](foundation-audit.md). Historical milestone evidence is
 retained separately and is not rewritten by synchronization.
+
+## Formatting after synchronization
+
+The wrapper applies the pinned Oxfmt configuration to Foundry-managed output
+after the repository overlay. Sync does not reformat application source or
+historical evidence. `bun run format:check` verifies the complete maintained
+source tree and runs as the first step of `bun run check`. See
+[formatting](formatting.md) for separate Python/Rust commands.
+
+## Complete local validation
+
+`bun run check:ci` executes the installed Foundry audit (not just its plan or
+Doctor), browser-only checking, AST boundaries, native/reference checker
+qualification, and `actionlint`. Install the contributor requirements into
+`.venv` first and keep that environment on PATH; set `PYTHON` to the same
+interpreter. `requirements.txt` includes the existing observer, formatter, and
+frontend manifests plus pinned pytest, which upstream Foundry invokes for the
+unchanged unittest-based suite. `pytest.ini` limits discovery to owned tests,
+uses strict configuration, and disables unrelated third-party plugin autoload.
+
+The five baseline capabilities are explicitly required so removing a command
+cannot silently turn a required check into a skip. Optional performance,
+release, and unimplemented integration lanes are not fabricated. Foundry does
+not own the two nested Cargo workspaces: `bun run check:ci:native` and their
+native workflows validate them with the declared 1.85.1/1.91.0 toolchains.
+Neither local audit command modifies CI billing, branch rules, or publishing.

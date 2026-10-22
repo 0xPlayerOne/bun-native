@@ -43,13 +43,13 @@ sequences are unsigned 32-bit integers; IDs increase and are never reused within
 a connection. Exhaustion requires a new connection, not wrapping identifiers.
 Only OPEN (a bounded ASCII sink name) and DATA (binary) carry bodies.
 
-| Operation | Meaning |
-| --- | --- |
-| OPEN / OPENED | Request and acknowledge a named lossless sink. |
-| DATA / ACK | Deliver one numbered chunk; ACK includes exactly its consumed byte count. |
-| CLOSE / CLOSED | Complete after prior writes and sink finalization. |
-| CANCEL | Abort one stream. In-flight application effects cannot be rolled back. |
-| ERROR | Fixed error code without exception text, paths, credentials or stack traces. |
+| Operation      | Meaning                                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| OPEN / OPENED  | Request and acknowledge a named lossless sink.                               |
+| DATA / ACK     | Deliver one numbered chunk; ACK includes exactly its consumed byte count.    |
+| CLOSE / CLOSED | Complete after prior writes and sink finalization.                           |
+| CANCEL         | Abort one stream. In-flight application effects cannot be rolled back.       |
+| ERROR          | Fixed error code without exception text, paths, credentials or stack traces. |
 
 Version 1 uses **one outstanding chunk per stream**. `write` resolves only after
 both transport handoff and the matching consumer ACK, never just `postMessage`.

@@ -49,3 +49,11 @@ Earlier, superseded progress/validation snapshots live under `history/`:
 [M2 reference/release increment](history/validation-m2-reference-release.md).
 Their old status statements describe their original checkpoint; use the current
 completion reports and issue tracker for present status.
+
+## Bun-native developer tooling
+
+[Bun-native tooling](bun-tooling.md) documents the qualified checker, bounded file reads,
+concurrent builds, measured results and retained security boundaries.
+
+[Formatting](formatting.md) documents the repository-wide Oxfmt gate and the
+separate Python/Rust contributor formatters.

@@ -1,14 +1,17 @@
 """Pure inspector tests; mocked loaders never stand in for browser qualification."""
+
 import hashlib
 import importlib.util
-from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("cef_identity", ROOT / "scripts/probe_cef_identity.py")
+SPEC = importlib.util.spec_from_file_location(
+    "cef_identity", ROOT / "scripts/probe_cef_identity.py"
+)
 module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(module)
 
@@ -45,21 +48,27 @@ class IdentityTests(unittest.TestCase):
             loader.assert_not_called()
 
     def test_missing_export(self):
-        with patch.object(module.ctypes, "CDLL", return_value=SimpleNamespace()):
-            with self.assertRaises(AttributeError):
-                module.inspect(self.path, self.digest)
+        with (
+            patch.object(module.ctypes, "CDLL", return_value=SimpleNamespace()),
+            self.assertRaises(AttributeError),
+        ):
+            module.inspect(self.path, self.digest)
 
     def test_negative_component(self):
         self.parts[7] = -1
-        with patch.object(module.ctypes, "CDLL", return_value=self.library()):
-            with self.assertRaises(ValueError):
-                module.inspect(self.path, self.digest)
+        with (
+            patch.object(module.ctypes, "CDLL", return_value=self.library()),
+            self.assertRaises(ValueError),
+        ):
+            module.inspect(self.path, self.digest)
 
     def test_zero_major(self):
         self.parts[4] = 0
-        with patch.object(module.ctypes, "CDLL", return_value=self.library()):
-            with self.assertRaises(ValueError):
-                module.inspect(self.path, self.digest)
+        with (
+            patch.object(module.ctypes, "CDLL", return_value=self.library()),
+            self.assertRaises(ValueError),
+        ):
+            module.inspect(self.path, self.digest)
 
     def test_link_is_rejected(self):
         link = self.path.with_name("link")
@@ -72,15 +81,22 @@ class IdentityTests(unittest.TestCase):
             if index == 0:
                 self.path.write_bytes(b"changed")
             return self.parts[index]
-        with patch.object(module.ctypes, "CDLL", return_value=SimpleNamespace(cef_version_info=version)):
-            with self.assertRaises(ValueError):
-                module.inspect(self.path, self.digest)
+
+        with (
+            patch.object(
+                module.ctypes, "CDLL", return_value=SimpleNamespace(cef_version_info=version)
+            ),
+            self.assertRaises(ValueError),
+        ):
+            module.inspect(self.path, self.digest)
 
     def test_invalid_full_version(self):
         for full in (b"unsafe\ntext", b"x" * 257):
-            with patch.object(module.ctypes, "CDLL", return_value=self.library(full)):
-                with self.assertRaises(ValueError):
-                    module.inspect(self.path, self.digest)
+            with (
+                patch.object(module.ctypes, "CDLL", return_value=self.library(full)),
+                self.assertRaises(ValueError),
+            ):
+                module.inspect(self.path, self.digest)
 
 
 if __name__ == "__main__":

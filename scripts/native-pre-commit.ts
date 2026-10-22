@@ -10,6 +10,11 @@ const root = resolve(import.meta.dir, '..')
 export function nativeManifests(files: readonly string[]): string[] {
   const manifests = new Set<string>()
   for (const file of files) {
+    if (file === 'rust-toolchain.toml') manifests.add('native/Cargo.toml')
+    if (file === '.cargo/config.toml') {
+      manifests.add('native/Cargo.toml')
+      manifests.add('native/cef-host/Cargo.toml')
+    }
     if (!/\.rs$|(?:^|\/)Cargo\.(?:toml|lock)$/.test(file)) continue
     if (file.startsWith('native/cef-host/')) manifests.add('native/cef-host/Cargo.toml')
     else if (file.startsWith('native/')) manifests.add('native/Cargo.toml')
@@ -20,13 +25,20 @@ export function nativeManifests(files: readonly string[]): string[] {
 export function nativeCommands(files: readonly string[], directory: string): GateCommand[] {
   return nativeManifests(files).flatMap((manifest) => [
     {
-      command: ['cargo', '+1.91.0', 'fmt', '--manifest-path', manifest, '--check'],
+      command: [
+        'cargo',
+        manifest.includes('cef-host') ? '+1.91.0' : '+1.85.1',
+        'fmt',
+        '--manifest-path',
+        manifest,
+        '--check',
+      ],
       cwd: directory,
     },
     {
       command: [
         'cargo',
-        '+1.91.0',
+        manifest.includes('cef-host') ? '+1.91.0' : '+1.85.1',
         'clippy',
         '--locked',
         '--manifest-path',

@@ -287,6 +287,39 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   await chmod(hook, 0o755)
   const bug = resolve(root, '.github/ISSUE_TEMPLATE/bug_report.yml')
   await writeFile(bug, customizeBugReport(await readFile(bug, 'utf8')))
+  // Normalize only Foundry-owned output, not application source or historical evidence.
+  const formatPaths = [
+    '.github',
+    'AGENTS.md',
+    '.oxfmtrc.json',
+    '.oxlintrc.json',
+    'ruff.toml',
+    'release-please-config.json',
+    '.release-please-manifest.json',
+    'docs/EXTENSIONS.md',
+  ]
+  const existing: string[] = []
+  for (const name of formatPaths) {
+    const info = await lstat(resolve(root, name)).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined
+      throw error
+    })
+    if (info?.isSymbolicLink()) throw new Error('Linked formatter output is not supported: ' + name)
+    if (info) existing.push(name)
+  }
+  const formatter = Bun.spawn(
+    [
+      process.execPath,
+      '--bun',
+      'oxfmt',
+      '--config',
+      resolve(root, '.oxfmtrc.json'),
+      '--write',
+      ...existing,
+    ],
+    { cwd: root, stdout: 'inherit', stderr: 'inherit' }
+  )
+  if (await formatter.exited) throw new Error('Code Foundry output formatting failed')
   await verifyFoundryState(root)
   console.log(
     `Bunly overlay verified: .github layout, dependency manifests, Bun hook, and ${config['billing_paused'] ? 'paused-by-default' : 'variable-controlled'} CI jobs.`

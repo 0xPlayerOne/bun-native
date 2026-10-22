@@ -1,10 +1,19 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { runReleaseWorkflow } from '../benchmarks/lib/release-workflow.ts';
-const [planPath, workspace, destination] = process.argv.slice(2);
-if (!planPath || !workspace || !destination) throw new Error('Usage: bun scripts/qualify-release-stages.ts <trusted-plan.json> <private-workspace> <report.json>');
-const output = resolve(destination); await mkdir(dirname(output), { recursive: true });
-const report = await runReleaseWorkflow(JSON.parse(await readFile(planPath, 'utf8')), { workspace, output: output + '.commands' });
-await writeFile(output, JSON.stringify(report, null, 2) + '\n');
-console.log(JSON.stringify({ passed: report.passed, fullStageCoverage: report.fullStageCoverage, output }));
-if (!report.passed) process.exitCode = 1;
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { runReleaseWorkflow } from '../benchmarks/lib/release-workflow.ts'
+const [planPath, workspace, destination] = process.argv.slice(2)
+if (!planPath || !workspace || !destination)
+  throw new Error(
+    'Usage: bun scripts/qualify-release-stages.ts <trusted-plan.json> <private-workspace> <report.json>'
+  )
+const output = resolve(destination)
+await mkdir(dirname(output), { recursive: true })
+const report = await runReleaseWorkflow(JSON.parse(await readFile(planPath, 'utf8')), {
+  workspace,
+  output: output + '.commands',
+})
+await writeFile(output, JSON.stringify(report, null, 2) + '\n')
+console.log(
+  JSON.stringify({ passed: report.passed, fullStageCoverage: report.fullStageCoverage, output })
+)
+if (!report.passed) process.exitCode = 1

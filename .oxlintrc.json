@@ -4,11 +4,7 @@
     "correctness": "error",
     "suspicious": "off"
   },
-  "ignorePatterns": [
-    "node_modules/**",
-    "packages/*/dist/**",
-    "examples/*/dist/**"
-  ],
+  "ignorePatterns": ["node_modules/**", "packages/*/dist/**", "examples/*/dist/**"],
   "rules": {
     "no-debugger": "error",
     "no-console": "off"
