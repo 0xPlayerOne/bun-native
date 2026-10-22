@@ -97,3 +97,40 @@ Historical evidence and existing lockfiles remain untouched. No dependency,
 compiler, CEF or packaged-Bun version changes. CI billing stays paused; this round
 uses local macOS validation and does not claim fresh Windows/Linux execution.
 M4 and M5 integration/security acceptance remain with their roadmap owners.
+
+## Executed closeout
+
+Clean implementation commit `20a3c22227659c5c94943446405409044befdf3b` passes the final,
+uninstrumented macOS arm64 prebuilt matrix: all 11 cases, 100 lifecycle cycles,
+zero forbidden development-origin requests, and all four actual backend,
+backend-tree, renderer and GPU fault cases. The application was freshly prepared
+and locally ad-hoc signed; no production identity was used. Source identity was
+clean before and after execution. The final reports contain no observed orphan,
+cleanup survivor, timeout or output overflow. Local portable validation passes
+550 Bun tests, 145 Python tests and all 23 checker comparisons. Foundry audit,
+workflow syntax, both native workspaces and normal commit gates also pass.
+
+A first local preparation mistake omitted application resources and failed before
+launch; its report remains a failure. After preparation, an intermittent helper
+outliving the observer's 500 ms grace also failed explicitly. An independent
+baseline comparison reproduced that failure and identified Chromium's intentional
+`code-sign-clone-cleanup` process. The updated diagnostic and final uninstrumented
+runs pass, but that does not establish the general absence of intermittent
+post-exit cleanup. [Follow-up #88](https://github.com/0xPlayerOne/bunly/issues/88) tracks precise classification
+and bounded completion accounting. The observer, deadlines, sandbox and native
+host were **not** weakened or changed to obtain passing results. The original
+updated failure did not record the helper's role; the positive role identification
+comes from the separate baseline diagnostic, not a rewritten old report.
+
+Both Cargo lock audits and the complete Python requirements audit report no known
+findings. The final Git history secret scan passes with only the existing exact
+historical-digest exclusions. Fresh root/benchmark Bun audit requests timed out;
+a bounded direct bulk-advisory request also timed out despite the registry's HEAD
+endpoint responding. Their fresh JavaScript advisory status is **unverified**,
+not clean. Existing dependency versions and lockfiles are unchanged.
+
+Two actual Foundry sync passes leave all 484 checked source/configuration files
+unchanged; 85 pre-existing evidence/lock files match the baseline byte-for-byte.
+Raw local validation, failed attempts and comparison reports remain in ignored
+`.bunly/stream-audit/` and their original per-run directories. The final source
+revision adds only this execution record, not a new runtime change.
