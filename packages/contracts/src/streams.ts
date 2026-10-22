@@ -442,7 +442,7 @@ export class BinaryStreamReceiver {
     entry.credit = false
     if (frame.kind === 'data') s.sequence = frame.sequence
     // Own just the declared chunk, never its larger backing allocation.
-    const chunk = frame.kind === 'data' ? frame.body.slice() : undefined
+    const chunk = frame.kind === 'data' ? new Uint8Array(frame.body) : undefined
     this.#consume(entry, chunk)
   }
   #consume(entry: Receiving, chunk: Uint8Array | undefined): void {

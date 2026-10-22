@@ -65,7 +65,7 @@ export function rpcMessagePort(
         const owned =
           packet.byteOffset === 0 && packet.byteLength === packet.buffer.byteLength
             ? packet
-            : packet.slice()
+            : new Uint8Array(packet)
         try {
           port.postMessage({ kind: 'packet', id, packet: owned }, [owned.buffer])
         } catch {
