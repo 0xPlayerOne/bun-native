@@ -24,7 +24,7 @@ export class NativeTransport {
   readonly #output: Writable
   readonly #pending = new Map<number, Pending>()
   readonly #listeners = new Set<(event: NativeEvent) => void>()
-  readonly #abandoned = new Set<number>()
+  readonly #abandoned = new Map<number, ReturnType<typeof setTimeout>>()
   #next = 0
   #closed = false
   #queuedBytes = 0
@@ -65,66 +65,83 @@ export class NativeTransport {
       this.#listeners.delete(listener)
     }
   }
-  async call(
+  call(
     operation: string,
     args: Record<string, unknown> = {},
     signal?: AbortSignal,
     timeoutMs = this.#requestTimeoutMs
   ): Promise<unknown> {
-    if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
-    if (this.#closed || !this.#ready) throw new Error('Native transport is not ready')
-    if (this.#pending.size >= 128 || this.#abandoned.size >= 128)
-      throw new Error('Native request capacity exceeded')
-    if (
-      !Number.isFinite(timeoutMs) ||
-      timeoutMs <= 0 ||
-      timeoutMs > 30000 ||
-      !/^[a-z][a-z.]{0,63}$/.test(operation)
-    )
-      throw new Error('Invalid native request')
-    if (this.#next >= Number.MAX_SAFE_INTEGER) throw new Error('Native request identity exhausted')
-    const id = this.#next + 1
-    const bytes = Buffer.from(JSON.stringify({ v: 1, id, op: operation, args }) + '\n')
-    if (bytes.length > 65536 || this.#queuedBytes + bytes.length > 1024 * 1024)
-      throw new Error('Native output capacity exceeded')
-    this.#next = id
-    return new Promise((resolve, reject) => {
-      const abort = () => {
-        const pending = this.#pending.get(id)
-        if (!pending) return
-        this.#pending.delete(id)
-        clearTimeout(pending.timer)
-        pending.removeAbort()
-        this.#abandoned.add(id)
-        reject(
-          signal?.reason instanceof Error
-            ? signal.reason
-            : new DOMException('Aborted', 'AbortError')
-        )
-      }
-      // A deadline does not prove the native operation never ran. Retire the
-      // connection rather than lose ownership of an unacknowledged created view.
-      const timer = setTimeout(
-        () => this.fail(new Error(`Native request deadline: ${operation}`)),
-        timeoutMs
+    try {
+      if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
+      if (this.#closed || !this.#ready) throw new Error('Native transport is not ready')
+      if (this.#pending.size + this.#abandoned.size >= 128)
+        throw new Error('Native request capacity exceeded')
+      if (
+        typeof operation !== 'string' ||
+        !Number.isFinite(timeoutMs) ||
+        timeoutMs <= 0 ||
+        timeoutMs > 30000 ||
+        !/^[a-z][a-z.]{0,63}$/.test(operation)
       )
-      this.#pending.set(id, {
-        resolve,
-        reject,
-        timer,
-        removeAbort: () => signal?.removeEventListener('abort', abort),
-      })
-      signal?.addEventListener('abort', abort, { once: true })
-      this.#queuedBytes += bytes.length
-      try {
-        this.#output.write(bytes, (error) => {
-          this.#queuedBytes = Math.max(0, this.#queuedBytes - bytes.length)
-          if (error) this.fail(error)
+        throw new Error('Invalid native request')
+      // Snapshot arguments before allocating an identity: toJSON can reenter this transport.
+      const serialized = JSON.stringify(args)
+      if (typeof serialized !== 'string' || !serialized.startsWith('{'))
+        throw new Error('Invalid native request arguments')
+      if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
+      if (this.#closed || !this.#ready) throw new Error('Native transport is not ready')
+      if (this.#pending.size + this.#abandoned.size >= 128)
+        throw new Error('Native request capacity exceeded')
+      if (this.#next >= Number.MAX_SAFE_INTEGER)
+        throw new Error('Native request identity exhausted')
+      const id = this.#next + 1
+      // The operation grammar above contains no JSON metacharacters.
+      const json = `{"v":1,"id":${id},"op":"${operation}","args":${serialized}}\n`
+      const length = Buffer.byteLength(json)
+      if (length > 65536 || this.#queuedBytes + length > 1024 * 1024)
+        throw new Error('Native output capacity exceeded')
+      const bytes = Buffer.from(json)
+      this.#next = id
+      return new Promise((resolve, reject) => {
+        const abort = () => {
+          const pending = this.#pending.get(id)
+          if (!pending) return
+          this.#pending.delete(id)
+          pending.removeAbort()
+          // Cancellation does not acknowledge native side effects. Keep the original deadline.
+          this.#abandoned.set(id, pending.timer)
+          reject(
+            signal?.reason instanceof Error
+              ? signal.reason
+              : new DOMException('Aborted', 'AbortError')
+          )
+        }
+        // A deadline does not prove the native operation never ran. Retire the
+        // connection rather than lose ownership of an unacknowledged created view.
+        const timer = setTimeout(
+          () => this.fail(new Error(`Native request deadline: ${operation}`)),
+          timeoutMs
+        )
+        this.#pending.set(id, {
+          resolve,
+          reject,
+          timer,
+          removeAbort: () => signal?.removeEventListener('abort', abort),
         })
-      } catch (error) {
-        this.fail(error)
-      }
-    })
+        signal?.addEventListener('abort', abort, { once: true })
+        this.#queuedBytes += bytes.length
+        try {
+          this.#output.write(bytes, (error) => {
+            this.#queuedBytes = Math.max(0, this.#queuedBytes - bytes.length)
+            if (error) this.fail(error)
+          })
+        } catch (error) {
+          this.fail(error)
+        }
+      })
+    } catch (error) {
+      return Promise.reject(error)
+    }
   }
   diagnostics() {
     return {
@@ -150,6 +167,7 @@ export class NativeTransport {
       pending.reject(error)
     }
     this.#pending.clear()
+    for (const timer of this.#abandoned.values()) clearTimeout(timer)
     this.#abandoned.clear()
     this.#listeners.clear()
     this.#queuedBytes = 0
@@ -175,7 +193,10 @@ export class NativeTransport {
             const line = buffered.slice(0, end)
             buffered = buffered.slice(end + 1)
             if (Buffer.byteLength(line) > 65535) throw new Error('Native input frame exceeds limit')
-            this.#receive(object(JSON.parse(line)))
+            const completed = this.#receive(object(JSON.parse(line)))
+            // Publish resolved ownership before processing the next native lifecycle event.
+            // call() returns the actual pending promise, not an extra async adoption layer.
+            if (completed) await Promise.resolve()
             if (this.#closed) return
             if (++processed % 32 === 0) await new Promise<void>((resolve) => setImmediate(resolve))
           }
@@ -192,7 +213,7 @@ export class NativeTransport {
       this.fail(error)
     }
   }
-  #receive(frame: Record<string, unknown>): void {
+  #receive(frame: Record<string, unknown>): boolean {
     if (frame['v'] !== 1) throw new Error('Native protocol version mismatch')
     if (typeof frame['event'] === 'string') {
       if (
@@ -203,8 +224,9 @@ export class NativeTransport {
           (!Number.isSafeInteger(frame['target']) || Number(frame['target']) <= 0))
       )
         throw new Error('Invalid native event')
-      if (frame['data'] !== undefined && frame['data'] !== null) object(frame['data'])
-      const event = frame as unknown as NativeEvent
+      if (frame['data'] !== undefined && frame['data'] !== null)
+        Object.freeze(object(frame['data']))
+      const event = Object.freeze(frame) as unknown as NativeEvent
       if (event.event === 'ready') {
         if (this.#ready || event.abi !== 1) throw new Error('Native readiness/ABI mismatch')
         if (
@@ -221,7 +243,8 @@ export class NativeTransport {
         this.#ready = true
         this.#resolveReady(event)
       } else if (!this.#ready) throw new Error('Native event before readiness')
-      for (const listener of this.#listeners) {
+      for (const listener of Array.from(this.#listeners)) {
+        if (!this.#listeners.has(listener)) continue
         try {
           listener(event)
         } catch {
@@ -229,7 +252,7 @@ export class NativeTransport {
         }
       }
       if (event.event === 'shutdown') this.#finish(null)
-      return
+      return event.event === 'ready'
     }
     const id = frame['id']
     if (
@@ -242,7 +265,12 @@ export class NativeTransport {
       throw new Error('Invalid native response')
     if (!frame['ok'] && (typeof frame['error'] !== 'string' || !frame['error'].length))
       throw new Error('Invalid native error response')
-    if (this.#abandoned.delete(Number(id))) return
+    const abandoned = this.#abandoned.get(Number(id))
+    if (abandoned !== undefined) {
+      clearTimeout(abandoned)
+      this.#abandoned.delete(Number(id))
+      return false
+    }
     const pending = this.#pending.get(Number(id))
     if (!pending) throw new Error('Unexpected or duplicate native response')
     this.#pending.delete(Number(id))
@@ -250,5 +278,6 @@ export class NativeTransport {
     pending.removeAbort()
     if (frame['ok']) pending.resolve(frame['value'])
     else pending.reject(new Error(String(frame['error'])))
+    return true
   }
 }

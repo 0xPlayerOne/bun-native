@@ -68,6 +68,10 @@ export class CefBackend implements BrowserBackend {
   })
   readonly #transport: NativeTransport
   readonly #registry = new Registry()
+  // Native IDs are lookup keys only; public operations still validate opaque registry handles.
+  readonly #native = new Map<number, Handle<ResourceKind>>()
+  readonly #windowViews = new WeakMap<WindowHandle, Set<ViewHandle>>()
+  readonly #sessionViews = new WeakMap<SessionHandle, Set<ViewHandle>>()
   readonly #listeners = new Set<(event: RuntimeEvent) => void>()
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
@@ -78,11 +82,22 @@ export class CefBackend implements BrowserBackend {
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
-    transport.onEvent((event) => this.#event(event))
+    transport.onEvent((event) => {
+      try {
+        this.#event(event)
+      } catch (error) {
+        transport.fail(error)
+      }
+    })
     this.closed = transport.closed.then(() => {
       this.#disposed = true
       for (const kind of ['view', 'window', 'session'] as const)
-        for (const handle of this.#registry.handles(kind)) this.#registry.dispose(handle, kind)
+        for (const handle of this.#registry.handles(kind)) {
+          this.#windowViews.delete(handle as WindowHandle)
+          this.#sessionViews.delete(handle as SessionHandle)
+          this.#registry.dispose(handle, kind)
+        }
+      this.#native.clear()
       this.#listeners.clear()
       this.#observers.clear()
       this.#partitions.clear()
@@ -93,7 +108,31 @@ export class CefBackend implements BrowserBackend {
   #active(): void {
     if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
   }
+  #createdId(value: unknown): number {
+    try {
+      return nativeId(value)
+    } catch (error) {
+      // An unaddressable creation cannot be safely left running in the native host.
+      this.#transport.fail(error)
+      throw error
+    }
+  }
+  #remember<K extends ResourceKind, T extends NativeResource>(kind: K, value: T): Handle<K> {
+    if (this.#native.has(value.native)) {
+      const error = new Error('Duplicate live native resource identity')
+      this.#transport.fail(error)
+      throw error
+    }
+    const handle = this.#registry.create(kind, value)
+    this.#native.set(value.native, handle)
+    return handle
+  }
   #emit(event: RuntimeEvent): void {
+    if (event.type === 'navigated') {
+      Object.freeze(event.state.trust)
+      Object.freeze(event.state)
+    }
+    Object.freeze(event)
     for (const listener of Array.from(this.#listeners)) {
       if (!this.#listeners.has(listener)) continue
       try {
@@ -105,28 +144,30 @@ export class CefBackend implements BrowserBackend {
   }
   async createSession(options: SessionOptions): Promise<SessionHandle> {
     this.#active()
+    const { partition, persistence } = options
     if (
-      !['ephemeral', 'persistent'].includes(options.persistence) ||
-      !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(options.partition)
+      !['ephemeral', 'persistent'].includes(persistence) ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(partition)
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
-    if (options.persistence !== 'ephemeral') unsupported('session.persistent')
-    if (this.#partitions.has(options.partition))
+    if (persistence !== 'ephemeral') unsupported('session.persistent')
+    if (this.#partitions.has(partition))
       throw new BunlyError('INVALID_ARGUMENT', 'Partition already has an owner')
-    this.#partitions.add(options.partition)
+    this.#partitions.add(partition)
     try {
-      const native = nativeId(
+      const native = this.#createdId(
         await this.#transport.call('session.create', {
-          persistence: options.persistence,
-          partition: options.partition,
+          persistence,
+          partition,
         })
       )
       this.#active()
-      const handle = this.#registry.create('session', { native, partition: options.partition })
+      const handle = this.#remember('session', { native, partition })
+      this.#sessionViews.set(handle, new Set())
       this.#emit({ type: 'created', resource: handle })
       return handle
     } catch (error) {
-      this.#partitions.delete(options.partition)
+      this.#partitions.delete(partition)
       throw error
     }
   }
@@ -139,19 +180,21 @@ export class CefBackend implements BrowserBackend {
       options.title.includes('\0')
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid window title')
-    const native = nativeId(
+    const native = this.#createdId(
       await this.#transport.call('window.create', { title: options.title, ...options.bounds })
     )
     this.#active()
-    const handle = this.#registry.create('window', { native })
+    const handle = this.#remember('window', { native })
+    this.#windowViews.set(handle, new Set())
     this.#emit({ type: 'created', resource: handle })
     return handle
   }
   async createView(options: ViewOptions): Promise<ViewHandle> {
     this.#active()
-    const window = this.#registry.get<'window', NativeResource>(options.window, 'window')
-    const session = this.#registry.get<'session', NativeResource>(options.session, 'session')
-    if (this.#closing.has(options.window) || this.#closing.has(options.session))
+    const { window: windowHandle, session: sessionHandle } = options
+    const window = this.#registry.get<'window', NativeResource>(windowHandle, 'window')
+    const session = this.#registry.get<'session', NativeResource>(sessionHandle, 'session')
+    if (this.#closing.has(windowHandle) || this.#closing.has(sessionHandle))
       throw new BunlyError('DISPOSED', 'Window is closing')
     const url = normalizeUrl(options.url)
     if (options.trust.kind !== 'application' && options.trust.kind !== 'remote')
@@ -167,7 +210,7 @@ export class CefBackend implements BrowserBackend {
         'Application origin must explicitly match the initial document'
       )
     const trust: ViewTrust = Object.freeze({ ...options.trust })
-    const native = nativeId(
+    const native = this.#createdId(
       await this.#transport.call('view.create', {
         window: window.native,
         session: session.native,
@@ -176,21 +219,23 @@ export class CefBackend implements BrowserBackend {
     )
     try {
       this.#active()
-      this.#registry.get(options.window, 'window')
-      this.#registry.get(options.session, 'session')
-      if (this.#closing.has(options.window) || this.#closing.has(options.session))
+      this.#registry.get(windowHandle, 'window')
+      this.#registry.get(sessionHandle, 'session')
+      if (this.#closing.has(windowHandle) || this.#closing.has(sessionHandle))
         throw new BunlyError('DISPOSED', 'View owner is closing')
     } catch (error) {
       if (!this.#disposed)
         await this.#transport.call('view.dispose', { id: native }).catch(() => {})
       throw error
     }
-    const handle = this.#registry.create('view', {
+    const handle = this.#remember('view', {
       native,
-      window: options.window,
-      session: options.session,
+      window: windowHandle,
+      session: sessionHandle,
       state: { url, documentId: randomUUID(), trust },
     } satisfies ViewResource)
+    this.#windowViews.get(windowHandle)!.add(handle)
+    this.#sessionViews.get(sessionHandle)!.add(handle)
     this.#emit({ type: 'created', resource: handle })
     return handle
   }
@@ -215,6 +260,7 @@ export class CefBackend implements BrowserBackend {
   }
   async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
     this.#active()
+    if (typeof visible !== 'boolean') throw new BunlyError('INVALID_ARGUMENT', 'Invalid visibility')
     if (this.#closing.has(window)) throw new BunlyError('DISPOSED', 'Window is closing')
     const { native } = this.#registry.get<'window', NativeResource>(window, 'window')
     await this.#transport.call(visible ? 'window.show' : 'window.hide', { id: native })
@@ -260,28 +306,38 @@ export class CefBackend implements BrowserBackend {
     return this.#disposeResource(window, 'window', 'window.close', () => this.#dropWindow(window))
   }
   #dropWindow(window: WindowHandle): void {
-    // Revoke parent identity first; child-disposal listeners may reenter createView.
-    if (!this.#registry.dispose(window, 'window')) return
-    for (const view of this.#registry.handles('view'))
-      if (this.#registry.get<'view', ViewResource>(view, 'view').window === window)
-        this.#dropView(view)
+    if (this.#registry.isDisposed(window, 'window')) return
+    const { native } = this.#registry.get<'window', NativeResource>(window, 'window')
+    const children = this.#windowViews.get(window)
+    // Revoke parent identity before callbacks, and avoid scanning unrelated windows/views.
+    this.#registry.dispose(window, 'window')
+    this.#native.delete(native)
+    this.#windowViews.delete(window)
+    if (children) for (const view of children) this.#dropView(view)
     this.#emit({ type: 'disposed', resource: window })
   }
   #dropView(view: ViewHandle): void {
-    if (this.#registry.dispose(view, 'view')) this.#emit({ type: 'disposed', resource: view })
+    if (this.#registry.isDisposed(view, 'view')) return
+    const { native, window, session } = this.#registry.get<'view', ViewResource>(view, 'view')
+    this.#registry.dispose(view, 'view')
+    this.#native.delete(native)
+    this.#windowViews.get(window)?.delete(view)
+    this.#sessionViews.get(session)?.delete(view)
+    this.#emit({ type: 'disposed', resource: view })
   }
   async disposeView(view: ViewHandle): Promise<void> {
     return this.#disposeResource(view, 'view', 'view.dispose', () => this.#dropView(view))
   }
   async disposeSession(session: SessionHandle): Promise<void> {
     if (this.#registry.isDisposed(session, 'session')) return
-    const { partition } = this.#registry.get<'session', SessionResource>(session, 'session')
-    for (const view of this.#registry.handles('view'))
-      if (this.#registry.get<'view', ViewResource>(view, 'view').session === session)
-        throw new BunlyError('RESOURCE_IN_USE', 'Session has live views')
+    const { partition, native } = this.#registry.get<'session', SessionResource>(session, 'session')
+    if (this.#sessionViews.get(session)?.size)
+      throw new BunlyError('RESOURCE_IN_USE', 'Session has live views')
     return this.#disposeResource(session, 'session', 'session.dispose', () => {
       if (this.#registry.dispose(session, 'session')) {
         this.#partitions.delete(partition)
+        this.#native.delete(native)
+        this.#sessionViews.delete(session)
         this.#emit({ type: 'disposed', resource: session })
       }
     })
@@ -336,9 +392,9 @@ export class CefBackend implements BrowserBackend {
   }
   diagnostics(): Diagnostics {
     return {
-      windows: this.#registry.handles('window').length,
-      views: this.#registry.handles('view').length,
-      sessions: this.#registry.handles('session').length,
+      windows: this.#registry.count('window'),
+      views: this.#registry.count('view'),
+      sessions: this.#registry.count('session'),
       listeners: this.#listeners.size + this.#observers.size,
       listenerErrors: this.#listenerErrors,
     }
@@ -360,24 +416,13 @@ export class CefBackend implements BrowserBackend {
     return this.#shutdown
   }
   #event(event: NativeEvent): void {
-    const window = this.#registry
-      .handles('window')
-      .find(
-        (handle) =>
-          this.#registry.get<'window', NativeResource>(handle, 'window').native === event.target
-      )
-    const view = this.#registry
-      .handles('view')
-      .find(
-        (handle) => this.#registry.get<'view', ViewResource>(handle, 'view').native === event.target
-      )
+    const handle = event.target === undefined ? undefined : this.#native.get(event.target)
+    const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
+    const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
     if (event.event === 'window.closed' && window) this.#dropWindow(window)
     else if (event.event === 'view.closed' && view) this.#dropView(view)
-    else if (
-      view &&
-      (event.event === 'view.navigating' || event.event === 'view.loaded') &&
-      typeof event.data?.['url'] === 'string'
-    ) {
+    else if (view && (event.event === 'view.navigating' || event.event === 'view.loaded')) {
+      if (typeof event.data?.['url'] !== 'string') throw new Error('Missing native navigation URL')
       const resource = this.#registry.get<'view', ViewResource>(view, 'view')
       const url = normalizeUrl(event.data['url'])
       const trust =

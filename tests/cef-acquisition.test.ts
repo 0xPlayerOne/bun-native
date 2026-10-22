@@ -551,3 +551,69 @@ test('strict umask does not corrupt signed directory permissions', async () =>
     expect(await child.exited, diagnostics).toBe(0)
     expect((await lstat(join(root, manifest.archive.sha256, 'resources'))).mode & 0o777).toBe(0o755)
   }))
+
+test('warm shared runtime leases admit another consumer without waiting for the first app to exit', async () =>
+  temp(async (root) => {
+    const o = options(root)
+    const initial = await resolveCefRuntime(o)
+    await withCefRuntime(o, async (first) => {
+      await withCefRuntime({ ...o, offline: true, timeoutMs: 500 }, async (second) => {
+        expect(second).toBe(first)
+        expect(second).toBe(initial.directory)
+        await expect(removeCefRuntime({ ...o, timeoutMs: 30 })).rejects.toThrow()
+      })
+      await expect(removeCefRuntime({ ...o, timeoutMs: 30 })).rejects.toThrow()
+    })
+    await removeCefRuntime(o)
+  }))
+
+test('download setup failure cancels and unlocks its acquired response body', async () =>
+  temp(async (root) => {
+    const f = fixture()
+    let cancelled = false
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        cancel() {
+          cancelled = true
+        },
+      })
+    )
+    await expect(
+      resolveCefRuntime({
+        ...options(root, f),
+        fetcher: async () => {
+          const { readdir } = await import('node:fs/promises')
+          const stage = (await readdir(root)).find((name) => name.startsWith('.cef-'))!
+          await writeFile(join(root, stage, 'runtime.tar.gz'), 'force exclusive-open failure')
+          return response
+        },
+      })
+    ).rejects.toThrow('EEXIST')
+    expect(cancelled).toBe(true)
+    expect(response.body!.locked).toBe(false)
+  }))
+
+test('warm leased reuse still rejects tampering and invalid options, and releases after callback failure', async () =>
+  temp(async (root) => {
+    const o = options(root)
+    const initial = await resolveCefRuntime(o)
+    for (const reserveBytes of [-1, NaN, Infinity]) {
+      await expect(withCefRuntime({ ...o, reserveBytes }, async () => 'unused')).rejects.toThrow(
+        'reserve'
+      )
+    }
+    await expect(
+      withCefRuntime(o, async () => {
+        throw new Error('consumer failed')
+      })
+    ).rejects.toThrow('consumer failed')
+    await writeFile(join(initial.directory, 'host'), 'evil')
+    let called = false
+    await expect(
+      withCefRuntime({ ...o, offline: true }, async () => {
+        called = true
+      })
+    ).rejects.toThrow('Corrupt runtime')
+    expect(called).toBe(false)
+    await removeCefRuntime(o)
+  }))

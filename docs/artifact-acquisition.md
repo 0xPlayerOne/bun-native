@@ -2,7 +2,7 @@
 
 Bounded verification and fail-closed cache reuse for the shared artifact resolver.
 
-**Status:** Shared resolver increment for M3 issue #16; not full CEF acquisition qualification.
+**Status:** Maintained M1 probe resolver. M3 full-runtime acquisition is complete for its declared profiles; see [CEF runtime acceptance](m3-runtime-acceptance.md) and [M3 completion](m3-completion.md).
 **Scope:** `packages/artifacts`, the trusted-local-config CLI, and acquisition regression tests.
 
 ## Current archive boundary
@@ -11,8 +11,8 @@ This increment deliberately retains the existing signed `host-probe` / `backend:
 identity and restricted, uncompressed USTAR profile (64 MiB maximum). It does **not**
 accept a CEF distribution under a probe identity, raise the size cap, install an
 engine at application launch, or replace the native contributor build's CEF downloader.
-Full CEF distributions require a separately qualified large-archive/bundle profile,
-exact CEF/helper/native version wiring, and framework-resource/link handling.
+Full CEF distributions use the separately qualified large-archive/bundle profile in
+`cef-cache.ts`, with exact CEF/helper/native identity and framework-resource/link handling.
 
 ## Verification and bounded I/O
 
@@ -57,9 +57,10 @@ cancellation attempt stage cleanup, lock-handle closure, and lock removal indepe
 Cleanup failures are surfaced, together with any acquisition failure. Cancelling a
 lock waiter never removes the current owner's lock.
 
-Abrupt process death or power loss may still leave a lock/stage. Automatic stale-lock
-reclamation and concurrent-safe cleanup commands remain open under #16; a timeout is
-not proof that another owner is dead, and live locks are never stolen based on age.
+Abrupt process death or power loss may still leave a probe lock/stage. This small-probe
+API does not reclaim such locks: a timeout is not proof that another owner is dead.
+The separate full-CEF cache uses kernel-released locks, shared usage leases and
+exclusive cleanup; do not confuse its completed M3 behavior with this older probe profile.
 Atomic rename here is a publication boundary, not a claim of full power-loss durability.
 
 ## Read-only inspection
@@ -87,10 +88,10 @@ and read-only inspection. Existing signature/checksum/archive and offline tests 
 Run `bun test tests/artifacts.test.ts tests/artifact-acquisition.test.ts` and `bun run check`.
 
 The disk-space regression forces an impossible reserve before download; it is not a
-real quota/full-disk write test. Full CEF extraction, signed distribution integration,
-process-crash recovery, quota/interruption fault injection, cache-clean commands, and
-release key distribution remain unqualified by this increment. Do not close #16 based
-on these portable tests alone.
+real quota/full-disk write test. These probe tests do not establish full CEF, release
+key distribution, or power-loss durability. Full-runtime extraction, crash-released
+locks, offline use and cleanup have their own M3 evidence; production distribution
+and update recovery remain M8 work.
 
 API references: Node.js file-system documentation (`fs.StatFs` and `FileHandle.read`)
 and Bun's `node:fs/promises.statfs` reference. The implementation uses only the existing

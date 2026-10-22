@@ -132,6 +132,7 @@ export class MockBackend implements BrowserBackend {
     // This also validates identity before any dependent resource is mutated.
     if (!this.#registry.dispose(window, 'window')) return
     for (const view of this.#registry.handles('view')) {
+      if (this.#registry.isDisposed(view, 'view')) continue
       if (this.#registry.get<'view', ViewRecord>(view, 'view').window === window)
         await this.disposeView(view)
     }
@@ -201,9 +202,9 @@ export class MockBackend implements BrowserBackend {
   }
   diagnostics(): Diagnostics {
     return Object.freeze({
-      windows: this.#registry.handles('window').length,
-      views: this.#registry.handles('view').length,
-      sessions: this.#registry.handles('session').length,
+      windows: this.#registry.count('window'),
+      views: this.#registry.count('view'),
+      sessions: this.#registry.count('session'),
       listeners: this.#listeners.size,
       listenerErrors: this.#listenerErrors,
     })
@@ -230,6 +231,7 @@ export class MockBackend implements BrowserBackend {
     // Snapshot: subscriptions added during delivery begin with the next event.
     const listeners = Array.from(this.#listeners)
     for (const listener of listeners) {
+      if (!this.#listeners.has(listener)) continue
       try {
         listener(frozen)
       } catch {
