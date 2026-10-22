@@ -9,6 +9,11 @@ import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-
 import { nativeEvents } from '../benchmarks/lib/cef-acceptance.ts'
 import { nativeMeasurement, nativeSummary } from '../benchmarks/foundation/native-results.ts'
 import type { NativeMeasurement } from '../benchmarks/foundation/native-results.ts'
+import {
+  nativeStartupStages,
+  nativeStartupSummary,
+} from '../benchmarks/foundation/native-startup.ts'
+import type { NativeStartupStages } from '../benchmarks/foundation/native-startup.ts'
 import { profileOptions } from '../benchmarks/foundation/statistics.ts'
 import { schedule } from '../benchmarks/lib/statistics.ts'
 
@@ -47,6 +52,7 @@ const harnessPaths = [
   'benchmarks/foundation/native-backend.ts',
   'benchmarks/foundation/native-results.ts',
   'benchmarks/foundation/native-wire.ts',
+  'benchmarks/foundation/native-startup.ts',
   'benchmarks/foundation/statistics.ts',
   'benchmarks/lib/statistics.ts',
   'benchmarks/lib/observed-command.ts',
@@ -72,6 +78,7 @@ const trials: {
   warmup: boolean
   startupToReadyMs: number
   measurement: NativeMeasurement
+  startupStages: NativeStartupStages
   processReport: string
 }[] = []
 const attempts: {
@@ -105,6 +112,7 @@ const report: Record<string, unknown> = {
     'Full response content verification adds renderer WebCrypto work; request durations include content checks, which remain the same for baseline and candidate.',
     'macOS modifies and ad-hoc signs only the private copied fixture; no production signing or native compilation.',
     'Application views use ephemeral sessions; reused profile measures host/browser cache directory reuse, not persistent app sessions.',
+    'Startup stages are sequential fixture awaits and backend-entry to readiness receipt; they do not attribute native preflight or CEF initialization and need not sum to observer startup.',
     'Profiling does not qualify native renderer authority or choose an M4 transport.',
   ],
 }
@@ -268,12 +276,14 @@ try {
       )
         throw new Error('Invalid native readiness measurement')
       const measurement = nativeMeasurement(completed[0]!['measurement'])
+      const startupStages = nativeStartupStages(completed[0]!['startupStages'])
       attempt.passed = true
       trials.push({
         ...planned,
         warmup,
         startupToReadyMs: ready['elapsedMs'],
         measurement,
+        startupStages,
         processReport: basename(processPath),
       })
       await writeFile(output, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 })
@@ -283,10 +293,16 @@ try {
     }
   }
   report['summary'] = Object.fromEntries(
-    variants.map((variant) => [
-      variant,
-      nativeSummary(trials.filter((trial) => !trial.warmup && trial.variant === variant)),
-    ])
+    variants.map((variant) => {
+      const selected = trials.filter((trial) => !trial.warmup && trial.variant === variant)
+      return [
+        variant,
+        {
+          ...nativeSummary(selected),
+          startupStages: nativeStartupSummary(selected.map((trial) => trial.startupStages)),
+        },
+      ]
+    })
   )
   assert.deepEqual(
     await inventory(app),

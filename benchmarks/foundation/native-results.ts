@@ -17,6 +17,7 @@ export interface NativeMeasurement {
   readonly requestMs: Readonly<Record<AssetKind, readonly number[]>>
   readonly activeElapsedMs: number
   readonly syntheticInputEvents: 64
+  readonly assetSemantics: 9
 }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -39,7 +40,8 @@ export function nativeMeasurement(input: unknown): NativeMeasurement {
     value['kind'] !== 'result' ||
     value['schema'] !== 1 ||
     value['samples'] !== 32 ||
-    value['syntheticInputEvents'] !== 64
+    value['syntheticInputEvents'] !== 64 ||
+    value['assetSemantics'] !== 9
   )
     throw new Error('Incomplete native profile workload')
   for (const phase of ['idle', 'active']) {

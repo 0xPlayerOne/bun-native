@@ -25,9 +25,10 @@ export function encodeNativeTitle(input: unknown): string {
       background: [0, 32],
       activeElapsedUs: Math.round(value.activeElapsedMs * 1000),
       syntheticInputEvents: 64,
+      assetSemantics: 9,
     })
   // Every duration has at most eight decimal digits. With all 384 allowed samples,
-  // the complete ASCII title is at most 3610 bytes; retain the explicit guard.
+  // the complete ASCII title is at most 3629 bytes; retain the explicit guard.
   if (new TextEncoder().encode(title).byteLength > maxNativeTitleBytes)
     throw new Error('Oversized native profiling title')
   return title
@@ -49,7 +50,8 @@ export function decodeNativeTitle(title: string): NativeMeasurement {
     value['kind'] !== 'result' ||
     value['schema'] !== 1 ||
     value['samples'] !== 32 ||
-    value['syntheticInputEvents'] !== 64
+    value['syntheticInputEvents'] !== 64 ||
+    value['assetSemantics'] !== 9
   )
     throw new Error('Incomplete native profiling wire workload')
   const arrays = value['us']
@@ -105,5 +107,6 @@ export function decodeNativeTitle(title: string): NativeMeasurement {
     requestMs: Object.fromEntries(assetKinds.map((kind, index) => [kind, milliseconds[index + 4]])),
     activeElapsedMs: elapsed / 1000,
     syntheticInputEvents: 64,
+    assetSemantics: 9,
   })
 }

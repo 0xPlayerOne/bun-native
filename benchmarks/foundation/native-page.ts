@@ -35,6 +35,139 @@ async function probe(background?: () => boolean) {
   return { inputToFrameMs, frameIntervalsMs, backgroundSamples }
 }
 
+/** Real CEF response semantics, deliberately outside the measured interaction phase. */
+async function checkAssetSemantics() {
+  const bytes = PROFILE_ASSET_BYTES,
+    tag = '"' + PROFILE_ASSET_SHA256 + '"'
+  const selected = 'bytes 128-4223/' + bytes
+  const tail = 'bytes ' + (bytes - 4096) + '-' + (bytes - 1) + '/' + bytes
+  const cases: {
+    name: string
+    method?: 'HEAD'
+    headers: Record<string, string>
+    status: number
+    length: number | null
+    range: string | null
+    bodyBytes: number
+  }[] = [
+    {
+      name: 'nonzero-range',
+      headers: { Range: 'bytes=128-4223' },
+      status: 206,
+      length: 4096,
+      range: selected,
+      bodyBytes: 4096,
+    },
+    {
+      name: 'clipped-range',
+      headers: { Range: 'bytes=' + (bytes - 4096) + '-' + (bytes + 4096) },
+      status: 206,
+      length: 4096,
+      range: tail,
+      bodyBytes: 4096,
+    },
+    {
+      name: 'suffix-range',
+      headers: { Range: 'bytes=-4096' },
+      status: 206,
+      length: 4096,
+      range: tail,
+      bodyBytes: 4096,
+    },
+    {
+      name: 'unsatisfiable-range',
+      headers: { Range: 'bytes=' + bytes + '-' },
+      status: 416,
+      length: 0,
+      range: 'bytes */' + bytes,
+      bodyBytes: 0,
+    },
+    {
+      name: 'multiple-ranges',
+      headers: { Range: 'bytes=0-1,4-5' },
+      status: 200,
+      length: bytes,
+      range: null,
+      bodyBytes: bytes,
+    },
+    {
+      name: 'matching-if-range',
+      headers: { Range: 'bytes=128-4223', 'If-Range': tag },
+      status: 206,
+      length: 4096,
+      range: selected,
+      bodyBytes: 4096,
+    },
+    {
+      name: 'mismatched-if-range',
+      headers: { Range: 'bytes=128-4223', 'If-Range': '"fixture-mismatched-validator"' },
+      status: 200,
+      length: bytes,
+      range: null,
+      bodyBytes: bytes,
+    },
+    {
+      name: 'head-with-range',
+      method: 'HEAD',
+      headers: { Range: 'bytes=128-4223' },
+      status: 200,
+      length: bytes,
+      range: null,
+      bodyBytes: 0,
+    },
+    {
+      name: 'conditional-with-range',
+      headers: { Range: 'bytes=128-4223', 'If-None-Match': tag },
+      status: 304,
+      length: null,
+      range: null,
+      bodyBytes: 0,
+    },
+  ]
+  const controller = new AbortController()
+  const deadline = setTimeout(() => controller.abort(), 5000)
+  let completed = 0
+  try {
+    for (const item of cases) {
+      let stage = 'fetch'
+      try {
+        const response = await fetch('/asset.bin?semantic=' + item.name, {
+          method: item.method ?? 'GET',
+          headers: item.headers,
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        stage = 'headers'
+        if (response.status !== item.status)
+          throw new Error('Status ' + response.status + ', expected ' + item.status)
+        for (const [header, expected] of [
+          ['Content-Length', item.length === null ? null : String(item.length)],
+          ['Content-Range', item.range],
+          ['ETag', item.status === 416 ? null : tag],
+        ] as const) {
+          const actual = response.headers.get(header)
+          if (actual !== expected)
+            throw new Error(header + ' ' + String(actual) + ', expected ' + String(expected))
+        }
+        stage = 'body'
+        const body = new Uint8Array(await response.arrayBuffer())
+        if (body.length !== item.bodyBytes || body.some((byte) => byte !== 81))
+          throw new Error('Body bytes differ')
+        completed++
+      } catch (error: unknown) {
+        const detail = error instanceof Error ? error.name + ': ' + error.message : String(error)
+        throw new Error(
+          'Asset semantics ' + item.name + ' stage=' + stage + ': ' + detail.slice(0, 160)
+        )
+      }
+    }
+  } finally {
+    controller.abort()
+    clearTimeout(deadline)
+  }
+  return completed
+}
+
 async function main() {
   await frame()
   document.title = 'bunly.foundation:' + JSON.stringify({ kind: 'ready' })
@@ -69,6 +202,14 @@ async function main() {
         throw new Error('Unexpected asset status: ' + kind + '/' + response.status)
       if (response.headers.get('ETag') !== '"' + PROFILE_ASSET_SHA256 + '"')
         throw new Error('Asset validator changed')
+      const expectedLength =
+        kind === 'conditional' ? null : String(kind === 'range' ? 4096 : PROFILE_ASSET_BYTES)
+      const expectedRange = kind === 'range' ? 'bytes 128-4223/' + PROFILE_ASSET_BYTES : null
+      if (
+        response.headers.get('Content-Length') !== expectedLength ||
+        response.headers.get('Content-Range') !== expectedRange
+      )
+        throw new Error('Unexpected asset representation headers')
       stage = 'body'
       const body = new Uint8Array(await response.arrayBuffer())
       stage = 'length'
@@ -117,6 +258,8 @@ async function main() {
     active.backgroundSamples !== samples
   )
     throw new Error('Incomplete concurrent load or input workload')
+  const activeElapsedMs = rounded(performance.now() - activeStarted)
+  const assetSemantics = await checkAssetSemantics()
   input.removeEventListener('input', onInput)
   document.title = encodeNativeTitle({
     kind: 'result',
@@ -126,7 +269,8 @@ async function main() {
     active,
     counts,
     requestMs,
-    activeElapsedMs: rounded(performance.now() - activeStarted),
+    activeElapsedMs,
+    assetSemantics,
     syntheticInputEvents: inputEvents,
   })
 }

@@ -1,12 +1,15 @@
-"""Real process faults, not simulated PIDs. Run with python tests/process_observer_test.py."""
+"""Real process faults and deterministic boundary checks for the process observer."""
 
 import importlib.util
+import io
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -66,6 +69,98 @@ class ObserverTests(unittest.TestCase):
                 self.assertEqual(result["cancelled"], mode != "timeout")
                 if mode == "callback":
                     self.assertEqual(result["observerFailure"], "cleanup-observer-failed")
+
+    def test_stuck_qualified_helper_fails_after_its_bound_even_when_cleanup_succeeds(self):
+        # Provenance is independently tested by the clone policy suite. Supply
+        # an eligible identity here to exercise the observer's real deadline,
+        # accounting and cleanup order without spending three wall-clock seconds.
+        identity = (101, 2.0)
+        elapsed_ms = 0
+        killed_at = []
+
+        def sleep(seconds):
+            nonlocal elapsed_ms
+            elapsed_ms += round(seconds * 1000)
+
+        def kill():
+            killed_at.append(elapsed_ms)
+
+        helper = Mock()
+        helper.oneshot.side_effect = nullcontext
+        helper.cpu_times.return_value = SimpleNamespace(user=0.1, system=0.2)
+        helper.memory_info.return_value = SimpleNamespace(rss=4096)
+        helper.num_threads.return_value = 1
+        helper.num_ctx_switches.return_value = SimpleNamespace(voluntary=1, involuntary=0)
+        helper.num_fds.return_value = 3
+        helper.num_handles.return_value = 3
+        helper.name.return_value = "owned-fixture-helper"
+        helper.ppid.return_value = 1
+        helper.cmdline.return_value = ["--type=code-sign-clone-cleanup"]
+        helper.kill.side_effect = kill
+        root = Mock(pid=100)
+        root.create_time.return_value = 1.0
+        child = Mock(pid=100, stdout=io.BytesIO(), stderr=io.BytesIO())
+        child.poll.return_value = 0
+        child.wait.return_value = 0
+        tracker = Mock()
+        tracker.helpers = {identity: "abc123"}
+        tracker.recover_after_exit.return_value = [(identity, helper)]
+        tracker.grant.return_value = True
+        tracker.state.return_value = "running"
+        tracker.complete.return_value = False
+
+        def cleanup_report(elapsed):
+            self.assertFalse(killed_at, "Failure must be recorded before owned cleanup")
+            return {
+                "limitMs": 3000,
+                "elapsedMs": elapsed,
+                "passed": False,
+                "qualified": False,
+                "status": "failed",
+                "helpers": [{"pid": identity[0], "processExited": False, "completed": False}],
+                "observedClones": 1,
+            }
+
+        tracker.report.side_effect = cleanup_report
+        with (
+            patch.object(observer.sys, "platform", "darwin"),
+            patch("macos_clone_cleanup.for_command", return_value=tracker),
+            patch.object(observer.subprocess, "Popen", return_value=child),
+            patch.object(observer.psutil, "Process", return_value=root),
+            patch.object(
+                observer,
+                "owned_process",
+                side_effect=lambda candidate: (
+                    helper if candidate == identity and not killed_at else None
+                ),
+            ),
+            patch.object(
+                observer,
+                "time",
+                SimpleNamespace(monotonic=lambda: 100 + elapsed_ms / 1000, sleep=sleep),
+            ),
+        ):
+            result = observer.observe(["controlled-native-fixture"], interval=0.033)
+
+        self.assertEqual(len(killed_at), 1)
+        self.assertGreater(killed_at[0], 3000)
+        self.assertLess(killed_at[0], 3033)
+        helper.kill.assert_called_once()
+        child.kill.assert_not_called()
+        self.assertEqual(result["observedOrphans"], [identity[0]])
+        self.assertEqual(result["cleanupSurvivors"], [])
+        self.assertEqual(result["exitCode"], 0)
+        self.assertFalse(result["timedOut"])
+        self.assertFalse(result["cancelled"])
+        self.assertEqual(result["accounting"]["exitGraceMs"], 500)
+        cleanup = result["postExitCleanup"]
+        self.assertEqual(cleanup["limitMs"], 3000)
+        self.assertAlmostEqual(cleanup["elapsedMs"], killed_at[0])
+        self.assertEqual(cleanup["status"], "failed")
+        self.assertFalse(cleanup["passed"])
+        self.assertFalse(cleanup["qualified"])
+        self.assertGreater(cleanup["resources"]["sampleCount"], 0)
+        self.assertEqual(cleanup["resources"]["peakRssBytes"], 4096)
 
     def test_reused_pid_is_never_signalled_through_stale_ownership(self):
         foreign = Mock()

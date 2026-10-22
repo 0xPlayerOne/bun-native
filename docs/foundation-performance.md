@@ -99,13 +99,24 @@ verification worker. Full response validation also performs asynchronous
 WebCrypto hashing in the renderer; request durations include those content checks
 and their additional background work. Keep that fixture identical across comparisons.
 
+After the active phase ends and its elapsed time is captured, nine sequential
+requests validate the actual CEF response semantics: nonzero, clipped, suffix,
+unsatisfiable and multiple ranges; matching and mismatching `If-Range`; HEAD with
+a range; and a matching conditional request with a range. These checks require
+the exact status, `Content-Length`, `Content-Range`, ETag and response bytes. The
+ordinary measured HEAD lane also requires the full representation length despite
+its empty body. This separate validation phase has a five-second deadline and is
+excluded from the startup, idle, active and request-duration observations. All
+nine cases must complete before a measurement is accepted.
+
 The existing title-event path carries only this controlled fixture's diagnostics.
 Its single result is encoded as eight integer-microsecond arrays in fixed order:
 idle input/frame, active input/frame, then full/range/HEAD/conditional requests.
 The first four arrays contain exactly 32 samples each, and each request array
 contains 1–64 samples. Phase, schema, elapsed-time and input-count markers are
 validated before reconstructing the normal report. All 384 allowed samples at
-their maximum recorded duration produce a 3610-byte UTF-8 title, below the host's
+their maximum recorded duration produce a 3629-byte UTF-8 title, including the
+required nine-case semantics marker, below the host's
 existing 4096-byte limit; tests cover that bound and exact roundtrips at the
 fixture's 0.001 ms precision. Oversized or incomplete messages fail. This changes
 no native authority and requires no chunk sequencing or title-delivery timing
@@ -115,6 +126,16 @@ Startup is measured from the observer's monotonic timestamp immediately before
 host process creation to receipt of the controlled page's first animation-frame
 marker. Observer interpreter startup is outside that interval. This is a
 readiness marker, not proof of compositor presentation to a physical display.
+
+The controlled Bun backend also records five fixed startup-stage durations:
+session creation, window creation, view creation, focus, and backend entry to
+receipt of the first-frame title. The first four are the existing sequential
+awaits; no operations are reordered or overlapped. These numeric diagnostics
+travel in the existing backend result, with one observation per stage per trial.
+They exclude work before the application backend starts, including native
+preflight, CEF initialization and the protocol handshake. The readiness event
+can arrive before the focus await completes, so the stages need not sum to the
+readiness duration or the observer's overall startup measurement.
 
 The runner alternates paired launch conditions in seeded order:
 

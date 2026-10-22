@@ -1,8 +1,11 @@
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { decodeNativeTitle, maxNativeTitleBytes } from './native-wire.ts'
+import { nativeStartupStages } from './native-startup.ts'
 
 /** Existing title events carry fixture measurements only; they grant no renderer authority. */
 export default async function main(backend: CefBackend): Promise<void> {
+  const enteredAt = performance.now()
+  let backendToReadyMs: number | undefined
   let finish!: (value: Record<string, unknown>) => void
   let fail!: (error: Error) => void
   let ready = false
@@ -26,6 +29,7 @@ export default async function main(backend: CefBackend): Promise<void> {
       if (value['kind'] === 'ready') {
         if (ready) throw new Error('Duplicate readiness marker')
         ready = true
+        backendToReadyMs = performance.now() - enteredAt
         console.error(JSON.stringify({ event: 'bunly.foundation.ready' }))
       } else if (value['kind'] === 'result' && ready) finish({ ...decodeNativeTitle(title) })
       else if (value['kind'] === 'failure') throw new Error(String(value['message']))
@@ -35,26 +39,42 @@ export default async function main(backend: CefBackend): Promise<void> {
     }
   })
   try {
+    let stageStarted = performance.now()
     const session = await backend.createSession({
       partition: 'foundation-profile',
       persistence: 'ephemeral',
     })
+    const sessionMs = performance.now() - stageStarted
+    stageStarted = performance.now()
     const window = await backend.createWindow({
       title: 'Bunly foundation profile',
       bounds: { x: 0, y: 0, width: 800, height: 600 },
     })
+    const windowMs = performance.now() - stageStarted
+    stageStarted = performance.now()
     const view = await backend.createView({
       window,
       session,
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
+    const viewMs = performance.now() - stageStarted
+    stageStarted = performance.now()
     await backend.focusView(view)
+    const focusMs = performance.now() - stageStarted
     const measurement = await result
+    const startupStages = nativeStartupStages({
+      sessionMs,
+      windowMs,
+      viewMs,
+      focusMs,
+      backendToReadyMs,
+    })
     console.error(
       JSON.stringify({
         event: 'bunly.foundation.result',
         measurement,
+        startupStages,
         diagnostics: await backend.nativeDiagnostics(),
       })
     )

@@ -8,6 +8,11 @@ import {
   maxNativeTitleBytes,
   nativeTitlePrefix,
 } from '../benchmarks/foundation/native-wire.ts'
+import {
+  nativeStartupStageNames,
+  nativeStartupStages,
+  nativeStartupSummary,
+} from '../benchmarks/foundation/native-startup.ts'
 
 test('profile summaries retain raw observations and reproducible uncertainty', () => {
   const input = [9, 1, 5, 3, 7]
@@ -63,6 +68,7 @@ test('native profiling rejects incomplete, malformed, or unbounded renderer meas
     requestMs: { full: [10], range: [8], head: [7], conditional: [7] },
     activeElapsedMs: 600,
     syntheticInputEvents: 64,
+    assetSemantics: 9,
   }
   expect(nativeMeasurement(input)).toEqual(input)
   for (const candidate of [
@@ -70,6 +76,7 @@ test('native profiling rejects incomplete, malformed, or unbounded renderer meas
     {},
     { ...input, samples: 0 },
     { ...input, syntheticInputEvents: 0 },
+    { ...input, assetSemantics: 8 },
     { ...input, counts: { ...input.counts, conditional: 0 } },
     { ...input, counts: { ...input.counts, full: 65 } },
     { ...input, active: { ...input.active, inputToFrameMs: [18] } },
@@ -104,9 +111,10 @@ test('native title encoding preserves every sample within the existing host byte
     },
     activeElapsedMs: 15000,
     syntheticInputEvents: 64,
+    assetSemantics: 9,
   })
   const title = encodeNativeTitle(maximum)
-  expect(new TextEncoder().encode(title).byteLength).toBe(3610)
+  expect(new TextEncoder().encode(title).byteLength).toBe(3629)
   expect(new TextEncoder().encode(title).byteLength).toBeLessThanOrEqual(maxNativeTitleBytes)
   expect(decodeNativeTitle(title)).toEqual(maximum)
   const fractional = {
@@ -135,6 +143,7 @@ test('native title decoding rejects oversized, incomplete, and invalid bounded o
     background: [0, 32],
     activeElapsedUs: 600001,
     syntheticInputEvents: 64,
+    assetSemantics: 9,
   }
   const title = (value: unknown) => nativeTitlePrefix + JSON.stringify(value)
   expect(decodeNativeTitle(title(wire)).activeElapsedMs).toBe(600.001)
@@ -145,6 +154,7 @@ test('native title decoding rejects oversized, incomplete, and invalid bounded o
     { ...wire, schema: 2 },
     { ...wire, samples: 31 },
     { ...wire, syntheticInputEvents: 63 },
+    { ...wire, assetSemantics: 8 },
     { ...wire, us: wire.us.slice(1) },
     { ...wire, us: [...wire.us, [1]] },
     { ...wire, us: [[1], ...wire.us.slice(1)] },
@@ -163,4 +173,50 @@ test('native title decoding rejects oversized, incomplete, and invalid bounded o
   expect(() => decodeNativeTitle('other:' + JSON.stringify(wire))).toThrow()
   expect(() => decodeNativeTitle(title(wire).replace('16667', '1e400'))).toThrow()
   expect(() => decodeNativeTitle(title({ ...wire, padding: '🙂'.repeat(1024) }))).toThrow()
+})
+
+test('native startup stages require the complete fixed bounded numeric schema', () => {
+  const valid = {
+    sessionMs: 0,
+    windowMs: 2.25,
+    viewMs: 20.5,
+    focusMs: 0.125,
+    backendToReadyMs: 42.875,
+  }
+  expect(nativeStartupStages(valid)).toEqual(valid)
+  for (const input of [
+    null,
+    [],
+    {},
+    { ...valid, extra: 1 },
+    { ...valid, sessionMs: undefined },
+    ...[-1, Infinity, NaN, 15000.001, '1'].map((value) => ({ ...valid, backendToReadyMs: value })),
+  ])
+    expect(() => nativeStartupStages(input)).toThrow()
+  const missing: Partial<typeof valid> = { ...valid }
+  delete missing.focusMs
+  expect(() => nativeStartupStages(missing)).toThrow()
+})
+
+test('native startup summaries retain one observation per stage per completed launch', () => {
+  const first = nativeStartupStages({
+    sessionMs: 1,
+    windowMs: 2,
+    viewMs: 3,
+    focusMs: 4,
+    backendToReadyMs: 10,
+  })
+  const second = nativeStartupStages({
+    sessionMs: 2,
+    windowMs: 4,
+    viewMs: 6,
+    focusMs: 8,
+    backendToReadyMs: 20,
+  })
+  const summary = nativeStartupSummary([first, second])
+  for (const name of nativeStartupStageNames) {
+    expect(summary[name].count).toBe(2)
+    expect(summary[name].samples).toEqual([first[name], second[name]])
+    expect(summary[name].mean).toBe((first[name] + second[name]) / 2)
+  }
 })

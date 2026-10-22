@@ -8,7 +8,7 @@ Verified packaged responses without synchronous file work in the CEF scheme fact
 
 ## Request path
 
-The factory reads bounded request metadata and constructs a response plan from the
+The request adapter reads bounded metadata and constructs a response plan from the
 already loaded inventory. It does not stat, canonicalize, open, read, or hash the
 asset. Native UTF-16 values are checked before Bunly duplicates or converts them;
 oversized or invalid input produces a bounded error response.
@@ -26,6 +26,30 @@ explicitly posts its continuation to IO and protects cancellation from other
 threads as well. The wrappers delegate substantive work to ordinary functions.
 The small unsafe output-buffer conversion has an explicit CEF lifetime and size
 contract.
+
+### CEF range and HEAD handling
+
+The pinned CEF loader interprets `Range` before asking the resource handler for
+response headers. Passing the original header alongside an already selected body
+would make it skip those bytes again, and a clipped range could retain CEF's
+original requested length instead of the verified response length.
+
+For packaged requests, `OnBeforeResourceLoad` captures the original bounded plan
+before normalizing a nonempty or oversized `Range` to the internal value
+`bytes=0-`. CEF then skips zero bytes and uses the verified response's actual
+length. The URL, method, and other headers remain intact; requests without a range
+avoid this extra skip step. A fresh adapter belongs to each request. It consumes
+the captured plan once in `GetResourceHandler`, checking the original request
+identifier, URL, and method. Unexpected reuse or a mismatch fails closed instead
+of planning from the normalized header. This identifier correlates callbacks; it
+does not supply renderer authority.
+
+Both the browser request handler and the request-context fallback create the same
+adapter. The latter covers worker and `CefURLRequest` paths without a browser
+handler. For HEAD, an unknown CEF stream length (`-1`) preserves the explicit full
+representation `Content-Length`; the verified body remains empty and reads end
+immediately. A 304 keeps its existing empty body and omits `Content-Length` and
+`Content-Range`.
 
 ## Verification and retained bytes
 
@@ -78,6 +102,12 @@ startup errors after asset initialization as well as normal exit. On the normal
 path it is dropped before `cef::shutdown`. A posted task that runs after its
 request was cancelled cannot invoke its callback.
 
+Normal shutdown emits fixed JSON start/completion events for `process-stop`,
+`host-release`, `asset-service-stop`, and `cef-shutdown`. Each completion records
+the monotonic elapsed milliseconds. These eight bounded events identify the phase
+that has not returned during a failure, without changing the shutdown order or
+deadlines. They also support measuring the cost of each completed stage.
+
 The active registry is bounded independently of CEF wrapper lifetime. Completed
 handlers can remain reference-counted by CEF without accumulating admission debt.
 A bodyless response remains registered while its continuation is executing, even
@@ -98,6 +128,8 @@ reentrant cancellation, shutdown fencing, worker-buffer reuse, and cancellation
 under a deliberately stalled continuation consumer. Resource tests cover corruption
 outside a requested range, same-size corruption before 304/HEAD,
 file growth/truncation, bounded reads, malformed metadata, and path restrictions.
+Adapter tests cover single-use plan capture, request-key mismatches, and the CEF
+stream lengths used for HEAD, full and partial bodies, 304, and 416.
 
 Run the pinned native checks with:
 
@@ -108,6 +140,11 @@ cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-t
 
 These checks establish deterministic resource and integrity behavior. Actual
 packaged CEF execution is still required to qualify the asynchronous API boundary.
+The explicit native profile gates success on nine sequential range/conditional
+cases with exact status, header, and body checks. These include nonzero, clipped,
+suffix, unsatisfiable, and multiple ranges, matching and mismatching `If-Range`,
+HEAD with Range, and conditional 304 with Range. They run after the measured
+concurrent workload so their time is excluded from its performance samples.
 Concurrent-load responsiveness, cold/warm startup, and interaction latency are
 profiling measurements; no millisecond threshold or desktop speedup follows from
 the unit tests alone. Platform executions and raw measurements belong in the
@@ -118,7 +155,10 @@ selection remain separate acceptance work.
 
 - [Pinned cef-rs resource-handler wrapper](https://github.com/tauri-apps/cef-rs/blob/163744c8286d5f593d89202c7807751a7898db28/cef/src/wrapper/stream_resource_handler.rs).
 - [Pinned cef-rs string ownership and conversion](https://github.com/tauri-apps/cef-rs/blob/163744c8286d5f593d89202c7807751a7898db28/cef/src/string.rs).
-- [CEF ResourceHandler API](https://cef-builds.spotifycdn.com/docs/116.0/classCefResourceHandler.html), with the pinned headers/bindings taking precedence over this older online reference.
+- [Pinned CEF request interception and mutable-header ordering](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/net_service/resource_request_handler_wrapper.cc).
+- [Pinned CEF range parsing, skip, and response-length handling](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/net_service/stream_reader_url_loader.cc).
+- [Pinned CEF response-header construction](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/common/net_service/net_service_util.cc).
+- [Pinned CEF request-context fallback API](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/include/cef_request_context_handler.h).
 
 This change does not alter the documented private-installation filesystem threat
 model. Observed symlinks are rejected; hostile same-user filesystem races and
