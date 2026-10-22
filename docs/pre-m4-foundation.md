@@ -4,7 +4,23 @@ Bounded native asset work, lifecycle qualification, and maintained regression ch
 
 **Baseline:** Merged PR #87, `bdf9c9e10fa4d30a43931aee794186c09e83bcf1`.
 **Scope:** Packaged resource loading and qualification before native M4 renderer authority.
-**Status:** Implementation and local validation in progress; platform evidence is recorded separately.
+**Validation checkpoint:** Clean source `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`, 2026-10-22.
+**Status:** Local test suites and the four-case macOS helper qualification pass.
+The full native profile still fails the CEF shutdown watchdog; merge and M4 remain blocked.
+
+Draft PR #89 remains open. At the earlier push checkpoints, the billing-pause
+flag was true and checked hosted jobs were skipped. After the 17:14:19Z push,
+the repository variable changed to `CI_BILLING_PAUSED=false`, with an update
+timestamp of 2026-10-22T17:14:38Z; this pass did not change that setting. The
+kernel run still reported `in_progress`, but its only job was completed and
+skipped, with no assigned runner. Existing draft-PR guards also exclude the
+native/custom and validation jobs. Branch pushes can still run the lightweight
+draft-PR metadata workflow. The skipped jobs provide no hosted execution
+acceptance. The
+[local evidence record](../evidence/pre-m4-foundation-local.json) preserves source
+checkpoints, exact native binary identities, measurements, validation outcomes and
+earlier failures. The profiler signs its own private app copy, so its executable
+hash is recorded separately from the supplied native bundle.
 
 ## Native packaged assets
 
@@ -21,6 +37,44 @@ is released. Shutdown fences callbacks and joins workers before CEF shutdown, wi
 a guard covering early startup errors. The CEF wrappers delegate to ordinary Rust
 functions. See [native assets](native-assets.md) for invariants and precise limits.
 
+Actual CEF execution also exposed existing Range and HEAD adapter defects. CEF
+applies its own range handling before response headers; applying that to an
+already selected response body could fail or produce the wrong range length.
+The adapter now retains the original validated response plan while normalizing
+the internal range used by CEF for that selected body. HEAD preserves the full
+representation's `Content-Length` while returning an empty body. A maintained
+nine-case native gate checks nonzero, clipped, suffix, unsatisfiable and multiple
+ranges; matching and mismatching `If-Range`; HEAD with a range; and a matching
+conditional request with a range. Full-file verification still precedes every
+successful response, including HEAD and 304.
+
+### Native SHA measurement
+
+The native host enables the upstream `sha2` 0.10.9 `asm` feature on macOS arm64.
+This changes the SHA implementation used by the Rust host, without removing any
+file verification. It does not change the Bun authenticated-cache implementation.
+
+The controlled experiment used a Rust 1.91 release build on the M2 Max, hashing
+8 MiB of byte value 81 in 64 KiB chunks. Each process run had two warmups and
+20 measured hashes. The order was software, accelerated, accelerated, software;
+Python `hashlib` independently reproduced the expected SHA-256 digest.
+
+| Process run | SHA implementation | Mean hash time | Median hash time |
+| ----------- | ------------------ | -------------- | ---------------- |
+| 1           | Software           | 41.495 ms      | 40.454 ms        |
+| 2           | Accelerated        | 6.326 ms       | 6.233 ms         |
+| 3           | Accelerated        | 6.381 ms       | 6.290 ms         |
+| 4           | Software           | 42.495 ms      | 42.190 ms        |
+
+The equal-run means are 41.995 ms and 6.353 ms: 84.9% less elapsed hash time,
+or 6.61 times the throughput for this fixed hashing workload. These are
+in-memory hash measurements, with no file I/O, CEF, rendering, startup or
+shutdown measurement. They establish no desktop speedup. There are only two
+process runs per variant; the 20 serial samples within each run are not
+independent application trials. Raw samples and run order are retained
+without presenting a pooled 40-sample confidence interval as between-run
+uncertainty.
+
 ## macOS helper lifecycle
 
 The observer keeps the ordinary 500 ms descendant grace. A separate three-second
@@ -30,18 +84,54 @@ The last-sample race is covered by a bounded same-user libproc inventory using t
 kernel's retained original-parent unique ID. Process role text cannot establish
 ownership. Completion requires both helper exit and removal of the exact clone.
 
+Before launching the host, the observer snapshots at most 256 namespace entries.
+Every preexisting name remains excluded from that launch, even if its directory
+disappears and the suffix is reused. A stale clone sharing the main executable's
+inode cannot become evidence for a new run. Discovery continues after the first
+new clone, retains each directory identity, and bounds both current and cumulative
+inventories. Old clones and their failure records are neither deleted nor credited
+to current completion.
+
 The maintained qualifier runs prompt and deliberately delayed cleanup for retained
 baseline and current apps, with every attempt preserved. Policy tests reject stuck,
 substituted, foreign and misidentified helpers; post-exit resources remain visible.
-See [macOS clone cleanup](macos-clone-cleanup.md). The real Mac reparenting check
-and all 50 scoped lifecycle tests passed. Actual four-case qualification is recorded
-separately and is required before treating issue #88 as resolved.
+The corrected four-case qualifier passed all four combinations on their first
+attempts, including exact helper ownership, exit and clone removal:
+
+| App      | Cleanup case | Observed held interval | Cleanup elapsed after observed root exit |
+| -------- | ------------ | ---------------------- | ---------------------------------------- |
+| Baseline | Prompt       | None                   | 779.170 ms                               |
+| Baseline | Delayed      | 757.647 ms             | 831.298 ms                               |
+| Current  | Prompt       | None                   | 757.037 ms                               |
+| Current  | Delayed      | 756.032 ms             | 815.676 ms                               |
+
+The delayed injector suspends only the verified helper after completed root exit
+and reparenting. The held intervals are measured suspension times, not claims of
+that much additional cleanup latency: Chromium's polling sleep can elapse while
+the process is stopped. Earlier failed injections, stale-clone observations and
+native failures remain failure evidence. See [macOS clone cleanup](macos-clone-cleanup.md)
+for the proof and accounting limits. This successful helper matrix does not resolve
+the separate CEF shutdown watchdog failure.
 
 ## Maintained regression commands
 
 `bun run check:foundation` exercises deterministic ownership, queue and reservation
-bounds, cancellation and malformed input. Its 131 tests also run within normal
-validation. Python and Rust add native lifecycle and resource-invariant checks.
+bounds, cancellation and malformed input. Its 133 tests also run within normal
+validation. The latest local checkpoint recorded these successful test invocations:
+
+| Suite                             | Passing tests |
+| --------------------------------- | ------------- |
+| Bun tests                         | 571           |
+| Python tests                      | 199           |
+| Selected foundation tests         | 133           |
+| CEF Rust tests                    | 67            |
+| SHA regressions with `force-soft` | 2             |
+
+The selected foundation suite overlaps the ordinary Bun suite. The two
+`force-soft` executions repeat CEF digest regression cases under the software
+implementation. These counts must not be added as independent coverage. Python
+and Rust supply native lifecycle and resource-invariant checks. Test counts do
+not establish native acceptance or release quality.
 
 `bun run profile:foundation` preserves the message, structured RPC and cache
 workloads with raw observations, seeded order and distribution summaries.
@@ -51,10 +141,97 @@ CEF app under concurrent full, range, HEAD and conditional asset requests, inclu
 fresh/reused profile startup and idle/active synthetic input-to-frame observations.
 See [foundation performance](foundation-performance.md) for the methodology.
 
-These are descriptive measurements with bootstrap mean intervals, not timing gates.
+The preserved portable profile used Bun 1.4.3 and clean source
+`dcd204b4c42e161ffe5ba158f2cc287633727eb6`, with 15 measured samples and two
+warmups. All six workloads passed. Full verification of the synthetic 64 MiB
+cache had a 313.634 ms mean and a bootstrap mean 95% interval of
+292.298–333.119 ms. The 256-packet structured RPC decode workload had a
+38.863 ms mean and an interval of 36.075–42.328 ms. These are whole-workload
+timings including correctness checks, not desktop measurements. The earlier
+unpinned Bun 1.4.4 run remains separate diagnostic evidence. The separately
+instrumented CPU profile is retained without comparing its timings to the
+uninstrumented run. Neither portable result is a before-and-after comparison
+for the native Rust SHA feature.
+
+### Native qualification and shutdown diagnostics
+
+The evidence checkpoint contains ten native profiling invocations: six retained
+qualification records and four instrumented diagnostic records. Together they
+contain fourteen app-launch attempts and two preparation failures. All ten
+invocations failed to complete their planned profiling run. The table uses the
+suffix of each `foundation-native-*.json` record:
+
+| Record              | Retained app launches | Outcome                                                                                                                                                   |
+| ------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current-1`         | 0                     | Preparation failed because the supplied fixture lacked backend resources.                                                                                 |
+| `current-2`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
+| `current-3`         | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
+| `baseline-1`        | 1                     | First warmup failed; watchdog exit 2 was observed.                                                                                                        |
+| `current-4`         | 1                     | Asset and interaction checks completed; CEF shutdown reached the watchdog.                                                                                |
+| `current-5`         | 2                     | First warmup exited cleanly; second completed the workload and reached the watchdog.                                                                      |
+| `sampled-1`         | 5                     | Four app launches exited cleanly; the fifth completed the workload and reached the watchdog.                                                              |
+| `network-sampled-1` | 0                     | Preparation failed without a signing-observer report; no app trial occurred.                                                                              |
+| `network-sampled-2` | 1                     | First warmup completed the workload and reached the watchdog.                                                                                             |
+| `combined-1`        | 2                     | Fresh-profile warmup exited cleanly; reused-profile warmup completed the workload and reached the watchdog. Both late root captures had empty callgraphs. |
+
+Completed workloads in these later records include the four asset lanes, all nine
+response-semantics checks and all 32 active input observations with the required
+request overlap. An individual clean exit does not complete the full profiling
+run. The `sampled-1` diagnostic recorded completed CEF shutdown phases of 4.060,
+7.692, 8.182 and 9.853 seconds before its fifth launch failed. Those are observed
+durations under instrumentation, not an accepted performance distribution or
+evidence that sampling caused the delays. Earlier baseline and candidate range
+failures remain recorded and cannot serve as comparable native performance
+baselines.
+
+Captured host addresses, matching module disassembly and version-pinned source
+identify `BrowserProcessIOThread::ProcessHostCleanUp` waiting for the
+`network.mojom.NetworkService` utility process, with a configured ten-second
+timeout. This is an inference from the combined evidence; nearby exported symbol
+names alone do not identify the exact function. It identifies the wait at
+capture time; it does not establish that the wait occupied the entire watchdog
+interval or explain why the utility had not completed. In `network-sampled-2`,
+the sampling utility returned exit code zero but produced an image inventory
+without a call graph. That capture supplies no usable child stack. These
+diagnostics leave the shutdown cause unresolved.
+
+The final `combined-1` diagnostic retained two network-thread snapshots during
+the successful fresh-profile warmup and nine during the failed reused-profile
+warmup. The successful CEF shutdown phase took 6.605 seconds under instrumentation.
+The failed warmup's snapshots began 1.011–5.003 seconds after the observed CEF
+shutdown start and contained the same 14 thread identities. All 112 comparable
+adjacent per-thread CPU deltas were zero. The named network main thread and six
+foreground workers reported a waiting state at each snapshot. These are bounded
+counter and state observations, not proof of zero process work or a particular
+blocked operation. All nine collections finished before the late root sampler
+began at 6.027 seconds; no child sampler was launched.
+
+Subsequent metadata collection stopped because verified network identity was no
+longer available. That condition combines disappearance, ownership and executable
+mismatch; it does not independently attest an exit time. Both late root samples
+returned exit code zero and matched the expected target headers, but contained
+zero thread rows and zero frame rows. Neither supplies a usable late shutdown
+stack. The public record retains artifact lengths and hashes, aggregate thread
+observations and these limitations while omitting process identities and unique
+thread IDs.
+
+The combined diagnostic records its source checkout as dirty before and after
+the run because the evidence JSON was untracked. Its fingerprinted harness files
+were unchanged. The supplied native app still comes from the separately recorded
+clean `a3e6ee0e8f1065889980c90e0d5111d878ff05a8` checkpoint; the dirty diagnostic
+checkout is not relabeled as a clean qualification run.
+
+No startup or interaction distribution from these invocations is accepted.
+Captured timings remain diagnostic observations while shutdown qualification is
+incomplete.
+
+The maintained profiling suites report descriptive distributions and bootstrap
+mean intervals without timing gates.
 Fresh profiles do not establish OS cold-cache startup; synthetic DOM events do not
 establish hardware input or compositor presentation latency. M4 renderer authority
-and representative transport selection remain unfinished acceptance work.
+and representative transport selection remain unfinished acceptance work. Merge
+and progression into M4 remain blocked until the native shutdown failure is fixed
+and the complete native profile and shutdown qualification pass.
 
 ## Packaging integrity
 
@@ -116,8 +293,8 @@ Sources: [GitHub's Node 20 deprecation guidance](https://github.blog/changelog/2
 Fresh `bun audit --json` requests for the root, Electron adapter, Electrobun
 adapter and shared benchmark fixtures completed with exit code zero and empty
 advisory objects on 2026-10-22. The prior timed-out attempts remain historical
-unverified checks; the new results do not rewrite them. Application and benchmark
-lockfiles were not upgraded as part of this pass. An empty advisory result means
+unverified checks; the new results do not rewrite them. JavaScript application and
+benchmark lockfiles were not upgraded as part of this pass. An empty advisory result means
 no known findings from that check, not absence of vulnerabilities.
 
 Both locked Cargo dependency audits completed with zero reported vulnerabilities
