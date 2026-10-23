@@ -1,4 +1,6 @@
-use crate::{policy, process, rpc_authority, rpc_protocol as wire, scheme, session};
+use crate::{
+    capability_policy, policy, process, rpc_authority, rpc_protocol as wire, scheme, session,
+};
 use cef::*;
 use serde_json::{json, Value};
 use std::{
@@ -30,6 +32,8 @@ struct ViewRecord {
     create: u64,
     navigate: navigation::Navigation,
     close: Option<u64>,
+    navigation_in_progress: bool,
+    expected_document_url: String,
     rpc: rpc_authority::Authority,
     #[cfg(feature = "rpc-qualification")]
     previous_rpc: Option<wire::Identity>,
@@ -51,6 +55,7 @@ struct HostState {
     views: BTreeMap<u64, ViewRecord>,
     sessions: BTreeMap<u64, SessionRecord>,
     rpc_deliveries: rpc_authority::Deliveries,
+    policy: capability_policy::Policy,
 }
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
 fn number(value: &Value, key: &str) -> Result<u64, String> {
@@ -119,6 +124,7 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     };
     let (browser, requests) = STATE.with(|s| {
         let mut state = s.borrow_mut();
+        state.policy.close_view(id);
         #[cfg(feature = "rpc-qualification")]
         if let Some(view) = state.views.get_mut(&id) {
             view.previous_rpc = Some(binding.identity());
@@ -560,6 +566,7 @@ fn quit_on_ui() {
     bound_shutdown();
     let (windows, browsers, revocations) = STATE.with(|s| {
         let mut s = s.borrow_mut();
+        revoke_all_views(&mut s);
         let revocations = s
             .views
             .iter_mut()
@@ -1086,6 +1093,7 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
             .clone()
             .ok_or("View owner window unavailable")?;
         let owner_closing = owner.closing.is_some() || QUITTING.load(Ordering::SeqCst);
+        revoke_view(&mut state, id);
         let record = state.views.get_mut(&id).unwrap();
         record.close = Some(request);
         // Once TryCloseBrowser has accepted the parent close, the BrowserView
@@ -1108,6 +1116,81 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         drop(view);
     }
     Ok(())
+}
+
+fn begin_navigation(
+    state: &mut HostState,
+    view: u64,
+    expected_url: &str,
+) -> Result<(), &'static str> {
+    state.policy.navigation_started(view);
+    let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
+    record.navigation_in_progress = true;
+    record.expected_document_url = expected_url.to_owned();
+    Ok(())
+}
+
+fn revoke_window(state: &mut HostState, window: u64) {
+    for view in state
+        .views
+        .iter()
+        .filter_map(|(id, view)| (view.window == window).then_some(*id))
+        .collect::<Vec<_>>()
+    {
+        state.policy.close_view(view);
+    }
+}
+
+fn revoke_view(state: &mut HostState, view: u64) {
+    state.policy.close_view(view);
+}
+
+fn revoke_all_views(state: &mut HostState) {
+    for view in state.views.keys().copied().collect::<Vec<_>>() {
+        revoke_view(state, view);
+    }
+}
+
+fn current_ready_scope(
+    state: &HostState,
+    view: u64,
+) -> Result<capability_policy::DocumentScope, &'static str> {
+    let record = state.views.get(&view).ok_or("INVALID_HANDLE: view")?;
+    if record.close.is_some() || record.navigation_in_progress {
+        return Err("view has no ready native document authority");
+    }
+    state
+        .policy
+        .current_scope(view)
+        .filter(|scope| {
+            scope.document == record.rpc.document()
+                && Some(scope.generation) == record.rpc.generation()
+        })
+        .ok_or("view has no current native document authority")
+}
+
+fn captured_ready_scope(
+    state: &HostState,
+    view: u64,
+    captured: &capability_policy::DocumentScope,
+) -> Result<capability_policy::DocumentScope, &'static str> {
+    if captured.view != view {
+        return Err("captured policy scope does not match view");
+    }
+    let current = current_ready_scope(state, view)?;
+    if &current != captured {
+        return Err("captured policy scope is stale");
+    }
+    Ok(current)
+}
+
+fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String> {
+    capability_policy::decode_document_scope(
+        args.get("scope")
+            .cloned()
+            .ok_or("Missing captured policy scope")?,
+    )
+    .map_err(str::to_owned)
 }
 
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -1428,6 +1511,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         rpc: rpc_authority::Authority::new(id, url.clone(), approved_origin),
                         #[cfg(feature = "rpc-qualification")]
                         previous_rpc: None,
+                        navigation_in_progress: true,
+                        expected_document_url: url.clone(),
                     },
                 );
             });
@@ -1490,7 +1575,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     return Err("Browser not ready");
                 }
                 let revoked = r.rpc.explicit_navigation_start();
-                Ok::<_, &'static str>((r.navigate.request(request, url)?, revoked))
+                let start = r.navigate.request(request, url.clone())?;
+                begin_navigation(&mut s, id, &url)?;
+                Ok::<_, &'static str>((start, revoked))
             })?;
             revoke_renderer(id, revoked);
             if let Some(request) = start {
@@ -1512,6 +1599,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                             return Err("Window is closing");
                         }
                         r.closing = Some(request);
+                        revoke_window(&mut s, id);
                         Ok::<_, &str>(
                             s.views
                                 .iter_mut()
@@ -1643,6 +1731,148 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
             reply(request, Value::Null);
         }
+        #[cfg(feature = "rpc-qualification")]
+        "policy.qualification.activate" => {
+            // Contributor-only fixed synthetic activation, not a page API or a general
+            // input adapter. Real CEF user activation reaches OnBeforePopup;
+            // script-only window.open may be blocked before our handler runs.
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            let browser = STATE.with(|s| {
+                let state = s.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                if crate::PATHS
+                    .get()
+                    .and_then(|paths| paths.dev_origin.as_deref())
+                    != Some(scope.origin.as_str())
+                {
+                    return Err("Policy activation requires the explicit development fixture");
+                }
+                state
+                    .views
+                    .get(&id)
+                    .and_then(|view| view.browser.clone())
+                    .ok_or("Policy fixture browser unavailable")
+            })?;
+            let host = browser.host().ok_or("Policy fixture host unavailable")?;
+            let mut params = dictionary_value_create().ok_or("Policy fixture allocation failed")?;
+            params.set_string(
+                Some(&CefString::from("expression")),
+                Some(&CefString::from(
+                    "document.getElementById('bunly-policy-popup').click()",
+                )),
+            );
+            params.set_bool(Some(&CefString::from("userGesture")), 1);
+            // Private fixed evaluation on this owned fixture browser only. No
+            // debugging port, arbitrary expression or production test switch.
+            if host.execute_dev_tools_method(
+                0,
+                Some(&CefString::from("Runtime.evaluate")),
+                Some(&mut params),
+            ) <= 0
+            {
+                return Err("Policy fixture activation could not be scheduled".into());
+            }
+            reply(request, Value::Null);
+        }
+        "policy.scope" => {
+            let id = number(args, "id")?;
+            let scope = STATE.with(|s| current_ready_scope(&s.borrow(), id))?;
+            const MAX_SAFE_JAVASCRIPT_INTEGER: u64 = 9_007_199_254_740_991;
+            if scope.view > MAX_SAFE_JAVASCRIPT_INTEGER
+                || scope.session > MAX_SAFE_JAVASCRIPT_INTEGER
+                || scope.generation > MAX_SAFE_JAVASCRIPT_INTEGER
+            {
+                return Err("native policy scope exceeds exact transport bounds".into());
+            }
+            reply(
+                request,
+                serde_json::to_value(scope).map_err(|_| "Could not encode native policy scope")?,
+            );
+        }
+        "policy.native.grant" => {
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            STATE.with(|s| captured_ready_scope(&s.borrow(), id, &scope))?;
+            let capability = capability_policy::decode_native_capability(
+                args.get("capability")
+                    .cloned()
+                    .ok_or("Invalid capability")?,
+            )
+            .map_err(|_| "Invalid or unknown native capability")?;
+            // Canonicalization and filesystem inspection occur with no STATE borrow.
+            let capability = capability_policy::prepare_native_capability(capability)?;
+            STATE.with(|s| {
+                let mut s = s.borrow_mut();
+                captured_ready_scope(&s, id, &scope)?;
+                s.policy.grant_prepared_native(&scope, capability)
+            })?;
+            reply(request, Value::Null);
+        }
+        "policy.native.check" => {
+            let id = number(args, "id")?;
+            let captured = policy_scope(args)?;
+            let native_request = capability_policy::decode_native_request(
+                args.get("request")
+                    .cloned()
+                    .ok_or("Invalid native request")?,
+            )
+            .map_err(|_| "Invalid or unknown native request")?;
+            let (scope, grants) = STATE.with(|s| {
+                let s = s.borrow();
+                let scope = captured_ready_scope(&s, id, &captured)?;
+                let grants = s
+                    .policy
+                    .native_grants(&scope)
+                    .ok_or("document authority changed during authorization")?;
+                Ok::<_, &str>((scope, grants))
+            })?;
+            // Path/executable checks execute without holding STATE. M7 adapters are
+            // intentionally unavailable even when this authorization succeeds.
+            let decision = capability_policy::authorize_native_grants(
+                &grants,
+                &native_request,
+                capability_policy::AdapterAvailability::Unavailable,
+            );
+            if STATE.with(|s| captured_ready_scope(&s.borrow(), id, &scope).is_err()) {
+                return Err("PERMISSION_DENIED: document authority changed".into());
+            }
+            match decision {
+                capability_policy::GateDecision::Denied => {
+                    return Err("PERMISSION_DENIED: native capability scope mismatch".into())
+                }
+                capability_policy::GateDecision::Unavailable => {
+                    reply(request, json!({"status":"unavailable"}));
+                }
+                capability_policy::GateDecision::Authorized => {
+                    return Err("native adapter availability invariant violated".into())
+                }
+            }
+        }
+        "policy.browser.decision" => {
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            let permission =
+                capability_policy::BrowserCapability::from_name(string(args, "permission")?)
+                    .ok_or("Invalid or unknown browser capability")?;
+            let source = match string(args, "source")? {
+                "application-policy" => capability_policy::BrowserGrantSource::ApplicationPolicy,
+                "user-decision" => capability_policy::BrowserGrantSource::UserDecision,
+                _ => return Err("Invalid browser grant source".into()),
+            };
+            let allow = match string(args, "decision")? {
+                "granted" => true,
+                "denied" => false,
+                _ => return Err("Invalid browser decision".into()),
+            };
+            STATE.with(|s| {
+                let mut s = s.borrow_mut();
+                captured_ready_scope(&s, id, &scope)?;
+                s.policy
+                    .set_browser_decision(&scope, permission, source, allow)
+            })?;
+            reply(request, Value::Null);
+        }
         "diagnostics" => {
             let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
             reply(request, value);
@@ -1675,6 +1905,7 @@ wrap_window_delegate! {
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
             let (browsers, pending, revocations) = STATE.with(|s| { let mut s = s.borrow_mut();
                 if let Some(r) = s.windows.get_mut(&self.id) { r.closing.get_or_insert(0); }
+                revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
                 let pending = view_ids.iter().any(|id| s.views.get(id).is_some_and(|view| view.browser.is_none()));
@@ -1697,8 +1928,8 @@ wrap_browser_view_delegate! {
 wrap_client! {
     struct BunlyClient { id: u64 }
     impl Client {
-        fn permission_handler(&self) -> Option<PermissionHandler> { Some(DenyPermissions::new()) }
-        fn download_handler(&self) -> Option<DownloadHandler> { Some(DenyDownloads::new()) }
+        fn permission_handler(&self) -> Option<PermissionHandler> { Some(BunlyPermissions::new(self.id)) }
+        fn download_handler(&self) -> Option<DownloadHandler> { Some(BunlyDownloads::new(self.id)) }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> { Some(BunlyLife::new(self.id)) }
         fn load_handler(&self) -> Option<LoadHandler> { Some(BunlyLoad::new(self.id)) }
         fn display_handler(&self) -> Option<DisplayHandler> { Some(BunlyDisplay::new(self.id)) }
@@ -1714,6 +1945,16 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
         return;
     };
     let frame_id = CefString::from(&frame.identifier()).to_string();
+    STATE.with(|s| {
+        let mut state = s.borrow_mut();
+        if state
+            .policy
+            .current_scope(id)
+            .is_some_and(|scope| scope.main_frame == frame_id)
+        {
+            state.policy.navigation_started(id);
+        }
+    });
     let revoked = STATE.with(|s| {
         s.borrow_mut()
             .views
@@ -1737,15 +1978,26 @@ wrap_life_span_handler! {
             _target_url: Option<&CefString>, _target_frame_name: Option<&CefString>, _disposition: WindowOpenDisposition,
             _gesture: i32, _features: Option<&PopupFeatures>, _window_info: Option<&mut WindowInfo>,
             _client: Option<&mut Option<Client>>, _settings: Option<&mut BrowserSettings>,
-            _extra: Option<&mut Option<DictionaryValue>>, _no_access: Option<&mut i32>) -> i32 { 1 }
+            _extra: Option<&mut Option<DictionaryValue>>, _no_access: Option<&mut i32>) -> i32 {
+                event("policy.popup-denied", self.id, Value::Null);
+                i32::from(!capability_policy::allow_popup())
+            }
         fn on_after_created(&self, browser: Option<&mut Browser>) {
             let Some(browser) = browser else { return; };
-            let action = STATE.with(|s| { let mut s = s.borrow_mut();
+            let replacement_url = browser.main_frame().map(|frame| CefString::from(&frame.url()).to_string()).unwrap_or_default();
+            let owned_browser = browser.clone();
+            let (action, replacement_error) = STATE.with(|s| { let mut s = s.borrow_mut();
                 let closing = QUITTING.load(Ordering::SeqCst) || s.views.get(&self.id).is_none_or(|r| {
                     r.close.is_some() || s.windows.get(&r.window).is_none_or(|w| w.closing.is_some())
                 });
-                s.views.get_mut(&self.id).map(|r| { r.browser = Some(browser.clone()); let request = r.create; r.create = 0; (request, closing) })
+                let replacement = s.views.get(&self.id).is_some_and(|r| r.browser.is_some());
+                let replacement_error = if replacement {
+                    begin_navigation(&mut s, self.id, &replacement_url).err()
+                } else { None };
+                let action = s.views.get_mut(&self.id).map(|r| { r.browser = Some(owned_browser); let request = r.create; r.create = 0; (request, closing || replacement_error.is_some()) });
+                (action, replacement_error)
             });
+            if let Some(message) = replacement_error { fail(message); }
             match action {
                 Some((request, false)) => if request != 0 {
                     let document = STATE.with(|s| s.borrow().views.get(&self.id).map(|r| r.rpc.document().to_owned()));
@@ -1757,7 +2009,7 @@ wrap_life_span_handler! {
             }
         }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
-            let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id));
+            let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
             if let Some(mut record) = record {
                 revoke_renderer(self.id, record.rpc.revoke());
                 if record.create != 0 { error(record.create, "View closed before creation completed"); }
@@ -1786,13 +2038,41 @@ wrap_load_handler! {
                 if let Some((request, result)) = transition.completed {
                     match result { Ok(value) => reply(request, json!({"url":value.url,"status":value.status})), Err(message) => error(request, &message) }
                 }
-                if let Some(request) = transition.start { issue_navigation(self.id, request); }
+                if let Some(request) = transition.start {
+                    match STATE.with(|s| begin_navigation(&mut s.borrow_mut(), self.id, &request.url)) {
+                        Ok(()) => issue_navigation(self.id, request),
+                        Err(message) => { error(request.id, message); fail(message); }
+                    }
+                }
             }
         }
         fn on_load_end(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, status: i32) {
             if let Some(frame) = frame { if frame.is_main() != 0 && live_view(self.id) {
                 let url = CefString::from(&frame.url()).to_string();
-                STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.loaded(&url, status); } });
+                let frame_id = CefString::from(&frame.identifier()).to_string();
+                let origin = capability_policy::origin_for_url(&url);
+                let identity = STATE.with(|s| { let mut s = s.borrow_mut();
+                    s.views.get_mut(&self.id).and_then(|r| {
+                        r.navigate.loaded(&url, status);
+                        if !r.navigation_in_progress || r.expected_document_url != url { return None; }
+                        let generation = r.rpc.generation()?;
+                        origin.clone().map(|origin| capability_policy::DocumentScope {
+                            view: self.id, session: r.session, generation,
+                            main_frame: frame_id.clone(), document: r.rpc.document().to_owned(), origin,
+                        })
+                    })
+                });
+                // Parsing URLs and preparing scopes never holds the host registry.
+                let prepared = identity.and_then(|scope| capability_policy::prepare_document_scope(scope).ok());
+                STATE.with(|s| { let mut s = s.borrow_mut();
+                    let generation = s.views.get(&self.id).filter(|r| r.close.is_none() && r.navigation_in_progress && r.expected_document_url == url).and_then(|r| r.rpc.generation());
+                    if let Some(prepared) = prepared {
+                        if generation.is_some_and(|generation| prepared.matches(self.id, generation)) {
+                            let _ = s.policy.install_prepared_document(prepared);
+                        }
+                    }
+                    if generation.is_some() { if let Some(r) = s.views.get_mut(&self.id) { r.navigation_in_progress = false; } }
+                });
                 let document = STATE.with(|s| s.borrow().views.get(&self.id).map(|r| r.rpc.document().to_owned()));
                 if let Some(document) = document { event("view.loaded", self.id, json!({"url":url,"status":status,"documentId":document})); }
             } }
@@ -1801,6 +2081,7 @@ wrap_load_handler! {
             if frame.is_some_and(|f| f.is_main() != 0) && live_view(self.id) {
                 let message = text.map(|v| v.to_string()).unwrap_or_default();
                 let url = url.map(|v| v.to_string()).unwrap_or_default();
+                STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
                 let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.rpc.revoke()));
                 revoke_renderer(self.id, revoked);
                 STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.failed(&url, message.clone()); } });
@@ -1819,12 +2100,44 @@ wrap_display_handler! {
 wrap_request_handler! {
     struct BunlyRequest { id: u64 }
     impl RequestHandler {
+        fn on_document_available_in_main_frame(&self, browser: Option<&mut Browser>) {
+            let Some(frame) = browser.and_then(|browser| browser.main_frame()) else { return; };
+            let url = CefString::from(&frame.url()).to_string();
+            let transition = STATE.with(|s| {
+                let mut state = s.borrow_mut();
+                let replacement = state.views.get(&self.id).is_some_and(|r| r.close.is_none() && !r.navigation_in_progress);
+                if !replacement { return None; }
+                // document.open / replacement without a navigation callback must
+                // not preserve browser permission grants or a page RPC lease.
+                let old = state.views.get_mut(&self.id)?.rpc.explicit_navigation_start();
+                begin_navigation(&mut state, self.id, &url).ok()?;
+                let r = state.views.get(&self.id)?;
+                Some((old, r.rpc.document().to_owned()))
+            });
+            if let Some((old, document)) = transition {
+                revoke_renderer(self.id, old);
+                event("view.navigating", self.id, json!({"url":url,"documentId":document,"applicationTrust":false}));
+            }
+        }
+        fn on_open_urlfrom_tab(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
+            target_url: Option<&CefString>, _disposition: WindowOpenDisposition, _gesture: i32) -> i32 {
+            let scheme = target_url.and_then(|value| url::Url::parse(&value.to_string()).ok()).map(|url| url.scheme().to_owned());
+            event("policy.external-protocol-denied", self.id, json!({"scheme":scheme}));
+            i32::from(!scheme.as_deref().is_some_and(capability_policy::allow_external_protocol))
+        }
+        fn on_certificate_error(&self, _browser: Option<&mut Browser>, error: Errorcode,
+            _url: Option<&CefString>, _ssl: Option<&mut Sslinfo>, callback: Option<&mut Callback>) -> i32 {
+            let allow = capability_policy::allow_certificate_error(error.get_raw());
+            if !allow { event("policy.certificate-denied", self.id, json!({"error":error.get_raw()})); }
+            if let Some(callback) = callback { if allow { callback.cont(); } else { callback.cancel(); } } i32::from(!allow)
+        }
         // IO-thread callback: request policy is separate from UI-only host state.
         fn resource_request_handler(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
             _request: Option<&mut Request>, _navigation: i32, _download: i32, _initiator: Option<&CefString>,
             _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources()) }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }
+            STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
             let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.rpc.revoke()));
             revoke_renderer(self.id, revoked);
             cancel_navigation(self.id, "Renderer process terminated");
@@ -1838,36 +2151,257 @@ wrap_request_handler! {
         fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, redirect: i32) -> i32 {
             let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = checked_url(&url).is_err();
             if denied && frame.as_ref().is_some_and(|frame| frame.is_main() != 0) {
+                STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
                 let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|record| record.rpc.revoke()));
                 revoke_renderer(self.id, revoked);
             }
             if !denied && live_view(self.id) && frame.is_some_and(|f| f.is_main() != 0) {
-                let (revoked, document, application_trust) = STATE.with(|s| { let mut s = s.borrow_mut(); s.views.get_mut(&self.id).map(|r| {
-                    if redirect != 0 { r.navigate.redirect(&url); }
-                    let revoked = r.rpc.navigation_start(&url, redirect != 0);
-                    (revoked, r.rpc.document().to_owned(), r.rpc.application_trust())
-                }) }).unwrap_or((None, String::new(), false));
+                let (revoked, document, application_trust) = STATE.with(|s| { let mut s = s.borrow_mut();
+                    if begin_navigation(&mut s, self.id, &url).is_err() { return None; }
+                    s.views.get_mut(&self.id).map(|r| {
+                        if redirect != 0 { r.navigate.redirect(&url); }
+                        let revoked = r.rpc.navigation_start(&url, redirect != 0);
+                        (revoked, r.rpc.document().to_owned(), r.rpc.application_trust())
+                    })
+                }).unwrap_or((None, String::new(), false));
                 revoke_renderer(self.id, revoked);
                 event("view.navigating", self.id, json!({"url":url,"documentId":document,"applicationTrust":application_trust}));
             } i32::from(denied)
         }
     }
 }
-// Until user-authorized permission/download APIs are implemented, deny them natively.
 wrap_permission_handler! {
-    struct DenyPermissions;
+    struct BunlyPermissions { id: u64 }
     impl PermissionHandler {
-        fn on_request_media_access_permission(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
-            _origin: Option<&CefString>, _permissions: u32, callback: Option<&mut MediaAccessCallback>) -> i32 {
-            if let Some(callback) = callback { callback.cont(0); } 1
+        fn on_request_media_access_permission(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>,
+            origin: Option<&CefString>, permissions: u32, callback: Option<&mut MediaAccessCallback>) -> i32 {
+            let allow = frame.and_then(|frame| callback_scope(self.id, frame, origin)).is_some_and(|scope| {
+                media_capabilities(permissions).is_some_and(|caps| STATE.with(|s| caps.into_iter().all(|cap| s.borrow().policy.authorize_browser(&scope, cap).is_some())))
+            });
+            if !allow { event("policy.media-denied", self.id, json!({"permissions":permissions})); }
+            if let Some(callback) = callback { callback.cont(if allow { permissions } else { 0 }); } 1
         }
-        fn on_show_permission_prompt(&self, _browser: Option<&mut Browser>, _id: u64,
-            _origin: Option<&CefString>, _permissions: u32, callback: Option<&mut PermissionPromptCallback>) -> i32 {
+        fn on_show_permission_prompt(&self, browser: Option<&mut Browser>, _prompt: u64,
+            origin: Option<&CefString>, permissions: u32, callback: Option<&mut PermissionPromptCallback>) -> i32 {
+            let _ = (browser, origin, permissions);
+            // CEF supplies no requesting frame here. Origin equality cannot
+            // distinguish a same-origin child from the granted main document.
+            event("policy.permission-denied", self.id, json!({"permissions":permissions}));
             if let Some(callback) = callback { callback.cont(PermissionRequestResult::DENY); } 1
         }
     }
 }
 wrap_download_handler! {
-    struct DenyDownloads;
-    impl DownloadHandler { fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { 0 } }
+    struct BunlyDownloads { id: u64 }
+    impl DownloadHandler {
+        // Download destinations are an M7 adapter. A grant alone cannot make
+        // this available, and CEF default handling is never allowed to choose a path.
+        fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { event("policy.download-denied", self.id, Value::Null); 0 }
+    }
+}
+
+fn callback_scope(
+    id: u64,
+    frame: &mut Frame,
+    origin: Option<&CefString>,
+) -> Option<capability_policy::DocumentScope> {
+    if frame.is_main() == 0
+        || frame.is_valid() == 0
+        || RPC_STOPPED.load(Ordering::SeqCst)
+        || QUITTING.load(Ordering::SeqCst)
+    {
+        return None;
+    }
+    let frame_id = CefString::from(&frame.identifier()).to_string();
+    let requesting_origin = origin?.to_string();
+    STATE.with(|s| {
+        let s = s.borrow();
+        let current = current_ready_scope(&s, id).ok()?;
+        capability_policy::permission_callback_scope(
+            &current,
+            Some((&frame_id, true)),
+            &requesting_origin,
+        )
+    })
+}
+
+fn media_capabilities(bits: u32) -> Option<Vec<capability_policy::BrowserCapability>> {
+    let known = MediaAccessPermissionTypes::DEVICE_AUDIO_CAPTURE.get_raw()
+        | MediaAccessPermissionTypes::DEVICE_VIDEO_CAPTURE.get_raw()
+        | MediaAccessPermissionTypes::DESKTOP_AUDIO_CAPTURE.get_raw()
+        | MediaAccessPermissionTypes::DESKTOP_VIDEO_CAPTURE.get_raw();
+    if bits == 0 || bits & !known != 0 {
+        return None;
+    }
+    let mut result = Vec::new();
+    if bits & MediaAccessPermissionTypes::DEVICE_AUDIO_CAPTURE.get_raw() != 0 {
+        result.push(capability_policy::BrowserCapability::Microphone);
+    }
+    if bits & MediaAccessPermissionTypes::DEVICE_VIDEO_CAPTURE.get_raw() != 0 {
+        result.push(capability_policy::BrowserCapability::Camera);
+    }
+    if bits
+        & (MediaAccessPermissionTypes::DESKTOP_AUDIO_CAPTURE.get_raw()
+            | MediaAccessPermissionTypes::DESKTOP_VIDEO_CAPTURE.get_raw())
+        != 0
+    {
+        result.push(capability_policy::BrowserCapability::DisplayCapture);
+    }
+    Some(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state_with_view(view: u64, window: u64) -> (HostState, capability_policy::DocumentScope) {
+        let scope = capability_policy::DocumentScope {
+            view,
+            session: 3,
+            generation: 1,
+            main_frame: "main".into(),
+            document: format!("native-{view}-1"),
+            origin: "app://ui".into(),
+        };
+        let mut state = HostState::default();
+        state.views.insert(
+            view,
+            ViewRecord {
+                view: None,
+                browser: None,
+                window,
+                session: 3,
+                create: 0,
+                navigate: navigation::Navigation::default(),
+                close: None,
+                rpc: rpc_authority::Authority::new(
+                    view,
+                    "app://ui/index.html".into(),
+                    Some("app://ui".into()),
+                ),
+                #[cfg(feature = "rpc-qualification")]
+                previous_rpc: None,
+                navigation_in_progress: false,
+                expected_document_url: "app://ui/index.html".into(),
+            },
+        );
+        state.policy.install_document(scope.clone()).unwrap();
+        state
+            .policy
+            .grant_native(&scope, capability_policy::NativeCapability::ClipboardRead)
+            .unwrap();
+        (state, scope)
+    }
+
+    #[test]
+    fn captured_scope_requires_every_current_native_identity_field() {
+        let (mut state, current) = state_with_view(7, 11);
+        assert_eq!(
+            captured_ready_scope(&state, current.view, &current),
+            Ok(current.clone())
+        );
+        for stale in [
+            capability_policy::DocumentScope {
+                session: current.session + 1,
+                ..current.clone()
+            },
+            capability_policy::DocumentScope {
+                generation: current.generation + 1,
+                document: "document-2".into(),
+                ..current.clone()
+            },
+            capability_policy::DocumentScope {
+                main_frame: "replacement-main".into(),
+                ..current.clone()
+            },
+            capability_policy::DocumentScope {
+                document: "replacement-document".into(),
+                ..current.clone()
+            },
+            capability_policy::DocumentScope {
+                origin: "https://other.invalid".into(),
+                ..current.clone()
+            },
+        ] {
+            assert_eq!(
+                captured_ready_scope(&state, current.view, &stale),
+                Err("captured policy scope is stale")
+            );
+        }
+        assert_eq!(
+            captured_ready_scope(&state, current.view + 1, &current),
+            Err("captured policy scope does not match view")
+        );
+
+        let replacement = capability_policy::DocumentScope {
+            generation: current.generation + 1,
+            document: format!("native-{}-2", current.view),
+            ..current.clone()
+        };
+        state
+            .views
+            .get_mut(&current.view)
+            .unwrap()
+            .rpc
+            .explicit_navigation_start();
+        state.policy.install_document(replacement.clone()).unwrap();
+        assert_eq!(
+            state.views[&current.view].expected_document_url,
+            "app://ui/index.html"
+        );
+        assert_eq!(
+            captured_ready_scope(&state, current.view, &current),
+            Err("captured policy scope is stale")
+        );
+        assert_eq!(
+            captured_ready_scope(&state, replacement.view, &replacement),
+            Ok(replacement)
+        );
+    }
+
+    #[test]
+    fn trusted_navigation_and_window_close_revoke_before_native_entry() {
+        let (mut state, old) = state_with_view(7, 11);
+        begin_navigation(&mut state, old.view, "app://ui/next.html").unwrap();
+        assert!(state.policy.current_scope(old.view).is_none());
+        state
+            .views
+            .get_mut(&old.view)
+            .unwrap()
+            .rpc
+            .explicit_navigation_start();
+        assert_eq!(state.views[&old.view].rpc.generation(), Some(2));
+        assert!(state.views[&old.view].navigation_in_progress);
+
+        let replacement = capability_policy::DocumentScope {
+            generation: 2,
+            document: format!("native-{}-2", old.view),
+            ..old
+        };
+        state.policy.install_document(replacement.clone()).unwrap();
+        state
+            .views
+            .get_mut(&replacement.view)
+            .unwrap()
+            .navigation_in_progress = false;
+        revoke_window(&mut state, 11);
+        assert!(state.policy.current_scope(replacement.view).is_none());
+    }
+
+    #[test]
+    fn dispose_renderer_termination_and_quit_revocation_paths_are_synchronous() {
+        let (mut state, first) = state_with_view(7, 11);
+        revoke_view(&mut state, first.view);
+        assert!(state.policy.current_scope(first.view).is_none());
+
+        let (second_state, second) = state_with_view(8, 12);
+        state.views.extend(second_state.views);
+        state.policy.install_document(second.clone()).unwrap();
+        state
+            .policy
+            .grant_native(&second, capability_policy::NativeCapability::ClipboardRead)
+            .unwrap();
+        revoke_all_views(&mut state);
+        assert!(state.policy.current_scope(second.view).is_none());
+    }
 }

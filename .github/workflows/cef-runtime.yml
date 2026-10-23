@@ -245,9 +245,9 @@ jobs:
           bun scripts/build-cef-fixture.ts
           cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
-          cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release 2>&1 | tee .bunly/hosted-evidence/build.log
+          cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release 2>&1 | tee .bunly/hosted-evidence/build.log
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib 2>&1 | tee .bunly/hosted-evidence/native-tests.log
-          cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
+          cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
           python scripts/hosted_cef.py prepare
       - name: Execute unprivileged Linux or macOS qualification
         if: inputs.suite != 'portable' && runner.os != 'Windows'

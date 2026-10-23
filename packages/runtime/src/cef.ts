@@ -118,6 +118,59 @@ class CefRpcTransport implements RpcTransport {
     this.#closed = undefined
   }
 }
+export type NativeCapabilityGrant =
+  | { readonly name: 'file-read' | 'file-write' | 'download'; readonly root: string }
+  | {
+      readonly name: 'process-execute'
+      readonly executable: string
+      readonly arguments: readonly string[]
+    }
+  | {
+      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+    }
+  | { readonly name: 'external-url'; readonly origins: readonly string[] }
+
+export type NativeOperationRequest =
+  | { readonly name: 'file-read' | 'file-write' | 'download'; readonly path: string }
+  | {
+      readonly name: 'process-execute'
+      readonly executable: string
+      readonly arguments: readonly string[]
+    }
+  | {
+      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+    }
+  | { readonly name: 'external-url'; readonly url: string }
+
+export type BrowserPermissionCapability =
+  | 'camera'
+  | 'microphone'
+  | 'display-capture'
+  | 'geolocation'
+  | 'notifications'
+  | 'clipboard'
+  | 'multiple-downloads'
+  | 'pointer-lock'
+const policyScopeBrand: unique symbol = Symbol('BunlyPolicyScope')
+/** Opaque authority captured for one native-known document. It cannot be reconstructed. */
+export interface PolicyScope {
+  readonly [policyScopeBrand]: true
+}
+interface NativePolicyScope {
+  readonly view: number
+  readonly session: number
+  readonly generation: number
+  readonly mainFrame: string
+  readonly document: string
+  readonly origin: string
+}
+interface PolicyScopeRecord {
+  readonly epoch: number
+  readonly view: ViewHandle
+  readonly resource: ViewResource
+  readonly documentId: string
+  readonly nativeScope: NativePolicyScope
+}
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid native result')
@@ -134,6 +187,38 @@ function nativeDocumentId(value: unknown): string {
   if (typeof documentId !== 'string' || !/^[a-z0-9-]{1,128}$/.test(documentId))
     throw new Error('Invalid native document identity')
   return documentId
+}
+function nativePolicyScope(value: unknown): NativePolicyScope {
+  const scope = record(value)
+  const keys = Object.keys(scope).sort()
+  if (
+    keys.join(',') !== 'document,generation,mainFrame,origin,session,view' ||
+    !Number.isSafeInteger(scope['view']) ||
+    Number(scope['view']) < 1 ||
+    !Number.isSafeInteger(scope['session']) ||
+    Number(scope['session']) < 1 ||
+    !Number.isSafeInteger(scope['generation']) ||
+    Number(scope['generation']) < 1 ||
+    typeof scope['mainFrame'] !== 'string' ||
+    scope['mainFrame'].length < 1 ||
+    scope['mainFrame'].length > 256 ||
+    typeof scope['document'] !== 'string' ||
+    scope['document'].length < 1 ||
+    scope['document'].length > 256 ||
+    typeof scope['origin'] !== 'string' ||
+    scope['origin'].length < 1 ||
+    scope['origin'].length > 4096 ||
+    scope['origin'].includes('\0')
+  )
+    throw new Error('Invalid native policy scope')
+  return Object.freeze({
+    view: Number(scope['view']),
+    session: Number(scope['session']),
+    generation: Number(scope['generation']),
+    mainFrame: scope['mainFrame'],
+    document: scope['document'],
+    origin: scope['origin'],
+  })
 }
 function unsupported(capability: string): never {
   throw new BunlyError('UNSUPPORTED_CAPABILITY', `cef does not yet implement ${capability}`)
@@ -214,6 +299,8 @@ export class CefBackend implements BrowserBackend {
   readonly #listeners = new Set<(event: RuntimeEvent) => void>()
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
+  readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
+  readonly #policyEpochs = new WeakMap<ViewHandle, number>()
   readonly #partitions = new Set<string>()
   // Native application grants are one-shot. Fence local lifecycle transitions
   // before their queued native acknowledgement/handshake can arrive.
@@ -431,6 +518,7 @@ export class CefBackend implements BrowserBackend {
     if (this.#closing.has(view) || this.#closing.has(resource.window))
       throw new BunlyError('DISPOSED', 'View is closing')
     const url = normalizeUrl(value)
+    this.#policyEpochs.set(view, (this.#policyEpochs.get(view) ?? 0) + 1)
     this.#retireRpc(view)
     await this.#transport.call('view.navigate', { id: resource.native, url }, options.signal)
     this.#active()
@@ -444,6 +532,125 @@ export class CefBackend implements BrowserBackend {
   session(view: ViewHandle): SessionHandle {
     this.#active()
     return this.#registry.get<'view', ViewResource>(view, 'view').session
+  }
+  /** Capture authority for exactly the currently ready native document. */
+  async capturePolicyScope(view: ViewHandle): Promise<PolicyScope> {
+    this.#active()
+    const resource = this.#liveView(view)
+    const session = this.#registry.get<'session', SessionResource>(resource.session, 'session')
+    const documentId = resource.state.documentId
+    const epoch = this.#policyEpochs.get(view) ?? 0
+    const scope = nativePolicyScope(
+      await this.#transport.call('policy.scope', { id: resource.native })
+    )
+    this.#active()
+    const current = this.#liveView(view)
+    if (
+      current !== resource ||
+      current.state.documentId !== documentId ||
+      (this.#policyEpochs.get(view) ?? 0) !== epoch ||
+      scope.document !== documentId ||
+      scope.view !== resource.native ||
+      scope.session !== session.native
+    )
+      throw new BunlyError('PERMISSION_DENIED', 'Policy document changed during scope capture')
+    const token = Object.freeze({ [policyScopeBrand]: true as const })
+    this.#policyScopes.set(token, { view, resource, documentId, nativeScope: scope, epoch })
+    return token
+  }
+  /** @internal Contributor fixture only; ordinary native builds reject this command.
+   * Requests one fixed native user-activation fixture, never arbitrary evaluation or input.
+   */
+  async qualifyPolicyGesture(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    await this.#transport.call('policy.qualification.activate', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+    })
+  }
+  /** Configure a scoped grant over the private application-to-host control pipe. */
+  async grantNativeCapability(
+    scope: PolicyScope,
+    capability: NativeCapabilityGrant
+  ): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    await this.#transport.call('policy.native.grant', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+      capability: structuredClone(capability),
+    })
+  }
+  /**
+   * Exercise the mandatory native gate. M7 adapters are not present, so a
+   * matching grant is reported as unavailable and never performs an OS action.
+   */
+  async authorizeNativeOperation(
+    scope: PolicyScope,
+    request: NativeOperationRequest
+  ): Promise<'unavailable'> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const result = record(
+      await this.#transport.call('policy.native.check', {
+        id: captured.resource.native,
+        scope: captured.nativeScope,
+        request: structuredClone(request),
+      })
+    )['status']
+    if (result !== 'unavailable') throw new Error('Invalid native policy result')
+    return result
+  }
+  async setBrowserApplicationPolicy(
+    scope: PolicyScope,
+    permission: BrowserPermissionCapability,
+    decision: 'granted' | 'denied'
+  ): Promise<void> {
+    return this.#browserDecision(scope, permission, decision, 'application-policy')
+  }
+  async recordBrowserUserDecision(
+    scope: PolicyScope,
+    permission: BrowserPermissionCapability,
+    decision: 'granted' | 'denied'
+  ): Promise<void> {
+    return this.#browserDecision(scope, permission, decision, 'user-decision')
+  }
+  async #browserDecision(
+    scope: PolicyScope,
+    permission: BrowserPermissionCapability,
+    decision: 'granted' | 'denied',
+    source: 'application-policy' | 'user-decision'
+  ): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    await this.#transport.call('policy.browser.decision', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+      permission,
+      decision,
+      source,
+    })
+  }
+  #capturedPolicyScope(scope: PolicyScope): PolicyScopeRecord {
+    if (!scope || typeof scope !== 'object')
+      throw new BunlyError('PERMISSION_DENIED', 'Policy scope is foreign or forged')
+    const captured = this.#policyScopes.get(scope)
+    if (!captured) throw new BunlyError('PERMISSION_DENIED', 'Policy scope is foreign or forged')
+    const current = this.#liveView(captured.view)
+    if (
+      current !== captured.resource ||
+      current.state.documentId !== captured.documentId ||
+      (this.#policyEpochs.get(captured.view) ?? 0) !== captured.epoch
+    )
+      throw new BunlyError('PERMISSION_DENIED', 'Policy scope is stale after document change')
+    return captured
+  }
+  #liveView(view: ViewHandle): ViewResource {
+    const resource = this.#registry.get<'view', ViewResource>(view, 'view')
+    if (this.#closing.has(view) || this.#closing.has(resource.window))
+      throw new BunlyError('DISPOSED', 'View is closing')
+    return resource
   }
   async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
     this.#active()

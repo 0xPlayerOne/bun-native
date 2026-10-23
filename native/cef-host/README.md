@@ -53,3 +53,13 @@ type-check substitutes for those results. Use the CEF distribution's actual
 `bootstrap.exe` as `bunly_host.exe`, alongside the DLL and bootstrap manifest,
 as the pinned upstream packager does. Do not use the Rust diagnostic executable
 as a substitute bootstrap or remove sandbox support to make it launch.
+
+## Native permission-policy qualification
+
+The contributor `rpc-qualification` configuration also supports the fixed
+user-activation fixture used by `qualify-cef-development.ts`. It has no arbitrary
+evaluation/input parameters, validates the current native document and explicit
+development origin, and opens no debugging endpoint. Normal builds exclude it.
+The fixture requires actual denial callbacks, revoked captured policy scopes and
+ordered teardown. It does not claim hardware input, successful OS permission
+prompts or implementation of M7 native operation adapters.
