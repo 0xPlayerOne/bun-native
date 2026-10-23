@@ -24,7 +24,9 @@ class HostedQualificationTests(unittest.TestCase):
         smoke = hosted.commands("smoke", "/bun", Path("/app"))
         full = hosted.commands("full", "/bun", Path("/app"))
         self.assertEqual([name for name, _ in smoke], ["prebuilt"])
-        self.assertEqual([name for name, _ in full], ["prebuilt", "development", "faults"])
+        self.assertEqual(
+            [name for name, _ in full], ["prebuilt", "development", "network", "faults"]
+        )
         self.assertTrue(
             all(
                 "--emulated-functional" not in args and "--no-sandbox" not in args
@@ -44,13 +46,18 @@ class HostedQualificationTests(unittest.TestCase):
         ):
             with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
                 commands = hosted.commands("rpc", bun, app)
-                self.assertEqual([name for name, _ in commands], ["prebuilt", "development"])
+                self.assertEqual(
+                    [name for name, _ in commands], ["prebuilt", "development", "network"]
+                )
                 self.assertEqual(
                     commands[1][1],
                     [bun, str(root / "scripts/qualify-cef-development.ts"), str(app)],
                 )
                 self.assertEqual(
                     commands[0][1], [bun, str(root / "scripts/qualify-cef-rpc.ts"), str(app)]
+                )
+                self.assertEqual(
+                    commands[2][1], [bun, str(root / "scripts/qualify-cef-network.ts"), str(app)]
                 )
                 self.assertNotIn("--emulated-functional", commands[0][1])
                 self.assertNotIn("--no-sandbox", commands[0][1])

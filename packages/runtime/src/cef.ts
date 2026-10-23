@@ -18,6 +18,7 @@ import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
+  normalizeSessionNetworkPolicy,
   PROFILE_CAPABILITY_VERSION,
   BunlyError,
   normalizeUrl,
@@ -322,6 +323,7 @@ export class CefBackend implements BrowserBackend {
       'session.cookies',
       'session.cache',
       'session.flush',
+      'session.network-policy',
     ] as const),
   })
   readonly #transport: NativeTransport
@@ -425,6 +427,8 @@ export class CefBackend implements BrowserBackend {
       !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(partition)
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
+    const network =
+      options.network === undefined ? undefined : normalizeSessionNetworkPolicy(options.network)
     const persistentRoot = options.persistentRoot
     if (
       (persistence === 'ephemeral' && persistentRoot !== undefined) ||
@@ -448,6 +452,7 @@ export class CefBackend implements BrowserBackend {
           persistence,
           partition,
           ...(persistentRoot === undefined ? {} : { persistentRoot }),
+          ...(network === undefined ? {} : { network }),
         })
       )
       this.#active()

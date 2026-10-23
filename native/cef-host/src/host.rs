@@ -1,8 +1,10 @@
 use crate::{
-    capability_policy, policy, process, rpc_authority, rpc_protocol as wire, scheme, session,
+    capability_policy, network_policy::NetworkPolicy, policy, process, rpc_authority,
+    rpc_protocol as wire, scheme, session,
 };
 use cef::*;
 use serde_json::{json, Value};
+use std::sync::Arc;
 use std::{
     cell::RefCell,
     collections::BTreeMap,
@@ -39,6 +41,7 @@ struct ViewRecord {
     previous_rpc: Option<wire::Identity>,
 }
 struct SessionRecord {
+    network: Arc<NetworkPolicy>,
     context: RequestContext,
     profile: Option<session::ProfileLease>,
     partition: String,
@@ -630,6 +633,7 @@ fn finalize_sessions() {
                     if record.disposing.is_some() {
                         None
                     } else {
+                        record.network.retire();
                         record.disposing = Some(0);
                         Some((*id, record.context.clone()))
                     }
@@ -788,6 +792,9 @@ pub fn release() {
     if !retired.windows.is_empty() || !retired.views.is_empty() || !retired.sessions.is_empty() {
         FAILED.store(true, Ordering::SeqCst);
     }
+    for record in retired.sessions.values() {
+        record.network.retire();
+    }
     // Drop CEF references outside the registry borrow during final teardown.
     drop(retired);
 }
@@ -876,11 +883,21 @@ wrap_browser_process_handler! {
         }
     }
 }
-fn checked_url(text: &str) -> Result<String, String> {
-    policy::navigation(
-        text,
-        crate::PATHS.get().and_then(|p| p.dev_origin.as_deref()),
-    )
+fn session_network(id: u64) -> Result<Arc<NetworkPolicy>, String> {
+    STATE.with(|s| {
+        s.borrow()
+            .sessions
+            .get(&id)
+            .filter(|record| record.disposing.is_none())
+            .map(|record| record.network.clone())
+            .ok_or_else(|| "INVALID_HANDLE: session".into())
+    })
+}
+fn view_network(id: u64) -> Result<Arc<NetworkPolicy>, String> {
+    let session = STATE
+        .with(|s| s.borrow().views.get(&id).map(|record| record.session))
+        .ok_or("INVALID_HANDLE: view")?;
+    session_network(session)
 }
 fn checked_cookie_url(text: &str) -> Result<String, String> {
     let url = url::Url::parse(text).map_err(|_| "Invalid cookie URL")?;
@@ -1265,6 +1282,12 @@ fn dispatch(command: &Value) -> Result<(), String> {
             if !persistent && args.get("persistentRoot").is_some() {
                 return Err("Ephemeral sessions cannot specify a persistent root".into());
             }
+            let network = Arc::new(NetworkPolicy::new(
+                args.get("network"),
+                crate::PATHS
+                    .get()
+                    .and_then(|paths| paths.dev_origin.as_deref()),
+            )?);
             let profile = if persistent {
                 let requested_root = string(args, "persistentRoot")?;
                 let root = crate::PATHS
@@ -1286,13 +1309,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 settings.cookieable_schemes_exclude_defaults = 1;
             }
             let id = next_id()?;
-            let mut handler = scheme::context_handler(id);
+            let mut handler = scheme::context_handler(id, network.clone());
             let context = request_context_create_context(Some(&settings), Some(&mut handler))
                 .ok_or("Session creation failed")?;
             STATE.with(|s| {
                 s.borrow_mut().sessions.insert(
                     id,
                     SessionRecord {
+                        network,
                         context,
                         profile,
                         partition,
@@ -1321,6 +1345,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 if record.disposing.is_some() || record.busy {
                     return Err("RESOURCE_IN_USE: session operation".into());
                 }
+                record.network.retire();
                 record.disposing = Some(request);
                 Ok::<RequestContext, String>(record.context.clone())
             })?;
@@ -1504,8 +1529,17 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
             let owner = number(args, "window")?;
             let session = number(args, "session")?;
-            let url = checked_url(string(args, "url")?)?;
+            let network = session_network(session)?;
+            let url = network.navigation(string(args, "url")?)?;
             let approved_origin = application_origin(args)?;
+            if approved_origin
+                .as_ref()
+                .is_some_and(|origin| origin != "app://ui")
+            {
+                return Err(
+                    "UNSUPPORTED_CAPABILITY: application RPC is limited to app://ui".into(),
+                );
+            }
             if approved_origin
                 .as_deref()
                 .is_some_and(|origin| rpc_authority::exact_origin(&url).as_deref() != Some(origin))
@@ -1547,7 +1581,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     },
                 );
             });
-            let mut client = BunlyClient::new(id);
+            let mut client = BunlyClient::new(id, network);
             let mut delegate = BunlyView::new(RuntimeStyle::ALLOY);
             let settings = BrowserSettings {
                 javascript_close_windows: cef::State::DISABLED,
@@ -1595,7 +1629,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
         }
         "view.navigate" => {
             let id = number(args, "id")?;
-            let url = checked_url(string(args, "url")?)?;
+            let url = view_network(id)?.navigation(string(args, "url")?)?;
             let (start, revoked) = STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
@@ -1995,14 +2029,14 @@ wrap_browser_view_delegate! {
     impl BrowserViewDelegate { fn browser_runtime_style(&self) -> RuntimeStyle { self.style } }
 }
 wrap_client! {
-    struct BunlyClient { id: u64 }
+    struct BunlyClient { id: u64, network: Arc<NetworkPolicy> }
     impl Client {
         fn permission_handler(&self) -> Option<PermissionHandler> { Some(BunlyPermissions::new(self.id)) }
         fn download_handler(&self) -> Option<DownloadHandler> { Some(BunlyDownloads::new(self.id)) }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> { Some(BunlyLife::new(self.id)) }
         fn load_handler(&self) -> Option<LoadHandler> { Some(BunlyLoad::new(self.id)) }
         fn display_handler(&self) -> Option<DisplayHandler> { Some(BunlyDisplay::new(self.id)) }
-        fn request_handler(&self) -> Option<RequestHandler> { Some(BunlyRequest::new(self.id)) }
+        fn request_handler(&self) -> Option<RequestHandler> { Some(BunlyRequest::new(self.id, self.network.clone())) }
         fn frame_handler(&self) -> Option<FrameHandler> { Some(BunlyFrame::new(self.id)) }
         fn on_process_message_received(&self, browser: Option<&mut Browser>, frame: Option<&mut Frame>, source: ProcessId, message: Option<&mut ProcessMessage>) -> i32 {
             renderer_message(self.id, browser, frame, source, message)
@@ -2167,7 +2201,7 @@ wrap_display_handler! {
     }
 }
 wrap_request_handler! {
-    struct BunlyRequest { id: u64 }
+    struct BunlyRequest { id: u64, network: Arc<NetworkPolicy> }
     impl RequestHandler {
         fn on_document_available_in_main_frame(&self, browser: Option<&mut Browser>) {
             let Some(frame) = browser.and_then(|browser| browser.main_frame()) else { return; };
@@ -2203,7 +2237,7 @@ wrap_request_handler! {
         // IO-thread callback: request policy is separate from UI-only host state.
         fn resource_request_handler(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
             _request: Option<&mut Request>, _navigation: i32, _download: i32, _initiator: Option<&CefString>,
-            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources()) }
+            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources(self.network.clone())) }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }
             STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
@@ -2218,7 +2252,8 @@ wrap_request_handler! {
         // is closing: Chromium needs them for teardown. URL policy still applies,
         // while only live application views receive navigation events.
         fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, redirect: i32) -> i32 {
-            let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = checked_url(&url).is_err();
+            let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = self.network.navigation(&url).is_err();
+            if denied { event("network.navigation-denied", self.id, json!({"main":frame.as_ref().is_some_and(|frame| frame.is_main()!=0)})); }
             if denied && frame.as_ref().is_some_and(|frame| frame.is_main() != 0) {
                 STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
                 let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|record| record.rpc.revoke()));
