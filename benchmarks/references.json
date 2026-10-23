@@ -38,9 +38,9 @@
     {
       "id": "electron",
       "repository": "electron/electron",
-      "commit": "60169b45c12488c6fda237af7f6425526a7ce5f0",
+      "commit": "c542df1ecbc2c2978e8f53f8c7baf602404d166f",
       "package": "electron",
-      "version": "44.8.0",
+      "version": "44.9.3",
       "role": "Chromium and migration baseline",
       "runtime": "Node",
       "engineVersion": null,

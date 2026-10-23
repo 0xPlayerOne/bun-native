@@ -4,7 +4,7 @@ import { configuration, register, waitForQuit, reportFailure, navigationAllowed 
 import { revision } from './revision.ts';
 async function main() {
   const config = configuration();
-  if (process.versions.electron !== '44.8.0') throw new Error('Electron pin mismatch');
+  if (process.versions.electron !== '44.9.3') throw new Error('Electron pin mismatch');
   const profile = process.env['BUNLY_EDIT_PROFILE'];
   if (!profile) throw new Error('A private test profile is required');
   app.setPath('userData', profile); app.enableSandbox();

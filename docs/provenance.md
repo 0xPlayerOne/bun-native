@@ -22,7 +22,7 @@ for this repository; no clean-room design claim is made.
 
 ## Executed benchmark dependencies
 
-Electron 44.8.0, Electrobun 2.0.3-beta.26 and xterm 5.5.0 have separate benchmark
+Electron 44.9.3, Electrobun 2.0.3-beta.26 and xterm 5.5.0 have separate benchmark
 package manifests and frozen Bun locks. They do not belong to consumer SDK
 workspaces and are not included by Bunly's SDK/application build.
 
@@ -60,3 +60,18 @@ channel and record a reproducible patch diff. Review Bun/CEF compatibility on
 candidate upgrades; do not float shipped versions or assume developer Bun updates
 the packaged executable. Reference snapshots are not automatic upstream
 synchronization. No bot, scheduled job, or external monitoring was activated.
+
+## Electron benchmark security refresh
+
+The current benchmark-only Electron pin is 44.9.3, upstream release commit
+`c542df1ecbc2c2978e8f53f8c7baf602404d166f`. This includes the vendor fix for
+[GHSA-jr5w-w6x2-84p9](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9),
+which requires 44.9.1 or later in the 44.x line. It does not add Electron to any
+Bunly application/runtime package. The nested Bun lock and runtime identity guards
+must agree with the exact pinned release. The vendor's binary installer/checksum
+verification remains unchanged.
+
+Earlier M2 reports and evidence continue to identify 44.8.0; their measured data
+is not relabeled as a new runtime. Fresh qualification of the updated adapter is
+required before accepting new benchmark observations. This dependency correction
+is not a Bunly performance claim or qualification of other browser versions.

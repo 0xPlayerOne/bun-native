@@ -41,8 +41,8 @@ const templates = join(root, 'benchmarks/fixtures/desktop-edit')
 export const DESKTOP_ADAPTERS = {
   electron: {
     framework: 'Electron',
-    version: '44.8.0',
-    source: '60169b45c12488c6fda237af7f6425526a7ce5f0',
+    version: '44.9.3',
+    source: 'c542df1ecbc2c2978e8f53f8c7baf602404d166f',
   },
   electrobun: {
     framework: 'Electrobun',
