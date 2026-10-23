@@ -2,6 +2,7 @@
 use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
+mod asset_service;
 mod deadlines;
 mod handshake;
 pub mod host;
@@ -115,7 +116,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .as_deref()
         .map(policy::development_origin)
         .transpose()?;
-    scheme::load(resources.join("public"))?;
+    let asset_service = scheme::load(resources.join("public"))?;
     #[cfg(target_os = "macos")]
     for suffix in ["", " (GPU)", " (Renderer)", " (Plugin)", " (Alerts)"] {
         let name = format!(
@@ -236,9 +237,11 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         return Err("CEF initialization failed".into());
     }
     run_message_loop();
-    process::stop();
-    host::release();
-    shutdown();
+    shutdown_phase("process-stop", process::stop);
+    shutdown_phase("host-release", host::release);
+    // Stop work and fence continuations before the CEF runtime is disposed.
+    shutdown_phase("asset-service-stop", || drop(asset_service));
+    shutdown_phase("cef-shutdown", shutdown);
     eprintln!(
         "{}",
         serde_json::json!({"event":"bunly.host.shutdown","clean":!host::FAILED.load(std::sync::atomic::Ordering::SeqCst)})
@@ -249,6 +252,20 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         0
     })
 }
+
+fn shutdown_phase(phase: &'static str, operation: impl FnOnce()) {
+    eprintln!(
+        "{}",
+        serde_json::json!({"event":"bunly.host.shutdown-phase","phase":phase,"state":"start"})
+    );
+    let started = std::time::Instant::now();
+    operation();
+    eprintln!(
+        "{}",
+        serde_json::json!({"event":"bunly.host.shutdown-phase","phase":phase,"state":"complete","durationMs":started.elapsed().as_millis()})
+    );
+}
+
 #[cfg(target_os = "windows")]
 /// Entry called only by the matching CEF sandbox bootstrap executable.
 ///

@@ -454,6 +454,7 @@ test('packager roundtrip preserves the inspected runtime and refuses existing ou
     })
     const bytes = await readFile(output)
     expect(digest(bytes)).toBe(manifest.archive.sha256)
+    expect(bytes.length).toBe(manifest.archive.size)
     await expect(
       packageCefRuntime({
         directory: installed.directory,

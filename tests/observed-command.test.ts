@@ -84,3 +84,171 @@ test('observation nonce is a bounded identity rather than arbitrary report text'
     expect(() => validateCommandObservation({ ...input(), observationId })).toThrow()
   }
 })
+
+const cleanup = () => ({
+  schema: 1,
+  profile: 'macos-verified-code-sign-clone-v1',
+  limitMs: 3000,
+  elapsedMs: 750,
+  observedClones: 1,
+  cloneInventory: {
+    prelaunchEntries: 0,
+    entryLimit: 256,
+    scope: 'new-names-after-prelaunch-snapshot',
+  },
+  passed: true,
+  qualified: true,
+  status: 'completed',
+  helpers: [
+    {
+      pid: 123,
+      creationTime: 1,
+      role: 'code-sign-clone-cleanup',
+      executableSha256: 'a'.repeat(64),
+      ownership: 'observed-root-child-and-matching-clone-inode',
+      processExited: true,
+      cloneRemoved: true,
+      completed: true,
+    },
+  ],
+})
+test('cleanup acceptance requires consistent bounded process and clone evidence', () => {
+  expect(() => validateCommandObservation({ ...input(), postExitCleanup: cleanup() })).not.toThrow()
+  for (const extra of [
+    { helpers: [] },
+    { observedClones: 0 },
+    { qualified: false },
+    { status: 'not-observed' },
+    { elapsedMs: 3001 },
+    { observedClones: 257 },
+    { helpers: [cleanup().helpers[0], cleanup().helpers[0]] },
+    { helpers: [{ ...cleanup().helpers[0], cloneRemoved: false }] },
+    { helpers: [{ ...cleanup().helpers[0], executableSha256: 'claimed' }] },
+  ])
+    expect(() =>
+      validateCommandObservation({
+        ...input(),
+        postExitCleanup: { ...cleanup(), ...extra },
+      })
+    ).toThrow()
+})
+test('missing cleanup observation remains distinct from a qualified native cleanup', () => {
+  const observation = validateCommandObservation({
+    ...input(),
+    postExitCleanup: {
+      ...cleanup(),
+      observedClones: 0,
+      helpers: [],
+      qualified: false,
+      status: 'not-observed',
+    },
+  })
+  expect(observation.postExitCleanup?.qualified).toBe(false)
+  expect(() => assertCleanCommand(observation)).not.toThrow()
+})
+test('cleanup inventory requires bounded prelaunch scoping even when prior clones remain', () => {
+  expect(() =>
+    validateCommandObservation({
+      ...input(),
+      postExitCleanup: {
+        ...cleanup(),
+        cloneInventory: { ...cleanup().cloneInventory, prelaunchEntries: 1 },
+      },
+    })
+  ).not.toThrow()
+  for (const cloneInventory of [
+    undefined,
+    null,
+    [],
+    { ...cleanup().cloneInventory, scope: 'same-executable' },
+    { ...cleanup().cloneInventory, entryLimit: 257 },
+    { ...cleanup().cloneInventory, prelaunchEntries: -1 },
+    { ...cleanup().cloneInventory, prelaunchEntries: 257 },
+    { ...cleanup().cloneInventory, prelaunchEntries: '1' },
+  ])
+    expect(() =>
+      validateCommandObservation({
+        ...input(),
+        postExitCleanup: { ...cleanup(), cloneInventory },
+      })
+    ).toThrow()
+})
+test('retained kernel ancestry uses bounded lossless IDs and an explicit proof kind', () => {
+  const retained = {
+    ...cleanup(),
+    recovery: { attempted: true, candidates: 100, candidateLimit: 4096, scanLimit: 1 },
+    helpers: [
+      {
+        ...cleanup().helpers[0],
+        ownership: 'retained-kernel-parent-and-matching-clone-inode',
+        kernelIdentity: {
+          rootUniqueId: '9223372036854775808',
+          uniqueId: '9223372036854775809',
+          parentUniqueId: '9223372036854775808',
+        },
+      },
+    ],
+  }
+  expect(() => validateCommandObservation({ ...input(), postExitCleanup: retained })).not.toThrow()
+  for (const kernelIdentity of [
+    null,
+    { ...retained.helpers[0]!.kernelIdentity, parentUniqueId: '1' },
+    { ...retained.helpers[0]!.kernelIdentity, uniqueId: Number('9223372036854775809') },
+    { ...retained.helpers[0]!.kernelIdentity, uniqueId: '18446744073709551616' },
+    { ...retained.helpers[0]!.kernelIdentity, uniqueId: '0' },
+    { ...retained.helpers[0]!.kernelIdentity, uniqueId: '01' },
+    { ...retained.helpers[0]!.kernelIdentity, uniqueId: '1'.repeat(1000) },
+  ])
+    expect(() =>
+      validateCommandObservation({
+        ...input(),
+        postExitCleanup: {
+          ...retained,
+          helpers: [{ ...retained.helpers[0], kernelIdentity }],
+        },
+      })
+    ).toThrow()
+  for (const recovery of [
+    undefined,
+    { ...retained.recovery, candidates: 4097 },
+    { ...retained.recovery, attempted: false },
+    { ...retained.recovery, scanLimit: 2 },
+  ])
+    expect(() =>
+      validateCommandObservation({
+        ...input(),
+        postExitCleanup: {
+          ...retained,
+          recovery,
+        },
+      })
+    ).toThrow()
+  expect(() =>
+    validateCommandObservation({
+      ...input(),
+      postExitCleanup: {
+        ...retained,
+        helpers: [{ ...retained.helpers[0], ownership: 'argv-only' }],
+      },
+    })
+  ).toThrow()
+})
+test('failed cleanup cannot authorize a clean command or fixture deletion', () => {
+  const observation = validateCommandObservation({
+    ...input(),
+    postExitCleanup: { ...cleanup(), passed: false, qualified: false, status: 'failed' },
+  })
+  expect(() => assertCleanCommand(observation)).toThrow()
+  expect(observationsPermitFixtureRemoval([observation])).toBe(false)
+})
+
+test('missing observer interpreter fails before applying target environment', () => {
+  expect(() =>
+    observedCommand([process.execPath, '-e', 'throw 1'], {
+      cwd: import.meta.dir,
+      output: 'never-written.json',
+      env: { PATH: '' },
+      observerCommand: ['bunly-missing-observer-interpreter-8bf2d19c'],
+    })
+  ).toThrow('Observer interpreter not found in caller environment')
+})
