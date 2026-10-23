@@ -224,3 +224,18 @@ expected interruption as a clean shutdown. Neither suite enables production
 credentials, disables sandboxing or resolves an intermittent teardown failure by
 repeating until green. The automatic RPC lane retains the combined ephemeral
 session/authority checks on every supported platform.
+
+## Native transport baseline
+
+`qualify:cef-transports -- PREPARED_APP --native-only --functional` executes the
+selected CEF transport with the fixed structured/binary/cancellation workload,
+real contributor-only CPU throttling, navigation revocation, disconnect and
+ordered teardown. The ordinary three-platform RPC workflow runs this explicit
+native-only mode alongside RPC/session, browser policy and network qualification.
+It does not pretend the alternative loopback candidate has passed.
+
+For descriptive native distributions, use `--native-only --samples 5 --warmups 1`
+from a clean committed tree. Omitting `--native-only` explicitly attempts both
+candidates; that currently fails on Chromium app-scheme loopback permission.
+Failed attempts stay recorded. Neither the native-only mode nor the generic Bun
+socket profiler is a paired comparative performance result. See ADR 0003.
