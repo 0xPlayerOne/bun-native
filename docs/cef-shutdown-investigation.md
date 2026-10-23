@@ -183,3 +183,23 @@ fail explicitly and preserves the stopping point when exit and cleanup also fail
 It is additional regression protection, **not a runtime cure for issue #92**.
 The earlier failure records remain intact, and successful later profiles do not
 close that issue or establish production readiness.
+
+### Final maintained profile validation
+
+At clean code checkpoint `eb6b1d52e8c4189a4d1ee45702b332eda19850f1`, the updated
+ordinary profiler completed **24 launches**: two warmups and ten measured trials
+for each of the fresh/reused profile variants. Every command, complete ordered
+shutdown sequence and exact post-exit helper/clone qualification passed. Input
+and prepared artifact inventories and harness source hashes were unchanged.
+No debugger, activity assertion, hidden-idle extension or native patch was used.
+
+The prepared host executable is byte-identical to the initially failed control.
+This is a complete later run, not evidence that the intermittent failure is
+fixed. The control evidence retains its per-phase distributions and report hashes
+alongside the earlier failure. Native reliability/root-cause issue #92 stays open.
+
+The updated code passed `check:portable` (**626 Bun tests, 199 Python tests**),
+`check:foundation` (**139 tests**, overlapping the ordinary suite), and the
+focused profile/reporter suite (**28 tests**, also overlapping). Missing or partial
+shutdown phases are rejected; replaying the retained watchdog report identifies
+`cef-shutdown` as pending and leaves its duration unknown rather than zero.

@@ -1842,5 +1842,379 @@
         "native/cef-host/src/mac.rs": "4efe7ed5bf16f3780b8773e26738738505ede443ef0fa74e5286103c1f1b1e01"
       }
     }
-  ]
+  ],
+  "finalMaintainedProfile": {
+    "codeCheckpoint": "eb6b1d52e8c4189a4d1ee45702b332eda19850f1",
+    "sourceCleanBeforeAndAfter": true,
+    "report": {
+      "bytes": 364822,
+      "sha256": "9fc8a0be40542c2a8488ef8bddeac18e8c0cf6b07cd010dfa647d060dbb0d9a6"
+    },
+    "appLaunches": 24,
+    "warmupLaunches": 4,
+    "measuredLaunches": 20,
+    "passed": true,
+    "allCommandAndCleanupChecksPassed": true,
+    "allOrderedShutdownSequencesComplete": true,
+    "allPostExitCleanupQualified": true,
+    "inputAndPreparedArtifactsUnchanged": true,
+    "preparedHost": {
+      "bytes": 1615696,
+      "sha256": "24c398bc71bedfcc7054930c96a133bd2f6a045c1ccfa4dbf272b2c8c15c87b8"
+    },
+    "samePreparedHostAsInitiallyFailedControl": true,
+    "shutdownPhaseSummaries": {
+      "fresh-profile": {
+        "process-stop": {
+          "count": 10,
+          "mean": 10.7,
+          "median": 11,
+          "p95": 11,
+          "p99": 11,
+          "min": 10,
+          "max": 11,
+          "standardDeviation": 0.4830458915396479,
+          "meanBootstrap95": [
+            10.4,
+            11
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 11,
+          "samples": [
+            11,
+            11,
+            11,
+            11,
+            10,
+            11,
+            10,
+            10,
+            11,
+            11
+          ]
+        },
+        "host-release": {
+          "count": 10,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 0,
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "asset-service-stop": {
+          "count": 10,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 0,
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "cef-shutdown": {
+          "count": 10,
+          "mean": 49.2,
+          "median": 48.5,
+          "p95": 55.3,
+          "p99": 57.46,
+          "min": 42,
+          "max": 58,
+          "standardDeviation": 4.516635916254486,
+          "meanBootstrap95": [
+            46.6,
+            52
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 52.599999999999994,
+          "samples": [
+            48,
+            49,
+            46,
+            48,
+            52,
+            42,
+            45,
+            58,
+            52,
+            52
+          ]
+        }
+      },
+      "reused-profile": {
+        "process-stop": {
+          "count": 10,
+          "mean": 10.9,
+          "median": 11,
+          "p95": 11,
+          "p99": 11,
+          "min": 10,
+          "max": 11,
+          "standardDeviation": 0.3162277660168379,
+          "meanBootstrap95": [
+            10.7,
+            11
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 11,
+          "samples": [
+            11,
+            10,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11
+          ]
+        },
+        "host-release": {
+          "count": 10,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 0,
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "asset-service-stop": {
+          "count": 10,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 0,
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "cef-shutdown": {
+          "count": 10,
+          "mean": 51.6,
+          "median": 51,
+          "p95": 62.849999999999994,
+          "p99": 65.37,
+          "min": 40,
+          "max": 66,
+          "standardDeviation": 7.0898989179442236,
+          "meanBootstrap95": [
+            47.7975,
+            56.1025
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+          "p90": 59.699999999999996,
+          "samples": [
+            40,
+            66,
+            50,
+            59,
+            52,
+            45,
+            51,
+            53,
+            51,
+            49
+          ]
+        }
+      }
+    },
+    "rawReports": [
+      {
+        "attempt": "warmup-0-fresh-profile",
+        "bytes": 130776,
+        "sha256": "c3517f1213395920099eddc8715fd8a18c81cfbc41e37eabf6d760e5afad56d0"
+      },
+      {
+        "attempt": "warmup-0-reused-profile",
+        "bytes": 129720,
+        "sha256": "8aa551412bb2735fb657521730d7f9a20e101704d920ade8eb2a2314861683af"
+      },
+      {
+        "attempt": "warmup-1-reused-profile",
+        "bytes": 133670,
+        "sha256": "37da815fcd51eb88d2f316368885888d92d7c1dd95cb62455c7268910fc92636"
+      },
+      {
+        "attempt": "warmup-1-fresh-profile",
+        "bytes": 130291,
+        "sha256": "b063378c10d656246988fc70010a8b103ae42515da4d8a0e75cf09a1479c4c1f"
+      },
+      {
+        "attempt": "trial-0-fresh-profile",
+        "bytes": 130119,
+        "sha256": "ad4e8fe034840a012c74cd99e3767c8528b758da603ea8aa72567c2d92bda1ac"
+      },
+      {
+        "attempt": "trial-0-reused-profile",
+        "bytes": 132315,
+        "sha256": "95c1d784c10ca1201537bae48a798d08642fe449cad55498acf81eb68e0a12e8"
+      },
+      {
+        "attempt": "trial-1-reused-profile",
+        "bytes": 125408,
+        "sha256": "e693595e61bd8d3e6751c3003ac1b6ace4db4ec25d1374972db9241d8e82a67c"
+      },
+      {
+        "attempt": "trial-1-fresh-profile",
+        "bytes": 125608,
+        "sha256": "6e9a22b4d8b9eeb96b353d788d558d69a0a502c582fa598e6f398f464b7a5dfd"
+      },
+      {
+        "attempt": "trial-2-reused-profile",
+        "bytes": 137408,
+        "sha256": "1df10edb6f5b8981d091c64f7c3c41228bf8f4719a515459858a1b0fa87e7fb0"
+      },
+      {
+        "attempt": "trial-2-fresh-profile",
+        "bytes": 134643,
+        "sha256": "3cf5c068e7249cc95302b8a0d37585d78b46e58c928e1b4f9de6aec1057bb9b0"
+      },
+      {
+        "attempt": "trial-3-fresh-profile",
+        "bytes": 125978,
+        "sha256": "3b2b0506a641b5c78772e48d1f1187d2e3f0121c688a087aa67cddd43d1a47e5"
+      },
+      {
+        "attempt": "trial-3-reused-profile",
+        "bytes": 133528,
+        "sha256": "d95bcb140e507fe0793593a3275461d36abbe92078654f4485bbfb4a91f7b754"
+      },
+      {
+        "attempt": "trial-4-reused-profile",
+        "bytes": 133604,
+        "sha256": "e5fd4f3213a396a8d2e1ad594ff6cee9dd6f0c66e4d40d5c0a1d7d7d0e549260"
+      },
+      {
+        "attempt": "trial-4-fresh-profile",
+        "bytes": 134320,
+        "sha256": "bf62f619ef0c8d20cf66bd6d3b316ad3269b0006b0bde202331cce062ac4cfcb"
+      },
+      {
+        "attempt": "trial-5-reused-profile",
+        "bytes": 125305,
+        "sha256": "8031f3e68c53e4027e32ad595175e260b9c99584e1c02ea0a0902fc0459de699"
+      },
+      {
+        "attempt": "trial-5-fresh-profile",
+        "bytes": 130356,
+        "sha256": "b9b738c3e7515c2dc185a8f8411a20ecfbc64dcc0fca5c9369b6afb3942ecfcf"
+      },
+      {
+        "attempt": "trial-6-reused-profile",
+        "bytes": 131103,
+        "sha256": "911844cad83e2fcd7812d76b01362422401acdb65f792b21f07e9e499ad603cd"
+      },
+      {
+        "attempt": "trial-6-fresh-profile",
+        "bytes": 132338,
+        "sha256": "93d23650070b76bba414427e0a7c07811cf641e4be68b2ce4fffa5671e12cd71"
+      },
+      {
+        "attempt": "trial-7-fresh-profile",
+        "bytes": 132481,
+        "sha256": "f338a8adc3ff5f67b7db4bef3e302c354f26ab689bfcc1520aaedf9d8c0dcc6f"
+      },
+      {
+        "attempt": "trial-7-reused-profile",
+        "bytes": 134036,
+        "sha256": "097abc76f85ece82b78808278c71cc708ed93f0a98912063861b7f112fcf3f31"
+      },
+      {
+        "attempt": "trial-8-reused-profile",
+        "bytes": 132000,
+        "sha256": "de48420837ad78b9083da66efa4124765fda81ad44be21e26949a9572a56d688"
+      },
+      {
+        "attempt": "trial-8-fresh-profile",
+        "bytes": 125761,
+        "sha256": "73bfdb289c892c69844578c08d19ea745a6854afdc7040952865c0ace1cf7af2"
+      },
+      {
+        "attempt": "trial-9-fresh-profile",
+        "bytes": 128836,
+        "sha256": "7110299341e9503eedbd7cdd964f924e251dc3a850da09144acf7386d76a2f0c"
+      },
+      {
+        "attempt": "trial-9-reused-profile",
+        "bytes": 132350,
+        "sha256": "4ed16c6b0824409959e35151cdb4f223a15f82a53bb12fbe6ac44c0aa63208e2"
+      }
+    ],
+    "limitation": "A complete later run on the unchanged host validates the maintained checks. It does not erase the retained failure or establish a runtime fix."
+  }
 }
