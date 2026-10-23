@@ -173,3 +173,25 @@ portable message or cache ratios cannot substitute for those measurements.
 Keep timing gates out of normal validation. Use a new profile when a concrete
 regression, changed hot path or qualification decision calls for one. Completing
 this suite does not certify Bunly as production-ready or complete M4 security.
+
+## Shutdown phase regression evidence
+
+Native profiles retain the four ordered host teardown phases (`process-stop`,
+`host-release`, `asset-service-stop`, and `cef-shutdown`) on every observed
+attempt, including a failed launch. Unknown durations remain `null`, not zero.
+The compact attempt record also identifies a pending phase, malformed/duplicate
+phase events, normal backend exit, and the host's clean/failure declarations.
+It excludes raw child text and process identities.
+
+A launch contributes measurements only after **both** the ordinary command and
+descendant-cleanup gate and the complete ordered shutdown sequence pass. A clean
+exit code or a lone `clean: true` event cannot replace missing teardown evidence.
+Completed launches include per-phase durations and per-variant distributions;
+these are diagnostic elapsed times, not CPU attribution or a new timing gate.
+The existing native watchdogs and process-observer deadlines are unchanged.
+
+The deterministic tests run in `check:foundation` and ordinary validation. They
+exercise incomplete prefixes, missing/duplicate/reordered events, invalid durations,
+forced/signalled backend exits, false clean declarations, and payload omission.
+Existing private native reports can be replayed through the same parser without
+rerunning an app; such replays are not new native execution.

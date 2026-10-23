@@ -14,6 +14,15 @@ import {
   nativeStartupSummary,
 } from '../benchmarks/foundation/native-startup.ts'
 import type { NativeStartupStages } from '../benchmarks/foundation/native-startup.ts'
+import {
+  observeNativeShutdown,
+  requireNativeShutdown,
+  nativeShutdownSummary,
+} from '../benchmarks/foundation/native-shutdown.ts'
+import type {
+  NativeShutdownObservation,
+  NativeShutdownStages,
+} from '../benchmarks/foundation/native-shutdown.ts'
 import { profileOptions } from '../benchmarks/foundation/statistics.ts'
 import { schedule } from '../benchmarks/lib/statistics.ts'
 
@@ -53,6 +62,7 @@ const harnessPaths = [
   'benchmarks/foundation/native-results.ts',
   'benchmarks/foundation/native-wire.ts',
   'benchmarks/foundation/native-startup.ts',
+  'benchmarks/foundation/native-shutdown.ts',
   'benchmarks/foundation/statistics.ts',
   'benchmarks/lib/statistics.ts',
   'benchmarks/lib/observed-command.ts',
@@ -79,6 +89,7 @@ const trials: {
   startupToReadyMs: number
   measurement: NativeMeasurement
   startupStages: NativeStartupStages
+  shutdownStages: NativeShutdownStages
   processReport: string
 }[] = []
 const attempts: {
@@ -88,6 +99,7 @@ const attempts: {
   warmup: boolean
   processReport: string
   passed: boolean
+  shutdown: NativeShutdownObservation | null
 }[] = []
 const report: Record<string, unknown> = {
   schema: 1,
@@ -113,6 +125,7 @@ const report: Record<string, unknown> = {
     'macOS modifies and ad-hoc signs only the private copied fixture; no production signing or native compilation.',
     'Application views use ephemeral sessions; reused profile measures host/browser cache directory reuse, not persistent app sessions.',
     'Startup stages are sequential fixture awaits and backend-entry to readiness receipt; they do not attribute native preflight or CEF initialization and need not sum to observer startup.',
+    'Shutdown phase durations are host diagnostic observations; they are not a CPU attribution or proof of root cause. Failed attempts retain partial phases with unknown durations as null.',
     'Profiling does not qualify native renderer authority or choose an M4 transport.',
   ],
 }
@@ -224,12 +237,13 @@ try {
     )) {
       const name = `${warmup ? 'warmup' : 'trial'}-${planned.trial}-${planned.variant}`
       const processPath = join(work, name + '.process.json')
-      const attempt = {
+      const attempt: (typeof attempts)[number] = {
         name,
         ...planned,
         warmup,
         processReport: basename(processPath),
         passed: false,
+        shutdown: null,
       }
       attempts.push(attempt)
       const observation = await observedCommand([executable], {
@@ -245,7 +259,9 @@ try {
           BUNLY_BENCH_SANDBOX: '1',
         },
       }).result
+      attempt.shutdown = observeNativeShutdown(observation)
       assertCleanCommand(observation)
+      const shutdownStages = requireNativeShutdown(attempt.shutdown)
       const events = nativeEvents(observation)
       const completed = events.filter((event) => event['event'] === 'bunly.foundation.result')
       if (
@@ -284,6 +300,7 @@ try {
         startupToReadyMs: ready['elapsedMs'],
         measurement,
         startupStages,
+        shutdownStages,
         processReport: basename(processPath),
       })
       await writeFile(output, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 })
@@ -300,6 +317,7 @@ try {
         {
           ...nativeSummary(selected),
           startupStages: nativeStartupSummary(selected.map((trial) => trial.startupStages)),
+          shutdownStages: nativeShutdownSummary(selected.map((trial) => trial.shutdownStages)),
         },
       ]
     })

@@ -220,3 +220,157 @@ test('native startup summaries retain one observation per stage per completed la
     expect(summary[name].mean).toBe((first[name] + second[name]) / 2)
   }
 })
+
+// Shutdown evidence remains independent of the command exit/descendant gate.
+import {
+  nativeShutdownPhaseNames,
+  nativeShutdownSummary,
+  observeNativeShutdown,
+  requireNativeShutdown,
+} from '../benchmarks/foundation/native-shutdown.ts'
+
+function shutdownFixture(): Record<string, unknown>[] {
+  return nativeShutdownPhaseNames.flatMap((phase, index) => [
+    { event: 'bunly.host.shutdown-phase', phase, state: 'start' },
+    ...(index === 0 ? [{ event: 'bunly.backend.exit', code: 0, forced: false }] : []),
+    { event: 'bunly.host.shutdown-phase', phase, state: 'complete', durationMs: index * 10 },
+    ...(index === nativeShutdownPhaseNames.length - 1
+      ? [{ event: 'bunly.host.shutdown', clean: true }]
+      : []),
+  ])
+}
+const shutdownObservation = (events: readonly unknown[]) =>
+  observeNativeShutdown({
+    stderr: events.map((event) => JSON.stringify(event)),
+  })
+
+test('native shutdown requires one ordered sequence and retains zero-duration completed stages', () => {
+  const events = shutdownFixture()
+  const observed = shutdownObservation(events)
+  expect(observed.complete).toBe(true)
+  expect(observed.malformed).toBe(false)
+  expect(observed.pendingPhase).toBeNull()
+  expect(requireNativeShutdown(observed)).toEqual({
+    'process-stop': 0,
+    'host-release': 10,
+    'asset-service-stop': 20,
+    'cef-shutdown': 30,
+  })
+  expect(Object.isFrozen(observed)).toBe(true)
+  expect(Object.isFrozen(observed.durationsMs)).toBe(true)
+  expect(
+    observeNativeShutdown({
+      stderr: [
+        'Chromium diagnostic',
+        'null',
+        '[1]',
+        ...events.map((event) => JSON.stringify(event)),
+      ],
+    })
+  ).toEqual(observed)
+})
+
+test('partial shutdown keeps unknown durations null and identifies the pending phase', () => {
+  const events = shutdownFixture()
+  for (let count = 0; count < events.length; count++) {
+    const observed = shutdownObservation(events.slice(0, count))
+    expect(observed.complete).toBe(false)
+    expect(() => requireNativeShutdown(observed)).toThrow()
+  }
+  const stopped = shutdownObservation(events.slice(0, -2))
+  expect(stopped.malformed).toBe(false)
+  expect(stopped.pendingPhase).toBe('cef-shutdown')
+  expect(stopped.durationsMs['cef-shutdown']).toBeNull()
+  expect(stopped.durationsMs['asset-service-stop']).toBe(20)
+  expect(stopped.backendExitedNormally).toBe(true)
+  expect(stopped.hostReportedClean).toBe(false)
+})
+
+test('missing, duplicated, reordered or invented shutdown phases never qualify', () => {
+  const events = shutdownFixture()
+  for (let index = 0; index < events.length; index++) {
+    const missing = events.filter((_, position) => index !== position)
+    const duplicate = [...events.slice(0, index), events[index], ...events.slice(index)]
+    for (const sequence of [missing, duplicate])
+      expect(() => requireNativeShutdown(shutdownObservation(sequence))).toThrow()
+  }
+  for (const sequence of [
+    [...events].reverse(),
+    [...events, { event: 'bunly.host.shutdown-phase', phase: 'unknown', state: 'start' }],
+    [{ event: 'bunly.host.shutdown', clean: true }, ...events.slice(0, -1)],
+    [events[1], events[0], ...events.slice(2)],
+    [...events, { event: 'bunly.host.failure', error: 'private detail' }],
+    [...events, { event: 'bunly.host.error', error: 'private detail' }],
+  ])
+    expect(() => requireNativeShutdown(shutdownObservation(sequence))).toThrow()
+})
+
+test('malformed shutdown durations and false success declarations fail closed', () => {
+  const events = shutdownFixture()
+  for (const durationMs of [-1, 1.5, 600001, NaN, Infinity, '10', null, undefined]) {
+    const altered = events.map((event) =>
+      event['state'] === 'complete' ? { ...event, durationMs } : event
+    )
+    expect(() => requireNativeShutdown(shutdownObservation(altered))).toThrow()
+  }
+  for (const change of [
+    { code: 2 },
+    { code: null },
+    { code: '0' },
+    { forced: true },
+    { forced: 'false' },
+  ]) {
+    const altered = events.map((event) =>
+      event['event'] === 'bunly.backend.exit' ? { ...event, ...change } : event
+    )
+    const observed = shutdownObservation(altered)
+    expect(observed.backendExitedNormally).toBe(false)
+    expect(() => requireNativeShutdown(observed)).toThrow()
+  }
+  for (const clean of [false, 'true', undefined]) {
+    const altered = events.map((event) =>
+      event['event'] === 'bunly.host.shutdown' ? { ...event, clean } : event
+    )
+    expect(() => requireNativeShutdown(shutdownObservation(altered))).toThrow()
+  }
+})
+
+test('shutdown summaries retain one observation per completed launch without pooling phases', () => {
+  const first = requireNativeShutdown(shutdownObservation(shutdownFixture()))
+  const second = requireNativeShutdown(
+    shutdownObservation(
+      shutdownFixture().map((event) =>
+        event['state'] === 'complete'
+          ? { ...event, durationMs: Number(event['durationMs']) + 5 }
+          : event
+      )
+    )
+  )
+  const summary = nativeShutdownSummary([first, second])
+  for (const phase of nativeShutdownPhaseNames) {
+    expect(summary[phase].count).toBe(2)
+    expect(summary[phase].samples).toEqual([first[phase], second[phase]])
+  }
+})
+
+test('shutdown observations omit arbitrary payloads and reject fabricated completeness', () => {
+  const secret = '/private/example/token-secret'
+  const observed = shutdownObservation(
+    shutdownFixture().map((event) => ({ ...event, error: secret, pid: 123 }))
+  )
+  expect(JSON.stringify(observed)).not.toContain(secret)
+  expect(JSON.stringify(observed)).not.toContain('pid')
+  expect(() =>
+    requireNativeShutdown({
+      ...observed,
+      durationsMs: { ...observed.durationsMs, 'cef-shutdown': null },
+    })
+  ).toThrow()
+  const signalled = shutdownObservation(
+    shutdownFixture().map((event) =>
+      event['event'] === 'bunly.backend.exit' ? { ...event, code: null, forced: true } : event
+    )
+  )
+  expect(signalled.malformed).toBe(false)
+  expect(signalled.complete).toBe(false)
+})

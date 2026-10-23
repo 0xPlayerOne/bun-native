@@ -6,11 +6,13 @@ Bounded native asset work, lifecycle qualification, and maintained regression ch
 **Scope:** Packaged resource loading and qualification before native M4 renderer authority.
 **Validation checkpoint:** Clean source `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`, 2026-10-22.
 **Status:** Local test suites and the four-case macOS helper qualification pass.
-The full native profile still fails the CEF shutdown watchdog; merge and M4 remain blocked.
+The full native profile still fails the CEF shutdown watchdog; native qualification remains incomplete.
+PR #89 has since merged; see the [current shutdown investigation](cef-shutdown-investigation.md)
+for the subsequent control run, NetworkService captures and open acceptance work.
 The October 23 retry confirmed the five recorded probe process IDs were absent
 and resumed bounded diagnostics. The native shutdown failure remains unresolved.
 
-Draft PR #89 remains open. At the earlier push checkpoints, the billing-pause
+At the historical checkpoints below, PR #89 was a draft. The billing-pause
 flag was true and checked hosted jobs were skipped. After the 17:14:19Z push,
 the repository variable changed to `CI_BILLING_PAUSED=false`, with an update
 timestamp of 2026-10-22T17:14:38Z; this pass did not change that setting. The
