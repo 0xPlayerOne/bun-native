@@ -2,7 +2,7 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1–M3 are complete for their declared acceptance profiles. M4 issue #20 session ownership is implemented with a prepared native qualifier; renderer authority and unexecuted platform session profiles are not yet qualified.
+**Status:** M1–M3 are complete for their declared acceptance profiles. M4 native renderer authority and session integration have passed their declared three-platform RPC fixtures; remaining M4 criteria and release qualification are separate.
 **Scope:** Accepted host architecture and boundaries. See [M3 completion](m3-completion.md) for native platform evidence and limitations.
 
 ## Product boundary
@@ -77,11 +77,23 @@ Custom `app:` origins must be compared explicitly, not as the opaque URL origin
 string `null`. Remote views never become privileged merely because an agent
 controls them.
 
-M1's mock proves state transitions only. It does not authenticate real renderer
-messages, isolate hostile JavaScript, or implement a secure preload. Those are
-M4's native-bound authority requirements. Future IPC must bind view, frame,
-document generation, session, and capabilities at the trusted native boundary.
-A frontend-provided descriptor or resource ID is not such a binding.
+M1's mock proves state transitions only. The merged CEF implementation binds
+renderer messages to native-known view, frame, document generation, exact origin
+and session, with capability-gated Bun handlers. It revokes authority on navigation
+and close; returning to the original origin does not regrant it. This is not an
+isolated-world defense against XSS in a trusted application document. A
+frontend-provided descriptor or resource ID is never such a binding.
+
+The issue #21 policy increment keeps application-native capabilities separate
+from browser/user permissions and binds both to the current native host registry,
+main-frame callback, generation, origin and session through a captured opaque
+policy scope. The host returns that scope only for a ready document; the backend
+revalidates its local document after the asynchronous capture, and every later
+private-pipe grant or check must exactly match all native scope fields. Document
+identity comes from the merged issue #19 native authority, not a provisional token. Navigation start and close revoke the scope.
+It is an authorization gate for future OS adapters, not an implementation of
+filesystem, process, clipboard, dialog or download APIs; see
+[M4 capability policy](m4-capability-policy.md).
 
 ## Browser independence
 

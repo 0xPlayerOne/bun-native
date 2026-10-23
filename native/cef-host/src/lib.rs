@@ -3,6 +3,7 @@ use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
 mod asset_service;
+pub mod capability_policy;
 mod deadlines;
 mod handshake;
 pub mod host;
