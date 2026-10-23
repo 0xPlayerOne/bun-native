@@ -184,3 +184,15 @@ rejected redirect cases, stale-scope rejection and clean ordered teardown. A
 separate 11-case native RPC/session regression also passed during integration.
 Final committed-source runs and hosted results must be recorded separately; these
 implementation observations are not cross-platform qualification by themselves.
+
+The clean implementation checkpoint `db87cc4377755b31a7e3eabd006a8dde929d24b9` passed the final
+schema-2 policy qualifier and all 11 macOS RPC/session prebuilt cases. Both runs
+retained clean before/after source identities and unchanged input artifacts.
+The policy run observed all four denial callbacks, stale-scope rejection, zero
+forbidden-origin requests and ordered clean shutdown. The RPC run qualified all
+five positive launches and all five helper/clone completions, with six expected
+startup rejections. Fresh audits of the root plus three independent Bun locks,
+both Cargo locks and Python requirements reported no findings. The
+[sanitized checkpoint](../evidence/m4-native-policy-local-2026-10-23.json) preserves
+hashes, results and failed preparation/activation experiments. No failed trial was
+reclassified as passing; hosted execution remains a separate merge requirement.

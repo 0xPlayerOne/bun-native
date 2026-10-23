@@ -1,0 +1,449 @@
+{
+  "schema": 1,
+  "classification": "local-native-capability-policy-qualification",
+  "sourceCommit": "db87cc4377755b31a7e3eabd006a8dde929d24b9",
+  "sourceTree": "df9a86d3cf4d69ee97135a176a341350e60f9281",
+  "date": "2026-10-23",
+  "target": "darwin-arm64",
+  "bun": "1.4.3",
+  "rustCef": "1.91.0",
+  "cefRsRevision": "163744c8286d5f593d89202c7807751a7898db28",
+  "counts": {
+    "bun": 679,
+    "python": 200,
+    "foundationOverlappingBun": 139,
+    "cefRustEachConfiguration": 93,
+    "m1Rust": 3
+  },
+  "validation": {
+    "portable": {
+      "bytes": 73032,
+      "sha256": "8b0b430d8c4843faf4888398c5b3fc2ec2b8651bc6e3b8031a2c62a29f80da9c"
+    },
+    "combinedNative": {
+      "bytes": 10846,
+      "sha256": "9843053511167afeb090821796042adf84c020e206090efbfdef5590bebf75e3"
+    },
+    "foundation": {
+      "bytes": 15738,
+      "sha256": "ad42f5a963023846f20df638e109a627283dce9750c19c66820eb7ea1f36dd6a"
+    },
+    "workflows": {
+      "bytes": 13,
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    },
+    "probeClippy": {
+      "bytes": 731,
+      "sha256": "a57c011671d779ae1d2f2faee08dfad09ce596ff6cea4956a074792ad43e8cbc"
+    },
+    "probeTests": {
+      "bytes": 9390,
+      "sha256": "91a655c75ec7ea332eb56fc7b4eb9ed367a1d7a0e96efa0d3b98d29d671ce77c"
+    },
+    "probeBuild": {
+      "bytes": 170,
+      "sha256": "a2b88d02b80d83762e0d477f639a78c5a73545f8077d4fbc01a65886187acdce"
+    },
+    "doctor": {
+      "bytes": 356,
+      "sha256": "527de0f43b97b1f13e13148619b19ad37870e02f7a9bf00ff874d448fcc274c5"
+    }
+  },
+  "advisories": [
+    {
+      "name": "js-root",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": ".",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.633,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "js-0",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electrobun",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.241,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "js-1",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electron",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.251,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "js-2",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/fixtures",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.298,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "cargo-0",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.684,
+      "logSha256": "e91ed92f16ea6142924c3dfee32dbab111712f6d11f994f1c6d76de35a3e606e"
+    },
+    {
+      "name": "cargo-1",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/cef-host/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 1.083,
+      "logSha256": "140a8d85f15c3e88c3528b998b23a27cf636d68289565f58ca0c4474cadf61ce"
+    },
+    {
+      "name": "python",
+      "command": [
+        "pip-audit",
+        "-r",
+        "requirements.txt",
+        "--format",
+        "json"
+      ],
+      "directory": ".",
+      "result": "passed",
+      "exitCode": 0,
+      "elapsedSeconds": 5.929,
+      "logSha256": "94a02c667c3c03ba9c7e530e4db26200860698694f72ce3d5a4e5af27258b6ce"
+    }
+  ],
+  "nativeRuns": {
+    "nativePolicy": {
+      "report": {
+        "bytes": 151895,
+        "sha256": "95ac344cdb85b0748423185bfbc126389286fbbeb992cdf033959a377f0ab5a9"
+      },
+      "log": {
+        "bytes": 137,
+        "sha256": "4c0de46bcc333843c4bbf9e2f9a7ce586114b89416a477f5688870ce9b0528fd"
+      },
+      "source": {
+        "commit": "db87cc4377755b31a7e3eabd006a8dde929d24b9",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceArtifactUnchanged": true,
+      "passed": true,
+      "sourceHashes": {
+        "scripts/qualify-cef-development.ts": "32af2ebb4c376b5b09b1692cb09ebe94f8970b0b6f884730e563eb737c4aa78b",
+        "examples/cef/development.ts": "e74ec128645b1fc0be4ee7970ca43d124c5bef0bfe3d2c524996868e41d9c7db",
+        "packages/runtime/src/cef.ts": "64d241a3762d42b4a51ef56b587a9b47a769425f6b7ee4dd36c84a53ea8c408f",
+        "benchmarks/lib/cef-policy-acceptance.ts": "33248c9946ca2d569fa3afef70839242abd83c3675f8a2367d576d61be49202c",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "benchmarks/foundation/native-shutdown.ts": "bd828851a8d61938511110f1b796d51ef0367c81ef749e599c6ff16ef4eb081a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a"
+      },
+      "sourceHashesUnchanged": true,
+      "deniedRequests": 0,
+      "expectedPolicyCallbacks": [
+        "policy.media-denied",
+        "policy.permission-denied",
+        "policy.popup-denied",
+        "policy.download-denied"
+      ],
+      "shutdownStages": {
+        "process-stop": 10,
+        "host-release": 0,
+        "asset-service-stop": 0,
+        "cef-shutdown": 109
+      },
+      "exitCode": 0
+    },
+    "nativeRpcSessions": {
+      "report": {
+        "bytes": 1261884,
+        "sha256": "dab707b96009a14aaf9a1a888bfb40c46ef98d7a42e81cb5ca263de3f7348b96"
+      },
+      "log": {
+        "bytes": 598,
+        "sha256": "b0b2399a9bbce5852fd412ec4c9f259cae434fdd85f510d85a749e9d8b44592f"
+      },
+      "source": {
+        "commit": "db87cc4377755b31a7e3eabd006a8dde929d24b9",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceArtifactUnchanged": true,
+      "passed": true,
+      "cases": 11,
+      "trials": [
+        {
+          "name": "installed-0",
+          "exitCode": 0,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          }
+        },
+        {
+          "name": "installed-1",
+          "exitCode": 0,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          }
+        },
+        {
+          "name": "installed-2",
+          "exitCode": 0,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          }
+        },
+        {
+          "name": "last-window",
+          "exitCode": 0,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          }
+        },
+        {
+          "name": "rejected-4",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "rejected-5",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "rejected-6",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "wrong-version",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "missing-bun",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "missing-helper",
+          "exitCode": 78,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": false,
+            "status": "not-observed"
+          }
+        },
+        {
+          "name": "restored-installation",
+          "exitCode": 0,
+          "timedOut": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          }
+        }
+      ],
+      "acceptance": {
+        "profile": "native-rpc",
+        "passed": true,
+        "acceptedLaunches": 5,
+        "helperCleanup": {
+          "scope": "same-suite-sampled-coverage",
+          "qualifiedLaunches": [
+            "installed-0",
+            "installed-1",
+            "installed-2",
+            "last-window",
+            "restored-installation"
+          ],
+          "unobservedLaunches": []
+        }
+      }
+    }
+  },
+  "preservedFailures": [
+    {
+      "trial": 1,
+      "log": {
+        "bytes": 311,
+        "sha256": "836c7ad30fcfac97891bde85560aa116569cf12754b58963a55b80e475328f49"
+      },
+      "report": {
+        "bytes": 506,
+        "sha256": "22ec51de16593cc0e3f38d229907d30ebfb06beebcc99a8fc2e3d07806f60e1e"
+      },
+      "passed": false,
+      "kind": "missing-resource-preparation-no-app-launch"
+    },
+    {
+      "trial": 2,
+      "log": {
+        "bytes": 197,
+        "sha256": "e17567fc2c3197281feacf33bfa5308895f7831d8ef171befe033527c470a891"
+      },
+      "report": {
+        "bytes": 60871,
+        "sha256": "3ddc8f1968d8444c402d365ab2bcb3ddba94819c7607a782942ed35b9fd71c39"
+      },
+      "passed": false,
+      "kind": "missing-popup-native-callback"
+    },
+    {
+      "trial": 3,
+      "log": {
+        "bytes": 197,
+        "sha256": "cda1a079309b96b09736fcb97482090ec9b074e215842a7ecea75aec5829354c"
+      },
+      "report": {
+        "bytes": 61517,
+        "sha256": "31b279eefab344072d825813535370fdbd891c91bccf2469f2c03cc8c41a8047"
+      },
+      "passed": false,
+      "kind": "missing-popup-native-callback"
+    },
+    {
+      "trial": 4,
+      "log": {
+        "bytes": 197,
+        "sha256": "73cf156f73fbae3aaccdbf6ada1f2c217b0101824b466617f8e5844823f81d06"
+      },
+      "report": {
+        "bytes": 38684,
+        "sha256": "9713ff54bf1c4afd5f6dba3a05dc49f62d05ae705dc6127bd1b780788c15b656"
+      },
+      "passed": false,
+      "kind": "stale-bootstrap-fixture"
+    },
+    {
+      "trial": 5,
+      "log": {
+        "bytes": 197,
+        "sha256": "db6582a88d190c45d1648604952111c2c3582e1c823a76826945489a0e0bdf95"
+      },
+      "report": {
+        "bytes": 514173,
+        "sha256": "093f7affeebf5f251feccfef0a6ba9828b8a56802a2338615258ee13a9aa1df4"
+      },
+      "passed": false,
+      "kind": "synthetic-mouse-did-not-activate-fixture"
+    },
+    {
+      "trial": 6,
+      "log": {
+        "bytes": 197,
+        "sha256": "e35e0b6748a780e8b6f6649a5526cd3b5ca827e1e998fb7e5dd3551da9e0ab93"
+      },
+      "report": {
+        "bytes": 534938,
+        "sha256": "0fa8b192f065b975d457aec726e6b4b0250618edc15d3b0a670ab2d4911cb867"
+      },
+      "passed": false,
+      "kind": "synthetic-window-key-did-not-activate-fixture"
+    }
+  ],
+  "limits": [
+    "No hardware-input, production signing or full M4 completion claim.",
+    "Fixed native user-activation fixture exists only in contributor rpc-qualification builds; no public debug port or arbitrary evaluation.",
+    "Current packaged network policy remains restrictive; complete external HTTPS allowlists are separate work.",
+    "Native capability authorization does not implement future M7 OS operation adapters.",
+    "Intermittent CEF shutdown history is not erased by these successful workloads."
+  ]
+}
