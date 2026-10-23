@@ -142,7 +142,7 @@ describe('portable lifecycle contract', () => {
     const b = new MockBackend()
     const d = readDescriptor(b.descriptor)
     assert.ok(Object.isFrozen(d.capabilities))
-    assert.throws(() => readDescriptor({ ...d, contractVersion: 2 }), hasCode('VERSION_MISMATCH'))
+    assert.throws(() => readDescriptor({ ...d, contractVersion: 999 }), hasCode('VERSION_MISMATCH'))
     assert.throws(
       () => readDescriptor({ ...d, capabilities: ['invented'] }),
       hasCode('INVALID_ARGUMENT')

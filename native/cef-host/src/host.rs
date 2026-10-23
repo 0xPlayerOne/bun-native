@@ -1,9 +1,10 @@
-use crate::{policy, process, scheme};
+use crate::{policy, process, scheme, session};
 use cef::*;
 use serde_json::{json, Value};
 use std::{
     cell::RefCell,
     collections::BTreeMap,
+    rc::Rc,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 #[path = "navigation.rs"]
@@ -27,12 +28,22 @@ struct ViewRecord {
     navigate: navigation::Navigation,
     close: Option<u64>,
 }
+struct SessionRecord {
+    context: RequestContext,
+    profile: Option<session::ProfileLease>,
+    partition: String,
+    persistent: bool,
+    cookies_supported: bool,
+    creating: Option<u64>,
+    busy: bool,
+    disposing: Option<u64>,
+}
 #[derive(Default)]
 struct HostState {
     next: u64,
     windows: BTreeMap<u64, WindowRecord>,
     views: BTreeMap<u64, ViewRecord>,
-    sessions: BTreeMap<u64, RequestContext>,
+    sessions: BTreeMap<u64, SessionRecord>,
 }
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
 fn number(value: &Value, key: &str) -> Result<u64, String> {
@@ -172,24 +183,148 @@ fn finish_on_ui() {
 wrap_task! {
     struct FinalizeTask;
     impl Task {
-        fn execute(&self) {
-            let contexts = STATE.with(|s| s.borrow().sessions.iter().map(|(id, context)| (*id, context.clone())).collect::<Vec<_>>());
-            if contexts.is_empty() { let mut done = FinishLoopTask::new(); post_task(ThreadId::UI, Some(&mut done)); return; }
-            for (id, context) in contexts {
-                context.clear_scheme_handler_factories();
-                let mut closed = ContextClosed::new(id);
-                // Keep the context in STATE until its asynchronous completion.
-                context.close_all_connections(Some(&mut closed));
-            }
+        fn execute(&self) { finalize_sessions(); }
+    }
+}
+fn finalize_sessions() {
+    let sessions = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        if state.sessions.values().any(|record| record.busy) {
+            return None;
+        }
+        Some(
+            state
+                .sessions
+                .iter_mut()
+                .filter_map(|(id, record)| {
+                    if record.disposing.is_some() {
+                        None
+                    } else {
+                        record.disposing = Some(0);
+                        Some((*id, record.context.clone()))
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )
+    });
+    let Some(sessions) = sessions else {
+        return;
+    };
+    if sessions.is_empty() {
+        if STATE.with(|state| state.borrow().sessions.is_empty()) {
+            let mut done = FinishLoopTask::new();
+            post_task(ThreadId::UI, Some(&mut done));
+        }
+        return;
+    }
+    for (id, context) in sessions {
+        begin_dispose_flush(id, context);
+    }
+}
+fn operation_finished(id: u64) {
+    STATE.with(|state| {
+        if let Some(record) = state.borrow_mut().sessions.get_mut(&id) {
+            record.busy = false;
+        }
+    });
+    if FINALIZING.load(Ordering::SeqCst) {
+        finalize_sessions();
+    }
+}
+pub(crate) fn session_initialized(id: u64, context: RequestContext) {
+    // Even a synchronous CEF initialization callback is completed on a later UI
+    // task, after CreateContext has returned and installed the native record.
+    let mut task = SessionReadyTask::new(id, context);
+    if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+        fail("Session initialization completion could not be scheduled");
+    }
+}
+fn finish_session_initialization(id: u64, context: &RequestContext) {
+    let candidate = STATE.with(|state| {
+        state
+            .borrow()
+            .sessions
+            .get(&id)
+            .filter(|record| record.creating.is_some())
+            .map(|record| record.context.clone())
+    });
+    let Some(mut candidate) = candidate else {
+        return;
+    };
+    if context.is_same(Some(&mut candidate)) == 0 {
+        fail("Session initialization identity mismatch");
+        return;
+    }
+    scheme::attach(context);
+    let request = STATE.with(|state| {
+        state.borrow_mut().sessions.get_mut(&id).and_then(|record| {
+            record.busy = false;
+            record.creating.take()
+        })
+    });
+    if let Some(request) = request {
+        if QUITTING.load(Ordering::SeqCst) {
+            error(request, "Host stopped during session initialization");
+        } else {
+            reply(request, json!({"id":id}));
         }
     }
+    if FINALIZING.load(Ordering::SeqCst) {
+        finalize_sessions();
+    }
+}
+wrap_task! {
+    struct SessionReadyTask { id: u64, context: RequestContext }
+    impl Task { fn execute(&self) { finish_session_initialization(self.id, &self.context); } }
+}
+
+fn begin_dispose_flush(id: u64, context: RequestContext) {
+    let Some(manager) = context.cookie_manager(None) else {
+        dispose_failed(id, "Cookie store unavailable during session disposal");
+        return;
+    };
+    let mut callback = SessionFlushedForDispose::new(id, context);
+    if manager.flush_store(Some(&mut callback)) == 0 {
+        dispose_failed(id, "Cookie store flush could not be scheduled");
+    }
+}
+fn dispose_failed(id: u64, message: &str) {
+    let request = STATE.with(|state| {
+        state
+            .borrow_mut()
+            .sessions
+            .get_mut(&id)
+            .and_then(|record| record.disposing.take())
+    });
+    if let Some(request) = request.filter(|request| *request != 0) {
+        error(request, message);
+    } else {
+        fail(message);
+    }
+}
+wrap_completion_callback! {
+    struct SessionFlushedForDispose { id: u64, context: RequestContext }
+    impl CompletionCallback { fn on_complete(&self) {
+        self.context.clear_scheme_handler_factories();
+        let mut closed = ContextClosed::new(self.id);
+        // Keep the context and profile lock in STATE until asynchronous CEF cleanup.
+        self.context.close_all_connections(Some(&mut closed));
+    } }
 }
 wrap_completion_callback! {
     struct ContextClosed { id: u64 }
     impl CompletionCallback { fn on_complete(&self) {
-        let context = STATE.with(|s| s.borrow_mut().sessions.remove(&self.id));
-        drop(context);
-        if STATE.with(|s| s.borrow().sessions.is_empty()) {
+        let record = STATE.with(|s| s.borrow_mut().sessions.remove(&self.id));
+        if let Some(mut record) = record {
+            if let Some(request) = record.disposing.filter(|request| *request != 0) {
+                reply(request, Value::Null);
+            }
+            drop(record.context);
+            if let Some(profile) = record.profile.take() {
+                session::retire(profile);
+            }
+        }
+        if FINALIZING.load(Ordering::SeqCst) && STATE.with(|s| s.borrow().sessions.is_empty()) {
             let mut done = FinishLoopTask::new(); post_task(ThreadId::UI, Some(&mut done));
         }
     } }
@@ -219,12 +354,16 @@ pub fn release() {
     }
     STATE.with(|s| {
         let mut s = s.borrow_mut();
-        if !s.windows.is_empty() || !s.views.is_empty() {
+        if !s.windows.is_empty() || !s.views.is_empty() || !s.sessions.is_empty() {
             FAILED.store(true, Ordering::SeqCst);
         }
         s.windows.clear();
         s.views.clear();
-        s.sessions.clear();
+        for (_, mut record) in std::mem::take(&mut s.sessions) {
+            if let Some(profile) = record.profile.take() {
+                session::retire(profile);
+            }
+        }
     });
 }
 fn cancel_navigation(id: u64, message: &str) {
@@ -296,8 +435,14 @@ wrap_app! {
 }
 wrap_browser_process_handler! {
     struct BunlyProcess;
-    impl BrowserProcessHandler { fn on_context_initialized(&self) { if currently_on(ThreadId::UI) == 0 { fail("CEF initialized on incorrect thread"); return; }
-        if let Err(e) = process::start() { fail(&e); } } }
+    impl BrowserProcessHandler {
+        fn on_context_initialized(&self) { if currently_on(ThreadId::UI) == 0 { fail("CEF initialized on incorrect thread"); return; }
+            if let Err(e) = process::start() { fail(&e); } }
+        fn on_already_running_app_relaunch(&self, _command_line: Option<&mut CommandLine>, _current_directory: Option<&CefString>) -> i32 {
+            eprintln!("{}", json!({"event":"bunly.profile-root-collision","handled":true}));
+            1
+        }
+    }
 }
 fn checked_url(text: &str) -> Result<String, String> {
     policy::navigation(
@@ -305,8 +450,199 @@ fn checked_url(text: &str) -> Result<String, String> {
         crate::PATHS.get().and_then(|p| p.dev_origin.as_deref()),
     )
 }
+fn checked_cookie_url(text: &str) -> Result<String, String> {
+    let url = url::Url::parse(text).map_err(|_| "Invalid cookie URL")?;
+    if !matches!(url.scheme(), "http" | "https")
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.host_str().is_none()
+    {
+        return Err("Cookie URL must be credential-free HTTP(S)".into());
+    }
+    Ok(url.into())
+}
 fn live_view(id: u64) -> bool {
     STATE.with(|s| s.borrow().views.get(&id).is_some_and(|r| r.close.is_none()))
+}
+fn begin_session_operation(id: u64, require_cookies: bool) -> Result<RequestContext, String> {
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let record = state
+            .sessions
+            .get_mut(&id)
+            .ok_or("INVALID_HANDLE: session")?;
+        if record.disposing.is_some() || record.busy {
+            return Err("RESOURCE_IN_USE: session operation".into());
+        }
+        if require_cookies && !record.cookies_supported {
+            return Err("UNSUPPORTED_CAPABILITY: persistent cookies require a qualified app-specific credential identity".into());
+        }
+        record.busy = true;
+        Ok(record.context.clone())
+    })
+}
+fn operation_schedule_failed(id: u64, message: &str) -> String {
+    operation_finished(id);
+    message.into()
+}
+fn optional_string<'a>(
+    value: &'a Value,
+    key: &str,
+    maximum: usize,
+) -> Result<Option<&'a str>, String> {
+    match value.get(key) {
+        None => Ok(None),
+        Some(Value::String(text))
+            if !text.is_empty() && text.len() <= maximum && !text.contains('\0') =>
+        {
+            Ok(Some(text))
+        }
+        _ => Err(format!("Invalid {key}")),
+    }
+}
+fn boolean(value: &Value, key: &str) -> Result<bool, String> {
+    value
+        .get(key)
+        .and_then(Value::as_bool)
+        .ok_or_else(|| format!("Invalid {key}"))
+}
+const WINDOWS_EPOCH_MICROS: i64 = 11_644_473_600_000_000;
+fn unix_millis_to_basetime(value: i64) -> Result<Basetime, String> {
+    let micros = value
+        .checked_mul(1000)
+        .and_then(|value| value.checked_add(WINDOWS_EPOCH_MICROS))
+        .ok_or("Cookie expiry is out of range")?;
+    Ok(Basetime { val: micros })
+}
+fn basetime_to_unix_millis(value: i64) -> Option<i64> {
+    value
+        .checked_sub(WINDOWS_EPOCH_MICROS)
+        .map(|value| value / 1000)
+}
+fn same_site_name(value: CookieSameSite) -> Result<&'static str, String> {
+    match value.get_raw() {
+        0 => Ok("unspecified"),
+        1 => Ok("none"),
+        2 => Ok("lax"),
+        3 => Ok("strict"),
+        _ => Err("CEF returned an unknown cookie sameSite value".into()),
+    }
+}
+fn same_site_value(value: &str) -> Result<CookieSameSite, String> {
+    match value {
+        "unspecified" => Ok(CookieSameSite::UNSPECIFIED),
+        "none" => Ok(CookieSameSite::NO_RESTRICTION),
+        "lax" => Ok(CookieSameSite::LAX_MODE),
+        "strict" => Ok(CookieSameSite::STRICT_MODE),
+        _ => Err("Invalid cookie sameSite".into()),
+    }
+}
+#[derive(Default)]
+struct CookieReadState {
+    values: Vec<Value>,
+    encoded_bytes: usize,
+    error: Option<String>,
+}
+wrap_cookie_visitor! {
+    struct ReadCookies { state: Rc<RefCell<CookieReadState>> }
+    impl CookieVisitor { fn visit(&self, cookie: Option<&Cookie>, count: i32, total: i32, _delete: Option<&mut i32>) -> i32 {
+        let Some(cookie) = cookie else { self.state.borrow_mut().error = Some("CEF returned a missing cookie".into()); return 0; };
+        if count < 0 || total < 1 || count >= total || total > 128 {
+            self.state.borrow_mut().error = Some("Cookie result exceeds the bounded 128-cookie limit".into());
+            return 0;
+        }
+        let name = cookie.name.to_string();
+        let value = cookie.value.to_string();
+        let domain = cookie.domain.to_string();
+        let path = cookie.path.to_string();
+        if name.is_empty() || name.len() > 256 || value.len() > 4096 || domain.len() > 255 || path.len() > 1024 {
+            self.state.borrow_mut().error = Some("CEF returned an invalid or excessive cookie".into());
+            return 0;
+        }
+        let same_site = match same_site_name(cookie.same_site) {
+            Ok(value) => value,
+            Err(error) => { self.state.borrow_mut().error = Some(error); return 0; }
+        };
+        let mut result = json!({
+            "name":name,
+            "value":value,
+            "domain":domain,
+            "path":path,
+            "secure":cookie.secure != 0,
+            "httpOnly":cookie.httponly != 0,
+            "sameSite":same_site,
+        });
+        if cookie.has_expires != 0 {
+            let Some(expires) = basetime_to_unix_millis(cookie.expires.val) else {
+                self.state.borrow_mut().error = Some("CEF returned an invalid cookie expiry".into());
+                return 0;
+            };
+            result["expires"] = json!(expires);
+        }
+        let encoded = serde_json::to_vec(&result).map_or(usize::MAX, |bytes| bytes.len());
+        let mut state = self.state.borrow_mut();
+        state.encoded_bytes = state.encoded_bytes.saturating_add(encoded);
+        if state.encoded_bytes > 48 * 1024 {
+            state.error = Some("Cookie result exceeds the bounded 48 KiB response limit".into());
+            return 0;
+        }
+        state.values.push(result);
+        1
+    } }
+}
+wrap_completion_callback! {
+    struct CookiesRead { id: u64, request: u64, state: Rc<RefCell<CookieReadState>> }
+    impl CompletionCallback { fn on_complete(&self) {
+        operation_finished(self.id);
+        let mut state = self.state.borrow_mut();
+        if let Some(message) = state.error.take() { error(self.request, &message); }
+        else { reply(self.request, Value::Array(std::mem::take(&mut state.values))); }
+    } }
+}
+wrap_set_cookie_callback! {
+    struct CookieSet { id: u64, request: u64 }
+    impl SetCookieCallback { fn on_complete(&self, success: i32) {
+        operation_finished(self.id);
+        if success != 0 { reply(self.request, Value::Null); }
+        else { error(self.request, "CEF rejected the cookie attributes"); }
+    } }
+}
+wrap_delete_cookies_callback! {
+    struct CookiesDeleted { id: u64, request: u64 }
+    impl DeleteCookiesCallback { fn on_complete(&self, deleted: i32) {
+        operation_finished(self.id);
+        if deleted >= 0 { reply(self.request, json!(deleted)); }
+        else { error(self.request, "CEF cookie deletion failed"); }
+    } }
+}
+wrap_completion_callback! {
+    struct SessionFlushed { id: u64, request: u64 }
+    impl CompletionCallback { fn on_complete(&self) {
+        operation_finished(self.id);
+        reply(self.request, Value::Null);
+    } }
+}
+wrap_completion_callback! {
+    struct CacheCleared { id: u64, request: u64, cookies_deleted: i32 }
+    impl CompletionCallback { fn on_complete(&self) {
+        operation_finished(self.id);
+        reply(self.request, json!({"cookiesDeleted":self.cookies_deleted,"cacheCleared":true,"storageCleared":false}));
+    } }
+}
+wrap_delete_cookies_callback! {
+    struct CookiesCleared { id: u64, request: u64, context: RequestContext, clear_cache: bool }
+    impl DeleteCookiesCallback { fn on_complete(&self, deleted: i32) {
+        if deleted < 0 {
+            operation_finished(self.id);
+            error(self.request, "CEF cookie clearing failed");
+        } else if self.clear_cache {
+            let mut callback = CacheCleared::new(self.id, self.request, deleted);
+            self.context.clear_http_cache(Some(&mut callback));
+        } else {
+            operation_finished(self.id);
+            reply(self.request, json!({"cookiesDeleted":deleted,"cacheCleared":false,"storageCleared":false}));
+        }
+    } }
 }
 fn dispatch(command: &Value) -> Result<(), String> {
     if currently_on(ThreadId::UI) == 0 {
@@ -320,37 +656,236 @@ fn dispatch(command: &Value) -> Result<(), String> {
     }
     match operation {
         "session.create" => {
-            if string(args, "persistence")? != "ephemeral" {
-                return Err("UNSUPPORTED_CAPABILITY: session.persistent".into());
+            let persistence = string(args, "persistence")?;
+            let partition = string(args, "partition")?.to_owned();
+            if !matches!(persistence, "ephemeral" | "persistent") {
+                return Err("Invalid session persistence".into());
+            }
+            if partition.is_empty()
+                || partition.len() > 64
+                || !partition.bytes().enumerate().all(|(index, byte)| {
+                    byte.is_ascii_alphanumeric() || (index > 0 && b"._-".contains(&byte))
+                })
+            {
+                return Err("Invalid session partition".into());
             }
             if STATE.with(|s| s.borrow().sessions.len() >= 128) {
                 return Err("Session capacity exceeded".into());
             }
-            let mut handler = scheme::context_handler();
-            let context = request_context_create_context(
-                Some(&RequestContextSettings::default()),
-                Some(&mut handler),
-            )
-            .ok_or("Session creation failed")?;
-            scheme::attach(&context);
+            if STATE.with(|state| {
+                state
+                    .borrow()
+                    .sessions
+                    .values()
+                    .any(|record| record.partition == partition)
+            }) {
+                return Err("Session partition already has a native owner".into());
+            }
+            let persistent = persistence == "persistent";
+            if !persistent && args.get("persistentRoot").is_some() {
+                return Err("Ephemeral sessions cannot specify a persistent root".into());
+            }
+            let profile = if persistent {
+                let requested_root = string(args, "persistentRoot")?;
+                let root = crate::PATHS
+                    .get()
+                    .and_then(|paths| paths.profile_root.as_ref())
+                    .ok_or("Persistent sessions require BUNLY_PROFILE_ROOT at native startup")?;
+                Some(root.acquire(requested_root, &partition)?)
+            } else {
+                None
+            };
+            let mut settings = RequestContextSettings::default();
+            if let Some(profile) = profile.as_ref() {
+                settings.cache_path = CefString::from(profile.path.to_string_lossy().as_ref());
+                settings.persist_session_cookies = 0;
+                // No platform credential provider is qualified for Bunly yet.
+                // CEF 154 also lacks app-specific macOS Keychain settings.
+                // Persist storage, but never silently persist credentials using
+                // a shared identity, plaintext fallback, or unqualified provider.
+                settings.cookieable_schemes_exclude_defaults = 1;
+            }
             let id = next_id();
+            let mut handler = scheme::context_handler(id);
+            let context = request_context_create_context(Some(&settings), Some(&mut handler))
+                .ok_or("Session creation failed")?;
             STATE.with(|s| {
-                s.borrow_mut().sessions.insert(id, context);
+                s.borrow_mut().sessions.insert(
+                    id,
+                    SessionRecord {
+                        context,
+                        profile,
+                        partition,
+                        persistent,
+                        cookies_supported: !persistent,
+                        creating: Some(request),
+                        busy: true,
+                        disposing: None,
+                    },
+                );
             });
-            reply(request, json!({"id":id}));
+            // Reply from the initialized callback, not before disk-backed
+            // profile initialization is complete in Chromium.
         }
         "session.dispose" => {
             let id = number(args, "id")?;
             if STATE.with(|s| s.borrow().views.values().any(|v| v.session == id)) {
                 return Err("RESOURCE_IN_USE: session".into());
             }
-            if STATE
-                .with(|s| s.borrow_mut().sessions.remove(&id))
-                .is_none()
-            {
-                return Err("INVALID_HANDLE: session".into());
+            let context = STATE.with(|state| {
+                let mut state = state.borrow_mut();
+                let record = state
+                    .sessions
+                    .get_mut(&id)
+                    .ok_or("INVALID_HANDLE: session")?;
+                if record.disposing.is_some() || record.busy {
+                    return Err("RESOURCE_IN_USE: session operation".into());
+                }
+                record.disposing = Some(request);
+                Ok::<RequestContext, String>(record.context.clone())
+            })?;
+            begin_dispose_flush(id, context);
+        }
+        "session.cookies" => {
+            let id = number(args, "id")?;
+            let url = optional_string(args, "url", 4096)?
+                .map(checked_cookie_url)
+                .transpose()?;
+            let context = begin_session_operation(id, true)?;
+            let manager = context
+                .cookie_manager(None)
+                .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
+            let state = Rc::new(RefCell::new(CookieReadState::default()));
+            let mut visitor = ReadCookies::new(state.clone());
+            let started = match url.as_ref() {
+                Some(url) => manager.visit_url_cookies(
+                    Some(&CefString::from(url.as_str())),
+                    1,
+                    Some(&mut visitor),
+                ),
+                None => manager.visit_all_cookies(Some(&mut visitor)),
+            };
+            if started == 0 {
+                return Err(operation_schedule_failed(
+                    id,
+                    "Cookie enumeration could not be scheduled",
+                ));
             }
-            reply(request, Value::Null);
+            // The visitor is never invoked for an empty store. Flush is queued
+            // behind enumeration on CEF's cookie sequence and supplies completion.
+            let mut completed = CookiesRead::new(id, request, state);
+            if manager.flush_store(Some(&mut completed)) == 0 {
+                return Err(operation_schedule_failed(
+                    id,
+                    "Cookie enumeration completion could not be scheduled",
+                ));
+            }
+        }
+        "session.cookie.set" => {
+            let id = number(args, "id")?;
+            let url = checked_cookie_url(string(args, "url")?)?;
+            let input = args
+                .get("cookie")
+                .filter(|value| value.is_object())
+                .ok_or("Invalid cookie")?;
+            let mut cookie = Cookie {
+                name: CefString::from(string(input, "name")?),
+                value: CefString::from(string(input, "value")?),
+                domain: CefString::from(optional_string(input, "domain", 255)?.unwrap_or("")),
+                path: CefString::from(optional_string(input, "path", 1024)?.unwrap_or("/")),
+                secure: i32::from(boolean(input, "secure")?),
+                httponly: i32::from(boolean(input, "httpOnly")?),
+                same_site: same_site_value(string(input, "sameSite")?)?,
+                ..Default::default()
+            };
+            if cookie.name.to_string().is_empty()
+                || cookie.name.to_string().len() > 256
+                || cookie.value.to_string().len() > 4096
+            {
+                return Err("Invalid or excessive cookie".into());
+            }
+            if let Some(expires) = input.get("expires") {
+                let expires = expires
+                    .as_i64()
+                    .filter(|value| *value > 0)
+                    .ok_or("Invalid cookie expiry")?;
+                cookie.has_expires = 1;
+                cookie.expires = unix_millis_to_basetime(expires)?;
+            }
+            let context = begin_session_operation(id, true)?;
+            let manager = context
+                .cookie_manager(None)
+                .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
+            let mut completed = CookieSet::new(id, request);
+            if manager.set_cookie(
+                Some(&CefString::from(url.as_str())),
+                Some(&cookie),
+                Some(&mut completed),
+            ) == 0
+            {
+                return Err(operation_schedule_failed(
+                    id,
+                    "Cookie write could not be scheduled",
+                ));
+            }
+        }
+        "session.cookies.delete" => {
+            let id = number(args, "id")?;
+            let url = optional_string(args, "url", 4096)?
+                .map(checked_cookie_url)
+                .transpose()?;
+            let name = optional_string(args, "name", 256)?;
+            let context = begin_session_operation(id, true)?;
+            let manager = context
+                .cookie_manager(None)
+                .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
+            let url = url.as_deref().map(CefString::from);
+            let name = name.map(CefString::from);
+            let mut completed = CookiesDeleted::new(id, request);
+            if manager.delete_cookies(url.as_ref(), name.as_ref(), Some(&mut completed)) == 0 {
+                return Err(operation_schedule_failed(
+                    id,
+                    "Cookie deletion could not be scheduled",
+                ));
+            }
+        }
+        "session.clear" => {
+            let id = number(args, "id")?;
+            let clear_cookies = boolean(args, "cookies")?;
+            let clear_cache = boolean(args, "cache")?;
+            if !clear_cookies && !clear_cache {
+                return Err("No supported session data kind selected".into());
+            }
+            let context = begin_session_operation(id, clear_cookies)?;
+            if clear_cookies {
+                let manager = context
+                    .cookie_manager(None)
+                    .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
+                let mut completed = CookiesCleared::new(id, request, context, clear_cache);
+                if manager.delete_cookies(None, None, Some(&mut completed)) == 0 {
+                    return Err(operation_schedule_failed(
+                        id,
+                        "Cookie clearing could not be scheduled",
+                    ));
+                }
+            } else {
+                let mut completed = CacheCleared::new(id, request, 0);
+                context.clear_http_cache(Some(&mut completed));
+            }
+        }
+        "session.flush" => {
+            let id = number(args, "id")?;
+            let context = begin_session_operation(id, false)?;
+            let manager = context
+                .cookie_manager(None)
+                .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
+            let mut completed = SessionFlushed::new(id, request);
+            if manager.flush_store(Some(&mut completed)) == 0 {
+                return Err(operation_schedule_failed(
+                    id,
+                    "Session flush could not be scheduled",
+                ));
+            }
         }
         "window.create" => {
             if STATE.with(|s| s.borrow().windows.len() >= 32) {
@@ -400,7 +935,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     record.window.clone().ok_or("Window not ready")?,
                     s.sessions
                         .get(&session)
-                        .cloned()
+                        .filter(|record| record.disposing.is_none())
+                        .map(|record| record.context.clone())
                         .ok_or("INVALID_HANDLE: session")?,
                 ))
             })?;
@@ -556,7 +1092,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name()}) });
             reply(request, value);
         }
         "quit" => {
