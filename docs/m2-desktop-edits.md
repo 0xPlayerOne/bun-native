@@ -34,7 +34,7 @@ memory, terminal processes, browser login state, or native window handles.
 
 ## Framework paths
 
-- Electron uses the separately installed, exact baseline version **44.8.0**.
+- Electron uses the separately installed, exact baseline version **44.9.3**.
   Bun builds the TypeScript main entry as CommonJS; the runtime is external.
   That compilation is not reported as full application assembly or installed
   app size. The app uses a private profile, Node-disabled pages, context isolation,
