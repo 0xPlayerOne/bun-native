@@ -52,6 +52,18 @@ try {
     recursive: true,
     dereference: false,
   })
+  const browser = await Bun.build({
+    entrypoints: [
+      join(root, 'examples/cef/rpc-client.ts'),
+      join(root, 'examples/cef/rpc-lifecycle.ts'),
+    ],
+    outdir: join(stage, 'public'),
+    naming: '[name].js',
+    target: 'browser',
+    format: 'esm',
+    minify: false,
+  })
+  if (!browser.success) throw new Error(`CEF renderer RPC build failed: ${browser.logs.join('\n')}`)
   for (const [entry, name] of [
     ['scripts/cef-bootstrap.ts', 'main.js'],
     [`examples/cef/${application}.ts`, 'application.js'],

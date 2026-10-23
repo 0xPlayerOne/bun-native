@@ -20,6 +20,7 @@
     "native:test": "cargo test --locked --manifest-path native/Cargo.toml",
     "qualify:host": "bun scripts/qualify-host.ts",
     "qualify:lifecycle": "bun scripts/qualify-lifecycle.ts",
+    "qualify:cef-rpc": "bun scripts/qualify-cef-rpc.ts",
     "artifact:probe": "bun scripts/package-probe.ts",
     "workbench": "bun scripts/workbench.ts",
     "benchmark": "bun scripts/benchmark.ts",

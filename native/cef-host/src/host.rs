@@ -1,4 +1,4 @@
-use crate::{policy, process, scheme, session};
+use crate::{policy, process, rpc_authority, rpc_protocol as wire, scheme, session};
 use cef::*;
 use serde_json::{json, Value};
 use std::{
@@ -13,6 +13,9 @@ pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
 static PENDING: AtomicUsize = AtomicUsize::new(0);
 static FINALIZING: AtomicBool = AtomicBool::new(false);
+// Failure can arrive on the pipe thread before its UI teardown task runs.
+// Fence application dispatch immediately; receipt/discard cleanup may still drain.
+static RPC_STOPPED: AtomicBool = AtomicBool::new(false);
 static SHUTDOWN_DEADLINE: AtomicBool = AtomicBool::new(false);
 struct WindowRecord {
     window: Option<Window>,
@@ -27,6 +30,9 @@ struct ViewRecord {
     create: u64,
     navigate: navigation::Navigation,
     close: Option<u64>,
+    rpc: rpc_authority::Authority,
+    #[cfg(feature = "rpc-qualification")]
+    previous_rpc: Option<wire::Identity>,
 }
 struct SessionRecord {
     context: RequestContext,
@@ -44,13 +50,14 @@ struct HostState {
     windows: BTreeMap<u64, WindowRecord>,
     views: BTreeMap<u64, ViewRecord>,
     sessions: BTreeMap<u64, SessionRecord>,
+    rpc_deliveries: rpc_authority::Deliveries,
 }
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
 fn number(value: &Value, key: &str) -> Result<u64, String> {
     value
         .get(key)
         .and_then(Value::as_u64)
-        .filter(|n| *n > 0)
+        .filter(|n| *n > 0 && *n <= wire::MAX_ID)
         .ok_or_else(|| format!("Invalid {key}"))
 }
 fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
@@ -60,21 +67,426 @@ fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
         .filter(|s| s.len() <= 4096 && !s.contains('\0'))
         .ok_or_else(|| format!("Invalid {key}"))
 }
+fn packet_string<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .filter(|s| s.len() <= rpc_authority::MAX_PACKET_BYTES * 2 && !s.contains('\0'))
+        .ok_or_else(|| format!("Invalid {key}"))
+}
+fn application_origin(value: &Value) -> Result<Option<String>, String> {
+    let trust = value
+        .get("trust")
+        .and_then(Value::as_object)
+        .ok_or("Invalid trust policy")?;
+    match trust.get("kind").and_then(Value::as_str) {
+        Some("remote") if trust.len() == 1 => Ok(None),
+        Some("application") if trust.len() == 2 => {
+            let origin = trust
+                .get("origin")
+                .and_then(Value::as_str)
+                .ok_or("Invalid application origin")?;
+            if origin.len() > 256
+                || origin == "null"
+                || rpc_authority::exact_origin(origin).as_deref() != Some(origin)
+            {
+                return Err("Invalid application origin".into());
+            }
+            Ok(Some(origin.to_owned()))
+        }
+        _ => Err("Invalid trust policy".into()),
+    }
+}
 fn reply(id: u64, value: Value) {
     process::emit(json!({"v":1,"id":id,"ok":true,"value":value}));
 }
 fn error(id: u64, message: &str) {
     process::emit(json!({"v":1,"id":id,"ok":false,"error":message}));
 }
-fn next_id() -> u64 {
+fn next_id() -> Result<u64, String> {
     STATE.with(|s| {
-        let mut s = s.borrow_mut();
-        s.next += 1;
-        s.next
+        let mut state = s.borrow_mut();
+        state.next = wire::next(state.next).ok_or("Native identity exhausted")?;
+        Ok(state.next)
     })
 }
 fn event(kind: &str, target: u64, data: Value) {
     process::emit(json!({"v":1,"event":kind,"target":target,"data":data}));
+}
+fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
+    let Some(binding) = binding else {
+        return;
+    };
+    let (browser, requests) = STATE.with(|s| {
+        let mut state = s.borrow_mut();
+        #[cfg(feature = "rpc-qualification")]
+        if let Some(view) = state.views.get_mut(&id) {
+            view.previous_rpc = Some(binding.identity());
+        }
+        let requests = state.rpc_deliveries.retire(binding.identity());
+        (
+            state.views.get(&id).and_then(|r| r.browser.clone()),
+            requests,
+        )
+    });
+    // CEF owns the already-sent bytes until an exact DELIVERED/DISCARDED record
+    // returns. Revocation settles Bun waiters but does not erase this budget.
+    for request in requests {
+        error(request, "RPC document authority was revoked");
+    }
+    if let Some(frame) = browser.and_then(|browser| browser.main_frame()) {
+        if let Some(mut message) = wire::message(wire::REVOKE, binding.identity(), 0, None) {
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
+        }
+    }
+    event(
+        "rpc.revoked",
+        id,
+        json!({"connection":binding.connection,"context":binding.context,"generation":binding.generation,"documentId":binding.document}),
+    );
+}
+fn observed(browser: &Browser, frame: &Frame) -> rpc_authority::Observed {
+    rpc_authority::Observed {
+        browser: browser.identifier(),
+        frame: CefString::from(&frame.identifier()).to_string(),
+        url: CefString::from(&frame.url()).to_string(),
+        main: frame.is_main() != 0 && frame.is_valid() != 0,
+    }
+}
+fn rpc_target(
+    args: &Value,
+) -> Result<(u64, rpc_authority::Binding, Frame, rpc_authority::Observed), String> {
+    if RPC_STOPPED.load(Ordering::SeqCst) || QUITTING.load(Ordering::SeqCst) {
+        return Err("RPC host is shutting down".into());
+    }
+    let identity = wire::Identity {
+        connection: number(args, "connection")?,
+        context: number(args, "context")?,
+        generation: number(args, "generation")?,
+    };
+    let (id, binding, browser) = STATE
+        .with(|s| {
+            let state = s.borrow();
+            state.views.iter().find_map(|(id, record)| {
+                let binding = record.rpc.binding()?;
+                (binding.identity() == identity).then(|| (*id, binding, record.browser.clone()))
+            })
+        })
+        .ok_or("Stale RPC connection")?;
+    let browser = browser.ok_or("RPC browser unavailable")?;
+    let frame = browser.main_frame().ok_or("RPC frame unavailable")?;
+    let context = observed(&browser, &frame);
+    STATE.with(|s| {
+        s.borrow()
+            .views
+            .get(&id)
+            .ok_or("RPC view unavailable")?
+            .rpc
+            .authorize(&context, identity)
+    })?;
+    Ok((id, binding, frame, context))
+}
+fn hex(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut result = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        result.push(DIGITS[(byte >> 4) as usize] as char);
+        result.push(DIGITS[(byte & 15) as usize] as char);
+    }
+    result
+}
+fn unhex(value: &str) -> Result<Vec<u8>, String> {
+    if value.is_empty()
+        || !value.len().is_multiple_of(2)
+        || value.len() / 2 > rpc_authority::MAX_PACKET_BYTES
+    {
+        return Err("Invalid RPC packet encoding".into());
+    }
+    fn nibble(value: u8) -> Option<u8> {
+        match value {
+            b'0'..=b'9' => Some(value - b'0'),
+            b'a'..=b'f' => Some(value - b'a' + 10),
+            _ => None,
+        }
+    }
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            Ok(nibble(pair[0]).ok_or("Invalid RPC packet encoding")? << 4
+                | nibble(pair[1]).ok_or("Invalid RPC packet encoding")?)
+        })
+        .collect::<Result<Vec<_>, &str>>()
+        .map_err(str::to_owned)
+}
+fn renderer_message(
+    id: u64,
+    browser: Option<&mut Browser>,
+    frame: Option<&mut Frame>,
+    source: ProcessId,
+    message: Option<&mut ProcessMessage>,
+) -> i32 {
+    if source != ProcessId::RENDERER {
+        return 0;
+    }
+    let (Some(browser), Some(frame), Some(message)) = (browser, frame, message) else {
+        return 1;
+    };
+    let name = CefString::from(&message.name()).to_string();
+    if (RPC_STOPPED.load(Ordering::SeqCst) || QUITTING.load(Ordering::SeqCst))
+        && ![wire::RELEASE, wire::DELIVERED, wire::DISCARDED].contains(&name.as_str())
+    {
+        return 1;
+    }
+    #[cfg(feature = "rpc-qualification")]
+    if name == "bunly.rpc.qualification" {
+        if let Some((identity, sequence)) = wire::read(message, false) {
+            let context = observed(browser, frame);
+            let valid = STATE.with(|s| {
+                s.borrow()
+                    .views
+                    .get(&id)
+                    .is_some_and(|r| r.rpc.authorize(&context, identity).is_ok())
+            });
+            let case = match sequence {
+                1 => Some("stale-grant"),
+                2 => Some("stale-ack"),
+                3 => Some("stale-revoke"),
+                4 => Some("stale-result"),
+                _ => None,
+            };
+            if valid {
+                if let Some(case) = case {
+                    event("rpc.qualification", id, json!({"case":case}));
+                }
+            }
+        }
+        return 1;
+    }
+    if ![
+        wire::READY,
+        wire::SUBSCRIBED,
+        wire::RELEASE,
+        wire::PACKET,
+        wire::DELIVERED,
+        wire::DISCARDED,
+    ]
+    .contains(&name.as_str())
+    {
+        return 0;
+    }
+    let context = observed(browser, frame);
+    let Some((identity, sequence)) = wire::read(message, name == wire::PACKET) else {
+        #[cfg(feature = "rpc-qualification")]
+        {
+            let binding = STATE.with(|s| s.borrow().views.get(&id).and_then(|r| r.rpc.binding()));
+            if let (Some(binding), Some(args)) = (binding, message.argument_list()) {
+                if context.main
+                    && binding.browser == context.browser
+                    && binding.frame == context.frame
+                    && args.double(0) == binding.context as f64
+                    && args.double(1) == binding.connection as f64
+                    && args.double(2) == binding.generation as f64
+                {
+                    event("rpc.qualification", id, json!({"case":"invalid-number"}));
+                }
+            }
+        }
+        return 1;
+    };
+    if name == wire::READY {
+        if sequence != 0 || identity.connection != 0 || identity.generation != 0 {
+            return 1;
+        }
+        let owned_browser = STATE.with(|s| {
+            s.borrow()
+                .views
+                .get(&id)
+                .and_then(|record| record.browser.clone())
+        });
+        if owned_browser.is_none_or(|owned| owned.identifier() != context.browser) {
+            return 1;
+        }
+        // Replay an actual old grant after the replacement's OnContextCreated,
+        // not merely a made-up serial while an already-bound context is active.
+        // The return-to-origin fixture must still observe no usable bridge.
+        #[cfg(feature = "rpc-qualification")]
+        if context.main {
+            if let Some(previous) = STATE
+                .with(|s| s.borrow().views.get(&id).and_then(|view| view.previous_rpc))
+                .filter(|previous| previous.context != identity.context)
+            {
+                crate::rpc_qualification::replay_browser_messages(frame, previous);
+            }
+        }
+        #[cfg(feature = "rpc-qualification")]
+        if STATE.with(|s| {
+            s.borrow()
+                .views
+                .get(&id)
+                .and_then(|r| r.rpc.binding())
+                .is_some_and(|b| {
+                    b.context == identity.context && b.frame == context.frame && context.main
+                })
+        }) {
+            event("rpc.qualification", id, json!({"case":"duplicate-ready"}));
+        }
+        let Ok(connection) = next_id() else {
+            fail("Native identity exhausted");
+            return 1;
+        };
+        let (old, binding) = STATE.with(|s| {
+            let mut state = s.borrow_mut();
+            let allowed = !QUITTING.load(Ordering::SeqCst)
+                && context.main
+                && state.views.get(&id).is_some_and(|record| {
+                    record.close.is_none()
+                        && state
+                            .windows
+                            .get(&record.window)
+                            .is_some_and(|window| window.closing.is_none())
+                });
+            if !allowed {
+                return (None, None);
+            }
+            let record = state.views.get_mut(&id).unwrap();
+            if let Some(binding) = record.rpc.binding() {
+                if binding.browser == context.browser
+                    && binding.frame == context.frame
+                    && identity.context > binding.context
+                {
+                    return (record.rpc.revoke(), None);
+                }
+                return (None, None);
+            }
+            (
+                None,
+                record.rpc.bind(connection, &context, identity.context),
+            )
+        });
+        revoke_renderer(id, old);
+        if let Some(binding) = binding {
+            if let Some(mut grant) = wire::message(wire::GRANT, binding.identity(), 0, None) {
+                frame.send_process_message(ProcessId::RENDERER, Some(&mut grant));
+            }
+        }
+        return 1;
+    }
+    if name == wire::RELEASE && sequence == 0 {
+        let old = STATE.with(|s| {
+            s.borrow_mut()
+                .views
+                .get_mut(&id)
+                .and_then(|record| record.rpc.release(&context, identity))
+        });
+        revoke_renderer(id, old);
+        return 1;
+    }
+    if [wire::DELIVERED, wire::DISCARDED].contains(&name.as_str()) && sequence > 0 {
+        let completed = STATE.with(|s| {
+            let mut state = s.borrow_mut();
+            let delivery = state
+                .rpc_deliveries
+                .complete(&context, identity, sequence)?;
+            if let Some(record) = state.views.get_mut(&id) {
+                let _ = record.rpc.finish_delivery(identity, sequence);
+            }
+            Some(delivery)
+        });
+        if let Some(delivery) = completed {
+            if let Some(request) = delivery.request {
+                let live = STATE.with(|s| {
+                    s.borrow()
+                        .views
+                        .get(&id)
+                        .is_some_and(|r| r.rpc.authorize(&context, identity).is_ok())
+                });
+                if name == wire::DELIVERED && live {
+                    reply(request, Value::Null);
+                } else {
+                    error(request, "RPC delivery discarded");
+                }
+            }
+        }
+        return 1;
+    }
+    if name == wire::SUBSCRIBED && sequence == 0 {
+        let binding = STATE.with(|s| {
+            s.borrow_mut()
+                .views
+                .get_mut(&id)?
+                .rpc
+                .subscribe(&context, identity)
+                .ok()
+        });
+        if let Some(binding) = binding {
+            event(
+                "rpc.connected",
+                id,
+                json!({"connection":binding.connection,"context":binding.context,"frameId":binding.frame,"documentId":binding.document,"generation":binding.generation,"origin":rpc_authority::exact_origin(&context.url)}),
+            );
+            #[cfg(feature = "rpc-qualification")]
+            crate::rpc_qualification::stale_browser_messages(frame, identity);
+        } else {
+            #[cfg(feature = "rpc-qualification")]
+            if STATE.with(|s| {
+                s.borrow()
+                    .views
+                    .get(&id)
+                    .is_some_and(|r| r.rpc.authorize(&context, identity).is_ok())
+            }) {
+                event(
+                    "rpc.qualification",
+                    id,
+                    json!({"case":"duplicate-subscription"}),
+                );
+            }
+        }
+        return 1;
+    }
+    if name == wire::PACKET && sequence > 0 {
+        let Some(bytes) = wire::binary(message) else {
+            return 1;
+        };
+        let accepted = STATE.with(|s| {
+            let mut state = s.borrow_mut();
+            let retained: usize = state.views.values().map(|r| r.rpc.incoming_bytes()).sum();
+            if retained + bytes.len() > rpc_authority::MAX_GLOBAL_BYTES {
+                return false;
+            }
+            state.views.get_mut(&id).is_some_and(|r| {
+                r.rpc
+                    .authenticate(&context, identity, sequence, bytes.len())
+                    .is_ok()
+            })
+        });
+        if accepted {
+            event(
+                "rpc.packet",
+                id,
+                json!({"connection":identity.connection,"context":identity.context,"generation":identity.generation,"sequence":sequence,"packet":hex(&bytes),"copiedBytes":bytes.len()}),
+            );
+        } else {
+            #[cfg(feature = "rpc-qualification")]
+            if let Some(binding) =
+                STATE.with(|s| s.borrow().views.get(&id).and_then(|r| r.rpc.binding()))
+            {
+                let case = if !context.main || context.frame != binding.frame {
+                    "wrong-frame"
+                } else if identity.context != binding.context {
+                    "wrong-context"
+                } else if identity.connection != binding.connection {
+                    "wrong-connection"
+                } else if identity.generation != binding.generation {
+                    "stale-generation"
+                } else {
+                    "queue-or-sequence"
+                };
+                event("rpc.qualification", id, json!({"case":case}));
+            }
+        }
+    }
+    1
 }
 pub fn fail(message: &str) {
     FAILED.store(true, Ordering::SeqCst);
@@ -94,6 +506,7 @@ pub fn enqueue(value: Value) {
     }
 }
 pub fn request_quit() {
+    RPC_STOPPED.store(true, Ordering::SeqCst);
     let mut task = QuitTask::new();
     post_task(ThreadId::UI, Some(&mut task));
 }
@@ -140,12 +553,18 @@ wrap_task! { struct ShutdownDeadline; impl Task { fn execute(&self) {
     shutdown_acknowledged(); quit_message_loop();
 } } }
 fn quit_on_ui() {
+    RPC_STOPPED.store(true, Ordering::SeqCst);
     if QUITTING.swap(true, Ordering::SeqCst) {
         return;
     }
     bound_shutdown();
-    let (windows, browsers) = STATE.with(|s| {
-        let s = s.borrow();
+    let (windows, browsers, revocations) = STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        let revocations = s
+            .views
+            .iter_mut()
+            .map(|(id, record)| (*id, record.rpc.revoke()))
+            .collect::<Vec<_>>();
         (
             s.windows
                 .values()
@@ -155,8 +574,12 @@ fn quit_on_ui() {
                 .values()
                 .filter_map(|r| r.browser.clone())
                 .collect::<Vec<_>>(),
+            revocations,
         )
     });
+    for (id, revoked) in revocations {
+        revoke_renderer(id, revoked);
+    }
     for browser in browsers {
         if let Some(host) = browser.host() {
             host.close_browser(1);
@@ -352,19 +775,12 @@ pub fn release() {
             }
         }
     }
-    STATE.with(|s| {
-        let mut s = s.borrow_mut();
-        if !s.windows.is_empty() || !s.views.is_empty() || !s.sessions.is_empty() {
-            FAILED.store(true, Ordering::SeqCst);
-        }
-        s.windows.clear();
-        s.views.clear();
-        for (_, mut record) in std::mem::take(&mut s.sessions) {
-            if let Some(profile) = record.profile.take() {
-                session::retire(profile);
-            }
-        }
-    });
+    let retired = STATE.with(|s| std::mem::take(&mut *s.borrow_mut()));
+    if !retired.windows.is_empty() || !retired.views.is_empty() || !retired.sessions.is_empty() {
+        FAILED.store(true, Ordering::SeqCst);
+    }
+    // Drop CEF references outside the registry borrow during final teardown.
+    drop(retired);
 }
 fn cancel_navigation(id: u64, message: &str) {
     let requests = STATE.with(|s| {
@@ -431,6 +847,7 @@ wrap_app! {
     impl App {
         fn on_register_custom_schemes(&self, registrar: Option<&mut SchemeRegistrar>) { scheme::register(registrar); }
         fn browser_process_handler(&self) -> Option<BrowserProcessHandler> { Some(BunlyProcess::new()) }
+        fn render_process_handler(&self) -> Option<RenderProcessHandler> { Some(crate::renderer_rpc::handler()) }
     }
 }
 wrap_browser_process_handler! {
@@ -705,7 +1122,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 // a shared identity, plaintext fallback, or unqualified provider.
                 settings.cookieable_schemes_exclude_defaults = 1;
             }
-            let id = next_id();
+            let id = next_id()?;
             let mut handler = scheme::context_handler(id);
             let context = request_context_create_context(Some(&settings), Some(&mut handler))
                 .ok_or("Session creation failed")?;
@@ -899,7 +1316,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
             let x = policy::coordinate(args, "x")?;
             let y = policy::coordinate(args, "y")?;
-            let id = next_id();
+            let id = next_id()?;
             STATE.with(|s| {
                 s.borrow_mut().windows.insert(
                     id,
@@ -925,6 +1342,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
             let owner = number(args, "window")?;
             let session = number(args, "session")?;
             let url = checked_url(string(args, "url")?)?;
+            let approved_origin = application_origin(args)?;
+            if approved_origin
+                .as_deref()
+                .is_some_and(|origin| rpc_authority::exact_origin(&url).as_deref() != Some(origin))
+            {
+                return Err("Application origin must match the initial document".into());
+            }
             let (window, mut context) = STATE.with(|s| {
                 let s = s.borrow();
                 let record = s.windows.get(&owner).ok_or("INVALID_HANDLE: window")?;
@@ -940,7 +1364,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         .ok_or("INVALID_HANDLE: session")?,
                 ))
             })?;
-            let id = next_id();
+            let id = next_id()?;
             STATE.with(|s| {
                 s.borrow_mut().views.insert(
                     id,
@@ -952,6 +1376,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         create: request,
                         navigate: navigation::Navigation::default(),
                         close: None,
+                        rpc: rpc_authority::Authority::new(id, url.clone(), approved_origin),
+                        #[cfg(feature = "rpc-qualification")]
+                        previous_rpc: None,
                     },
                 );
             });
@@ -1004,7 +1431,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "view.navigate" => {
             let id = number(args, "id")?;
             let url = checked_url(string(args, "url")?)?;
-            let start = STATE.with(|s| {
+            let (start, revoked) = STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
                 if r.close.is_some() {
@@ -1013,15 +1440,17 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 if r.browser.is_none() {
                     return Err("Browser not ready");
                 }
-                r.navigate.request(request, url)
+                let revoked = r.rpc.explicit_navigation_start();
+                Ok::<_, &'static str>((r.navigate.request(request, url)?, revoked))
             })?;
+            revoke_renderer(id, revoked);
             if let Some(request) = start {
                 issue_navigation(id, request);
             }
         }
         "view.dispose" => {
             let id = number(args, "id")?;
-            let browser = STATE.with(|s| {
+            let (browser, revoked) = STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
                 if r.close.is_some() {
@@ -1029,8 +1458,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 }
                 let browser = r.browser.clone().ok_or("Browser not ready")?;
                 r.close = Some(request);
-                Ok(browser)
+                Ok::<_, &str>((browser, r.rpc.revoke()))
             })?;
+            revoke_renderer(id, revoked);
             browser
                 .host()
                 .ok_or("Browser host unavailable")?
@@ -1043,15 +1473,24 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 .ok_or("INVALID_HANDLE: window")?;
             match operation {
                 "window.close" => {
-                    STATE.with(|s| {
+                    let revocations = STATE.with(|s| {
                         let mut s = s.borrow_mut();
                         let r = s.windows.get_mut(&id).ok_or("INVALID_HANDLE: window")?;
                         if r.closing.is_some() {
                             return Err("Window is closing");
                         }
                         r.closing = Some(request);
-                        Ok::<_, &str>(())
+                        Ok::<_, &str>(
+                            s.views
+                                .iter_mut()
+                                .filter(|(_, view)| view.window == id)
+                                .map(|(view_id, view)| (*view_id, view.rpc.revoke()))
+                                .collect::<Vec<_>>(),
+                        )
                     })?;
+                    for (view_id, revoked) in revocations {
+                        revoke_renderer(view_id, revoked);
+                    }
                     window.close();
                 }
                 "window.show" => {
@@ -1091,8 +1530,89 @@ fn dispatch(command: &Value) -> Result<(), String> {
             view.request_focus();
             reply(request, Value::Null);
         }
+        "rpc.ack" => {
+            let (id, binding, frame, context) = rpc_target(args)?;
+            let sequence = number(args, "sequence")?;
+            let mut message = wire::message(wire::ACK, binding.identity(), sequence, None)
+                .ok_or("RPC allocation failed")?;
+            STATE.with(|s| {
+                s.borrow_mut()
+                    .views
+                    .get_mut(&id)
+                    .ok_or("Stale RPC connection")?
+                    .rpc
+                    .acknowledge_receive(&context, binding.identity(), sequence)
+            })?;
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
+            reply(request, Value::Null);
+        }
+        "rpc.deliver" => {
+            let (id, binding, frame, context) = rpc_target(args)?;
+            let bytes = unhex(packet_string(args, "packet")?)?;
+            let sequence = STATE.with(|s| {
+                let mut state = s.borrow_mut();
+                state
+                    .views
+                    .get_mut(&id)
+                    .ok_or("Stale RPC connection")?
+                    .rpc
+                    .begin_delivery(&context, binding.identity(), bytes.len())
+            })?;
+            let Some(mut delivery) =
+                wire::message(wire::DELIVER, binding.identity(), sequence, Some(&bytes))
+            else {
+                STATE.with(|s| {
+                    if let Some(record) = s.borrow_mut().views.get_mut(&id) {
+                        let _ = record.rpc.finish_delivery(binding.identity(), sequence);
+                    }
+                });
+                return Err("RPC allocation failed".into());
+            };
+            let reserved = STATE.with(|s| {
+                s.borrow_mut().rpc_deliveries.reserve(
+                    binding.clone(),
+                    sequence,
+                    bytes.len(),
+                    request,
+                )
+            });
+            if let Err(reason) = reserved {
+                STATE.with(|s| {
+                    if let Some(record) = s.borrow_mut().views.get_mut(&id) {
+                        let _ = record.rpc.finish_delivery(binding.identity(), sequence);
+                    }
+                });
+                return Err(reason.into());
+            }
+            // Reserve before the CEF call; no callback can race an absent record.
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut delivery));
+        }
+        "rpc.disconnect" => {
+            let connection = number(args, "connection")?;
+            let identity = wire::Identity {
+                connection,
+                context: number(args, "context")?,
+                generation: number(args, "generation")?,
+            };
+            let result = STATE.with(|s| {
+                let mut state = s.borrow_mut();
+                state
+                    .views
+                    .iter_mut()
+                    .find(|(_, r)| {
+                        r.rpc
+                            .binding()
+                            .is_some_and(|binding| binding.identity() == identity)
+                    })
+                    .map(|(id, record)| (*id, record.rpc.revoke()))
+            });
+            if let Some((id, revoked)) = result {
+                revoke_renderer(id, revoked);
+            }
+            reply(request, Value::Null);
+        }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
             reply(request, value);
         }
         "quit" => {
@@ -1121,11 +1641,15 @@ wrap_window_delegate! {
             window.show(); if request != 0 { reply(request, json!({"id":self.id})); }
         }
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
-            let (browsers, pending) = STATE.with(|s| { let mut s = s.borrow_mut();
+            let (browsers, pending, revocations) = STATE.with(|s| { let mut s = s.borrow_mut();
                 if let Some(r) = s.windows.get_mut(&self.id) { r.closing.get_or_insert(0); }
-                let views = s.views.values().filter(|v| v.window == self.id).collect::<Vec<_>>();
-                (views.iter().filter_map(|v| v.browser.clone()).collect::<Vec<_>>(), views.iter().any(|v| v.browser.is_none()))
+                let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
+                let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
+                let pending = view_ids.iter().any(|id| s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
+                (browsers, pending, revocations)
             });
+            for (id, revoked) in revocations { revoke_renderer(id, revoked); }
             let mut allowed = !pending;
             for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } }
             i32::from(allowed)
@@ -1147,6 +1671,31 @@ wrap_client! {
         fn load_handler(&self) -> Option<LoadHandler> { Some(BunlyLoad::new(self.id)) }
         fn display_handler(&self) -> Option<DisplayHandler> { Some(BunlyDisplay::new(self.id)) }
         fn request_handler(&self) -> Option<RequestHandler> { Some(BunlyRequest::new(self.id)) }
+        fn frame_handler(&self) -> Option<FrameHandler> { Some(BunlyFrame::new(self.id)) }
+        fn on_process_message_received(&self, browser: Option<&mut Browser>, frame: Option<&mut Frame>, source: ProcessId, message: Option<&mut ProcessMessage>) -> i32 {
+            renderer_message(self.id, browser, frame, source, message)
+        }
+    }
+}
+fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
+    let Some(frame) = frame else {
+        return;
+    };
+    let frame_id = CefString::from(&frame.identifier()).to_string();
+    let revoked = STATE.with(|s| {
+        s.borrow_mut()
+            .views
+            .get_mut(&id)
+            .and_then(|r| r.rpc.revoke_frame(&frame_id))
+    });
+    revoke_renderer(id, revoked);
+}
+wrap_frame_handler! {
+    struct BunlyFrame { id: u64 }
+    impl FrameHandler {
+        fn on_frame_detached(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>) { revoke_frame(self.id, frame); }
+        fn on_frame_destroyed(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>) { revoke_frame(self.id, frame); }
+        fn on_main_frame_changed(&self, _browser: Option<&mut Browser>, old_frame: Option<&mut Frame>, _new_frame: Option<&mut Frame>) { revoke_frame(self.id, old_frame); }
     }
 }
 wrap_life_span_handler! {
@@ -1166,7 +1715,10 @@ wrap_life_span_handler! {
                 s.views.get_mut(&self.id).map(|r| { r.browser = Some(browser.clone()); let request = r.create; r.create = 0; (request, closing) })
             });
             match action {
-                Some((request, false)) => if request != 0 { reply(request, json!({"id":self.id})); },
+                Some((request, false)) => if request != 0 {
+                    let document = STATE.with(|s| s.borrow().views.get(&self.id).map(|r| r.rpc.document().to_owned()));
+                    if let Some(document) = document { reply(request, json!({"id":self.id,"documentId":document})); }
+                },
                 other => { if let Some((request, _)) = other { if request != 0 { error(request, "View owner closed during creation"); } }
                     if let Some(host) = browser.host() { host.close_browser(1); }
                 }
@@ -1175,6 +1727,7 @@ wrap_life_span_handler! {
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             let record = STATE.with(|s| s.borrow_mut().views.remove(&self.id));
             if let Some(mut record) = record {
+                revoke_renderer(self.id, record.rpc.revoke());
                 if record.create != 0 { error(record.create, "View closed before creation completed"); }
                 for request in record.navigate.cancel() { error(request, "Navigation cancelled by close"); }
                 if let Some(request) = record.close { reply(request, Value::Null); }
@@ -1208,13 +1761,16 @@ wrap_load_handler! {
             if let Some(frame) = frame { if frame.is_main() != 0 && live_view(self.id) {
                 let url = CefString::from(&frame.url()).to_string();
                 STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.loaded(&url, status); } });
-                event("view.loaded", self.id, json!({"url":url,"status":status}));
+                let document = STATE.with(|s| s.borrow().views.get(&self.id).map(|r| r.rpc.document().to_owned()));
+                if let Some(document) = document { event("view.loaded", self.id, json!({"url":url,"status":status,"documentId":document})); }
             } }
         }
         fn on_load_error(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, code: Errorcode, text: Option<&CefString>, url: Option<&CefString>) {
             if frame.is_some_and(|f| f.is_main() != 0) && live_view(self.id) {
                 let message = text.map(|v| v.to_string()).unwrap_or_default();
                 let url = url.map(|v| v.to_string()).unwrap_or_default();
+                let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.rpc.revoke()));
+                revoke_renderer(self.id, revoked);
                 STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.failed(&url, message.clone()); } });
                 event("view.load-error", self.id, json!({"code":code.get_raw(),"message":message,"url":url}));
             }
@@ -1237,6 +1793,8 @@ wrap_request_handler! {
             _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources()) }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }
+            let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|r| r.rpc.revoke()));
+            revoke_renderer(self.id, revoked);
             cancel_navigation(self.id, "Renderer process terminated");
             event("view.renderer-exit", self.id, json!({"status":status.get_raw(),"code":code}));
             // M3 fails closed. M4/M7 may later add explicit, authorized recovery.
@@ -1247,9 +1805,18 @@ wrap_request_handler! {
         // while only live application views receive navigation events.
         fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, redirect: i32) -> i32 {
             let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = checked_url(&url).is_err();
+            if denied && frame.as_ref().is_some_and(|frame| frame.is_main() != 0) {
+                let revoked = STATE.with(|s| s.borrow_mut().views.get_mut(&self.id).and_then(|record| record.rpc.revoke()));
+                revoke_renderer(self.id, revoked);
+            }
             if !denied && live_view(self.id) && frame.is_some_and(|f| f.is_main() != 0) {
-                if redirect != 0 { STATE.with(|s| { if let Some(r) = s.borrow_mut().views.get_mut(&self.id) { r.navigate.redirect(&url); } }); }
-                event("view.navigating", self.id, json!({"url":url}));
+                let (revoked, document, application_trust) = STATE.with(|s| { let mut s = s.borrow_mut(); s.views.get_mut(&self.id).map(|r| {
+                    if redirect != 0 { r.navigate.redirect(&url); }
+                    let revoked = r.rpc.navigation_start(&url, redirect != 0);
+                    (revoked, r.rpc.document().to_owned(), r.rpc.application_trust())
+                }) }).unwrap_or((None, String::new(), false));
+                revoke_renderer(self.id, revoked);
+                event("view.navigating", self.id, json!({"url":url,"documentId":document,"applicationTrust":application_trust}));
             } i32::from(denied)
         }
     }

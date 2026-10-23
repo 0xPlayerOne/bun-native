@@ -17,6 +17,23 @@ window/view composition; no Tauri application framework is involved.
 
 The independent Cargo lock is committed and contributor checks use Rust 1.91.0.
 Production artifact trust and portability are not established by compilation alone.
+
+M4 renderer RPC uses CEF process messages, not a loopback server. The browser
+process owns the one-shot view/main-frame/document binding and the renderer gets
+only bounded packet send/subscribe functions in the approved V8 context. Run
+`bun run qualify:cef-rpc -- <prepared-app>` for the maintained native roundtrip;
+the `cef/dox` build validates APIs but is not execution evidence.
+The maintained RPC security fixture uses the explicit contributor-only
+`rpc-qualification` feature alongside `packaging`. It injects adversarial native
+process messages without adding any page API, and is excluded from normal builds.
+For the focused borrowed-function investigation, `rpc-context-diagnostics` includes
+those probes and adds capped native context provenance on stderr (32 records per
+renderer, 2048 bytes each), without a page API or credential/payload logging.
+Prepare a new immutable application for each candidate; do not overwrite an app
+already used by a retained qualification report. GUI execution remains separate.
+Use a separate target directory for `cef/dox`. `CEF_PATH` can name the exact
+retained platform distribution containing its validated `archive.json`, headers,
+wrapper sources and framework; pinned cef-rs checks that metadata before reuse.
 See ../../docs/m3-runtime-acceptance.md for acquisition, shutdown, origin policy,
 platform boundaries and executable qualification commands.
 

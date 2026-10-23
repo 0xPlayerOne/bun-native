@@ -1,0 +1,235 @@
+import { test } from 'bun:test'
+import assert from 'node:assert/strict'
+import { defineRpc, procedure, rpcLimits } from '../packages/contracts/src/rpc.ts'
+import { decodeRpc, encodeRpc } from '../packages/contracts/src/rpc-wire.ts'
+import { CefBackend } from '../packages/runtime/src/cef.ts'
+import { nativePeer, turn, type Command } from './helpers/native-peer.ts'
+
+const text = (value: unknown) => {
+  if (typeof value !== 'string') throw new TypeError('Expected string')
+  return value
+}
+const binary = (value: unknown) => {
+  if (!(value instanceof Uint8Array)) throw new TypeError('Expected bytes')
+  return value
+}
+const schema = defineRpc({ echo: procedure(text, text), binary: procedure(binary, binary) })
+const limits = rpcLimits({ maxFrameBytes: 24 * 1024, maxMetadataBytes: 16 * 1024 })
+
+async function fixture(
+  handlers = {
+    echo: { capability: 'rpc.echo', handle: async (value: string) => `native:${value}` },
+    binary: { capability: 'rpc.binary', handle: async (value: Uint8Array) => value },
+  }
+) {
+  const peer = await nativePeer()
+  let next = 0
+  peer.handle((command) => {
+    if (command.op === 'rpc.deliver') peer.reply(command)
+    else {
+      peer.reply(command, command.op.endsWith('.create') ? { id: ++next } : null)
+      if (command.op === 'quit') peer.send({ v: 1, event: 'shutdown' })
+    }
+  })
+  const backend = new CefBackend(peer.transport)
+  backend.serveRpc(schema, handlers, ['app://ui'], ['rpc.echo', 'rpc.binary'])
+  const session = await backend.createSession({ partition: 'rpc', persistence: 'ephemeral' })
+  const window = await backend.createWindow({
+    title: 'rpc',
+    bounds: { x: 0, y: 0, width: 640, height: 480 },
+  })
+  const view = await backend.createView({
+    window,
+    session,
+    url: 'app://ui/index.html',
+    trust: { kind: 'application', origin: 'app://ui' },
+  })
+  peer.send({
+    v: 1,
+    event: 'rpc.connected',
+    target: 3,
+    data: {
+      connection: 4,
+      context: 1,
+      frameId: 'native-main',
+      documentId: 'native-3-1',
+      generation: 1,
+      origin: 'app://ui',
+    },
+  })
+  await turn()
+  return { ...peer, backend, view }
+}
+
+function packetEvent(packet: Uint8Array, sequence: number) {
+  return {
+    v: 1,
+    event: 'rpc.packet',
+    target: 3,
+    data: {
+      connection: 4,
+      context: 1,
+      generation: 1,
+      sequence,
+      packet: Buffer.from(packet).toString('hex'),
+      copiedBytes: packet.byteLength,
+    },
+  }
+}
+
+function delivered(commands: Command[]): Command {
+  const command = [...commands].reverse().find((candidate) => candidate.op === 'rpc.deliver')
+  assert.ok(command)
+  return command
+}
+
+test('native-mediated RPC performs typed JSON and top-level binary roundtrips', async () => {
+  const f = await fixture()
+  try {
+    f.send({
+      v: 1,
+      event: 'view.loaded',
+      target: 3,
+      data: { url: 'app://ui/index.html', documentId: 'native-3-1' },
+    })
+    await turn()
+    assert.equal(
+      f.commands.some((command) => command.op === 'rpc.disconnect'),
+      false,
+      'Initial load completion must not revoke an already-subscribed document'
+    )
+    f.send(
+      packetEvent(
+        encodeRpc(
+          { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'cef' },
+          limits
+        ),
+        1
+      )
+    )
+    await turn()
+    await turn()
+    const jsonReply = decodeRpc(
+      Uint8Array.fromHex(String(delivered(f.commands).args['packet'])),
+      limits
+    )
+    assert.deepEqual(jsonReply, { type: 'success', id: 1, value: 'native:cef' })
+    assert.ok(
+      f.commands.some((command) => command.op === 'rpc.ack' && command.args['sequence'] === 1)
+    )
+
+    const bytes = new Uint8Array([0, 1, 2, 127, 128, 255])
+    f.send(
+      packetEvent(
+        encodeRpc(
+          { type: 'request', id: 2, method: 'binary', timeoutMs: 1000, value: bytes },
+          limits
+        ),
+        2
+      )
+    )
+    await turn()
+    await turn()
+    const binaryReply = decodeRpc(
+      Uint8Array.fromHex(String(delivered(f.commands).args['packet'])),
+      limits
+    )
+    assert.equal(binaryReply.type, 'success')
+    assert.deepEqual(binaryReply.value, bytes)
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('navigation revokes before a stale in-flight result can enter the renderer queue', async () => {
+  let finish!: (value: string) => void
+  const pending = new Promise<string>((resolve) => {
+    finish = resolve
+  })
+  const f = await fixture({
+    echo: { capability: 'rpc.echo', handle: () => pending },
+    binary: { capability: 'rpc.binary', handle: async (value: Uint8Array) => value },
+  })
+  try {
+    f.send(
+      packetEvent(
+        encodeRpc(
+          { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'late' },
+          limits
+        ),
+        1
+      )
+    )
+    await turn()
+    f.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
+    })
+    await turn()
+    finish('stale')
+    await turn()
+    await turn()
+    assert.equal(f.commands.filter((command) => command.op === 'rpc.deliver').length, 0)
+    assert.ok(f.commands.some((command) => command.op === 'rpc.disconnect'))
+    assert.equal(f.backend.state(f.view).trust.kind, 'remote')
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('closing a view aborts in-flight native RPC and suppresses its stale result', async () => {
+  let finish!: (value: string) => void
+  const pending = new Promise<string>((resolve) => {
+    finish = resolve
+  })
+  const f = await fixture({
+    echo: { capability: 'rpc.echo', handle: () => pending },
+    binary: { capability: 'rpc.binary', handle: async (value: Uint8Array) => value },
+  })
+  try {
+    f.send(
+      packetEvent(
+        encodeRpc(
+          { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'late' },
+          limits
+        ),
+        1
+      )
+    )
+    await turn()
+    await f.backend.disposeView(f.view)
+    finish('stale')
+    await turn()
+    await turn()
+    assert.equal(f.commands.filter((command) => command.op === 'rpc.deliver').length, 0)
+    assert.ok(f.commands.some((command) => command.op === 'rpc.disconnect'))
+    assert.equal(f.backend.diagnostics().views, 0)
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('forged native document identity fails closed before a server is constructed', async () => {
+  const f = await fixture()
+  try {
+    f.send({
+      v: 1,
+      event: 'rpc.connected',
+      target: 3,
+      data: {
+        connection: 5,
+        context: 2,
+        frameId: 'borrowed-child',
+        documentId: 'page-supplied',
+        generation: 99,
+        origin: 'app://ui',
+      },
+    })
+    await assert.rejects(f.backend.closed, /authority|valid/i)
+    assert.equal(f.backend.diagnostics().views, 0)
+  } finally {
+    await f.backend.dispose().catch(() => {})
+  }
+})

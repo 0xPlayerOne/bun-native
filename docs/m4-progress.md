@@ -20,7 +20,14 @@ Run `bun scripts/rpc-workbench.ts` for the executable protocol example. The
 MessageChannel is real; its view registry is the explicit mock. No native browser
 bridge is silently substituted or declared implemented.
 
-## Validation boundary
+The #19 native increment adds a CEF process-message bridge with native-created
+document generations, exact main-frame/origin checks on every packet, one host
+`RpcViewAuthority`, synchronous navigation/close/failure revocation, bounded
+binary copying and renderer acknowledgements. `ViewTrust` is now sent to native
+`view.create`; page packets contain no authority metadata or native control API.
+The prepared-app qualification is `bun run qualify:cef-rpc -- <app>`.
+
+## Earlier portable increment validation boundary
 
 Local environment: Linux x64, Bun `1.4.3+c6da4a4d3`. Toolchain dependencies come
 from the hash-verified offline contributor snapshot retained from PR #63. The new
@@ -44,13 +51,63 @@ new benchmark advantage, or production readiness is claimed from these tests.
 Existing M1–M3 outstanding criteria remain outstanding; moving independent M4
 protocol work forward does not close them.
 
+## Native authority review increment (macOS arm64)
+
+The native protocol now carries a renderer-native context serial plus browser-owned
+connection/document generation on every handshake, packet, receipt and revocation.
+The renderer checks both entered and current V8 contexts; it does not hold registry
+borrows while invoking JS or callback-capable CEF operations. Listener subscription
+precedes server activation. Checked sequence parsing, stop-and-wait admission and
+global retained-delivery reservations reject stale/replayed/foreign messages without
+mutating live work. Bridge readiness uses one removable listener and deadline timer.
+
+Contributor-only native probes replay actual previous bindings after context
+replacement and inject foreign frames, forged metadata and stale responses. The
+external hostile-frame script must demonstrably execute under the unchanged CSP.
+Prepared-app acceptance requires exact RPC evidence, independent server validation,
+backend-started cancellation, navigation/close-in-flight, return-to-origin denial
+and bounded resources, as well as the original smoke and clean shutdown contract.
+
+Local review validation uses Bun 1.4.3, Rust 1.91.0, the installed Python environment,
+and the retained CEF distribution validated by pinned cef-rs revision
+`163744c8286d5f593d89202c7807751a7898db28`. Real CEF linking, Rust tests/Clippy,
+focused portable tests, strict/browser typechecking and compiler-free application
+builds are distinct from native GUI qualification. No GUI is launched in the coding
+sandbox. Full portable checks retain loopback bind failures and process-observer
+`sysctl(KERN_PROC_ALL)` permission failures; they are not passing checks.
+
+See [validation](validation.md) for preparation and the supervisor's maintained
+`qualify:cef-rpc` command. Native adversarial behavior still requires that actual
+run; CEF teardown issue #92, genuine remote/redirect platform coverage and other
+supported operating systems remain open. Main-world XSS and same-origin scripts
+that control the parent are not isolated by this bridge. Lost renderer receipts
+remain charged against the hard native delivery budget until host teardown.
+
+## First supervised native RPC trial and diagnostic revision
+
+The first installed trial of the retained prepared app failed the direct iframe
+borrowing assertion. It did not record which JS outcome caused that assertion;
+it is not proof that native accepted the call. Native shutdown phases completed
+without the #92 teardown failure, but the backend failed and the run did not pass.
+The original app, report and source/artifact metadata remain immutable.
+
+Inspection of pinned CEF 8037 and cef-rs found a concrete exception-output bug:
+replacing the borrowed Rust string did not populate CEF's output slot. A real,
+non-GUI C ABI regression reproduces the empty slot and passes with `try_set()`.
+That check runs in a bounded child process to isolate Chromium library loading
+from the other native tests. A new private diagnostic candidate records capped
+native current/entered/bound frame provenance and exact JS outcomes while retaining
+the specific cross-context-denial assertion. It still requires the supervisor's
+actual CEF run; no successful direct-borrow denial or universal caller identity
+is inferred from string-ABI tests or V8 creation-context annotations.
+
 ## Acceptance mapping
 
-| Issue | Implemented here                                                                                                                                                                                       | Still needs integration/evidence                                                                                                                           |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #18   | Versioned envelopes, inferred routes, independent parsers, sanitized errors, monotonic IDs, binary bodies, cancellation/deadlines, disconnect/reload behavior and bounded admission/delivery/execution | Native renderer integration and platform execution are deliberately separate; the portable implementation is covered by local tests.                       |
-| #19   | Host-side lease checks, native-known identity contract, no frontend authority fields, revocation and reconnect-safe budgets                                                                            | Actual native frame attestation/injection, remote-page attempts in CEF, navigation-start hooks, and loopback authentication if that transport is selected. |
-| #22   | Acknowledged bounded MessagePort reference plus opt-in authenticated Bun loopback candidate, adversarial real-socket tests, candidate profiler and incomplete ADR template                             | #19 native-private handoff/CSP integration, paired native-mediated CEF trials, throttling/disconnect/platform wakeup evidence and final selection.         |
+| Issue | Implemented here                                                                                                                                                                                       | Still needs integration/evidence                                                                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #18   | Versioned envelopes, inferred routes, independent parsers, sanitized errors, monotonic IDs, binary bodies, cancellation/deadlines, disconnect/reload behavior and bounded admission/delivery/execution | Native renderer integration and platform execution are deliberately separate; the portable implementation is covered by local tests.                                                    |
+| #19   | Host-side leases plus CEF browser/frame/document attestation, exact-context injection, native navigation-start revocation, bounded acknowledged binary transport, hostile child/forgery/stale fixtures | Execute and retain prepared-app evidence on every supported native target; remote network pages remain blocked by the current M3 navigation profile. No loopback transport is selected. |
+| #22   | Acknowledged bounded MessagePort reference plus opt-in authenticated Bun loopback candidate, adversarial real-socket tests, candidate profiler and incomplete ADR template                             | #19 native-private handoff/CSP integration, paired native-mediated CEF trials, throttling/disconnect/platform wakeup evidence and final selection.                                      |
 
 See [application RPC](rpc.md) for APIs, serialization limits, timing rules,
 capacity behavior and the native integration contract. PR closure should not be
