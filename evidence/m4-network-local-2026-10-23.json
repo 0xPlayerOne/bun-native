@@ -1,0 +1,797 @@
+{
+  "schema": 1,
+  "classification": "native-session-network-authority-acceptance",
+  "date": "2026-10-23",
+  "target": "darwin-arm64",
+  "sourceCommit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+  "sourceTree": "a0cd86778b96628a38a7113639e31a8d642cc2aa",
+  "nativeSourceTree": "fae1cf0965de6a75ce07eb6665e2b77bf1cf701f",
+  "bun": "1.4.3",
+  "rust": "1.91.0",
+  "cefRsRevision": "163744c8286d5f593d89202c7807751a7898db28",
+  "cefVersion": "154.0.34",
+  "artifacts": {
+    "host": {
+      "bytes": 2144592,
+      "sha256": "61dbeea3902ec7af69e701e256e973a2025510e566b0bdf1902e108d25b2bd6c"
+    },
+    "helper": {
+      "bytes": 1948752,
+      "sha256": "a146b84ec89d632633b7db93ffb378ae7e2c8840da5e841f2d9db2dfc53cee5b"
+    },
+    "cef": {
+      "bytes": 232371968,
+      "sha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39"
+    },
+    "bun": {
+      "bytes": 70468592,
+      "sha256": "4b0e884e232c75d80237903d29bf9282f8d7c085003742250a26857342f78489"
+    }
+  },
+  "validation": {
+    "portable": {
+      "bunTests": 684,
+      "pythonTests": 200,
+      "log": {
+        "bytes": 73473,
+        "sha256": "887017da2d7192c934b6b4e05e2d931a3af0ed43ddd051974cfaa88fc79b3d82"
+      }
+    },
+    "foundation": {
+      "overlappingBunTests": 139,
+      "log": {
+        "bytes": 15738,
+        "sha256": "e924b426b8a3389e6d15083d9949c5dc755080f7306e474decefd18cff7250df"
+      }
+    },
+    "nativeDefault": {
+      "m1Tests": 3,
+      "cefTests": 98,
+      "log": {
+        "bytes": 12643,
+        "sha256": "f30e372a301cb92d55e9c8501807b2712493398e100cac52acd8cc2f883cc059"
+      }
+    },
+    "nativeContributor": {
+      "cefTests": 99,
+      "tests": {
+        "bytes": 9418,
+        "sha256": "f3b544dc591edfd051de37115b2432d36adf5581f31c919d0edcb08c3e0f8024"
+      },
+      "clippy": {
+        "bytes": 167,
+        "sha256": "3e5ccfbfb47adfa1256ff726d95a549c19d64612f61cc4a66eb87c7b940389b0"
+      },
+      "build": {
+        "bytes": 169,
+        "sha256": "a47c08a8c8759913650b093e40f15c1f8a86b43e70a3a8139b08e5fd0045e07d"
+      }
+    },
+    "windowsApi": {
+      "passed": true,
+      "classification": "cross-target-api-check-not-Windows-execution",
+      "log": {
+        "bytes": 4350,
+        "sha256": "d8837f4fbd2af3559a134cb621037cc27cde97974718b4a4d0829a5255cef3ff"
+      }
+    },
+    "workflows": {
+      "bytes": 13,
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    },
+    "secrets": {
+      "bytes": 196,
+      "sha256": "e3fbc0022926b6a3e67cca7676ac336d6c98b60086093010edd7894cee21f254"
+    }
+  },
+  "nativeRuns": [
+    {
+      "name": "final-network",
+      "passed": true,
+      "report": {
+        "bytes": 146396,
+        "sha256": "fc561344da7f76997488ffd9b638ae02fec258ca290628cafdf1c2ab5c349fda"
+      },
+      "sourceBefore": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 2,
+        "worker": 2,
+        "isolatedLeak": 0,
+        "allowedData": 4
+      },
+      "observation": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "orphanCount": 0,
+        "survivorCount": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        },
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "durationMs": 11
+          },
+          {
+            "phase": "host-release",
+            "durationMs": 0
+          },
+          {
+            "phase": "asset-service-stop",
+            "durationMs": 0
+          },
+          {
+            "phase": "cef-shutdown",
+            "durationMs": 48
+          }
+        ],
+        "hostClean": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "final-rpc",
+      "passed": true,
+      "report": {
+        "bytes": 1267751,
+        "sha256": "39140b8b44b6c0b86a9b4569d094532e99abd363a42e0e946267b7a39d1aff78"
+      },
+      "sourceBefore": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "trials": [
+        {
+          "name": "installed-0",
+          "observation": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            },
+            "shutdownPhases": [
+              {
+                "phase": "process-stop",
+                "durationMs": 11
+              },
+              {
+                "phase": "host-release",
+                "durationMs": 0
+              },
+              {
+                "phase": "asset-service-stop",
+                "durationMs": 0
+              },
+              {
+                "phase": "cef-shutdown",
+                "durationMs": 40
+              }
+            ],
+            "hostClean": [
+              true
+            ]
+          }
+        },
+        {
+          "name": "installed-1",
+          "observation": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            },
+            "shutdownPhases": [
+              {
+                "phase": "process-stop",
+                "durationMs": 11
+              },
+              {
+                "phase": "host-release",
+                "durationMs": 0
+              },
+              {
+                "phase": "asset-service-stop",
+                "durationMs": 0
+              },
+              {
+                "phase": "cef-shutdown",
+                "durationMs": 49
+              }
+            ],
+            "hostClean": [
+              true
+            ]
+          }
+        },
+        {
+          "name": "installed-2",
+          "observation": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            },
+            "shutdownPhases": [
+              {
+                "phase": "process-stop",
+                "durationMs": 11
+              },
+              {
+                "phase": "host-release",
+                "durationMs": 0
+              },
+              {
+                "phase": "asset-service-stop",
+                "durationMs": 0
+              },
+              {
+                "phase": "cef-shutdown",
+                "durationMs": 36
+              }
+            ],
+            "hostClean": [
+              true
+            ]
+          }
+        },
+        {
+          "name": "last-window",
+          "observation": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            },
+            "shutdownPhases": [
+              {
+                "phase": "process-stop",
+                "durationMs": 10
+              },
+              {
+                "phase": "host-release",
+                "durationMs": 0
+              },
+              {
+                "phase": "asset-service-stop",
+                "durationMs": 0
+              },
+              {
+                "phase": "cef-shutdown",
+                "durationMs": 52
+              }
+            ],
+            "hostClean": [
+              true
+            ]
+          }
+        },
+        {
+          "name": "rejected-4",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "rejected-5",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "rejected-6",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "wrong-version",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "missing-bun",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "missing-helper",
+          "observation": {
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": false,
+              "status": "not-observed"
+            },
+            "shutdownPhases": [],
+            "hostClean": []
+          }
+        },
+        {
+          "name": "restored-installation",
+          "observation": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "orphanCount": 0,
+            "survivorCount": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            },
+            "shutdownPhases": [
+              {
+                "phase": "process-stop",
+                "durationMs": 11
+              },
+              {
+                "phase": "host-release",
+                "durationMs": 0
+              },
+              {
+                "phase": "asset-service-stop",
+                "durationMs": 0
+              },
+              {
+                "phase": "cef-shutdown",
+                "durationMs": 46
+              }
+            ],
+            "hostClean": [
+              true
+            ]
+          }
+        }
+      ],
+      "rpcAcceptance": {
+        "passed": true,
+        "acceptedLaunches": 5,
+        "helperCleanup": {
+          "scope": "same-suite-sampled-coverage",
+          "qualifiedLaunches": [
+            "installed-0",
+            "installed-1",
+            "installed-2",
+            "last-window",
+            "restored-installation"
+          ],
+          "unobservedLaunches": []
+        }
+      }
+    },
+    {
+      "name": "final-policy",
+      "passed": true,
+      "report": {
+        "bytes": 133207,
+        "sha256": "80155bc64b19ac4ede88d830723adc2a43171040ec88a5c4bbcb2311f0eb87d1"
+      },
+      "sourceBefore": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "deniedRequests": 0,
+      "observation": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "orphanCount": 0,
+        "survivorCount": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        },
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "durationMs": 11
+          },
+          {
+            "phase": "host-release",
+            "durationMs": 0
+          },
+          {
+            "phase": "asset-service-stop",
+            "durationMs": 0
+          },
+          {
+            "phase": "cef-shutdown",
+            "durationMs": 58
+          }
+        ],
+        "hostClean": [
+          true
+        ]
+      }
+    }
+  ],
+  "preservedFailedNativeTrials": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "report": {
+        "bytes": 612990,
+        "sha256": "06ce40d864271170fd2cc83f9034ed66d4aca9264d1b399b2b785dd21ad8d166"
+      },
+      "reason": "Fixture incorrectly awaited a DOM event after native frame cancellation; native denial receipt now required.",
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 1,
+        "worker": 0,
+        "isolatedLeak": 0,
+        "allowedData": 2
+      },
+      "observation": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "orphanCount": 0,
+        "survivorCount": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        },
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "durationMs": 10
+          },
+          {
+            "phase": "host-release",
+            "durationMs": 0
+          },
+          {
+            "phase": "asset-service-stop",
+            "durationMs": 0
+          },
+          {
+            "phase": "cef-shutdown",
+            "durationMs": 53
+          }
+        ],
+        "hostClean": [
+          false
+        ]
+      }
+    },
+    {
+      "attempt": 2,
+      "passed": false,
+      "report": {
+        "bytes": 135980,
+        "sha256": "dc41c61242a84815a30e7266ec50a18f07b99e701dd0b53a25e7cd071962cd7b"
+      },
+      "reason": "Fixture closed its last window before disposing sessions; shutdown correctly rejected later operations.",
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 2,
+        "worker": 2,
+        "isolatedLeak": 0,
+        "allowedData": 4
+      },
+      "observation": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "orphanCount": 0,
+        "survivorCount": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        },
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "durationMs": 10
+          },
+          {
+            "phase": "host-release",
+            "durationMs": 0
+          },
+          {
+            "phase": "asset-service-stop",
+            "durationMs": 0
+          },
+          {
+            "phase": "cef-shutdown",
+            "durationMs": 43
+          }
+        ],
+        "hostClean": [
+          false
+        ]
+      }
+    },
+    {
+      "attempt": 3,
+      "passed": false,
+      "report": {
+        "bytes": 136879,
+        "sha256": "f5e2abf3d68c400d68f233d3866f527a961c6023f1278040f445cbadabf4c0a3"
+      },
+      "reason": "Fixture retained its own stale-result observer while asserting zero listeners; owned subscription is now removed.",
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 2,
+        "worker": 2,
+        "isolatedLeak": 0,
+        "allowedData": 4
+      },
+      "observation": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "orphanCount": 0,
+        "survivorCount": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        },
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "durationMs": 11
+          },
+          {
+            "phase": "host-release",
+            "durationMs": 0
+          },
+          {
+            "phase": "asset-service-stop",
+            "durationMs": 0
+          },
+          {
+            "phase": "cef-shutdown",
+            "durationMs": 58
+          }
+        ],
+        "hostClean": [
+          false
+        ]
+      }
+    }
+  ],
+  "advisories": [
+    {
+      "name": "bun-root",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": ".",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.381,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "bun-electron",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electron",
+      "state": "completed",
+      "exitCode": 1,
+      "elapsedSeconds": 0.302,
+      "logSha256": "3e4e5ff33a7a5e5c8a949bb8766328e288ad28d3a4de2651626c51b5801b6dcd"
+    },
+    {
+      "name": "bun-electrobun",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electrobun",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.262,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "bun-fixtures",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/fixtures",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.258,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "cargo-m1",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 0.662,
+      "logSha256": "e91ed92f16ea6142924c3dfee32dbab111712f6d11f994f1c6d76de35a3e606e"
+    },
+    {
+      "name": "cargo-cef",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/cef-host/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 1.056,
+      "logSha256": "140a8d85f15c3e88c3528b998b23a27cf636d68289565f58ca0c4474cadf61ce"
+    },
+    {
+      "name": "python",
+      "command": [
+        "pip-audit",
+        "-r",
+        "requirements.txt",
+        "--format",
+        "json"
+      ],
+      "directory": ".",
+      "state": "completed",
+      "exitCode": 0,
+      "elapsedSeconds": 7.61,
+      "logSha256": "8d88b26b743a97d2b6f1c83d71c708b1509c44b2f04ebed424f268fc5f6e12aa"
+    }
+  ],
+  "advisoryBoundary": "The independent Electron benchmark audit fails on GHSA-jr5w-w6x2-84p9 at this implementation base. A separate 44.9.3 remediation is PR #99; this checkpoint is not represented as a clean all-dependency audit.",
+  "limits": [
+    "Network origins do not create native RPC or browser-permission authority.",
+    "CEF HTTP/navigation policy is not a complete WebSocket/WebRTC/OS egress firewall.",
+    "Controlled cross-origin traffic uses explicit numeric-loopback HTTP origins. Ordinary HTTPS success is checked separately at https://example.com without certificate exceptions.",
+    "The untrusted TLS endpoint must receive zero application requests; no trust-store modifications are used.",
+    "Historical intermittent CEF shutdown remains unproven as fixed; these are functional current-host tests.",
+    "Full persistent credentials, full HTML5 clearing and paired transport decision remain separate M4 work.",
+    "No hosted Windows/Linux execution is inferred from local acceptance or cross-compilation."
+  ]
+}

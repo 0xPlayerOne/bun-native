@@ -115,3 +115,29 @@ including context-level callbacks for service-worker requests and
 No upstream implementation code was copied. Current online references:
 [request context handler](https://cef-builds.spotifycdn.com/docs/154.0/classCefRequestContextHandler.html)
 and [resource request handler](https://cef-builds.spotifycdn.com/docs/154.0/classCefResourceRequestHandler.html).
+
+## Local implementation acceptance
+
+Committed implementation `d9d2f3ae52f16493ac48375216ec86721961a05d` passed the
+real network, RPC/session and browser-policy qualifiers on macOS arm64 with
+Bun 1.4.3 and the existing CEF 154.0.34 distribution. The network suite recorded
+two hostile cross-origin frames, two service-worker runs, four allowed data
+requests, and zero forbidden, wrong-session or untrusted-TLS application requests.
+Ordinary public HTTPS navigation and exact native certificate-denial evidence
+also passed. Source identities and input artifacts remained unchanged.
+
+Local validation passed 684 Bun tests and 200 Python tests, 139 overlapping
+foundation tests, 3 M1 tests, 98 default CEF tests and 99 contributor CEF tests.
+Windows API compilation passed, but actual hosted Windows/Linux execution remains
+required. The three early fixture failures are retained, not counted as passes:
+waiting for a DOM event after native cancellation, disposing sessions after
+last-window shutdown, and counting the fixture's own observer as a resource leak.
+The corrected fixture requires native denial receipts, preserves shutdown order,
+and removes its own observer before checking resource convergence.
+
+The independent Electron benchmark audit found GHSA-jr5w-w6x2-84p9 on the unchanged
+base pin. Its separate remediation is PR #99; this initial checkpoint is not a
+clean all-dependency audit. Other completed Bun locks, both Cargo locks and Python
+requirements reported no findings. See the
+[sanitized evidence](../evidence/m4-network-local-2026-10-23.json) for exact
+checkpoints, artifact/report hashes, failed trials and qualification limits.
