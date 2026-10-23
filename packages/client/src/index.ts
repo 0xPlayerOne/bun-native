@@ -53,6 +53,8 @@ export function readDescriptor(value: unknown): BackendDescriptor {
 export { RpcClient } from './rpc.ts'
 export type { RpcClientOptions } from './rpc.ts'
 export { rpcMessagePort } from './rpc-port.ts'
+export { RpcLoopbackTransport } from './rpc-loopback.ts'
+export type { RpcLoopbackClientOptions } from './rpc-loopback.ts'
 
 export {
   BinaryStreamSender,

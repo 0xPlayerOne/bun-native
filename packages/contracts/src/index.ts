@@ -1,6 +1,7 @@
 /** Engine-independent contracts. This package must remain browser-safe. */
 export * from './core.ts'
 export * from './profiles.ts'
+export * from './rpc-websocket-wire.ts'
 import { BunlyError, CONTRACT_VERSION } from './core.ts'
 import { PROFILE_CAPABILITY_VERSION } from './profiles.ts'
 import type { BackendName, Capability } from './core.ts'
@@ -93,6 +94,8 @@ export interface BrowserBackend {
   createView(options: ViewOptions): Promise<ViewHandle>
   navigate(view: ViewHandle, url: string, options?: OperationOptions): Promise<ViewState>
   state(view: ViewHandle): ViewState
+  /** Return the opaque session that owns this exact live view handle. */
+  session(view: ViewHandle): SessionHandle
   closeWindow(window: WindowHandle): Promise<void>
   disposeView(view: ViewHandle): Promise<void>
   disposeSession(session: SessionHandle): Promise<void>

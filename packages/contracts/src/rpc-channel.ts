@@ -14,6 +14,8 @@ export class RpcChannel {
   readonly #queue: Outgoing[] = []
   #active: Outgoing | undefined
   #bytes = 0
+  #peakBytes = 0
+  #peakFrames = 0
   #off: (() => void) | undefined
   #timer: unknown
   #started = false
@@ -100,6 +102,8 @@ export class RpcChannel {
       }
       this.#bytes += item.bytes
       this.#queue.push(item)
+      this.#peakBytes = Math.max(this.#peakBytes, this.#bytes)
+      this.#peakFrames = Math.max(this.#peakFrames, this.#queue.length + Number(!!this.#active))
       this.#pump()
     })
   }
@@ -175,10 +179,18 @@ export class RpcChannel {
       }
     }
   }
-  diagnostics(): Readonly<{ queuedBytes: number; queuedFrames: number; closed: boolean }> {
+  diagnostics(): Readonly<{
+    queuedBytes: number
+    queuedFrames: number
+    peakQueuedBytes: number
+    peakQueuedFrames: number
+    closed: boolean
+  }> {
     return {
       queuedBytes: this.#bytes,
       queuedFrames: this.#queue.length + Number(!!this.#active),
+      peakQueuedBytes: this.#peakBytes,
+      peakQueuedFrames: this.#peakFrames,
       closed: !!this.#reason,
     }
   }

@@ -60,7 +60,13 @@ test('repeated RPC ownership cycles release every timer and subscription', async
     channel.close()
     complete()
     await Promise.resolve()
-    expect(channel.diagnostics()).toEqual({ queuedBytes: 0, queuedFrames: 0, closed: true })
+    expect(channel.diagnostics()).toEqual({
+      queuedBytes: 0,
+      queuedFrames: 0,
+      peakQueuedBytes: 512,
+      peakQueuedFrames: 1,
+      closed: true,
+    })
     expect(timers.size).toBe(0)
     expect(subscriptions).toBe(0)
     expect(adapters).toBe(0)

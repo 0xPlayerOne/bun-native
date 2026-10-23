@@ -260,6 +260,10 @@ export class CefBackend implements BrowserBackend {
     this.#active()
     return structuredClone(this.#registry.get<'view', ViewResource>(view, 'view').state)
   }
+  session(view: ViewHandle): SessionHandle {
+    this.#active()
+    return this.#registry.get<'view', ViewResource>(view, 'view').session
+  }
   async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
     this.#active()
     if (typeof visible !== 'boolean') throw new BunlyError('INVALID_ARGUMENT', 'Invalid visibility')

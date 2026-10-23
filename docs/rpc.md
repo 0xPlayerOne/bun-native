@@ -3,7 +3,9 @@
 Typed, bounded application requests with host-owned document authority.
 
 **Status:** M4 portable implementation for #18 and the policy portion of #19.
-**Native integration:** Not yet injected into CEF renderers. No loopback listener or debugging endpoint is enabled.
+**Native integration:** Not yet injected into CEF renderers. The separate
+authenticated loopback candidate is opt-in and opens no listener unless its
+runtime class is explicitly constructed; see [loopback RPC](rpc-loopback.md).
 
 ## Run the example
 
@@ -126,7 +128,10 @@ explicitly design idempotency or confirmation for operations that need it.
 
 `RpcViewAuthority` lives only in the runtime package. It validates an opaque
 backend view handle, approved exact origin, current document identity and an
-explicit main-frame descriptor. It issues an opaque single-use lease. Copying
+explicit main-frame descriptor. The backend also resolves the exact opaque
+session that owns the view; loopback binding compares that registry-owned handle
+by identity, so a shaped, copied, foreign, or wrong session cannot authorize a
+credential. It issues an opaque single-use lease. Copying
 that object, serializing its ID, or using another registry's view does not produce
 a valid lease. Capabilities are copied, not inherited from frontend descriptors.
 
@@ -140,16 +145,19 @@ are not evidence of that binding. Specifically, the adapter must:
 2. Revoke synchronously on navigation-start, redirect/frame replacement, close,
    backend failure and service teardown. Do not wait for the next origin to finish
    loading. Backend navigated/disposed events provide an additional policy hook.
-3. Transfer the endpoint only to that attested context. A MessagePort holder is
+3. Bind any direct-transport credential to the opaque session returned for the
+   attested view. Never accept a page-supplied session ID or object shape.
+4. Transfer the endpoint only to that attested context. A MessagePort holder is
    the endpoint, not proof of native origin. Do not expose a reusable port through
    page globals, public window messages, URLs or logs.
-4. Establish a new lease explicitly after a permitted replacement. Returning to
+5. Establish a new lease explicitly after a permitted replacement. Returning to
    an old origin must not restore a revoked application trust grant implicitly.
-5. Keep one persistent authority manager per host/application so retiring
+6. Keep one persistent authority manager per host/application so retiring
    connections and views cannot evade execution budgets.
 
-CEF frame attestation, isolated-context injection, remote-page adversarial tests,
-and any authenticated loopback implementation remain #19/#22 integration work.
+CEF frame attestation, isolated-context injection and remote-page adversarial
+tests remain #19 integration work. #22 now has a loopback candidate, but its
+native-private credential/CSP handoff and paired CEF comparison remain open.
 The M3 private native command pipe is unchanged and is not exposed to pages.
 
 ## MessagePort reference transport

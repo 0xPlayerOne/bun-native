@@ -249,6 +249,8 @@ export class RpcServer<S extends RpcSchema> {
     cancelledExecuting: number
     queuedBytes: number
     queuedFrames: number
+    peakQueuedBytes: number
+    peakQueuedFrames: number
     closed: boolean
   }> {
     return {
