@@ -257,6 +257,11 @@ fn open_owned_lock(path: &Path) -> Result<File, String> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT);
+    }
     let file = options
         .open(path)
         .map_err(|error| format!("Cannot open persistent profile lock: {error}"))?;
@@ -310,6 +315,34 @@ fn valid_partition(value: &str) -> bool {
 }
 
 fn validate_absolute(path: &Path, label: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::path::Prefix;
+        if !matches!(path.components().next(), Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::Disk(_)))
+        {
+            return Err(format!(
+                "{label} must use a local absolute disk path, not UNC or a device namespace"
+            ));
+        }
+        for component in path.components() {
+            if let Component::Normal(name) = component {
+                let name = name.to_str().ok_or("Profile path must use valid Unicode")?;
+                let stem = name.split('.').next().unwrap_or("").to_ascii_uppercase();
+                let reserved = ["CON", "PRN", "AUX", "NUL"].contains(&stem.as_str())
+                    || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+                        && stem.len() == 4
+                        && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+                if name.ends_with(['.', ' '])
+                    || name.chars().any(|c| c == ':' || c.is_control())
+                    || reserved
+                {
+                    return Err(format!(
+                        "{label} contains a reserved or ambiguous Windows path component"
+                    ));
+                }
+            }
+        }
+    }
     if !path.is_absolute()
         || path
             .components()
@@ -328,7 +361,16 @@ fn reject_existing_symlink_components(path: &Path) -> Result<(), String> {
             Ok(metadata) if metadata.file_type().is_symlink() => {
                 return Err("Persistent profile root contains a symbolic link".into());
             }
-            Ok(_) => {}
+            Ok(metadata) => {
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::MetadataExt;
+                    if metadata.file_attributes() & 0x400 != 0 {
+                        return Err("Persistent profile root contains a reparse point".into());
+                    }
+                }
+                let _ = metadata;
+            }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(format!("Cannot inspect persistent profile root: {error}")),
         }
@@ -479,7 +521,7 @@ mod tests {
     use super::*;
 
     fn temporary(name: &str) -> PathBuf {
-        fs::canonicalize(std::env::temp_dir())
+        normalized_canonical(&std::env::temp_dir())
             .unwrap()
             .join(format!(
                 "bunly-session-test-{}-{}-{name}",
@@ -557,6 +599,28 @@ mod tests {
         drop(next);
         drop(root);
         fs::remove_dir_all(path).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_namespaces_and_aliases_fail_before_filesystem_access() {
+        for value in [
+            r"\\server\share\profile",
+            r"\\?\C:\profile",
+            r"\\.\pipe\profile",
+            r"C:\profile:stream",
+            r"C:\profile.\child",
+            r"C:\profile \child",
+            r"C:\CON\child",
+            r"C:\COM1.txt\child",
+            r"C:relative",
+        ] {
+            assert!(
+                validate_absolute(Path::new(value), "Test root").is_err(),
+                "{value}"
+            );
+        }
+        assert!(validate_absolute(Path::new(r"C:\Private é\Profile"), "Test root").is_ok());
     }
 
     #[cfg(unix)]
