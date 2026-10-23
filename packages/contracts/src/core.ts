@@ -1,0 +1,33 @@
+/** Engine-independent contract primitives. This package must remain browser-safe. */
+export const CONTRACT_VERSION = 1 as const
+export const CAPABILITIES = [
+  'window.lifecycle',
+  'view.navigate',
+  'session.ephemeral',
+  'session.persistent',
+  'session.cookies',
+  'permission.request',
+  'download.manage',
+  'view.snapshot',
+  'view.evaluate',
+  'view.input',
+  'backend.extensions',
+] as const
+export type Capability = (typeof CAPABILITIES)[number]
+export type BackendName = 'mock' | 'cef' | 'webview2' | 'wkwebview' | 'webkitgtk'
+export type ErrorCode =
+  | 'INVALID_ARGUMENT'
+  | 'INVALID_HANDLE'
+  | 'DISPOSED'
+  | 'RESOURCE_IN_USE'
+  | 'UNSUPPORTED_CAPABILITY'
+  | 'VERSION_MISMATCH'
+  | 'PERMISSION_DENIED'
+export class BunlyError extends Error {
+  readonly code: ErrorCode
+  constructor(code: ErrorCode, message: string) {
+    super(message)
+    this.code = code
+    this.name = 'BunlyError'
+  }
+}
