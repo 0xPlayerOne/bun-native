@@ -1,3 +1,8 @@
+import {
+  fragmentedRpcTransport,
+  RpcFragmentBudget,
+  NATIVE_RPC_MESSAGE_BYTES,
+} from '../../contracts/src/rpc-fragments.ts'
 import { RpcError } from '../../contracts/src/rpc.ts'
 import type { RpcTransport } from '../../contracts/src/rpc.ts'
 
@@ -10,7 +15,7 @@ interface NativeBridge {
 }
 
 /** Native functions authenticate their invocation context; this JS adapter grants no authority. */
-export function cefRpcTransport(): RpcTransport {
+function cefPacketTransport(): RpcTransport {
   const bridge = (globalThis as typeof globalThis & { __bunlyRpc?: NativeBridge }).__bunlyRpc
   if (
     !bridge ||
@@ -110,6 +115,14 @@ export function cefRpcTransport(): RpcTransport {
       end(true)
     },
   }
+}
+
+/** Application envelopes may be 96 KiB, while native packets remain 24 KiB. */
+export function cefRpcTransport(): RpcTransport {
+  return fragmentedRpcTransport(
+    cefPacketTransport(),
+    new RpcFragmentBudget(2 * NATIVE_RPC_MESSAGE_BYTES)
+  )
 }
 
 /** One listener and one deadline; a ready event is only a hint to inspect the bridge. */

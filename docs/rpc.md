@@ -350,3 +350,21 @@ suite, with per-launch sampling gaps reported separately rather than labeled
 qualified. A suite containing no qualified cleanup observation fails.
 The wrapper prints its final `native-rpc` success only after every positive launch
 passes the stronger checks; the inner prebuilt success alone is insufficient.
+
+## Selected native transport and experimental loopback
+
+The CEF application baseline remains native-mediated messaging. Application RPC
+frames are bounded at 96 KiB and fragmented over unchanged 24 KiB native packets;
+the backend shares a 3 MiB fragment reservation budget across connections.
+Cancellations and partial-message deadlines release owned reassembly buffers;
+existing CEF delivery reservations remain independently charged until actual
+receipt. This is not a streaming or zero-copy API.
+
+`serveLoopbackRpc` and `waitForCefLoopbackTransport` are internal experimental
+contributor integrations, not supported CEF application transports. Ordinary
+native builds reject their configuration. They implement an additional socket
+challenge confirmed through the exact native binding, but real CEF execution is
+blocked earlier by app-scheme loopback permission. The standalone Bun candidate
+and real-socket tests do not substitute for browser acceptance. See
+[ADR 0003](decisions/0003-transport-selection.md) for failed controls, the selected
+baseline, maintained profiling commands and the remaining comparison criteria.

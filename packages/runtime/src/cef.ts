@@ -2,8 +2,18 @@ import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { RpcServer } from './rpc.ts'
-import { RpcViewAuthority } from './rpc-authority.ts'
-import { RpcError } from '../../contracts/src/rpc.ts'
+import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
+import { RpcLoopbackServer } from './rpc-loopback.ts'
+import {
+  fragmentedRpcTransport,
+  RpcFragmentBudget,
+  NATIVE_RPC_MESSAGE_BYTES,
+} from '../../contracts/src/rpc-fragments.ts'
+import {
+  encodeNativeLoopbackHandoff,
+  decodeNativeLoopbackConfirmation,
+} from '../../contracts/src/rpc-native-handoff.ts'
+import { RpcError, rpcLimits } from '../../contracts/src/rpc.ts'
 import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
@@ -40,6 +50,30 @@ import type {
   Handle,
   ResourceKind,
 } from '../../contracts/src/index.ts'
+interface CefRpcConnection {
+  readonly view: ViewHandle
+  readonly transport: CefRpcTransport
+  server: RpcServer<RpcSchema> | undefined
+  binding: RpcAuthorityBinding | undefined
+}
+interface CefRpcService {
+  readonly authority: RpcViewAuthority
+  readonly schema: RpcSchema
+  readonly handlers: RpcHandlers<RpcSchema>
+  readonly capabilities: readonly string[]
+  readonly options: RpcServerOptions
+  readonly listener: RpcLoopbackServer | undefined
+}
+function nativeRpcOptions(options: RpcServerOptions): RpcServerOptions {
+  const limits = rpcLimits({
+    maxFrameBytes: NATIVE_RPC_MESSAGE_BYTES,
+    maxMetadataBytes: 16 * 1024,
+    ...options.limits,
+  })
+  if (limits.maxFrameBytes > NATIVE_RPC_MESSAGE_BYTES)
+    throw new TypeError('Native RPC message limit is 96 KiB')
+  return { ...options, limits }
+}
 interface NativeResource {
   native: number
 }
@@ -305,19 +339,15 @@ export class CefBackend implements BrowserBackend {
   // Native application grants are one-shot. Fence local lifecycle transitions
   // before their queued native acknowledgement/handshake can arrive.
   readonly #rpcRetired = new WeakSet<ViewHandle>()
-  readonly #rpcConnections = new Map<
-    number,
-    { view: ViewHandle; transport: CefRpcTransport; server: RpcServer<RpcSchema> }
-  >()
-  #rpcService:
-    | {
-        authority: RpcViewAuthority
-        schema: RpcSchema
-        handlers: RpcHandlers<RpcSchema>
-        capabilities: readonly string[]
-        options: RpcServerOptions
-      }
-    | undefined
+  readonly #rpcConnections = new Map<number, CefRpcConnection>()
+  readonly #rpcFragments = new RpcFragmentBudget()
+  #nativeConfirmations = 0
+  #nativeConfirmationRejections = 0
+  #nativeOfferFailure: string | null = null
+  #nativeControlClosed = 0
+  #nativeRevocations = 0
+  #rpcService: CefRpcService | undefined
+  #rpcClosing: Promise<void> | undefined
   #shutdown: Promise<void> | undefined
   #rpcConfigured = false
   #disposed = false
@@ -332,8 +362,9 @@ export class CefBackend implements BrowserBackend {
         transport.fail(error)
       }
     })
-    this.closed = transport.closed.then(() => {
+    this.closed = transport.closed.then(async () => {
       this.#disposed = true
+      const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
         for (const handle of this.#registry.handles(kind)) {
           this.#windowViews.delete(handle as WindowHandle)
@@ -344,10 +375,7 @@ export class CefBackend implements BrowserBackend {
       this.#listeners.clear()
       this.#observers.clear()
       this.#partitions.clear()
-      this.#rpcService?.authority.dispose()
-      this.#rpcService = undefined
-      for (const connection of this.#rpcConnections.values()) connection.transport.end(false)
-      this.#rpcConnections.clear()
+      await rpcClosed
       if (transport.failure) throw transport.failure
     })
     void this.closed.catch(() => {})
@@ -567,6 +595,18 @@ export class CefBackend implements BrowserBackend {
     await this.#transport.call('policy.qualification.activate', {
       id: captured.resource.native,
       scope: captured.nativeScope,
+    })
+  }
+  /** @internal Fixed contributor-only real Chromium throttle probe. */
+  async qualifyTransportThrottle(scope: PolicyScope, rate: 1 | 4): Promise<void> {
+    this.#active()
+    if (rate !== 1 && rate !== 4)
+      throw new BunlyError('INVALID_ARGUMENT', 'Expected fixed throttle rate 1 or 4')
+    const captured = this.#capturedPolicyScope(scope)
+    await this.#transport.call('rpc.qualification.throttle', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+      rate,
     })
   }
   /** Configure a scoped grant over the private application-to-host control pipe. */
@@ -898,6 +938,7 @@ export class CefBackend implements BrowserBackend {
     this.#active()
     if (this.#rpcConfigured)
       throw new BunlyError('INVALID_ARGUMENT', 'CEF host already has an RPC authority manager')
+    const normalized = nativeRpcOptions(options)
     const authority = new RpcViewAuthority(this, origins)
     this.#rpcConfigured = true
     this.#rpcService = {
@@ -905,24 +946,139 @@ export class CefBackend implements BrowserBackend {
       schema,
       handlers: handlers as RpcHandlers<RpcSchema>,
       capabilities: Object.freeze([...capabilities]),
-      options,
+      options: normalized,
+      listener: undefined,
     }
     return () => {
-      if (this.#rpcService?.authority !== authority) return
+      if (this.#rpcService?.authority === authority)
+        void this.#stopRpc(true).catch((error) => this.#transport.fail(error))
+    }
+  }
+
+  /** @internal Experimental contributor-only CEF candidate; ordinary native builds
+   * reject it because current Chromium app-scheme loopback permission is not
+   * safely qualified. No prompt exemption, security flag or automatic fallback.
+   * No listener exists until called. Configure before sessions/views
+   * so the host can admit exactly this numeric-loopback port in application CSP.
+   */
+  async serveLoopbackRpc<S extends RpcSchema>(
+    schema: S,
+    handlers: RpcHandlers<S>,
+    origins: readonly string[],
+    capabilities: readonly string[],
+    options: RpcServerOptions = {}
+  ): Promise<() => Promise<void>> {
+    this.#active()
+    if (
+      this.#rpcConfigured ||
+      this.#registry.count('view') !== 0 ||
+      this.#registry.count('session') !== 0
+    )
+      throw new BunlyError(
+        'INVALID_ARGUMENT',
+        'Configure one RPC service before creating sessions or views'
+      )
+    const normalized = nativeRpcOptions(options)
+    const authority = new RpcViewAuthority(this, origins)
+    this.#rpcConfigured = true
+    let listener: RpcLoopbackServer
+    try {
+      listener = new RpcLoopbackServer({
+        maxFrameBytes: NATIVE_RPC_MESSAGE_BYTES,
+        requireNativeConfirmation: true,
+        accept: (lease, transport, identity) => {
+          const current = [...this.#rpcConnections.entries()].find(
+            ([, connection]) => connection.binding?.identity === identity.identity
+          )
+          const service = this.#rpcService
+          if (
+            !current ||
+            !service ||
+            service.authority !== authority ||
+            service.listener !== listener ||
+            current[1].server ||
+            current[1].binding?.signal.aborted
+          )
+            throw new RpcError('REVOKED', 'Native loopback owner retired')
+          const [id, connection] = current
+          const server = new RpcServer(
+            service.schema,
+            service.handlers,
+            lease,
+            transport,
+            service.options
+          )
+          connection.server = server
+          void server.closed.then(() => {
+            if (this.#rpcConnections.get(id) === connection) {
+              this.#rpcConnections.delete(id)
+              connection.transport.end(true)
+            }
+          })
+        },
+      })
+    } catch (error) {
       authority.dispose()
-      this.#rpcService = undefined
-      for (const connection of this.#rpcConnections.values()) connection.transport.end(true)
-      this.#rpcConnections.clear()
+      throw error
+    }
+    const service: CefRpcService = {
+      authority,
+      schema,
+      handlers: handlers as RpcHandlers<RpcSchema>,
+      capabilities: Object.freeze([...capabilities]),
+      options: normalized,
+      listener,
+    }
+    this.#rpcService = service
+    try {
+      await this.#transport.call('rpc.loopback.configure', {
+        port: Number(new URL(listener.endpoint).port),
+      })
+      this.#active()
+      if (this.#rpcService !== service)
+        throw new RpcError('REVOKED', 'RPC service retired during setup')
+    } catch (error) {
+      await this.#stopRpc(true)
+      throw error
+    }
+    return () =>
+      this.#rpcService === service ? this.#stopRpc(true) : (this.#rpcClosing ?? Promise.resolve())
+  }
+
+  #stopRpc(tellNative: boolean): Promise<void> {
+    const service = this.#rpcService
+    if (!service) return this.#rpcClosing ?? Promise.resolve()
+    this.#rpcService = undefined
+    service.authority.dispose()
+    for (const connection of this.#rpcConnections.values()) connection.transport.end(tellNative)
+    this.#rpcConnections.clear()
+    this.#rpcClosing = service.listener?.close() ?? Promise.resolve()
+    return this.#rpcClosing
+  }
+
+  rpcDiagnostics() {
+    return {
+      connections: this.#rpcConnections.size,
+      nativeConfirmations: this.#nativeConfirmations,
+      nativeConfirmationRejections: this.#nativeConfirmationRejections,
+      nativeOfferFailure: this.#nativeOfferFailure,
+      nativeControlClosed: this.#nativeControlClosed,
+      nativeRevocations: this.#nativeRevocations,
+      fragments: this.#rpcFragments.diagnostics(),
+      loopback: this.#rpcService?.listener?.diagnostics() ?? null,
+      loopbackAuthentication: this.#rpcService?.listener?.authenticationDiagnostics() ?? null,
+      servers: [...this.#rpcConnections.values()].flatMap((connection) =>
+        connection.server ? [connection.server.diagnostics()] : []
+      ),
     }
   }
   dispose(): Promise<void> {
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
-    this.#rpcService?.authority.dispose()
-    this.#shutdown = this.#transport
-      .call('quit')
-      .then(() => this.closed)
+    const rpcClosed = this.#stopRpc(true)
+    this.#shutdown = Promise.all([rpcClosed, this.#transport.call('quit').then(() => this.closed)])
+      .then(() => {})
       .catch((error) => {
         this.#transport.fail(error)
         throw error
@@ -1027,19 +1183,66 @@ export class CefBackend implements BrowserBackend {
         generation: Number(data['generation']),
       })
     )
+    if (service.listener) {
+      const binding = bindRpcAuthority(lease, resource.session)
+      const current: CefRpcConnection = { view, transport, server: undefined, binding }
+      this.#rpcConnections.set(Number(connection), current)
+      transport.subscribe(
+        (packet) => {
+          let challenge: Uint8Array | undefined
+          try {
+            challenge = decodeNativeLoopbackConfirmation(packet)
+            if (this.#rpcService !== service) throw new RpcError('REVOKED', 'RPC service retired')
+            service.listener!.confirmNative(binding, challenge)
+            this.#nativeConfirmations++
+          } catch {
+            this.#nativeConfirmationRejections++
+            service.authority.revoke(view)
+            transport.end(true)
+          } finally {
+            challenge?.fill(0)
+          }
+        },
+        () => {
+          this.#nativeControlClosed++
+          service.authority.revoke(view)
+          current.server?.close()
+          if (this.#rpcConnections.get(Number(connection)) === current)
+            this.#rpcConnections.delete(Number(connection))
+        }
+      )
+      let offer: Uint8Array
+      const handoff = service.listener.provision(binding)
+      try {
+        offer = encodeNativeLoopbackHandoff(handoff)
+      } finally {
+        handoff.credential.fill(0)
+      }
+      void transport
+        .send(offer)
+        .catch((error: unknown) => {
+          this.#nativeOfferFailure =
+            error instanceof Error ? error.message.slice(0, 160) : 'Native offer failed'
+          service.authority.revoke(view)
+          transport.end(true)
+        })
+        .finally(() => offer.fill(0))
+      return
+    }
     const server = new RpcServer(
       service.schema,
       service.handlers,
       lease,
-      transport,
+      fragmentedRpcTransport(transport, this.#rpcFragments),
       service.options
     )
-    this.#rpcConnections.set(Number(connection), { view, transport, server })
+    this.#rpcConnections.set(Number(connection), { view, transport, server, binding: undefined })
     void server.closed.then(() => {
       if (this.#rpcConnections.get(Number(connection))?.server === server)
         this.#rpcConnections.delete(Number(connection))
     })
   }
+
   #rpcPacket(view: ViewHandle | undefined, data: Record<string, unknown> | null | undefined): void {
     if (
       !data ||
@@ -1074,6 +1277,7 @@ export class CefBackend implements BrowserBackend {
       data['generation'] !== connection.transport.identity.generation
     )
       throw new Error('Native RPC revocation incarnation mismatch')
+    this.#nativeRevocations++
     this.#rpcConnections.delete(Number(data['connection']))
     this.#rpcService?.authority.revoke(connection.view)
     connection.transport.end(false)

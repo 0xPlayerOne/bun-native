@@ -102,10 +102,10 @@ fn application_origin(value: &Value) -> Result<Option<String>, String> {
         _ => Err("Invalid trust policy".into()),
     }
 }
-fn reply(id: u64, value: Value) {
+pub(crate) fn reply(id: u64, value: Value) {
     process::emit(json!({"v":1,"id":id,"ok":true,"value":value}));
 }
-fn error(id: u64, message: &str) {
+pub(crate) fn error(id: u64, message: &str) {
     process::emit(json!({"v":1,"id":id,"ok":false,"error":message}));
 }
 fn next_id() -> Result<u64, String> {
@@ -775,6 +775,8 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
 } } }
 pub fn release() {
     shutdown_acknowledged();
+    #[cfg(feature = "rpc-qualification")]
+    crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
         if let Some(worker) = slot.lock().unwrap().take() {
             if worker.join().is_err() {
@@ -1190,6 +1192,13 @@ fn captured_ready_scope(
     Ok(current)
 }
 
+#[cfg(feature = "rpc-qualification")]
+pub(crate) fn qualification_scope_live(scope: &capability_policy::DocumentScope) -> bool {
+    !RPC_STOPPED.load(Ordering::SeqCst)
+        && !QUITTING.load(Ordering::SeqCst)
+        && STATE.with(|s| captured_ready_scope(&s.borrow(), scope.view, scope).is_ok())
+}
+
 fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String> {
     capability_policy::decode_document_scope(
         args.get("scope")
@@ -1210,6 +1219,22 @@ fn dispatch(command: &Value) -> Result<(), String> {
         return Err("Host is shutting down".into());
     }
     match operation {
+        #[cfg(feature = "rpc-qualification")]
+        "rpc.loopback.configure" => {
+            let port = u16::try_from(number(args, "port")?).map_err(|_| "Invalid loopback port")?;
+            if STATE.with(|s| {
+                let state = s.borrow();
+                !state.views.is_empty() || !state.sessions.is_empty()
+            }) {
+                return Err("Configure loopback before creating sessions or views".into());
+            }
+            crate::resources::configure_rpc_loopback(port)?;
+            reply(request, Value::Null);
+        }
+        #[cfg(not(feature = "rpc-qualification"))]
+        "rpc.loopback.configure" => {
+            return Err("UNSUPPORTED_CAPABILITY: CEF loopback transport is not qualified".into())
+        }
         "session.create" => {
             let persistence = string(args, "persistence")?;
             let partition = string(args, "partition")?.to_owned();
@@ -1736,6 +1761,37 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 revoke_renderer(id, revoked);
             }
             reply(request, Value::Null);
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "rpc.qualification.throttle" => {
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            let rate = number(args, "rate")?;
+            if !matches!(rate, 1 | 4) {
+                return Err("Invalid fixed throttle rate".into());
+            }
+            let browser = STATE.with(|s| {
+                let state = s.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                if scope.origin != "app://ui" {
+                    return Err("Throttle probe requires the packaged transport fixture");
+                }
+                state
+                    .views
+                    .get(&id)
+                    .and_then(|view| view.browser.clone())
+                    .ok_or("Transport fixture browser unavailable")
+            })?;
+            let frame = browser
+                .main_frame()
+                .ok_or("Transport fixture frame unavailable")?;
+            if !crate::rpc_transport_qualification::allowed_fixture(
+                &CefString::from(&frame.url()).to_string(),
+                rate as i32,
+            ) {
+                return Err("Throttle probe requires the exact packaged fixture".into());
+            }
+            crate::rpc_transport_qualification::throttle(request, browser, scope, rate as i32)?;
         }
         #[cfg(feature = "rpc-qualification")]
         "policy.qualification.activate" => {

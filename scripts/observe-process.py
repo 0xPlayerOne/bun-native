@@ -25,6 +25,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 OUTPUT_LIMIT = 2 * 1024 * 1024
 
 
+def phase_marker(item, stdout):
+    """Diagnostics only: native transport fixtures have no protocol stdout.
+
+    Stderr accepts one exact versioned marker and three fixed phase names. It
+    cannot supply native success, process ownership, or authority evidence.
+    """
+    if not isinstance(item, dict):
+        return None
+    if stdout and item.get("event") == "phase":
+        return str(item.get("phase", "unknown"))
+    if (
+        not stdout
+        and set(item) == {"event", "schema", "phase"}
+        and item.get("event") == "bunly.transport.phase"
+        and type(item.get("schema")) is int
+        and item["schema"] == 1
+        and item.get("phase") in ("transport-idle", "transport-work", "transport-complete")
+    ):
+        return item["phase"]
+    return None
+
+
 def owned_process(identity):
     """Use a fresh kernel identity; cached Process objects may refer to a reused PID."""
     try:
@@ -124,8 +146,9 @@ def observe(
                 try:
                     item = json.loads(text)
                     if isinstance(item, dict):
-                        if phases and item.get("event") == "phase":
-                            state["phase"] = str(item.get("phase", "unknown"))
+                        marked = phase_marker(item, phases)
+                        if marked is not None:
+                            state["phase"] = marked
                         # One allowlisted receipt timestamp supports startup
                         # profiling. No payload, identity or authority is taken
                         # from this optional diagnostic event.
