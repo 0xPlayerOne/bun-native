@@ -5,7 +5,7 @@ const [originText, scenario, profile] = process.argv.slice(2)
 const origin = new URL(originText)
 if (origin.protocol !== 'http:' || origin.hostname !== '127.0.0.1' || !profile)
   throw new Error('Expected loopback fixture and isolated profile')
-if (process.versions.electron !== '44.8.0') throw new Error('Unexpected Electron runtime')
+if (process.versions.electron !== '44.9.3') throw new Error('Unexpected Electron runtime')
 app.setPath('userData', profile)
 app.enableSandbox()
 let mainWindow

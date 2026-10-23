@@ -10,8 +10,8 @@ const root = resolve(import.meta.dir, '../../..')
 export const electronIdentity: Variant = {
   id: 'electron',
   framework: 'electron',
-  version: '44.8.0',
-  sourceCommit: '60169b45c12488c6fda237af7f6425526a7ce5f0',
+  version: '44.9.3',
+  sourceCommit: 'c542df1ecbc2c2978e8f53f8c7baf602404d166f',
   runtime: 'Node',
   runtimeVersion: 'unverified',
   engine: 'chromium',
