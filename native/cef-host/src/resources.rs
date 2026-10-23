@@ -9,9 +9,12 @@ use std::{
     fmt, fs,
     io::Read,
     path::{Component, Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 pub const MAX_ASSET_BYTES: u64 = 32 * 1024 * 1024;
+pub(crate) const VERIFY_BUFFER_BYTES: usize = 64 * 1024;
+pub(crate) type VerificationBuffer = [u8; VERIFY_BUFFER_BYTES];
 pub const APP_CSP: &str = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
 
 #[derive(Clone, Deserialize)]
@@ -79,7 +82,7 @@ fn security_headers() -> Vec<(String, String)> {
     .map(|(k, v)| (k.into(), v.into()))
     .collect()
 }
-fn failure(status: i32) -> AssetResponse {
+pub(crate) fn failure(status: i32) -> AssetResponse {
     let mut headers = security_headers();
     headers.push(("Cache-Control".into(), "no-store".into()));
     headers.push(("Content-Length".into(), "0".into()));
@@ -298,8 +301,7 @@ impl Assets {
     pub fn response(&self, raw: &str, method: &str, range: &str) -> AssetResponse {
         self.conditional_response(raw, method, range, "", "")
     }
-    /// Revalidate inventory bytes even for conditional requests. Cached browser
-    /// content cannot turn a changed/corrupt installed file into a valid 304.
+    /// Synchronous contributor/test entrypoint. The browser schedules the same plan off-thread.
     pub fn conditional_response(
         &self,
         raw: &str,
@@ -308,26 +310,41 @@ impl Assets {
         if_none_match: &str,
         if_range: &str,
     ) -> AssetResponse {
+        self.plan(raw, method, range, if_none_match, if_range)
+            .execute(&AtomicBool::new(false))
+    }
+
+    /// Pure, bounded request planning. No stat, canonicalization, open, read or hash on CEF IO.
+    pub(crate) fn plan(
+        &self,
+        raw: &str,
+        method: &str,
+        range: &str,
+        if_none_match: &str,
+        if_range: &str,
+    ) -> AssetPlan {
+        let reject = |status| AssetPlan::Immediate(failure(status));
         if raw.len() > 8192
+            || method.len() > 16
             || range.len() > 128
             || if_none_match.len() > 4096
             || if_range.len() > 256
         {
-            return failure(400);
+            return reject(400);
         }
         if method != "GET" && method != "HEAD" {
-            return failure(405);
+            return reject(405);
         }
         let Some(tail) = raw.strip_prefix("app://ui/") else {
-            return failure(403);
+            return reject(403);
         };
         let encoded = tail.split(['?', '#']).next().unwrap_or("");
         if !valid_escapes(encoded) {
-            return failure(400);
+            return reject(400);
         }
         let decoded = match percent_encoding::percent_decode_str(encoded).decode_utf8() {
-            Ok(s) => s,
-            Err(_) => return failure(400),
+            Ok(value) => value,
+            Err(_) => return reject(400),
         };
         let name = if decoded.is_empty() {
             "index.html"
@@ -335,23 +352,13 @@ impl Assets {
             decoded.as_ref()
         };
         let path = match safe_relative(name) {
-            Ok(p) => p,
-            Err(_) => return failure(403),
+            Ok(path) => path,
+            Err(_) => return reject(403),
         };
         let Some(asset) = self.files.get(name) else {
-            return failure(404);
+            return reject(404);
         };
-        let full = match checked_file(&self.root, &path) {
-            Ok(p) => p,
-            Err(_) => return failure(403),
-        };
-        let bytes = match read_bounded(&full, asset.bytes) {
-            Ok(b) if b.len() as u64 == asset.bytes => b,
-            _ => return failure(500),
-        };
-        if format!("{:x}", Sha256::digest(&bytes)) != asset.sha256 {
-            return failure(500);
-        }
+        let length = asset.bytes as usize;
         let etag = format!("\"{}\"", asset.sha256);
         let mut headers = security_headers();
         headers.extend([
@@ -359,59 +366,195 @@ impl Assets {
             ("ETag".into(), etag.clone()),
             ("Accept-Ranges".into(), "bytes".into()),
         ]);
-        if !if_none_match.is_empty() && matches_etag(if_none_match, &etag) {
-            return AssetResponse {
-                status: 304,
-                body: Vec::new(),
-                mime: mime(&path).into(),
-                headers,
-            };
-        }
-        let length = bytes.len();
-        // Range applies only to GET. Unsupported validators make If-Range fall
-        // back to the complete representation, not an unverified partial result.
-        let partial = method == "GET"
+        let not_modified = !if_none_match.is_empty() && matches_etag(if_none_match, &etag);
+        let partial = !not_modified
+            && method == "GET"
             && range
                 .split_once('=')
                 .is_some_and(|(unit, _)| unit.eq_ignore_ascii_case("bytes"))
             && !range.contains(',')
             && (if_range.is_empty() || if_range == etag);
-        let (status, start, end) = if partial {
-            match parse_range(range, length) {
-                Some((a, b)) => {
-                    headers.push((
-                        "Content-Range".into(),
-                        format!("bytes {}-{}/{}", a, b - 1, length),
-                    ));
-                    (206, a, b)
-                }
-                None => {
-                    let mut result = failure(416);
-                    result
-                        .headers
-                        .push(("Content-Range".into(), format!("bytes */{length}")));
-                    return result;
-                }
-            }
-        } else {
-            (200, 0, length)
-        };
-        headers.push(("Content-Length".into(), (end - start).to_string()));
-        let body = if method == "HEAD" {
-            Vec::new()
-        } else if start == 0 && end == length {
-            bytes
-        } else {
-            bytes[start..end].to_vec()
-        };
-        AssetResponse {
-            status,
-            body,
+        let mut response = AssetResponse {
+            status: 200,
+            body: Vec::new(),
             mime: mime(&path).into(),
             headers,
+        };
+        let retain = if not_modified {
+            response.status = 304;
+            0..0
+        } else {
+            let selected = if partial {
+                parse_range(range, length)
+            } else {
+                Some((0, length))
+            };
+            match selected {
+                Some((start, end)) => {
+                    if partial {
+                        response.status = 206;
+                        response.headers.push((
+                            "Content-Range".into(),
+                            format!("bytes {}-{}/{}", start, end - 1, length),
+                        ));
+                    }
+                    response
+                        .headers
+                        .push(("Content-Length".into(), (end - start).to_string()));
+                    if method == "HEAD" {
+                        0..0
+                    } else {
+                        start..end
+                    }
+                }
+                None => {
+                    response = failure(416);
+                    response
+                        .headers
+                        .push(("Content-Range".into(), format!("bytes */{length}")));
+                    0..0
+                }
+            }
+        };
+        // Even HEAD/304/416 still verify every byte before returning the planned status.
+        AssetPlan::File {
+            root: self.root.clone(),
+            path,
+            asset: asset.clone(),
+            retain,
+            response,
         }
     }
 }
+
+pub(crate) enum AssetPlan {
+    Immediate(AssetResponse),
+    File {
+        root: PathBuf,
+        path: PathBuf,
+        asset: Asset,
+        retain: std::ops::Range<usize>,
+        response: AssetResponse,
+    },
+}
+impl AssetPlan {
+    pub(crate) fn retained_bytes(&self) -> usize {
+        match self {
+            Self::Immediate(_) => 0,
+            Self::File { retain, .. } => retain.len(),
+        }
+    }
+    pub(crate) fn execute(self, cancelled: &AtomicBool) -> AssetResponse {
+        self.execute_with_buffer(cancelled, &mut [0; VERIFY_BUFFER_BYTES])
+    }
+    pub(crate) fn execute_with_buffer(
+        self,
+        cancelled: &AtomicBool,
+        buffer: &mut VerificationBuffer,
+    ) -> AssetResponse {
+        if cancelled.load(Ordering::Acquire) {
+            return failure(499);
+        }
+        let Self::File {
+            root,
+            path,
+            asset,
+            retain,
+            mut response,
+        } = self
+        else {
+            let Self::Immediate(response) = self else {
+                unreachable!()
+            };
+            return response;
+        };
+        let full = match checked_file(&root, &path) {
+            Ok(path) => path,
+            Err(_) => return failure(403),
+        };
+        let Ok(file) = fs::File::open(&full) else {
+            return failure(500);
+        };
+        let Ok(metadata) = file.metadata() else {
+            return failure(500);
+        };
+        if !metadata.is_file() || metadata.len() != asset.bytes {
+            return failure(500);
+        }
+        match verified_body_with_buffer(file, &asset, retain, cancelled, buffer) {
+            Ok(body) => {
+                response.body = body;
+                response
+            }
+            Err(_) if cancelled.load(Ordering::Acquire) => failure(499),
+            Err(_) => failure(500),
+        }
+    }
+}
+
+/// Retain only the requested body while verifying the entire representation.
+/// No seek/re-read window: response bytes and hash are derived from the same read.
+#[cfg(test)]
+fn verified_body(
+    reader: impl Read,
+    asset: &Asset,
+    retain: std::ops::Range<usize>,
+    cancelled: &AtomicBool,
+) -> Result<Vec<u8>, String> {
+    verified_body_with_buffer(
+        reader,
+        asset,
+        retain,
+        cancelled,
+        &mut [0; VERIFY_BUFFER_BYTES],
+    )
+}
+fn verified_body_with_buffer(
+    reader: impl Read,
+    asset: &Asset,
+    retain: std::ops::Range<usize>,
+    cancelled: &AtomicBool,
+    buffer: &mut VerificationBuffer,
+) -> Result<Vec<u8>, String> {
+    if asset.bytes > MAX_ASSET_BYTES || retain.start > retain.end || retain.end as u64 > asset.bytes
+    {
+        return Err("Invalid retained asset bounds".into());
+    }
+    let mut source = reader.take(asset.bytes + 1);
+    let mut body = Vec::new();
+    body.try_reserve_exact(retain.len())
+        .map_err(|_| "Asset body allocation failed")?;
+    let mut digest = Sha256::new();
+    let mut offset = 0usize;
+    loop {
+        if cancelled.load(Ordering::Acquire) {
+            return Err("Asset request cancelled".into());
+        }
+        let count = source.read(buffer).map_err(|e| e.to_string())?;
+        if count == 0 {
+            break;
+        }
+        let end = offset + count;
+        if end as u64 > asset.bytes {
+            return Err("Asset grew beyond inventory".into());
+        }
+        digest.update(&buffer[..count]);
+        let start_copy = offset.max(retain.start);
+        let end_copy = end.min(retain.end);
+        if start_copy < end_copy {
+            body.extend_from_slice(&buffer[start_copy - offset..end_copy - offset]);
+        }
+        offset = end;
+    }
+    if offset as u64 != asset.bytes
+        || format!("{:x}", digest.finalize()) != asset.sha256
+        || body.len() != retain.len()
+    {
+        return Err("Asset integrity mismatch".into());
+    }
+    Ok(body)
+}
+
 pub fn parse_range(range: &str, length: usize) -> Option<(usize, usize)> {
     if length == 0 || range.len() > 128 {
         return None;
@@ -487,18 +630,31 @@ mod file_tests {
     };
     static NEXT: AtomicU64 = AtomicU64::new(0);
     struct Fixture(PathBuf);
+    fn fixture_directory() -> PathBuf {
+        let namespace = format!(
+            "bunly-resource-test-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        for _ in 0..64 {
+            let directory = std::env::temp_dir().join(format!(
+                "{namespace}-{}",
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            match fs::create_dir(&directory) {
+                Ok(()) => return directory,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("cannot create resource fixture: {error}"),
+            }
+        }
+        panic!("resource fixture directory collision limit exceeded");
+    }
     impl Fixture {
         fn new() -> Self {
-            let directory = std::env::temp_dir().join(format!(
-                "bunly-resource-test-{}-{}-{}",
-                std::process::id(),
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos(),
-                NEXT.fetch_add(1, Ordering::SeqCst)
-            ));
-            fs::create_dir(&directory).unwrap();
+            let directory = fixture_directory();
             fs::write(directory.join("index.html"), b"0123456789").unwrap();
             let manifest = serde_json::json!({"index.html":{"bytes":10,"sha256":format!("{:x}",Sha256::digest(b"0123456789"))}});
             fs::write(directory.join("assets.json"), manifest.to_string()).unwrap();
@@ -632,12 +788,11 @@ mod file_tests {
             }
         }
         fs::write(fixture.0.join("index.html"), b"abcdefghij").unwrap();
-        assert_eq!(
-            assets
-                .conditional_response("app://ui/index.html", "GET", "", tag, "")
-                .status,
-            500
-        );
+        for method in ["GET", "HEAD"] {
+            let result = assets.conditional_response("app://ui/index.html", method, "", tag, "");
+            assert_eq!(result.status, 500);
+            assert!(result.body.is_empty());
+        }
     }
     #[test]
     fn if_range_requires_an_exact_strong_validator() {
@@ -918,5 +1073,213 @@ mod file_tests {
                 .body,
             b"2345"
         );
+    }
+}
+
+#[cfg(test)]
+mod streaming_tests {
+    use super::*;
+    use std::io::{self, Cursor};
+
+    #[test]
+    fn sha256_standard_vectors_use_independent_expected_digests() {
+        // RFC 6234 section 8.5 supplies the abc, long-message and million-a
+        // SHA-256 vectors; the empty digest is also fixed independently.
+        // Never derive these expected values with the backend under test.
+        let million = vec![b'a'; 1_000_000];
+        for (bytes, expected) in [
+            (
+                b"".as_slice(),
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            ),
+            (
+                b"abc".as_slice(),
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            ),
+            (
+                b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".as_slice(),
+                "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+            ),
+            (
+                million.as_slice(),
+                "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0",
+            ),
+        ] {
+            let asset = Asset {
+                bytes: bytes.len() as u64,
+                sha256: expected.into(),
+            };
+            let body = verified_body(
+                Cursor::new(bytes),
+                &asset,
+                0..bytes.len(),
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(body, bytes);
+        }
+    }
+
+    #[test]
+    fn sha256_known_digests_survive_padding_block_and_worker_chunk_boundaries() {
+        struct ShortReads<'a> {
+            input: Cursor<&'a [u8]>,
+            maximum: usize,
+        }
+        impl Read for ShortReads<'_> {
+            fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+                let count = output.len().min(self.maximum);
+                self.input.read(&mut output[..count])
+            }
+        }
+        // Independent Python hashlib SHA-256 values for
+        // bytes(offset % 251 for offset in range(length)); no test-time digest
+        // computation by sha2. Cover SHA padding/blocks and the 64 KiB worker.
+        for (length, expected) in [
+            (
+                55,
+                "463eb28e72f82e0a96c0a4cc53690c571281131f672aa229e0d45ae59b598b59",
+            ),
+            (
+                56,
+                "da2ae4d6b36748f2a318f23e7ab1dfdf45acdc9d049bd80e59de82a60895f562",
+            ),
+            (
+                63,
+                "29af2686fd53374a36b0846694cc342177e428d1647515f078784d69cdb9e488",
+            ),
+            (
+                64,
+                "fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108",
+            ),
+            (
+                65,
+                "4bfd2c8b6f1eec7a2afeb48b934ee4b2694182027e6d0fc075074f2fabb31781",
+            ),
+            (
+                65535,
+                "dda402a2c028f0cbbdbc5c6ebae965eed9c75f71236e7022b0386d3455d5ae2f",
+            ),
+            (
+                65536,
+                "4b640d85ab3ba30fd02c9fc9db4a8928f416322ad27022ea58a65aaee68a4df2",
+            ),
+            (
+                65537,
+                "237356e18b503616912abb8ffaed3a72591e397d4ac294c4637917d48a3f529d",
+            ),
+            (
+                131073,
+                "dd84db969f4ff2abb79c8c2fbc06e8d8e02c46d6481c958e057f7ad7a24c58a7",
+            ),
+        ] {
+            let bytes: Vec<u8> = (0..length).map(|offset| (offset % 251) as u8).collect();
+            let asset = Asset {
+                bytes: length as u64,
+                sha256: expected.into(),
+            };
+            let retain = length - 17..length;
+            for maximum in [1, 63, 64, 65, 65535, 65536] {
+                let reader = ShortReads {
+                    input: Cursor::new(bytes.as_slice()),
+                    maximum,
+                };
+                let body =
+                    verified_body(reader, &asset, retain.clone(), &AtomicBool::new(false)).unwrap();
+                assert_eq!(
+                    body,
+                    bytes[retain.clone()],
+                    "length={length}, read={maximum}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn metadata_and_ranges_do_not_retain_the_full_file() {
+        let bytes = vec![0x5a; 4 * 1024 * 1024];
+        let asset = Asset {
+            bytes: bytes.len() as u64,
+            sha256: format!("{:x}", Sha256::digest(&bytes)),
+        };
+        for retain in [
+            0..0,
+            32765..32772,
+            bytes.len() - 7..bytes.len(),
+            0..bytes.len(),
+        ] {
+            let expected = bytes[retain.clone()].to_vec();
+            let body = verified_body(
+                Cursor::new(&bytes),
+                &asset,
+                retain.clone(),
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(body, expected);
+            assert_eq!(body.capacity(), retain.len());
+        }
+    }
+
+    #[test]
+    fn corrupt_unretained_bytes_invalidate_head_and_range() {
+        let mut bytes = vec![7u8; 200000];
+        let asset = Asset {
+            bytes: bytes.len() as u64,
+            sha256: format!("{:x}", Sha256::digest(&bytes)),
+        };
+        bytes[170000] ^= 1;
+        for retain in [0..0, 4..12] {
+            assert!(
+                verified_body(Cursor::new(&bytes), &asset, retain, &AtomicBool::new(false))
+                    .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn streaming_detects_short_and_growing_files() {
+        let asset = Asset {
+            bytes: 3,
+            sha256: format!("{:x}", Sha256::digest(b"abc")),
+        };
+        for bytes in [b"ab".as_slice(), b"abcd".as_slice()] {
+            assert!(
+                verified_body(Cursor::new(bytes), &asset, 0..0, &AtomicBool::new(false)).is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn cancellation_is_checked_between_bounded_reads() {
+        struct CancelReader<'a> {
+            cancelled: &'a AtomicBool,
+            reads: usize,
+        }
+        impl Read for CancelReader<'_> {
+            fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+                self.reads += 1;
+                assert_eq!(self.reads, 1);
+                assert!(buffer.len() <= 65536);
+                buffer.fill(7);
+                self.cancelled.store(true, Ordering::Release);
+                Ok(buffer.len())
+            }
+        }
+        let cancelled = AtomicBool::new(false);
+        let asset = Asset {
+            bytes: 200000,
+            sha256: "0".repeat(64),
+        };
+        assert!(verified_body(
+            CancelReader {
+                cancelled: &cancelled,
+                reads: 0
+            },
+            &asset,
+            0..0,
+            &cancelled
+        )
+        .is_err());
     }
 }

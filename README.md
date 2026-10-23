@@ -95,6 +95,11 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 
 The [M3 closeout](docs/m3-completion.md) records the declared macOS, Windows and Linux native functional acceptance, packaged resources, lifecycle and verified acquisition. Hosted smoke results do not establish hardware-input, GPU performance or release qualification.
 
+The [pre-M4 foundation pass](docs/pre-m4-foundation.md) covers bounded native asset
+loading, verified macOS helper cleanup and maintained regression workloads.
+[Foundation profiling](docs/foundation-performance.md) documents the explicit
+portable/native measurement commands and their qualification limits.
+
 [Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
 [M1/M2 implementation notes](docs/history/m1-m2-progress.md)

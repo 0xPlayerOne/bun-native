@@ -42,16 +42,16 @@ jobs:
       PYTHON: python
       EXPECTED_TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; node24
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0; node24
         with:
           python-version: '3.11'
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24
         id: native-cache
         with:
           path: |
@@ -126,7 +126,7 @@ jobs:
           mkdir -p .bunly/hosted-evidence
           if [ -f native/cef-host/Cargo.lock ]; then cp native/cef-host/Cargo.lock .bunly/hosted-evidence/Cargo.lock; fi
           python scripts/hosted_cef.py collect
-      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24
         if: success() && steps.native-cache.outputs.cache-hit != 'true'
         with:
           path: |
@@ -134,7 +134,7 @@ jobs:
             ~/.cargo/git
             .bunly/cef-cache
           key: ${{ steps.native-cache.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; node24
         if: ${{ !cancelled() }}
         with:
           name: cef-native-${{ matrix.os }}
@@ -187,13 +187,13 @@ jobs:
       QUALIFICATION_SUITE: ${{ inputs.suite }}
       EXPECTED_TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; node24
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.3
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0; node24
         with:
           python-version: '3.11'
       - name: Install frozen contributor tools
@@ -204,7 +204,7 @@ jobs:
           python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - name: Portable checks
         run: bun run check:portable 2>&1 | tee .bunly/hosted-evidence/check.log
-      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24
         if: inputs.suite != 'portable'
         id: manual-cache
         with:
@@ -262,7 +262,7 @@ jobs:
         run: ./scripts/hosted-windows.ps1 -Suite $env:QUALIFICATION_SUITE
       - name: Save immutable download inputs after successful qualification
         if: success() && inputs.suite != 'portable' && steps.manual-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24
         with:
           path: |
             ~/.cargo/registry
@@ -272,7 +272,7 @@ jobs:
       - name: Preserve diagnostics even when qualification fails
         if: ${{ !cancelled() }}
         run: python scripts/hosted_cef.py collect
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; node24
         if: ${{ !cancelled() }}
         with:
           name: native-${{ matrix.target }}-${{ inputs.suite }}-${{ github.run_id }}-${{ github.run_attempt }}

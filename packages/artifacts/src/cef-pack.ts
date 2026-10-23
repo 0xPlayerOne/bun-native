@@ -3,9 +3,6 @@ import { createHash } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { lstat, opendir, readFile, readlink, realpath, rm } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-import { createGzip } from 'node:zlib'
 import {
   cefError,
   cefIdentity,
@@ -15,6 +12,7 @@ import {
   type CefRuntimeManifest,
 } from './cef-manifest.ts'
 import { validateCefDirectory } from './cef-cache.ts'
+import { writeCefArchive } from './cef-archive-output.ts'
 import { safeRelativePath } from './manifest.ts'
 function number(value: number, size: number): Buffer {
   const text = value.toString(8)
@@ -185,18 +183,17 @@ export async function packageCefRuntime(options: {
     owned = true
   })
   try {
-    await pipeline(Readable.from(stream()), createGzip({ level: 6 }), destination, {
-      signal: deadline,
-    })
-    const hash = createHash('sha256')
-    for await (const chunk of createReadStream(output)) hash.update(chunk)
+    const archive = await writeCefArchive(stream(), destination, deadline)
     await validateCefDirectory(root, provisional, deadline)
+    const written = await lstat(output)
+    if (!written.isFile() || written.isSymbolicLink() || written.size !== archive.size)
+      cefError('INTEGRITY_ERROR', 'Completed runtime archive has an unexpected type or length')
     const result = parseCefManifest({
       ...provisional,
       archive: {
         ...provisional.archive,
-        size: (await lstat(output)).size,
-        sha256: hash.digest('hex'),
+        size: archive.size,
+        sha256: archive.sha256,
       },
     })
     completed = true

@@ -44,6 +44,11 @@ sha2 = "=0.10.9"
 url = "=2.5.7"
 percent-encoding = "=2.3.2"
 
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+# This leaf host opts into upstream Apple ARM SHA instructions. Other target
+# feature selections stay unchanged; application builds still use prebuilt hosts.
+sha2 = { version = "=0.10.9", features = ["asm"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "=0.6.3"
 objc2-foundation = "=0.3.2"

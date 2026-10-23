@@ -326,9 +326,12 @@ fn dispatch(command: &Value) -> Result<(), String> {
             if STATE.with(|s| s.borrow().sessions.len() >= 128) {
                 return Err("Session capacity exceeded".into());
             }
-            let context =
-                request_context_create_context(Some(&RequestContextSettings::default()), None)
-                    .ok_or("Session creation failed")?;
+            let mut handler = scheme::context_handler();
+            let context = request_context_create_context(
+                Some(&RequestContextSettings::default()),
+                Some(&mut handler),
+            )
+            .ok_or("Session creation failed")?;
             scheme::attach(&context);
             let id = next_id();
             STATE.with(|s| {
@@ -692,10 +695,10 @@ wrap_display_handler! {
 wrap_request_handler! {
     struct BunlyRequest { id: u64 }
     impl RequestHandler {
-        // IO-thread callback: only immutable PATHS and atomics are read here.
+        // IO-thread callback: request policy is separate from UI-only host state.
         fn resource_request_handler(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
             _request: Option<&mut Request>, _navigation: i32, _download: i32, _initiator: Option<&CefString>,
-            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(LocalResources::new()) }
+            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources()) }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }
             cancel_navigation(self.id, "Renderer process terminated");
@@ -732,17 +735,4 @@ wrap_permission_handler! {
 wrap_download_handler! {
     struct DenyDownloads;
     impl DownloadHandler { fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { 0 } }
-}
-
-wrap_resource_request_handler! {
-    struct LocalResources;
-    impl ResourceRequestHandler {
-        fn on_before_resource_load(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, request: Option<&mut Request>, _callback: Option<&mut Callback>) -> ReturnValue {
-            let allowed = request.is_some_and(|r| checked_url(&CefString::from(&r.url()).to_string()).is_ok());
-            if allowed { ReturnValue::CONTINUE } else { ReturnValue::CANCEL }
-        }
-        fn on_protocol_execution(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, _request: Option<&mut Request>, allow: Option<&mut i32>) {
-            if let Some(allow) = allow { *allow = 0; }
-        }
-    }
 }

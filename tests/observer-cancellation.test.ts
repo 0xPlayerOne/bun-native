@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { basename, delimiter, dirname, join, relative } from 'node:path'
 import { tmpdir } from 'node:os'
 import { observedCommand } from '../benchmarks/lib/observed-command.ts'
 for (const delay of [0, 5, 100])
@@ -33,6 +33,63 @@ for (const delay of [0, 5, 100])
       expect(result.cleanupSurvivors).toEqual([])
     } finally {
       // A failure to read a report must not delete files beneath unknown work.
+      if (reaped) await rm(directory, { recursive: true, force: true })
+    }
+  }, 15000)
+
+for (const selection of ['basename', 'relative'] as const)
+  test(`observer resolves ${selection} interpreter before applying child PATH and cwd`, async () => {
+    const directory = await realpath(await mkdtemp(join(tmpdir(), 'bunly-observer-environment-')))
+    let reaped = false
+    try {
+      const python = Bun.which(process.env['PYTHON'] ?? 'python')
+      if (!python) throw new Error('Python contributor environment is required')
+      const childCwd = join(directory, 'unrelated-cwd')
+      const emptyPath = join(directory, 'empty-path')
+      await mkdir(childCwd)
+      await mkdir(emptyPath)
+      const interpreter = selection === 'basename' ? basename(python) : relative(directory, python)
+      const report = join(directory, 'report.json')
+      const driver = join(directory, 'driver.ts')
+      await writeFile(
+        driver,
+        `
+        import { observedCommand, assertCleanCommand } from ${JSON.stringify(
+          join(import.meta.dir, '../benchmarks/lib/observed-command.ts')
+        )};
+        const observation = await observedCommand(
+          [process.execPath, '-e', 'console.log(JSON.stringify({cwd:process.cwd(),path:process.env.PATH}))'],
+          {cwd:${JSON.stringify(childCwd)},output:${JSON.stringify(report)},timeoutMs:3000,
+           env:{PATH:${JSON.stringify(emptyPath)}}}
+        ).result;
+        assertCleanCommand(observation);
+        console.log(JSON.stringify(observation));
+      `
+      )
+      const run = Bun.spawn([process.execPath, driver], {
+        cwd: directory,
+        env: {
+          ...process.env,
+          PATH: dirname(python) + delimiter + (process.env['PATH'] ?? ''),
+          PYTHON: interpreter,
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const [code, stdout, stderr] = await Promise.all([
+        run.exited,
+        new Response(run.stdout).text(),
+        new Response(run.stderr).text(),
+      ])
+      expect(stderr).toBe('')
+      expect(code).toBe(0)
+      const observation = JSON.parse(stdout)
+      reaped = observation.cleanupSurvivors.length === 0
+      expect(observation.timedOut).toBe(false)
+      expect(observation.observedOrphans).toEqual([])
+      const target = observation.stdoutTail.map((line: string) => JSON.parse(line))
+      expect(target).toEqual([{ cwd: await realpath(childCwd), path: emptyPath }])
+    } finally {
       if (reaped) await rm(directory, { recursive: true, force: true })
     }
   }, 15000)

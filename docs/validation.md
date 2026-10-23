@@ -80,7 +80,7 @@ cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
 bun run qualify:host
 bun run qualify:lifecycle
 bun run artifact:probe
-bun scripts/qualify-kernel.ts
+BUNLY_KERNEL_COUNTERS=1 bun scripts/qualify-kernel.ts
 ```
 
 The combined native command formats, lints with warnings denied, tests and builds
@@ -101,6 +101,37 @@ Use the underlying local entrypoints; do not spoof `GITHUB_ACTIONS` to run the
 hosted-only wrapper. Windows/Linux sandbox and GUI results cannot be inferred
 from a Mac run or cross-compilation. No production signing account is needed
 for the local macOS functional fixture, and no distribution approval is implied.
+
+## Maintained foundation regression and profiling
+
+```sh
+bun run check:foundation
+bun run profile:foundation
+bun run profile:foundation:cpu
+bun run profile:foundation:native --app /path/to/bunly_host.app --samples 5 --warmups 1
+```
+
+The deterministic foundation tests also run in the ordinary Bun/Python/native
+validation suites. The explicit profiling commands retain raw samples, source
+identities, distributions and uncertainty without a machine-dependent timing
+gate. The native command uses an already prepared app and a private fixture;
+it does not compile a host. See [foundation performance](foundation-performance.md)
+for workloads, cache conditions and the limits of synthetic input measurements.
+
+On macOS, qualify the exact Chromium post-exit cleanup against both a retained
+baseline and a current prepared application:
+
+```sh
+python scripts/qualify-macos-clone-cleanup.py \
+  --baseline /path/to/baseline.app --current /path/to/current.app \
+  --output .bunly/profiles/clone-cleanup-qualification.json
+```
+
+The report requires actual prompt and deliberately delayed helper completion,
+verified ownership and clone removal. Unobserved sampling attempts cannot count
+as qualification; failed attempts remain failures. See
+[macOS clone cleanup](macos-clone-cleanup.md) and [native assets](native-assets.md)
+for identity, cancellation, resource bounds and shutdown behavior.
 
 ## Benchmark and development jobs
 
