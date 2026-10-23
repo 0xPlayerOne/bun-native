@@ -7,7 +7,8 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
   // Synthetic parser inputs, explicitly not a native execution claim.
   const rpc = {
     event: 'bunly.native.rpc',
-    schema: 2,
+    schema: 3,
+    viewDisposal: 'isolated-and-parent-close',
     renderer: {
       schema: 2,
       json: 'bun:renderer',

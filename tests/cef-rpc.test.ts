@@ -20,7 +20,8 @@ async function fixture(
   handlers = {
     echo: { capability: 'rpc.echo', handle: async (value: string) => `native:${value}` },
     binary: { capability: 'rpc.binary', handle: async (value: Uint8Array) => value },
-  }
+  },
+  connect = true
 ) {
   const peer = await nativePeer()
   let next = 0
@@ -44,21 +45,22 @@ async function fixture(
     url: 'app://ui/index.html',
     trust: { kind: 'application', origin: 'app://ui' },
   })
-  peer.send({
-    v: 1,
-    event: 'rpc.connected',
-    target: 3,
-    data: {
-      connection: 4,
-      context: 1,
-      frameId: 'native-main',
-      documentId: 'native-3-1',
-      generation: 1,
-      origin: 'app://ui',
-    },
-  })
+  if (connect)
+    peer.send({
+      v: 1,
+      event: 'rpc.connected',
+      target: 3,
+      data: {
+        connection: 4,
+        context: 1,
+        frameId: 'native-main',
+        documentId: 'native-3-1',
+        generation: 1,
+        origin: 'app://ui',
+      },
+    })
   await turn()
-  return { ...peer, backend, view }
+  return { ...peer, backend, view, window }
 }
 
 function packetEvent(packet: Uint8Array, sequence: number) {
@@ -231,5 +233,117 @@ test('forged native document identity fails closed before a server is constructe
     assert.equal(f.backend.diagnostics().views, 0)
   } finally {
     await f.backend.dispose().catch(() => {})
+  }
+})
+
+for (const action of ['navigate', 'view-close', 'window-close'] as const) {
+  test(`a delayed native handshake cannot restore authority during ${action}`, async () => {
+    let invoked = 0
+    const f = await fixture(
+      {
+        echo: {
+          capability: 'rpc.echo',
+          handle: async (value: string) => {
+            invoked++
+            return value
+          },
+        },
+        binary: { capability: 'rpc.binary', handle: async (value: Uint8Array) => value },
+      },
+      false
+    )
+    let held: Command | undefined
+    f.handle((command) => {
+      if (['view.navigate', 'view.dispose', 'window.close'].includes(command.op)) held = command
+      else {
+        f.reply(command)
+        if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+      }
+    })
+    const pending =
+      action === 'navigate'
+        ? f.backend.navigate(f.view, 'app://ui/next.html')
+        : action === 'view-close'
+          ? f.backend.disposeView(f.view)
+          : f.backend.closeWindow(f.window)
+    void pending.catch(() => {})
+    try {
+      await turn()
+      assert.ok(held)
+      f.send({
+        v: 1,
+        event: 'rpc.connected',
+        target: 3,
+        data: {
+          connection: 4,
+          context: 1,
+          frameId: 'native-main',
+          documentId: 'native-3-1',
+          generation: 1,
+          origin: 'app://ui',
+        },
+      })
+      f.send(
+        packetEvent(
+          encodeRpc(
+            { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'late' },
+            limits
+          ),
+          1
+        )
+      )
+      await turn()
+      await turn()
+      assert.equal(
+        invoked,
+        0,
+        'A handshake queued before retirement must not create a new live lease'
+      )
+      assert.equal(
+        f.transport.diagnostics().closed,
+        false,
+        'A legitimate late handshake is not a host failure'
+      )
+      assert.ok(f.commands.some((command) => command.op === 'rpc.disconnect'))
+    } finally {
+      if (held) f.reply(held)
+      await pending.catch(() => {})
+      await f.backend.dispose().catch(() => {})
+    }
+  })
+}
+
+test('a delayed handshake during host shutdown cannot fail or resurrect the service', async () => {
+  const f = await fixture(undefined, false)
+  let quit: Command | undefined
+  f.handle((command) => {
+    if (command.op === 'quit') quit = command
+    else f.reply(command)
+  })
+  const closing = f.backend.dispose()
+  void closing.catch(() => {})
+  try {
+    await turn()
+    assert.ok(quit)
+    f.send({
+      v: 1,
+      event: 'rpc.connected',
+      target: 3,
+      data: {
+        connection: 4,
+        context: 1,
+        frameId: 'native-main',
+        documentId: 'native-3-1',
+        generation: 1,
+        origin: 'app://ui',
+      },
+    })
+    await turn()
+    assert.equal(f.transport.diagnostics().closed, false)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    if (quit) f.reply(quit)
+    f.send({ v: 1, event: 'shutdown' })
+    await closing
   }
 })

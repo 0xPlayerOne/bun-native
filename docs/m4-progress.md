@@ -4,7 +4,8 @@ Typed application RPC and per-document capability policy.
 
 **Scope:** #18 portable protocol; #19 host policy and adversarial fixtures.
 **Base:** merged `1bb2df5cd2e10076d1a3dac21ca33dc592aa2edf` (PR #64).
-**Actions:** Account minutes are exhausted. No Actions retries or workflow changes are part of this increment.
+**Historical Actions boundary:** The original portable increment did not run hosted validation.
+**Current integration:** #94 adds the loopback candidate; #95 adds session APIs. The native-authority increment adds the ordinary three-platform adversarial RPC lane without changing repository settings.
 
 ## Delivered
 
@@ -112,3 +113,24 @@ is inferred from string-ABI tests or V8 creation-context annotations.
 See [application RPC](rpc.md) for APIs, serialization limits, timing rules,
 capacity behavior and the native integration contract. PR closure should not be
 used to imply that #19, M4, or the earlier milestones are fully complete.
+
+## Resumed native-authority integration
+
+The direct same-origin child-borrow regression now observes both native rejection
+and the exact JavaScript exception. The earlier missing CEF exception-string write
+was corrected with the pinned mutable-string API, not by relaxing the assertion.
+
+The expanded real-browser fixture then exposed independent child disposal closing
+its parent widget, and a concurrent-close variant leaving a request unresolved.
+The native lifecycle paths now distinguish independent view ownership from parent
+widget teardown. Child/sibling preservation and the original 20-cycle concurrent
+close workload are required in schema-3 RPC evidence.
+
+A separate deterministic three-case regression demonstrated that delayed native
+handshakes could recreate leases after local navigation, view disposal or window
+close. A lifetime-retirement fence closes that race; a fourth regression covers
+host teardown. The peer tests validate ordering, not native frame authenticity.
+The prepared CEF fixture and hosted RPC suite supply the actual native boundary
+checks. Issue #20 still retains its unsupported persistent-credential and complete
+HTML5-storage-clear criteria. Issue #22 still requires paired native measurements.
+No completion of M4 or correction of #92 is inferred from these increments.

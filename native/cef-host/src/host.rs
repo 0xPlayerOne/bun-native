@@ -1061,6 +1061,55 @@ wrap_delete_cookies_callback! {
         }
     } }
 }
+/// Destroy one embedded BrowserView without asking CEF to close its Window.
+/// Alloy's default CloseBrowser path closes the containing widget, including
+/// siblings. Removing this view from the hierarchy and releasing its last owned
+/// reference invokes BrowserView destruction and the ordinary OnBeforeClose
+/// callback instead. The registry retains the browser/request until that callback.
+/// See the pinned CEF BrowserViewImpl destructor and Views platform delegate.
+fn dispose_view(id: u64, request: u64) -> Result<(), String> {
+    let (window, view, revoked) = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
+        if record.close.is_some() {
+            return Err("View is closing");
+        }
+        if record.browser.is_none() || record.view.is_none() {
+            return Err("Browser view not ready");
+        }
+        let owner = state
+            .windows
+            .get(&record.window)
+            .ok_or("View owner window unavailable")?;
+        let window = owner
+            .window
+            .clone()
+            .ok_or("View owner window unavailable")?;
+        let owner_closing = owner.closing.is_some() || QUITTING.load(Ordering::SeqCst);
+        let record = state.views.get_mut(&id).unwrap();
+        record.close = Some(request);
+        // Once TryCloseBrowser has accepted the parent close, the BrowserView
+        // destructor deliberately does not force destruction. Keep it attached
+        // so widget teardown supplies WindowDestroyed and settles this request.
+        let view = if owner_closing {
+            None
+        } else {
+            record.view.take()
+        };
+        Ok::<_, &str>((window, view, record.rpc.revoke()))
+    })?;
+    revoke_renderer(id, revoked);
+    // Neither hierarchy mutation nor final reference release may run while a
+    // registry borrow is held: CEF can synchronously call OnBeforeClose here.
+    if let Some(view) = view {
+        let mut child = View::from(&view);
+        window.remove_child_view(Some(&mut child));
+        drop(child);
+        drop(view);
+    }
+    Ok(())
+}
+
 fn dispatch(command: &Value) -> Result<(), String> {
     if currently_on(ThreadId::UI) == 0 {
         return Err("Wrong native thread".into());
@@ -1448,24 +1497,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 issue_navigation(id, request);
             }
         }
-        "view.dispose" => {
-            let id = number(args, "id")?;
-            let (browser, revoked) = STATE.with(|s| {
-                let mut s = s.borrow_mut();
-                let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
-                if r.close.is_some() {
-                    return Err("Close already pending");
-                }
-                let browser = r.browser.clone().ok_or("Browser not ready")?;
-                r.close = Some(request);
-                Ok::<_, &str>((browser, r.rpc.revoke()))
-            })?;
-            revoke_renderer(id, revoked);
-            browser
-                .host()
-                .ok_or("Browser host unavailable")?
-                .close_browser(1);
-        }
+        "view.dispose" => dispose_view(number(args, "id")?, request)?,
         "window.close" | "window.show" | "window.hide" | "window.resize" => {
             let id = number(args, "id")?;
             let window = STATE

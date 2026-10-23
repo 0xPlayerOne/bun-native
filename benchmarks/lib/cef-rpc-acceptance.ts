@@ -27,7 +27,8 @@ export function acceptNativeRpc(report: CommandObservation): void {
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 2,
+      schema: 3,
+      viewDisposal: 'isolated-and-parent-close',
       renderer: {
         schema: 2,
         json: 'bun:renderer',

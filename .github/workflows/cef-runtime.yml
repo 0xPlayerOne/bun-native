@@ -1,4 +1,4 @@
-name: M3 native CEF runtime
+name: Native CEF runtime and M4 authority
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -84,13 +84,16 @@ jobs:
               "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             }
           }
+      # Contributor probes are compiled only into this qualification artifact.
       - name: Compile native host and helpers
         shell: bash
         run: |
           cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
-          cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release > .bunly/hosted-evidence/build.log 2>&1 || { tail -180 .bunly/hosted-evidence/build.log; exit 1; }
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,rpc-qualification -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
+          cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release > .bunly/hosted-evidence/build.log 2>&1 || { tail -180 .bunly/hosted-evidence/build.log; exit 1; }
           tail -10 .bunly/hosted-evidence/build.log
       - name: Build TypeScript application without native compilation
         shell: bash
@@ -102,7 +105,7 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: 1.91.0
         run: |
-          cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
+          cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
           python scripts/hosted_cef.py prepare
       - name: Run the shared prebuilt matrix on Linux or macOS
         if: runner.os != 'Windows'
@@ -110,15 +113,15 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite smoke
+            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite rpc
           else
-            python scripts/hosted_cef.py run --suite smoke
+            python scripts/hosted_cef.py run --suite rpc
           fi
       - name: Run the shared Windows matrix as a standard user
         if: runner.os == 'Windows'
         timeout-minutes: 20
         shell: pwsh
-        run: ./scripts/hosted-windows.ps1 -Suite smoke
+        run: ./scripts/hosted-windows.ps1 -Suite rpc
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}
         shell: bash

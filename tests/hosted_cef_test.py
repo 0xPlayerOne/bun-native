@@ -35,6 +35,15 @@ class HostedQualificationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             hosted.commands("arbitrary-shell", "/bun", Path("/app"))
 
+    def test_rpc_suite_requires_real_native_rpc_evidence_without_weaker_deadlines(self):
+        commands = hosted.commands("rpc", "/bun", Path("/app"))
+        self.assertEqual([name for name, _ in commands], ["prebuilt"])
+        self.assertEqual(
+            commands[0][1], ["/bun", str(hosted.ROOT / "scripts/qualify-cef-rpc.ts"), "/app"]
+        )
+        self.assertNotIn("--emulated-functional", commands[0][1])
+        self.assertNotIn("--no-sandbox", commands[0][1])
+
     def test_stale_or_duplicate_reports_never_pass(self):
         with (
             tempfile.TemporaryDirectory() as directory,

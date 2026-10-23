@@ -143,6 +143,12 @@ export default async function main(backend: CefBackend): Promise<void> {
           assert.equal(backend.state(child).trust.kind, 'remote')
         }
         await backend.disposeView(child)
+        // Disposing a BrowserView must not close its shared native Window or
+        // revoke the sibling document. Exercise the actual CEF ownership path.
+        assert.equal(backend.diagnostics().windows, 1, 'View disposal closed its parent window')
+        assert.equal(backend.diagnostics().views, 1, 'View disposal removed a sibling')
+        assert.equal(backend.state(view).trust.kind, 'application')
+        await backend.focusView(view)
         assert.equal(
           waits.get(mode)?.aborted,
           true,
@@ -253,7 +259,8 @@ export default async function main(backend: CefBackend): Promise<void> {
     console.log(
       JSON.stringify({
         event: 'bunly.native.rpc',
-        schema: 2,
+        schema: 3,
+        viewDisposal: 'isolated-and-parent-close',
         renderer: evidence.renderer,
         hostileExternalScript: evidence.hostile,
         lifecycleCycles: 2,

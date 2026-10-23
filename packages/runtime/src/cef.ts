@@ -215,6 +215,9 @@ export class CefBackend implements BrowserBackend {
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #partitions = new Set<string>()
+  // Native application grants are one-shot. Fence local lifecycle transitions
+  // before their queued native acknowledgement/handshake can arrive.
+  readonly #rpcRetired = new WeakSet<ViewHandle>()
   readonly #rpcConnections = new Map<
     number,
     { view: ViewHandle; transport: CefRpcTransport; server: RpcServer<RpcSchema> }
@@ -428,7 +431,7 @@ export class CefBackend implements BrowserBackend {
     if (this.#closing.has(view) || this.#closing.has(resource.window))
       throw new BunlyError('DISPOSED', 'View is closing')
     const url = normalizeUrl(value)
-    this.#rpcService?.authority.revoke(view)
+    this.#retireRpc(view)
     await this.#transport.call('view.navigate', { id: resource.native, url }, options.signal)
     this.#active()
     this.#registry.get(view, 'view')
@@ -484,10 +487,9 @@ export class CefBackend implements BrowserBackend {
         throw error
       })
     this.#closing.set(handle, promise)
-    if (kind === 'view') this.#rpcService?.authority.revoke(handle as ViewHandle)
+    if (kind === 'view') this.#retireRpc(handle as ViewHandle)
     if (kind === 'window')
-      for (const view of this.#windowViews.get(handle as WindowHandle) ?? [])
-        this.#rpcService?.authority.revoke(view)
+      for (const view of this.#windowViews.get(handle as WindowHandle) ?? []) this.#retireRpc(view)
     return promise
   }
   async closeWindow(window: WindowHandle): Promise<void> {
@@ -756,13 +758,41 @@ export class CefBackend implements BrowserBackend {
       }
     }
   }
+  #retireRpc(view: ViewHandle): void {
+    this.#rpcRetired.add(view)
+    this.#rpcService?.authority.revoke(view)
+  }
   #rpcConnected(view: ViewHandle, data: Record<string, unknown> | null | undefined): void {
     const service = this.#rpcService
-    if (!service || !data) return
+    if (this.#disposed || !service || !data) return
     const connection = data['connection'],
       frameId = data['frameId'],
       documentId = data['documentId']
-    const trust = this.state(view).trust
+    const resource = this.#registry.get<'view', ViewResource>(view, 'view')
+    if (
+      this.#rpcRetired.has(view) ||
+      this.#closing.has(view) ||
+      this.#closing.has(resource.window)
+    ) {
+      // This can be an authentic native event queued before the local lifecycle
+      // request. Refuse the exact incarnation without granting a fresh lease or
+      // treating a normal retirement race as failure of the entire host.
+      if (
+        [connection, data['context'], data['generation']].every(
+          (value) => Number.isSafeInteger(value) && Number(value) > 0
+        )
+      ) {
+        void this.#transport
+          .call('rpc.disconnect', {
+            connection,
+            context: data['context'],
+            generation: data['generation'],
+          })
+          .catch(() => {})
+      }
+      return
+    }
+    const trust = resource.state.trust
     if (
       !Number.isSafeInteger(connection) ||
       Number(connection) < 1 ||

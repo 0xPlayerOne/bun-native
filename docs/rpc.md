@@ -173,7 +173,9 @@ regression reproduced an exception-output bug: assigning a new Rust `CefString`
 replaced only the local borrowed wrapper. The callback now uses the pinned
 `try_set()` API to write CEF's exception slot. CEF throws only for a nonempty slot;
 therefore a normal JS return was **not** evidence of native acceptance. The exact
-denial assertion remains required, and native success is still pending.
+denial assertion remains required. The resumed real-CEF run observed the exact
+child-context rejection and the expected JavaScript exception; later lifecycle
+failures and their independent fixes are retained in the M4 evidence.
 
 A separate `rpc-context-diagnostics` contributor feature records at most 32 native
 callback observations per renderer, each at most 2048 bytes. It records native
@@ -248,7 +250,7 @@ bun run qualify:cef-rpc -- /path/to/prepared/native/app
 Build the contributor fixture with `packaging,rpc-qualification`; ordinary builds
 exclude the native injection probes. It runs the prepared application through the
 existing prebuilt qualification, preserving the baseline 20-cycle smoke and clean
-shutdown criteria. Exact schema-2 RPC evidence must include typed JSON and binary
+shutdown criteria. Exact schema-3 RPC evidence must include typed JSON and binary
 roundtrips, independent backend input rejection, backend-started-and-aborted
 cancellation, bounded final native resources, an external-CSP-compliant
 hostile child script, two navigation/close-in-flight cycles, return-to-origin and
@@ -283,3 +285,34 @@ current reference adapter has been exercised in Bun on Linux, not in native CEF
 or across all browser engines. It is not yet the chosen CEF production transport.
 No polling interval, dependency, native compilation, network listener, background
 service, or public package publication is introduced by this implementation.
+
+## Independent view teardown and queued handshakes
+
+`view.dispose` removes only its own embedded BrowserView and releases its native
+owner outside registry borrows. The default Alloy `CloseBrowser` path instead
+closes the containing widget; using it for an individual child closed its siblings.
+If the parent window is already closing, the child remains attached until widget
+teardown supplies its destruction callback. Detaching after `TryCloseBrowser` has
+accepted the parent close prevents that callback and leaves a request pending.
+The native fixture exercises both independent child disposal and 20 concurrent
+parent-close/child-dispose cycles without shortening the original workload.
+
+The pinned CEF implementation documents these distinct paths in
+[BrowserView destruction](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/views/browser_view_impl.cc),
+[Views host closure](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/views/browser_platform_delegate_views.cc),
+and [Alloy destruction states](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/alloy/alloy_browser_host_impl.cc).
+
+Bun also marks a view's RPC eligibility permanently retired before sending a
+navigation or disposal command. An authentic handshake already queued by native
+code cannot create another lease after that local transition. Its exact native
+incarnation is disconnected without failing the entire host. Host shutdown ignores
+late handshakes while its existing revocation path completes. Deterministic tests
+cover navigation, child close, parent close and host shutdown; copied/invalid live
+authority metadata still fails closed.
+
+Automatic CEF qualification builds compile the `rpc-qualification` probes and run
+the `rpc` suite on Linux, Windows and macOS. This suite retains the entire prebuilt
+matrix and requires exact adversarial RPC evidence. Ordinary runtime builds and
+manual smoke/full builds do not enable contributor injection probes. These test
+artifacts are not production release artifacts. Native issue #92 and the remaining
+session/transport-selection acceptance criteria remain independent.
