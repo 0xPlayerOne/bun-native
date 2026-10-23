@@ -7,8 +7,8 @@ Bounded native asset work, lifecycle qualification, and maintained regression ch
 **Validation checkpoint:** Clean source `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`, 2026-10-22.
 **Status:** Local test suites and the four-case macOS helper qualification pass.
 The full native profile still fails the CEF shutdown watchdog; merge and M4 remain blocked.
-Live Mac validation is also paused after a separate disposable debugger probe
-stalled in a kernel wait; its cleanup remains unresolved.
+The October 23 retry confirmed the five recorded probe process IDs were absent
+and resumed bounded diagnostics. The native shutdown failure remains unresolved.
 
 Draft PR #89 remains open. At the earlier push checkpoints, the billing-pause
 flag was true and checked hosted jobs were skipped. After the 17:14:19Z push,
@@ -255,7 +255,7 @@ between NetworkService cleanup, thread-pool shutdown and other phases. It does
 not establish a thread-pool deadlock or a production fix. The raw dump remains
 private; the public evidence contains its length, digest and reviewed findings.
 
-#### Paused live-state capture and environment cleanup
+#### Earlier paused live-state capture and environment cleanup
 
 A separate disposable C-stub/LLDB probe was intended to test hard-disconnect
 cleanup before the proposed Bunly live-state capture. Its coordinator stalled during
@@ -266,18 +266,73 @@ sole thread in the state defined as
 This establishes the observed thread state. The installed kernel's exact source
 revision, wait channel and cause were not established.
 
-Verified `SIGKILL` requests targeted the owned coordinator and its unreaped
-direct children, but completed exit and reaping have not been confirmed. The
+At that checkpoint, verified `SIGKILL` requests targeted the owned coordinator
+and its unreaped direct children, but completed exit and reaping had not been confirmed. The
 probe does not establish that disconnecting LLDB safely resumes its target.
-No Bunly application was launched or attached by this probe, and the planned
-live-state capture remains unexecuted. These auxiliary probes are excluded from
+No Bunly application was launched or attached by that probe, and the planned
+live-state capture was unexecuted at that checkpoint. These auxiliary probes are excluded from
 the native profile and app-launch counts above. Further Mac application and
-debugger launches are paused while this environment cleanup remains unresolved.
+debugger launches were paused until the recovery check below.
 
 This environment failure establishes no cause for the earlier CEF watchdog
 failure. Offline analysis, diagnostic-harness review and mock tests supply no
 native qualification pass. No shutdown deadline, Chromium security-cloning
 policy or system setting was relaxed.
+
+#### October 23 retry: observer fix and bounded live captures
+
+The retry confirmed by signal-zero checks that all five recorded processes from
+that earlier probe were absent. This establishes current absence, not the timing
+of their prior exit/reaping or safety of forced debugger disconnection. A fresh
+disposable-child probe completed normal attach, known-memory read, detach and
+reaping; the hard-disconnect path was not retested.
+
+The maintained native command first exposed an interpreter-resolution bug:
+applying the application's deliberately empty `PATH` and unrelated working
+directory also hid the Python observer. `observedCommand` now resolves the trusted
+interpreter in the caller's environment before applying the target environment.
+Three maintained regressions cover basename resolution, relative paths and
+missing-interpreter rejection. The target's empty `PATH` is still enforced.
+The complete portable command passed **574 Bun tests and 199 Python tests**, plus
+formatting, types, lint, boundaries, builds and type-checker qualification.
+The foundation command passed **133 tests**, overlapping the ordinary suite.
+Native Rust code and dependencies did not change; their earlier validation and
+advisory checks were not rerun or relabeled as fresh results.
+
+With an absolute interpreter selected, the uninstrumented native workload again
+completed its assets and normal backend exit, then failed the CEF teardown
+watchdog with host exit code 2. No performance distribution was accepted.
+
+The first private live-capture retry failed before attachment because Xcode's
+embedded Python 3.9 and the contributor Python 3.11 did not share the same
+`time.monotonic()` epoch. Python documents the macOS process-wide change in
+[version 3.10](https://docs.python.org/3.13/library/time.html#time.monotonic).
+The coordinator, observer tap and LLDB capture now use the same explicit
+`CLOCK_UPTIME_RAW` clock. The 10-second capture bound and ordinary 30-second
+observer deadline were not extended.
+
+Two corrected late captures read tracker state **`0x17`**, meaning shutdown had
+started with **11 blocking items**. This is not a count of eleven identified
+executing tasks: the tracker also counts queued/running BLOCK task sources.
+The bounded all-thread snapshot found the identified pool workers waiting for
+work. A separate, earlier capture finished about **6.25 seconds** after
+`cef-shutdown` began and showed the previously mapped **NetworkService exit-wait**
+stack instead. That earlier capture did not satisfy the TaskTracker state-read
+condition; its result remains unavailable rather than being treated as zero.
+
+These observations show different shutdown stages, not a proven thread-pool
+root cause. The sampled late blocker count cannot explain where the earlier
+interval was spent or identify the responsible task sources. All three attached
+captures detached successfully, but their ordinary observer cleanup outcomes
+failed; a reported exit code zero is not a successful native qualification.
+Later signal-zero checks found each recorded root PID absent. Raw diagnostics
+remain private; digests, source hashes, outcomes and limits are retained in
+`retry20261023` within the local evidence record.
+
+The remaining evidence needed is the owned NetworkService child wait and the
+identity of the remaining blocking task sources. No speculative native fix,
+longer shutdown timeout, security-cloning exemption or system/billing setting
+change was made. PR #89 remains draft and unmerged.
 
 No startup or interaction distribution from these invocations is accepted.
 Captured timings remain diagnostic observations while shutdown qualification is

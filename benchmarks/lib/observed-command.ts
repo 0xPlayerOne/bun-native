@@ -287,9 +287,15 @@ export function observedCommand(
     )
   )
     throw new Error('Invalid observer interpreter')
+  // Resolve trusted tooling against the caller, not the environment and working
+  // directory deliberately restricted for the observed application. In particular,
+  // native qualification uses an empty PATH to prove compiler independence.
+  const executable = Bun.which(interpreter[0]!, { cwd: process.cwd() })
+  if (!executable) throw new Error('Observer interpreter not found in caller environment')
   const child = Bun.spawn(
     [
-      ...interpreter,
+      executable,
+      ...interpreter.slice(1),
       join(root, 'scripts/observe-process.py'),
       '--output',
       path,

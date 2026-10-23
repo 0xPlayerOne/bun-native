@@ -241,3 +241,14 @@ test('failed cleanup cannot authorize a clean command or fixture deletion', () =
   expect(() => assertCleanCommand(observation)).toThrow()
   expect(observationsPermitFixtureRemoval([observation])).toBe(false)
 })
+
+test('missing observer interpreter fails before applying target environment', () => {
+  expect(() =>
+    observedCommand([process.execPath, '-e', 'throw 1'], {
+      cwd: import.meta.dir,
+      output: 'never-written.json',
+      env: { PATH: '' },
+      observerCommand: ['bunly-missing-observer-interpreter-8bf2d19c'],
+    })
+  ).toThrow('Observer interpreter not found in caller environment')
+})

@@ -8933,7 +8933,8 @@
     "appLaunchAttempts": 15,
     "preparationFailures": 2,
     "successfulProfileInvocations": 0,
-    "auxiliaryDebuggerProbesExcluded": true
+    "auxiliaryDebuggerProbesExcluded": true,
+    "scope": "Historical totals before retry20261023; new maintained retries and auxiliary live diagnostics are enumerated separately in that checkpoint."
   },
   "knownBlocker": {
     "event": "Teardown watchdog expired; recording dump and terminating.",
@@ -9325,5 +9326,510 @@
     "No M4 renderer authority or representative transport selection",
     "Raw private reports are retained locally. Published fields omit process command lines, process identities, clone paths, and private snapshot filenames.",
     "Only the known checkout prefix is normalized in selected diagnostic text; unknown private paths stop publication. Experiment source bytes remain exact."
-  ]
+  ],
+  "retry20261023": {
+    "classification": "pre-m4-retry-and-shutdown-diagnosis",
+    "dateUtc": "2026-10-23T02:55:43.213143+00:00",
+    "sourceParentCommit": "c9708bce04798158b4e86ff019ff122971e8414f",
+    "changedSourceHashes": {
+      "benchmarks/lib/observed-command.ts": "d5e7295cf7b263194be895d242fba53e9a3ae6349d51db90d732bff13474ba12",
+      "tests/observed-command.test.ts": "0c092315e08a1397a611ff62e5d0f99cfa7bdc255a248f843a75be494bb7dc7e",
+      "tests/observer-cancellation.test.ts": "cb585e5d368d8093fa25e0d47342ddba6d836c21e5e25b0937b97c6dbb0fe905"
+    },
+    "nativeSourceChanged": false,
+    "mergeReady": false,
+    "qualificationEligible": false,
+    "priorProbeRecovery": {
+      "record": {
+        "record": "retry-cleanup-check.json",
+        "bytes": 623,
+        "sha256": "8da43fcd3df531abedab3afc64d9118e87a3186dded4dc6e631248cfd07342a4"
+      },
+      "allFiveRecordedPidsAbsent": true,
+      "method": "Signal-zero existence checks only; no process metadata scans or termination.",
+      "limitation": "Current absence does not establish when prior exit/reaping completed or qualify the hard-disconnect path."
+    },
+    "observerFix": {
+      "change": "Resolve observer interpreter against caller PATH and cwd before applying the observed application environment; preserve all interpreter arguments and the target empty PATH.",
+      "regressions": [
+        "interpreter basename with target empty PATH",
+        "relative interpreter with unrelated target cwd",
+        "missing interpreter rejected before spawn"
+      ],
+      "targetedTests": {
+        "passed": 17,
+        "failed": 0,
+        "record": {
+          "record": "retry-observer-tests-2.log",
+          "bytes": 1689,
+          "sha256": "7c82a1499d2a1a65e765b73eec8b41867df4a79207ec3efd85123fa6fb25e221"
+        }
+      }
+    },
+    "validation": {
+      "portable": {
+        "command": "bun run check:portable",
+        "exitCode": 0,
+        "bunTestsPassed": 574,
+        "pythonTestsPassed": 199,
+        "record": {
+          "record": "retry-portable-validation.log",
+          "bytes": 61534,
+          "sha256": "2b7fb6f7a70eb4afd9e26451e1248832954936416f7a87ed764c77b834c0bc03"
+        }
+      },
+      "foundation": {
+        "command": "bun run check:foundation",
+        "exitCode": 0,
+        "passed": 133,
+        "overlapsPortableTests": true,
+        "record": {
+          "record": "retry-foundation-validation.log",
+          "bytes": 15165,
+          "sha256": "a8bbe06055669dd3b1846a8c13731b103746f8b209a5c696a3471a66f8c6a3d7"
+        }
+      },
+      "nativeRustTestsRerun": false,
+      "advisoryAuditsRerun": false
+    },
+    "maintainedNativeRetries": [
+      {
+        "record": {
+          "record": "foundation-native-retry-1.json",
+          "bytes": 178563,
+          "sha256": "bbbb3d192f74d9450ac55a6f2aefbdf6c36c8d9c407fe475ddbaf8144eb31976"
+        },
+        "appLaunched": false,
+        "passed": false,
+        "failure": "Executable not found in $PATH: \"python\"",
+        "sourceBefore": {
+          "commit": "c9708bce04798158b4e86ff019ff122971e8414f",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "c9708bce04798158b4e86ff019ff122971e8414f",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "samples": 5,
+        "warmups": 1,
+        "acceptedPerformanceSamples": 0
+      },
+      {
+        "record": {
+          "record": "foundation-native-retry-2.json",
+          "bytes": 178579,
+          "sha256": "0c063a86e339214bf1e3ab209bdc53d9bbd02ae41658099d28e22755b89ec4a0"
+        },
+        "appLaunched": true,
+        "passed": false,
+        "failure": "Command timeout, output overflow, or surviving descendant",
+        "sourceBefore": {
+          "commit": "c9708bce04798158b4e86ff019ff122971e8414f",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "c9708bce04798158b4e86ff019ff122971e8414f",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "samples": 5,
+        "warmups": 1,
+        "acceptedPerformanceSamples": 0,
+        "processReport": {
+          "record": "warmup-0-fresh-profile.process.json",
+          "bytes": 388442,
+          "sha256": "bc3c2e39ef7880e3bd32d1c063c53707ae2adf6a006beee3f6ef319a8159f4ea"
+        },
+        "outcome": {
+          "exitCode": 2,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": [
+            85253
+          ],
+          "cleanupSurvivors": [],
+          "elapsedMs": 13909.902583109215
+        },
+        "findings": [
+          "Asset workload completed; backend exited normally with code zero.",
+          "process-stop, host-release and asset-service-stop completed before cef-shutdown.",
+          "Chromium teardown watchdog terminated host with exit code 2."
+        ]
+      }
+    ],
+    "nonLaunchCommandError": {
+      "command": "bun run perf:profile:native",
+      "reason": "Incorrect script name; no application launched. The maintained command is profile:foundation:native."
+    },
+    "diagnosticClockCorrection": {
+      "reason": "LLDB embedded Python 3.9 monotonic time used a per-process epoch, unlike the Python 3.11 observer/coordinator.",
+      "correctedClock": "clock_gettime(CLOCK_UPTIME_RAW) in all three private diagnostic components",
+      "normalObserverTimeoutChanged": false,
+      "captureDeadlineSeconds": 10,
+      "reference": "https://docs.python.org/3.13/library/time.html#time.monotonic",
+      "sourceChangeRecord": {
+        "record": "clock-domain-fix.json",
+        "bytes": 603,
+        "sha256": "759a409908ed71e80ee6538eeb9c17ffcd0eb0161e7da71eb7586d51ba11fb4f"
+      },
+      "limitation": "Private diagnostic repair, not a native runtime fix."
+    },
+    "disposableProbe": {
+      "normalAttachReadDetach": {
+        "detachAttempted": true,
+        "detachSucceeded": true,
+        "attachError": null,
+        "readMatched": true,
+        "childExit": 0,
+        "reaped": true
+      },
+      "hardDisconnectRetested": false,
+      "readOnlyMachProbes": "task_for_pid denied on disposable owned children; children exited and were reaped. No production entitlement or system setting changed."
+    },
+    "liveDiagnostics": [
+      {
+        "record": "prewarmed-80m3okpl",
+        "classification": "diagnostic-only-live-capture",
+        "qualificationEligible": false,
+        "triggerAfterPendingMs": 6000,
+        "coordinatorRecord": {
+          "record": "coordinator.json",
+          "bytes": 6450,
+          "sha256": "7e34dc1095f1c6b2d0c0b5067e3810fc15cbe665839eecbf7f0b36daa2879d8a"
+        },
+        "journalRecord": {
+          "record": "capture-output.jsonl",
+          "bytes": 2368,
+          "sha256": "c20591b5c2f7633c4c1e6bf5ecaf6c04f4cd34ec86e0645b5e86a109b3dc2de4"
+        },
+        "processRecord": {
+          "record": "process.json",
+          "bytes": 506469,
+          "sha256": "9f7d94d0ea9c27dc52cebd95aac8b2acaf51b882d3e8e06652a5f3ce084d534f"
+        },
+        "sourceHashes": {
+          ".bunly/pre-m4/run-prewarmed-shutdown.py": "43026a6a26daf4fe6d3fead7014c70c09faef95c770f117660914172d55fd1e3",
+          ".bunly/pre-m4/cef_lldb_prewarmed.py": "763e3e9e6d544b0742df6a3fbb8edbc6e1a6d7384d03dcbd0cf14a66a2bde98b",
+          ".bunly/pre-m4/cef_lldb_capture.py": "2a8932b9a845102c8e58340a1fac3aa078c2c7d03a9eeecf24faabe8b2b99b99",
+          ".bunly/pre-m4/diagnose-prewarmed-shutdown.ts": "370d2bfdae68759479ab297fec03e93a2b419829a2ac6b59f23f7564435e8952",
+          ".bunly/pre-m4/tap-cef-observer-prewarmed.py": "a9499a5ce37cfba8ef35d77b6ba3a4b8dff59ae2f70763b470200c044a7466ca",
+          ".bunly/pre-m4/diagnose-cef-shutdown-root.py": "a3b0ae2205ba9a9639288e1f7bd4cd1476cb434550acfd90d545c4db7a85933a",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "sourceFilesUnchanged": true,
+        "capture": {
+          "event": "serve-failed",
+          "status": "unavailable",
+          "journalBytes": 2368,
+          "journalSha256": "c20591b5c2f7633c4c1e6bf5ecaf6c04f4cd34ec86e0645b5e86a109b3dc2de4",
+          "captureSucceeded": false
+        },
+        "outcome": {
+          "exitCode": 2,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": [],
+          "cleanupSurvivors": [],
+          "elapsedMs": 12910.601291107014
+        },
+        "postExitCleanupPassed": false,
+        "elapsedMsIsNotPerformanceEvidence": true
+      },
+      {
+        "record": "prewarmed-x5qf_dte",
+        "classification": "diagnostic-only-live-capture",
+        "qualificationEligible": false,
+        "triggerAfterPendingMs": 6000,
+        "coordinatorRecord": {
+          "record": "coordinator.json",
+          "bytes": 6660,
+          "sha256": "9a02c3cc69e78168d25617d1ad259870997f2df688a61b4c9f58083179f2a7a4"
+        },
+        "journalRecord": {
+          "record": "capture-output.jsonl",
+          "bytes": 5060,
+          "sha256": "97b4c20e49e6451ff6f5d39235f4bd1dab6840b0838a14e6c505a1d27f53fd64"
+        },
+        "processRecord": {
+          "record": "process.json",
+          "bytes": 307212,
+          "sha256": "12b30996136d39394a2cd2c572124edf70347257b1c36f7cdda2655c847d93f1"
+        },
+        "sourceHashes": {
+          ".bunly/pre-m4/run-prewarmed-shutdown.py": "f26a6674a9d268084656082888472b7c9f77a5ddb1800275cfb425ccb1ab806c",
+          ".bunly/pre-m4/cef_lldb_prewarmed.py": "358942f4dda7985774216b6be75fe4c23e6da9e17131b23e75ffe3547a643de4",
+          ".bunly/pre-m4/cef_lldb_capture.py": "2a8932b9a845102c8e58340a1fac3aa078c2c7d03a9eeecf24faabe8b2b99b99",
+          ".bunly/pre-m4/diagnose-prewarmed-shutdown.ts": "370d2bfdae68759479ab297fec03e93a2b419829a2ac6b59f23f7564435e8952",
+          ".bunly/pre-m4/tap-cef-observer-prewarmed.py": "6ef309af735bdc4323443262196813dc56b92cd0993a2a5dcdf854afe52c7797",
+          ".bunly/pre-m4/diagnose-cef-shutdown-root.py": "a3b0ae2205ba9a9639288e1f7bd4cd1476cb434550acfd90d545c4db7a85933a",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "sourceFilesUnchanged": true,
+        "capture": {
+          "event": "result",
+          "status": "captured",
+          "journalBytes": 5060,
+          "journalSha256": "97b4c20e49e6451ff6f5d39235f4bd1dab6840b0838a14e6c505a1d27f53fd64",
+          "captureSucceeded": true,
+          "stateStatus": "captured",
+          "reason": null,
+          "detachAttempted": true,
+          "detachSucceeded": true,
+          "explicitReadBytes": 28,
+          "blockingItems": 11
+        },
+        "outcome": {
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": [],
+          "cleanupSurvivors": [
+            99083
+          ],
+          "elapsedMs": 13965.489417081699
+        },
+        "postExitCleanupPassed": false,
+        "elapsedMsIsNotPerformanceEvidence": true,
+        "state": {
+          "status": "captured",
+          "reason": null,
+          "explicitReadBytes": 28,
+          "shutdownStarted": true,
+          "blockingItems": 11,
+          "savedPointersMatched": true
+        },
+        "mainThreadFilePCs": [
+          "0x1804bbc34",
+          "0x1804ce634",
+          "0x1804c49c0",
+          "0x1804bbfc0",
+          "0x21344cc",
+          "0x20cb33c",
+          "0x20cb2ec",
+          "0x20ef710"
+        ],
+        "identityChecks": {
+          "identityBeforeAttach": true,
+          "identityAfterAttach": true,
+          "identityAfterRead": true,
+          "identityAfterDetach": "matched",
+          "detachAttempted": true,
+          "detachSucceeded": true
+        },
+        "attachCompletedAfterShutdownStartMs": 11220.467292005196,
+        "laterRootPidAbsence": true
+      },
+      {
+        "record": "prewarmed-96y7rm5z",
+        "classification": "diagnostic-only-live-capture",
+        "qualificationEligible": false,
+        "triggerAfterPendingMs": 6000,
+        "coordinatorRecord": {
+          "record": "coordinator.json",
+          "bytes": 6657,
+          "sha256": "187c3c95d2194dc3d45587f48701f9db8143462f6d18e4759e150174dfdb4cdb"
+        },
+        "journalRecord": {
+          "record": "capture-output.jsonl",
+          "bytes": 15260,
+          "sha256": "8070a0f9411305184d8fd0a55034119dc1ad42af1ade3c2475ac2f1db5d89ef2"
+        },
+        "processRecord": {
+          "record": "process.json",
+          "bytes": 232905,
+          "sha256": "b72bc1728053f8f7cd4ba5d06b8227ca528536dfe689664959cd1aeb580ed2e1"
+        },
+        "sourceHashes": {
+          ".bunly/pre-m4/run-prewarmed-shutdown.py": "f26a6674a9d268084656082888472b7c9f77a5ddb1800275cfb425ccb1ab806c",
+          ".bunly/pre-m4/cef_lldb_prewarmed.py": "6d093f7e7fe5366d28cb3166076b3f0703ba64bd8f8eb432dffb73c3ea4c1a2c",
+          ".bunly/pre-m4/cef_lldb_capture.py": "2a8932b9a845102c8e58340a1fac3aa078c2c7d03a9eeecf24faabe8b2b99b99",
+          ".bunly/pre-m4/diagnose-prewarmed-shutdown.ts": "370d2bfdae68759479ab297fec03e93a2b419829a2ac6b59f23f7564435e8952",
+          ".bunly/pre-m4/tap-cef-observer-prewarmed.py": "6ef309af735bdc4323443262196813dc56b92cd0993a2a5dcdf854afe52c7797",
+          ".bunly/pre-m4/diagnose-cef-shutdown-root.py": "a3b0ae2205ba9a9639288e1f7bd4cd1476cb434550acfd90d545c4db7a85933a",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "sourceFilesUnchanged": true,
+        "capture": {
+          "event": "result",
+          "status": "captured",
+          "journalBytes": 15260,
+          "journalSha256": "8070a0f9411305184d8fd0a55034119dc1ad42af1ade3c2475ac2f1db5d89ef2",
+          "captureSucceeded": true,
+          "stateStatus": "captured",
+          "reason": null,
+          "detachAttempted": true,
+          "detachSucceeded": true,
+          "explicitReadBytes": 28,
+          "blockingItems": 11
+        },
+        "outcome": {
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": [],
+          "cleanupSurvivors": [
+            759
+          ],
+          "elapsedMs": 13778.15966703929
+        },
+        "postExitCleanupPassed": false,
+        "elapsedMsIsNotPerformanceEvidence": true,
+        "state": {
+          "status": "captured",
+          "reason": null,
+          "explicitReadBytes": 28,
+          "shutdownStarted": true,
+          "blockingItems": 11,
+          "savedPointersMatched": true
+        },
+        "mainThreadFilePCs": [
+          "0x1804bbc34",
+          "0x1804ce634",
+          "0x1804c49c0",
+          "0x1804bbfc0",
+          "0x21344cc",
+          "0x20cb33c",
+          "0x20cb2ec",
+          "0x20ef710"
+        ],
+        "identityChecks": {
+          "identityBeforeAttach": true,
+          "identityAfterAttach": true,
+          "identityAfterRead": true,
+          "identityAfterDetach": "matched",
+          "detachAttempted": true,
+          "detachSucceeded": true
+        },
+        "attachCompletedAfterShutdownStartMs": 12210.004291962832,
+        "workerSnapshot": {
+          "availableThreads": 41,
+          "capturedThreads": 41,
+          "completeWithinThreadBound": true,
+          "identifiedPoolThreads": 21,
+          "poolThreadsAtWaitForWork": 21,
+          "frameLimitPerThread": 24,
+          "taskResponsibleIdentified": false
+        },
+        "laterRootPidAbsence": true
+      },
+      {
+        "record": "prewarmed-ajk2d4u5",
+        "classification": "diagnostic-only-live-capture",
+        "qualificationEligible": false,
+        "triggerAfterPendingMs": 1000,
+        "coordinatorRecord": {
+          "record": "coordinator.json",
+          "bytes": 6658,
+          "sha256": "0ced38e3804e909e8e765fe6d7272abb9b95e0055a10522abc82d5c2f0248e61"
+        },
+        "journalRecord": {
+          "record": "capture-output.jsonl",
+          "bytes": 14882,
+          "sha256": "31d249fd4e7e3f7293126f01f78df61f80da39a4c3a86e386125cc918b5e83bb"
+        },
+        "processRecord": {
+          "record": "process.json",
+          "bytes": 172478,
+          "sha256": "39977d57a2d22a6576d6a9bbefae233913fb95b879159ad712edbf24ea02d1a9"
+        },
+        "sourceHashes": {
+          ".bunly/pre-m4/run-prewarmed-shutdown.py": "f26a6674a9d268084656082888472b7c9f77a5ddb1800275cfb425ccb1ab806c",
+          ".bunly/pre-m4/cef_lldb_prewarmed.py": "6d093f7e7fe5366d28cb3166076b3f0703ba64bd8f8eb432dffb73c3ea4c1a2c",
+          ".bunly/pre-m4/cef_lldb_capture.py": "2a8932b9a845102c8e58340a1fac3aa078c2c7d03a9eeecf24faabe8b2b99b99",
+          ".bunly/pre-m4/diagnose-prewarmed-shutdown.ts": "81f77736cdb859c14b963090cc006b2d95a5dd3b080ee1ff9f1e7e447484de81",
+          ".bunly/pre-m4/tap-cef-observer-prewarmed.py": "eb2b1890545467205a4c9c5368f7aad3d97ae50152d26bcced4c82f788a602d3",
+          ".bunly/pre-m4/diagnose-cef-shutdown-root.py": "a3b0ae2205ba9a9639288e1f7bd4cd1476cb434550acfd90d545c4db7a85933a",
+          "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+          "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+        },
+        "sourceFilesUnchanged": true,
+        "capture": {
+          "event": "result",
+          "status": "unavailable",
+          "journalBytes": 14882,
+          "journalSha256": "31d249fd4e7e3f7293126f01f78df61f80da39a4c3a86e386125cc918b5e83bb",
+          "captureSucceeded": false,
+          "stateStatus": "unavailable",
+          "reason": "not-at-expected-wait",
+          "detachAttempted": true,
+          "detachSucceeded": true,
+          "explicitReadBytes": 0
+        },
+        "outcome": {
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": [
+            6588,
+            6589,
+            6591
+          ],
+          "cleanupSurvivors": [
+            6582
+          ],
+          "elapsedMs": 9194.066040916368
+        },
+        "postExitCleanupPassed": false,
+        "elapsedMsIsNotPerformanceEvidence": true,
+        "state": {
+          "status": "unavailable",
+          "reason": "not-at-expected-wait",
+          "explicitReadBytes": 0,
+          "shutdownStarted": null,
+          "blockingItems": null,
+          "savedPointersMatched": false
+        },
+        "mainThreadFilePCs": [
+          "0x1804bf308",
+          "0x18039acc0",
+          "0x18039abd8",
+          "0x21259ac",
+          "0x21257f8",
+          "0x171d3b0",
+          "0x171bbdc",
+          "0x171ccdc"
+        ],
+        "identityChecks": {
+          "identityBeforeAttach": true,
+          "identityAfterAttach": true,
+          "identityAfterRead": true,
+          "identityAfterDetach": "matched",
+          "detachAttempted": true,
+          "detachSucceeded": true
+        },
+        "attachCompletedAfterShutdownStartMs": 6249.415875179693,
+        "workerSnapshot": {
+          "availableThreads": 46,
+          "capturedThreads": 46,
+          "completeWithinThreadBound": true,
+          "identifiedPoolThreads": 19,
+          "poolThreadsAtWaitForWork": 19,
+          "frameLimitPerThread": 24,
+          "taskResponsibleIdentified": false,
+          "serviceThreadObservedSeparately": true
+        },
+        "laterRootPidAbsence": true
+      }
+    ],
+    "interpretation": [
+      "Uninstrumented maintained workload still fails; merge remains blocked.",
+      "Two later diagnostic captures read state bits 0x17: shutdown started and 11 blocking items. This includes running SKIP work or queued/running BLOCK task sources, not 11 identified executing tasks.",
+      "The bounded worker capture observed all identified pool workers at WaitForWork. This is a snapshot, not a deadlock proof.",
+      "An earlier capture completed about 6.25 seconds after cef-shutdown began and showed the previously mapped NetworkService exit-wait stack. It did not reach the TaskTracker state-read condition.",
+      "Late task-tracker state cannot attribute the full shutdown interval or establish which subsystem needs a fix.",
+      "Debugger-attached observations failed ordinary cleanup qualification; apparent exit code zero does not establish clean CEF shutdown. Later root PID absence is recorded separately."
+    ],
+    "nextEvidenceNeeded": "Identify the owned NetworkService child wait and the responsible remaining task sources, then validate any narrow runtime correction with the complete uninstrumented native profile and shutdown qualification."
+  }
 }
