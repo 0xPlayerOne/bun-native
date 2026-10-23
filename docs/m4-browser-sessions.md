@@ -100,3 +100,5 @@ persistent cookie providers remain explicitly unsupported.
 ## Local execution checkpoint
 
 The [sanitized local record](../evidence/m4-sessions-local-2026-10-23.json) preserves ten native functional/negative-control cases at clean source `d6dad359502e0f57bc0dd72c6ea9fc671e2ddce5`, including separate failed nested-profile and early-initialization trials. Secure persistent cookie providers and full HTML5 storage clearing remain open acceptance work under issue #20.
+
+After rebasing on merged #94, 652 Bun tests and 199 Python tests passed. Two fresh native qualification attempts completed their ephemeral session assertions but hit the previously tracked CEF teardown watchdog (#92); both full runs failed and their outcomes are retained in the local evidence record. The native source tree is identical to the earlier ten-case checkpoint. Neither the old pass nor hosted smoke supersedes these later failures.

@@ -360,5 +360,72 @@
     "Private per-user installation assumption; not protection from arbitrary hostile same-user filesystem races.",
     "Local ad-hoc signing only; not release/production signing or M4 renderer authority qualification.",
     "Known intermittent CEF shutdown issue 92 remains open."
-  ]
+  ],
+  "postRebaseCheckpoint": {
+    "sourceCommit": "88ed3a3865fe7ace4abfb612a298b551a61306cb",
+    "baseCommit": "1e426798bc1c21507850deda195f6823866b78d2",
+    "portableBunTests": 652,
+    "portablePythonTests": 199,
+    "nativeSourceTreeUnchangedFromQualifiedCheckpoint": true,
+    "fullNativeRepeatPassed": false,
+    "attempts": [
+      {
+        "sha256": "da3b3b444698a699a5128fb2483a60ef71b2b24db316e89382a2db1831820aa1",
+        "bytes": 329438,
+        "passed": false,
+        "mode": "ephemeral",
+        "sessionAssertionsCompleted": true,
+        "exitCode": 2,
+        "timedOut": false,
+        "cancelled": false,
+        "orphanCount": 1,
+        "survivorCount": 0,
+        "cloneCleanup": "failed",
+        "shutdown": {
+          "schema": 1,
+          "complete": false,
+          "malformed": false,
+          "pendingPhase": "cef-shutdown",
+          "durationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": null
+          },
+          "backendExitedNormally": true,
+          "hostReportedClean": false,
+          "hostReportedFailure": false
+        }
+      },
+      {
+        "sha256": "530089c007cb933a30cc31c2edd8d941dd9a7bbeec9f322f4af3d9eea4c74b57",
+        "bytes": 286137,
+        "passed": false,
+        "mode": "ephemeral",
+        "sessionAssertionsCompleted": true,
+        "exitCode": 2,
+        "timedOut": false,
+        "cancelled": false,
+        "orphanCount": 1,
+        "survivorCount": 0,
+        "cloneCleanup": "failed",
+        "shutdown": {
+          "schema": 1,
+          "complete": false,
+          "malformed": false,
+          "pendingPhase": "cef-shutdown",
+          "durationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": null
+          },
+          "backendExitedNormally": true,
+          "hostReportedClean": false,
+          "hostReportedFailure": false
+        }
+      }
+    ],
+    "interpretation": "Both current-harness runs completed ephemeral session assertions and normal backend/asset shutdown, then reproduced the independently tracked CEF teardown watchdog #92. They are failures, not superseded by the earlier ten-case pass or hosted smoke."
+  }
 }
