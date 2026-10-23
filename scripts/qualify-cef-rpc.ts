@@ -14,7 +14,13 @@ const child = Bun.spawn(
     resolve(artifact),
     ...process.argv.slice(3),
   ],
-  { cwd: resolve(import.meta.dir, '..'), stdout: 'pipe', stderr: 'inherit', env: process.env }
+  {
+    cwd: resolve(import.meta.dir, '..'),
+    stdout: 'pipe',
+    stderr: 'inherit',
+    // Fixture-only requirement, never a runtime authority/debugging switch.
+    env: { ...process.env, BUNLY_RPC_QUALIFICATION: '1' },
+  }
 )
 const output = await new Response(child.stdout).text()
 const status = await child.exited
@@ -46,5 +52,15 @@ const successfulTrials = (report.trials ?? []).filter(
 )
 assert.ok(successfulTrials.length >= 5, 'Prepared CEF RPC report omitted native smoke trials')
 for (const trial of successfulTrials) {
-  acceptNativeRpc(trial.observation as CommandObservation)
+  acceptNativeRpc(trial.observation as CommandObservation, process.platform === 'darwin')
 }
+
+// This final result is emitted only after the stronger RPC/teardown gate passes.
+console.log(
+  JSON.stringify({
+    profile: 'native-rpc',
+    passed: true,
+    acceptedLaunches: successfulTrials.length,
+    output: summary!['output'],
+  })
+)

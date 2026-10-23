@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { nativeEvents, acceptNativeSmoke } from './cef-acceptance.ts'
+import { observeNativeShutdown, requireNativeShutdown } from '../foundation/native-shutdown.ts'
 import type { CommandObservation } from './observed-command.ts'
 
 export const nativeRpcCases = Object.freeze(
@@ -19,15 +20,23 @@ export const nativeRpcCases = Object.freeze(
 )
 
 /** Validate retained native observations; a generic/older smoke flag is insufficient. */
-export function acceptNativeRpc(report: CommandObservation): void {
+export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = false): void {
   acceptNativeSmoke(report)
+  requireNativeShutdown(observeNativeShutdown(report))
+  if (requireMacCleanup)
+    assert.equal(
+      report.postExitCleanup?.qualified,
+      true,
+      'Native RPC helper/clone cleanup was not qualified'
+    )
   const records = nativeEvents(report).filter((event) => event['event'] === 'bunly.native.rpc')
   assert.equal(records.length, 1, 'Native RPC evidence missing or duplicated')
   assert.deepEqual(
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 3,
+      schema: 4,
+      sessionAuthority: 'native-owner-isolation-and-partition-reuse',
       viewDisposal: 'isolated-and-parent-close',
       renderer: {
         schema: 2,

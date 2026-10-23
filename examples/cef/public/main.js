@@ -79,6 +79,7 @@ try {
     'Unicode public resource failed'
   )
   const frame = document.createElement('iframe')
+  frame.hidden = true
   await new Promise((resolve, reject) => {
     frame.onload = resolve
     frame.onerror = () => reject(new Error('Packaged frame load failed'))
@@ -103,7 +104,9 @@ try {
     'Child frame borrowed main-frame RPC function'
   )
   console.log('BUNLY_RPC_HOSTILE_OK')
-  frame.remove()
+  // Keep the hostile context alive until its owner document is disposed.
+  // CEF process-message delivery is asynchronous and may be lost on detach;
+  // the backend independently waits for the actual native wrong-frame denial.
   check(
     typeof globalThis.Bun === 'undefined' &&
       typeof globalThis.process === 'undefined' &&

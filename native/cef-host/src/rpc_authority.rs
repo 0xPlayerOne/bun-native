@@ -435,6 +435,10 @@ mod tests {
         }
         for other in [
             Observed {
+                browser: observed().browser + 1,
+                ..observed()
+            },
+            Observed {
                 main: false,
                 ..observed()
             },

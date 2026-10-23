@@ -124,7 +124,7 @@ The expanded real-browser fixture then exposed independent child disposal closin
 its parent widget, and a concurrent-close variant leaving a request unresolved.
 The native lifecycle paths now distinguish independent view ownership from parent
 widget teardown. Child/sibling preservation and the original 20-cycle concurrent
-close workload are required in schema-3 RPC evidence.
+close workload are required in schema-4 RPC evidence.
 
 A separate deterministic three-case regression demonstrated that delayed native
 handshakes could recreate leases after local navigation, view disposal or window
@@ -134,3 +134,38 @@ The prepared CEF fixture and hosted RPC suite supply the actual native boundary
 checks. Issue #20 still retains its unsupported persistent-credential and complete
 HTML5-storage-clear criteria. Issue #22 still requires paired native measurements.
 No completion of M4 or correction of #92 is inferred from these increments.
+
+## PR #96 completion pass
+
+The retained final integration at `eb96269` completed the prebuilt lifecycle matrix,
+including independent-view disposal and the original concurrent-close workload.
+Its RPC wrapper nevertheless failed: the restored-installation launch lacked the
+required native `wrong-frame` receipt. The other four positive launches contained
+it. That failed wrapper remains failure evidence; the generic prebuilt pass is not
+an adversarial RPC pass.
+
+The hostile child was removed immediately after its JS outcome was inspected.
+CEF documents that process-message delivery is not guaranteed during teardown.
+The fixture now retains that child and waits for every native rejection receipt,
+not just its JS onload or cross-context exception. The required case set is unchanged.
+Deterministic tests reject page-only success, missing receipts and cancellation,
+and cover early delivery and listener/timer cleanup.
+
+The combined native fixture now validates session/view binding with live RPC,
+isolated ephemeral cookies, referenced-session rejection, partition replacement,
+stale-handle rejection and independently trusted versus remote replacement views.
+Exact schema-4 acceptance includes this integration and ordered native shutdown;
+macOS additionally requires qualified helper/clone completion. The original
+20-cycle window/concurrent-close workload remains intact.
+
+The initial fixture-lifetime candidate passed all eleven macOS prebuilt cases and
+all five stronger RPC acceptance checks. A second candidate adding the combined
+session workload also passed those cases. These are local development checkpoints,
+not substitutes for final-head or other-platform execution. A preparation mistake
+in an earlier new bundle omitted generated resources and failed before any native
+launch; that zero-trial failure was retained and a new complete bundle was used.
+
+Issue #20 retains unsupported secure persistent credentials and full HTML5 storage
+clearing. Issue #22 retains native paired transport comparison/selection. External
+network-origin/redirect coverage and issue #92 remain distinct; merging this
+increment must not silently mark all of M4 or release qualification complete.

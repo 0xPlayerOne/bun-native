@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { packagedPageReadiness, pageTimeout } from './page-readiness.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { cefRpcSchema } from './rpc-contract.ts'
+import { nativeRpcProbeReadiness } from './rpc-readiness.ts'
+import { qualifyRpcSessions } from './rpc-sessions.ts'
 export default async function main(backend: CefBackend): Promise<void> {
   let ticks = 0
   const timer = setInterval(() => {
@@ -9,7 +11,8 @@ export default async function main(backend: CefBackend): Promise<void> {
   }, 5)
   const pageDeadlineMs = pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
   const page = packagedPageReadiness((listener) => backend.observe(listener), pageDeadlineMs)
-  const waits = new Map<string, { started: boolean; aborted: boolean }>()
+  const probes = nativeRpcProbeReadiness((listener) => backend.observe(listener), pageDeadlineMs)
+  const waits = new Map<string, { started: boolean; aborted: boolean; viewId: string }>()
   const evidence: { renderer?: unknown; hostile: boolean; stale: boolean; protocol: Set<string> } =
     { hostile: false, stale: false, protocol: new Set() }
   const offEvidence = backend.observe((event) => {
@@ -63,7 +66,7 @@ export default async function main(backend: CefBackend): Promise<void> {
         capability: 'rpc.wait',
         handle: (value, context) => {
           if (waits.size >= 16 && !waits.has(value)) throw new Error('Fixture wait capacity')
-          const state = { started: true, aborted: false }
+          const state = { started: true, aborted: false, viewId: context.identity.viewId }
           waits.set(value, state)
           return new Promise<string>((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -107,6 +110,9 @@ export default async function main(backend: CefBackend): Promise<void> {
       trust: { kind: 'application', origin: 'app://ui' },
     })
     await page.wait()
+    // Only the explicit adversarial qualifier requires compile-time native probes.
+    // Ordinary smoke builds retain all real RPC/lifecycle/session work.
+    if (process.env['BUNLY_RPC_QUALIFICATION'] === '1') await probes.wait()
     assert.deepEqual(evidence.renderer, {
       schema: 2,
       json: 'bun:renderer',
@@ -172,6 +178,8 @@ export default async function main(backend: CefBackend): Promise<void> {
       await backend.disposeView(remote)
       assert.equal(backend.diagnostics().views, 1)
     }
+    await qualifyRpcSessions(backend, window, view, session, consoleWait, (mode) => waits.get(mode))
+    assert.equal(evidence.stale, false)
     assert.ok(ticks > 0, 'Bun timers must progress while CEF runs')
     await backend.resizeWindow(window, 1000, 700)
     await backend.showWindow(window, false)
@@ -259,7 +267,8 @@ export default async function main(backend: CefBackend): Promise<void> {
     console.log(
       JSON.stringify({
         event: 'bunly.native.rpc',
-        schema: 3,
+        schema: 4,
+        sessionAuthority: 'native-owner-isolation-and-partition-reuse',
         viewDisposal: 'isolated-and-parent-close',
         renderer: evidence.renderer,
         hostileExternalScript: evidence.hostile,
@@ -278,7 +287,7 @@ export default async function main(backend: CefBackend): Promise<void> {
         event: 'bunly.native.smoke',
         pageDeadlineMs,
         passed: true,
-        rpcQualified: true,
+        rpcQualified: process.env['BUNLY_RPC_QUALIFICATION'] === '1',
         cycles: 20,
         timers: ticks,
         diagnostics: await backend.nativeDiagnostics(),
@@ -296,5 +305,6 @@ export default async function main(backend: CefBackend): Promise<void> {
     stopRpc()
     clearInterval(timer)
     page.close()
+    probes.close()
   }
 }

@@ -205,3 +205,22 @@ Manual runs are not cancelled by another dispatch through a PR cancellation rule
 Release integrity, production signing, GitHub draft automation, optional hosted
 security services and server-side protections require their actual environments
 and authorization. A local green result does not claim those actions ran.
+
+## Combined native RPC and session acceptance
+
+For the M4 adversarial fixture, build the host with `packaging,rpc-qualification`
+and application resources with `bun scripts/build-cef-fixture.ts`. Copy those
+generated resources into the assembled application's platform resource directory
+before local ad-hoc signing; a native-only bundle is not a complete fixture.
+Run `bun run qualify:cef-rpc -- PREPARED_APP`. Its explicit fixture requirement
+waits for native probe receipts; the wrapper's final `native-rpc` success and zero
+exit status are required in addition to the inner prebuilt report.
+
+Use a separate immutable bundle with `--application=sessions` resources for
+`bun scripts/qualify-cef-sessions.ts PREPARED_APP`. It covers persistent restart,
+root collisions, controlled interrupted shutdown/restart and invalid paths.
+Do not overwrite previously executed fixtures, share their profiles or count
+expected interruption as a clean shutdown. Neither suite enables production
+credentials, disables sandboxing or resolves an intermittent teardown failure by
+repeating until green. The automatic RPC lane retains the combined ephemeral
+session/authority checks on every supported platform.

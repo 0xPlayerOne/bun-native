@@ -250,7 +250,7 @@ bun run qualify:cef-rpc -- /path/to/prepared/native/app
 Build the contributor fixture with `packaging,rpc-qualification`; ordinary builds
 exclude the native injection probes. It runs the prepared application through the
 existing prebuilt qualification, preserving the baseline 20-cycle smoke and clean
-shutdown criteria. Exact schema-3 RPC evidence must include typed JSON and binary
+shutdown criteria. Exact schema-4 RPC evidence must include typed JSON and binary
 roundtrips, independent backend input rejection, backend-started-and-aborted
 cancellation, bounded final native resources, an external-CSP-compliant
 hostile child script, two navigation/close-in-flight cycles, return-to-origin and
@@ -264,7 +264,7 @@ old smoke markers, missing cases and stale successes. Pure Rust/portable fixture
 also test bounds, replay and timer cleanup; those are not native execution proof.
 A documentation-feature Rust build is not a native launch;
 report the prepared-app command separately. Cross-platform release qualification,
-performance selection (#22), persistent sessions, and CEF teardown issue #92
+performance selection (#22), remaining session capabilities, and CEF teardown issue #92
 remain separate.
 
 The authenticated loopback candidate from #94 remains separate. Native-private
@@ -316,3 +316,34 @@ matrix and requires exact adversarial RPC evidence. Ordinary runtime builds and
 manual smoke/full builds do not enable contributor injection probes. These test
 artifacts are not production release artifacts. Native issue #92 and the remaining
 session/transport-selection acceptance criteria remain independent.
+
+## Probe completion and session integration
+
+The explicit RPC qualifier sets the fixture-only `BUNLY_RPC_QUALIFICATION=1`
+requirement. It cannot enable native probes in an ordinary artifact; the host must
+already have been built with `rpc-qualification`. Ordinary smoke/full fixtures
+still exercise RPC, independent view disposal and session ownership, but they do
+not wait for excluded contributor probes or claim adversarial qualification.
+
+The hostile iframe remains alive until its owner document is disposed. Its JS
+`onload` and exact borrowed-function rejection are not acknowledgements of CEF
+process-message delivery. A bounded backend barrier waits for all eleven native
+rejection cases before retiring any view. It registers before creation, accepts
+only native `rpc.qualification` events, and releases its single listener/deadline
+on completion, failure or cancellation. Missing `wrong-frame` evidence still fails;
+no sleep, retry, relaxed acceptance set or deadline extension replaces the receipt.
+
+Schema 4 additionally requires `native-owner-isolation-and-partition-reuse` session
+evidence. The real-browser fixture starts RPC in shared and independent ephemeral
+sessions, checks the handler's native-bound view identity, proves same-URL cookie
+separation, rejects disposal while referenced, and verifies cancellation when the
+owning views close. Recreating the same partition yields a new opaque session with
+an empty cookie store; the old handle fails. A remote replacement view receives no
+bridge, while a separately created explicitly trusted view obtains a distinct
+binding. The original sibling remains live and its session resources converge.
+These checks do not claim secure persistent credentials or complete HTML5 clearing.
+
+Each accepted launch also requires the maintained ordered shutdown-phase parser.
+On macOS, exact helper/clone completion must be qualified, not merely unobserved.
+The wrapper prints its final `native-rpc` success only after every positive launch
+passes the stronger checks; the inner prebuilt success alone is insufficient.
