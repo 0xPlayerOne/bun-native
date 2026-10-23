@@ -34,7 +34,7 @@ PYTHON=python bun scripts/benchmark.ts record electron .bunly/benchmarks/electro
 
 On Windows set the `PYTHON` environment variable using the shell's normal syntax.
 The bootstrap uses the checked-in nested Bun locks and explicitly installs the
-pinned Electron 44.8.0 binary using its upstream installer and checksums. Fixture
+pinned Electron 44.9.3 binary using its upstream installer and checksums. Fixture
 packages are outside the consumer workspaces; Electron/xterm do not ship in Bunly.
 
 The adapter uses an isolated temporary profile, independent browser windows,

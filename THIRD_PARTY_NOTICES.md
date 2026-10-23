@@ -12,7 +12,7 @@ Its source has no third-party Cargo dependencies.
 
 M2 benchmark-only dependencies are separated from consumer workspaces:
 
-- Electron 44.8.0 and its runtime/download dependencies, under `benchmarks/adapters/electron`.
+- Electron 44.9.3 and its runtime/download dependencies, under `benchmarks/adapters/electron`.
 - Electrobun 2.0.3-beta.26's published bootstrap and downloaded devkit, under `benchmarks/adapters/electrobun` and generated `.bunly` data.
 - xterm 5.5.0 under `benchmarks/fixtures`.
 - psutil 7.0.0 in the contributor/CI Python environment.
