@@ -205,3 +205,30 @@ now checks exact argument construction with both `PurePosixPath` and
 `PureWindowsPath` on every OS. No runtime command, platform skip or assertion of
 native evidence was removed. The failed hosted run is retained in GitHub Actions;
 the corrected final head must pass its own full matrix.
+
+### Hosted cleanup coverage correction
+
+The first full hosted macOS RPC run at `d0cfaad` passed all five positive schema-4
+RPC/session workloads, all eleven protocol rejection cases, all ordered shutdowns,
+and the six startup-rejection controls. The new wrapper nevertheless failed its
+per-launch helper sampling requirement. Two launches had verified helper identity
+and clone removal; three had an observed clone that was removed, but the short-lived
+helper was not sampled. Those remain `qualified: false`, `status: not-observed`.
+No root watchdog, orphan, remaining clone or survivor failure occurred in this run.
+
+The per-launch demand introduced in this completion pass was an incorrect coupling
+of deterministic RPC acceptance to opportunistic process sampling. The wrapper now
+requires the exact five unique RPC launches, validates every raw observation and
+ordered shutdown, and rejects every actual cleanup failure. Separately, the same
+fixed macOS suite must contain positive verified helper/clone completion; a suite
+with no such proof fails. Its final result lists qualified and unobserved launch
+names independently. It does not retry, relabel unobserved helpers as qualified,
+change observer ownership or allow a good launch to erase a failed one. Dedicated
+prompt/delayed helper qualification remains the maintained cleanup-specific suite.
+
+Regression tests cover mixed sampling coverage, all-unobserved/missing accounting,
+forged qualification, failures masked by other successes, and incomplete/duplicate
+launch matrices. The old hosted failure stays preserved. A projection replay of
+its exported report (omitting only the export-redacted optional nonce) is not a
+fresh execution; the corrected head must pass its own hosted run. Linux and Windows
+native RPC passed at the earlier head, but are rerun for the correction as well.

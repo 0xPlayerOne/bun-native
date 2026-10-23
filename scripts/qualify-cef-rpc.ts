@@ -2,8 +2,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { acceptNativeRpc } from '../benchmarks/lib/cef-rpc-acceptance.ts'
-import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
+import { acceptNativeRpcSuite } from '../benchmarks/lib/cef-rpc-acceptance.ts'
 
 const artifact = process.argv[2]
 if (!artifact) throw new Error('Usage: bun run qualify:cef-rpc -- /path/to/prepared-native-app')
@@ -50,17 +49,14 @@ const successfulTrials = (report.trials ?? []).filter(
       trial.name === 'last-window' ||
       trial.name === 'restored-installation')
 )
-assert.ok(successfulTrials.length >= 5, 'Prepared CEF RPC report omitted native smoke trials')
-for (const trial of successfulTrials) {
-  acceptNativeRpc(trial.observation as CommandObservation, process.platform === 'darwin')
-}
+const acceptance = acceptNativeRpcSuite(successfulTrials, process.platform === 'darwin')
 
 // This final result is emitted only after the stronger RPC/teardown gate passes.
 console.log(
   JSON.stringify({
     profile: 'native-rpc',
     passed: true,
-    acceptedLaunches: successfulTrials.length,
+    ...acceptance,
     output: summary!['output'],
   })
 )

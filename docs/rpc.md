@@ -344,6 +344,9 @@ binding. The original sibling remains live and its session resources converge.
 These checks do not claim secure persistent credentials or complete HTML5 clearing.
 
 Each accepted launch also requires the maintained ordered shutdown-phase parser.
-On macOS, exact helper/clone completion must be qualified, not merely unobserved.
+On macOS, every cleanup observation is validated and any actual failure rejects
+the launch. Exact helper/clone completion must be qualified within the same fixed
+suite, with per-launch sampling gaps reported separately rather than labeled
+qualified. A suite containing no qualified cleanup observation fails.
 The wrapper prints its final `native-rpc` success only after every positive launch
 passes the stronger checks; the inner prebuilt success alone is insufficient.

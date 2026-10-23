@@ -1,9 +1,14 @@
 import { test } from 'bun:test'
 import assert from 'node:assert/strict'
-import { acceptNativeRpc, nativeRpcCases } from '../benchmarks/lib/cef-rpc-acceptance.ts'
+import {
+  acceptNativeRpc,
+  acceptNativeRpcSuite,
+  nativeRpcCases,
+  nativeRpcLaunchNames,
+} from '../benchmarks/lib/cef-rpc-acceptance.ts'
 import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
 
-test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted cancellation and stale successes', () => {
+function fixture() {
   // Synthetic parser inputs, explicitly not a native execution claim.
   const rpc = {
     event: 'bunly.native.rpc',
@@ -69,11 +74,16 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
       JSON.stringify({ event: 'bunly.host.shutdown', clean: true }),
     ],
   }
-  assert.throws(() => acceptNativeRpc(report))
   const withRpc = (value: unknown) => ({
     ...report,
     stderr: [...report.stderr, JSON.stringify(value)],
   })
+  return { rpc, report, withRpc }
+}
+
+test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted cancellation and stale successes', () => {
+  const { rpc, report, withRpc } = fixture()
+  assert.throws(() => acceptNativeRpc(report))
   acceptNativeRpc(withRpc(rpc))
   assert.throws(() => acceptNativeRpc(withRpc(rpc), true), /helper\/clone/)
   const complete = withRpc(rpc)
@@ -105,4 +115,92 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
     { renderer: { ...rpc.renderer, cancellation: 'locally-cancelled' } },
   ])
     assert.throws(() => acceptNativeRpc(withRpc({ ...rpc, ...change })))
+})
+
+function cleanup(qualified: boolean, passed = true) {
+  return {
+    schema: 1,
+    profile: 'macos-verified-code-sign-clone-v1',
+    passed,
+    qualified: qualified && passed,
+    status: !passed ? 'failed' : qualified ? 'completed' : 'not-observed',
+    elapsedMs: 100,
+    limitMs: 3000,
+    observedClones: 1,
+    cloneInventory: {
+      prelaunchEntries: 0,
+      entryLimit: 256,
+      scope: 'new-names-after-prelaunch-snapshot',
+    },
+    helpers: qualified
+      ? [
+          {
+            pid: 123,
+            creationTime: 1,
+            role: 'code-sign-clone-cleanup',
+            executableSha256: 'a'.repeat(64),
+            ownership: 'observed-root-child-and-matching-clone-inode',
+            processExited: passed,
+            cloneRemoved: passed,
+            completed: passed,
+          },
+        ]
+      : [],
+  }
+}
+function suite() {
+  const { rpc, withRpc } = fixture()
+  return nativeRpcLaunchNames.map((name, index) => ({
+    name: String(name),
+    observation: { ...withRpc(rpc), schema: 1, postExitCleanup: cleanup(index === 0) },
+  }))
+}
+test('native RPC suite reports sampling gaps without calling them qualified helper completions', () => {
+  const trials = suite()
+  const result = acceptNativeRpcSuite(trials, true)
+  assert.equal(result.acceptedLaunches, 5)
+  assert.deepEqual(result.helperCleanup.qualifiedLaunches, ['installed-0'])
+  assert.deepEqual(result.helperCleanup.unobservedLaunches, nativeRpcLaunchNames.slice(1))
+  assert.equal(trials[1]!.observation.postExitCleanup.qualified, false)
+  assert.equal(trials[1]!.observation.postExitCleanup.status, 'not-observed')
+})
+test('native RPC suite never hides a failed helper, command, or missing proof behind another good launch', () => {
+  for (const index of [0, 1, 4]) {
+    const trials = suite()
+    trials[index]!.observation.postExitCleanup = cleanup(true, false)
+    assert.throws(() => acceptNativeRpcSuite(trials, true), /cleanup failed/)
+  }
+  const none = suite().map((trial) => ({
+    ...trial,
+    observation: { ...trial.observation, postExitCleanup: cleanup(false) },
+  }))
+  assert.throws(() => acceptNativeRpcSuite(none, true), /no verified/)
+  const missing = suite().map((trial) => ({
+    ...trial,
+    observation: { ...trial.observation, postExitCleanup: undefined },
+  }))
+  assert.throws(() => acceptNativeRpcSuite(missing, true), /unavailable/)
+  const forged = suite()
+  forged[1]!.observation.postExitCleanup.qualified = true
+  assert.throws(() => acceptNativeRpcSuite(forged, true), /Inconsistent/)
+  const exit = suite()
+  exit[1]!.observation.exitCode = 2
+  assert.throws(() => acceptNativeRpcSuite(exit, true), /unexpected exit/)
+})
+test('native RPC suite requires the complete unique launch matrix on every platform', () => {
+  const trials = suite()
+  assert.throws(() => acceptNativeRpcSuite(trials.slice(1)), /incomplete/)
+  assert.throws(() => acceptNativeRpcSuite([...trials, trials[0]!]), /incomplete/)
+  assert.throws(
+    () => acceptNativeRpcSuite([trials[0]!, trials[0]!, ...trials.slice(2)]),
+    /Duplicate/
+  )
+  const unknown = suite()
+  unknown[0]!.name = 'installed-invented'
+  assert.throws(() => acceptNativeRpcSuite(unknown))
+  const nonMac = suite().map((trial) => ({
+    ...trial,
+    observation: { ...trial.observation, postExitCleanup: undefined },
+  }))
+  assert.equal(acceptNativeRpcSuite(nonMac).helperCleanup.scope, 'not-applicable')
 })
