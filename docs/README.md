@@ -37,6 +37,9 @@ coverage outside its stated profile.
 [RPC](rpc.md), [streams](streams.md), and [provenance](provenance.md) describe their
 implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
 [M5 progress](m5-progress.md) are partial implementation notes, not closeout claims.
+The [authenticated loopback candidate](rpc-loopback.md) and proposed
+[transport ADR](decisions/0003-transport-selection.md) define #22's implemented
+candidate and the native CEF evidence still required before selection.
 
 [Native assets](native-assets.md) specifies asynchronous verification and resource
 bounds. [macOS clone cleanup](macos-clone-cleanup.md) documents the narrow helper

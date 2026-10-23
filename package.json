@@ -49,7 +49,8 @@
     "check:foundation": "bun test tests/foundation-lifecycle.test.ts tests/foundation-profile.test.ts tests/native-transport-audit.test.ts tests/packet-ownership.test.ts tests/rpc.test.ts tests/streams.test.ts",
     "profile:foundation": "bun scripts/profile-foundation.ts",
     "profile:foundation:cpu": "bun --cpu-prof --cpu-prof-md --cpu-prof-dir=.bunly/profiles scripts/profile-foundation.ts",
-    "profile:foundation:native": "bun scripts/profile-foundation-native.ts"
+    "profile:foundation:native": "bun scripts/profile-foundation-native.ts",
+    "profile:rpc-loopback": "bun scripts/profile-rpc-loopback.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

@@ -186,6 +186,8 @@ export class RpcClient<S extends RpcSchema> {
     pending: number
     queuedBytes: number
     queuedFrames: number
+    peakQueuedBytes: number
+    peakQueuedFrames: number
     closed: boolean
   }> {
     return { pending: this.#pending.size, ...this.#channel.diagnostics() }
