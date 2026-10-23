@@ -16,7 +16,12 @@ export type {
 } from '../../contracts/src/index.ts'
 
 /** Descriptor validation is feature discovery, NOT native authorization. */
-import { CAPABILITIES, CONTRACT_VERSION, BunlyError } from '../../contracts/src/index.ts'
+import {
+  CAPABILITIES,
+  CONTRACT_VERSION,
+  PROFILE_CAPABILITY_VERSION,
+  BunlyError,
+} from '../../contracts/src/index.ts'
 import type { BackendDescriptor, BackendName, Capability } from '../../contracts/src/index.ts'
 export function readDescriptor(value: unknown): BackendDescriptor {
   if (typeof value !== 'object' || value === null)
@@ -24,6 +29,8 @@ export function readDescriptor(value: unknown): BackendDescriptor {
   const v = value as Record<string, unknown>
   if (v['contractVersion'] !== CONTRACT_VERSION)
     throw new BunlyError('VERSION_MISMATCH', 'Unsupported backend contract')
+  if (v['capabilityVersion'] !== PROFILE_CAPABILITY_VERSION)
+    throw new BunlyError('VERSION_MISMATCH', 'Unsupported capability metadata version')
   const names: BackendName[] = ['mock', 'cef', 'webview2', 'wkwebview', 'webkitgtk']
   if (
     !names.includes(v['name'] as BackendName) ||
@@ -38,6 +45,7 @@ export function readDescriptor(value: unknown): BackendDescriptor {
     name: v['name'] as BackendName,
     version: v['version'],
     contractVersion: CONTRACT_VERSION,
+    capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([...v['capabilities']] as Capability[]),
   })
 }

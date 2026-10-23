@@ -14,15 +14,15 @@ and it is left for reconciliation with the concurrent issue #52 work.
 
 ## Capabilities
 
-| Action | Capability | Requirement |
-| --- | --- | --- |
-| `navigate` | `navigate` | the target origin must be the view's authorized origin |
-| `screenshot` | `screenshot` | bounded by the policy's maximum size |
-| `snapshot` | `snapshot` | debug surface: opt-in, authenticated, off in packaged production builds |
-| `evaluate` | `evaluate` | debug surface, and only an **approved** expression |
-| `observe-dom` | `observe-dom` | observation only |
-| `accessibility-tree` | `accessibility-tree` | observation only |
-| `input` | `input` | the view must allow the input capability |
+| Action               | Capability           | Requirement                                                             |
+| -------------------- | -------------------- | ----------------------------------------------------------------------- |
+| `navigate`           | `navigate`           | the target origin must be the view's authorized origin                  |
+| `screenshot`         | `screenshot`         | bounded by the policy's maximum size                                    |
+| `snapshot`           | `snapshot`           | debug surface: opt-in, authenticated, off in packaged production builds |
+| `evaluate`           | `evaluate`           | debug surface, and only an **approved** expression                      |
+| `observe-dom`        | `observe-dom`        | observation only                                                        |
+| `accessibility-tree` | `accessibility-tree` | observation only                                                        |
+| `input`              | `input`              | the view must allow the input capability                                |
 
 A capability the embedder does not implement, or that the view does not allow, is the
 explicit `unsupported-capability` error. It is never a silent no-op and never a

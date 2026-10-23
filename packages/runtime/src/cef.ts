@@ -3,6 +3,7 @@ import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import {
   CONTRACT_VERSION,
+  PROFILE_CAPABILITY_VERSION,
   BunlyError,
   normalizeUrl,
   originOf,
@@ -60,6 +61,7 @@ export class CefBackend implements BrowserBackend {
     name: 'cef',
     version: '0.1.0-dev.0',
     contractVersion: CONTRACT_VERSION,
+    capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
       'window.lifecycle',
       'view.navigate',

@@ -150,3 +150,43 @@ test('tooling entrypoints use native checking without changing runtime/editor pi
   expect(pkg.devDependencies.typescript).toBe(process.versions['typescript'])
   expect(pkg.engines.bun).toBe('1.4.3')
 })
+
+test('profile builds retain honest scope and invalidate stale manifests on failure', async () => {
+  await fixture(async (root) => {
+    await workspace(root)
+    await buildWorkspace(root, { profile: 'system-webview' })
+    const path = join(root, '.bunly/profiles/system-webview.json')
+    const manifest = await Bun.file(path).json()
+    expect(manifest.scope).toBe('sdk-workbench-bundle')
+    expect(manifest.target).toBe(`${process.platform}-${process.arch}`)
+    expect(manifest.selection.totalBytes).toBeGreaterThan(0)
+    expect(manifest.selection.inventoryDigest).toMatch(/^sha256:/)
+    for (const key of [
+      'installerBytes',
+      'installedBytes',
+      'externalRuntimeDownloads',
+      'cacheBytes',
+      'residentMemoryBytes',
+    ]) {
+      expect(manifest.resources[key].source).toBe('not-measured')
+      expect(manifest.resources[key].bytes).toBeNull()
+    }
+    await writeFile(join(root, 'packages/client/src/index.ts'), 'export const = ;')
+    await expect(buildWorkspace(root, { profile: 'system-webview' })).rejects.toBeInstanceOf(
+      AggregateError
+    )
+    expect(await Bun.file(path).exists()).toBe(false)
+  })
+})
+
+test('an unsupported profile target fails before changing build outputs', async () => {
+  await fixture(async (root) => {
+    await workspace(root)
+    await buildWorkspace(root)
+    const before = await inventory(join(root, 'examples/workbench/dist'))
+    await expect(buildWorkspace(root, { target: 'unsupported-architecture' })).rejects.toThrow(
+      'does not support'
+    )
+    expect(await inventory(join(root, 'examples/workbench/dist'))).toEqual(before)
+  })
+})

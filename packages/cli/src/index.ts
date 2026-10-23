@@ -13,6 +13,7 @@ export async function main(args: string[]): Promise<void> {
           nativeRuntime: 'not yet implemented',
           cef: 'M3',
           contractVersion: 1,
+          capabilityVersion: 1,
         },
         null,
         2

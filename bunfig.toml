@@ -1,4 +1,5 @@
 [install]
 exact = true
 [test]
+preload = ["./scripts/test-environment.ts"]
 root = "./tests"

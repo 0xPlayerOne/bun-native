@@ -1,6 +1,7 @@
 import {
   BunlyError,
   CONTRACT_VERSION,
+  PROFILE_CAPABILITY_VERSION,
   normalizeUrl,
   originOf,
   requireCapability,
@@ -37,6 +38,7 @@ export class MockBackend implements BrowserBackend {
     name: 'mock',
     version: '0.1.0-dev.0',
     contractVersion: CONTRACT_VERSION,
+    capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
       'window.lifecycle',
       'view.navigate',
