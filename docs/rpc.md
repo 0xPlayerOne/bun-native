@@ -2,10 +2,10 @@
 
 Typed, bounded application requests with host-owned document authority.
 
-**Status:** M4 portable implementation for #18 and the policy portion of #19.
-**Native integration:** Not yet injected into CEF renderers. The separate
-authenticated loopback candidate is opt-in and opens no listener unless its
-runtime class is explicitly constructed; see [loopback RPC](rpc-loopback.md).
+**Status:** M4 portable implementation for #18 with the first native CEF authority increment for #19.
+**Native integration:** CEF uses process messages and an exact-context V8 bridge. No loopback listener or debugging endpoint is enabled.
+The authenticated loopback candidate remains opt-in; no listener starts unless its
+runtime class is explicitly constructed. See [loopback RPC](rpc-loopback.md).
 
 ## Run the example
 
@@ -155,10 +155,120 @@ are not evidence of that binding. Specifically, the adapter must:
 6. Keep one persistent authority manager per host/application so retiring
    connections and views cannot evade execution budgets.
 
-CEF frame attestation, isolated-context injection and remote-page adversarial
-tests remain #19 integration work. #22 now has a loopback candidate, but its
-native-private credential/CSP handoff and paired CEF comparison remain open.
-The M3 private native command pipe is unchanged and is not exposed to pages.
+The CEF adapter carries the explicit `ViewTrust` grant in `view.create`; the
+browser process creates the document identity and binds a one-shot connection to
+the callback-provided browser, main frame, exact packaged `app:` origin and a
+renderer-native context serial. It injects `__bunlyRpc.send(ArrayBuffer, acknowledged)`,
+`subscribe(callback)` and connection-local `close()` after the approved main-frame
+context exists. The page cannot submit a view, frame,
+document, generation, origin, capability or native control operation. Every
+packet is rechecked against current CEF objects. Both the entered (bottom) and
+current (top) V8 contexts must match the captured context. Direct same-origin
+iframe borrowing is an executable native qualification case, not an inference
+from origin checking.
+
+The first supervised #19 trial failed this assertion, without recording whether
+the JS call returned normally or threw an unrelated error. A subsequent C ABI
+regression reproduced an exception-output bug: assigning a new Rust `CefString`
+replaced only the local borrowed wrapper. The callback now uses the pinned
+`try_set()` API to write CEF's exception slot. CEF throws only for a nonempty slot;
+therefore a normal JS return was **not** evidence of native acceptance. The exact
+denial assertion remains required. The resumed real-CEF run observed the exact
+child-context rejection and the expected JavaScript exception; later lifecycle
+failures and their independent fixes are retained in the M4 evidence.
+
+A separate `rpc-context-diagnostics` contributor feature records at most 32 native
+callback observations per renderer, each at most 2048 bytes. It records native
+current/entered/bound frame provenance, equality checks, the native decision and
+whether the exception slot was written. It logs no packet, URL, connection token,
+generation credential or pointer. The external child fixture separately records
+its exact bounded JS outcome before the unchanged assertion. Normal builds exclude
+the native diagnostic code. These diagnostics are evidence, never authorization.
+
+In [pinned CEF 8037](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/renderer/v8_impl.cc),
+`GetEnteredContext()` delegates to V8's entered-or-microtask context getter. This
+must not be described as a universal invoking-frame identity or used to promise
+isolation from same-origin parent-world scripting. The diagnostic native run must
+establish the specific direct-borrow case; if it cannot, untrusted frames require
+supported sandbox/separate-origin isolation, not creation-context-only authority.
+
+The bridge is in the trusted document's main world. This does **not** isolate
+main-world XSS or a same-origin script that can modify the parent, inject a script
+there, or arrange for parent-world code to invoke the bridge. Same-origin scripting
+is a shared trust boundary. Untrusted content must not share the privileged
+application origin or script environment. Child, remote, opaque and development
+HTTP contexts receive no bridge by default.
+
+Packets are copied from V8 immediately, copied into CEF binary process messages,
+and hex-encoded only across the existing private native/Bun inherited pipe. That
+profile is deliberately narrower than the portable envelope: 24 KiB per packet,
+one unacknowledged packet per connection in each direction, 128 live views,
+and 128 / 3 MiB global native delivery reservations (including revoked deliveries).
+The inherited pipe retains its existing 256-frame process queue and 64 KiB line
+bound. Incoming byte reservations survive until Bun dispatch acknowledgement;
+outgoing reservations survive until an exact native delivery/discard acknowledgement.
+Revocation settles callers immediately but does not recycle CEF-owned delivery
+bytes. A destroyed renderer that cannot acknowledge may leave a bounded reservation
+until host teardown; exhaustion refuses further deliveries instead of guessing
+that buffers were released. Copy accounting counts actual packet byte lengths;
+this is a copied transport, not a zero-copy claim.
+There is no socket, URL credential, public token, `postMessage` protocol or debug
+listener. The M3 private native control pipe remains unavailable to pages.
+
+The renderer allocates a checked monotonic context serial in native code. READY
+names that incarnation; GRANT echoes it with the browser-owned connection and
+document generation. The browser emits `rpc.connected` only after an exact
+SUBSCRIBED acknowledgement, so no RpcServer response can precede listener
+registration. Every packet, ACK, result, revoke and release carries the same
+private tuple. All numeric metadata is type-, finite-, integer- and safe-range-
+checked before conversion. An ungranted context can release only its matching
+pending serial; an old release cannot remove a new binding. Duplicate readiness
+and subscription messages do not reissue grants.
+
+`waitForCefRpcTransport(timeoutMs, signal)` installs one event listener and one
+deadline timer, then checks for an already-present bridge. Native emits a fixed
+no-payload `bunly:rpc-ready` event after installation, outside registry borrows.
+Forging this event only wakes the inspection; it does not issue native authority.
+Success, abort and timeout remove both registrations. Native functions capture
+the complete binding, revalidate snapshots before mutation, and settle pending
+send callbacks on revoke/close. Results require a consuming listener; discards
+release transport reservations without reporting successful delivery.
+
+Context release, navigation start/redirect, renderer failure, close and host
+teardown revoke before further dispatch. Returning to the old URL cannot restore
+the one-shot eligibility bit. Initial load completion for the same document does
+not revoke a lease established during the context handshake. One authority manager
+is allowed for the lifetime of each CefBackend; stopping it cannot reset execution
+budgets through a second registration.
+
+The maintained real-browser command is:
+
+```sh
+bun run qualify:cef-rpc -- /path/to/prepared/native/app
+```
+
+Build the contributor fixture with `packaging,rpc-qualification`; ordinary builds
+exclude the native injection probes. It runs the prepared application through the
+existing prebuilt qualification, preserving the baseline 20-cycle smoke and clean
+shutdown criteria. Exact schema-4 RPC evidence must include typed JSON and binary
+roundtrips, independent backend input rejection, backend-started-and-aborted
+cancellation, bounded final native resources, an external-CSP-compliant
+hostile child script, two navigation/close-in-flight cycles, return-to-origin and
+explicit-remote denial, and native protocol rejection cases. The compile-time
+probes send wrong context/connection/generation/frame and invalid sequence messages
+through real CEF messaging, and send stale grants/ACKs/revokes/results to the renderer.
+The contributor host also replays the actual previous binding after a replacement
+context announces readiness; the return-to-origin page must remain unprivileged.
+They expose no page-callable test controls or debug listener. The qualifier rejects
+old smoke markers, missing cases and stale successes. Pure Rust/portable fixtures
+also test bounds, replay and timer cleanup; those are not native execution proof.
+A documentation-feature Rust build is not a native launch;
+report the prepared-app command separately. Cross-platform release qualification,
+performance selection (#22), remaining session capabilities, and CEF teardown issue #92
+remain separate.
+
+The authenticated loopback candidate from #94 remains separate. Native-private
+credential/CSP handoff and the paired CEF comparison remain open under #22.
 
 ## MessagePort reference transport
 
@@ -175,3 +285,68 @@ current reference adapter has been exercised in Bun on Linux, not in native CEF
 or across all browser engines. It is not yet the chosen CEF production transport.
 No polling interval, dependency, native compilation, network listener, background
 service, or public package publication is introduced by this implementation.
+
+## Independent view teardown and queued handshakes
+
+`view.dispose` removes only its own embedded BrowserView and releases its native
+owner outside registry borrows. The default Alloy `CloseBrowser` path instead
+closes the containing widget; using it for an individual child closed its siblings.
+If the parent window is already closing, the child remains attached until widget
+teardown supplies its destruction callback. Detaching after `TryCloseBrowser` has
+accepted the parent close prevents that callback and leaves a request pending.
+The native fixture exercises both independent child disposal and 20 concurrent
+parent-close/child-dispose cycles without shortening the original workload.
+
+The pinned CEF implementation documents these distinct paths in
+[BrowserView destruction](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/views/browser_view_impl.cc),
+[Views host closure](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/views/browser_platform_delegate_views.cc),
+and [Alloy destruction states](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/libcef/browser/alloy/alloy_browser_host_impl.cc).
+
+Bun also marks a view's RPC eligibility permanently retired before sending a
+navigation or disposal command. An authentic handshake already queued by native
+code cannot create another lease after that local transition. Its exact native
+incarnation is disconnected without failing the entire host. Host shutdown ignores
+late handshakes while its existing revocation path completes. Deterministic tests
+cover navigation, child close, parent close and host shutdown; copied/invalid live
+authority metadata still fails closed.
+
+Automatic CEF qualification builds compile the `rpc-qualification` probes and run
+the `rpc` suite on Linux, Windows and macOS. This suite retains the entire prebuilt
+matrix and requires exact adversarial RPC evidence. Ordinary runtime builds and
+manual smoke/full builds do not enable contributor injection probes. These test
+artifacts are not production release artifacts. Native issue #92 and the remaining
+session/transport-selection acceptance criteria remain independent.
+
+## Probe completion and session integration
+
+The explicit RPC qualifier sets the fixture-only `BUNLY_RPC_QUALIFICATION=1`
+requirement. It cannot enable native probes in an ordinary artifact; the host must
+already have been built with `rpc-qualification`. Ordinary smoke/full fixtures
+still exercise RPC, independent view disposal and session ownership, but they do
+not wait for excluded contributor probes or claim adversarial qualification.
+
+The hostile iframe remains alive until its owner document is disposed. Its JS
+`onload` and exact borrowed-function rejection are not acknowledgements of CEF
+process-message delivery. A bounded backend barrier waits for all eleven native
+rejection cases before retiring any view. It registers before creation, accepts
+only native `rpc.qualification` events, and releases its single listener/deadline
+on completion, failure or cancellation. Missing `wrong-frame` evidence still fails;
+no sleep, retry, relaxed acceptance set or deadline extension replaces the receipt.
+
+Schema 4 additionally requires `native-owner-isolation-and-partition-reuse` session
+evidence. The real-browser fixture starts RPC in shared and independent ephemeral
+sessions, checks the handler's native-bound view identity, proves same-URL cookie
+separation, rejects disposal while referenced, and verifies cancellation when the
+owning views close. Recreating the same partition yields a new opaque session with
+an empty cookie store; the old handle fails. A remote replacement view receives no
+bridge, while a separately created explicitly trusted view obtains a distinct
+binding. The original sibling remains live and its session resources converge.
+These checks do not claim secure persistent credentials or complete HTML5 clearing.
+
+Each accepted launch also requires the maintained ordered shutdown-phase parser.
+On macOS, every cleanup observation is validated and any actual failure rejects
+the launch. Exact helper/clone completion must be qualified within the same fixed
+suite, with per-launch sampling gaps reported separately rather than labeled
+qualified. A suite containing no qualified cleanup observation fails.
+The wrapper prints its final `native-rpc` success only after every positive launch
+passes the stronger checks; the inner prebuilt success alone is insufficient.

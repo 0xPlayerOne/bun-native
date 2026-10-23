@@ -12,7 +12,12 @@ mod keychain;
 mod mac;
 mod policy;
 mod process;
+mod renderer_rpc;
 pub mod resources;
+mod rpc_authority;
+mod rpc_protocol;
+#[cfg(feature = "rpc-qualification")]
+mod rpc_qualification;
 mod scheme;
 mod session;
 #[cfg(not(feature = "sandbox"))]

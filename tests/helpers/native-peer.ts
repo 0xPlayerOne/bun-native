@@ -12,6 +12,7 @@ export async function nativePeer() {
   const output = new PassThrough()
   const commands: Command[] = []
   let buffer = ''
+  const documents = new Map<number, number>()
   let handler: ((command: Command) => void) | undefined
   output.on('data', (bytes: Buffer) => {
     buffer += bytes.toString()
@@ -26,6 +27,22 @@ export async function nativePeer() {
   })
   const transport = new NativeTransport(input, output)
   const send = (value: unknown) => {
+    if (value && typeof value === 'object') {
+      const frame = value as Record<string, unknown>
+      if (
+        (frame['event'] === 'view.navigating' || frame['event'] === 'view.loaded') &&
+        Number.isSafeInteger(frame['target']) &&
+        frame['data'] &&
+        typeof frame['data'] === 'object' &&
+        typeof (frame['data'] as Record<string, unknown>)['url'] === 'string' &&
+        (frame['data'] as Record<string, unknown>)['documentId'] === undefined
+      ) {
+        const target = Number(frame['target'])
+        const generation = (documents.get(target) ?? 1) + 1
+        documents.set(target, generation)
+        ;(frame['data'] as Record<string, unknown>)['documentId'] = `native-${target}-${generation}`
+      }
+    }
     input.write(JSON.stringify(value) + '\n')
   }
   send({ v: 1, event: 'ready', abi: 1, cef: '154.0.34' })
@@ -40,6 +57,17 @@ export async function nativePeer() {
       handler = callback
     },
     reply(command: Command, value: unknown = null) {
+      if (
+        command.op === 'view.create' &&
+        value &&
+        typeof value === 'object' &&
+        Number.isSafeInteger((value as Record<string, unknown>)['id']) &&
+        (value as Record<string, unknown>)['documentId'] === undefined
+      ) {
+        const id = Number((value as Record<string, unknown>)['id'])
+        documents.set(id, 1)
+        ;(value as Record<string, unknown>)['documentId'] = `native-${id}-1`
+      }
       send({ v: 1, id: command.id, ok: true, value })
     },
     reject(command: Command, error = 'Native fixture rejection') {

@@ -63,13 +63,18 @@ test('coalesced native creation and navigation frames do not lose the initial na
     f.handle((command) => {
       if (command.op === 'view.create') {
         f.input.write(
-          JSON.stringify({ v: 1, id: command.id, ok: true, value: { id: 3 } }) +
+          JSON.stringify({
+            v: 1,
+            id: command.id,
+            ok: true,
+            value: { id: 3, documentId: 'native-3-1' },
+          }) +
             '\n' +
             JSON.stringify({
               v: 1,
               event: 'view.loaded',
               target: 3,
-              data: { url: 'app://ui/next.html' },
+              data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
             }) +
             '\n'
         )
@@ -161,6 +166,24 @@ test('invalid native creation identity retires the host rather than retaining an
   await assert.rejects(f.backend.createWindow(windowOptions), /identity/)
   await assert.rejects(f.backend.closed, /identity/)
   assert.equal(f.transport.diagnostics().closed, true)
+})
+
+test('invalid native document identity retires the host before binding a view', async () => {
+  const f = await fixture()
+  const session = await f.backend.createSession({ persistence: 'ephemeral', partition: 'document' })
+  const window = await f.backend.createWindow(windowOptions)
+  f.handle((command) => f.reply(command, { id: 3, documentId: 'page supplied identity' }))
+  await assert.rejects(
+    f.backend.createView({
+      window,
+      session,
+      url: 'app://ui/index.html',
+      trust: { kind: 'application', origin: 'app://ui' },
+    }),
+    /document identity/
+  )
+  await assert.rejects(f.backend.closed, /document identity/)
+  assert.equal(f.backend.diagnostics().views, 0)
 })
 
 test('invalid native navigation cannot silently retain the previous application trust', async () => {
