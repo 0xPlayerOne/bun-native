@@ -2,7 +2,7 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1–M3 are complete for their declared acceptance profiles. M4 renderer authority and session security are not yet qualified.
+**Status:** M1–M3 are complete for their declared acceptance profiles. M4 issue #20 session ownership is implemented with a prepared native qualifier; renderer authority and unexecuted platform session profiles are not yet qualified.
 **Scope:** Accepted host architecture and boundaries. See [M3 completion](m3-completion.md) for native platform evidence and limitations.
 
 ## Product boundary
@@ -90,7 +90,11 @@ permissions, downloads, snapshots, supported evaluation, and input. Capabilities
 are negotiated, unsupported calls fail, and engine extensions have an explicit
 namespace. No CEF objects or raw CDP targets appear in application handles.
 
-The mock supports lifecycle/navigation/ephemeral sessions only. CEF is backend one.
+The mock supports lifecycle/navigation/ephemeral sessions only. CEF is backend one
+and additionally implements explicit persistent sessions, cookie CRUD, HTTP-cache
+clearing and flush. Pinned CEF has no complete HTML5 storage-clear API, and macOS
+persistent cookies remain explicitly unsupported pending an app-specific credential
+identity; see [M4 browser sessions](m4-browser-sessions.md).
 WebView2, WKWebView, and WebKitGTK are later adapters, not silent runtime fallbacks.
 A future system-webview build must include no hidden CEF payload or download.
 

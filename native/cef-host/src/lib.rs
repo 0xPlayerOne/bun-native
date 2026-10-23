@@ -14,12 +14,14 @@ mod policy;
 mod process;
 pub mod resources;
 mod scheme;
+mod session;
 #[cfg(not(feature = "sandbox"))]
 compile_error!("Bunly requires compiled sandbox support");
 #[derive(Clone)]
 pub struct Paths {
     pub resources: PathBuf,
     pub cache: PathBuf,
+    pub profile_root: Option<session::ProfileRoot>,
     pub bun: PathBuf,
     pub entry: PathBuf,
     pub dev_origin: Option<String>,
@@ -192,6 +194,13 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         }
     }
     let cache = std::fs::canonicalize(cache).map_err(|e| e.to_string())?;
+    let profile_root = std::env::var_os("BUNLY_PROFILE_ROOT")
+        .map(|path| session::ProfileRoot::open(&PathBuf::from(path)))
+        .transpose()?;
+    let cef_root = profile_root
+        .as_ref()
+        .map(|root| root.path().to_path_buf())
+        .unwrap_or_else(|| cache.clone());
     let bun = resources.join(if cfg!(windows) { "bun.exe" } else { "bun" });
     let entry = resources.join("backend/main.js");
     if !bun.is_file() || !entry.is_file() {
@@ -201,6 +210,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .set(Paths {
             resources: resources.clone(),
             cache: cache.clone(),
+            profile_root: profile_root.clone(),
             bun,
             entry,
             dev_origin,
@@ -216,15 +226,15 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     #[cfg(target_os = "macos")]
     eprintln!(
         "{}",
-        serde_json::json!({"event":"bunly.credential-policy","mode":"non-interactive-existing-authorization-only","persistentSessions":false})
+        serde_json::json!({"event":"bunly.credential-policy","mode":"non-interactive-existing-authorization-only","persistentLocalStorage":profile_root.is_some(),"persistentCookies":false,"reason":"CEF 154 exposes no supported app-specific macOS credential identity"})
     );
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
     let settings = Settings {
         no_sandbox: 0,
         command_line_args_disabled: 1,
-        root_cache_path: CefString::from(cache.to_string_lossy().as_ref()),
-        log_file: CefString::from(cache.join("cef.log").to_string_lossy().as_ref()),
+        root_cache_path: CefString::from(cef_root.to_string_lossy().as_ref()),
+        log_file: CefString::from(cef_root.join("cef.log").to_string_lossy().as_ref()),
         ..Default::default()
     };
     if initialize(
@@ -234,7 +244,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         sandbox,
     ) != 1
     {
-        return Err("CEF initialization failed".into());
+        return Err("CEF initialization failed (the configured profile root may already be locked by another application instance)".into());
     }
     run_message_loop();
     shutdown_phase("process-stop", process::stop);
@@ -242,6 +252,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     // Stop work and fence continuations before the CEF runtime is disposed.
     shutdown_phase("asset-service-stop", || drop(asset_service));
     shutdown_phase("cef-shutdown", shutdown);
+    session::release_after_cef_shutdown()?;
     eprintln!(
         "{}",
         serde_json::json!({"event":"bunly.host.shutdown","clean":!host::FAILED.load(std::sync::atomic::Ordering::SeqCst)})

@@ -1,11 +1,14 @@
 /** Engine-independent contract primitives. This package must remain browser-safe. */
-export const CONTRACT_VERSION = 1 as const
+export const CONTRACT_VERSION = 2 as const
 export const CAPABILITIES = [
   'window.lifecycle',
   'view.navigate',
   'session.ephemeral',
   'session.persistent',
   'session.cookies',
+  'session.cache',
+  'session.flush',
+  'session.storage-clear',
   'permission.request',
   'download.manage',
   'view.snapshot',

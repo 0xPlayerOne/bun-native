@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import {
@@ -16,6 +17,8 @@ import type {
   WindowHandle,
   ViewHandle,
   SessionHandle,
+  SessionClearOptions,
+  SessionClearResult,
   WindowOptions,
   ViewOptions,
   SessionOptions,
@@ -25,6 +28,9 @@ import type {
   OperationOptions,
   InputAction,
   Cookie,
+  CookieDelete,
+  CookieInput,
+  CookieQuery,
   DownloadRequest,
   DownloadResult,
   Handle,
@@ -35,6 +41,7 @@ interface NativeResource {
 }
 interface SessionResource extends NativeResource {
   partition: string
+  persistence: SessionOptions['persistence']
 }
 interface ViewResource extends NativeResource {
   window: WindowHandle
@@ -55,6 +62,56 @@ function nativeId(value: unknown): number {
 function unsupported(capability: string): never {
   throw new BunlyError('UNSUPPORTED_CAPABILITY', `cef does not yet implement ${capability}`)
 }
+function cookieUrl(value: string): string {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new BunlyError('INVALID_ARGUMENT', 'Cookie URL must be absolute')
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
+    throw new BunlyError('INVALID_ARGUMENT', 'Cookie URL must be credential-free HTTP(S)')
+  return url.href
+}
+function boundedText(value: unknown, name: string, maximum: number, empty = true): string {
+  if (
+    typeof value !== 'string' ||
+    (!empty && value.length === 0) ||
+    value.length > maximum ||
+    value.includes('\0')
+  )
+    throw new BunlyError('INVALID_ARGUMENT', `Invalid cookie ${name}`)
+  return value
+}
+function checkedCookie(value: CookieInput): CookieInput {
+  if (!value || typeof value !== 'object')
+    throw new BunlyError('INVALID_ARGUMENT', 'Invalid cookie')
+  const sameSite = value.sameSite ?? 'unspecified'
+  if (!['unspecified', 'none', 'lax', 'strict'].includes(sameSite))
+    throw new BunlyError('INVALID_ARGUMENT', 'Invalid cookie sameSite')
+  if (
+    (value.secure !== undefined && typeof value.secure !== 'boolean') ||
+    (value.httpOnly !== undefined && typeof value.httpOnly !== 'boolean')
+  )
+    throw new BunlyError('INVALID_ARGUMENT', 'Invalid cookie flags')
+  if (
+    value.expires !== undefined &&
+    (!Number.isSafeInteger(value.expires) || value.expires <= Date.now())
+  )
+    throw new BunlyError('INVALID_ARGUMENT', 'Cookie expiry must be a future Unix millisecond')
+  return Object.freeze({
+    name: boundedText(value.name, 'name', 256, false),
+    value: boundedText(value.value, 'value', 4096),
+    ...(value.domain === undefined
+      ? {}
+      : { domain: boundedText(value.domain, 'domain', 255, false) }),
+    ...(value.path === undefined ? {} : { path: boundedText(value.path, 'path', 1024, false) }),
+    secure: value.secure ?? false,
+    httpOnly: value.httpOnly ?? false,
+    sameSite,
+    ...(value.expires === undefined ? {} : { expires: value.expires }),
+  })
+}
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
 export class CefBackend implements BrowserBackend {
   readonly descriptor: BackendDescriptor = Object.freeze({
@@ -66,6 +123,10 @@ export class CefBackend implements BrowserBackend {
       'window.lifecycle',
       'view.navigate',
       'session.ephemeral',
+      'session.persistent',
+      'session.cookies',
+      'session.cache',
+      'session.flush',
     ] as const),
   })
   readonly #transport: NativeTransport
@@ -152,7 +213,20 @@ export class CefBackend implements BrowserBackend {
       !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(partition)
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
-    if (persistence !== 'ephemeral') unsupported('session.persistent')
+    const persistentRoot = options.persistentRoot
+    if (
+      (persistence === 'ephemeral' && persistentRoot !== undefined) ||
+      (persistence === 'persistent' &&
+        (typeof persistentRoot !== 'string' ||
+          persistentRoot.length === 0 ||
+          persistentRoot.length > 4096 ||
+          persistentRoot.includes('\0') ||
+          !isAbsolute(persistentRoot)))
+    )
+      throw new BunlyError(
+        'INVALID_ARGUMENT',
+        'Persistent sessions require an explicit absolute persistentRoot; ephemeral sessions forbid it'
+      )
     if (this.#partitions.has(partition))
       throw new BunlyError('INVALID_ARGUMENT', 'Partition already has an owner')
     this.#partitions.add(partition)
@@ -161,10 +235,11 @@ export class CefBackend implements BrowserBackend {
         await this.#transport.call('session.create', {
           persistence,
           partition,
+          ...(persistentRoot === undefined ? {} : { persistentRoot }),
         })
       )
       this.#active()
-      const handle = this.#remember('session', { native, partition })
+      const handle = this.#remember('session', { native, partition, persistence })
       this.#sessionViews.set(handle, new Set())
       this.#emit({ type: 'created', resource: handle })
       return handle
@@ -361,8 +436,97 @@ export class CefBackend implements BrowserBackend {
   async input(_view: ViewHandle, _action: InputAction, _options?: OperationOptions): Promise<void> {
     return unsupported('view.input')
   }
-  async cookies(_session: SessionHandle): Promise<readonly Cookie[]> {
-    return unsupported('session.cookies')
+  #session(session: SessionHandle): SessionResource {
+    this.#active()
+    if (this.#closing.has(session)) throw new BunlyError('DISPOSED', 'Session is disposing')
+    return this.#registry.get<'session', SessionResource>(session, 'session')
+  }
+  async cookies(session: SessionHandle, query: CookieQuery = {}): Promise<readonly Cookie[]> {
+    const resource = this.#session(session)
+    const value = await this.#transport.call('session.cookies', {
+      id: resource.native,
+      ...(query.url === undefined ? {} : { url: cookieUrl(query.url) }),
+    })
+    if (!Array.isArray(value) || value.length > 128) throw new Error('Invalid native cookie result')
+    const result = value.map((entry): Cookie => {
+      const item = record(entry)
+      if (
+        typeof item['secure'] !== 'boolean' ||
+        typeof item['httpOnly'] !== 'boolean' ||
+        !['unspecified', 'none', 'lax', 'strict'].includes(String(item['sameSite'])) ||
+        (item['expires'] !== undefined && !Number.isSafeInteger(item['expires']))
+      )
+        throw new Error('Invalid native cookie result')
+      return Object.freeze({
+        name: boundedText(item['name'], 'name', 256, false),
+        value: boundedText(item['value'], 'value', 4096),
+        domain: boundedText(item['domain'], 'domain', 255),
+        path: boundedText(item['path'], 'path', 1024),
+        secure: item['secure'],
+        httpOnly: item['httpOnly'],
+        sameSite: item['sameSite'] as Cookie['sameSite'],
+        ...(item['expires'] === undefined ? {} : { expires: Number(item['expires']) }),
+      })
+    })
+    return Object.freeze(result)
+  }
+  async setCookie(session: SessionHandle, url: string, cookie: CookieInput): Promise<void> {
+    const resource = this.#session(session)
+    await this.#transport.call('session.cookie.set', {
+      id: resource.native,
+      url: cookieUrl(url),
+      cookie: checkedCookie(cookie),
+    })
+  }
+  async deleteCookies(session: SessionHandle, filter: CookieDelete = {}): Promise<number> {
+    const resource = this.#session(session)
+    const url = filter.url === undefined ? undefined : cookieUrl(filter.url)
+    const name =
+      filter.name === undefined ? undefined : boundedText(filter.name, 'name', 256, false)
+    const value = await this.#transport.call('session.cookies.delete', {
+      id: resource.native,
+      ...(url === undefined ? {} : { url }),
+      ...(name === undefined ? {} : { name }),
+    })
+    if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > 100_000)
+      throw new Error('Invalid native cookie deletion result')
+    return Number(value)
+  }
+  async clearSession(
+    session: SessionHandle,
+    options: SessionClearOptions
+  ): Promise<SessionClearResult> {
+    const resource = this.#session(session)
+    if (!options || typeof options !== 'object')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid session clear options')
+    const cookies = options.cookies ?? false
+    const cache = options.cache ?? false
+    const storage = options.storage ?? false
+    if (
+      ![cookies, cache, storage].every((value) => typeof value === 'boolean') ||
+      (!cookies && !cache && !storage)
+    )
+      throw new BunlyError('INVALID_ARGUMENT', 'Select at least one session data kind to clear')
+    if (storage) unsupported('session.storage-clear')
+    const value = record(
+      await this.#transport.call('session.clear', { id: resource.native, cookies, cache })
+    )
+    if (
+      !Number.isSafeInteger(value['cookiesDeleted']) ||
+      Number(value['cookiesDeleted']) < 0 ||
+      typeof value['cacheCleared'] !== 'boolean' ||
+      value['storageCleared'] !== false
+    )
+      throw new Error('Invalid native session clear result')
+    return Object.freeze({
+      cookiesDeleted: Number(value['cookiesDeleted']),
+      cacheCleared: value['cacheCleared'],
+      storageCleared: false,
+    })
+  }
+  async flushSession(session: SessionHandle): Promise<void> {
+    const resource = this.#session(session)
+    await this.#transport.call('session.flush', { id: resource.native })
   }
   async requestPermission(view: ViewHandle, _permission: string): Promise<'granted' | 'denied'> {
     this.state(view)

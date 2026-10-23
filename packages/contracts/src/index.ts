@@ -37,6 +37,11 @@ export interface WindowOptions {
 export interface SessionOptions {
   readonly persistence: 'ephemeral' | 'persistent'
   readonly partition: string
+  /**
+   * Absolute application-owned profile root configured for the native host.
+   * Required for persistent sessions and forbidden for ephemeral sessions.
+   */
+  readonly persistentRoot?: string
 }
 export type ViewTrust =
   | { readonly kind: 'remote' }
@@ -67,7 +72,43 @@ export interface Cookie {
   readonly name: string
   readonly value: string
   readonly domain: string
+  readonly path: string
   readonly secure: boolean
+  readonly httpOnly: boolean
+  readonly sameSite: 'unspecified' | 'none' | 'lax' | 'strict'
+  /** Unix milliseconds. Omitted for a non-persistent session cookie. */
+  readonly expires?: number
+}
+export interface CookieInput {
+  readonly name: string
+  readonly value: string
+  readonly domain?: string
+  readonly path?: string
+  readonly secure?: boolean
+  readonly httpOnly?: boolean
+  readonly sameSite?: Cookie['sameSite']
+  /** Unix milliseconds. Omit to create a non-persistent session cookie. */
+  readonly expires?: number
+}
+export interface CookieQuery {
+  /** Limit enumeration to cookies visible to this absolute HTTP(S) URL. */
+  readonly url?: string
+}
+export interface CookieDelete {
+  /** Omit both fields to delete every cookie in the session. */
+  readonly url?: string
+  readonly name?: string
+}
+export interface SessionClearOptions {
+  readonly cookies?: boolean
+  readonly cache?: boolean
+  /** Requires the separately advertised session.storage-clear capability. */
+  readonly storage?: boolean
+}
+export interface SessionClearResult {
+  readonly cookiesDeleted: number
+  readonly cacheCleared: boolean
+  readonly storageCleared: boolean
 }
 export interface DownloadRequest {
   readonly url: string
@@ -102,7 +143,11 @@ export interface BrowserBackend {
   snapshot(view: ViewHandle, options?: OperationOptions): Promise<Uint8Array>
   evaluate(view: ViewHandle, script: string, options?: OperationOptions): Promise<unknown>
   input(view: ViewHandle, action: InputAction, options?: OperationOptions): Promise<void>
-  cookies(session: SessionHandle): Promise<readonly Cookie[]>
+  cookies(session: SessionHandle, query?: CookieQuery): Promise<readonly Cookie[]>
+  setCookie(session: SessionHandle, url: string, cookie: CookieInput): Promise<void>
+  deleteCookies(session: SessionHandle, filter?: CookieDelete): Promise<number>
+  clearSession(session: SessionHandle, options: SessionClearOptions): Promise<SessionClearResult>
+  flushSession(session: SessionHandle): Promise<void>
   requestPermission(view: ViewHandle, permission: string): Promise<'granted' | 'denied'>
   download(
     view: ViewHandle,

@@ -18,9 +18,23 @@ const root = resolve(import.meta.dir, '..'),
   parent = join(root, 'native/cef-host')
 const resources = join(parent, 'resources')
 const args = process.argv.slice(2)
-if (args.some((a) => !a.startsWith('--dev-origin=')) || args.length > 1)
-  throw new Error('Only --dev-origin=http://127.0.0.1:PORT is supported')
-const developmentOrigin = args[0]?.slice('--dev-origin='.length)
+if (
+  args.some(
+    (argument) => !argument.startsWith('--dev-origin=') && !argument.startsWith('--application=')
+  ) ||
+  args.filter((argument) => argument.startsWith('--dev-origin=')).length > 1 ||
+  args.filter((argument) => argument.startsWith('--application=')).length > 1
+)
+  throw new Error(
+    'Only --dev-origin=http://127.0.0.1:PORT and --application=main|sessions are supported'
+  )
+const developmentOrigin = args
+  .find((argument) => argument.startsWith('--dev-origin='))
+  ?.slice('--dev-origin='.length)
+const application =
+  args.find((argument) => argument.startsWith('--application='))?.slice('--application='.length) ??
+  'main'
+if (!['main', 'sessions'].includes(application)) throw new Error('Unknown CEF fixture application')
 if (developmentOrigin !== undefined) {
   const url = new URL(developmentOrigin)
   if (
@@ -40,7 +54,7 @@ try {
   })
   for (const [entry, name] of [
     ['scripts/cef-bootstrap.ts', 'main.js'],
-    ['examples/cef/main.ts', 'application.js'],
+    [`examples/cef/${application}.ts`, 'application.js'],
   ] as const) {
     const result = await Bun.build({
       entrypoints: [join(root, entry)],
@@ -109,6 +123,7 @@ try {
       nativeCompilation: false,
       bun: Bun.version,
       developmentOrigin: developmentOrigin ?? null,
+      application,
       publicAssets: Object.keys(files),
     })
   )
