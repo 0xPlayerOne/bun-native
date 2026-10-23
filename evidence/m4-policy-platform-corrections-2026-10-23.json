@@ -642,5 +642,543 @@
     "Windows API cross-check is not Windows runtime execution. Final-head hosted validation remains separate.",
     "Fixed RPC helper sampling acceptance and every cleanup failure rule are unchanged.",
     "No complete M4, persistent credential, HTML5 storage clearing, transport selection or historical shutdown cure is claimed."
-  ]
+  ],
+  "pathCorrection": {
+    "sourceCommit": "f2173716f1a04e5260b3ad736ec1382875680481",
+    "nativeSourceTree": "fff4328a68d3f914459b4e19c8a418a8deebc6a7",
+    "priorHostedRun": {
+      "runId": 40023786793,
+      "head": "02da9d777d0ecd796a6583f7ffbc7f7baaa1e7e1",
+      "linuxNativeSuites": "passed",
+      "macosNativeSuites": "passed",
+      "windowsNativeTests": {
+        "passed": 88,
+        "failed": 1,
+        "failingTest": "capability_policy::tests::paths_reject_escape_prefix_confusion_symlinks_and_platform_aliases"
+      },
+      "failureLog": {
+        "bytes": 72032,
+        "sha256": "c76a1c73ac033c20428195102129b956bd8448008f3e1c4fa80c61509bb5fb66"
+      }
+    },
+    "change": "Validate the original forward-slash relative request spelling before OS Path normalization; absolute native grant roots are unchanged.",
+    "counts": {
+      "bun": 679,
+      "python": 200,
+      "foundationOverlapping": 139,
+      "m1": 3,
+      "cefDefault": 95,
+      "cefQualification": 96
+    },
+    "validation": {
+      "path-tests": {
+        "bytes": 2137,
+        "sha256": "7eaaccd8b63c4ca0ceb91538a61710da58de1cd31e583a60a1bf70e7b3883255"
+      },
+      "path-clippy": {
+        "bytes": 731,
+        "sha256": "94902081a1a037f322f933f49c1d587666dcd775664059952696e2250d6af8cd"
+      },
+      "path-native-tests": {
+        "bytes": 9134,
+        "sha256": "fe3b2bf1279e38f6c9b0a81a918d23a236c1257b7f68503c393b1bdc3c37f0dc"
+      },
+      "path-native-build": {
+        "bytes": 170,
+        "sha256": "fe164bdc9e309288307e39391abcd487d05d3d83041a6109e2a7c2fa76831fd1"
+      },
+      "path-native-default": {
+        "bytes": 12410,
+        "sha256": "2c2436adbce3ddd1658268981dad40e0a9c5f408ac8820e1e9142b534a9ace53"
+      },
+      "path-portable": {
+        "bytes": 73018,
+        "sha256": "8ed492740b8e9af29094107a92318ac85af042d036beb11518d07669b47d227f"
+      },
+      "path-foundation": {
+        "bytes": 15739,
+        "sha256": "1a3576e626d19de1d1d959063514e5692933b9db1478cbe4a338d4dbe7a5e536"
+      },
+      "path-windows-api": {
+        "bytes": 167,
+        "sha256": "a81a13c0da8383571075c656a61d19211a28abb4aff8684ecd8eec42e8927428"
+      }
+    },
+    "nativeRuns": [
+      {
+        "name": "path-policy-clean",
+        "passed": true,
+        "report": {
+          "bytes": 138622,
+          "sha256": "0da673ab0883f350bcc9616d02dfaadcb45d775095760dc01ee37c31812cb862"
+        },
+        "sourceBefore": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceArtifactUnchanged": true,
+        "deniedRequests": 0,
+        "shutdownStages": {
+          "process-stop": 10,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 67
+        },
+        "observation": {
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        "policyEvidence": {
+          "event": "bunly.native.development",
+          "schema": 3,
+          "passed": true,
+          "scopeRevoked": true,
+          "activation": "native-fixed-fixture",
+          "mediaDevices": "synthetic-device-real-permission-callback",
+          "policyCallbacks": [
+            "policy.media-denied",
+            "policy.permission-denied",
+            "policy.popup-denied",
+            "policy.download-denied"
+          ]
+        }
+      },
+      {
+        "name": "path-rpc-clean",
+        "passed": true,
+        "report": {
+          "bytes": 1218283,
+          "sha256": "831bd608dac90ce0607bec32c29697424bab115dd438ab50eefb913fb3dd23eb"
+        },
+        "sourceBefore": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceArtifactUnchanged": true,
+        "trials": [
+          {
+            "name": "installed-0",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "installed-1",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "installed-2",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "last-window",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-4",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-5",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-6",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "wrong-version",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "missing-bun",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "missing-helper",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "restored-installation",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          }
+        ],
+        "rpcAcceptance": {
+          "profile": "native-rpc",
+          "passed": true,
+          "acceptedLaunches": 5,
+          "helperCleanup": {
+            "scope": "same-suite-sampled-coverage",
+            "qualifiedLaunches": [
+              "installed-0",
+              "installed-1",
+              "installed-2",
+              "last-window",
+              "restored-installation"
+            ],
+            "unobservedLaunches": []
+          }
+        }
+      },
+      {
+        "name": "path-ordinary-prebuilt",
+        "passed": true,
+        "report": {
+          "bytes": 1390298,
+          "sha256": "83348e138c896623f1bcfe729959c9ff48eb97bf848d6f4c704440a40c021a94"
+        },
+        "sourceBefore": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceArtifactUnchanged": true,
+        "trials": [
+          {
+            "name": "installed-0",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "installed-1",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "installed-2",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "last-window",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-4",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-5",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "rejected-6",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "wrong-version",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "missing-bun",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "missing-helper",
+            "exitCode": 78,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "not-observed",
+              "qualified": false,
+              "passed": true
+            }
+          },
+          {
+            "name": "restored-installation",
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "status": "completed",
+              "qualified": true,
+              "passed": true
+            }
+          }
+        ]
+      },
+      {
+        "name": "path-ordinary-negative",
+        "passed": false,
+        "report": {
+          "bytes": 106416,
+          "sha256": "7e0000c62682327df24f4a1e2325329ad749c434f07497fc734ab76c59515684"
+        },
+        "sourceBefore": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "f2173716f1a04e5260b3ad736ec1382875680481",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "disposition": "expected-contributor-fixture-rejection-not-clean-qualification",
+        "observation": {
+          "exitCode": 1,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        "failure": "Command failed: unexpected exit 1 (expected 0)"
+      }
+    ],
+    "artifacts": {
+      "qualification": {
+        "host": {
+          "bytes": 2127728,
+          "sha256": "a54eea741785b42205d2c8a60d1e291977307b638d9720d7d78033e4819fda60"
+        },
+        "helper": {
+          "bytes": 1948848,
+          "sha256": "fe4c40e3afa81c29e0f56f0bb036b0d6c05142738a00b896640705d9f025349a"
+        }
+      },
+      "ordinary": {
+        "host": {
+          "bytes": 2125216,
+          "sha256": "704bba0e303aa04063110e2173d5cfaf837c4232a6bf5d3ca3a2ae4e7086b1ef"
+        },
+        "helper": {
+          "bytes": 1928512,
+          "sha256": "6288b06549aee5259672c76f289ed3de8cda4ecf41f85f4f30cf3c74069a88fa"
+        }
+      }
+    }
+  }
 }

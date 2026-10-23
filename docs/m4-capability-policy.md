@@ -268,3 +268,14 @@ grant roots and executable paths retain their platform-native syntax. Pure raw
 validation tests cover the same Windows spellings even on Unix, and real
 filesystem tests preserve the containment, case and symlink requirements.
 No filesystem adapter or same-user race guarantee is implied by this correction.
+
+Clean checkpoint `f2173716f1a04e5260b3ad736ec1382875680481` passed fresh native
+policy qualification, eleven RPC/session cases with five positively verified
+helper completions, and the ordinary host's eleven prebuilt cases. The ordinary
+host again rejected the contributor-only setup requirement. Portable validation
+passed 679 Bun and 200 Python tests; the 139 foundation tests overlap the ordinary
+suite. Both native workspaces passed (3 M1 and 95 default CEF tests), as did
+96 CEF tests with contributor probes and the Windows-target API check. Native
+policy/ordinary binaries, clean source identities, raw reports and the previous
+Windows failure remain separately fingerprinted in the correction evidence.
+Current-head hosted execution is still required before merging this correction.
