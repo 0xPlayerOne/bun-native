@@ -169,3 +169,31 @@ Issue #20 retains unsupported secure persistent credentials and full HTML5 stora
 clearing. Issue #22 retains native paired transport comparison/selection. External
 network-origin/redirect coverage and issue #92 remain distinct; merging this
 increment must not silently mark all of M4 or release qualification complete.
+
+### Final local acceptance checkpoint
+
+Clean implementation `83bff81e4e978ba62aad3fef0431ab73efd6d57e` passed the
+complete eleven-case macOS RPC/prebuilt matrix: five successful native launches
+with all eleven rejection receipts, exact schema-4 session evidence, ordered
+teardown and verified helper/clone completion, plus six expected startup rejections.
+A separate persistent-session suite passed ten cases, with its interrupted run
+explicitly retained as an expected unclean negative control, not clean shutdown.
+
+The ordinary host built without contributor probes also passed the eleven-case
+smoke matrix. Applying the explicit RPC qualifier to that host correctly failed
+with missing native probes; setting the fixture requirement cannot enable probes
+that were not compiled. This negative control remains a failed native qualification.
+
+Portable validation passed 669 Bun and 200 Python tests. The overlapping foundation
+suite passed 139 tests. Native checks passed 3 M1 tests and 78 CEF tests in each of
+the ordinary/probe configurations, strict Clippy, formatting and real release
+builds. The isolated CEF string-ABI child is included in the 78, not an additional
+test. All seven advisory scans completed with no reported findings: root and three
+independent Bun locks, both Cargo locks and complete Python requirements.
+
+The [sanitized local evidence](../evidence/m4-native-authority-local-2026-10-23.json)
+records exact source/artifact/report identities and each disposition. Its final
+code checkpoint is separate from this subsequent evidence-only commit. Hosted
+platform outcomes belong to the final PR head and must not be inferred from these
+local results. The original missing-receipt and zero-launch preparation failures
+remain recorded; no test, native guard or deadline was relaxed.
