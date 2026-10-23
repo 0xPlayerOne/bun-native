@@ -1,4 +1,4 @@
-//! Fail-closed M3 local-content policy. No renderer/native bridge is installed.
+//! Fail-closed local-content baseline; optional origins are owned by each session.
 use serde_json::Value;
 
 pub fn development_origin(value: &str) -> Result<String, String> {
