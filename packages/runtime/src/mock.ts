@@ -126,6 +126,10 @@ export class MockBackend implements BrowserBackend {
     this.#active()
     return this.#registry.get<'view', ViewRecord>(view, 'view').state
   }
+  session(view: ViewHandle): SessionHandle {
+    this.#active()
+    return this.#registry.get<'view', ViewRecord>(view, 'view').session
+  }
   async disposeView(view: ViewHandle): Promise<void> {
     if (this.#registry.dispose(view, 'view')) this.#emit({ type: 'disposed', resource: view })
   }

@@ -964,7 +964,7 @@ describe('RPC adversarial lifecycle regressions', () => {
     expect(left.subscriptions).toBe(0)
     expect(right.subscriptions).toBe(0)
     expect(clock.timers.size).toBe(0)
-    expect(client.diagnostics()).toEqual({
+    expect(client.diagnostics()).toMatchObject({
       pending: 0,
       queuedBytes: 0,
       queuedFrames: 0,

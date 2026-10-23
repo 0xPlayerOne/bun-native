@@ -1,4 +1,4 @@
-import type { BrowserBackend, ViewHandle } from '../../contracts/src/index.ts'
+import type { BrowserBackend, SessionHandle, ViewHandle } from '../../contracts/src/index.ts'
 import { originOf } from '../../contracts/src/index.ts'
 import { RpcError, validProcedure } from '../../contracts/src/rpc.ts'
 export interface NativeRpcFrame {
@@ -18,15 +18,30 @@ declare const leaseBrand: unique symbol
 export interface RpcLease {
   readonly [leaseBrand]: true
 }
+declare const bindingBrand: unique symbol
+/** Private handoff surface for a transport provisioned by an attested native context. */
+export interface RpcAuthorityBinding {
+  readonly identity: RpcIdentity
+  readonly signal: AbortSignal
+  readonly [bindingBrand]: true
+}
 interface LeaseState {
   readonly identity: RpcIdentity
+  readonly session: SessionHandle
   readonly controller: AbortController
   readonly capabilities: ReadonlySet<string>
   readonly current: () => boolean
   claimed: boolean
+  bound: boolean
   readonly acquire: () => () => void
 }
 const leases = new WeakMap<object, LeaseState>()
+interface BindingState {
+  readonly lease: RpcLease
+  readonly session: SessionHandle
+  claimed: boolean
+}
+const bindings = new WeakMap<object, BindingState>()
 function denied(): never {
   throw new RpcError('FORBIDDEN', 'RPC authority is not valid for this connection')
 }
@@ -39,7 +54,7 @@ export interface RpcAuthorityGuard {
 /** Internal server boundary; shape-compatible objects and reused leases are rejected. */
 export function claimRpcAuthority(lease: RpcLease): RpcAuthorityGuard {
   const state = leases.get(lease)
-  if (!state || state.claimed || state.controller.signal.aborted || !state.current())
+  if (!state || state.claimed || state.bound || state.controller.signal.aborted || !state.current())
     return denied()
   state.claimed = true
   return Object.freeze({
@@ -56,6 +71,69 @@ export function claimRpcAuthority(lease: RpcLease): RpcAuthorityGuard {
       if (!state.capabilities.has(capability)) return denied()
     },
   })
+}
+/**
+ * Bind an unclaimed lease to a private transport before exposing any connection
+ * material. The returned object is opaque and cannot be forged by copying its
+ * identity fields. It is intentionally runtime-only, never browser-safe data.
+ */
+export function bindRpcAuthority(lease: RpcLease, session: SessionHandle): RpcAuthorityBinding {
+  const state = leases.get(lease)
+  if (!state || state.claimed || state.bound || state.controller.signal.aborted || !state.current())
+    return denied()
+  // The backend registry resolves the owner by opaque view identity when the
+  // lease is issued. Object shape or a caller-provided session ID is never authority.
+  if (state.session !== session) return denied()
+  state.bound = true
+  const binding = Object.freeze({ identity: state.identity, signal: state.controller.signal })
+  bindings.set(binding, { lease, session: state.session, claimed: false })
+  return binding as RpcAuthorityBinding
+}
+
+/** Runtime-internal preflight for transport provisioning; it does not consume the binding. */
+export function checkRpcAuthorityBinding(binding: RpcAuthorityBinding): void {
+  const state = bindings.get(binding)
+  const lease = state ? leases.get(state.lease) : undefined
+  if (
+    !state ||
+    state.claimed ||
+    !lease ||
+    lease.claimed ||
+    !lease.bound ||
+    binding.signal.aborted ||
+    lease.controller.signal.aborted ||
+    !lease.current()
+  )
+    denied()
+}
+
+/** Consume a private binding once, after the transport has authenticated. */
+export function claimRpcAuthorityBinding(
+  binding: RpcAuthorityBinding
+): Readonly<{ lease: RpcLease; session: SessionHandle }> {
+  checkRpcAuthorityBinding(binding)
+  const state = bindings.get(binding)
+  if (!state) return denied()
+  const lease = leases.get(state.lease)
+  if (!lease) return denied()
+  state.claimed = true
+  // The original token stays permanently bound and can never be rebound. The
+  // accept callback receives a distinct one-use token over the same authority.
+  const handoff = Object.freeze({}) as RpcLease
+  leases.set(handoff, { ...lease, claimed: false, bound: false })
+  return Object.freeze({ lease: handoff, session: state.session })
+}
+
+/** Require a transport accept callback to have synchronously constructed its server. */
+export function completeRpcAuthorityHandoff(lease: RpcLease): void {
+  const state = leases.get(lease)
+  leases.delete(lease)
+  if (!state?.claimed) denied()
+}
+
+/** Invalidate a derived handoff when authentication or the accept callback fails. */
+export function discardRpcAuthorityHandoff(lease: RpcLease | undefined): void {
+  if (lease) leases.delete(lease)
 }
 export interface RpcAuthorityOptions {
   readonly maxExecutions?: number
@@ -107,6 +185,7 @@ export class RpcViewAuthority {
     if (this.#disposed || this.#revoking)
       throw new RpcError('REVOKED', 'RPC authority manager disposed')
     const document = this.backend.state(view) // Authoritative registry rejects copied/cross-owner handles.
+    const session = this.backend.session(view)
     if (
       frame.mainFrame !== true ||
       !frame.frameId ||
@@ -135,6 +214,7 @@ export class RpcViewAuthority {
     const latest = this.backend.state(view)
     if (
       latest.documentId !== document.documentId ||
+      this.backend.session(view) !== session ||
       latest.trust.kind !== 'application' ||
       latest.trust.origin !== document.trust.origin ||
       originOf(latest.url) !== document.trust.origin
@@ -149,9 +229,11 @@ export class RpcViewAuthority {
     })
     const state: LeaseState = {
       identity,
+      session,
       controller: new AbortController(),
       capabilities: new Set(capabilities),
       claimed: false,
+      bound: false,
       acquire: () => {
         const active = this.#executions.get(view) ?? 0
         if (this.#executing >= this.#maxExecutions || active >= this.#maxPerView)
@@ -174,6 +256,7 @@ export class RpcViewAuthority {
           const latest = this.backend.state(view)
           return (
             latest.documentId === identity.documentId &&
+            this.backend.session(view) === session &&
             latest.trust.kind === 'application' &&
             latest.trust.origin === identity.origin &&
             originOf(latest.url) === identity.origin
