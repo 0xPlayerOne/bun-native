@@ -1,8 +1,9 @@
-//! Ephemeral-only host: do not block unattended shutdown on credential-consent UI.
+//! Do not block unattended shutdown on credential-consent UI. Persistent contexts
+//! disable cookie persistence until an app-specific credential provider is qualified.
 //! This process-local setting grants no Keychain access, changes no ACL or trust
 //! store, and does not replace encryption with a mock/plaintext implementation.
 //! CEF 154 uses Chromium's shared Keychain names. Persistent profiles must remain
-//! unsupported until M4 qualifies application-specific credential storage.
+//! unsupported for cookies until M4 qualifies application-specific credential storage.
 use std::{marker::PhantomData, rc::Rc};
 
 #[link(name = "Security", kind = "framework")]

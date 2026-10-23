@@ -11,7 +11,7 @@ import { BunlyError } from './core.ts'
 import type { BackendName, Capability } from './core.ts'
 
 /** The version of the capability metadata below. Bumped when the contract floor changes. */
-export const PROFILE_CAPABILITY_VERSION = 1 as const
+export const PROFILE_CAPABILITY_VERSION = 2 as const
 
 export type BuildProfileId = 'cef' | 'system-webview'
 export type ProfilePlatform = 'darwin-arm64' | 'linux-x64' | 'win32-x64'
@@ -83,7 +83,17 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
     capabilityMetadata: Object.freeze({
       version: PROFILE_CAPABILITY_VERSION,
       portable: LIFECYCLE_FLOOR,
-      extensions: Object.freeze([] as const),
+      extensions: Object.freeze([
+        Object.freeze({
+          backend: 'cef',
+          capabilities: Object.freeze([
+            'session.persistent',
+            'session.cookies',
+            'session.cache',
+            'session.flush',
+          ] as const),
+        }),
+      ] as const),
     }),
     prerequisites: Object.freeze([
       Object.freeze({

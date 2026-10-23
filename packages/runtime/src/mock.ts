@@ -11,6 +11,9 @@ import type {
   BackendDescriptor,
   BrowserBackend,
   Cookie,
+  CookieDelete,
+  CookieInput,
+  CookieQuery,
   Diagnostics,
   DownloadRequest,
   DownloadResult,
@@ -18,6 +21,8 @@ import type {
   OperationOptions,
   RuntimeEvent,
   SessionHandle,
+  SessionClearOptions,
+  SessionClearResult,
   SessionOptions,
   ViewHandle,
   ViewOptions,
@@ -60,6 +65,12 @@ export class MockBackend implements BrowserBackend {
       this.descriptor,
       options.persistence === 'persistent' ? 'session.persistent' : 'session.ephemeral'
     )
+    if (
+      (options.persistence === 'ephemeral' && options.persistentRoot !== undefined) ||
+      (options.persistence === 'persistent' &&
+        (typeof options.persistentRoot !== 'string' || options.persistentRoot.length === 0))
+    )
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
     for (const h of this.#registry.handles('session')) {
       if (
         this.#registry.get<'session', SessionOptions>(h, 'session').partition === options.partition
@@ -169,11 +180,38 @@ export class MockBackend implements BrowserBackend {
     options?.signal?.throwIfAborted()
     requireCapability(this.descriptor, 'view.input')
   }
-  async cookies(session: SessionHandle): Promise<readonly Cookie[]> {
+  async cookies(session: SessionHandle, _query?: CookieQuery): Promise<readonly Cookie[]> {
     this.#active()
     this.#registry.get(session, 'session')
     requireCapability(this.descriptor, 'session.cookies')
     throw new Error('Unreachable')
+  }
+  async setCookie(session: SessionHandle, _url: string, _cookie: CookieInput): Promise<void> {
+    this.#active()
+    this.#registry.get(session, 'session')
+    requireCapability(this.descriptor, 'session.cookies')
+  }
+  async deleteCookies(session: SessionHandle, _filter?: CookieDelete): Promise<number> {
+    this.#active()
+    this.#registry.get(session, 'session')
+    requireCapability(this.descriptor, 'session.cookies')
+    throw new Error('Unreachable')
+  }
+  async clearSession(
+    session: SessionHandle,
+    options: SessionClearOptions
+  ): Promise<SessionClearResult> {
+    this.#active()
+    this.#registry.get(session, 'session')
+    if (options.cookies) requireCapability(this.descriptor, 'session.cookies')
+    if (options.cache) requireCapability(this.descriptor, 'session.cache')
+    if (options.storage) requireCapability(this.descriptor, 'session.storage-clear')
+    throw new Error('Unreachable')
+  }
+  async flushSession(session: SessionHandle): Promise<void> {
+    this.#active()
+    this.#registry.get(session, 'session')
+    requireCapability(this.descriptor, 'session.flush')
   }
   async requestPermission(view: ViewHandle, _permission: string): Promise<'granted' | 'denied'> {
     this.state(view)

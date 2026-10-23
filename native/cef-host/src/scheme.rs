@@ -44,8 +44,8 @@ pub fn attach(context: &RequestContext) {
         Some(&mut factory),
     );
 }
-pub(crate) fn context_handler() -> RequestContextHandler {
-    AssetContext::new()
+pub(crate) fn context_handler(session: u64) -> RequestContextHandler {
+    AssetContext::new(session)
 }
 pub(crate) fn local_resources() -> ResourceRequestHandler {
     LocalResources::new(Arc::new(RequestPreparation::default()))
@@ -321,8 +321,11 @@ impl HandlerOwner {
     }
 }
 wrap_request_context_handler! {
-    struct AssetContext;
+    struct AssetContext { session: u64 }
     impl RequestContextHandler {
+        fn on_request_context_initialized(&self, context: Option<&mut RequestContext>) {
+            if let Some(context) = context { crate::host::session_initialized(self.session, context.clone()); }
+        }
         fn resource_request_handler(
             &self,
             _browser: Option<&mut Browser>,

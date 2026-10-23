@@ -4,6 +4,10 @@ Current architecture and contributor guides, with historical evidence kept disti
 
 **Checkpoint:** M1–M3 complete for the declared acceptance profiles; M4 not yet complete.
 
+[M4 browser sessions](m4-browser-sessions.md) documents the implemented issue #20
+session surface, its prepared real-native qualifier, and the remaining macOS
+persistent-cookie/storage-clear limitations. Renderer authority remains separate.
+
 ## Start here
 
 [Architecture](architecture.md) defines the host, packages and trust boundaries.

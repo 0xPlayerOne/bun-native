@@ -81,8 +81,14 @@ describe('explicit build profiles with versioned capability metadata', () => {
     const cef = profileFor('cef')
     const metadata = capabilityMetadataFor(cef, 'cef')
     assert.deepEqual(metadata.portable, cef.capabilityMetadata.portable)
-    assert.deepEqual(metadata.extensions, [])
+    assert.deepEqual(metadata.extensions, [
+      {
+        backend: 'cef',
+        capabilities: ['session.persistent', 'session.cookies', 'session.cache', 'session.flush'],
+      },
+    ])
     assert.equal(profileProvidesCapability(cef, 'cef', 'window.lifecycle'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'session.persistent'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'view.snapshot'), false)
     assert.throws(() => capabilityMetadataFor(cef, 'wkwebview'), hasCode('INVALID_ARGUMENT'))
   })
