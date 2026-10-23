@@ -1,4 +1,5 @@
 import { observePolicyViolations } from './nested/policy-violations.mjs'
+import './rpc-client.js'
 const check = (condition, message) => {
   if (!condition) throw new Error(message)
 }
@@ -78,14 +79,34 @@ try {
     'Unicode public resource failed'
   )
   const frame = document.createElement('iframe')
+  frame.hidden = true
   await new Promise((resolve, reject) => {
     frame.onload = resolve
     frame.onerror = () => reject(new Error('Packaged frame load failed'))
-    frame.src = '/next.html'
+    frame.src = '/hostile.html'
     document.body.append(frame)
   })
-  check(frame.contentDocument?.title === 'Navigation complete', 'Same-origin frame unavailable')
-  frame.remove()
+  check(frame.contentDocument?.title === 'Hostile child fixture', 'Same-origin frame unavailable')
+  console.log(
+    'BUNLY_RPC_BORROW_DIAGNOSTIC:' +
+      JSON.stringify({
+        schema: 1,
+        ran: frame.contentWindow?.hostileFixtureRan === true,
+        bridgePresent: frame.contentWindow?.bridgePresent,
+        outcome: frame.contentWindow?.borrowedBridge,
+        error: frame.contentWindow?.borrowedError,
+      })
+  )
+  check(frame.contentWindow?.hostileFixtureRan === true, 'External hostile fixture did not run')
+  check(frame.contentWindow?.bridgePresent === false, 'Child frame received RPC bridge')
+  check(
+    frame.contentWindow?.borrowedBridge === 'denied',
+    'Child frame borrowed main-frame RPC function'
+  )
+  console.log('BUNLY_RPC_HOSTILE_OK')
+  // Keep the hostile context alive until its owner document is disposed.
+  // CEF process-message delivery is asynchronous and may be lost on detach;
+  // the backend independently waits for the actual native wrong-frame denial.
   check(
     typeof globalThis.Bun === 'undefined' &&
       typeof globalThis.process === 'undefined' &&

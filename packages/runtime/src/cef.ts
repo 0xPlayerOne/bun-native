@@ -1,7 +1,11 @@
-import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
+import { RpcServer } from './rpc.ts'
+import { RpcViewAuthority } from './rpc-authority.ts'
+import { RpcError } from '../../contracts/src/rpc.ts'
+import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
+import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
   PROFILE_CAPABILITY_VERSION,
@@ -48,6 +52,72 @@ interface ViewResource extends NativeResource {
   session: SessionHandle
   state: ViewState
 }
+const MAX_NATIVE_RPC_PACKET = 24 * 1024
+function hex(packet: Uint8Array): string {
+  if (
+    !(packet instanceof Uint8Array) ||
+    packet.byteLength < 1 ||
+    packet.byteLength > MAX_NATIVE_RPC_PACKET
+  )
+    throw new RpcError('PROTOCOL_ERROR', 'Native RPC packet size denied')
+  let result = ''
+  for (const byte of packet) result += byte.toString(16).padStart(2, '0')
+  return result
+}
+function unhex(value: unknown): Uint8Array {
+  if (
+    typeof value !== 'string' ||
+    value.length < 2 ||
+    value.length % 2 ||
+    value.length > MAX_NATIVE_RPC_PACKET * 2 ||
+    !/^[0-9a-f]+$/.test(value)
+  )
+    throw new RpcError('PROTOCOL_ERROR', 'Invalid native RPC packet encoding')
+  const packet = new Uint8Array(value.length / 2)
+  for (let index = 0; index < packet.length; index++)
+    packet[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
+  return packet
+}
+class CefRpcTransport implements RpcTransport {
+  #message: ((packet: Uint8Array) => void) | undefined
+  #closed: (() => void) | undefined
+  #ended = false
+  constructor(
+    readonly native: NativeTransport,
+    readonly identity: Readonly<{ connection: number; context: number; generation: number }>
+  ) {}
+  send(packet: Uint8Array): Promise<void> {
+    if (this.#ended)
+      return Promise.reject(new RpcError('DISCONNECTED', 'Native RPC transport closed'))
+    return this.native.call('rpc.deliver', { ...this.identity, packet: hex(packet) }).then(() => {})
+  }
+  subscribe(message: (packet: Uint8Array) => void, closed: () => void): () => void {
+    if (this.#message) throw new TypeError('Native RPC transport permits one subscriber')
+    this.#message = message
+    this.#closed = closed
+    return () => {
+      this.#message = undefined
+      this.#closed = undefined
+    }
+  }
+  receive(packet: Uint8Array, sequence: number): void {
+    if (this.#ended || !this.#message) return
+    this.#message(packet)
+    if (this.#ended) return
+    void this.native.call('rpc.ack', { ...this.identity, sequence }).catch(() => this.end(false))
+  }
+  close(): void {
+    this.end(true)
+  }
+  end(tellNative: boolean): void {
+    if (this.#ended) return
+    this.#ended = true
+    if (tellNative) void this.native.call('rpc.disconnect', { ...this.identity }).catch(() => {})
+    this.#closed?.()
+    this.#message = undefined
+    this.#closed = undefined
+  }
+}
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid native result')
@@ -58,6 +128,12 @@ function nativeId(value: unknown): number {
   if (!Number.isSafeInteger(id) || Number(id) < 1)
     throw new Error('Invalid native resource identity')
   return Number(id)
+}
+function nativeDocumentId(value: unknown): string {
+  const documentId = record(value)['documentId']
+  if (typeof documentId !== 'string' || !/^[a-z0-9-]{1,128}$/.test(documentId))
+    throw new Error('Invalid native document identity')
+  return documentId
 }
 function unsupported(capability: string): never {
   throw new BunlyError('UNSUPPORTED_CAPABILITY', `cef does not yet implement ${capability}`)
@@ -139,7 +215,24 @@ export class CefBackend implements BrowserBackend {
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #partitions = new Set<string>()
+  // Native application grants are one-shot. Fence local lifecycle transitions
+  // before their queued native acknowledgement/handshake can arrive.
+  readonly #rpcRetired = new WeakSet<ViewHandle>()
+  readonly #rpcConnections = new Map<
+    number,
+    { view: ViewHandle; transport: CefRpcTransport; server: RpcServer<RpcSchema> }
+  >()
+  #rpcService:
+    | {
+        authority: RpcViewAuthority
+        schema: RpcSchema
+        handlers: RpcHandlers<RpcSchema>
+        capabilities: readonly string[]
+        options: RpcServerOptions
+      }
+    | undefined
   #shutdown: Promise<void> | undefined
+  #rpcConfigured = false
   #disposed = false
   #listenerErrors = 0
   readonly closed: Promise<void>
@@ -164,6 +257,10 @@ export class CefBackend implements BrowserBackend {
       this.#listeners.clear()
       this.#observers.clear()
       this.#partitions.clear()
+      this.#rpcService?.authority.dispose()
+      this.#rpcService = undefined
+      for (const connection of this.#rpcConnections.values()) connection.transport.end(false)
+      this.#rpcConnections.clear()
       if (transport.failure) throw transport.failure
     })
     void this.closed.catch(() => {})
@@ -287,13 +384,21 @@ export class CefBackend implements BrowserBackend {
         'Application origin must explicitly match the initial document'
       )
     const trust: ViewTrust = Object.freeze({ ...options.trust })
-    const native = this.#createdId(
-      await this.#transport.call('view.create', {
-        window: window.native,
-        session: session.native,
-        url,
-      })
-    )
+    const created = await this.#transport.call('view.create', {
+      window: window.native,
+      session: session.native,
+      url,
+      trust,
+    })
+    const native = this.#createdId(created)
+    let documentId: string
+    try {
+      documentId = nativeDocumentId(created)
+    } catch (error) {
+      // An unbound native document must never survive as an orphan authority.
+      this.#transport.fail(error)
+      throw error
+    }
     try {
       this.#active()
       this.#registry.get(windowHandle, 'window')
@@ -309,7 +414,7 @@ export class CefBackend implements BrowserBackend {
       native,
       window: windowHandle,
       session: sessionHandle,
-      state: { url, documentId: randomUUID(), trust },
+      state: { url, documentId, trust },
     } satisfies ViewResource)
     this.#windowViews.get(windowHandle)!.add(handle)
     this.#sessionViews.get(sessionHandle)!.add(handle)
@@ -326,6 +431,7 @@ export class CefBackend implements BrowserBackend {
     if (this.#closing.has(view) || this.#closing.has(resource.window))
       throw new BunlyError('DISPOSED', 'View is closing')
     const url = normalizeUrl(value)
+    this.#retireRpc(view)
     await this.#transport.call('view.navigate', { id: resource.native, url }, options.signal)
     this.#active()
     this.#registry.get(view, 'view')
@@ -381,6 +487,9 @@ export class CefBackend implements BrowserBackend {
         throw error
       })
     this.#closing.set(handle, promise)
+    if (kind === 'view') this.#retireRpc(handle as ViewHandle)
+    if (kind === 'window')
+      for (const view of this.#windowViews.get(handle as WindowHandle) ?? []) this.#retireRpc(view)
     return promise
   }
   async closeWindow(window: WindowHandle): Promise<void> {
@@ -572,10 +681,38 @@ export class CefBackend implements BrowserBackend {
   async nativeDiagnostics(): Promise<unknown> {
     return this.#transport.call('diagnostics')
   }
+  serveRpc<S extends RpcSchema>(
+    schema: S,
+    handlers: RpcHandlers<S>,
+    origins: readonly string[],
+    capabilities: readonly string[],
+    options: RpcServerOptions = {}
+  ): () => void {
+    this.#active()
+    if (this.#rpcConfigured)
+      throw new BunlyError('INVALID_ARGUMENT', 'CEF host already has an RPC authority manager')
+    const authority = new RpcViewAuthority(this, origins)
+    this.#rpcConfigured = true
+    this.#rpcService = {
+      authority,
+      schema,
+      handlers: handlers as RpcHandlers<RpcSchema>,
+      capabilities: Object.freeze([...capabilities]),
+      options,
+    }
+    return () => {
+      if (this.#rpcService?.authority !== authority) return
+      authority.dispose()
+      this.#rpcService = undefined
+      for (const connection of this.#rpcConnections.values()) connection.transport.end(true)
+      this.#rpcConnections.clear()
+    }
+  }
   dispose(): Promise<void> {
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
+    this.#rpcService?.authority.dispose()
     this.#shutdown = this.#transport
       .call('quit')
       .then(() => this.closed)
@@ -595,13 +732,23 @@ export class CefBackend implements BrowserBackend {
       if (typeof event.data?.['url'] !== 'string') throw new Error('Missing native navigation URL')
       const resource = this.#registry.get<'view', ViewResource>(view, 'view')
       const url = normalizeUrl(event.data['url'])
+      const documentId = nativeDocumentId(event.data)
       const trust =
-        resource.state.trust.kind === 'application' && resource.state.trust.origin === originOf(url)
+        (event.event === 'view.loaded' || event.data['applicationTrust'] === true) &&
+        resource.state.trust.kind === 'application' &&
+        resource.state.trust.origin === originOf(url)
           ? resource.state.trust
           : ({ kind: 'remote' } as const)
-      resource.state = { url, documentId: randomUUID(), trust }
-      this.#emit({ type: 'navigated', resource: view, state: structuredClone(resource.state) })
-    }
+      const changed =
+        resource.state.documentId !== documentId ||
+        resource.state.url !== url ||
+        resource.state.trust.kind !== trust.kind
+      resource.state = { url, documentId, trust }
+      if (changed)
+        this.#emit({ type: 'navigated', resource: view, state: structuredClone(resource.state) })
+    } else if (view && event.event === 'rpc.connected') this.#rpcConnected(view, event.data)
+    else if (event.event === 'rpc.packet') this.#rpcPacket(view, event.data)
+    else if (event.event === 'rpc.revoked') this.#rpcRevoked(view, event.data)
     for (const observer of Array.from(this.#observers)) {
       if (!this.#observers.has(observer)) continue
       try {
@@ -610,6 +757,119 @@ export class CefBackend implements BrowserBackend {
         this.#listenerErrors++
       }
     }
+  }
+  #retireRpc(view: ViewHandle): void {
+    this.#rpcRetired.add(view)
+    this.#rpcService?.authority.revoke(view)
+  }
+  #rpcConnected(view: ViewHandle, data: Record<string, unknown> | null | undefined): void {
+    const service = this.#rpcService
+    if (this.#disposed || !service || !data) return
+    const connection = data['connection'],
+      frameId = data['frameId'],
+      documentId = data['documentId']
+    const resource = this.#registry.get<'view', ViewResource>(view, 'view')
+    if (
+      this.#rpcRetired.has(view) ||
+      this.#closing.has(view) ||
+      this.#closing.has(resource.window)
+    ) {
+      // This can be an authentic native event queued before the local lifecycle
+      // request. Refuse the exact incarnation without granting a fresh lease or
+      // treating a normal retirement race as failure of the entire host.
+      if (
+        [connection, data['context'], data['generation']].every(
+          (value) => Number.isSafeInteger(value) && Number(value) > 0
+        )
+      ) {
+        void this.#transport
+          .call('rpc.disconnect', {
+            connection,
+            context: data['context'],
+            generation: data['generation'],
+          })
+          .catch(() => {})
+      }
+      return
+    }
+    const trust = resource.state.trust
+    if (
+      !Number.isSafeInteger(connection) ||
+      Number(connection) < 1 ||
+      !Number.isSafeInteger(data['context']) ||
+      Number(data['context']) < 1 ||
+      !Number.isSafeInteger(data['generation']) ||
+      Number(data['generation']) < 1 ||
+      trust.kind !== 'application' ||
+      data['origin'] !== trust.origin ||
+      typeof frameId !== 'string' ||
+      typeof documentId !== 'string' ||
+      this.#rpcConnections.has(Number(connection))
+    )
+      throw new Error('Invalid native RPC connection')
+    const lease = service.authority.issue(
+      view,
+      { frameId, documentId, mainFrame: true },
+      service.capabilities
+    )
+    const transport = new CefRpcTransport(
+      this.#transport,
+      Object.freeze({
+        connection: Number(connection),
+        context: Number(data['context']),
+        generation: Number(data['generation']),
+      })
+    )
+    const server = new RpcServer(
+      service.schema,
+      service.handlers,
+      lease,
+      transport,
+      service.options
+    )
+    this.#rpcConnections.set(Number(connection), { view, transport, server })
+    void server.closed.then(() => {
+      if (this.#rpcConnections.get(Number(connection))?.server === server)
+        this.#rpcConnections.delete(Number(connection))
+    })
+  }
+  #rpcPacket(view: ViewHandle | undefined, data: Record<string, unknown> | null | undefined): void {
+    if (
+      !data ||
+      !Number.isSafeInteger(data['connection']) ||
+      !Number.isSafeInteger(data['sequence'])
+    )
+      throw new Error('Invalid native RPC packet metadata')
+    const connection = this.#rpcConnections.get(Number(data['connection']))
+    if (!connection) return
+    if (connection.view !== view) throw new Error('Native RPC view mismatch')
+    if (
+      data['context'] !== connection.transport.identity.context ||
+      data['generation'] !== connection.transport.identity.generation ||
+      Number(data['sequence']) < 1
+    )
+      throw new Error('Native RPC incarnation mismatch')
+    const packet = unhex(data['packet'])
+    if (data['copiedBytes'] !== packet.byteLength)
+      throw new Error('Native RPC copy accounting mismatch')
+    connection.transport.receive(packet, Number(data['sequence']))
+  }
+  #rpcRevoked(
+    view: ViewHandle | undefined,
+    data: Record<string, unknown> | null | undefined
+  ): void {
+    if (!data || !Number.isSafeInteger(data['connection'])) return
+    const connection = this.#rpcConnections.get(Number(data['connection']))
+    if (!connection) return
+    if (connection.view !== view) throw new Error('Native RPC view mismatch')
+    if (
+      data['context'] !== connection.transport.identity.context ||
+      data['generation'] !== connection.transport.identity.generation
+    )
+      throw new Error('Native RPC revocation incarnation mismatch')
+    this.#rpcConnections.delete(Number(data['connection']))
+    this.#rpcService?.authority.revoke(connection.view)
+    connection.transport.end(false)
   }
 }
 export async function connectCefBackend(): Promise<CefBackend> {

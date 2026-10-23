@@ -95,7 +95,36 @@ For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 bun scripts/qualify-cef-prebuilt.ts /path/to/bunly_host.app
 bun scripts/qualify-cef-development.ts /path/to/bunly_host.app
 python scripts/qualify-cef-faults.py /path/to/bunly_host.app --bun "$(command -v bun)"
+bun run qualify:cef-rpc -- /path/to/bunly_host.app
 ```
+
+For the issue #19 contributor fixture, set `CEF_PATH` to the exact retained,
+validated platform distribution (including `archive.json`, `include`, `libcef_dll`
+and `cmake`), then prepare without launching a GUI:
+
+```sh
+bun scripts/build-cef-fixture.ts
+cargo +1.91.0 test --locked --offline --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
+cargo +1.91.0 build --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification
+native/cef-host/target/release/bunly-bundle /absolute/private/new-rpc-bundle
+```
+
+On macOS, copy resources into **only the newly assembled private fixture**, then
+use the maintained inside-out target validation and bounded ad-hoc signing helper:
+
+```sh
+cp -R native/cef-host/resources/. /absolute/private/new-rpc-bundle/bunly_host.app/Contents/Resources/
+python -c 'import sys; from pathlib import Path; sys.path.insert(0,"scripts"); from qualify_adhoc_signing import targets, sign_command; from native_signing import native_command; app=Path(sys.argv[1]).resolve(); [native_command(sign_command(target)) for target in targets(app)]; native_command(["/usr/bin/codesign","--verify","--deep","--strict",str(app)])' /absolute/private/new-rpc-bundle/bunly_host.app
+```
+
+These commands assemble and verify; they do not launch the application. No production
+identity, trust-store change, or distribution approval is involved. The supervisor then runs
+`bun run qualify:cef-rpc -- <prepared-app>` through the maintained process observer.
+The ordinary prebuilt smoke remains a prerequisite. Schema-2 RPC evidence and
+every native protocol probe must pass; `rpcQualified: true` alone is insufficient.
+Retain exact source and artifact identities with the report. CEF teardown issue
+#92 remains a separate known failure and must not be hidden by changing deadlines,
+shutdown expectations, sandbox flags, or artifact verification.
 
 Use the underlying local entrypoints; do not spoof `GITHUB_ACTIONS` to run the
 hosted-only wrapper. Windows/Linux sandbox and GUI results cannot be inferred
@@ -176,3 +205,22 @@ Manual runs are not cancelled by another dispatch through a PR cancellation rule
 Release integrity, production signing, GitHub draft automation, optional hosted
 security services and server-side protections require their actual environments
 and authorization. A local green result does not claim those actions ran.
+
+## Combined native RPC and session acceptance
+
+For the M4 adversarial fixture, build the host with `packaging,rpc-qualification`
+and application resources with `bun scripts/build-cef-fixture.ts`. Copy those
+generated resources into the assembled application's platform resource directory
+before local ad-hoc signing; a native-only bundle is not a complete fixture.
+Run `bun run qualify:cef-rpc -- PREPARED_APP`. Its explicit fixture requirement
+waits for native probe receipts; the wrapper's final `native-rpc` success and zero
+exit status are required in addition to the inner prebuilt report.
+
+Use a separate immutable bundle with `--application=sessions` resources for
+`bun scripts/qualify-cef-sessions.ts PREPARED_APP`. It covers persistent restart,
+root collisions, controlled interrupted shutdown/restart and invalid paths.
+Do not overwrite previously executed fixtures, share their profiles or count
+expected interruption as a clean shutdown. Neither suite enables production
+credentials, disables sandboxing or resolves an intermittent teardown failure by
+repeating until green. The automatic RPC lane retains the combined ephemeral
+session/authority checks on every supported platform.
