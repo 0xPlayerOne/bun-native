@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "classification": "local-macos-session-functional-acceptance",
+  "date": "2026-10-23",
+  "sourceCommit": "d6dad359502e0f57bc0dd72c6ea9fc671e2ddce5",
+  "sourceCleanBeforeAndAfter": true,
+  "passed": true,
+  "m4Complete": false,
+  "versions": {
+    "bun": "1.4.3",
+    "cef": "154.0.34",
+    "rust": "1.91.0"
+  },
+  "report": {
+    "sha256": "68f901d0d0cf379349660074cd710145343799e751e619662976c7f13022bd96",
+    "bytes": 620028
+  },
+  "inputArtifactUnchanged": true,
+  "components": [
+    {
+      "component": "cef",
+      "bytes": 232371968,
+      "sha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39"
+    },
+    {
+      "component": "host",
+      "bytes": 1734096,
+      "sha256": "43e97e0d2cde80e0f83713dbd8b1d859f5f432c62b6a1b36966c92ccc86bac47"
+    },
+    {
+      "component": "bun",
+      "bytes": 70469600,
+      "sha256": "a224f77cf933ce870d9b4d9cc990fd3434bdc9f8989fe3185dd8b58bd5d0a49f"
+    }
+  ],
+  "trials": [
+    {
+      "mode": "ephemeral",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 10,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 59
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "cookies",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 10,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 46
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "persistent-write",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 11,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 52
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "persistent-read",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 22,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 81
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "lock-hold",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 11,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 54
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "persistent-read",
+      "disposition": "expected-root-lock-rejection",
+      "passed": true,
+      "exitCode": 78,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "not-observed",
+        "qualified": false
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": false,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": null,
+          "host-release": null,
+          "asset-service-stop": null,
+          "cef-shutdown": null
+        },
+        "backendExitedNormally": false,
+        "hostReportedClean": false,
+        "hostReportedFailure": true
+      }
+    },
+    {
+      "mode": "lock-hold",
+      "disposition": "expected-unclean-interruption; not shutdown qualification",
+      "passed": true,
+      "exitCode": -9,
+      "cancelled": true,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "failed",
+        "qualified": false
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": false,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": null,
+          "host-release": null,
+          "asset-service-stop": null,
+          "cef-shutdown": null
+        },
+        "backendExitedNormally": false,
+        "hostReportedClean": false,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "persistent-read",
+      "disposition": "normal-functional-case",
+      "passed": true,
+      "exitCode": 0,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "completed",
+        "qualified": true
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": true,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": 10,
+          "host-release": 0,
+          "asset-service-stop": 0,
+          "cef-shutdown": 55
+        },
+        "backendExitedNormally": true,
+        "hostReportedClean": true,
+        "hostReportedFailure": false
+      }
+    },
+    {
+      "mode": "persistent-read",
+      "disposition": "expected-corrupt-root-rejection",
+      "passed": true,
+      "exitCode": 78,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "not-observed",
+        "qualified": false
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": false,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": null,
+          "host-release": null,
+          "asset-service-stop": null,
+          "cef-shutdown": null
+        },
+        "backendExitedNormally": false,
+        "hostReportedClean": false,
+        "hostReportedFailure": true
+      }
+    },
+    {
+      "mode": "persistent-read",
+      "disposition": "expected-symlink-root-rejection",
+      "passed": true,
+      "exitCode": 78,
+      "cancelled": false,
+      "timedOut": false,
+      "orphanCount": 0,
+      "survivorCount": 0,
+      "cloneCleanup": {
+        "status": "not-observed",
+        "qualified": false
+      },
+      "shutdown": {
+        "schema": 1,
+        "complete": false,
+        "malformed": false,
+        "pendingPhase": null,
+        "durationsMs": {
+          "process-stop": null,
+          "host-release": null,
+          "asset-service-stop": null,
+          "cef-shutdown": null
+        },
+        "backendExitedNormally": false,
+        "hostReportedClean": false,
+        "hostReportedFailure": true
+      }
+    }
+  ],
+  "preservedFailures": [
+    {
+      "case": "nested-profile-fallback",
+      "sha256": "bda2695cf333ceb44b85ee29fa37a0d77b961c4809b5e2e280bc31a565442890",
+      "bytes": 293125,
+      "passed": false,
+      "attempts": 4,
+      "failure": "Command failed: unexpected exit 1 (expected 0)"
+    },
+    {
+      "case": "context-not-ready",
+      "sha256": "e32c089d60925b5256d06fbb511b6f021c9676202edf14cbec4911d475a56d46",
+      "bytes": 263969,
+      "passed": false,
+      "attempts": 3,
+      "failure": "Command failed: unexpected exit 1 (expected 0)"
+    }
+  ],
+  "preparationFailure": "A separate bundle assembly attempt lacked CEF_PATH and failed before app launch; its log and partial private bundle are retained.",
+  "validation": {
+    "portableBunTests": 629,
+    "portablePythonTests": 199,
+    "nativeRustTests": 71,
+    "strictClippy": "passed",
+    "releaseBuild": "passed",
+    "note": "Focused final fixture additions also passed typecheck and lint; complete native run above uses the clean source checkpoint."
+  },
+  "limitations": [
+    "Persistent cookies disabled on all targets pending secure application-specific credential provider qualification.",
+    "Complete HTML5 storage clearing is explicitly unsupported.",
+    "This is macOS ARM64 functional execution; no Windows/Linux GUI result is inferred.",
+    "Controlled interruption is an expected unclean negative control, never a successful shutdown.",
+    "Private per-user installation assumption; not protection from arbitrary hostile same-user filesystem races.",
+    "Local ad-hoc signing only; not release/production signing or M4 renderer authority qualification.",
+    "Known intermittent CEF shutdown issue 92 remains open."
+  ]
+}

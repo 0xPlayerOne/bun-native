@@ -96,3 +96,7 @@ an assertion fails, and the supplied native application remains byte-unchanged.
 Case-distinct persistent partitions and independent ephemeral cookie stores are
 exercised by actual CEF, not only contract mocks. Full HTML5 clearing and secure
 persistent cookie providers remain explicitly unsupported.
+
+## Local execution checkpoint
+
+The [sanitized local record](../evidence/m4-sessions-local-2026-10-23.json) preserves ten native functional/negative-control cases at clean source `d6dad359502e0f57bc0dd72c6ea9fc671e2ddce5`, including separate failed nested-profile and early-initialization trials. Secure persistent cookie providers and full HTML5 storage clearing remain open acceptance work under issue #20.
