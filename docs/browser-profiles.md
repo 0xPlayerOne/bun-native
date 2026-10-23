@@ -107,3 +107,12 @@ contract suite and the resource report are engine-independent.
 The contract suite releases its owned resources on setup and execution failures.
 Its RPC checks exercise the TypeScript authority model, not native renderer
 authentication. They do not complete M4 security qualification.
+
+## Contributor test environment
+
+Bun test preloading preserves an explicit `PYTHON`, otherwise selects an activated
+virtual environment or the repository `.venv` when its interpreter is present.
+The shared CI installer places `psutil` there; calling an unrelated system Python
+cannot use those dependencies. With no virtual environment, normal caller PATH
+resolution remains unchanged. The preload installs nothing, does not alter PATH,
+and is not part of application builds or the production runtime.
