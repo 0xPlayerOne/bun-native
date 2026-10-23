@@ -211,16 +211,21 @@ export function validateCommandObservation(input: unknown): CommandObservation {
   return input as CommandObservation
 }
 export function assertCleanCommand(value: CommandObservation, expectedExit = 0): void {
-  if (
-    value.timedOut ||
-    value.cancelled ||
-    value.outputOverflow ||
-    value.observedOrphans.length ||
-    value.cleanupSurvivors.length ||
-    value.postExitCleanup?.passed === false
-  )
-    throw new Error('Command timeout, output overflow, or surviving descendant')
-  if (value.exitCode !== expectedExit) throw new Error('Unexpected command exit: ' + value.exitCode)
+  // Keep simultaneous failures visible. In particular, failed clone cleanup
+  // must not hide the native watchdog's nonzero exit behind an alleged timeout.
+  // Only bounded, known reasons and counts are emitted; no child output or IDs.
+  const reasons: string[] = []
+  if (value.exitCode !== expectedExit)
+    reasons.push(`unexpected exit ${value.exitCode} (expected ${expectedExit})`)
+  if (value.timedOut) reasons.push('observer timed out')
+  if (value.cancelled) reasons.push('observation cancelled')
+  if (value.outputOverflow) reasons.push('output overflow')
+  if (value.observedOrphans.length)
+    reasons.push(`observed orphan count ${value.observedOrphans.length}`)
+  if (value.cleanupSurvivors.length)
+    reasons.push(`cleanup survivor count ${value.cleanupSurvivors.length}`)
+  if (value.postExitCleanup?.passed === false) reasons.push('post-exit cleanup failed')
+  if (reasons.length) throw new Error('Command failed: ' + reasons.join('; '))
 }
 /** Unknown exit/cleanup must retain the fixture instead of deleting beneath it. */
 export function observationsPermitFixtureRemoval(

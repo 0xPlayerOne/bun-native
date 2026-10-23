@@ -252,3 +252,70 @@ test('missing observer interpreter fails before applying target environment', ()
     })
   ).toThrow('Observer interpreter not found in caller environment')
 })
+
+test('native exit failure remains visible when post-exit cleanup also fails', () => {
+  const observation = validateCommandObservation({
+    ...input(),
+    exitCode: 2,
+    postExitCleanup: {
+      ...cleanup(),
+      passed: false,
+      qualified: false,
+      status: 'failed',
+      helpers: [],
+    },
+  })
+  expect(() => assertCleanCommand(observation)).toThrow(
+    'Command failed: unexpected exit 2 (expected 0); post-exit cleanup failed'
+  )
+})
+
+test('failure messages report exactly the observed flags across all combinations', () => {
+  const descriptions = [
+    'unexpected exit 2 (expected 0)',
+    'observer timed out',
+    'observation cancelled',
+    'output overflow',
+    'observed orphan count 1',
+    'cleanup survivor count 1',
+    'post-exit cleanup failed',
+  ]
+  for (let mask = 0; mask < 128; mask++) {
+    const enabled = (bit: number) => Boolean(mask & (1 << bit))
+    const observation = validateCommandObservation({
+      ...input(),
+      exitCode: enabled(0) ? 2 : 0,
+      timedOut: enabled(1),
+      cancelled: enabled(2),
+      outputOverflow: enabled(3),
+      observedOrphans: enabled(4) ? [123] : [],
+      cleanupSurvivors: enabled(5) ? [456] : [],
+      ...(enabled(6)
+        ? {
+            postExitCleanup: {
+              ...cleanup(),
+              passed: false,
+              qualified: false,
+              status: 'failed',
+              helpers: [],
+            },
+          }
+        : {}),
+    })
+    if (mask === 0) {
+      expect(() => assertCleanCommand(observation)).not.toThrow()
+    } else {
+      expect(() => assertCleanCommand(observation)).toThrow(
+        'Command failed: ' + descriptions.filter((_description, bit) => enabled(bit)).join('; ')
+      )
+    }
+  }
+})
+
+test('an expected nonzero exit is accepted only when observation and cleanup are clean', () => {
+  const observation = validateCommandObservation({ ...input(), exitCode: 2 })
+  expect(() => assertCleanCommand(observation, 2)).not.toThrow()
+  expect(() => assertCleanCommand({ ...observation, cancelled: true }, 2)).toThrow(
+    'Command failed: observation cancelled'
+  )
+})
