@@ -228,3 +228,20 @@ The retained hosted failures are run `40006086014` (native execution and Windows
 build) and `40006086239` (Windows API check). Local correction runs and final-head
 hosted results are separate evidence; neither unsupported M4 capabilities nor
 the historical shutdown investigation are resolved by these fixture corrections.
+
+The clean correction checkpoint `eb3abbe8f58613be7311481f390109257f05c4dd`
+passed schema-3 native policy qualification and all eleven macOS RPC/session
+cases, including five positively verified helper/clone completions. The ordinary
+build passed its eleven-case prebuilt suite and rejected the contributor media
+fixture requirement. This negative control is an expected backend rejection,
+not a clean native-policy qualification. Local validation passed 679 Bun tests,
+200 Python tests, 139 overlapping foundation tests, both native workspaces
+(3 M1 and 94 default CEF tests), and 95 contributor CEF tests. Fresh advisory
+checks reported no findings. The Windows-target API check passed after the
+lossless mask correction; actual hosted Windows execution remains separate.
+
+The [correction evidence](../evidence/m4-policy-platform-corrections-2026-10-23.json)
+retains the initial hosted failures, the local Python-environment setup failure,
+and the bounded-tail negative-report replay limitation. Native source, input
+artifacts, and raw reports remain identified by exact hashes. No failed native
+trial was reclassified or removed.

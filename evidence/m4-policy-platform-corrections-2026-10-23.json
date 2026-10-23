@@ -1,0 +1,646 @@
+{
+  "schema": 1,
+  "classification": "native-policy-portability-and-fixture-acceptance",
+  "sourceCommit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+  "nativeSourceTree": "85459fe75a3505fc6aeaed196199553c00db6387",
+  "toolchain": {
+    "bun": "1.4.3",
+    "cefRust": "1.91.0",
+    "target": "darwin-arm64"
+  },
+  "nativeRuns": [
+    {
+      "name": "policy-clean",
+      "passed": true,
+      "report": {
+        "bytes": 137614,
+        "sha256": "ea62dc29c6017864d8c66e998bbfa51edd9a55871ae11b8b081c838b0f7ab990"
+      },
+      "sourceBefore": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceArtifactUnchanged": true,
+      "policyEvidence": {
+        "event": "bunly.native.development",
+        "schema": 3,
+        "passed": true,
+        "scopeRevoked": true,
+        "activation": "native-fixed-fixture",
+        "mediaDevices": "synthetic-device-real-permission-callback",
+        "policyCallbacks": [
+          "policy.media-denied",
+          "policy.permission-denied",
+          "policy.popup-denied",
+          "policy.download-denied"
+        ]
+      },
+      "deniedRequests": 0,
+      "observation": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "status": "completed",
+          "qualified": true,
+          "passed": true
+        }
+      },
+      "shutdownStages": {
+        "process-stop": 11,
+        "host-release": 0,
+        "asset-service-stop": 0,
+        "cef-shutdown": 136
+      }
+    },
+    {
+      "name": "rpc-clean",
+      "passed": true,
+      "report": {
+        "bytes": 1251179,
+        "sha256": "c3a96f895f2e3973689b45ee710b0edbc2ad1c56553d16e5481db7f467511f48"
+      },
+      "sourceBefore": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceArtifactUnchanged": true,
+      "trials": [
+        {
+          "name": "installed-0",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "installed-1",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "installed-2",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "last-window",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-4",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-5",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-6",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "wrong-version",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "missing-bun",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "missing-helper",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "restored-installation",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        }
+      ],
+      "rpcAcceptance": {
+        "profile": "native-rpc",
+        "passed": true,
+        "acceptedLaunches": 5,
+        "helperCleanup": {
+          "scope": "same-suite-sampled-coverage",
+          "qualifiedLaunches": [
+            "installed-0",
+            "installed-1",
+            "installed-2",
+            "last-window",
+            "restored-installation"
+          ],
+          "unobservedLaunches": []
+        }
+      }
+    },
+    {
+      "name": "ordinary-prebuilt",
+      "passed": true,
+      "report": {
+        "bytes": 1273855,
+        "sha256": "406de2471126b99e9cb206ef4cf234ebeaf6322c5a5c3e6343447497d0aac74a"
+      },
+      "sourceBefore": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceArtifactUnchanged": true,
+      "trials": [
+        {
+          "name": "installed-0",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "installed-1",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "installed-2",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "last-window",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-4",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-5",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "rejected-6",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "wrong-version",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "missing-bun",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "missing-helper",
+          "exitCode": 78,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "not-observed",
+            "qualified": false,
+            "passed": true
+          }
+        },
+        {
+          "name": "restored-installation",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false,
+          "outputOverflow": false,
+          "observedOrphans": 0,
+          "cleanupSurvivors": 0,
+          "helperCleanup": {
+            "status": "completed",
+            "qualified": true,
+            "passed": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "ordinary-policy-negative",
+      "passed": false,
+      "report": {
+        "bytes": 107488,
+        "sha256": "ce1936ff5beee6db1840143678b944cd0d463492dbd395b44a6a8fff8e181e03"
+      },
+      "sourceBefore": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "eb3abbe8f58613be7311481f390109257f05c4dd",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "disposition": "expected-contributor-feature-rejection-not-clean-shutdown",
+      "observation": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "status": "completed",
+          "qualified": true,
+          "passed": true
+        }
+      },
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "proof": "actual undefined vs required true; exact generated assertion location checked; full leading error line fell outside bounded stderr tail"
+    }
+  ],
+  "validation": {
+    "clippy": {
+      "bytes": 167,
+      "sha256": "c94af4598a8f39fa92a233f98584fb9101248bc171dcf858228b19b96ca2eb42"
+    },
+    "rust-tests": {
+      "bytes": 9027,
+      "sha256": "84dd9a4f6d10ade48e050e6322c541db01205855b0de1893038c18e99f276a95"
+    },
+    "build": {
+      "bytes": 169,
+      "sha256": "60a005a936d6988b2c94c46b8fdac99561aecd1f0487e0a53e8d183b6693e041"
+    },
+    "windows-api": {
+      "bytes": 4350,
+      "sha256": "93e8654d1993eb5132dfdf9a48c4fa3f75d80c2cfd5223d47a8bf80d381e31ad"
+    },
+    "native-default": {
+      "bytes": 11125,
+      "sha256": "4e56288ba8efa9ee9ca073bcd8fb0a78181f9987fdf68b6189defaa51b0aa84e"
+    },
+    "portable-venv": {
+      "bytes": 72952,
+      "sha256": "e5a231cd3203328d9f826994429b0a8669d0c5d701cb0f18c4542098549daee9"
+    },
+    "foundation": {
+      "bytes": 15738,
+      "sha256": "98b68793f648c7157f3548625f1ee915a2cfea07f55570f3769f1d9857f0a50c"
+    },
+    "doctor": {
+      "bytes": 356,
+      "sha256": "527de0f43b97b1f13e13148619b19ad37870e02f7a9bf00ff874d448fcc274c5"
+    },
+    "workflows": {
+      "bytes": 13,
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    }
+  },
+  "counts": {
+    "bun": 679,
+    "python": 200,
+    "foundationOverlapping": 139,
+    "cefDefault": 94,
+    "cefQualification": 95,
+    "m1": 3
+  },
+  "advisories": [
+    {
+      "name": "audit-js-root",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 0.512,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "audit-js-0",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electrobun",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 0.294,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "audit-js-1",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electron",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 0.348,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "audit-js-2",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/fixtures",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 0.446,
+      "logSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "name": "audit-native",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 0.673,
+      "logSha256": "e91ed92f16ea6142924c3dfee32dbab111712f6d11f994f1c6d76de35a3e606e"
+    },
+    {
+      "name": "audit-cef",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/cef-host/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 1.097,
+      "logSha256": "140a8d85f15c3e88c3528b998b23a27cf636d68289565f58ca0c4474cadf61ce"
+    },
+    {
+      "name": "audit-python",
+      "command": [
+        "pip-audit",
+        "-r",
+        "requirements.txt",
+        "--format",
+        "json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "status": "passed",
+      "elapsedSeconds": 8.475,
+      "logSha256": "8d88b26b743a97d2b6f1c83d71c708b1509c44b2f04ebed424f268fc5f6e12aa"
+    }
+  ],
+  "preservedFailures": [
+    {
+      "runId": 40006086014,
+      "causes": [
+        "Windows signed enum compile failure",
+        "Linux/macOS media callback absent without devices",
+        "macOS all-five cleanup helper sampling coverage absent"
+      ]
+    },
+    {
+      "runId": 40006086239,
+      "causes": [
+        "Windows signed enum API-check compile failure"
+      ]
+    },
+    {
+      "scope": "initial-local-portable",
+      "cause": "unactivated Python environment lacked Ruff; all 679 Bun tests passed before setup failure",
+      "log": {
+        "bytes": 69400,
+        "sha256": "d79d3f4ff868ee2622f8b27877980c2499406a6eb5538c22df8c666ae9ffed4d"
+      }
+    },
+    {
+      "scope": "private-negative-report-replay",
+      "cause": "exact text assertion could not see the leading error line in bounded tail; location, actual undefined and expected true subsequently verified; no native trial erased"
+    }
+  ],
+  "limits": [
+    "Synthetic capture devices exercise real native denial callbacks, not hardware or OS permission qualification.",
+    "Contributor fixtures are excluded from ordinary native builds; no permission auto-grant or fake UI.",
+    "Windows API cross-check is not Windows runtime execution. Final-head hosted validation remains separate.",
+    "Fixed RPC helper sampling acceptance and every cleanup failure rule are unchanged.",
+    "No complete M4, persistent credential, HTML5 storage clearing, transport selection or historical shutdown cure is claimed."
+  ]
+}
