@@ -197,3 +197,11 @@ code checkpoint is separate from this subsequent evidence-only commit. Hosted
 platform outcomes belong to the final PR head and must not be inferred from these
 local results. The original missing-receipt and zero-launch preparation failures
 remain recorded; no test, native guard or deadline was relaxed.
+
+The first hosted Windows foundation job at `50510610` exposed a platform-specific
+assertion error in the RPC orchestrator test: `Path("/app")` correctly rendered as
+`\\app` on Windows, while the expectation was the Unix literal `/app`. The test
+now checks exact argument construction with both `PurePosixPath` and
+`PureWindowsPath` on every OS. No runtime command, platform skip or assertion of
+native evidence was removed. The failed hosted run is retained in GitHub Actions;
+the corrected final head must pass its own full matrix.

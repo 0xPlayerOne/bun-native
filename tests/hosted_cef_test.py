@@ -4,7 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -36,13 +36,20 @@ class HostedQualificationTests(unittest.TestCase):
             hosted.commands("arbitrary-shell", "/bun", Path("/app"))
 
     def test_rpc_suite_requires_real_native_rpc_evidence_without_weaker_deadlines(self):
-        commands = hosted.commands("rpc", "/bun", Path("/app"))
-        self.assertEqual([name for name, _ in commands], ["prebuilt"])
-        self.assertEqual(
-            commands[0][1], ["/bun", str(hosted.ROOT / "scripts/qualify-cef-rpc.ts"), "/app"]
-        )
-        self.assertNotIn("--emulated-functional", commands[0][1])
-        self.assertNotIn("--no-sandbox", commands[0][1])
+        # Preserve native path formatting instead of assuming a Unix literal.
+        # Pure paths exercise both platforms even on a single contributor OS.
+        for root, app, bun in (
+            (PurePosixPath("/repo"), PurePosixPath("/app"), "/bun"),
+            (PureWindowsPath("C:/repo"), PureWindowsPath("C:/app.exe"), "C:/bun.exe"),
+        ):
+            with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
+                commands = hosted.commands("rpc", bun, app)
+                self.assertEqual([name for name, _ in commands], ["prebuilt"])
+                self.assertEqual(
+                    commands[0][1], [bun, str(root / "scripts/qualify-cef-rpc.ts"), str(app)]
+                )
+                self.assertNotIn("--emulated-functional", commands[0][1])
+                self.assertNotIn("--no-sandbox", commands[0][1])
 
     def test_stale_or_duplicate_reports_never_pass(self):
         with (
