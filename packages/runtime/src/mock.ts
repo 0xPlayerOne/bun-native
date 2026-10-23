@@ -71,6 +71,7 @@ export class MockBackend implements BrowserBackend {
         (typeof options.persistentRoot !== 'string' || options.persistentRoot.length === 0))
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
+    if (options.network !== undefined) requireCapability(this.descriptor, 'session.network-policy')
     for (const h of this.#registry.handles('session')) {
       if (
         this.#registry.get<'session', SessionOptions>(h, 'session').partition === options.partition

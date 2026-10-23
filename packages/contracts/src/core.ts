@@ -9,6 +9,7 @@ export const CAPABILITIES = [
   'session.cache',
   'session.flush',
   'session.storage-clear',
+  'session.network-policy',
   'permission.request',
   'download.manage',
   'view.snapshot',
