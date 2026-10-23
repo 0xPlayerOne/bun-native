@@ -110,6 +110,15 @@ identity; see [M4 browser sessions](m4-browser-sessions.md).
 WebView2, WKWebView, and WebKitGTK are later adapters, not silent runtime fallbacks.
 A future system-webview build must include no hidden CEF payload or download.
 
+## Session network policy
+
+CEF sessions optionally declare exact HTTPS or numeric-loopback HTTP origins.
+The immutable native context policy applies to navigation, redirects, browser
+resources and context-level worker requests. Defaults remain local-only.
+Network access never grants an application bridge, and navigation revokes old
+authority before remote content is admitted. This is not a WebSocket/WebRTC or
+OS-level network firewall; see [M4 network policy](m4-network-policy.md).
+
 ## Artifact boundary
 
 Artifacts have exact identities: kind, version, ABI, backend, OS/CPU, Bun version,

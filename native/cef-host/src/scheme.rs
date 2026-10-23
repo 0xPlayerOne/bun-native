@@ -1,5 +1,6 @@
 use crate::{
     asset_service::{Continuation, Open, Request as AssetRequest, ResponseMetadata, Service},
+    network_policy::NetworkPolicy,
     resources::{failure, AssetPlan, Assets},
 };
 use cef::*;
@@ -44,11 +45,11 @@ pub fn attach(context: &RequestContext) {
         Some(&mut factory),
     );
 }
-pub(crate) fn context_handler(session: u64) -> RequestContextHandler {
-    AssetContext::new(session)
+pub(crate) fn context_handler(session: u64, network: Arc<NetworkPolicy>) -> RequestContextHandler {
+    AssetContext::new(session, network)
 }
-pub(crate) fn local_resources() -> ResourceRequestHandler {
-    LocalResources::new(Arc::new(RequestPreparation::default()))
+pub(crate) fn local_resources(network: Arc<NetworkPolicy>) -> ResourceRequestHandler {
+    LocalResources::new(Arc::new(RequestPreparation::default()), network)
 }
 fn bounded_utf16(value: &[u16], limit: usize) -> Option<String> {
     if value.len() > limit {
@@ -166,10 +167,7 @@ impl RequestPreparation {
             _ => Err(()),
         }
     }
-    fn prepare(&self, request: Option<&mut Request>) -> ReturnValue {
-        if !self.begin() {
-            return ReturnValue::CANCEL;
-        }
+    fn prepare(&self, request: Option<&mut Request>, network: &NetworkPolicy) -> ReturnValue {
         let Some(request) = request else {
             return ReturnValue::CANCEL;
         };
@@ -179,14 +177,17 @@ impl RequestPreparation {
         let Some(key) = RequestKey::read(request) else {
             return ReturnValue::CANCEL;
         };
-        let Ok(url) = crate::policy::navigation(
-            &key.url,
-            crate::PATHS
-                .get()
-                .and_then(|paths| paths.dev_origin.as_deref()),
-        ) else {
+        let Ok(url) = network.navigation(&key.url) else {
             return ReturnValue::CANCEL;
         };
+        // HTTP requests (including each redirect) have no packaged asset plan.
+        // Never reuse their first URL as authority for the redirected target.
+        if !url.starts_with("app:") {
+            return ReturnValue::CONTINUE;
+        }
+        if !self.begin() {
+            return ReturnValue::CANCEL;
+        }
         let owner = if url.starts_with("app:") {
             let Some(service) = SERVICE.get() else {
                 return ReturnValue::CANCEL;
@@ -214,8 +215,27 @@ impl RequestPreparation {
             ReturnValue::CANCEL
         }
     }
-    fn handler(&self, request: Option<&mut Request>) -> Option<ResourceHandler> {
+    fn handler(
+        &self,
+        request: Option<&mut Request>,
+        network: &NetworkPolicy,
+    ) -> Option<ResourceHandler> {
         let key = request.as_deref().and_then(RequestKey::read);
+        match key
+            .as_ref()
+            .and_then(|key| network.navigation(&key.url).ok())
+        {
+            Some(url) if !url.starts_with("app:") => return None,
+            Some(_) => (),
+            None => {
+                // Dispose a prepared asset owner as well when the session retires
+                // between OnBeforeResourceLoad and GetResourceHandler.
+                drop(self.take(key.as_ref()));
+                return Some(AssetHandler::new(Arc::new(HandlerOwner {
+                    request: AssetRequest::new(AssetPlan::Immediate(failure(403))),
+                })));
+            }
+        }
         match self.take(key.as_ref()) {
             Ok(Some(owner)) => Some(AssetHandler::new(owner)),
             Ok(None) => None,
@@ -321,7 +341,7 @@ impl HandlerOwner {
     }
 }
 wrap_request_context_handler! {
-    struct AssetContext { session: u64 }
+    struct AssetContext { session: u64, network: Arc<NetworkPolicy> }
     impl RequestContextHandler {
         fn on_request_context_initialized(&self, context: Option<&mut RequestContext>) {
             if let Some(context) = context { crate::host::session_initialized(self.session, context.clone()); }
@@ -336,12 +356,12 @@ wrap_request_context_handler! {
             _initiator: Option<&CefString>,
             _disable_default: Option<&mut i32>,
         ) -> Option<ResourceRequestHandler> {
-            Some(local_resources())
+            Some(local_resources(self.network.clone()))
         }
     }
 }
 wrap_resource_request_handler! {
-    struct LocalResources { preparation: Arc<RequestPreparation> }
+    struct LocalResources { preparation: Arc<RequestPreparation>, network: Arc<NetworkPolicy> }
     impl ResourceRequestHandler {
         fn on_before_resource_load(
             &self,
@@ -350,7 +370,7 @@ wrap_resource_request_handler! {
             request: Option<&mut Request>,
             _callback: Option<&mut Callback>,
         ) -> ReturnValue {
-            self.preparation.prepare(request)
+            self.preparation.prepare(request, &self.network)
         }
         fn resource_handler(
             &self,
@@ -358,7 +378,17 @@ wrap_resource_request_handler! {
             _frame: Option<&mut Frame>,
             request: Option<&mut Request>,
         ) -> Option<ResourceHandler> {
-            self.preparation.handler(request)
+            self.preparation.handler(request, &self.network)
+        }
+        fn on_resource_redirect(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
+            _request: Option<&mut Request>, _response: Option<&mut Response>, new_url: Option<&mut CefString>) {
+            if let Some(new_url) = new_url {
+                let allowed = bounded_utf16(new_url.as_slice().unwrap_or_default(), 4096)
+                    .is_some_and(|value| self.network.navigation(&value).is_ok());
+                if !allowed && !new_url.try_set("bunly-denied://resource-redirect") {
+                    crate::host::fail("Unable to reject resource redirect");
+                }
+            }
         }
         fn on_protocol_execution(
             &self,

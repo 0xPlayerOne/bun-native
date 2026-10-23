@@ -2,6 +2,8 @@
 export * from './core.ts'
 export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
+export * from './network-policy.ts'
+import type { SessionNetworkPolicy } from './network-policy.ts'
 import { BunlyError, CONTRACT_VERSION } from './core.ts'
 import { PROFILE_CAPABILITY_VERSION } from './profiles.ts'
 import type { BackendName, Capability } from './core.ts'
@@ -37,6 +39,8 @@ export interface WindowOptions {
 export interface SessionOptions {
   readonly persistence: 'ephemeral' | 'persistent'
   readonly partition: string
+  /** Immutable per-session navigation/resource origins; absent means local content only. */
+  readonly network?: SessionNetworkPolicy
   /**
    * Absolute application-owned profile root configured for the native host.
    * Required for persistent sessions and forbidden for ephemeral sessions.

@@ -11,6 +11,7 @@ pub mod host;
 mod keychain;
 #[cfg(target_os = "macos")]
 mod mac;
+mod network_policy;
 mod policy;
 mod process;
 mod renderer_rpc;

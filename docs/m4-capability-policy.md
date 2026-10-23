@@ -279,3 +279,12 @@ suite. Both native workspaces passed (3 M1 and 95 default CEF tests), as did
 policy/ordinary binaries, clean source identities, raw reports and the previous
 Windows failure remain separately fingerprinted in the correction evidence.
 Current-head hosted execution is still required before merging this correction.
+
+## Session-origin follow-up
+
+The subsequent network increment adds explicit per-session origins and real CEF
+cross-origin, worker, certificate and revocation qualification. See
+[M4 session network policy](m4-network-policy.md) for the API, acceptance evidence
+and limitations. Earlier checkpoint statements above describe those earlier
+restricted builds, not the new optional session configuration. Network permission
+never creates native RPC or browser-permission grants.

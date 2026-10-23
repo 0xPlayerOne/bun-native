@@ -70,3 +70,9 @@ makes real media-denial callbacks testable on hardware-free runners. It does not
 auto-grant media permission, enable fake permission UI, open a debugging port, or
 ship in an ordinary native build. Schema-3 policy evidence records this fixture
 provenance explicitly; it is not hardware-device or OS-permission qualification.
+
+Session network policies are immutable native context owners shared with browser
+and context-level IO handlers; they never read the UI registry on the IO thread.
+`qualify:cef-network` requires actual cross-origin/worker denial, ordinary HTTPS
+verification, certificate rejection, authority revocation and ordered teardown.
+It is not general network-egress isolation; see `docs/m4-network-policy.md`.
