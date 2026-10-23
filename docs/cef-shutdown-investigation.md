@@ -2,7 +2,7 @@
 
 NetworkService shutdown state and native control results after the foundation merge.
 
-**Status:** Unresolved; no native runtime fix or accepted native performance distribution.
+**Status:** Unresolved intermittent failure; no verified native runtime fix or release qualification.
 **Tracking:** [Issue #92](https://github.com/0xPlayerOne/bunly/issues/92).
 **Evidence date:** October 23, 2026.
 **Harness checkpoint:** Clean `dd95d8a261428c4bc029844332b61be1fbb142b1`.
@@ -139,3 +139,47 @@ qualification without debugger intervention. Keep failed trials and clone outcom
 in the record. Hosted smoke success on another environment is not a replacement
 for this workload on the affected machine. Native performance and release
 acceptance remain incomplete until that validation succeeds.
+
+## Candidate and reversal controls on October 23
+
+A further unchanged control at harness commit `7e318b1` reproduced the watchdog
+on its first warmup, with exit 2 and failed post-exit cleanup. The application
+workload and preceding shutdown phases completed. A subsequent sequence tested a
+process-local `NSProcessInfo` activity assertion, first for the complete host
+lifetime and then only after the message loop returned. Both experiments used the
+original CEF watchdog, sandbox, security cloning and asset verification.
+
+| Condition                                          | App launches | Result                                      |
+| -------------------------------------------------- | ------------ | ------------------------------------------- |
+| Retained original host, initial control            | 1            | Watchdog exit 2; failed clone qualification |
+| Activity assertion for host lifetime               | 12           | All completed                               |
+| Activity assertion for teardown only               | 12           | All completed                               |
+| Rebuilt original sources, no assertion             | 12           | All completed                               |
+| Retained original host, repeated control           | 12           | All completed                               |
+| Hidden-window 12-second idle, original / assertion | 2 / 2        | Both completed                              |
+| Hidden-window 60-second idle, original / assertion | 1 / 1        | Both completed                              |
+
+Crucially, the repeated retained-host control used the **same prepared executable
+bytes** as the initial failing control. Its successful run disproves neither the
+failure nor an environmental explanation, but prevents attributing improvement to
+the experimental patch or rebuilding. The native sources were restored exactly;
+**neither activity assertion is retained in the implementation**. No App Nap,
+QoS, kernel, or Chromium root cause has been established by these controls.
+
+The hidden-idle runs are separate diagnostics: they finish the original asset
+workload, hide the window, idle, and then dispose the backend. The 60-second idle
+experiment permits a 90-second total parent observation to accommodate that idle
+period; it does not change any native shutdown deadline or count as an ordinary
+30-second profile qualification. The native/full-lifetime experiments also remain
+candidate diagnostics, not measured application speedups. All outcomes and
+byte identities are preserved in the
+[control evidence](../evidence/cef-shutdown-controls-2026-10-23.json).
+
+The maintained native profiler now captures partial shutdown state before the
+ordinary command-acceptance assertion, and requires all four teardown phases in
+order before accepting a completed launch. It also summarizes per-phase elapsed
+times for successful trials. This makes incomplete/malformed lifecycle evidence
+fail explicitly and preserves the stopping point when exit and cleanup also fail.
+It is additional regression protection, **not a runtime cure for issue #92**.
+The earlier failure records remain intact, and successful later profiles do not
+close that issue or establish production readiness.

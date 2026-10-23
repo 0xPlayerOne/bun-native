@@ -1,0 +1,1846 @@
+{
+  "schema": 1,
+  "classification": "native-shutdown-candidate-and-reversal-evidence",
+  "evidenceDate": "2026-10-23",
+  "rootCauseResolved": false,
+  "nativeRuntimePatchRetained": false,
+  "baselineNativeSourceCommit": "a3e6ee0e8f1065889980c90e0d5111d878ff05a8",
+  "harnessCheckpoint": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+  "runtime": {
+    "bun": "1.4.3",
+    "cef": "154.0.34",
+    "chromium": "154.0.8037.98",
+    "target": "darwin-arm64",
+    "macos": "26.7.1",
+    "build": "25G241"
+  },
+  "interpretation": "Candidates passed, but both no-patch reversal controls also passed. The retained reversal has the same prepared host bytes as the failing control. Neither activity suppression nor a rebuilding effect is an established cause or fix.",
+  "limitations": [
+    "Sequential, non-randomized experiments on one machine; no quiet-machine or controlled power-state claim.",
+    "Successful later runs do not erase the initial or historical watchdog failures.",
+    "The hidden-idle workloads are diagnostics, not ordinary performance qualification. The 60-second idle uses a 90-second parent observation only; native shutdown deadlines remain unchanged.",
+    "Candidate source snapshots and binaries are retained privately. No speculative runtime modification was committed.",
+    "One activity experiment completed successfully but its shell status echo failed because zsh reserves the variable name status; the actual profile report is preserved.",
+    "A completed run supplies descriptive measurements, not a before-and-after speedup, native authority, or production readiness."
+  ],
+  "projection": {
+    "scriptSha256": "459672e29a1fceb85141d65a679c92dbabbc610c9c4fad65b54690c92a0f46d4",
+    "shutdownParserSha256": "bd828851a8d61938511110f1b796d51ef0367c81ef749e599c6ff16ef4eb081a",
+    "completePrivateProjectionSha256": "5dcd8d91f9427fd3091d264f7f3190a29d4dc6d55e6360433194ec31f6b83a94"
+  },
+  "experiments": [
+    {
+      "id": "retained-initial-control",
+      "nativeVariant": "unchanged-retained",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 0,
+      "recordedClassification": "descriptive-native-foundation-profile",
+      "recordedPassed": false,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 178594,
+        "sha256": "e12ec8fca04c8b346dbdb7f6c8f1b3a4e7806a05d47ffa4bbad92a8c6c92988a"
+      },
+      "suppliedHost": {
+        "bytes": 1615696,
+        "sha256": "37da36cbe5de9e326c5ea2f18e3862664f690e0b1df65ac762d655ffa13a77b9"
+      },
+      "preparedHost": {
+        "bytes": 1615696,
+        "sha256": "24c398bc71bedfcc7054930c96a133bd2f6a045c1ccfa4dbf272b2c8c15c87b8"
+      },
+      "sourceHashes": {
+        "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": null,
+      "preparedArtifactUnchanged": null,
+      "failure": "Command failed: unexpected exit 2 (expected 0); post-exit cleanup failed",
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": false,
+          "rawReport": {
+            "bytes": 226452,
+            "sha256": "eb3baeb3a85aa9f9009d96ecd3d8402a83442f76ee9a3da0a57ef1cc5f0ad595"
+          },
+          "exitCode": 2,
+          "cloneCleanup": {
+            "passed": false,
+            "qualified": false,
+            "status": "failed"
+          },
+          "shutdownComplete": false,
+          "pendingPhase": "cef-shutdown",
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": null
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0
+    },
+    {
+      "id": "whole-lifetime-activity-candidate",
+      "nativeVariant": "experimental-whole-lifetime-activity",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 0,
+      "recordedClassification": "descriptive-native-foundation-profile",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 262657,
+        "sha256": "0f78d07a40292378c1bbe442fa9bd3f82c875bbcda6c7256087c55d39b441b08"
+      },
+      "suppliedHost": {
+        "bytes": 1612504,
+        "sha256": "ca08fc32624ec2edf527f1725e58af4c0bd28a8d8119f8c5a62e89828a093694"
+      },
+      "preparedHost": {
+        "bytes": 1621264,
+        "sha256": "0db383d3e1cdc2fed44c1a1c3b4162596e8bb1917588cf728803b03758d01873"
+      },
+      "sourceHashes": {
+        "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 132257,
+            "sha256": "6f4d68b00dbdf3eab5cf8a16674fa289189595e4c7be1cef74bb2fbd6db14dad"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 76
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 126744,
+            "sha256": "930e461c6a3ec9c6e00271a506a1c112dacc93172a335cbfed56506a8d7a4e96"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 61
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 135745,
+            "sha256": "ddcbea33b1b1f08791e5f6ea41658a5e6cf6961b042e54e076aad9a48d95c8c3"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 63
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 110821,
+            "sha256": "19f90a3e9242f6860880a8ea680fc5d53a190f58abc8e7a64f91db234e403fd4"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 61
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 117117,
+            "sha256": "52bc6079ffa25e88b338a67762f620edbfcc4828ab83a5c6a717eeff354983df"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 48
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 131968,
+            "sha256": "0b048e70d0767392e3abb4fcc3bd5dd04e10c697f051ec69bfbef502c0de52a1"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 59
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 128676,
+            "sha256": "81a23d4994436ec312ca45178d81adbde682016f16f98c3c09d6e01adab67603"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 58
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 131923,
+            "sha256": "258fc3f32849131845a653948ac87831b792280decb396ae8ee36d5c9a4db997"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 70
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 133374,
+            "sha256": "3e9066163ce18c3918639661eaad04713fdcd11a03fd48a6bce8b18609544f8a"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 75
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 127087,
+            "sha256": "ad55af1d7fa398646edbf646924cdd74b31775e1ce4a128fb8eb54383d52e997"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 51
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 132938,
+            "sha256": "c05b0f850bd4aa6d39a9146379643a0f19b21a5ea84a12da98d3a893c7718ba1"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 60
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 128381,
+            "sha256": "4a6d6028c36e80005b5df0487100ec30f2065d1a909ac650973a9ffe38fe8669"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 59
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "nativeCandidateSourceHashes": {
+        "native/cef-host/src/lib.rs": "b793e67b77d89f4f480306486e64f4c18de18bf64b8e2748f4f647ee84b4e9b6",
+        "native/cef-host/src/mac.rs": "4efe7ed5bf16f3780b8773e26738738505ede443ef0fa74e5286103c1f1b1e01"
+      }
+    },
+    {
+      "id": "teardown-activity-candidate",
+      "nativeVariant": "experimental-teardown-activity",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 0,
+      "recordedClassification": "descriptive-native-foundation-profile",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 263456,
+        "sha256": "55500eafa0d6db2fe2ef3a8b70ca93184317f88d5b2cd8e3f9b631e678716d08"
+      },
+      "suppliedHost": {
+        "bytes": 1612504,
+        "sha256": "456fd09de5744ef71b6141cdf883470c2c2d2c65c308fb7053cd863bd2d7b6c3"
+      },
+      "preparedHost": {
+        "bytes": 1621264,
+        "sha256": "935b2924c2238783786c0ef59d8b80ab4db4344d8292d1c31b6d0af9f32807a1"
+      },
+      "sourceHashes": {
+        "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 109234,
+            "sha256": "0466d6869a7b1f65ece10fef52a90bab63465efd16e1857b1c3328bf0ad5c75f"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 56
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 120028,
+            "sha256": "924e33c398fb5e46972c6544a9c63d3938016f3662af2b70f20bb8be2687bc9f"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 60
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 100817,
+            "sha256": "9cb6fb002dbd69c733a8b8039ca839b267ef44bd9d519e4d234b96f38c68c57f"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 69
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 98690,
+            "sha256": "562832e564f53055a85f74112730316a5569bd90224ad559a0911840f56a3ec4"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 59
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 105476,
+            "sha256": "353da595a207577c10de0807753575fa654feeca4f5ee81e337d1bb05891f088"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 55
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 118824,
+            "sha256": "7d84add9b11b0350d738fcd6bf447d626107a62f0e6ff9b443f5c0b6ca103034"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 71
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 130548,
+            "sha256": "11a81081a2bf7cffa656d046dd9b0fed50548ff369a8c68122d932fb5dd04c6f"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 65
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 123356,
+            "sha256": "aaf8d39be23a029e66196dfa0dcfd1ac4225cf4eebead77adaf87929d4f56dfb"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 76
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 121784,
+            "sha256": "532505e096a7fd3d3dba575707bd19466b34c01e43aea049a66f34e231192385"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 62
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 129601,
+            "sha256": "fa28e2dd122765c7d3454c6f746ba7e94b025626268e199a8645b7744326c4bf"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 55
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 129144,
+            "sha256": "e4683014723c6300bbf4f74ff08e51fa844c86e13f4b98f846a6726652b0f649"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 102
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 111859,
+            "sha256": "827c68f096059044bb8def04c33b3b814d406a6644a9803f73ccc53f22400b17"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 125
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "nativeCandidateSourceHashes": {
+        "native/cef-host/src/lib.rs": "6c880225c29f81b8e8657fcdd5b80affbf8feb584816a1766a2ce727810c0351",
+        "native/cef-host/src/mac.rs": "4efe7ed5bf16f3780b8773e26738738505ede443ef0fa74e5286103c1f1b1e01"
+      }
+    },
+    {
+      "id": "rebuilt-reversal-control",
+      "nativeVariant": "unchanged-rebuilt",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 0,
+      "recordedClassification": "descriptive-native-foundation-profile",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 259358,
+        "sha256": "ef7b45bca295193ef9114920f9758861535ae8520da483fce3474d915103c759"
+      },
+      "suppliedHost": {
+        "bytes": 1606968,
+        "sha256": "6d953c9d5429b90fddb686a6716733454ee2002839d8380ec755c057e9a3ee8a"
+      },
+      "preparedHost": {
+        "bytes": 1615760,
+        "sha256": "fae0e679c7c00650a97c5e14e88605ff013bd6c4b2396f420353847c2cf289f3"
+      },
+      "sourceHashes": {
+        "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 109488,
+            "sha256": "c6935053ae2ee6274ba96e5eafe5016567b95c54592113e9d979b0ad78a255c8"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 83
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 98124,
+            "sha256": "8b320bc5186bc62f44e359e51b9e3ed5edb8403833d22c8ccd99bc85ff9b6b1a"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 51
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 105237,
+            "sha256": "6435fcdcc67721d8a0cae415edd548963fedbc4d3254b7bbaa55d79ab955c4f1"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 115
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 101629,
+            "sha256": "dde63a8dfd4237cc166bc1c1fc800df4e7abc37c024512d5ff9ed50668e7af36"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 58
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 94204,
+            "sha256": "e26e5695eb99e3867828c0e965f917eaef1c12d407b29a8e1c48432006c38b8c"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 58
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 104887,
+            "sha256": "27c43e0efed0b6f028dd9d30436a2170468c8eed3d7d0dfcd7e8507a0a1b217d"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 71
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 93808,
+            "sha256": "e08e9c35497db08d8a18c40af585b3160d42d3439173276921d60e91592037ae"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 81
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 86291,
+            "sha256": "f59a44a2b8f40b4d0a24a468eeb55fa43bd7fba57e406b80fbcf9e0841405270"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 135
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 96817,
+            "sha256": "9c09ed90ec6cdc1cf445337bc2ee5651819fd2b9d9b89c195707e7685d462f99"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 163
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 71744,
+            "sha256": "d9bde16968a7c822fc8e4d8d7377099f22629b8af239b0c3fa0dd1ebb00feef2"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 69
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 83506,
+            "sha256": "1ad00271689b025a83b62998eeaba5b3f62e560b9d6e1b5076e4dae50b433da0"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 62
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 69721,
+            "sha256": "db89ef126a5ca4e958ddf6061ef6c49fd30f1a440f0aff7d52a99b8bcc59243d"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 70
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0
+    },
+    {
+      "id": "retained-reversal-control",
+      "nativeVariant": "unchanged-retained",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 0,
+      "recordedClassification": "descriptive-native-foundation-profile",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 259162,
+        "sha256": "18f9da5eaf17d490d0021765ad91b71f65afa96323acb97d8c6b55c2797c3502"
+      },
+      "suppliedHost": {
+        "bytes": 1615696,
+        "sha256": "37da36cbe5de9e326c5ea2f18e3862664f690e0b1df65ac762d655ffa13a77b9"
+      },
+      "preparedHost": {
+        "bytes": 1615696,
+        "sha256": "24c398bc71bedfcc7054930c96a133bd2f6a045c1ccfa4dbf272b2c8c15c87b8"
+      },
+      "sourceHashes": {
+        "scripts/profile-foundation-native.ts": "56a6197fa511a10d2b763cd0f528934398e1f8996a37c622495984c3272090bf",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        "benchmarks/foundation/native-backend.ts": "02a7e59fcf3571cf4dfc7c820f4a4dd15208d2a32a13ac4e952d17c1b421f3ff",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 99067,
+            "sha256": "58670560e428e8a648416d73ab56940a195a2fbd3ca57dead5b1d5b79b260b0e"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 43,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 516
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 93113,
+            "sha256": "1ed6bcceec0e7b30b40c01531b4df41e58153071ae5ddfba70c833b5d4963ae4"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 198
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 94038,
+            "sha256": "eac20bebcc6d4f7d9e20f84084a659bf2fbb94b54b04edc0e7e8550a8978537c"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 111
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 83595,
+            "sha256": "7fd9fff998bab86e6b60647b1628e4f9b90b5b930e4219e8de162f15314b491b"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 118
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 95835,
+            "sha256": "891ec7087a7a72dc370f110e804fd8242321e589f4c6af5d285766bbac13ed6a"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 108
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 1,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 92028,
+            "sha256": "98c6e2792b7c7f5d693f21ca977a854431a92ad665fc731928b4ddd9f39429ff"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 140
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 108384,
+            "sha256": "b7b5fcbcb1a8e91fbd60f7cb4500025aadc855a2b95638b925722d5735e60008"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 104
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 2,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 69193,
+            "sha256": "6c0ce94cb5008368e83f17aca5ee59f3f10588e49c74b35801744e4696154453"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 121
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 106047,
+            "sha256": "97faa9fb2a841db86a8e8c36c4bdfe630a935c0cf427ada220d2a64383a7040e"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 137
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 3,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 111329,
+            "sha256": "95d36c72b08bea0dce568d8516e2268e68f6c9835fef216fd04348d664d25303"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 72
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 108899,
+            "sha256": "99d1b4e751dd7a34075a661c18c746ae6c93a6feb2a4a9590b71b830dada972d"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 77
+          }
+        },
+        {
+          "variant": "fresh-profile",
+          "trial": 4,
+          "warmup": false,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 103792,
+            "sha256": "e2d660012b57500e892e75445e482697ab4f10c69a9e5f46684abc825aeba1fc"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 104
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0
+    },
+    {
+      "id": "hidden-idle-control",
+      "nativeVariant": "unchanged-retained",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 12000,
+      "recordedClassification": "diagnostic-hidden-idle-native-shutdown",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 188465,
+        "sha256": "9d3ad17dba729723258da30c472e455fddea9056541b0e743cd346e4b849e97d"
+      },
+      "suppliedHost": {
+        "bytes": 1615696,
+        "sha256": "37da36cbe5de9e326c5ea2f18e3862664f690e0b1df65ac762d655ffa13a77b9"
+      },
+      "preparedHost": {
+        "bytes": 1615696,
+        "sha256": "8bb2c7cdce57fb63f3b4ba0969caf66c33c64cf91deb3b26e74505560cefd408"
+      },
+      "sourceHashes": {
+        ".bunly/pr93/hidden-idle-profile.ts": "fbd271daecd08b1f1e39fd1b22d33fe63c24bfda430924ea94a353e0c527e660",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        ".bunly/pr93/hidden-idle/backend.ts": "f721ef0969e1b9fa11910642e3e5b3fc393c7ae639e5d62ddc357f82742a2b5c",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 1010285,
+            "sha256": "4d63d81e60109ef8447144e534eafbae631b5c84755a86f3ff5eac4b584415ec"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 46
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 995609,
+            "sha256": "96dde73a1b6a976e1645570fc8ca34d3501c504a9c8808b93a3606fbf30936fa"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 11,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 44
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0
+    },
+    {
+      "id": "hidden-idle-candidate",
+      "nativeVariant": "experimental-teardown-activity",
+      "parentObservationMs": 30000,
+      "hiddenIdleMs": 12000,
+      "recordedClassification": "diagnostic-hidden-idle-native-shutdown",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 188668,
+        "sha256": "98c50037b5594da9317fcdfe86a0c87da07627d9be1c87993216e7e09b8da184"
+      },
+      "suppliedHost": {
+        "bytes": 1612504,
+        "sha256": "456fd09de5744ef71b6141cdf883470c2c2d2c65c308fb7053cd863bd2d7b6c3"
+      },
+      "preparedHost": {
+        "bytes": 1621264,
+        "sha256": "80dd40b2196e70d3a9ff5b47b7a00d41aa7c4cacbea7d0c9cc3b301275420744"
+      },
+      "sourceHashes": {
+        ".bunly/pr93/hidden-idle-profile.ts": "fbd271daecd08b1f1e39fd1b22d33fe63c24bfda430924ea94a353e0c527e660",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        ".bunly/pr93/hidden-idle/backend.ts": "f721ef0969e1b9fa11910642e3e5b3fc393c7ae639e5d62ddc357f82742a2b5c",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 947186,
+            "sha256": "2524cfe1a6e97c0ad8f2ef3cc024cddb8b3bbd0abe441833e834bbea789b61f5"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 44
+          }
+        },
+        {
+          "variant": "reused-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 904958,
+            "sha256": "90fa7b2a999812d8d231f8863d49044de79be398279ecc9e286d81925b4870e3"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 56
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "nativeCandidateSourceHashes": {
+        "native/cef-host/src/lib.rs": "6c880225c29f81b8e8657fcdd5b80affbf8feb584816a1766a2ce727810c0351",
+        "native/cef-host/src/mac.rs": "4efe7ed5bf16f3780b8773e26738738505ede443ef0fa74e5286103c1f1b1e01"
+      }
+    },
+    {
+      "id": "long-hidden-idle-control",
+      "nativeVariant": "unchanged-retained",
+      "parentObservationMs": 90000,
+      "hiddenIdleMs": 60000,
+      "recordedClassification": "diagnostic-hidden-idle-native-shutdown",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 183289,
+        "sha256": "319028831e2ed97c2aa11b28f7b1b3957ec9a77a98241cde79e16f628b0bd967"
+      },
+      "suppliedHost": {
+        "bytes": 1615696,
+        "sha256": "37da36cbe5de9e326c5ea2f18e3862664f690e0b1df65ac762d655ffa13a77b9"
+      },
+      "preparedHost": {
+        "bytes": 1615696,
+        "sha256": "a7f07565c71d3fc308a3ac792e042cf59c532dc53fdf747e1e43157c9c92e102"
+      },
+      "sourceHashes": {
+        ".bunly/pr93/hidden-idle-long-profile.ts": "db68465da36e8caf20a0ab83711fca31636bbc303c039eeb467862cf9b84fb86",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        ".bunly/pr93/hidden-idle-long/backend.ts": "b14a882350297db4f8a4ed9b105cb0277801136bedc944e2970ae80881830c4c",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 3780526,
+            "sha256": "942e3029283e3d65c407c8225ff6af0e7f3eb29ee8db44ecba6c5051a7b7f2c4"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 132
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0
+    },
+    {
+      "id": "long-hidden-idle-candidate",
+      "nativeVariant": "experimental-teardown-activity",
+      "parentObservationMs": 90000,
+      "hiddenIdleMs": 60000,
+      "recordedClassification": "diagnostic-hidden-idle-native-shutdown",
+      "recordedPassed": true,
+      "recordedSource": {
+        "commit": "7e318b1bf597505fef4851cc69e80b2892b7b050",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "nativeShutdownDeadlinesChanged": false,
+      "report": {
+        "bytes": 183270,
+        "sha256": "3ab35cce982941a98ab53553c4e97ee4c215fc5d39c7891f718323acc0edf3cd"
+      },
+      "suppliedHost": {
+        "bytes": 1612504,
+        "sha256": "456fd09de5744ef71b6141cdf883470c2c2d2c65c308fb7053cd863bd2d7b6c3"
+      },
+      "preparedHost": {
+        "bytes": 1621264,
+        "sha256": "9de2d0ea357f51357c42d2ffc1dc98338d61649520b801655040675ba1665c59"
+      },
+      "sourceHashes": {
+        ".bunly/pr93/hidden-idle-long-profile.ts": "db68465da36e8caf20a0ab83711fca31636bbc303c039eeb467862cf9b84fb86",
+        "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+        "benchmarks/foundation/native-page.ts": "8606a740711dab4065afeac5c4ea1dc781fc6353e323597fd63e21a5ed402a59",
+        ".bunly/pr93/hidden-idle-long/backend.ts": "b14a882350297db4f8a4ed9b105cb0277801136bedc944e2970ae80881830c4c",
+        "benchmarks/foundation/native-results.ts": "9b8a3186dcde0e95635c34530a840f411cde960910dc06cfddff39dfb098101a",
+        "benchmarks/foundation/native-wire.ts": "fc21417b85e6426857f940c71ed52006e1fd3299f977cd832b7b6ac021d8c5fe",
+        "benchmarks/foundation/native-startup.ts": "8eee44d2c9fdb01fe666d9f39f20dfb5563cd3c4b8cc266e5356ffc1d2a6adff",
+        "benchmarks/foundation/statistics.ts": "c423b3a7995ecca4db5b9761893aa223185d3dc8f8a53dc15c1a9a876286020b",
+        "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+        "benchmarks/lib/observed-command.ts": "3daaa06a7d32f3408570eac6559da5c60546d7ebd6f9ae67fe71378cb316db0a",
+        "scripts/observe-process.py": "19e3e4cfc9320dca1d734d47f484927aafcc9ff7f66351236b76145ae612068a",
+        "scripts/macos_clone_cleanup.py": "686279f3ab61eabd80efddcd4273d8fa058effc1e4b6a61782aaca21e7f0bab3",
+        "scripts/macos_process_identity.py": "399f73844e4beb6885804cba3f2b6099cc8c7a33506e6cf703012a18b831dbe0"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "failure": null,
+      "attempts": [
+        {
+          "variant": "fresh-profile",
+          "trial": 0,
+          "warmup": true,
+          "reportedPassed": true,
+          "rawReport": {
+            "bytes": 3545779,
+            "sha256": "20845b6d723599c9864bbb9a9a9739a4c9cbe85c54fc782b98ae5dd1c97cfb1d"
+          },
+          "exitCode": 0,
+          "cloneCleanup": {
+            "passed": true,
+            "qualified": true,
+            "status": "completed"
+          },
+          "shutdownComplete": true,
+          "pendingPhase": null,
+          "shutdownDurationsMs": {
+            "process-stop": 10,
+            "host-release": 0,
+            "asset-service-stop": 0,
+            "cef-shutdown": 137
+          }
+        }
+      ],
+      "allCompletedAttemptsQualifiedCloneCleanup": true,
+      "allAttemptReportsMatchedRecordedOutcome": true,
+      "unexpectedObserverTimeouts": 0,
+      "unexpectedCancellations": 0,
+      "outputOverflows": 0,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "nativeCandidateSourceHashes": {
+        "native/cef-host/src/lib.rs": "6c880225c29f81b8e8657fcdd5b80affbf8feb584816a1766a2ce727810c0351",
+        "native/cef-host/src/mac.rs": "4efe7ed5bf16f3780b8773e26738738505ede443ef0fa74e5286103c1f1b1e01"
+      }
+    }
+  ]
+}
