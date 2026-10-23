@@ -141,3 +141,12 @@ clean all-dependency audit. Other completed Bun locks, both Cargo locks and Pyth
 requirements reported no findings. See the
 [sanitized evidence](../evidence/m4-network-local-2026-10-23.json) for exact
 checkpoints, artifact/report hashes, failed trials and qualification limits.
+
+PR #99's benchmark-only security fix was integrated as clean checkpoint
+`71e088b0a0b09f90d90921d308c3374fbcc75ed2`. Native sources remain identical to the
+qualified implementation. Full portable validation then passed 685 Bun and 200
+Python tests; the independent Electron 44.9.3 audit completed with no findings.
+Fresh native network and 11-case RPC/session runs passed again with clean source,
+unchanged artifacts and five verified helper completions. The initial advisory
+failure remains in the evidence; the integration does not erase it. Hosted
+qualification must still execute this final integrated tree before merge.

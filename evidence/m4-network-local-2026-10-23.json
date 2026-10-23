@@ -793,5 +793,94 @@
     "Historical intermittent CEF shutdown remains unproven as fixed; these are functional current-host tests.",
     "Full persistent credentials, full HTML5 clearing and paired transport decision remain separate M4 work.",
     "No hosted Windows/Linux execution is inferred from local acceptance or cross-compilation."
-  ]
+  ],
+  "integratedSecurityFix": {
+    "sourceCommit": "71e088b0a0b09f90d90921d308c3374fbcc75ed2",
+    "mainSecurityCommit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+    "nativeSourceUnchanged": true,
+    "portable": {
+      "bunTests": 685,
+      "pythonTests": 200,
+      "log": {
+        "bytes": 73591,
+        "sha256": "502905eba2b3612f41f847ca5ce9d97d62e3b9778366fd4c8e5ab1a36edaa07c"
+      }
+    },
+    "foundation": {
+      "overlappingBunTests": 139,
+      "log": {
+        "bytes": 15738,
+        "sha256": "d63b22d10cc28b4f8ad7abe0e003e2fc64dee93e467627c466638b4917ad78c7"
+      }
+    },
+    "electronAudit": {
+      "version": "44.9.3",
+      "exitCode": 0,
+      "reportedFindings": 0,
+      "log": {
+        "bytes": 3,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      }
+    },
+    "nativeRuns": [
+      {
+        "name": "integrated-network",
+        "passed": true,
+        "sourceBefore": {
+          "commit": "71e088b0a0b09f90d90921d308c3374fbcc75ed2",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "71e088b0a0b09f90d90921d308c3374fbcc75ed2",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "inputArtifactUnchanged": true,
+        "report": {
+          "bytes": 147295,
+          "sha256": "add49bfb46efbdb3ed75eb19cf9157bff428309cdc643f3bdc1953dbfded9f1d"
+        },
+        "traffic": {
+          "forbidden": 0,
+          "untrustedTls": 0,
+          "child": 2,
+          "worker": 2,
+          "isolatedLeak": 0,
+          "allowedData": 4
+        }
+      },
+      {
+        "name": "integrated-rpc",
+        "passed": true,
+        "sourceBefore": {
+          "commit": "71e088b0a0b09f90d90921d308c3374fbcc75ed2",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "sourceAfter": {
+          "commit": "71e088b0a0b09f90d90921d308c3374fbcc75ed2",
+          "clean": true,
+          "reason": "clean-checkout"
+        },
+        "inputArtifactUnchanged": true,
+        "report": {
+          "bytes": 1265938,
+          "sha256": "fe090620e51b68891ca4fa96ba3cbcc424986aca0c29dd034a1989a0b568a147"
+        },
+        "acceptedLaunches": 5,
+        "helperCleanup": {
+          "scope": "same-suite-sampled-coverage",
+          "qualifiedLaunches": [
+            "installed-0",
+            "installed-1",
+            "installed-2",
+            "last-window",
+            "restored-installation"
+          ],
+          "unobservedLaunches": []
+        }
+      }
+    ]
+  }
 }
