@@ -98,9 +98,12 @@ def commands(suite, bun, app):
     # family; a generic successful smoke report cannot satisfy its exit status.
     entrypoint = "qualify-cef-rpc.ts" if suite == "rpc" else "qualify-cef-prebuilt.ts"
     result = [("prebuilt", [bun, str(ROOT / "scripts" / entrypoint), str(app)])]
+    if suite in ("rpc", "full"):
+        result.append(
+            ("development", [bun, str(ROOT / "scripts/qualify-cef-development.ts"), str(app)])
+        )
     if suite == "full":
         result += [
-            ("development", [bun, str(ROOT / "scripts/qualify-cef-development.ts"), str(app)]),
             (
                 "faults",
                 [

@@ -1,6 +1,6 @@
 import { test } from 'bun:test'
 import assert from 'node:assert/strict'
-import { CefBackend } from '../packages/runtime/src/cef.ts'
+import { CefBackend, type PolicyScope } from '../packages/runtime/src/cef.ts'
 import type { SessionHandle, ViewHandle, WindowHandle } from '../packages/contracts/src/index.ts'
 import { nativePeer, turn, type Command } from './helpers/native-peer.ts'
 const windowOptions = { title: 'fixture', bounds: { x: 0, y: 0, width: 800, height: 600 } }
@@ -8,7 +8,14 @@ async function fixture() {
   const peer = await nativePeer()
   let next = 0
   peer.handle((command) => {
-    peer.reply(command, command.op.endsWith('.create') ? { id: ++next } : null)
+    peer.reply(
+      command,
+      command.op.endsWith('.create')
+        ? { id: ++next }
+        : command.op === 'policy.scope'
+          ? nativePolicyScope()
+          : null
+    )
     if (command.op === 'quit') peer.send({ v: 1, event: 'shutdown' })
   })
   const backend = new CefBackend(peer.transport)
@@ -262,4 +269,202 @@ test('focus and visibility operations reject disposed or closing owners', async 
   await closing
   await assert.rejects(f.backend.focusView(f.view))
   await f.backend.dispose()
+})
+
+const nativePolicyScope = (generation = 1) => ({
+  view: 3,
+  session: 1,
+  generation,
+  mainFrame: 'main-frame',
+  document: `native-3-${generation}`,
+  origin: 'app://ui',
+})
+
+test('trusted capability API requires an opaque captured scope on the private pipe', async () => {
+  const f = await fixture()
+  try {
+    const scope = await f.backend.capturePolicyScope(f.view)
+    assert.equal(Object.isFrozen(scope), true)
+    assert.equal(f.commands.at(-1)?.op, 'policy.scope')
+    const before = f.commands.length
+    await assert.rejects(
+      f.backend.grantNativeCapability({ ...scope } as PolicyScope, {
+        name: 'clipboard-read',
+      }),
+      /foreign/
+    )
+    assert.equal(f.commands.length, before)
+
+    const arguments_ = ['--literal', 'a;b']
+    await f.backend.grantNativeCapability(scope, {
+      name: 'process-execute',
+      executable: '/fixture/tool',
+      arguments: arguments_,
+    })
+    arguments_[1] = 'injected'
+    const grant = f.commands.at(-1)!
+    assert.equal(grant.op, 'policy.native.grant')
+    assert.equal(grant.args['id'], 3)
+    assert.deepEqual(grant.args['scope'], nativePolicyScope())
+    assert.deepEqual(grant.args['capability'], {
+      name: 'process-execute',
+      executable: '/fixture/tool',
+      arguments: ['--literal', 'a;b'],
+    })
+
+    await f.backend.recordBrowserUserDecision(scope, 'camera', 'granted')
+    assert.deepEqual(f.commands.at(-1)?.args, {
+      id: 3,
+      scope: nativePolicyScope(),
+      permission: 'camera',
+      decision: 'granted',
+      source: 'user-decision',
+    })
+    await f.backend.setBrowserApplicationPolicy(scope, 'camera', 'denied')
+    assert.equal(f.commands.at(-1)?.args['source'], 'application-policy')
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('policy scope capture and use reject document races, copies, and foreign backends', async () => {
+  const f = await fixture()
+  const other = await fixture()
+  try {
+    let capture: Command | undefined
+    f.handle((command) => {
+      if (command.op === 'policy.scope') capture = command
+      else {
+        f.reply(command)
+        if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+      }
+    })
+    const raced = f.backend.capturePolicyScope(f.view)
+    await turn()
+    f.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
+    })
+    f.reply(capture!, nativePolicyScope())
+    await assert.rejects(raced, /changed|stale/)
+
+    f.send({
+      v: 1,
+      event: 'view.loaded',
+      target: 3,
+      data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
+    })
+    await turn()
+    f.handle((command) => {
+      f.reply(command, command.op === 'policy.scope' ? nativePolicyScope(2) : null)
+      if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+    })
+    const scope = await f.backend.capturePolicyScope(f.view)
+    const before = f.commands.length
+    await assert.rejects(
+      other.backend.grantNativeCapability(scope, { name: 'dialog-open' }),
+      /foreign/
+    )
+    await assert.rejects(
+      f.backend.grantNativeCapability(Object.freeze({}) as PolicyScope, {
+        name: 'dialog-open',
+      }),
+      /foreign/
+    )
+    assert.equal(f.commands.length, before)
+
+    await f.backend.grantNativeCapability(scope, { name: 'dialog-open' })
+    assert.deepEqual(f.commands.at(-1)?.args['scope'], nativePolicyScope(2))
+    const afterGrant = f.commands.length
+
+    f.send({
+      v: 1,
+      event: 'view.loaded',
+      target: 3,
+      data: { url: 'app://ui/next.html', documentId: 'native-3-3' },
+    })
+    await turn()
+    await assert.rejects(
+      f.backend.recordBrowserUserDecision(scope, 'camera', 'granted'),
+      /changed|stale/
+    )
+    assert.equal(f.commands.length, afterGrant)
+  } finally {
+    await Promise.all([f.backend.dispose(), other.backend.dispose()])
+  }
+})
+
+test('native policy gate remains explicitly unavailable for a valid current captured scope', async () => {
+  const f = await fixture()
+  f.handle((command) => {
+    if (command.op === 'policy.scope') f.reply(command, nativePolicyScope())
+    else if (command.op === 'policy.native.check') f.reply(command, { status: 'unavailable' })
+    else {
+      f.reply(command)
+      if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+    }
+  })
+  const scope = await f.backend.capturePolicyScope(f.view)
+  await f.backend.grantNativeCapability(scope, { name: 'dialog-open' })
+  assert.equal(
+    await f.backend.authorizeNativeOperation(scope, { name: 'dialog-open' }),
+    'unavailable'
+  )
+  assert.deepEqual(f.commands.at(-1)?.args['scope'], nativePolicyScope())
+  await f.backend.dispose()
+})
+
+test('policy captures and grants cannot cross a locally queued navigation', async () => {
+  const f = await fixture()
+  let capture: Command | undefined
+  let navigation: Command | undefined
+  try {
+    const original = await f.backend.capturePolicyScope(f.view)
+    f.handle((command) => {
+      if (command.op === 'policy.scope') capture = command
+      else if (command.op === 'view.navigate') navigation = command
+      else {
+        f.reply(command)
+        if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+      }
+    })
+    const pendingCapture = f.backend.capturePolicyScope(f.view)
+    const moved = f.backend.navigate(f.view, 'app://ui/next.html')
+    f.reply(capture!, nativePolicyScope())
+    await assert.rejects(pendingCapture, /changed/)
+    await assert.rejects(
+      f.backend.grantNativeCapability(original, { name: 'dialog-open' }),
+      /stale/
+    )
+    f.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
+    })
+    f.reply(navigation!, { url: 'app://ui/next.html', status: 200 })
+    await moved
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('policy scope must use the same native document identity as the view', async () => {
+  const f = await fixture()
+  try {
+    f.handle((command) => {
+      f.reply(
+        command,
+        command.op === 'policy.scope'
+          ? { ...nativePolicyScope(), document: 'invented-document' }
+          : null
+      )
+      if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+    })
+    await assert.rejects(f.backend.capturePolicyScope(f.view), /changed/)
+  } finally {
+    await f.backend.dispose()
+  }
 })

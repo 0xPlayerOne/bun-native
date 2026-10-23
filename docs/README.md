@@ -44,6 +44,9 @@ implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
 The [authenticated loopback candidate](rpc-loopback.md) and proposed
 [transport ADR](decisions/0003-transport-selection.md) define #22's implemented
 candidate and the native CEF evidence still required before selection.
+[M4 capability policy](m4-capability-policy.md) documents the native authorization
+gate, browser callback policy, adversarial model, prepared-host fixture and explicit
+M7/OS qualification limits.
 
 [Native assets](native-assets.md) specifies asynchronous verification and resource
 bounds. [macOS clone cleanup](macos-clone-cleanup.md) documents the narrow helper

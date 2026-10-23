@@ -147,6 +147,11 @@ impl Authority {
             outgoing: None,
         }
     }
+    /// Policy consumers share this document clock. Exhaustion must not become
+    /// a repeatable (view, frame, generation, origin) capability identity.
+    pub fn generation(&self) -> Option<u64> {
+        (self.document != "native-exhausted").then_some(self.generation)
+    }
     pub fn document(&self) -> &str {
         &self.document
     }
@@ -499,6 +504,17 @@ mod tests {
             a.navigation_start("app://ui/index.html", false);
             assert!(a.bind(8, &observed(), 5).is_none());
         }
+    }
+    #[test]
+    fn exhausted_document_clock_never_supplies_a_reusable_policy_generation() {
+        let (mut authority, _) = bound();
+        authority.generation = MAX_ID;
+        assert_eq!(authority.generation(), Some(MAX_ID));
+        authority.explicit_navigation_start();
+        assert_eq!(authority.generation(), None);
+        authority.explicit_navigation_start();
+        assert_eq!(authority.generation(), None);
+        assert!(authority.bind(8, &observed(), 5).is_none());
     }
     #[test]
     fn remote_child_opaque_and_development_contexts_never_bind() {
