@@ -63,3 +63,10 @@ development origin, and opens no debugging endpoint. Normal builds exclude it.
 The fixture requires actual denial callbacks, revoked captured policy scopes and
 ordered teardown. It does not claim hardware input, successful OS permission
 prompts or implementation of M7 native operation adapters.
+
+The development-policy qualifier additionally requests synthetic capture devices
+in an `rpc-qualification` build with an exact explicit development origin. This
+makes real media-denial callbacks testable on hardware-free runners. It does not
+auto-grant media permission, enable fake permission UI, open a debugging port, or
+ship in an ordinary native build. Schema-3 policy evidence records this fixture
+provenance explicitly; it is not hardware-device or OS-permission qualification.

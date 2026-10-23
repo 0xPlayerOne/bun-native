@@ -852,6 +852,12 @@ wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui(); } } 
 wrap_app! {
     pub struct BunlyApp;
     impl App {
+        fn on_before_command_line_processing(&self, process_type: Option<&CefString>, command_line: Option<&mut CommandLine>) {
+            #[cfg(feature = "rpc-qualification")]
+            crate::rpc_qualification::configure_media_devices(process_type, command_line);
+            #[cfg(not(feature = "rpc-qualification"))]
+            let _ = (process_type, command_line);
+        }
         fn on_register_custom_schemes(&self, registrar: Option<&mut SchemeRegistrar>) { scheme::register(registrar); }
         fn browser_process_handler(&self) -> Option<BrowserProcessHandler> { Some(BunlyProcess::new()) }
         fn render_process_handler(&self) -> Option<RenderProcessHandler> { Some(crate::renderer_rpc::handler()) }
@@ -1875,6 +1881,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         }
         "diagnostics" => {
             let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            #[cfg(feature = "rpc-qualification")]
+            let value = {
+                let mut value = value;
+                value["policyFixtureMedia"] =
+                    Value::Bool(crate::rpc_qualification::media_devices_enabled());
+                value
+            };
             reply(request, value);
         }
         "quit" => {
@@ -2226,25 +2239,25 @@ fn callback_scope(
 }
 
 fn media_capabilities(bits: u32) -> Option<Vec<capability_policy::BrowserCapability>> {
-    let known = MediaAccessPermissionTypes::DEVICE_AUDIO_CAPTURE.get_raw()
-        | MediaAccessPermissionTypes::DEVICE_VIDEO_CAPTURE.get_raw()
-        | MediaAccessPermissionTypes::DESKTOP_AUDIO_CAPTURE.get_raw()
-        | MediaAccessPermissionTypes::DESKTOP_VIDEO_CAPTURE.get_raw();
+    // bindgen exposes C enum constants as i32 on Windows and u32 on Unix.
+    // Widen both representations without truncation or accepting unknown bits.
+    let bits = i64::from(bits);
+    let audio = i64::from(MediaAccessPermissionTypes::DEVICE_AUDIO_CAPTURE.get_raw());
+    let video = i64::from(MediaAccessPermissionTypes::DEVICE_VIDEO_CAPTURE.get_raw());
+    let desktop_audio = i64::from(MediaAccessPermissionTypes::DESKTOP_AUDIO_CAPTURE.get_raw());
+    let desktop_video = i64::from(MediaAccessPermissionTypes::DESKTOP_VIDEO_CAPTURE.get_raw());
+    let known = audio | video | desktop_audio | desktop_video;
     if bits == 0 || bits & !known != 0 {
         return None;
     }
     let mut result = Vec::new();
-    if bits & MediaAccessPermissionTypes::DEVICE_AUDIO_CAPTURE.get_raw() != 0 {
+    if bits & audio != 0 {
         result.push(capability_policy::BrowserCapability::Microphone);
     }
-    if bits & MediaAccessPermissionTypes::DEVICE_VIDEO_CAPTURE.get_raw() != 0 {
+    if bits & video != 0 {
         result.push(capability_policy::BrowserCapability::Camera);
     }
-    if bits
-        & (MediaAccessPermissionTypes::DESKTOP_AUDIO_CAPTURE.get_raw()
-            | MediaAccessPermissionTypes::DESKTOP_VIDEO_CAPTURE.get_raw())
-        != 0
-    {
+    if bits & (desktop_audio | desktop_video) != 0 {
         result.push(capability_policy::BrowserCapability::DisplayCapture);
     }
     Some(result)
@@ -2253,6 +2266,23 @@ fn media_capabilities(bits: u32) -> Option<Vec<capability_policy::BrowserCapabil
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn media_permission_bits_are_portable_and_unknown_bits_fail_closed() {
+        use capability_policy::BrowserCapability::{Camera, DisplayCapture, Microphone};
+        assert_eq!(media_capabilities(0), None);
+        assert_eq!(media_capabilities(1), Some(vec![Microphone]));
+        assert_eq!(media_capabilities(2), Some(vec![Camera]));
+        assert_eq!(media_capabilities(4), Some(vec![DisplayCapture]));
+        assert_eq!(media_capabilities(8), Some(vec![DisplayCapture]));
+        assert_eq!(
+            media_capabilities(15),
+            Some(vec![Microphone, Camera, DisplayCapture])
+        );
+        for unknown in [16, 17, 0x8000_0000, u32::MAX] {
+            assert_eq!(media_capabilities(unknown), None);
+        }
+    }
 
     fn state_with_view(view: u64, window: u64) -> (HostState, capability_policy::DocumentScope) {
         let scope = capability_policy::DocumentScope {

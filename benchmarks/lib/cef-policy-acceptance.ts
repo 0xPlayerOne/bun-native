@@ -23,10 +23,11 @@ export function acceptNativePolicy(report: CommandObservation, deniedRequests: n
   assert.equal(records.length, 1, 'Native policy evidence missing or duplicated')
   assert.deepEqual(records[0], {
     event: 'bunly.native.development',
-    schema: 2,
+    schema: 3,
     passed: true,
     scopeRevoked: true,
     activation: 'native-fixed-fixture',
+    mediaDevices: 'synthetic-device-real-permission-callback',
     policyCallbacks: nativePolicyCallbacks,
   })
 }

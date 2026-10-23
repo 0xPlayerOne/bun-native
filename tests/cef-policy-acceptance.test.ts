@@ -9,10 +9,11 @@ import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
 function fixture() {
   const evidence = {
     event: 'bunly.native.development',
-    schema: 2,
+    schema: 3,
     passed: true,
     scopeRevoked: true,
     activation: 'native-fixed-fixture',
+    mediaDevices: 'synthetic-device-real-permission-callback',
     policyCallbacks: [...nativePolicyCallbacks],
   }
   const phases = ['process-stop', 'host-release', 'asset-service-stop', 'cef-shutdown'].flatMap(
@@ -55,9 +56,12 @@ test('policy acceptance requires every actual callback and exact lifecycle evide
   assert.throws(() => acceptNativePolicy(observation, 0))
   for (const value of [
     { ...evidence, schema: 1 },
+    { ...evidence, schema: 2 },
     { ...evidence, passed: false },
     { ...evidence, scopeRevoked: false },
     { ...evidence, activation: 'script-only' },
+    { ...evidence, mediaDevices: undefined },
+    { ...evidence, mediaDevices: 'auto-accepted-permissions' },
     { ...evidence, policyCallbacks: nativePolicyCallbacks.slice(1) },
     { ...evidence, policyCallbacks: [...nativePolicyCallbacks, nativePolicyCallbacks[0]] },
     { ...evidence, unexpected: 'native-output' },

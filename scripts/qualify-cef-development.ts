@@ -156,6 +156,7 @@ try {
     output: join(work, 'native.process.json'),
     timeoutMs: qualification.emulated ? 300000 : 30000,
     env: {
+      BUNLY_POLICY_QUALIFICATION: '1',
       BUNLY_TEST_ORIGIN: allowed.url.origin,
       BUNLY_TEST_PAGE_TIMEOUT_MS: String(qualification.pageTimeoutMs),
       BUNLY_TEST_DENIED_ORIGIN: blocked,

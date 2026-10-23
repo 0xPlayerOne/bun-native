@@ -196,3 +196,35 @@ both Cargo locks and Python requirements reported no findings. The
 [sanitized checkpoint](../evidence/m4-native-policy-local-2026-10-23.json) preserves
 hashes, results and failed preparation/activation experiments. No failed trial was
 reclassified as passing; hosted execution remains a separate merge requirement.
+
+## Cross-platform acceptance correction
+
+The initial hosted acceptance at `8cbae969661cae4748a9c8c93dd6a942d113de11`
+failed rather than qualifying all targets. Windows exposed signed C enum
+constants against an unsigned permission bitmask. The adapter now widens both
+representations losslessly to `i64`; zero and every unknown bit remain denied.
+An actual Windows-target API check and platform-independent mask regressions
+cover the correction; cross-compilation is not Windows execution acceptance.
+
+Linux and macOS runners rejected the media request before the native permission
+callback because capture hardware was not available. The contributor-only
+`rpc-qualification` build now enables Chromium's synthetic capture devices only
+for the explicitly requested development fixture. The actual Bunly media
+permission callback must still deny the request. No fake permission UI,
+auto-grant switch, OS permission, sandbox change, or real device access is used.
+Ordinary native builds contain neither this device setup nor its diagnostic.
+The fixture verifies the native setup receipt and its schema-3 result records
+`synthetic-device-real-permission-callback`. Older schema-2 results and missing
+media provenance cannot satisfy the new acceptance parser.
+
+The initial hosted macOS RPC run separately missed every short-lived cleanup
+helper in its fixed launch matrix. It remains a failed coverage qualification,
+not a native RPC failure or a positive helper observation. The existing
+same-suite positive helper requirement and every actual cleanup failure check
+remain unchanged. A subsequent passing run must retain its own source/artifact
+identities and coverage; it cannot erase the original failed run.
+
+The retained hosted failures are run `40006086014` (native execution and Windows
+build) and `40006086239` (Windows API check). Local correction runs and final-head
+hosted results are separate evidence; neither unsupported M4 capabilities nor
+the historical shutdown investigation are resolved by these fixture corrections.

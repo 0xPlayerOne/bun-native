@@ -6,6 +6,12 @@ export default async function development(backend: CefBackend): Promise<void> {
   const origin = process.env['BUNLY_TEST_ORIGIN']
   const denied = process.env['BUNLY_TEST_DENIED_ORIGIN']
   if (!origin || !denied) throw new Error('Explicit private development fixture origins required')
+  const diagnostics = (await backend.nativeDiagnostics()) as Record<string, unknown>
+  assert.equal(
+    diagnostics['policyFixtureMedia'],
+    true,
+    'Native synthetic media fixture was not enabled'
+  )
   const session = await backend.createSession({
     partition: 'development-test',
     persistence: 'ephemeral',
@@ -112,10 +118,11 @@ export default async function development(backend: CefBackend): Promise<void> {
     console.error(
       JSON.stringify({
         event: 'bunly.native.development',
-        schema: 2,
+        schema: 3,
         passed: true,
         scopeRevoked: true,
         activation: 'native-fixed-fixture',
+        mediaDevices: 'synthetic-device-real-permission-callback',
         policyCallbacks: expectedCallbacks,
       })
     )

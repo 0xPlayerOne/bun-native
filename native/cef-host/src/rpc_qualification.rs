@@ -84,3 +84,59 @@ pub fn replay_browser_messages(frame: &Frame, stale: Identity) {
         frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
     }
 }
+
+// A synthetic device makes the actual media-permission callback test independent
+// of runner hardware. Unlike fake UI/auto-accept switches, this does not grant
+// permission; the fixture still requires Bunly's real denial callback.
+static MEDIA_DEVICES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn allow_media_fixture(process_type: &str, requested: bool, origin: Option<&str>) -> bool {
+    requested
+        && process_type.is_empty()
+        && origin.is_some_and(|origin| crate::policy::development_origin(origin).is_ok())
+}
+pub fn configure_media_devices(
+    process_type: Option<&CefString>,
+    command: Option<&mut CommandLine>,
+) {
+    let process_type = process_type
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+    let requested = std::env::var("BUNLY_POLICY_QUALIFICATION").as_deref() == Ok("1");
+    let origin = crate::PATHS
+        .get()
+        .and_then(|paths| paths.dev_origin.as_deref());
+    if !allow_media_fixture(&process_type, requested, origin) {
+        return;
+    }
+    if let Some(command) = command {
+        command.append_switch(Some(&CefString::from("use-fake-device-for-media-stream")));
+        MEDIA_DEVICES.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+pub fn media_devices_enabled() -> bool {
+    MEDIA_DEVICES.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+#[cfg(test)]
+mod media_tests {
+    use super::*;
+    #[test]
+    fn synthetic_devices_require_explicit_contributor_development_fixture() {
+        let origin = Some("http://127.0.0.1:8080");
+        assert!(allow_media_fixture("", true, origin));
+        assert!(!allow_media_fixture("", false, origin));
+        for process in ["renderer", "utility", "gpu-process"] {
+            assert!(!allow_media_fixture(process, true, origin));
+        }
+        for invalid in [
+            None,
+            Some("app://ui"),
+            Some("https://remote.invalid"),
+            Some("http://localhost:8080"),
+            Some("http://127.0.0.1:8080/"),
+        ] {
+            assert!(!allow_media_fixture("", true, invalid));
+        }
+    }
+}
