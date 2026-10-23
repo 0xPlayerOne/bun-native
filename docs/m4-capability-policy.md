@@ -79,7 +79,10 @@ unsafe sandbox/security switches remain disabled.
   no listener, transport authentication or session persistence.
 - **Plugins and external handlers:** plugin content, popups, unknown schemes,
   protocol handlers and client certificates can escape the renderer boundary.
-  They are denied; no generic system-open fallback exists.
+  Browser/plugin content and external dispatch are denied; no generic system-open
+  fallback exists. Third-party code explicitly imported into the trusted Bun
+  backend inherits that backend's authority; this policy does not sandbox it or
+  establish an untrusted application-plugin runtime.
 - **Hostile files and processes:** paths may traverse, exploit prefix confusion,
   aliases or symlinks, while arguments may smuggle shell syntax. Paths are
   relative and component-checked; execution is an exact executable and typed
@@ -142,11 +145,12 @@ Ordinary host builds exclude the command. The exact popup-denial receipt is stil
 required; neither a JavaScript `null` result nor an unobserved callback suffices.
 
 The ordinary three-platform RPC workflow also runs this policy fixture. The
-wrapper requires its exact schema-2 record, zero requests at the forbidden
+wrapper requires its exact schema-3 record, zero requests at the forbidden
 server, normal process exit and all ordered native teardown phases. Source hashes
 and the input artifact are checked across the run. A missing callback, duplicate
 record, stale scope, native failure or changed input remains a failed trial.
-The native RPC/session fixture remains a separate required regression.
+The native RPC/session fixture remains a separate required regression. The current
+qualification schema is 3; the earlier schema-2 checkpoint is retained below.
 
 ## Threat-model boundary
 
@@ -206,8 +210,10 @@ representations losslessly to `i64`; zero and every unknown bit remain denied.
 An actual Windows-target API check and platform-independent mask regressions
 cover the correction; cross-compilation is not Windows execution acceptance.
 
-Linux and macOS runners rejected the media request before the native permission
-callback because capture hardware was not available. The contributor-only
+The Linux and macOS fixture rejected the media request before the native permission
+callback. The old page suppressed the capture error, so its exact device/OS reason
+was not recorded; requiring physical capture prerequisites made this test unsuitable
+for hardware-free runners. The contributor-only
 `rpc-qualification` build now enables Chromium's synthetic capture devices only
 for the explicitly requested development fixture. The actual Bunly media
 permission callback must still deny the request. No fake permission UI,
@@ -245,3 +251,20 @@ retains the initial hosted failures, the local Python-environment setup failure,
 and the bounded-tail negative-report replay limitation. Native source, input
 artifacts, and raw reports remain identified by exact hashes. No failed native
 trial was reclassified or removed.
+
+## Windows relative-path normalization correction
+
+The next hosted matrix at `02da9d7` completed both native policy and RPC suites
+on Linux and macOS. Windows then exposed a separate real validation defect:
+`Path::components` split a backslash path before the per-component backslash
+check could see it. The original rejection test failed; it was not skipped or
+changed to accept that alias. Run `40023786793` preserves that result.
+
+Relative capability requests now validate their raw spelling before any
+platform path normalization. They use forward-slash separators on all targets;
+backslashes, duplicate separators, dot components, drive/stream syntax, reserved
+names, control characters and existing bounded alias rules deny. Absolute trusted
+grant roots and executable paths retain their platform-native syntax. Pure raw
+validation tests cover the same Windows spellings even on Unix, and real
+filesystem tests preserve the containment, case and symlink requirements.
+No filesystem adapter or same-user race guarantee is implied by this correction.

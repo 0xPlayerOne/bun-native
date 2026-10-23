@@ -620,6 +620,32 @@ fn validate_arguments(arguments: &[String]) -> Result<(), &'static str> {
     Ok(())
 }
 
+// Validate the portable request spelling before Path::components can normalize
+// Windows separators, repeated separators or dot components. Absolute trusted
+// grant roots keep their platform-native syntax; only relative requests use this
+// forward-slash grammar on every target.
+fn validate_relative_path_text(value: &str) -> Result<(), &'static str> {
+    if value.len() > 4096
+        || !value.is_ascii()
+        || value.chars().any(char::is_control)
+        || value.split('/').count() > 128
+    {
+        return Err("relative path input bound exceeded");
+    }
+    for component in value.split('/') {
+        if component.is_empty()
+            || matches!(component, "." | "..")
+            || component.ends_with(['.', ' '])
+            || component.contains(':')
+            || component.contains('\\')
+            || reserved_name(component)
+        {
+            return Err("unsafe platform path alias denied");
+        }
+    }
+    Ok(())
+}
+
 /// Requests are relative to a canonical grant root. Rejecting symlinked path
 /// components prevents straightforward escapes and aliasing. The returned path
 /// must still be opened by a platform adapter using handle-relative/no-follow
@@ -634,24 +660,10 @@ fn contained_path(
     if requested.is_absolute() {
         return Err("capability paths must be relative");
     }
+    let text = requested.to_str().ok_or("path must be valid Unicode")?;
+    validate_relative_path_text(text)?;
     let mut joined = root.clone();
-    for component in requested.components() {
-        let Component::Normal(component) = component else {
-            return Err("path traversal or platform prefix denied");
-        };
-        let text = component.to_str().ok_or("path must be valid Unicode")?;
-        if text.is_empty()
-            || text == "."
-            || !text.is_ascii()
-            || text.ends_with(['.', ' '])
-            || text.contains(':')
-            || text.contains('\\')
-        {
-            return Err("unsafe platform path alias denied");
-        }
-        if reserved_name(text) {
-            return Err("reserved platform path alias denied");
-        }
+    for text in text.split('/') {
         if joined.is_dir() {
             for (index, entry) in fs::read_dir(&joined)
                 .map_err(|_| "path directory unavailable")?
@@ -668,7 +680,7 @@ fn contained_path(
                 }
             }
         }
-        joined.push(component);
+        joined.push(text);
         if joined
             .symlink_metadata()
             .is_ok_and(|metadata| linked_metadata(&metadata))
@@ -1047,6 +1059,37 @@ mod tests {
     }
 
     #[test]
+    fn relative_request_spelling_is_validated_before_platform_normalization() {
+        for value in ["read.txt", "new/file.txt", "Nested/Exact-name_1.bin"] {
+            assert!(validate_relative_path_text(value).is_ok(), "{value}");
+        }
+        for value in [
+            r"sub\read.txt",
+            r"sub\..\read.txt",
+            "sub//read.txt",
+            "./read.txt",
+            "sub/./read.txt",
+            "read.txt/",
+            "/read.txt",
+            "../read.txt",
+            "",
+            "C:read.txt",
+            "C:/read.txt",
+            "sub/NUL.txt",
+            "sub/file:stream",
+            "sub/read.txt.",
+            "sub/read.txt ",
+            "sub/é",
+            "sub/\nread.txt",
+        ] {
+            assert!(validate_relative_path_text(value).is_err(), "{value:?}");
+        }
+        assert!(validate_relative_path_text(&vec!["a"; 128].join("/")).is_ok());
+        assert!(validate_relative_path_text(&vec!["a"; 129].join("/")).is_err());
+        assert!(validate_relative_path_text(&"a".repeat(4097)).is_err());
+    }
+
+    #[test]
     fn paths_reject_escape_prefix_confusion_symlinks_and_platform_aliases() {
         let root = fixture();
         assert!(contained_path(&root, Path::new("read.txt"), true).is_ok());
@@ -1056,6 +1099,10 @@ mod tests {
             "read.txt.",
             "C:read.txt",
             r"sub\read.txt",
+            "sub//read.txt",
+            "./read.txt",
+            "sub/./read.txt",
+            "read.txt/",
             "CON",
             "nul.txt",
             "COM1.log",
