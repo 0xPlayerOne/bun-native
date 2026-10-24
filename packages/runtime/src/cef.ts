@@ -1,3 +1,4 @@
+import { nativePacketHex as hex, nativePacketBytes as unhex } from './native-rpc-codec.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
@@ -87,32 +88,6 @@ interface ViewResource extends NativeResource {
   window: WindowHandle
   session: SessionHandle
   state: ViewState
-}
-const MAX_NATIVE_RPC_PACKET = 24 * 1024
-function hex(packet: Uint8Array): string {
-  if (
-    !(packet instanceof Uint8Array) ||
-    packet.byteLength < 1 ||
-    packet.byteLength > MAX_NATIVE_RPC_PACKET
-  )
-    throw new RpcError('PROTOCOL_ERROR', 'Native RPC packet size denied')
-  let result = ''
-  for (const byte of packet) result += byte.toString(16).padStart(2, '0')
-  return result
-}
-function unhex(value: unknown): Uint8Array {
-  if (
-    typeof value !== 'string' ||
-    value.length < 2 ||
-    value.length % 2 ||
-    value.length > MAX_NATIVE_RPC_PACKET * 2 ||
-    !/^[0-9a-f]+$/.test(value)
-  )
-    throw new RpcError('PROTOCOL_ERROR', 'Invalid native RPC packet encoding')
-  const packet = new Uint8Array(value.length / 2)
-  for (let index = 0; index < packet.length; index++)
-    packet[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
-  return packet
 }
 class CefRpcTransport implements RpcTransport {
   #message: ((packet: Uint8Array) => void) | undefined

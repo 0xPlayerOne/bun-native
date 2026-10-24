@@ -53,6 +53,7 @@ const paths = [
   'packages/client/src/cef-loopback.ts',
   'packages/client/src/rpc-loopback.ts',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/native-rpc-codec.ts',
   'packages/runtime/src/rpc-loopback.ts',
   'packages/contracts/src/rpc-native-handoff.ts',
   'packages/contracts/src/rpc-fragments.ts',
