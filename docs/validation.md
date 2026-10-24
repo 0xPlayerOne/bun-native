@@ -250,3 +250,13 @@ CSP endpoint; every socket still needs the separate native-owner challenge proof
 Ordinary builds exclude the decision and reject loopback setup. No public debugging
 port, browser-security override, global content setting or automatic fallback is
 introduced. See ADR 0003 and the retained evidence for the final selection.
+
+## Offline session-reset qualification
+
+`bun run qualify:cef-session-reset -- PREPARED_APP` exercises actual persistent
+browser stores and native offline maintenance. The automatic three-platform RPC
+lane includes it. Its controlled interruption is a negative control, while seed,
+restart, lock-hold, fenced-open and post-reset verification launches require normal
+backend exit and ordered teardown. It uses private marked test roots only; no
+production accounts or user profiles are accessed. See
+[storage reset](session-storage-reset.md) for full semantics and limits.

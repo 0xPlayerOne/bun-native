@@ -11,6 +11,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[path = "session_reset.rs"]
+pub(crate) mod reset;
+
 const ROOT_MARKER: &str = ".bunly-session-root.json";
 const ROOT_LOCK: &str = ".bunly-session-root.lock";
 const PROFILE_MARKER: &str = ".bunly-profile.json";
@@ -135,6 +138,9 @@ impl ProfileRoot {
         // ChromeBrowserContext requires an immediate child of root_cache_path.
         // Hash the logical partition so case-insensitive filesystems cannot alias
         // distinct names or interpret a Windows device/reserved path component.
+        if reset::pending(&self.path, partition)? {
+            return Err("Persistent session has an interrupted offline reset; complete that reset before opening".into());
+        }
         let profile = self.path.join(profile_directory(partition));
         if let Some(existing) = ownership.profiles.get_mut(&profile) {
             if existing.active {
@@ -300,6 +306,26 @@ fn verify_owned_file(path: &Path, file: &File) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// CEF156 CacheStorage adds 210 UTF-16 units below our root for the selected
+/// SHA-256 profile, origin hash, cache UUID and index. Do not assume every CEF
+/// component opts into extended Windows paths merely because Rust can open them.
+/// Offline maintenance still accepts longer existing roots so callers can recover.
+pub fn validate_cef_profile_path(root: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    use std::os::windows::ffi::OsStrExt;
+    #[cfg(windows)]
+    if !windows_root_within_storage_budget(root.as_os_str().encode_wide().count()) {
+        return Err("Windows persistent profile root is too long for the pinned CEF storage layout; use a root of at most 48 UTF-16 units".into());
+    }
+    #[cfg(not(windows))]
+    let _ = root;
+    Ok(())
+}
+#[cfg(any(windows, test))]
+fn windows_root_within_storage_budget(units: usize) -> bool {
+    units <= 48
 }
 
 fn profile_directory(partition: &str) -> String {
@@ -520,7 +546,7 @@ fn lock_exclusive(file: &File) -> std::io::Result<()> {
 mod tests {
     use super::*;
 
-    fn temporary(name: &str) -> PathBuf {
+    pub(super) fn temporary(name: &str) -> PathBuf {
         normalized_canonical(&std::env::temp_dir())
             .unwrap()
             .join(format!(
@@ -531,6 +557,21 @@ mod tests {
                     .unwrap()
                     .as_nanos()
             ))
+    }
+
+    #[test]
+    fn windows_storage_path_budget_retains_space_for_native_nested_stores() {
+        let suffix = format!(
+            "/bunly-profile-{}/Service Worker/CacheStorage/{}/{}/index-dir/the-real-index",
+            "a".repeat(64),
+            "b".repeat(40),
+            "c".repeat(36)
+        );
+        assert_eq!(suffix.encode_utf16().count(), 210);
+        assert!(windows_root_within_storage_budget(48));
+        assert!(48 + suffix.encode_utf16().count() < 260);
+        assert!(!windows_root_within_storage_budget(49));
+        assert!(!windows_root_within_storage_budget(usize::MAX));
     }
 
     #[test]

@@ -19,5 +19,6 @@
   "bunly.native.renderer-failure-observed",
   "bunly.native.gpu-injection-acknowledged",
   "bunly.native.gpu-recovered",
-  "bunly.profile-root-collision"
+  "bunly.profile-root-collision",
+  "bunly.native.session-reset"
 ]

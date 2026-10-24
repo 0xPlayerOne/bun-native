@@ -85,3 +85,5 @@ export type {
   ConformanceReport,
   ConformanceStatus,
 } from './conformance.ts'
+
+export { resetPersistentSessionStorage } from './session-reset.ts'

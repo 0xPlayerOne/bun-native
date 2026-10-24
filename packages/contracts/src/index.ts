@@ -3,6 +3,10 @@ export * from './core.ts'
 export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
 export * from './network-policy.ts'
+export type {
+  PersistentSessionResetOptions,
+  PersistentSessionResetResult,
+} from './session-reset.ts'
 import type { SessionNetworkPolicy } from './network-policy.ts'
 import { BunlyError, CONTRACT_VERSION } from './core.ts'
 import { PROFILE_CAPABILITY_VERSION } from './profiles.ts'

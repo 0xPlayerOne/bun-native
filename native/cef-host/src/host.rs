@@ -1294,6 +1294,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .get()
                     .and_then(|paths| paths.profile_root.as_ref())
                     .ok_or("Persistent sessions require BUNLY_PROFILE_ROOT at native startup")?;
+                session::validate_cef_profile_path(root.path())?;
                 Some(root.acquire(requested_root, &partition)?)
             } else {
                 None

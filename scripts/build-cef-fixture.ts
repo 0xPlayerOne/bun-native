@@ -112,6 +112,7 @@ try {
       protocol: 1,
       bun_version: Bun.version,
       cef_version: '156.0.7',
+      maintenance_protocol: 1,
       ...(developmentOrigin ? { development_origin: developmentOrigin } : {}),
     }) + '\n'
   )
