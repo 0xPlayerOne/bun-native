@@ -2,6 +2,7 @@
  * This is not CEF renderer integration, xterm rendering, or descendant supervision.
  */
 import assert from 'node:assert/strict'
+import { QualificationTerminal } from './terminal-consumer.ts'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { CallbackStreamSource } from '../../packages/runtime/src/stream-source.ts'
@@ -30,17 +31,19 @@ async function scenario(mode: Mode) {
   const firstConsumer = deferred<void>(),
     gate = deferred<void>(),
     failure = deferred<never>()
-  const records: Record<string, unknown>[] = []
   const waiters = new Map<string, ReturnType<typeof deferred<Record<string, unknown>>>>()
-  const decoder = new TextDecoder('utf-8', { fatal: true })
-  let text = '',
-    rawBytes = 0,
+  const terminalConsumer = new QualificationTerminal((record) =>
+    waiters.get(String(record['type']))?.resolve(record)
+  )
+  const records = terminalConsumer.records
+  let rawBytes = 0,
     consumedBytes = 0,
     stopCalls = 0,
     pendingStop = false,
     processExited = false
   const rawHash = createHash('sha256'),
     consumedHash = createHash('sha256')
+  const consumers = new Set<Promise<void>>()
   const eof = deferred<number>()
   let child: ReturnType<typeof Bun.spawn> | undefined
   const awaitStep = <T>(promise: Promise<T>) => Promise.race([promise, failure.promise])
@@ -58,27 +61,17 @@ async function scenario(mode: Mode) {
     { budget: receiveBudget, owner },
     {
       terminal: {
-        async consume(bytes) {
-          firstConsumer.resolve()
-          await gate.promise
-          consumedHash.update(bytes)
-          consumedBytes += bytes.length
-          if (mode !== 'ordered') return
-          text += decoder.decode(bytes, { stream: true })
-          if (text.length > 32 * 1024) throw new Error('PTY fixture parser bound exceeded')
-          for (;;) {
-            const end = text.indexOf('\n')
-            if (end < 0) break
-            const line = text.slice(0, end).replace(/\r$/, '')
-            text = text.slice(end + 1)
-            const start = line.indexOf('BUNLYPTY|')
-            if (start < 0) continue // Preserve all VT bytes in checksums, parse only fixed records.
-            const record = JSON.parse(line.slice(start + 9)) as Record<string, unknown>
-            assert.equal(typeof record['type'], 'string')
-            assert.ok(records.length < 80)
-            records.push(record)
-            waiters.get(String(record['type']))?.resolve(record)
-          }
+        consume(bytes) {
+          const consuming = (async () => {
+            firstConsumer.resolve()
+            await gate.promise
+            await terminalConsumer.consume(bytes)
+            consumedHash.update(bytes)
+            consumedBytes += bytes.length
+          })()
+          consumers.add(consuming)
+          void consuming.finally(() => consumers.delete(consuming)).catch(() => {})
+          return consuming
         },
       },
     }
@@ -186,6 +179,7 @@ async function scenario(mode: Mode) {
     write('input')
     assert.equal((await wait('input'))['value'], 'owned-input')
     stage = 'resize-receipt'
+    terminalConsumer.resize(110, 37)
     terminal.resize(110, 37)
     write('size')
     const size = await wait('size')
@@ -202,10 +196,15 @@ async function scenario(mode: Mode) {
     stage = 'exit-and-eof'
     write('exit')
     assert.equal(await awaitStep(proc.exited), 0)
-    assert.equal(await awaitStep(eof.promise), 0)
+    const terminalLifecycleCode = await awaitStep(eof.promise)
+    assert.ok(
+      terminalLifecycleCode === 0 || (process.platform === 'linux' && terminalLifecycleCode === 1)
+    )
     assert.deepEqual(await awaitStep(pump.finished), { ok: true })
     await pump.drained
     assert.equal((await wait('final'))['value'], 'last-output-before-exit')
+    assert.equal(records.length, 69)
+    assert.equal(terminalConsumer.unicodeObserved, true)
     assert.equal(rawBytes, consumedBytes)
     const digest = consumedHash.digest('hex')
     assert.equal(rawHash.digest('hex'), digest)
@@ -217,12 +216,19 @@ async function scenario(mode: Mode) {
       input: true,
       resize: { cols: 110, rows: 37 },
       records: 64,
+      receiptCount: records.length,
       callbackBytes: rawBytes,
       consumedBytes,
       sha256: digest,
       consumptionAcknowledged: true,
+      consumer: 'xterm-headless-5.5.0-parser-callback',
+      unicodeObserved: true,
+      terminalLifecycleCode,
+      cleanTerminalEof: terminalLifecycleCode === 0,
+      terminalClosure:
+        terminalLifecycleCode === 0 ? 'clean-eof' : 'read-error-status-with-complete-known-fixture',
       controlWhilePaused: true,
-      outputEofAndChildExitObserved: true,
+      terminalClosureAndChildExitObserved: true,
       peakRetainedBytes: pump.diagnostics().peakRetainedBytes,
     }
   } catch (error) {
@@ -250,8 +256,12 @@ async function scenario(mode: Mode) {
     receiver.close()
     control.port1.close()
     control.port2.close()
+    // Closing rejects the sender immediately but does not reclaim a consumer
+    // still parsing. Await its actual callback, not an arbitrary event-loop tick.
+    await Promise.allSettled(consumers)
     await source?.drained
     await nextTurn()
+    terminalConsumer.dispose()
     for (const budget of [sourceBudget, sendBudget, receiveBudget])
       assert.deepEqual(budget.diagnostics(), { reservedBytes: 0, streams: 0, views: 0 })
   }
@@ -284,10 +294,11 @@ export async function qualifyBunPty() {
     cases,
     sourcePauseResume: { available: false, policy: 'bounded-callback-queue-or-explicit-stop' },
     limits: [
-      'No CEF renderer/native authority, xterm rendering or end-user latency qualification.',
+      'Real headless xterm parsing only; no CEF authority, graphical rendering or end-user latency qualification.',
       'Only the fixed directly owned child is stopped; detached descendants and generation replacement are not qualified.',
       'Checksums compare received PTY callback bytes with consumed stream bytes, not original child stdout bytes.',
       'Windows ConPTY may transform VT output; arbitrary binary/termios parity is not claimed.',
+      'Linux may report PTY read-error status on last-slave hangup. Complete known fixture output is verified separately; this is not a general clean-EOF or arbitrary-shell success rule.',
     ],
   }
 }

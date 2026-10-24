@@ -37,11 +37,21 @@ export function acceptBunPty(input: unknown): void {
         'input',
         'consumptionAcknowledged',
         'controlWhilePaused',
-        'outputEofAndChildExitObserved',
+        'terminalClosureAndChildExitObserved',
       ])
         assert.equal(row[flag], true)
+      assert.equal(row['consumer'], 'xterm-headless-5.5.0-parser-callback')
+      assert.equal(row['unicodeObserved'], true)
+      const terminalCode = row['terminalLifecycleCode']
+      assert.ok(terminalCode === 0 || (report['target'] === 'linux-x64' && terminalCode === 1))
+      assert.equal(row['cleanTerminalEof'], terminalCode === 0)
+      assert.equal(
+        row['terminalClosure'],
+        terminalCode === 0 ? 'clean-eof' : 'read-error-status-with-complete-known-fixture'
+      )
       assert.deepEqual(row['resize'], { cols: 110, rows: 37 })
       assert.equal(row['records'], 64)
+      assert.equal(row['receiptCount'], 69)
       assert.ok(count(row['callbackBytes'], 1024 * 1024) > 0)
       assert.equal(row['callbackBytes'], row['consumedBytes'])
       assert.match(String(row['sha256']), /^[a-f0-9]{64}$/)

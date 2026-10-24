@@ -61,6 +61,7 @@
   "devDependencies": {
     "@types/bun": "1.4.3",
     "@types/node": "22.15.30",
+    "@xterm/headless": "5.5.0",
     "code-foundry": "1.48.2",
     "oxc-parser": "0.154.0",
     "oxfmt": "0.68.0",

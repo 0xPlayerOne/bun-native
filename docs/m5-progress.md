@@ -24,7 +24,7 @@ terminal output or allocating an unbounded promise queue.
 
 This source reservation is **additional** to transport/stream reservations. It
 bounds adapter-owned copies, not Bun's callback backing buffer, PTY kernel buffers,
-xterm allocations or whole-process RSS. A stopped caller settles promptly, but
+terminal allocations or whole-process RSS. A stopped caller settles promptly, but
 an active uncooperative writer retains its source reservation until it settles.
 `drained` means source-owned bytes were released, not that a process tree exited.
 The owner must implement `stopSource` for exactly the owned resource; failure to
@@ -32,8 +32,8 @@ stop is retained diagnostically. No PID/name-based global termination is added.
 
 The maintained `qualify:bun-pty` runs the pinned Bun 1.4.3 against a fixed child
 that never launches shells or descendants. It exercises a real TTY, input, resize,
-64 ordered Unicode records, terminal EOF independently of child exit, and a
-MessageChannel stream consumer. A paused consumer must withhold acknowledgments
+64 ordered Unicode records, terminal closure independently of child exit, and a
+MessageChannel stream consumer backed by the actual xterm headless parser. A paused consumer must withhold acknowledgments
 while an independent control lane responds. The raw PTY callback byte count/hash
 must equal the consumed stream byte count/hash. Cancellation and source overload
 are expected nonzero-exit controls, not clean-shutdown passes. Every scenario must
@@ -63,7 +63,7 @@ platform acceptance requires actual execution of the pinned runtime.
 ## Remaining M5 work
 
 This does not close #23, #24, #25, #26 or #27. Native CEF view/document authorization
-and bulk/control transport integration, xterm consumption, real application terminal
+and bulk/control transport integration, graphical xterm consumption, real application terminal
 handles and reconnect/scrollback policy remain open. Process groups/Windows jobs,
 detached descendants, readiness/restart policies and generation-safe cleanup are
 #25 work. The qualifier stops only its fixed direct child; that is not a universal
@@ -74,3 +74,32 @@ functional tests.
 The historical CEF teardown intermittency is not declared fixed. #25 owns its
 supervision/diagnostic disposition and #27 retains it in load/shutdown acceptance.
 M6, not this increment, implements managed backend replacement.
+
+## Retained first-platform failures and corrections
+
+The first hosted matrix (`40074715008`, implementation `b2d41c3`) passed the macOS
+PTY job but failed Linux and Windows. Linux delivered all fixture bytes and
+records, then the fixture incorrectly required PTY lifecycle status zero. The
+pinned Bun source explicitly documents Linux last-slave hangup as EIO and reports
+read errors as status 1. This is not the subprocess exit code. Updated receipts
+retain the actual status and `cleanTerminalEof: false` rather than inventing clean
+EOF. A known finite fixture may qualify complete output only after its exact
+record sequence, terminal-consumption hash and zero process exit all pass. This
+is **not** a general rule that turns arbitrary PTY read errors into successful
+shell completion; that adapter policy remains open in #24/#25.
+
+Windows resize caused terminal repaint sequences and the old newline/JSON parser
+failed. The maintained consumer now uses `@xterm/headless` 5.5.0, pinned as a
+**contributor-only dev dependency** matching the existing browser xterm version.
+Actual stream credit waits for its parser callback. Bounded screen snapshots
+verify framed records, proper cursor repaints and Unicode; there is no blanket
+ANSI stripping, discarded byte stream or duplicate-record exemption. Byte counts
+and hashes still include every raw PTY callback byte. Explicit child console-size
+refresh replaces reliance on cached columns or a Windows SIGWINCH that is not
+provided by ConPTY. No polling, sleep or deadline extension was added.
+
+A local cancellation control then exposed another fixture assumption: one event
+loop turn was not proof that the asynchronous terminal parser finished. Cleanup
+now waits for its actual completion promise before checking reservation release.
+The earlier failures remain retained and require corrected-head hosted acceptance.
+See [Bun PTY provenance](../provenance/bun-pty.md) for pinned source attribution.
