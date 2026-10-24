@@ -1,165 +1,162 @@
-# ADR 0003: renderer application RPC transport selection
+# ADR 0003: Renderer application RPC transport
 
-Native-mediated messaging is the qualified baseline; loopback remains experimental.
+Native baseline selection and a bounded, native-attested comparison.
 
-**Status:** Native baseline selected; comparative performance acceptance remains incomplete.
+**Status:** Native baseline selected; paired local qualification complete, final-head hosted execution tracked separately.
 **Related issues:** #18, #19, #22, #9.
 **Decision date:** October 23, 2026.
 
 ## Decision
 
-Keep native-mediated CEF messaging as the application RPC baseline. It executes
-with the native-known view/frame/session/document/generation authority and the
-unchanged restrictive application origin policy. Add bounded adapter fragmentation
-so the agreed 65,536-byte binary workload fits without raising the 24 KiB CEF
-packet or 64 KiB private control-pipe record limits.
+Use **native-mediated CEF process messages** for the ordinary application baseline.
+Keep authenticated loopback as an internal contributor comparison, not a supported
+shipping transport or automatic fallback. Shared memory remains rejected: these
+measurements do not justify its additional lifetime, synchronization and wakeup
+protocol. Neither path is zero-copy.
 
-Do **not** select the direct loopback candidate on the pinned CEF runtime. Actual
-CEF execution rejects the connection at Chromium's loopback-network permission
-boundary before the Bun server receives an upgrade. A failed candidate cannot be
-assigned a latency, throughput or relative-speed result. No benchmark win is
-inferred, and the requested paired performance comparison remains incomplete.
+The native baseline has the simpler authority/lifecycle surface and faster initial
+handoff in the measured local workload. Loopback materially reduces the cost of
+this binary batch, but currently needs an additional, fixture-only browser network
+permission path. This is a real tradeoff, not a claim that native wins every metric.
+A separately reviewed production permission design would be required before
+shipping loopback, even where its throughput is attractive.
 
-A safe baseline decision does not require weakening security to manufacture a
-passing alternative. Reconsider loopback only after its app-scheme connectivity
-and exact native owner authentication both pass real-browser qualification under
-an explicit supported permission model. Shared memory is not justified by these
-observations and remains unimplemented.
+## Equivalent workloads and measurements
 
-## Native baseline
+Both candidates use the same #18 envelope, runtime validation, capability policy
+and native view/frame/document/session binding. The committed workload executes
+100 structured calls at concurrency 16, 50 binary calls with 65,536 bytes each,
+20 cancellations only after backend admission, and 20 calls under an acknowledged
+native 4x CPU throttle followed by acknowledged restoration. It also exercises
+navigation-in-flight revocation, return-to-origin denial, service disconnect,
+server close and resource convergence. The loopback case additionally proves that
+a second valid same-origin native owner cannot confirm a stolen socket credential.
 
-The #18 envelope remains transport-independent. Native packets are at most 24 KiB;
-application frames may be at most 96 KiB. The adapter splits larger frames into
-versioned, sequenced fragments. It validates lengths/offsets before allocation,
-permits only one in-flight envelope per direction, keeps a hard aggregate 3 MiB
-backend reassembly/copy budget across connections, and expires partial messages
-without extending the deadline as fragments arrive. Renderer-owned allocations
-are bounded independently. Existing native delivery reservations remain charged
-until their real receipt or host teardown.
+Clean implementation `e36e3a07f4cf82761e4aad41d280c357b1defc1d` completed 24 native launches:
+two warmups and ten measured trials per candidate, with alternating order. All
+24 completed their exact workload and ordered shutdown, with verified macOS
+helper/clone completion. Harness hashes and input/prepared inventories remained
+unchanged. The independently probed runtime was CEF 154.0.34 / Chromium
+154.0.8037.98 on macOS arm64, with Bun 1.4.3. Sandbox configuration was preserved;
+the binary identity probe itself reports sandbox attestation as unverified.
 
-Cancellation drops the adapter's full-envelope copy even when a lower-layer
-send is stalled; that lower layer owns only its independently bounded chunk.
-Reentrant delivery keeps the inbound reservation until the receiver returns.
-Native process-message and pipe copies still exist. This is not zero-copy.
+The following numbers are **whole-workload means**, not per-call latency. Brackets
+are the maintained deterministic percentile-bootstrap 95% intervals for the mean.
+These are ten local independent launches per candidate, not quiet-machine release
+benchmarks or application startup/interaction speed claims.
 
-## Experimental loopback authentication
+| Workload                                 | Native-mediated            | Authenticated loopback  |
+| ---------------------------------------- | -------------------------- | ----------------------- |
+| First authenticated roundtrip            | 4.18 ms [3.85, 4.55]       | 9.61 ms [8.46, 10.86]   |
+| 100 structured calls, concurrency 16     | 27.65 ms [24.86, 30.74]    | 20.40 ms [19.04, 21.89] |
+| 50 binary roundtrips, 65,536 bytes each  | 459.98 ms [427.29, 491.03] | 33.60 ms [31.64, 36.23] |
+| 20 cancellations after handler admission | 24.09 ms [19.78, 31.41]    | 15.20 ms [13.79, 16.94] |
 
-The candidate has an explicit native handoff: a one-use binary credential and
-exact numeric-loopback endpoint travel through the existing incarnation-bound
-native bridge, never a URL, log or page storage. The server then sends a fresh
-socket challenge. The same native connection must confirm it using its opaque
-backend binding before the server claims a lease or admits application RPC.
-A stolen bearer credential plus a matching Origin is not sufficient.
+Raw per-launch metrics, distributions, queue peaks, native receipts and provider-
+specific idle observations are preserved in
+[the sanitized local record](../evidence/m4-native-transports-local.json).
+The original observer reports remain private and are bound by SHA-256 and byte
+length. No comparison ratio is substituted for a rejected or unavailable trial.
 
-Real Bun-socket tests prove the protocol model, and native-peer tests prove
-adapter plumbing. They do **not** establish successful CEF authentication.
-The exact same-origin stolen-credential native fixture is implemented but remains
-unreached when Chromium rejects the initial socket. It is not a passing CEF test.
+The two-second post-work idle window has one admitted control waiter and no poll
+loop. Sampled macOS interrupt-wakeup rates averaged 84.88/s for native
+and 108.78/s for loopback. These are matched-identity lower bounds during this
+specific post-work window, not steady-state power measurements. Native and loopback
+complete their preceding work at different times, so background browser age and
+activity can influence these observations. Recorded zero package-idle deltas mean
+zero in sampled matched intervals, not zero lifetime wakeups. Linux scheduler
+counters have different semantics. Windows has no qualified collector and must
+remain explicitly unavailable, never numeric zero.
 
-The CEF candidate configuration is contributor-only. Ordinary native builds reject
-`rpc.loopback.configure`; they never open this endpoint through the CEF API or
-broaden application CSP. Generic standalone loopback transport remains the
-explicit opt-in candidate delivered earlier, not the selected application path.
+## Bounded native path
 
-## Actual failure and rejected experiment
+Native packets remain limited to 24 KiB. Application frames are limited to 96 KiB
+and fragmented only when required. Reassembly validates total length, sequence,
+contiguous offset and exact chunk size before admitting data. A partial message
+has one non-renewing ten-second deadline. The backend shares a 3 MiB reservation
+budget across connections; renderer fragment ownership is independently bounded.
+Revocation/cancellation releases owned buffers without releasing CEF-owned delivery
+reservations early. Small messages keep their existing packet path.
 
-The real browser emitted `policy.permission-denied` with mask `134217728`, the
-pinned CEF `LOOPBACK_NETWORK` flag. Safe bounded server diagnostics showed no
-upgrade or native confirmation. The denial is before WebSocket authentication,
-not evidence that native accepted a forged connection.
+Known native stages include RPC encoding, a writer snapshot, fragment allocation,
+private-pipe hexadecimal encoding, CEF binary copying, renderer ArrayBuffer copying
+and payload decoding. Loopback adds its binary record and payload isolation plus
+a one-time native handoff/challenge. CEF internals, browser/Bun buffering and kernel
+copies remain unmeasured. There is no complete-path zero-copy claim.
 
-The inspected Chromium 154 source registers this permission as
-`TOP_ORIGIN_ONLY_SCOPE`. It is not a frame-specific grant. A separate experiment
-attempted to set only the exact application origin in its private ephemeral CEF
-request context, with no default or foreign-origin grant. Exact readback did not
-confirm the requested permission, so the host failed closed. Inspection of the
-pinned content-settings pattern code shows that the arbitrary `app` scheme is
-not accepted by the relevant pattern validation. This experiment was removed;
-its source and failed report are retained privately.
+## Loopback authority and reachability are separate
 
-No blanket origin/default permission, generic prompt exemption, custom-scheme
-security reclassification, Chromium flag, trust-store change or sandbox change
-was retained. The generic CEF permission callback still cannot identify the
-requesting frame and remains denied. A focus heuristic or page-reported frame
-identity would not repair that boundary.
+The listener binds only numeric IPv4 loopback at an OS-selected ephemeral port.
+It checks exact Host, Origin and path, uses bounded binary frames, and admits no
+application packets before a one-use credential and fresh socket challenge have
+both been confirmed through the exact native document owner. Credentials never
+enter URLs. Replay, foreign sessions, stale bindings and alternate native owners
+cannot claim that connection. Native control remains active for revocation; the
+application data path bypasses the host without moving lifecycle authority.
 
-Primary source references for the exact inspected browser branch:
+Chromium's loopback-network permission is top-origin scoped. The CEF generic
+permission callback does not attest the requesting frame. The contributor fixture
+therefore makes a deliberately narrower **reachability** decision only when all
+of these conditions hold: explicit endpoint configuration; the exact loopback
+permission bit; the named packaged loopback fixture and an approved role; a current
+native main-document binding; a live owner window; and an unretired local-only
+**ephemeral** session. Its CSP names only that numeric WebSocket endpoint. It never
+turns this network permission into RPC authority or claims to identify a requesting
+child. The real foreign-owner attack remains mandatory after network admission.
 
-- `components/content_settings/core/browser/content_settings_registry.cc`
-  and `host_content_settings_map.cc` at Chromium `154.0.8037.98`.
-- `components/content_settings/core/common/content_settings_pattern.cc` at the
-  same tag, including `FromURLNoWildcard` and `Builder::Validate`.
-- CEF `libcef/browser/request_context_impl.cc`, `setting_helper.cc`, and installed
-  `include/cef_request_context.h` from the pinned CEF 8037 distribution.
+This mechanism is compiled only with `rpc-qualification`. Ordinary builds reject
+loopback setup, retain generic permission denial and do not open a listener during
+normal startup. No global content-setting default, persistent grant, permission
+UI bypass, browser-security flag, public debug port or arbitrary evaluation is
+introduced. The fixture is not a design for arbitrary remote pages or persistent
+application browser sessions. The baseline selection avoids this unsupported
+shipping surface.
 
-No upstream implementation code was copied.
+Pinned primary references: Chromium's
+[permission registration](https://github.com/chromium/chromium/blob/154.0.8037.98/components/content_settings/core/browser/content_settings_registry.cc)
+and CEF's
+[permission callback contract](https://github.com/chromiumembedded/cef/blob/14c5a089e8452874cb1a556dc3fde26ed2d87723/include/cef_permission_handler.h).
 
-## Maintained native workload
+## Failed controls and retained reporting corrections
+
+The original ungranted packaged loopback control fails before WebSocket upgrade:
+actual permission-denied receipts are retained, with no authenticated socket or
+native confirmation. An earlier exact content-setting experiment did not survive
+readback for the custom app scheme and was removed. Its source snapshot and failed
+reports remain private. No broader default-setting or security-flag workaround
+was retained.
+
+The first fixture-grant trial completed application work but failed acceptance:
+Chromium log noise displaced both native throttle receipts from the last 20 stderr
+lines. That report remains failed. The observer now retains an independently
+bounded complete allowlisted native stderr stream: at most 128 events, 16 KiB per
+event and 64 KiB total. Duplicates are preserved and overflow fails; earlier failures
+cannot be evicted or retroactively repaired. Final acceptance still requires both
+actual throttle-completion receipts and every ordered shutdown phase.
+
+Idle reduction also rejects contradictory availability, missing matched identity
+intervals, duplicate counters, empty provider names and nonfinite computed rates.
+Its regression failed before the fix and passed afterwards. The first Python audit
+invocation used an environment without the audit module; the existing installed
+audit entrypoint completed the retry without modifying the environment. Both
+outcomes remain recorded.
+
+## Maintained commands and qualification boundary
 
 ```sh
-# Selected native baseline, one functional execution:
-bun run qualify:cef-transports -- /path/to/prepared-app --native-only --functional
+# Both actual CEF candidates; one functional launch each, not a distribution.
+bun run qualify:cef-transports -- PREPARED_APP --functional
 
-# Native baseline distributions; clean committed source is mandatory:
-bun run qualify:cef-transports -- /path/to/prepared-app --native-only --samples 5 --warmups 1
+# Paired descriptive profile from clean committed source.
+bun run qualify:cef-transports -- PREPARED_APP --samples 10 --warmups 2
 
-# Explicit investigation of BOTH candidates; currently fails closed on loopback:
-bun run qualify:cef-transports -- /path/to/prepared-app --functional
+# Independent native-only diagnostic, always non-comparable.
+bun run qualify:cef-transports -- PREPARED_APP --native-only --samples 5 --warmups 1
 ```
 
-The workload preserves 100 structured calls at concurrency 16, 50 binary calls of
-65,536 bytes, and 20 cancellations after backend admission. It also requires
-20 calls while the actual renderer runs at a fixed 4x Chromium CPU-throttle rate,
-positive native completion for both applying and restoring the rate, in-flight
-navigation revocation, return-to-origin denial, service disconnect, and resources
-returning to baseline. The contributor throttle accepts only the named packaged
-fixture and rates 1 or 4. It opens no debugging endpoint or arbitrary evaluation
-surface. Both pending registrations and delayed deadline tasks are bounded.
-
-Idle observations span two seconds with one admitted control waiter present in
-both candidates; there is no application polling. Kernel providers retain their
-own semantics and count only adjacent matching process/task identities. Missing
-providers or samples, particularly Windows ETW, remain unavailable rather than
-zero. Native/CEF/Bun/kernel copy stages not directly measured remain unknown.
-
-## Acceptance boundary
-
-Only complete native launches with the exact workload record and ordered clean
-teardown contribute measurements. Failed attempts remain in the report. Raw
-native data is not paired with a Bun MessageChannel substitute. `assertComparable`
-requires both candidate identities, at least five unique matching trial indices,
-valid distributions and bounded queue data; duplicates and fabricated zeros
-cannot repair missing execution.
-
-The native baseline is a functional/security selection, not a measured performance
-victory over loopback. Issue #22 still retains its unexecuted paired and platform
-comparison criteria. Broader M4 session clearing/persistent credentials and the
-historical intermittent teardown investigation remain separate work.
-
-## Paired contributor qualification follow-up
-
-The no-grant failure above remains a valid control. A subsequent narrow fixture
-path separates Chromium's top-origin loopback reachability from RPC authority.
-It accepts only the exact loopback-network prompt when the native binding is
-current, the session is ephemeral/local-only, the named packaged transport page
-is running, and its numeric CSP endpoint was explicitly configured before session
-creation. Other permissions, remote/development sessions, stale bindings and
-ordinary builds remain denied. No content-setting default, persistent browser
-grant, network-security flag or arbitrary developer-tools endpoint is changed.
-
-This path is for comparative qualification, not a supported production permission
-API. Top-origin reachability cannot attest the requesting child frame. Socket
-admission therefore still requires both the one-use credential and a new challenge
-confirmed through the exact native owner; the real same-origin foreign-owner attack
-must fail without executing its RPC. The selected native baseline avoids this
-additional permission and listener lifecycle in ordinary applications.
-
-Actual paired functional execution completed on the development machine. One
-initial attempt completed the application work but failed the wrapper because
-ordinary Chromium logs displaced the throttle receipts from the stderr tail.
-That failed report is retained. The maintained observer now retains a bounded,
-complete allowlisted native-event stream, keeps duplicates, and fails on overflow.
-The acceptance test still requires both actual native throttle completions.
-Clean-source measured trials and final-head hosted platform results are recorded
-separately; neither a functional pair nor a retrospective report replay supplies
-those missing distributions.
+The automatic three-platform RPC workflow requires both functional candidates as
+well as RPC/session, native browser policy and network suites. Compilation and
+local macOS runs do not substitute for final-head Linux/Windows execution. Hosted
+functional results are not quiet performance distributions. Further production
+security, signed application credentials, complete session storage clearing,
+managed reload and the historical intermittent teardown issue are separate gates.

@@ -1,0 +1,3346 @@
+{
+  "schema": 1,
+  "classification": "local-paired-native-cef-transports",
+  "source": {
+    "commit": "e36e3a07f4cf82761e4aad41d280c357b1defc1d",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "nativeSourceTree": "132e4c18c17641230a6ad34e2715b835da75b407",
+  "target": "darwin-arm64",
+  "bun": "1.4.3",
+  "cefRust": "1.91.0",
+  "runtimeIdentity": {
+    "event": "cef-binary-identity",
+    "schema": 1,
+    "sha256": "d4a99cfc717b965c54bb27aa150fb4614b7ef58014766e2bea5855d17e81eb39",
+    "cefVersion": "154.0.34",
+    "cefCommitNumber": 3633,
+    "chromiumVersion": "154.0.8037.98",
+    "fullVersion": "154.0.34+g14c5a08+chromium-154.0.8037.98",
+    "source": "exported-api",
+    "sandbox": "unverified"
+  },
+  "workload": {
+    "version": 1,
+    "structuredCalls": 100,
+    "structuredConcurrency": 16,
+    "binaryCalls": 50,
+    "binaryBytesPerCall": 65536,
+    "cancellationCalls": 20,
+    "cancellationConcurrency": 1
+  },
+  "samplesPerCandidate": 10,
+  "warmupsPerCandidate": 2,
+  "launches": 24,
+  "report": {
+    "bytes": 14673439,
+    "sha256": "77f971eceb52cf98346482b20ef9ad29746493383e15324fe5746f8268138ef2"
+  },
+  "inputInventorySha256": "8edfffcb4e576d56ae9f90bc89cf4ffbfca499bc4271abdfae2a604717d1315d",
+  "preparedInventorySha256": "cdca1c25e793262b2ee01979bf89235594beeb8a9edf7d7364bd4285688bf6ca",
+  "integrity": {
+    "sourceUnchanged": true,
+    "inputArtifactUnchanged": true,
+    "preparedArtifactUnchanged": true,
+    "harnessHashesUnchanged": true
+  },
+  "sourceHashes": {
+    "scripts/qualify-cef-transports.ts": "e41d9f02714af16c4a9c768d91add8ee1d79ed910a613e93e190d295182a0f11",
+    "examples/cef/transport.ts": "77d13ca42164959091eb19558c180d78e10f53e26e99933733ceb3b7c6692a30",
+    "examples/cef/transport-client.ts": "38a50b2508b4808dca8dbb62ee5bca7449a1d31faace814988f1f51cc8ae4273",
+    "examples/cef/transport-contract.ts": "a0de62ff7219dc4313f2ade694d7c5feecd45f9374f3e22c5aadde4585f4fe27",
+    "packages/client/src/cef-rpc.ts": "255ffd079f8de6fb3310cab9c865597c500826fb5e7f0f96f29c179738b3e653",
+    "packages/client/src/cef-loopback.ts": "a7c5eca7ef53100d2b28d916e54859555b9cb6faed600d85c71b226b731d0ed5",
+    "packages/client/src/rpc-loopback.ts": "47cdf879cd011c88d32b4d9fd3993e291f27b4b9478e240bafc95e3296b110e9",
+    "packages/runtime/src/cef.ts": "85af9655d7615e6046da8af05fc281b26c531b2eb1fa86ab3f16219de924cba4",
+    "packages/runtime/src/rpc-loopback.ts": "194ed8ae34ce81ff44fbf2fbb1310cbfcf42f753227398797912309833492f37",
+    "packages/contracts/src/rpc-native-handoff.ts": "55135d7712acd2b2b6e226c8c600d65d5f3299b994c19dc613edcf37dc4a85e3",
+    "packages/contracts/src/rpc-fragments.ts": "dba984e95b60f35742babe78d5453c25017e41f6e17c2dd59e0de5076f72238d",
+    "packages/contracts/src/rpc-websocket-wire.ts": "9b101c6d76e6b0bfb9fa5c27924b4446bbebd3b504e4a45e928a0af9f35bcfbd",
+    "native/cef-host/src/host.rs": "50cf12377dafb60ef2d6cc1aaa2849b69a10459804e4bc1e5d6ac26ab62f5c99",
+    "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
+    "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
+    "benchmarks/lib/cef-transport-acceptance.ts": "e56da5ff3b2fd35d7e40d9d223b3ea1b36851b80a17711ba2ec30e42d0a526f8",
+    "benchmarks/lib/cef-acceptance.ts": "f244fdd841802f3c88872b1c31d91313110cc57d630f52f4ad9065dd18ff18dd",
+    "benchmarks/lib/observed-command.ts": "00755c703cd07a86e25c903051b6021892c534b71f2cae30a152e108e3fc3e1c",
+    "benchmarks/lib/native-diagnostic-events.json": "0dbdce269d4358455837a5a14aae32aab0d19a25484e7a2172cb42f60be9e406",
+    "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+    "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
+    "benchmarks/rpc-transport-comparison.ts": "4d947c78faa492d5bbab177089c3c44bc5dff1f97a575318378c30427f02d711",
+    "scripts/observe-process.py": "9177dae62064a0e57762c51c8014a91383035e37fa41b099d0dfe7dfb62f5da4",
+    "scripts/kernel_counters.py": "0b975e2ae7c4725363ddd0362b8a5d2e2fac09ae36cf43322c7df121392c7cc5"
+  },
+  "rawTrials": [
+    {
+      "candidate": "native-mediated",
+      "trial": 0,
+      "handoffMs": 4.8999998569488525,
+      "structuredMs": 32.299999952316284,
+      "binaryMs": 507.40000009536743,
+      "cancellationMs": 20.90000009536743,
+      "throttledMs": 13.5,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 0,
+      "handoffMs": 10.899999856948853,
+      "structuredMs": 23.100000143051147,
+      "binaryMs": 35.09999990463257,
+      "cancellationMs": 16.5,
+      "throttledMs": 16.299999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 1,
+      "handoffMs": 13.5,
+      "structuredMs": 19.899999856948853,
+      "binaryMs": 33.90000009536743,
+      "cancellationMs": 14.799999952316284,
+      "throttledMs": 11.700000047683716,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 1,
+      "handoffMs": 3.799999952316284,
+      "structuredMs": 27.299999952316284,
+      "binaryMs": 477.7000000476837,
+      "cancellationMs": 22.5,
+      "throttledMs": 16.299999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 2,
+      "handoffMs": 4.199999809265137,
+      "structuredMs": 34.200000047683716,
+      "binaryMs": 486.59999990463257,
+      "cancellationMs": 20.700000047683716,
+      "throttledMs": 16.299999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 2,
+      "handoffMs": 8.099999904632568,
+      "structuredMs": 19.799999952316284,
+      "binaryMs": 32.40000009536743,
+      "cancellationMs": 14.099999904632568,
+      "throttledMs": 10.5,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 3,
+      "handoffMs": 7.700000047683716,
+      "structuredMs": 19.5,
+      "binaryMs": 33.09999990463257,
+      "cancellationMs": 17.90000009536743,
+      "throttledMs": 14.099999904632568,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 3,
+      "handoffMs": 5.1000001430511475,
+      "structuredMs": 35,
+      "binaryMs": 526.7999999523163,
+      "cancellationMs": 23.100000143051147,
+      "throttledMs": 15.100000143051147,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 4,
+      "handoffMs": 4.199999809265137,
+      "structuredMs": 29.800000190734863,
+      "binaryMs": 496.5,
+      "cancellationMs": 18.799999952316284,
+      "throttledMs": 14.200000047683716,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 4,
+      "handoffMs": 10.599999904632568,
+      "structuredMs": 20,
+      "binaryMs": 31,
+      "cancellationMs": 11.100000143051147,
+      "throttledMs": 12.200000047683716,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 5,
+      "handoffMs": 11.900000095367432,
+      "structuredMs": 25.700000047683716,
+      "binaryMs": 44.19999980926514,
+      "cancellationMs": 21.5,
+      "throttledMs": 16.200000047683716,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 5,
+      "handoffMs": 4.700000047683716,
+      "structuredMs": 26.299999952316284,
+      "binaryMs": 503.2999999523163,
+      "cancellationMs": 21.90000009536743,
+      "throttledMs": 15.800000190734863,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 6,
+      "handoffMs": 3.5,
+      "structuredMs": 24.5,
+      "binaryMs": 409.60000014305115,
+      "cancellationMs": 22.299999952316284,
+      "throttledMs": 11.900000095367432,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 6,
+      "handoffMs": 7.400000095367432,
+      "structuredMs": 20.200000047683716,
+      "binaryMs": 30.5,
+      "cancellationMs": 13.900000095367432,
+      "throttledMs": 13.299999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 7,
+      "handoffMs": 8.900000095367432,
+      "structuredMs": 20.899999856948853,
+      "binaryMs": 33.5,
+      "cancellationMs": 13.5,
+      "throttledMs": 12.599999904632568,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 7,
+      "handoffMs": 4.400000095367432,
+      "structuredMs": 22.09999990463257,
+      "binaryMs": 390.09999990463257,
+      "cancellationMs": 17.799999952316284,
+      "throttledMs": 12.799999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 8,
+      "handoffMs": 3.3000001907348633,
+      "structuredMs": 22.199999809265137,
+      "binaryMs": 406,
+      "cancellationMs": 55,
+      "throttledMs": 17.59999990463257,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 8,
+      "handoffMs": 8.400000095367432,
+      "structuredMs": 17.90000009536743,
+      "binaryMs": 32.200000047683716,
+      "cancellationMs": 13.5,
+      "throttledMs": 10.5,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 9,
+      "handoffMs": 8.700000047683716,
+      "structuredMs": 17,
+      "binaryMs": 30.09999990463257,
+      "cancellationMs": 15.200000047683716,
+      "throttledMs": 12.5,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 2,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 0
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 9,
+      "handoffMs": 3.700000047683716,
+      "structuredMs": 22.799999952316284,
+      "binaryMs": 395.7999999523163,
+      "cancellationMs": 17.90000009536743,
+      "throttledMs": 13.299999952316284,
+      "queuePeaks": {
+        "clientFrames": 16,
+        "clientBytes": 65644,
+        "serverFrames": 3,
+        "serverBytes": 65608
+      },
+      "fragmentPeak": 131252
+    }
+  ],
+  "distributions": {
+    "native-mediated": {
+      "handoffMs": {
+        "count": 10,
+        "mean": 4.179999995231628,
+        "median": 4.199999809265137,
+        "p95": 5.010000014305114,
+        "p99": 5.082000117301941,
+        "min": 3.3000001907348633,
+        "max": 5.1000001430511475,
+        "standardDeviation": 0.605162952185834,
+        "meanBootstrap95": [
+          3.8500000715255736,
+          4.550250000357628
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 4.919999885559082,
+        "samples": [
+          4.8999998569488525,
+          3.799999952316284,
+          4.199999809265137,
+          5.1000001430511475,
+          4.199999809265137,
+          4.700000047683716,
+          3.5,
+          4.400000095367432,
+          3.3000001907348633,
+          3.700000047683716
+        ]
+      },
+      "structuredMs": {
+        "count": 10,
+        "mean": 27.649999976158142,
+        "median": 26.799999952316284,
+        "p95": 34.64000002145767,
+        "p99": 34.92800000429153,
+        "min": 22.09999990463257,
+        "max": 35,
+        "standardDeviation": 4.9336149104733344,
+        "meanBootstrap95": [
+          24.85999994277954,
+          30.740250032544136
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 34.28000004291535,
+        "samples": [
+          32.299999952316284,
+          27.299999952316284,
+          34.200000047683716,
+          35,
+          29.800000190734863,
+          26.299999952316284,
+          24.5,
+          22.09999990463257,
+          22.199999809265137,
+          22.799999952316284
+        ]
+      },
+      "binaryMs": {
+        "count": 10,
+        "mean": 459.97999999523165,
+        "median": 482.14999997615814,
+        "p95": 518.0700000166893,
+        "p99": 525.0539999651909,
+        "min": 390.09999990463257,
+        "max": 526.7999999523163,
+        "standardDeviation": 53.125423920074724,
+        "meanBootstrap95": [
+          427.29474997639653,
+          491.03175004184243
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 509.3400000810623,
+        "samples": [
+          507.40000009536743,
+          477.7000000476837,
+          486.59999990463257,
+          526.7999999523163,
+          496.5,
+          503.2999999523163,
+          409.60000014305115,
+          390.09999990463257,
+          406,
+          395.7999999523163
+        ]
+      },
+      "cancellationMs": {
+        "count": 10,
+        "mean": 24.0900000333786,
+        "median": 21.40000009536743,
+        "p95": 40.64500006437298,
+        "p99": 52.12900001287461,
+        "min": 17.799999952316284,
+        "max": 55,
+        "standardDeviation": 11.027586612479952,
+        "meanBootstrap95": [
+          19.78000001847744,
+          31.410250037312508
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 26.290000128746023,
+        "samples": [
+          20.90000009536743,
+          22.5,
+          20.700000047683716,
+          23.100000143051147,
+          18.799999952316284,
+          21.90000009536743,
+          22.299999952316284,
+          17.799999952316284,
+          55,
+          17.90000009536743
+        ]
+      }
+    },
+    "authenticated-loopback": {
+      "handoffMs": {
+        "count": 10,
+        "mean": 9.610000014305115,
+        "median": 8.800000071525574,
+        "p95": 12.780000042915342,
+        "p99": 13.356000008583068,
+        "min": 7.400000095367432,
+        "max": 13.5,
+        "standardDeviation": 2.017396537625823,
+        "meanBootstrap95": [
+          8.459749991893768,
+          10.86025001347065
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 12.060000085830687,
+        "samples": [
+          10.899999856948853,
+          13.5,
+          8.099999904632568,
+          7.700000047683716,
+          10.599999904632568,
+          11.900000095367432,
+          7.400000095367432,
+          8.900000095367432,
+          8.400000095367432,
+          8.700000047683716
+        ]
+      },
+      "structuredMs": {
+        "count": 10,
+        "mean": 20.4,
+        "median": 19.949999928474426,
+        "p95": 24.530000090599057,
+        "p99": 25.466000056266786,
+        "min": 17,
+        "max": 25.700000047683716,
+        "standardDeviation": 2.4734142133953103,
+        "meanBootstrap95": [
+          19.040000009536744,
+          21.890000033974648
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 23.360000133514404,
+        "samples": [
+          23.100000143051147,
+          19.899999856948853,
+          19.799999952316284,
+          19.5,
+          20,
+          25.700000047683716,
+          20.200000047683716,
+          20.899999856948853,
+          17.90000009536743,
+          17
+        ]
+      },
+      "binaryMs": {
+        "count": 10,
+        "mean": 33.599999976158145,
+        "median": 32.75,
+        "p95": 40.10499985218047,
+        "p99": 43.380999817848206,
+        "min": 30.09999990463257,
+        "max": 44.19999980926514,
+        "standardDeviation": 4.041176893047128,
+        "meanBootstrap95": [
+          31.639999985694885,
+          36.23099997103215
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 36.009999895095824,
+        "samples": [
+          35.09999990463257,
+          33.90000009536743,
+          32.40000009536743,
+          33.09999990463257,
+          31,
+          44.19999980926514,
+          30.5,
+          33.5,
+          32.200000047683716,
+          30.09999990463257
+        ]
+      },
+      "cancellationMs": {
+        "count": 10,
+        "mean": 15.200000023841858,
+        "median": 14.449999928474426,
+        "p95": 19.88000004291534,
+        "p99": 21.17600000858307,
+        "min": 11.100000143051147,
+        "max": 21.5,
+        "standardDeviation": 2.8736349289119434,
+        "meanBootstrap95": [
+          13.789750010967255,
+          16.940250010490416
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 18.260000085830686,
+        "samples": [
+          16.5,
+          14.799999952316284,
+          14.099999904632568,
+          17.90000009536743,
+          11.100000143051147,
+          21.5,
+          13.900000095367432,
+          13.5,
+          13.5,
+          15.200000047683716
+        ]
+      }
+    }
+  },
+  "copyAccounting": {
+    "zeroCopyClaim": false,
+    "knownStages": {
+      "native-mediated": [
+        "RPC packet encoding",
+        "bounded writer snapshot",
+        "96 KiB bounded fragment reassembly",
+        "24 KiB native adapter snapshot",
+        "hex encoding in private control pipe",
+        "CEF binary copy",
+        "renderer ArrayBuffer copy",
+        "RPC payload decode"
+      ],
+      "authenticated-loopback": [
+        "RPC packet encoding",
+        "bounded writer snapshot",
+        "WebSocket binary record allocation",
+        "WebSocket receive payload isolation",
+        "RPC payload decode",
+        "one-time native offer and socket challenge"
+      ]
+    },
+    "unknownStages": [
+      "CEF internal process-message serialization",
+      "Bun WebSocket and browser implementation buffering",
+      "OS pipe/socket/kernel copies"
+    ]
+  },
+  "attempts": [
+    {
+      "candidate": "native-mediated",
+      "trial": -2,
+      "warmup": true,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 1,
+            "sampledDurationMs": 1928.7622501142323,
+            "matchedScopeIntervals": 280,
+            "observedPerSecond": 0.5184672190368587
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 120,
+            "sampledDurationMs": 1928.7622501142323,
+            "matchedScopeIntervals": 280,
+            "observedPerSecond": 62.216066284423036
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 910278656,
+        "peakTreeThreads": 152
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": -2,
+      "warmup": true,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1976.3070410117507,
+            "matchedScopeIntervals": 322,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 186,
+            "sampledDurationMs": 1976.3070410117507,
+            "matchedScopeIntervals": 322,
+            "observedPerSecond": 94.11493059538924
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 979353600,
+        "peakTreeThreads": 166
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": -1,
+      "warmup": true,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1951.8378749489784,
+            "matchedScopeIntervals": 301,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 239,
+            "sampledDurationMs": 1951.8378749489784,
+            "matchedScopeIntervals": 301,
+            "observedPerSecond": 122.44869467257752
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 961888256,
+        "peakTreeThreads": 159
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": -1,
+      "warmup": true,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1924.6320419479162,
+            "matchedScopeIntervals": 266,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 153,
+            "sampledDurationMs": 1924.6320419479162,
+            "matchedScopeIntervals": 266,
+            "observedPerSecond": 79.49571485110941
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 910000128,
+        "peakTreeThreads": 153
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 0,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1937.7905409783125,
+            "matchedScopeIntervals": 294,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 135,
+            "sampledDurationMs": 1937.7905409783125,
+            "matchedScopeIntervals": 294,
+            "observedPerSecond": 69.66697233016936
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 912015360,
+        "peakTreeThreads": 153
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 0,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1930.4318751674145,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 238,
+            "sampledDurationMs": 1930.4318751674145,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 123.28847397391826
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 883982336,
+        "peakTreeThreads": 154
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 1,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1985.1554171182215,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 191,
+            "sampledDurationMs": 1985.1554171182215,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 96.21412930845878
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 951173120,
+        "peakTreeThreads": 152
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 1,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1942.155750002712,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 209,
+            "sampledDurationMs": 1942.155750002712,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 107.61237866721459
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 909574144,
+        "peakTreeThreads": 155
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 2,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1977.1792499814183,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 214,
+            "sampledDurationMs": 1977.1792499814183,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 108.23500196151218
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 904216576,
+        "peakTreeThreads": 154
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 2,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1937.7860419917852,
+            "matchedScopeIntervals": 329,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 235,
+            "sampledDurationMs": 1937.7860419917852,
+            "matchedScopeIntervals": 329,
+            "observedPerSecond": 121.27241857849869
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 887160832,
+        "peakTreeThreads": 156
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 3,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1935.5192920193076,
+            "matchedScopeIntervals": 287,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 228,
+            "sampledDurationMs": 1935.5192920193076,
+            "matchedScopeIntervals": 287,
+            "observedPerSecond": 117.79784419618464
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 902955008,
+        "peakTreeThreads": 156
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 3,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1969.5286659989506,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 139,
+            "sampledDurationMs": 1969.5286659989506,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 70.57526117777971
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 910721024,
+        "peakTreeThreads": 153
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 4,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1960.3506671264768,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 156,
+            "sampledDurationMs": 1960.3506671264768,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 79.57759936321398
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 910540800,
+        "peakTreeThreads": 154
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 4,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1990.508875111118,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 190,
+            "sampledDurationMs": 1990.508875111118,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 95.45297806792922
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 994263040,
+        "peakTreeThreads": 167
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 5,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1971.3613328058273,
+            "matchedScopeIntervals": 294,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 172,
+            "sampledDurationMs": 1971.3613328058273,
+            "matchedScopeIntervals": 294,
+            "observedPerSecond": 87.24935258580597
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 965033984,
+        "peakTreeThreads": 167
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 5,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1949.702417012304,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 155,
+            "sampledDurationMs": 1949.702417012304,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 79.4993116116252
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 904462336,
+        "peakTreeThreads": 153
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 6,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1991.8111669830978,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 166,
+            "sampledDurationMs": 1991.8111669830978,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 83.34123372319091
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 909524992,
+        "peakTreeThreads": 155
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 6,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1985.4428751859814,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 190,
+            "sampledDurationMs": 1985.4428751859814,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 95.69653318895021
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 993116160,
+        "peakTreeThreads": 168
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 7,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1957.543375203386,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 258,
+            "sampledDurationMs": 1957.543375203386,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 131.79784584502204
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 885047296,
+        "peakTreeThreads": 153
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 7,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 1,
+            "sampledDurationMs": 1950.79645793885,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0.5126111419417732
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 171,
+            "sampledDurationMs": 1950.79645793885,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 87.6565052720432
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 915767296,
+        "peakTreeThreads": 155
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 8,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1957.8308339696378,
+            "matchedScopeIntervals": 301,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 152,
+            "sampledDurationMs": 1957.8308339696378,
+            "matchedScopeIntervals": 301,
+            "observedPerSecond": 77.63694256046088
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 907689984,
+        "peakTreeThreads": 152
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 8,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 1,
+            "sampledDurationMs": 1956.3258751295507,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 0.5111622826814467
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 182,
+            "sampledDurationMs": 1956.3258751295507,
+            "matchedScopeIntervals": 315,
+            "observedPerSecond": 93.0315354480233
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 885047296,
+        "peakTreeThreads": 155
+      }
+    },
+    {
+      "candidate": "authenticated-loopback",
+      "trial": 9,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "contributor-only-top-origin-reachability",
+        "observedGrants": 6
+      },
+      "nativeConfirmation": {
+        "accepted": 2,
+        "rejected": 1
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 0,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 1,
+            "sampledDurationMs": 1992.8577921818942,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 0.5017919511984561
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 251,
+            "sampledDurationMs": 1992.8577921818942,
+            "matchedScopeIntervals": 308,
+            "observedPerSecond": 125.94977975081248
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 993411072,
+        "peakTreeThreads": 165
+      }
+    },
+    {
+      "candidate": "native-mediated",
+      "trial": 9,
+      "warmup": false,
+      "passed": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "nativeThrottleReceipts": [
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 4
+        },
+        {
+          "completed": true,
+          "event": "bunly.native.transport-throttle",
+          "rate": 1
+        }
+      ],
+      "networkPermission": {
+        "scope": "not-requested",
+        "observedGrants": 0
+      },
+      "nativeConfirmation": {
+        "accepted": 0,
+        "rejected": 0
+      },
+      "fragmentBudget": {
+        "retainedBytes": 0,
+        "peakRetainedBytes": 131252,
+        "maxRetainedBytes": 3145728
+      },
+      "idleWakeups": {
+        "status": "observed",
+        "metrics": [
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "packageIdleWakeups",
+            "observedDelta": 0,
+            "sampledDurationMs": 1987.2498749755323,
+            "matchedScopeIntervals": 322,
+            "observedPerSecond": 0
+          },
+          {
+            "provider": "darwin-proc-rusage-v0",
+            "metric": "interruptWakeups",
+            "observedDelta": 169,
+            "sampledDurationMs": 1987.2498749755323,
+            "matchedScopeIntervals": 322,
+            "observedPerSecond": 85.04214901615268
+          }
+        ],
+        "reason": "Adjacent matched process/task identities; sampled lower bound, not lifetime accounting"
+      },
+      "resourceObservation": {
+        "peakTreeRssBytes": 909426688,
+        "peakTreeThreads": 155
+      }
+    }
+  ],
+  "validation": {
+    "rpc": {
+      "passed": true,
+      "report": {
+        "bytes": 1298991,
+        "sha256": "a91ed1aea24bb6275d63d2776deb9a5339d326e3aee5ce7939a422d80ba7ad93"
+      },
+      "source": {
+        "commit": "e36e3a07f4cf82761e4aad41d280c357b1defc1d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "cases": 11,
+      "positiveLaunches": [
+        {
+          "name": "installed-0",
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "name": "installed-1",
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "name": "installed-2",
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "name": "last-window",
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "name": "restored-installation",
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    "network": {
+      "passed": true,
+      "report": {
+        "bytes": 148279,
+        "sha256": "6006dbf61e619ec30dc52f378b7c930f523c3be51e7840887eceb7641270c58b"
+      },
+      "source": {
+        "commit": "e36e3a07f4cf82761e4aad41d280c357b1defc1d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 2,
+        "worker": 2,
+        "isolatedLeak": 0,
+        "allowedData": 4
+      }
+    },
+    "policy": {
+      "passed": true,
+      "report": {
+        "bytes": 137727,
+        "sha256": "ea6e008254cef391d209aa383f440c5ff6969edc2ffcf05112858bfc55a44637"
+      },
+      "source": {
+        "commit": "e36e3a07f4cf82761e4aad41d280c357b1defc1d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "deniedRequests": 0
+    },
+    "portable": {
+      "bytes": 75447,
+      "sha256": "102f74195493fbd48f8c1e6266679a308d854f8ef782a0d14470d222d4d9908f"
+    },
+    "portable-corrected": {
+      "bytes": 75595,
+      "sha256": "7d16184d1b323ebbe6c0605eb236699f027a76e38d821bb86f0dcf7ed05dfb82"
+    },
+    "paired-portable-2": {
+      "bytes": 75741,
+      "sha256": "05835b5b5bb5d68ca6663e166421108d96df9f50698af68aa22475483dbb5166"
+    },
+    "paired-foundation": {
+      "bytes": 15739,
+      "sha256": "3d9582bbb1f81edcb15cf2fdfe4be89dfbcc12cead894a1a8343e6990c195e6f"
+    },
+    "paired-workflows": {
+      "bytes": 13,
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    },
+    "paired-probe-clippy": {
+      "bytes": 180,
+      "sha256": "d7f2b59d353c7cf990949696acfb6dde0ec7fd16efeaec8b30de302a965dc261"
+    },
+    "paired-probe-tests": {
+      "bytes": 10008,
+      "sha256": "8584581fe55672b39f00815fb1a334b3e1baed76d8f140048855f13ca790055d"
+    },
+    "paired-probe-build": {
+      "bytes": 183,
+      "sha256": "2fc341cbff8ca19b3758596a51629c5db828b1fa62ab0d8d2dca76add713c0f6"
+    },
+    "receipt-bun-tests": {
+      "bytes": 3408,
+      "sha256": "f61c091b2c854a7fb3a4ca8a259f3f69dcd46cdc8402ac01df5622b6b1a4e8b5"
+    },
+    "receipt-python-tests": {
+      "bytes": 416,
+      "sha256": "850f111cc6d011217c0a1193c9a15b30970e714d2fa591e7e95666b93c44a13c"
+    },
+    "idle-regression-before": {
+      "bytes": 1299,
+      "sha256": "ca2c752c03abab86e39f5a420b5bcb68c4344cbc1918ae7ef0fefe337d363ca7"
+    },
+    "idle-regression-after": {
+      "bytes": 571,
+      "sha256": "f21683c6e0bc8ccf7fad57a35603cd61438f0b9552036acce4a9dea2fe1c78a6"
+    },
+    "counts": {
+      "bunTests": 704,
+      "pythonTests": 203,
+      "foundationOverlapping": 139,
+      "nativeCefProbe": 104,
+      "m1Rust": 3,
+      "nativeCefDefault": 99
+    },
+    "ordinaryHost": {
+      "passed": true,
+      "cases": 11,
+      "source": {
+        "commit": "e36e3a07f4cf82761e4aad41d280c357b1defc1d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "inputArtifactUnchanged": true,
+      "report": {
+        "bytes": 1316898,
+        "sha256": "d8cbbcaa901402e71fef8dfaaefdca06ab6d41ddf6db6f25af9b16552a41962c"
+      }
+    },
+    "ordinaryLoopbackNegative": {
+      "passed": true,
+      "classification": "expected-ordinary-build-rejection-not-loopback-acceptance",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      },
+      "temporaryListenerClosed": true,
+      "resourcesReleased": true,
+      "inputArtifactUnchanged": true,
+      "report": {
+        "bytes": 17877,
+        "sha256": "9a96e894a0bed77ac0fe018fbbb270b4280fc2a88b1c295a7769058aa90c621b"
+      },
+      "privateBackendScript": {
+        "bytes": 957,
+        "sha256": "b4615834448001b81ad9b027d1ead84c882364bcc41055a17ecf4da4b89bde04"
+      },
+      "privateRunnerScript": {
+        "bytes": 2610,
+        "sha256": "f2709759053aa659f5d503b61faa3f7a65a02d72a7c3ec2df4ce819540e87c68"
+      }
+    },
+    "paired-final-default-native": {
+      "bytes": 12852,
+      "sha256": "c38f8414e7ca36bf28bf9863d6514b9d9f9cda5b65b3a4183aa66d1c93113ae2"
+    },
+    "paired-final-windows-api": {
+      "bytes": 4363,
+      "sha256": "ac3ba6ec523922fa08677b23db6eaef175e398620735f543d22224414d8fb61d"
+    },
+    "paired-ordinary-prebuilt": {
+      "bytes": 140,
+      "sha256": "1ddd0f3f147104b5be86eb228a832b4d38610988dcdf344cd3fe900afac4836d"
+    }
+  },
+  "controls": [
+    {
+      "name": "default-permission-control",
+      "passed": false,
+      "comparable": false,
+      "source": {
+        "commit": "ff3e9b51910c319cb3096d263d3efbc0d4c62930",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 839933,
+        "sha256": "7b8125d0ef4717400ca3b2619c33db6a6de4fa0e306e7e266410691df832b159"
+      },
+      "disposition": "Loopback denied by actual browser permission before any WebSocket upgrade; no native owner proof could run.",
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fixture-grant-with-truncated-diagnostics",
+      "passed": false,
+      "comparable": false,
+      "source": {
+        "commit": "4ac065b3ca9001c65938632218651058fb1e15c3",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 1331582,
+        "sha256": "ad185f476bb05157eb45aad0c480665bd6453732ade55ecf0c700c47a1114aae"
+      },
+      "disposition": "Application workload completed but required throttle receipts were absent from the last 20 stderr lines; wrapper correctly failed.",
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "receipt-retention-functional-diagnostic",
+      "passed": true,
+      "comparable": false,
+      "source": {
+        "commit": "4ac065b3ca9001c65938632218651058fb1e15c3",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 1245369,
+        "sha256": "97d7077e40108e5730c2136878945790d5fae544dd1a215b51d660e59c85a614"
+      },
+      "disposition": "Dirty-tree functional comparison after bounded receipt retention; not committed-source profile evidence.",
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "final-functional-integration",
+      "passed": true,
+      "comparable": false,
+      "source": {
+        "commit": "4ac065b3ca9001c65938632218651058fb1e15c3",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 1375757,
+        "sha256": "8336607072058f9195b876ea8eff6a977241db55226fea8fe5e497126fb9f3f3"
+      },
+      "disposition": "Dirty-tree integration at implementation time; final clean-source profile is separate.",
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "loopback-permission-candidate-initial-clippy",
+      "classification": "pre-execution-build-failure",
+      "result": "strict Clippy rejected a nonminimal boolean; corrected without suppressing the lint",
+      "log": {
+        "bytes": 1125,
+        "sha256": "524f333d49ea38286c2b74a0aae639838ff3109849ea0cb3bc21d4f896041618"
+      }
+    }
+  ],
+  "idleInterruptSummary": {
+    "native-mediated": {
+      "sampleCount": 10,
+      "meanObservedPerSecond": 84.88433556833627,
+      "minimumObservedPerSecond": 69.66697233016936,
+      "maximumObservedPerSecond": 108.23500196151218,
+      "scope": "two-second post-work window with one admitted control waiter; matched identities only; not steady-state energy or complete lifetime accounting"
+    },
+    "authenticated-loopback": {
+      "sampleCount": 10,
+      "meanObservedPerSecond": 108.77508909436035,
+      "minimumObservedPerSecond": 87.24935258580597,
+      "maximumObservedPerSecond": 131.79784584502204,
+      "scope": "two-second post-work window with one admitted control waiter; matched identities only; not steady-state energy or complete lifetime accounting"
+    }
+  },
+  "inheritedFailedDiagnostics": [
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 953415,
+        "sha256": "48454c9e17347a8b28de519644cecb77602febf84ffdd736a7997369ef675ad8"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 872818,
+        "sha256": "ac7af7af8df7642ff6cfb4346d1b83178736193b4ebf365383d454cf7addd493"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 916349,
+        "sha256": "9deca94bd71628919040f9a9dbf9cae5e8c33129de7d52c50ac1fd3f707b3ad1"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 904661,
+        "sha256": "0876e4e8bbfce7b1c42f6b3783ca7ecb4a1e42cc9a648b378f90f14da856ad52"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 906113,
+        "sha256": "394c17eb6af36c3fc26813475a2f45ec2b21d28ccfd0abdb592f4e72bb9b31c3"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 934326,
+        "sha256": "9e693aaf876ccfbddf0989cfa9aba2682a0a497a5cc541691a9379d7add15b1b"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 924976,
+        "sha256": "e266fa2577aaf46c332b863b12ffac42ddb417b0ca847722f140f5d4398cbc15"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "passed": false,
+      "source": {
+        "commit": "5f4b064e4ad466ac592a5f1744e504af66878838",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "report": {
+        "bytes": 926984,
+        "sha256": "2b9ed424dcbe64c35988af319623320e63340c7d2096bf09513496eee1fbe4ad"
+      },
+      "attempts": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": false,
+          "outcome": {
+            "exitCode": 1,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "advisories": {
+    "initialAttempts": [
+      {
+        "name": "audit-js-root",
+        "command": [
+          "bun",
+          "audit",
+          "--json"
+        ],
+        "directory": ".",
+        "exitCode": 0,
+        "elapsedSeconds": 0.292,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      {
+        "name": "audit-js-0",
+        "command": [
+          "bun",
+          "audit",
+          "--json"
+        ],
+        "directory": "benchmarks/adapters/electron",
+        "exitCode": 0,
+        "elapsedSeconds": 0.297,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      {
+        "name": "audit-js-1",
+        "command": [
+          "bun",
+          "audit",
+          "--json"
+        ],
+        "directory": "benchmarks/adapters/electrobun",
+        "exitCode": 0,
+        "elapsedSeconds": 0.293,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      {
+        "name": "audit-js-2",
+        "command": [
+          "bun",
+          "audit",
+          "--json"
+        ],
+        "directory": "benchmarks/fixtures",
+        "exitCode": 0,
+        "elapsedSeconds": 0.286,
+        "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      {
+        "name": "audit-cargo-0",
+        "command": [
+          "cargo",
+          "audit",
+          "--file",
+          "native/Cargo.lock",
+          "--json"
+        ],
+        "directory": ".",
+        "exitCode": 0,
+        "elapsedSeconds": 0.874,
+        "sha256": "e91ed92f16ea6142924c3dfee32dbab111712f6d11f994f1c6d76de35a3e606e"
+      },
+      {
+        "name": "audit-cargo-1",
+        "command": [
+          "cargo",
+          "audit",
+          "--file",
+          "native/cef-host/Cargo.lock",
+          "--json"
+        ],
+        "directory": ".",
+        "exitCode": 0,
+        "elapsedSeconds": 1.377,
+        "sha256": "140a8d85f15c3e88c3528b998b23a27cf636d68289565f58ca0c4474cadf61ce"
+      },
+      {
+        "name": "audit-python",
+        "command": [
+          "python",
+          "-m",
+          "pip_audit",
+          "-r",
+          "requirements.txt",
+          "--format",
+          "json"
+        ],
+        "directory": ".",
+        "exitCode": 1,
+        "elapsedSeconds": 0.095,
+        "sha256": "27fb55788a781ba0a21d6d1d842a88ba646d1902a2bc6b2ea4056c90758f07a5"
+      }
+    ],
+    "pythonRetry": {
+      "command": [
+        "pip-audit",
+        "-r",
+        "requirements.txt",
+        "--format",
+        "json"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 11.946,
+      "sha256": "8d88b26b743a97d2b6f1c83d71c708b1509c44b2f04ebed424f268fc5f6e12aa",
+      "priorAttempt": "project Python lacked pip_audit; existing installed audit entrypoint used without modifying environments"
+    },
+    "locksUnchangedSinceAudit": true
+  },
+  "limits": [
+    "Controlled contributor fixture, not production permission support or a release-security claim.",
+    "Top-origin reachability is not requesting-frame authority; socket credentials alone cannot authorize application RPC.",
+    "Native-mediated remains the application baseline; loopback setup is rejected by ordinary native builds.",
+    "Small, local, non-quiet-machine distributions; no application startup advantage or platform-wide performance claim.",
+    "Kernel accounting is sampled provider-specific matched-identity lower bounds; Windows has no qualified provider.",
+    "Every failed trial remains failed; earlier reports missing receipts are not repaired retrospectively.",
+    "Persistent credential and full HTML5 storage-clear acceptance remain separate.",
+    "No cure for the historical intermittent CEF shutdown watchdog is inferred."
+  ]
+}

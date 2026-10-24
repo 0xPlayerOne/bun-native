@@ -232,3 +232,21 @@ launch matrices. The old hosted failure stays preserved. A projection replay of
 its exported report (omitting only the export-redacted optional nonce) is not a
 fresh execution; the corrected head must pass its own hosted run. Linux and Windows
 native RPC passed at the earlier head, but are rerun for the correction as well.
+
+## Paired native transport increment
+
+PR #100 adds bounded native fragmentation without raising native packet limits,
+a native-confirmed experimental loopback handoff, maintained actual CEF workload
+and fixed-throttle qualification, and bounded whole-run diagnostic retention.
+Both candidate data paths preserve native lifecycle authority. The ordinary
+application baseline remains native-mediated; contributor-only loopback network
+reachability is not a shipping permission capability.
+
+The clean local checkpoint and raw distributions are recorded in
+[ADR 0003](decisions/0003-transport-selection.md) and
+[transport evidence](../evidence/m4-native-transports-local.json). Twenty measured
+launches plus four warmups completed the paired workload, including foreign-owner
+credential denial, navigation revocation, disconnect, ordered shutdown and verified
+helper/clone cleanup. Final-head hosted execution remains a separate merge gate.
+This closes the earlier absence of local paired evidence, not persistent credential
+or complete HTML5 storage-clear acceptance, and does not establish a watchdog cure.
