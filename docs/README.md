@@ -84,3 +84,6 @@ separate Python/Rust contributor formatters.
 
 [Native acceptance tooling](native-acceptance-tooling.md) defines the shared M4
 suite, sanitized evidence export/replay and the M5 diagnostic handoff.
+
+[M5 progress](m5-progress.md) records bounded callback-source integration and
+actual pinned Bun PTY qualification, without claiming native renderer or supervisor completion.
