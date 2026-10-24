@@ -1,8 +1,12 @@
 /** Acceptance of actual native-host reports, not a browser/security simulation. */
-import { assertCleanCommand, type CommandObservation } from './observed-command.ts'
+import {
+  assertCleanCommand,
+  nativeDiagnosticLines,
+  type CommandObservation,
+} from './observed-command.ts'
 export function nativeEvents(report: CommandObservation): Record<string, unknown>[] {
   const result: Record<string, unknown>[] = []
-  for (const line of [...report.stdoutTail, ...report.stderr]) {
+  for (const line of [...report.stdoutTail, ...nativeDiagnosticLines(report)]) {
     try {
       const value: unknown = JSON.parse(line)
       if (value && typeof value === 'object' && !Array.isArray(value))

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import {
   validateCommandObservation,
+  nativeDiagnosticLines,
   assertCleanCommand,
   observationsPermitFixtureRemoval,
   observedCommand,
@@ -318,4 +319,28 @@ test('an expected nonzero exit is accepted only when observation and cleanup are
   expect(() => assertCleanCommand({ ...observation, cancelled: true }, 2)).toThrow(
     'Command failed: observation cancelled'
   )
+})
+
+test('native receipts have independent whole-run bounds and never fall back to truncated tails', () => {
+  const receipt = JSON.stringify({ event: 'bunly.host.shutdown', clean: true })
+  expect(nativeDiagnosticLines({ stderr: [receipt] })).toEqual([receipt])
+  expect(nativeDiagnosticLines({ stderr: [receipt], nativeDiagnostics: [] })).toEqual([])
+  expect(nativeDiagnosticLines({ stderr: [], nativeDiagnostics: [receipt, receipt] })).toEqual([
+    receipt,
+    receipt,
+  ])
+  for (const nativeDiagnostics of [
+    null,
+    [null],
+    ['not-json'],
+    ['[]'],
+    [JSON.stringify({ event: 'unknown' })],
+    [JSON.stringify({ event: ['bunly.host.shutdown'] })],
+    Array.from({ length: 129 }, () => receipt),
+    [JSON.stringify({ event: 'bunly.host.failure', payload: 'é'.repeat(8500) })],
+    Array.from({ length: 8 }, () =>
+      JSON.stringify({ event: 'bunly.host.failure', payload: 'x'.repeat(10000) })
+    ),
+  ])
+    expect(() => validateCommandObservation({ ...input(), nativeDiagnostics })).toThrow()
 })

@@ -20,6 +20,8 @@ mod rpc_authority;
 mod rpc_protocol;
 #[cfg(feature = "rpc-qualification")]
 mod rpc_qualification;
+#[cfg(feature = "rpc-qualification")]
+mod rpc_transport_qualification;
 mod scheme;
 mod session;
 #[cfg(not(feature = "sandbox"))]

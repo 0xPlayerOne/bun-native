@@ -23,6 +23,8 @@ export interface RpcLoopbackClientOptions {
   readonly maxFrameBytes?: number
   readonly connectTimeoutMs?: number
   readonly socket?: (endpoint: string) => Socket
+  /** Resolve only after the exact native document confirms this socket challenge. */
+  readonly confirmNative?: (challenge: Uint8Array) => Promise<void>
 }
 
 interface PendingSend {
@@ -43,6 +45,10 @@ export class RpcLoopbackTransport implements RpcTransport {
   #closed = false
   #socketClosed = false
   #ready = false
+  #readyReceived = false
+  #challengeReceived = false
+  #nativeConfirmed = false
+  readonly #confirmNative: ((challenge: Uint8Array) => Promise<void>) | undefined
   #sent = 0
   #received = 0
   #pending: PendingSend | undefined
@@ -83,6 +89,10 @@ export class RpcLoopbackTransport implements RpcTransport {
       connectTimeoutMs > 60_000
     )
       throw new TypeError('Invalid RPC loopback connection timeout')
+    if (options.confirmNative !== undefined && typeof options.confirmNative !== 'function')
+      throw new TypeError('Invalid native confirmer')
+    this.#confirmNative = options.confirmNative
+    this.#nativeConfirmed = options.confirmNative === undefined
     this.#credential = new Uint8Array(options.credential)
     this.#maxFrameBytes = maxFrameBytes
     this.#socket = (options.socket ?? ((url) => new WebSocket(url)))(endpoint.href)
@@ -119,11 +129,34 @@ export class RpcLoopbackTransport implements RpcTransport {
     try {
       const message = decodeRpcWebSocketRecord(new Uint8Array(value), this.#maxFrameBytes)
       if (!this.#ready) {
-        if (message.kind !== 'ready')
-          throw new RpcError('PROTOCOL_ERROR', 'Expected loopback ready')
-        this.#ready = true
-        clearTimeout(this.#connectTimer)
-        this.#transmit()
+        if (
+          message.kind === 'challenge' &&
+          this.#confirmNative &&
+          !this.#challengeReceived &&
+          !this.#readyReceived
+        ) {
+          this.#challengeReceived = true
+          const challenge = message.challenge
+          void Promise.resolve()
+            .then(() => this.#confirmNative!(challenge))
+            .then(
+              () => {
+                this.#nativeConfirmed = true
+                this.#maybeReady()
+              },
+              () => this.#end(false, new RpcError('FORBIDDEN', 'Native confirmation failed'))
+            )
+            .finally(() => challenge.fill(0))
+          return
+        }
+        if (
+          message.kind !== 'ready' ||
+          this.#readyReceived ||
+          (this.#confirmNative && !this.#challengeReceived)
+        )
+          throw new RpcError('PROTOCOL_ERROR', 'Expected authenticated loopback ready')
+        this.#readyReceived = true
+        this.#maybeReady()
         return
       }
       if (message.kind === 'close') {
@@ -150,6 +183,13 @@ export class RpcLoopbackTransport implements RpcTransport {
           : new RpcError('PROTOCOL_ERROR', 'RPC loopback receive failed')
       )
     }
+  }
+
+  #maybeReady(): void {
+    if (this.#closed || this.#ready || !this.#readyReceived || !this.#nativeConfirmed) return
+    this.#ready = true
+    clearTimeout(this.#connectTimer)
+    this.#transmit()
   }
 
   readonly #broken = () =>

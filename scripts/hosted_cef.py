@@ -103,6 +103,17 @@ def commands(suite, bun, app):
             ("development", [bun, str(ROOT / "scripts/qualify-cef-development.ts"), str(app)])
         )
         result.append(("network", [bun, str(ROOT / "scripts/qualify-cef-network.ts"), str(app)]))
+        result.append(
+            (
+                "transports",
+                [
+                    bun,
+                    str(ROOT / "scripts/qualify-cef-transports.ts"),
+                    str(app),
+                    "--functional",
+                ],
+            )
+        )
     if suite == "full":
         result += [
             (
@@ -241,6 +252,7 @@ def collect():
         ROOT / ".bunly/m3/prebuilt",
         ROOT / ".bunly/m3/development",
         ROOT / ".bunly/m3/network",
+        ROOT / ".bunly/m3/transports",
         ROOT / ".bunly/m3/faults",
     ):
         for path in directory.glob("run-*/report.json"):

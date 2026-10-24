@@ -9,11 +9,12 @@ const VERSION = 1
 export type RpcWebSocketRecord =
   | { readonly kind: 'auth'; readonly credential: Uint8Array }
   | { readonly kind: 'ready' }
+  | { readonly kind: 'challenge'; readonly challenge: Uint8Array }
   | { readonly kind: 'packet'; readonly sequence: number; readonly packet: Uint8Array }
   | { readonly kind: 'ack'; readonly sequence: number }
   | { readonly kind: 'close' }
 
-const kinds = { auth: 1, ready: 2, packet: 3, ack: 4, close: 5 } as const
+const kinds = { auth: 1, ready: 2, packet: 3, ack: 4, close: 5, challenge: 6 } as const
 
 function record(kind: number, sequence: number, payload?: Uint8Array): Uint8Array<ArrayBuffer> {
   const body = payload ?? new Uint8Array()
@@ -40,6 +41,14 @@ export function encodeRpcWebSocketRecord(value: RpcWebSocketRecord): Uint8Array<
       return record(kinds.auth, 0, value.credential)
     case 'ready':
       return record(kinds.ready, 0)
+    case 'challenge':
+      if (
+        !(value.challenge instanceof Uint8Array) ||
+        !(value.challenge.buffer instanceof ArrayBuffer) ||
+        value.challenge.byteLength !== 32
+      )
+        throw new TypeError('Invalid native confirmation challenge')
+      return record(kinds.challenge, 0, value.challenge)
     case 'packet':
       if (
         !Number.isSafeInteger(value.sequence) ||
@@ -84,6 +93,8 @@ export function decodeRpcWebSocketRecord(
     payload.byteLength === RPC_WEBSOCKET_CREDENTIAL_BYTES
   )
     return { kind: 'auth', credential: new Uint8Array(payload) }
+  if (kind === kinds.challenge && sequence === 0 && payload.byteLength === 32)
+    return { kind: 'challenge', challenge: new Uint8Array(payload) }
   if (kind === kinds.ready && sequence === 0 && payload.byteLength === 0) return { kind: 'ready' }
   if (kind === kinds.packet && sequence > 0 && payload.byteLength > 0)
     return { kind: 'packet', sequence, packet: new Uint8Array(payload) }

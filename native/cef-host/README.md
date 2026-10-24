@@ -76,3 +76,21 @@ and context-level IO handlers; they never read the UI registry on the IO thread.
 `qualify:cef-network` requires actual cross-origin/worker denial, ordinary HTTPS
 verification, certificate rejection, authority revocation and ordered teardown.
 It is not general network-egress isolation; see `docs/m4-network-policy.md`.
+
+## Transport contributor boundary
+
+Native-mediated application RPC uses bounded fragmentation over the existing
+24 KiB native packets. The transport comparison fixture is compiled only with
+`rpc-qualification`: a fixed native throttle method confirms actual Chromium
+completion, and the experimental loopback candidate has one configured numeric
+CSP endpoint plus a socket challenge confirmed by the exact native document.
+
+The pinned browser also requires loopback network reachability. Qualification
+handles only that exact permission type for the named packaged transport fixture
+in a local-only ephemeral context with live native authority. CEF supplies no
+requesting frame for this prompt; the decision is deliberately described as
+top-origin reachability, not as a child-frame capability grant. The socket still
+rejects stolen credentials confirmed by another same-origin native binding.
+Ordinary native builds exclude this decision, preserve generic prompt denial and
+reject experimental loopback setup. A successful contributor comparison does not
+qualify this permission path for shipping applications or arbitrary remote pages.

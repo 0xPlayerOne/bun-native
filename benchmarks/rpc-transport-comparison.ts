@@ -27,10 +27,32 @@ export interface RpcTransportTrial {
 
 /** A final comparison requires independently executed observations for both candidates. */
 export function assertComparable(trials: readonly RpcTransportTrial[]): void {
+  if (trials.length > 200) throw new Error('Too many comparison observations')
+  for (const trial of trials) {
+    if (
+      !['native-mediated', 'authenticated-loopback'].includes(trial.candidate) ||
+      !Number.isSafeInteger(trial.trial) ||
+      trial.trial < 0 ||
+      trial.trial > 99 ||
+      ![trial.handoffMs, trial.structuredMs, trial.binaryMs, trial.cancellationMs].every(
+        (value) => Number.isFinite(value) && value >= 0 && value <= 30000
+      ) ||
+      ![trial.queuePeaks.clientFrames, trial.queuePeaks.serverFrames].every(
+        (value) => Number.isSafeInteger(value) && value >= 0 && value <= 128
+      ) ||
+      ![trial.queuePeaks.clientBytes, trial.queuePeaks.serverBytes].every(
+        (value) => Number.isSafeInteger(value) && value >= 0 && value <= 2 * 1024 * 1024
+      )
+    )
+      throw new Error('Invalid transport observation')
+  }
   const trialSets: number[][] = []
   for (const candidate of ['native-mediated', 'authenticated-loopback'] as const) {
     const observations = trials.filter((trial) => trial.candidate === candidate)
-    if (observations.length < 5 || new Set(observations.map((trial) => trial.trial)).size < 5)
+    if (
+      observations.length < 5 ||
+      new Set(observations.map((trial) => trial.trial)).size !== observations.length
+    )
       throw new Error(`Missing five independent ${candidate} transport trials`)
     trialSets.push([...new Set(observations.map((trial) => trial.trial))].sort((a, b) => a - b))
   }
