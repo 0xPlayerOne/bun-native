@@ -173,3 +173,35 @@ test('idle counters preserve unavailable and provider-specific sampled values ra
     })
   )
 })
+
+test('idle metrics reject contradictory availability, empty matches and duplicated provider counters', () => {
+  const metric = {
+    phase: 'transport-idle',
+    provider: 'darwin-proc-rusage-v0',
+    metric: 'interruptWakeups',
+    observedDelta: 0,
+    sampledDurationMs: 1000,
+    matchedScopeIntervals: 5,
+  }
+  // An actual zero delta with matched observations is valid; no samples is not zero.
+  assert.equal(idleKernelObservation({ status: 'observed', metrics: [metric] }).status, 'observed')
+  for (const value of [
+    { status: 'unavailable', metrics: [metric] },
+    { status: 'observed', metrics: [{ ...metric, matchedScopeIntervals: 0 }] },
+    { status: 'observed', metrics: [{ ...metric, provider: '' }] },
+    { status: 'observed', metrics: [{ ...metric, metric: '' }] },
+    { status: 'observed', metrics: [metric, { ...metric }] },
+    {
+      status: 'observed',
+      metrics: [{ ...metric, observedDelta: 1, sampledDurationMs: Number.MIN_VALUE }],
+    },
+  ])
+    assert.throws(() => idleKernelObservation(value))
+  assert.equal(
+    idleKernelObservation({
+      status: 'observed',
+      metrics: [{ ...metric, phase: 'startup' }],
+    }).status,
+    'unavailable'
+  )
+})

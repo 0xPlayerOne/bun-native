@@ -120,24 +120,42 @@ export function idleKernelObservation(value: unknown) {
       reason: 'Kernel provider was not collected',
     }
   const report = object(value)
-  assert.ok(['observed', 'unavailable'].includes(String(report['status'])))
+  assert.ok(report['status'] === 'observed' || report['status'] === 'unavailable')
   assert.ok(Array.isArray(report['metrics']) && report['metrics'].length <= 64)
+  if (report['status'] === 'unavailable')
+    assert.equal(report['metrics'].length, 0, 'Unavailable counters cannot contain observations')
+  const seen = new Set<string>()
   const metrics = report['metrics']
     .filter((entry: unknown) => object(entry)['phase'] === 'transport-idle')
     .map((entry: unknown) => {
       const metric = object(entry)
-      assert.ok(typeof metric['provider'] === 'string' && metric['provider'].length <= 128)
-      assert.ok(typeof metric['metric'] === 'string' && metric['metric'].length <= 128)
+      assert.ok(
+        typeof metric['provider'] === 'string' &&
+          metric['provider'].length > 0 &&
+          metric['provider'].length <= 128
+      )
+      assert.ok(
+        typeof metric['metric'] === 'string' &&
+          metric['metric'].length > 0 &&
+          metric['metric'].length <= 128
+      )
+      const identity = JSON.stringify([metric['provider'], metric['metric']])
+      assert.ok(!seen.has(identity), 'Duplicate idle provider/metric observation')
+      seen.add(identity)
       const delta = bounded(metric['observedDelta'], Number.MAX_SAFE_INTEGER),
         milliseconds = duration(metric['sampledDurationMs'])
       assert.ok(milliseconds > 0)
+      const matchedScopeIntervals = bounded(metric['matchedScopeIntervals'], 10000000)
+      assert.ok(matchedScopeIntervals > 0, 'Observed counters require matched identity intervals')
+      const observedPerSecond = (delta * 1000) / milliseconds
+      assert.ok(Number.isFinite(observedPerSecond), 'Invalid idle counter rate')
       return {
         provider: metric['provider'],
         metric: metric['metric'],
         observedDelta: delta,
         sampledDurationMs: milliseconds,
-        matchedScopeIntervals: bounded(metric['matchedScopeIntervals'], 10000000),
-        observedPerSecond: (delta * 1000) / milliseconds,
+        matchedScopeIntervals,
+        observedPerSecond,
       }
     })
   return {
