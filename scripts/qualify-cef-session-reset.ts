@@ -6,7 +6,7 @@ import { cp, lstat, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises
 import { basename, dirname, join, resolve } from 'node:path'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
-import { nativeEvents } from '../benchmarks/lib/cef-acceptance.ts'
+import { nativeEvents, acceptNativeRejection } from '../benchmarks/lib/cef-acceptance.ts'
 import {
   observeNativeShutdown,
   requireNativeShutdown,
@@ -249,6 +249,29 @@ try {
         partition: 'A',
         confirmation: 'delete-entire-profile',
       })
+    )
+    const lockRejection = await observedCommand(
+      [executable, '--bunly-reset-profile=A', '--bunly-confirm-profile-reset'],
+      {
+        cwd: work,
+        output: join(work, 'live-lock-rejection.process.json'),
+        timeoutMs: 10000,
+        env: { BUNLY_PROFILE_ROOT: profileRoot },
+      }
+    ).result
+    trials.push({
+      name: 'native-live-lock-rejected',
+      classification: 'expected-native-lock-rejection',
+      observation: lockRejection,
+    })
+    acceptNativeRejection(
+      lockRejection,
+      'Persistent profile root is already in use or cannot be locked'
+    )
+    assert.equal(
+      nativeEvents(lockRejection).filter((event) => event['event'] === 'bunly.backend.exit').length,
+      0,
+      'Maintenance rejection must not launch the application backend'
     )
     assert.ok((await lstat(profile('A'))).isDirectory())
     trials.push({
