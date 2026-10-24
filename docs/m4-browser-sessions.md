@@ -141,3 +141,16 @@ the locally rejected hosted-only preparation command. The guard was not bypassed
 a fresh local contributor bundle was assembled instead. The current hosted matrix
 must qualify its own exact final head before merge. CEF 154 historical reports and
 transport timing distributions are not relabeled as CEF 156 measurements.
+
+## Complete offline profile reset
+
+[Complete session storage reset](session-storage-reset.md) adds an explicit
+runtime-only operation that removes every store in one stopped persistent profile
+under the native root/profile locks. It does not mislabel partial first-party
+clearing as complete HTML5 clearing or delete databases still owned by CEF. Live
+`clearSession({storage:true})` remains unsupported; callers must explicitly confirm
+whole-profile offline deletion. Recovery intent fences interrupted deletion until
+the same explicit reset completes. Other partitions and OS credential keys remain.
+The maintained native fixture verifies actual localStorage, IndexedDB, CacheStorage
+and service-worker persistence, live-lock rejection, interruption and selective
+profile reset. Credential-provider qualification remains a separate M4 concern.

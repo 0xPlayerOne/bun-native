@@ -75,3 +75,5 @@ concurrent builds, measured results and retained security boundaries.
 
 [Formatting](formatting.md) documents the repository-wide Oxfmt gate and the
 separate Python/Rust contributor formatters.
+
+- [Complete session storage reset](session-storage-reset.md): explicit offline whole-profile clearing and interruption recovery.
