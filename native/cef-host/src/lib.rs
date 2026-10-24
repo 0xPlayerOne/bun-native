@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
 mod asset_service;
 pub mod capability_policy;
+mod cookie_completion;
 mod deadlines;
 mod handshake;
 pub mod host;
@@ -47,6 +48,8 @@ struct Config {
     cef_version: String,
     #[serde(default)]
     credential_policy: Option<session::credentials::Policy>,
+    #[serde(default)]
+    maintenance_protocol: u32,
     #[serde(default)]
     development_origin: Option<String>,
     #[serde(default)]
@@ -94,12 +97,13 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         return Err("Missing Windows sandbox state".into());
     }
     policy::safe_switches(std::env::args())?;
+    let reset_partition = session::reset::command(&std::env::args().skip(1).collect::<Vec<_>>())?;
     #[cfg(target_os = "linux")]
     {
         if unsafe { libc::geteuid() } == 0 {
             return Err("Linux CEF requires an unprivileged user with sandbox support; root/no-sandbox is not supported".into());
         }
-        if std::env::var_os("DISPLAY").is_none() {
+        if reset_partition.is_none() && std::env::var_os("DISPLAY").is_none() {
             return Err("M3 Linux requires an X11 DISPLAY (including Xwayland); native Wayland is not qualified".into());
         }
     }
@@ -124,6 +128,21 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         || config.cef_version != "156.0.7"
     {
         return Err("Runtime/ABI manifest mismatch".into());
+    }
+    if let Some(partition) = reset_partition {
+        if config.maintenance_protocol != 1 {
+            return Err(
+                "Installed runtime does not support the requested maintenance protocol".into(),
+            );
+        }
+        let root = std::env::var_os("BUNLY_PROFILE_ROOT")
+            .ok_or("Offline reset requires an explicit persistent profile root")?;
+        let result = session::reset::execute(&PathBuf::from(root), &partition)?;
+        println!(
+            "{}",
+            serde_json::json!({"event":"bunly.session.storage-reset","result":result})
+        );
+        return Ok(0);
     }
     if let Some(policy) = config.credential_policy.as_ref() {
         policy.validate()?;

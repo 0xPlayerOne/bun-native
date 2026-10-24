@@ -324,16 +324,16 @@ try {
   }
   if (mac) {
     await tool(['/usr/bin/security', 'lock-keychain', keychain])
-    await launch('unavailable', { BUNLY_PROFILE_ROOT: join(work, 'unavailable-root') })
+    await launch('unavailable', { BUNLY_PROFILE_ROOT: join(profileWork, 'u') })
     report['unavailabilityControl'] = 'locked-disposable-keychain-no-permission-ui'
   } else if (process.platform === 'linux') {
     await launch('unavailable', {
-      BUNLY_PROFILE_ROOT: join(work, 'unavailable-root'),
+      BUNLY_PROFILE_ROOT: join(profileWork, 'u'),
       DBUS_SESSION_BUS_ADDRESS: 'unix:path=' + join(work, 'absent-session-bus'),
     })
     report['unavailabilityControl'] = 'absent-private-secret-service-rejects-basic-fallback'
   } else {
-    const broken = join(work, 'unavailable-root')
+    const broken = join(profileWork, 'u')
     await cp(profileRoot, broken, { recursive: true, dereference: false })
     const localState = join(broken, 'Local State')
     const state = JSON.parse(await readFile(localState, 'utf8'))

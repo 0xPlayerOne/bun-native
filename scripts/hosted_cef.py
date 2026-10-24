@@ -116,6 +116,10 @@ def commands(suite, bun, app):
                 ],
             )
         )
+    if suite == "rpc":
+        result.append(
+            ("session-reset", [bun, str(ROOT / "scripts/qualify-cef-session-reset.ts"), str(app)])
+        )
     if suite == "full":
         result += [
             (
@@ -261,6 +265,7 @@ def collect():
         ROOT / ".bunly/m3/network",
         ROOT / ".bunly/m3/transports",
         ROOT / ".bunly/m3/credentials",
+        ROOT / ".bunly/m3/session-reset",
         ROOT / ".bunly/m3/faults",
     ):
         for path in directory.glob("run-*/report.json"):

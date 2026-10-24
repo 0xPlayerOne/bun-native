@@ -54,7 +54,8 @@
     "profile:foundation:cpu": "bun --cpu-prof --cpu-prof-md --cpu-prof-dir=.bunly/profiles scripts/profile-foundation.ts",
     "profile:foundation:native": "bun scripts/profile-foundation-native.ts",
     "profile:rpc-loopback": "bun scripts/profile-rpc-loopback.ts",
-    "qualify:cef-credentials": "bun scripts/qualify-cef-credentials.ts"
+    "qualify:cef-credentials": "bun scripts/qualify-cef-credentials.ts",
+    "qualify:cef-session-reset": "bun scripts/qualify-cef-session-reset.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

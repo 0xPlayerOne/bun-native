@@ -35,6 +35,7 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
         .profile_root
         .as_ref()
         .ok_or("Protected-cookie root unavailable")?;
+    session::validate_cef_profile_path(root.path())?;
     let lease = root.acquire(
         root.path().to_str().ok_or("Invalid profile root")?,
         credentials::PROBE_PARTITION,
@@ -141,7 +142,14 @@ struct ProbeRead {
 }
 fn read(id: u64, manager: &CookieManager, probe: &Probe) {
     let state = Arc::new(Mutex::new(ProbeRead::default()));
-    let mut visitor = ProbeCookie::new(state.clone(), probe.nonce.clone());
+    let completed = state.clone();
+    let completion = Arc::new(crate::cookie_completion::VisitCompletion::new(move || {
+        let mut task = ProbeEnumerated::new(id, completed);
+        if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+            fail("Credential enumeration completion could not be scheduled");
+        }
+    }));
+    let mut visitor = ProbeCookie::new(state, probe.nonce.clone(), completion.clone());
     if manager.visit_url_cookies(
         Some(&CefString::from(credentials::PROBE_ORIGIN)),
         1,
@@ -151,13 +159,12 @@ fn read(id: u64, manager: &CookieManager, probe: &Probe) {
         complete(id, false, "read-unscheduled");
         return;
     }
-    let mut done = ProbeFlushed::new(id, state);
-    if manager.flush_store(Some(&mut done)) == 0 {
-        complete(id, false, "flush-unscheduled");
-    }
+    completion.arm();
+    // CEF owns the visitor until its asynchronous enumeration callback finishes,
+    // including the empty result. Only its final release schedules the flush.
 }
 wrap_cookie_visitor! {
-    struct ProbeCookie { state:Arc<Mutex<ProbeRead>>, nonce:String }
+    struct ProbeCookie { state:Arc<Mutex<ProbeRead>>, nonce:String, completion:Arc<crate::cookie_completion::VisitCompletion> }
     impl CookieVisitor { fn visit(&self,cookie:Option<&Cookie>,count:i32,total:i32,_delete:Option<&mut i32>)->i32 {
         let mut state=self.state.lock().unwrap();
         if count != 0 || total != 1 {state.count=2;state.matches=false;return 0;}
@@ -170,6 +177,19 @@ wrap_cookie_visitor! {
                 && cookie.path.to_string()=="/" && cookie.secure!=0 && cookie.httponly!=0;
         }
         i32::from(state.count<2)
+    } }
+}
+wrap_task! {
+    struct ProbeEnumerated { id:u64, state:Arc<Mutex<ProbeRead>> }
+    impl Task { fn execute(&self) {
+        let context=STATE.with(|state|state.borrow().sessions.get(&self.id)
+            .filter(|record| record.internal_credential && record.creating.is_some() && record.busy)
+            .map(|record|record.context.clone()));
+        let Some(manager)=context.and_then(|context|context.cookie_manager(None)) else {
+            complete(self.id,false,"store-unavailable");return;
+        };
+        let mut done=ProbeFlushed::new(self.id,self.state.clone());
+        if manager.flush_store(Some(&mut done))==0 { complete(self.id,false,"flush-unscheduled"); }
     } }
 }
 wrap_completion_callback! {

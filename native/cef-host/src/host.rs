@@ -4,11 +4,10 @@ use crate::{
 };
 use cef::*;
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{
     cell::RefCell,
     collections::BTreeMap,
-    rc::Rc,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 #[path = "navigation.rs"]
@@ -1019,11 +1018,11 @@ struct CookieReadState {
     error: Option<String>,
 }
 wrap_cookie_visitor! {
-    struct ReadCookies { state: Rc<RefCell<CookieReadState>> }
+    struct ReadCookies { state: Arc<Mutex<CookieReadState>>, completion: Arc<crate::cookie_completion::VisitCompletion> }
     impl CookieVisitor { fn visit(&self, cookie: Option<&Cookie>, count: i32, total: i32, _delete: Option<&mut i32>) -> i32 {
-        let Some(cookie) = cookie else { self.state.borrow_mut().error = Some("CEF returned a missing cookie".into()); return 0; };
+        let Some(cookie) = cookie else { self.state.lock().unwrap().error = Some("CEF returned a missing cookie".into()); return 0; };
         if count < 0 || total < 1 || count >= total || total > 128 {
-            self.state.borrow_mut().error = Some("Cookie result exceeds the bounded 128-cookie limit".into());
+            self.state.lock().unwrap().error = Some("Cookie result exceeds the bounded 128-cookie limit".into());
             return 0;
         }
         let name = cookie.name.to_string();
@@ -1031,12 +1030,12 @@ wrap_cookie_visitor! {
         let domain = cookie.domain.to_string();
         let path = cookie.path.to_string();
         if name.is_empty() || name.len() > 256 || value.len() > 4096 || domain.len() > 255 || path.len() > 1024 {
-            self.state.borrow_mut().error = Some("CEF returned an invalid or excessive cookie".into());
+            self.state.lock().unwrap().error = Some("CEF returned an invalid or excessive cookie".into());
             return 0;
         }
         let same_site = match same_site_name(cookie.same_site) {
             Ok(value) => value,
-            Err(error) => { self.state.borrow_mut().error = Some(error); return 0; }
+            Err(error) => { self.state.lock().unwrap().error = Some(error); return 0; }
         };
         let mut result = json!({
             "name":name,
@@ -1049,13 +1048,13 @@ wrap_cookie_visitor! {
         });
         if cookie.has_expires != 0 {
             let Some(expires) = basetime_to_unix_millis(cookie.expires.val) else {
-                self.state.borrow_mut().error = Some("CEF returned an invalid cookie expiry".into());
+                self.state.lock().unwrap().error = Some("CEF returned an invalid cookie expiry".into());
                 return 0;
             };
             result["expires"] = json!(expires);
         }
         let encoded = serde_json::to_vec(&result).map_or(usize::MAX, |bytes| bytes.len());
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state.lock().unwrap();
         state.encoded_bytes = state.encoded_bytes.saturating_add(encoded);
         if state.encoded_bytes > 48 * 1024 {
             state.error = Some("Cookie result exceeds the bounded 48 KiB response limit".into());
@@ -1066,12 +1065,27 @@ wrap_cookie_visitor! {
     } }
 }
 wrap_completion_callback! {
-    struct CookiesRead { id: u64, request: u64, state: Rc<RefCell<CookieReadState>> }
+    struct CookiesRead { id: u64, request: u64, state: Arc<Mutex<CookieReadState>> }
     impl CompletionCallback { fn on_complete(&self) {
         operation_finished(self.id);
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state.lock().unwrap();
         if let Some(message) = state.error.take() { error(self.request, &message); }
         else { reply(self.request, Value::Array(std::mem::take(&mut state.values))); }
+    } }
+}
+wrap_task! {
+    struct CookiesEnumerated { id:u64, request:u64, state:Arc<Mutex<CookieReadState>> }
+    impl Task { fn execute(&self) {
+        let context=STATE.with(|state|state.borrow().sessions.get(&self.id)
+            .filter(|record| !record.internal_credential && record.busy && record.disposing.is_none())
+            .map(|record|record.context.clone()));
+        let Some(manager)=context.and_then(|context|context.cookie_manager(None)) else {
+            operation_finished(self.id); error(self.request,"Cookie enumeration owner unavailable");return;
+        };
+        let mut done=CookiesRead::new(self.id,self.request,self.state.clone());
+        if manager.flush_store(Some(&mut done))==0 {
+            operation_finished(self.id); error(self.request,"Cookie enumeration flush could not be scheduled");
+        }
     } }
 }
 wrap_set_cookie_callback! {
@@ -1344,6 +1358,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .get()
                     .and_then(|paths| paths.profile_root.as_ref())
                     .ok_or("Persistent sessions require BUNLY_PROFILE_ROOT at native startup")?;
+                session::validate_cef_profile_path(root.path())?;
                 Some(root.acquire(requested_root, &partition)?)
             } else {
                 None
@@ -1415,8 +1430,15 @@ fn dispatch(command: &Value) -> Result<(), String> {
             let manager = context
                 .cookie_manager(None)
                 .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
-            let state = Rc::new(RefCell::new(CookieReadState::default()));
-            let mut visitor = ReadCookies::new(state.clone());
+            let state = Arc::new(Mutex::new(CookieReadState::default()));
+            let completed = state.clone();
+            let completion = Arc::new(crate::cookie_completion::VisitCompletion::new(move || {
+                let mut task = CookiesEnumerated::new(id, request, completed);
+                if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+                    fail("Cookie enumeration completion could not be scheduled");
+                }
+            }));
+            let mut visitor = ReadCookies::new(state, completion.clone());
             let started = match url.as_ref() {
                 Some(url) => manager.visit_url_cookies(
                     Some(&CefString::from(url.as_str())),
@@ -1431,15 +1453,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     "Cookie enumeration could not be scheduled",
                 ));
             }
-            // The visitor is never invoked for an empty store. Flush is queued
-            // behind enumeration on CEF's cookie sequence and supplies completion.
-            let mut completed = CookiesRead::new(id, request, state);
-            if manager.flush_store(Some(&mut completed)) == 0 {
-                return Err(operation_schedule_failed(
-                    id,
-                    "Cookie enumeration completion could not be scheduled",
-                ));
-            }
+            // GetCookieList can complete after FlushCookieStore, especially on
+            // restart. Wait for final visitor release before scheduling its flush.
+            completion.arm();
         }
         "session.cookie.set" => {
             let id = number(args, "id")?;

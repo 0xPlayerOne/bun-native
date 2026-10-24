@@ -20,5 +20,6 @@
   "bunly.native.gpu-injection-acknowledged",
   "bunly.native.gpu-recovered",
   "bunly.profile-root-collision",
-  "bunly.native.credentials"
+  "bunly.native.credentials",
+  "bunly.native.session-reset"
 ]

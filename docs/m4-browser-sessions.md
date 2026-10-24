@@ -150,3 +150,16 @@ persistent sessions continue to disable cookies. Protected creation is rejected
 unless the installed policy matches the platform and both native and persisted
 proofs succeed. Real OS-provider qualification remains a separate required gate;
 parser tests and an encrypted-looking version prefix alone are not acceptance.
+
+## Complete offline profile reset
+
+[Complete session storage reset](session-storage-reset.md) adds an explicit
+runtime-only operation that removes every store in one stopped persistent profile
+under the native root/profile locks. It does not mislabel partial first-party
+clearing as complete HTML5 clearing or delete databases still owned by CEF. Live
+`clearSession({storage:true})` remains unsupported; callers must explicitly confirm
+whole-profile offline deletion. Recovery intent fences interrupted deletion until
+the same explicit reset completes. Other partitions and OS credential keys remain.
+The maintained native fixture verifies actual localStorage, IndexedDB, CacheStorage
+and service-worker persistence, live-lock rejection, interruption and selective
+profile reset. Credential-provider qualification remains a separate M4 concern.

@@ -30,7 +30,8 @@ profile markers refuse a changed identity/provider or reopening with cookies
 disabled. Existing unqualified profile contents are not migrated or overwritten
 implicitly. Key identity changes require a new owned root or a separately designed
 migration. Per-profile reset deliberately preserves the root policy binding and
-the OS key; it is not an identity migration. Ordinary origin storage is not claimed
+the OS key; it is not an identity migration. The internal proof partition is
+reserved and cannot be erased through the application-profile reset API. Ordinary origin storage is not claimed
 to be encrypted merely because cookies are.
 
 ## Admission and lifecycle
@@ -84,3 +85,19 @@ The implementation follows CEF 156.0.7 / Chromium 156.0.8078.17 behavior:
   `components/os_crypt/async/common/encryptor.cc`: fixed mock/legacy keys.
 
 These are policy and format references, not substitute native execution evidence.
+
+## Enumeration completion and diagnostics
+
+CEF's pinned cookie implementation sends `GetCookieList` and `FlushCookieStore`
+as separate asynchronous operations. A flush callback is not proof that an earlier
+cookie enumeration reply has arrived. Both the canary and ordinary cookie reads
+now wait until CEF releases the final visitor reference before scheduling the
+flush. This also completes empty enumerations without interpreting an absent
+visitor invocation as a successful read. Failed registration does not arm the
+completion; the existing request/shutdown deadlines still bound missing callbacks.
+
+Admission errors identify a fixed verification stage, never underlying SQLite/OS
+errors, private paths, cookie values or provider secrets. The original Linux
+restart admission failure and Windows initial admission failure remain retained
+until current-head hosted execution establishes the corrected behavior. No
+personal credential store is used for local validation.

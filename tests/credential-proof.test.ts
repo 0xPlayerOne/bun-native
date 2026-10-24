@@ -377,3 +377,34 @@ test('CEF failed proof admits no application session and does not silently retry
 function resolveRoot() {
   return process.platform === 'win32' ? 'C:\\bunly-unused-proof' : '/bunly-unused-proof'
 }
+
+test('credential failures identify only a bounded stage, never underlying filesystem or channel details', async () => {
+  const f = await fixture()
+  try {
+    await rm(f.path)
+    await assert.rejects(verifyCookieProof(f.proof, f.root, 'darwin'), (error: unknown) => {
+      assert.ok(error instanceof Error)
+      assert.match(error.message, /\(database-path\)/)
+      assert.ok(!error.message.includes(f.root))
+      return true
+    })
+    await assert.rejects(
+      qualifyCookieProvider(
+        {
+          async call() {
+            throw new Error('private-canary-and-path')
+          },
+        },
+        f.root
+      ),
+      (error: unknown) => {
+        assert.ok(error instanceof Error)
+        assert.match(error.message, /\(native-request\)/)
+        assert.ok(!error.message.includes('private-canary-and-path'))
+        return true
+      }
+    )
+  } finally {
+    await f.close()
+  }
+})

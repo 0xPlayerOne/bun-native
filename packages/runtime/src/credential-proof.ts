@@ -29,11 +29,33 @@ export interface CookieProofReceipt {
   readonly encryptedBytes: number
   readonly ciphertextSha256: string
 }
-function denied(): never {
-  throw new BunlyError(
-    'UNSUPPORTED_CAPABILITY',
-    'OS-protected cookie persistence could not be verified; no protected application session was opened'
-  )
+type ProofStage =
+  | 'native-request'
+  | 'native-proof'
+  | 'native-readback'
+  | 'proof-directory'
+  | 'database-path'
+  | 'database-sidecar'
+  | 'database-open'
+  | 'database-version'
+  | 'cookie-record'
+  | 'ciphertext-envelope'
+  | 'root-key-envelope'
+  | 'fallback-key'
+  | 'native-admission'
+
+class CookieProofError extends BunlyError {
+  readonly stage: ProofStage
+  constructor(stage: ProofStage) {
+    super(
+      'UNSUPPORTED_CAPABILITY',
+      `OS-protected cookie persistence could not be verified (${stage}); no protected application session was opened`
+    )
+    this.stage = stage
+  }
+}
+function denied(stage: ProofStage = 'native-proof'): never {
+  throw new CookieProofError(stage)
 }
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) denied()
@@ -139,10 +161,13 @@ export async function verifyCookieProof(
   persistentRoot: string,
   platform: string = process.platform
 ): Promise<CookieProofReceipt> {
+  let stage: ProofStage = 'native-proof'
   try {
     const proof = proofValue(value, persistentRoot, platform)
+    stage = 'proof-directory'
     await directory(persistentRoot)
     await directory(proof.profilePath)
+    stage = 'database-path'
     const network = join(proof.profilePath, 'Network')
     const paths = [join(proof.profilePath, 'Cookies')]
     try {
@@ -155,16 +180,20 @@ export async function verifyCookieProof(
     for (const path of paths) if (await regular(path, 16 * 1024 * 1024, true)) databases.push(path)
     if (databases.length !== 1) denied()
     const path = databases[0]!
+    stage = 'database-sidecar'
     for (const suffix of ['-wal', '-shm', '-journal'])
       await regular(path + suffix, 16 * 1024 * 1024, true)
+    stage = 'database-open'
     const db = new Database(path, { readonly: true, create: false, strict: true })
     let encrypted: Uint8Array
     try {
       db.exec('PRAGMA query_only=ON; PRAGMA trusted_schema=OFF; PRAGMA busy_timeout=0;')
+      stage = 'database-version'
       const version = db
         .query<{ value: unknown }, []>("SELECT value FROM meta WHERE key='version' LIMIT 2")
         .all()
       if (version.length !== 1 || String(version[0]!.value) !== '24') denied()
+      stage = 'cookie-record'
       const rows = db
         .query<Record<string, unknown>, []>(
           'SELECT host_key,name,path,value,encrypted_value,is_secure,is_httponly,is_persistent FROM cookies LIMIT 2'
@@ -187,6 +216,7 @@ export async function verifyCookieProof(
     } finally {
       db.close(true)
     }
+    stage = 'ciphertext-envelope'
     if (
       encrypted.length < 35 ||
       encrypted.length > 8192 ||
@@ -196,6 +226,7 @@ export async function verifyCookieProof(
     if (platform === 'win32') {
       // CEF's pinned v10 Windows provider must use its root's DPAPI-wrapped key,
       // not an arbitrary bytestring with a recognizable ciphertext prefix.
+      stage = 'root-key-envelope'
       const state = record(await boundedJson(join(persistentRoot, 'Local State')))
       const encoded = record(state['os_crypt'])['encrypted_key']
       if (typeof encoded !== 'string' || encoded.length > 16384) denied()
@@ -208,6 +239,7 @@ export async function verifyCookieProof(
       )
         denied()
     } else {
+      stage = 'fallback-key'
       if (
         (encrypted.length - 3) % 16 !== 0 ||
         encrypted.length < 115 ||
@@ -222,7 +254,8 @@ export async function verifyCookieProof(
       ciphertextSha256: createHash('sha256').update(encrypted).digest('hex'),
     })
   } catch {
-    denied()
+    // Never expose SQLite errors, OS messages, private paths or cookie material.
+    denied(stage)
   }
 }
 
@@ -235,6 +268,7 @@ export async function qualifyCookieProvider(
   root: string
 ): Promise<void> {
   let id: number | undefined
+  let stage: ProofStage = 'native-request'
   try {
     const response = record(
       await channel.call('credentials.probe', { nonce: randomBytes(32).toString('hex') })
@@ -247,11 +281,15 @@ export async function qualifyCookieProvider(
     )
       denied()
     id = Number(response['id'])
+    stage = 'native-proof'
+    if (record(response['proof'])['status'] === 'unavailable') denied('native-readback')
     const proof = proofValue(response['proof'], root, process.platform)
     const receipt = await verifyCookieProof(proof, root)
+    stage = 'native-admission'
     await channel.call('credentials.accept', { id, nonce: proof.nonce, ...receipt })
-  } catch {
+  } catch (error) {
     if (id !== undefined) await channel.call('credentials.discard', { id }).catch(() => {})
-    denied()
+    if (error instanceof CookieProofError) throw error
+    denied(stage)
   }
 }
