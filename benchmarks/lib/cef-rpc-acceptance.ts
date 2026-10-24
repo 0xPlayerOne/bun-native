@@ -35,7 +35,18 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 4,
+      schema: 5,
+      controlAdmission: {
+        ordinaryRequests: 96,
+        ordinaryOverflowDenied: true,
+        control: 'session.dispose',
+        controlCompleted: true,
+        controlAdmittedWhileFull: true,
+        fifoPreserved: true,
+        nativeBudgetBounded: true,
+        finalSessions: 0,
+        priorTaskReservationsReleased: true,
+      },
       sessionAuthority: 'native-owner-isolation-and-partition-reuse',
       viewDisposal: 'isolated-and-parent-close',
       renderer: {

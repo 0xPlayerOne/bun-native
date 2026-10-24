@@ -155,3 +155,16 @@ size or production responsiveness claim. It does not preempt a synchronous consu
 cap arbitrary producer CPU time, reserve a native control lane, or implement global
 fair scheduling across CEF views. Full native scheduler/load acceptance under
 #26/#27 and native stream authority and terminal supervision remain outstanding.
+
+## Native command control reservations
+
+The next #26 increment reserves bounded request and wire-byte capacity for exact
+cleanup/ack operations in the private Bun-to-CEF pipe. Local cancellation retains
+its ordinary slot until native acknowledgment; CEF task permits retain native
+capacity through final reference release. FIFO order is preserved, not replaced
+by a scheduler that can reorder lifecycle effects. An actual native session-disposal
+fixture runs behind 96 pending ordinary requests. See
+[native control admission](native-control-admission.md) for limits and qualification.
+
+This does not close #23–#27 or implement native-to-Bun event priority, a dedicated
+renderer bulk lane, process-tree ownership, or graphical load acceptance.

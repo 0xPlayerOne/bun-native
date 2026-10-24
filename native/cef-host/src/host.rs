@@ -4,17 +4,20 @@ use crate::{
 };
 use cef::*;
 use serde_json::{json, Value};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{
     cell::RefCell,
     collections::BTreeMap,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
 #[path = "navigation.rs"]
 mod navigation;
 pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
-static PENDING: AtomicUsize = AtomicUsize::new(0);
+fn command_budget() -> &'static Arc<crate::command_budget::CommandBudget> {
+    static BUDGET: OnceLock<Arc<crate::command_budget::CommandBudget>> = OnceLock::new();
+    BUDGET.get_or_init(|| Arc::new(crate::command_budget::CommandBudget::default()))
+}
 static FINALIZING: AtomicBool = AtomicBool::new(false);
 // Failure can arrive on the pipe thread before its UI teardown task runs.
 // Fence application dispatch immediately; receipt/discard cleanup may still drain.
@@ -509,15 +512,28 @@ pub fn fail(message: &str) {
     eprintln!("{}", json!({"event":"bunly.host.failure","error":message}));
     request_quit();
 }
-pub fn enqueue(value: Value) {
-    if PENDING.fetch_add(1, Ordering::SeqCst) >= 256 {
-        PENDING.fetch_sub(1, Ordering::SeqCst);
-        fail("Command queue capacity exceeded");
-        return;
-    }
-    let mut task = CommandTask::new(value);
+pub fn enqueue(value: Value, frame_bytes: usize) {
+    // The pipe reader supplies the actual LF-inclusive wire length, never a
+    // packet-provided size. Native dispatch still validates every operation.
+    let operation = value.get("op").and_then(Value::as_str).unwrap_or("");
+    let permit = match command_budget().reserve(operation, frame_bytes) {
+        Ok(permit) => permit,
+        Err(crate::command_budget::AdmissionError::Capacity) => {
+            // Reject only this already-sequenced request. It was never posted
+            // and cannot have native side effects; cleanup can still be admitted.
+            error(
+                value.get("id").and_then(Value::as_u64).unwrap_or(0),
+                "Native command admission capacity exceeded",
+            );
+            return;
+        }
+        Err(_) => {
+            fail("Native command admission unavailable");
+            return;
+        }
+    };
+    let mut task = CommandTask::new(value, permit);
     if post_task(ThreadId::UI, Some(&mut task)) == 0 {
-        PENDING.fetch_sub(1, Ordering::SeqCst);
         fail("CEF command dispatch unavailable");
     }
 }
@@ -873,10 +889,9 @@ fn issue_navigation(id: u64, request: navigation::Request) {
     }
 }
 wrap_task! {
-    struct CommandTask { value: Value }
+    struct CommandTask { value: Value, _permit: Arc<crate::command_budget::CommandPermit> }
     impl Task {
         fn execute(&self) {
-            PENDING.fetch_sub(1, Ordering::SeqCst);
             let id = self.value.get("id").and_then(Value::as_u64).unwrap_or(0);
             if let Err(e) = dispatch(&self.value) { error(id, &e); }
         }
@@ -2058,7 +2073,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
@@ -2678,5 +2693,24 @@ mod tests {
             .unwrap();
         revoke_all_views(&mut state);
         assert!(state.policy.current_scope(second.view).is_none());
+    }
+}
+
+#[cfg(test)]
+mod command_task_lifetime_tests {
+    use super::*;
+    #[test]
+    fn discarded_cef_task_releases_admission_only_with_its_last_native_reference() {
+        let budget = Arc::new(crate::command_budget::CommandBudget::default());
+        let permit = budget.reserve("view.create", 128).unwrap();
+        let task = CommandTask::new(json!({"v":1,"id":1,"op":"view.create"}), permit);
+        let posted_reference = task.clone();
+        drop(task);
+        assert_eq!(budget.snapshot().requests, 1);
+        assert_eq!(budget.snapshot().retained_wire_bytes, 128);
+        // A failed post/discard destroys the same wrapper without dispatching it.
+        drop(posted_reference);
+        assert_eq!(budget.snapshot().requests, 0);
+        assert_eq!(budget.snapshot().retained_wire_bytes, 0);
     }
 }

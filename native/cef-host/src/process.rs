@@ -216,7 +216,7 @@ pub fn start() -> Result<(), String> {
                     handshake();
                     emit(json!({"v":1,"id":id,"ok":true,"value":{"abi":1,"cef":"156.0.7"}}));
                 }
-                Ok(false) => crate::host::enqueue(value),
+                Ok(false) => crate::host::enqueue(value, bytes.len()),
                 Err(error) => {
                     crate::host::fail(error);
                     break;

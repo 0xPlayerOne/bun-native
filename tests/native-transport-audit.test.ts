@@ -52,7 +52,10 @@ test('cancelled and pending native requests share one capacity budget', async ()
       abort.abort()
       await rejected
     }
-    const calls = Array.from({ length: 64 }, () => f.transport.call('diagnostics'))
+    const calls = [
+      ...Array.from({ length: 32 }, () => f.transport.call('diagnostics')),
+      ...Array.from({ length: 32 }, () => f.transport.call('rpc.ack')),
+    ]
     const settled = Promise.allSettled(calls)
     await assert.rejects(f.transport.call('diagnostics'), /capacity/)
     assert.equal(f.commands.length, 128)

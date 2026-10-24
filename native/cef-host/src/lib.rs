@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
 mod asset_service;
 pub mod capability_policy;
+mod command_budget;
 mod cookie_completion;
 mod deadlines;
 mod handshake;

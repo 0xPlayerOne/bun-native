@@ -36,6 +36,9 @@ test('synchronous native write failure rejects all requests and destroys inherit
     requests: 0,
     abandoned: 0,
     queuedBytes: 0,
+    ordinaryRequests: 0,
+    ordinaryQueuedBytes: 0,
+    controlAdmissionsUnderPressure: 0,
     listeners: 0,
     closed: true,
   })
