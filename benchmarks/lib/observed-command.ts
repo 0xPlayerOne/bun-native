@@ -2,6 +2,7 @@
 import { randomBytes } from 'node:crypto'
 import { lstat, readFile, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
+import nativeDiagnosticEvents from './native-diagnostic-events.json'
 export interface CommandObservation {
   readonly postExitCleanup?: {
     readonly schema: 1
@@ -29,6 +30,8 @@ export interface CommandObservation {
   readonly peakTreeThreads: number
   readonly stdoutTail: readonly string[]
   readonly stderr: readonly string[]
+  /** Whole-run allowlisted native stderr receipts, separately bounded from log tails. */
+  readonly nativeDiagnostics?: readonly string[]
   readonly samples: readonly { readonly processes: readonly { readonly pid: number }[] }[]
   readonly environment: Readonly<Record<string, unknown>>
 }
@@ -37,6 +40,38 @@ export interface ObservedCommand {
   readonly result: Promise<CommandObservation>
   readonly path: string
 }
+const nativeDiagnosticNames = new Set<string>(nativeDiagnosticEvents)
+/** Retained receipts are authoritative when present. Never replace a missing
+ * event with a tail fragment or deduplicate a malformed repeated receipt.
+ */
+export function nativeDiagnosticLines(
+  observation: Pick<CommandObservation, 'stderr' | 'nativeDiagnostics'>
+): readonly string[] {
+  const records: unknown = observation.nativeDiagnostics
+  if (records === undefined) return observation.stderr
+  if (!Array.isArray(records) || records.length > 128)
+    throw new Error('Invalid retained native diagnostics')
+  let bytes = 0
+  for (const line of records) {
+    if (typeof line !== 'string' || line.length > 16 * 1024)
+      throw new Error('Invalid native diagnostic line')
+    const size = new TextEncoder().encode(line).byteLength
+    bytes += size
+    if (size > 16 * 1024 || bytes > 64 * 1024)
+      throw new Error('Native diagnostic byte budget exceeded')
+    const event: unknown = JSON.parse(line)
+    if (
+      !event ||
+      typeof event !== 'object' ||
+      Array.isArray(event) ||
+      typeof (event as Record<string, unknown>)['event'] !== 'string' ||
+      !nativeDiagnosticNames.has((event as Record<string, unknown>)['event'] as string)
+    )
+      throw new Error('Unknown retained native diagnostic event')
+  }
+  return records as string[]
+}
+
 export function validateCommandObservation(input: unknown): CommandObservation {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new Error('Missing process observation')
@@ -76,6 +111,7 @@ export function validateCommandObservation(input: unknown): CommandObservation {
     )
       throw new Error('Invalid bounded command diagnostics')
   }
+  nativeDiagnosticLines(input as CommandObservation)
   if (!Array.isArray(v['samples']) || v['samples'].length > 4000)
     throw new Error('Invalid process samples')
   for (const sample of v['samples']) {

@@ -1,0 +1,23 @@
+[
+  "bunly.backend.exit",
+  "bunly.host.error",
+  "bunly.host.failure",
+  "bunly.host.shutdown",
+  "bunly.host.shutdown-phase",
+  "bunly.foundation.ready",
+  "bunly.foundation.result",
+  "bunly.runtime.profile",
+  "bunly.native.smoke",
+  "bunly.native.rpc",
+  "bunly.native.development",
+  "bunly.native.network",
+  "bunly.native.sessions",
+  "bunly.native.transport",
+  "bunly.native.transport-throttle",
+  "bunly.native.last-window",
+  "bunly.native.cycle",
+  "bunly.native.renderer-failure-observed",
+  "bunly.native.gpu-injection-acknowledged",
+  "bunly.native.gpu-recovered",
+  "bunly.profile-root-collision"
+]

@@ -257,6 +257,37 @@ class ObserverTests(unittest.TestCase):
         self.assertLessEqual(marker["elapsedMs"], result["elapsedMs"])
         self.assertEqual(result["observedOrphans"], [])
 
+    def test_native_receipts_survive_noise_without_deduplicating_or_accepting_stdout(self):
+        code = (
+            'import json,sys; event={"event":"bunly.native.transport-throttle","rate":4,"completed":True}; '
+            "print(json.dumps(event)); "
+            "print(json.dumps(event),file=sys.stderr); "
+            "print(json.dumps(event),file=sys.stderr); "
+            'print(json.dumps({"event":"not-allowlisted"}),file=sys.stderr); '
+            'print(json.dumps({"event":["bunly.host.shutdown"]}),file=sys.stderr); '
+            '[print("ordinary diagnostic noise",file=sys.stderr) for _ in range(80)]'
+        )
+        result = observer.observe([sys.executable, "-c", code])
+        self.assertFalse(result["outputOverflow"])
+        self.assertEqual(len(result["nativeDiagnostics"]), 2)
+        self.assertEqual(result["nativeDiagnostics"][0], result["nativeDiagnostics"][1])
+        self.assertTrue(all(line == "ordinary diagnostic noise" for line in result["stderr"]))
+
+    def test_native_receipt_count_line_and_total_bytes_fail_closed_on_overflow(self):
+        for count, size in [(129, 1), (1, 17000), (8, 10000)]:
+            with self.subTest(count=count, size=size):
+                code = (
+                    "import json,sys; "
+                    f'event={{"event":"bunly.host.failure","payload":"x"*{size}}}; '
+                    f"[print(json.dumps(event),file=sys.stderr) for _ in range({count})]"
+                )
+                result = observer.observe([sys.executable, "-c", code])
+                self.assertTrue(result["outputOverflow"])
+                self.assertLessEqual(len(result["nativeDiagnostics"]), 128)
+                self.assertLessEqual(
+                    sum(len(line.encode()) for line in result["nativeDiagnostics"]), 65536
+                )
+
     def test_output_overflow_is_not_success(self):
         result = observer.observe([sys.executable, "-c", 'print("x"*3000000)'])
         self.assertTrue(result["outputOverflow"])
