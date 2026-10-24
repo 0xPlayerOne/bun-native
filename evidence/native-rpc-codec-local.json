@@ -1,0 +1,682 @@
+{
+  "schema": 1,
+  "classification": "local-current-cef-native-rpc-codec-ABBA-descriptive-profile",
+  "baselineMain": "05ce81d0762680a598969e119d057c7c3efe5ec0",
+  "candidateCommit": "cff0c9ecff255656d2965007c2d23b884f471a26",
+  "runtime": {
+    "bun": "1.4.3",
+    "cef": {
+      "event": "cef-binary-identity",
+      "schema": 1,
+      "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+      "cefVersion": "156.0.7",
+      "cefCommitNumber": 3652,
+      "chromiumVersion": "156.0.8078.17",
+      "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+      "source": "exported-api",
+      "sandbox": "unverified"
+    },
+    "target": "darwin-arm64"
+  },
+  "workload": {
+    "version": 1,
+    "structuredCalls": 100,
+    "structuredConcurrency": 16,
+    "binaryCalls": 50,
+    "binaryBytesPerCall": 65536,
+    "cancellationCalls": 20,
+    "cancellationConcurrency": 1
+  },
+  "order": [
+    "baseline",
+    "candidate",
+    "candidate",
+    "baseline"
+  ],
+  "blocks": [
+    {
+      "name": "A1",
+      "revision": "baseline",
+      "source": {
+        "commit": "69f25e0bad044cfa1425b5c0e944b05935253978",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "sha256": "27f0d1c6c2e0a8e5f185e05a316f579f586d8c04f64d50c21c9c9889173e755d",
+        "bytes": 4265805
+      },
+      "sourceHashes": {
+        "scripts/qualify-cef-transports.ts": "e41d9f02714af16c4a9c768d91add8ee1d79ed910a613e93e190d295182a0f11",
+        "examples/cef/transport.ts": "77d13ca42164959091eb19558c180d78e10f53e26e99933733ceb3b7c6692a30",
+        "examples/cef/transport-client.ts": "38a50b2508b4808dca8dbb62ee5bca7449a1d31faace814988f1f51cc8ae4273",
+        "examples/cef/transport-contract.ts": "a0de62ff7219dc4313f2ade694d7c5feecd45f9374f3e22c5aadde4585f4fe27",
+        "packages/client/src/cef-rpc.ts": "255ffd079f8de6fb3310cab9c865597c500826fb5e7f0f96f29c179738b3e653",
+        "packages/client/src/cef-loopback.ts": "a7c5eca7ef53100d2b28d916e54859555b9cb6faed600d85c71b226b731d0ed5",
+        "packages/client/src/rpc-loopback.ts": "47cdf879cd011c88d32b4d9fd3993e291f27b4b9478e240bafc95e3296b110e9",
+        "packages/runtime/src/cef.ts": "9ffb640a071e19a9d60eb88045e84c6ce1a24fd530c69e5a6c52e5556213a617",
+        "packages/runtime/src/rpc-loopback.ts": "194ed8ae34ce81ff44fbf2fbb1310cbfcf42f753227398797912309833492f37",
+        "packages/contracts/src/rpc-native-handoff.ts": "55135d7712acd2b2b6e226c8c600d65d5f3299b994c19dc613edcf37dc4a85e3",
+        "packages/contracts/src/rpc-fragments.ts": "dba984e95b60f35742babe78d5453c25017e41f6e17c2dd59e0de5076f72238d",
+        "packages/contracts/src/rpc-websocket-wire.ts": "9b101c6d76e6b0bfb9fa5c27924b4446bbebd3b504e4a45e928a0af9f35bcfbd",
+        "native/cef-host/src/host.rs": "10020bbc4c3072c9b1a57789d6351088cbf5c790964f3f87062c97695646960e",
+        "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
+        "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
+        "benchmarks/lib/cef-transport-acceptance.ts": "e56da5ff3b2fd35d7e40d9d223b3ea1b36851b80a17711ba2ec30e42d0a526f8",
+        "benchmarks/lib/cef-acceptance.ts": "f244fdd841802f3c88872b1c31d91313110cc57d630f52f4ad9065dd18ff18dd",
+        "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+        "benchmarks/lib/native-diagnostic-events.json": "aca0861c4f0d4ddfb75221a6111102cebe230f63f16aba18b76d6d2b6b0b011b",
+        "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+        "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
+        "benchmarks/rpc-transport-comparison.ts": "4d947c78faa492d5bbab177089c3c44bc5dff1f97a575318378c30427f02d711",
+        "scripts/observe-process.py": "9177dae62064a0e57762c51c8014a91383035e37fa41b099d0dfe7dfb62f5da4",
+        "scripts/kernel_counters.py": "0b975e2ae7c4725363ddd0362b8a5d2e2fac09ae36cf43322c7df121392c7cc5"
+      },
+      "launches": 6,
+      "measuredLaunches": 5,
+      "warmups": 1,
+      "helpers": {
+        "qualified": 6,
+        "unobserved": 0
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "measuredTrials": [
+        {
+          "handoffMs": 3.5,
+          "structuredMs": 19.90000009536743,
+          "binaryMs": 351.39999985694885,
+          "cancellationMs": 15.199999809265137,
+          "throttledMs": 12.799999952316284
+        },
+        {
+          "handoffMs": 3.3999998569488525,
+          "structuredMs": 20.90000009536743,
+          "binaryMs": 377.2000000476837,
+          "cancellationMs": 15.5,
+          "throttledMs": 13.799999952316284
+        },
+        {
+          "handoffMs": 3.200000047683716,
+          "structuredMs": 19.700000047683716,
+          "binaryMs": 354.7999999523163,
+          "cancellationMs": 15.5,
+          "throttledMs": 11.799999952316284
+        },
+        {
+          "handoffMs": 5.6000001430511475,
+          "structuredMs": 21,
+          "binaryMs": 347.80000019073486,
+          "cancellationMs": 14.399999856948853,
+          "throttledMs": 10.799999952316284
+        },
+        {
+          "handoffMs": 5.799999952316284,
+          "structuredMs": 21.09999990463257,
+          "binaryMs": 355.90000009536743,
+          "cancellationMs": 15,
+          "throttledMs": 11.400000095367432
+        }
+      ]
+    },
+    {
+      "name": "B1",
+      "revision": "candidate",
+      "source": {
+        "commit": "cff0c9ecff255656d2965007c2d23b884f471a26",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "sha256": "903565c649e54c6f0120594aee53cf909675fe5b1f5d25bffc1f87813e1a901f",
+        "bytes": 4288688
+      },
+      "sourceHashes": {
+        "scripts/qualify-cef-transports.ts": "c03071e7981e3985087ac48735dc2bbd65760ee002f71827ec0724c6447da87d",
+        "examples/cef/transport.ts": "77d13ca42164959091eb19558c180d78e10f53e26e99933733ceb3b7c6692a30",
+        "examples/cef/transport-client.ts": "38a50b2508b4808dca8dbb62ee5bca7449a1d31faace814988f1f51cc8ae4273",
+        "examples/cef/transport-contract.ts": "a0de62ff7219dc4313f2ade694d7c5feecd45f9374f3e22c5aadde4585f4fe27",
+        "packages/client/src/cef-rpc.ts": "255ffd079f8de6fb3310cab9c865597c500826fb5e7f0f96f29c179738b3e653",
+        "packages/client/src/cef-loopback.ts": "a7c5eca7ef53100d2b28d916e54859555b9cb6faed600d85c71b226b731d0ed5",
+        "packages/client/src/rpc-loopback.ts": "47cdf879cd011c88d32b4d9fd3993e291f27b4b9478e240bafc95e3296b110e9",
+        "packages/runtime/src/cef.ts": "61715cc5dbb8dd209e47640f41f234b19182419136de19359fea3a161642c41f",
+        "packages/runtime/src/native-rpc-codec.ts": "2d274decd34b3b6fda74ac775b327cfd588533a5d6d23ca8027f3a5606d7ec7d",
+        "packages/runtime/src/rpc-loopback.ts": "194ed8ae34ce81ff44fbf2fbb1310cbfcf42f753227398797912309833492f37",
+        "packages/contracts/src/rpc-native-handoff.ts": "55135d7712acd2b2b6e226c8c600d65d5f3299b994c19dc613edcf37dc4a85e3",
+        "packages/contracts/src/rpc-fragments.ts": "dba984e95b60f35742babe78d5453c25017e41f6e17c2dd59e0de5076f72238d",
+        "packages/contracts/src/rpc-websocket-wire.ts": "9b101c6d76e6b0bfb9fa5c27924b4446bbebd3b504e4a45e928a0af9f35bcfbd",
+        "native/cef-host/src/host.rs": "10020bbc4c3072c9b1a57789d6351088cbf5c790964f3f87062c97695646960e",
+        "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
+        "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
+        "benchmarks/lib/cef-transport-acceptance.ts": "e56da5ff3b2fd35d7e40d9d223b3ea1b36851b80a17711ba2ec30e42d0a526f8",
+        "benchmarks/lib/cef-acceptance.ts": "f244fdd841802f3c88872b1c31d91313110cc57d630f52f4ad9065dd18ff18dd",
+        "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+        "benchmarks/lib/native-diagnostic-events.json": "aca0861c4f0d4ddfb75221a6111102cebe230f63f16aba18b76d6d2b6b0b011b",
+        "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+        "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
+        "benchmarks/rpc-transport-comparison.ts": "4d947c78faa492d5bbab177089c3c44bc5dff1f97a575318378c30427f02d711",
+        "scripts/observe-process.py": "9177dae62064a0e57762c51c8014a91383035e37fa41b099d0dfe7dfb62f5da4",
+        "scripts/kernel_counters.py": "0b975e2ae7c4725363ddd0362b8a5d2e2fac09ae36cf43322c7df121392c7cc5"
+      },
+      "launches": 6,
+      "measuredLaunches": 5,
+      "warmups": 1,
+      "helpers": {
+        "qualified": 6,
+        "unobserved": 0
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "measuredTrials": [
+        {
+          "handoffMs": 5.200000047683716,
+          "structuredMs": 20.59999990463257,
+          "binaryMs": 307.7000000476837,
+          "cancellationMs": 14.5,
+          "throttledMs": 10.700000047683716
+        },
+        {
+          "handoffMs": 3,
+          "structuredMs": 24.200000047683716,
+          "binaryMs": 343.2000000476837,
+          "cancellationMs": 14.200000047683716,
+          "throttledMs": 8.900000095367432
+        },
+        {
+          "handoffMs": 3,
+          "structuredMs": 20.100000143051147,
+          "binaryMs": 321.2000000476837,
+          "cancellationMs": 14.299999952316284,
+          "throttledMs": 10.200000047683716
+        },
+        {
+          "handoffMs": 3.5,
+          "structuredMs": 24.200000047683716,
+          "binaryMs": 378.30000019073486,
+          "cancellationMs": 15.199999809265137,
+          "throttledMs": 11
+        },
+        {
+          "handoffMs": 2.8999998569488525,
+          "structuredMs": 22.700000047683716,
+          "binaryMs": 352.89999985694885,
+          "cancellationMs": 14.100000143051147,
+          "throttledMs": 10.900000095367432
+        }
+      ]
+    },
+    {
+      "name": "B2",
+      "revision": "candidate",
+      "source": {
+        "commit": "cff0c9ecff255656d2965007c2d23b884f471a26",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "sha256": "bd2392122f99d0bd37461d5f91add254e04afb179c4f0e15159445565aa66a24",
+        "bytes": 4286347
+      },
+      "sourceHashes": {
+        "scripts/qualify-cef-transports.ts": "c03071e7981e3985087ac48735dc2bbd65760ee002f71827ec0724c6447da87d",
+        "examples/cef/transport.ts": "77d13ca42164959091eb19558c180d78e10f53e26e99933733ceb3b7c6692a30",
+        "examples/cef/transport-client.ts": "38a50b2508b4808dca8dbb62ee5bca7449a1d31faace814988f1f51cc8ae4273",
+        "examples/cef/transport-contract.ts": "a0de62ff7219dc4313f2ade694d7c5feecd45f9374f3e22c5aadde4585f4fe27",
+        "packages/client/src/cef-rpc.ts": "255ffd079f8de6fb3310cab9c865597c500826fb5e7f0f96f29c179738b3e653",
+        "packages/client/src/cef-loopback.ts": "a7c5eca7ef53100d2b28d916e54859555b9cb6faed600d85c71b226b731d0ed5",
+        "packages/client/src/rpc-loopback.ts": "47cdf879cd011c88d32b4d9fd3993e291f27b4b9478e240bafc95e3296b110e9",
+        "packages/runtime/src/cef.ts": "61715cc5dbb8dd209e47640f41f234b19182419136de19359fea3a161642c41f",
+        "packages/runtime/src/native-rpc-codec.ts": "2d274decd34b3b6fda74ac775b327cfd588533a5d6d23ca8027f3a5606d7ec7d",
+        "packages/runtime/src/rpc-loopback.ts": "194ed8ae34ce81ff44fbf2fbb1310cbfcf42f753227398797912309833492f37",
+        "packages/contracts/src/rpc-native-handoff.ts": "55135d7712acd2b2b6e226c8c600d65d5f3299b994c19dc613edcf37dc4a85e3",
+        "packages/contracts/src/rpc-fragments.ts": "dba984e95b60f35742babe78d5453c25017e41f6e17c2dd59e0de5076f72238d",
+        "packages/contracts/src/rpc-websocket-wire.ts": "9b101c6d76e6b0bfb9fa5c27924b4446bbebd3b504e4a45e928a0af9f35bcfbd",
+        "native/cef-host/src/host.rs": "10020bbc4c3072c9b1a57789d6351088cbf5c790964f3f87062c97695646960e",
+        "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
+        "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
+        "benchmarks/lib/cef-transport-acceptance.ts": "e56da5ff3b2fd35d7e40d9d223b3ea1b36851b80a17711ba2ec30e42d0a526f8",
+        "benchmarks/lib/cef-acceptance.ts": "f244fdd841802f3c88872b1c31d91313110cc57d630f52f4ad9065dd18ff18dd",
+        "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+        "benchmarks/lib/native-diagnostic-events.json": "aca0861c4f0d4ddfb75221a6111102cebe230f63f16aba18b76d6d2b6b0b011b",
+        "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+        "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
+        "benchmarks/rpc-transport-comparison.ts": "4d947c78faa492d5bbab177089c3c44bc5dff1f97a575318378c30427f02d711",
+        "scripts/observe-process.py": "9177dae62064a0e57762c51c8014a91383035e37fa41b099d0dfe7dfb62f5da4",
+        "scripts/kernel_counters.py": "0b975e2ae7c4725363ddd0362b8a5d2e2fac09ae36cf43322c7df121392c7cc5"
+      },
+      "launches": 6,
+      "measuredLaunches": 5,
+      "warmups": 1,
+      "helpers": {
+        "qualified": 6,
+        "unobserved": 0
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "measuredTrials": [
+        {
+          "handoffMs": 3.1999998092651367,
+          "structuredMs": 24.40000009536743,
+          "binaryMs": 340.10000014305115,
+          "cancellationMs": 13.400000095367432,
+          "throttledMs": 10.900000095367432
+        },
+        {
+          "handoffMs": 3.6000001430511475,
+          "structuredMs": 20.5,
+          "binaryMs": 325.7999999523163,
+          "cancellationMs": 13.899999856948853,
+          "throttledMs": 10.900000095367432
+        },
+        {
+          "handoffMs": 5.299999952316284,
+          "structuredMs": 21.09999990463257,
+          "binaryMs": 323.2999999523163,
+          "cancellationMs": 13.599999904632568,
+          "throttledMs": 10.899999856948853
+        },
+        {
+          "handoffMs": 3,
+          "structuredMs": 20,
+          "binaryMs": 348.2000000476837,
+          "cancellationMs": 15.200000047683716,
+          "throttledMs": 11.5
+        },
+        {
+          "handoffMs": 4.3999998569488525,
+          "structuredMs": 21.600000143051147,
+          "binaryMs": 355.2999999523163,
+          "cancellationMs": 13.700000047683716,
+          "throttledMs": 10.399999856948853
+        }
+      ]
+    },
+    {
+      "name": "A2",
+      "revision": "baseline",
+      "source": {
+        "commit": "69f25e0bad044cfa1425b5c0e944b05935253978",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "sha256": "dfc28da6404e91bdfedd4c6dd0de94a94f5070bc7866615283ab8b51f93e3691",
+        "bytes": 4292250
+      },
+      "sourceHashes": {
+        "scripts/qualify-cef-transports.ts": "e41d9f02714af16c4a9c768d91add8ee1d79ed910a613e93e190d295182a0f11",
+        "examples/cef/transport.ts": "77d13ca42164959091eb19558c180d78e10f53e26e99933733ceb3b7c6692a30",
+        "examples/cef/transport-client.ts": "38a50b2508b4808dca8dbb62ee5bca7449a1d31faace814988f1f51cc8ae4273",
+        "examples/cef/transport-contract.ts": "a0de62ff7219dc4313f2ade694d7c5feecd45f9374f3e22c5aadde4585f4fe27",
+        "packages/client/src/cef-rpc.ts": "255ffd079f8de6fb3310cab9c865597c500826fb5e7f0f96f29c179738b3e653",
+        "packages/client/src/cef-loopback.ts": "a7c5eca7ef53100d2b28d916e54859555b9cb6faed600d85c71b226b731d0ed5",
+        "packages/client/src/rpc-loopback.ts": "47cdf879cd011c88d32b4d9fd3993e291f27b4b9478e240bafc95e3296b110e9",
+        "packages/runtime/src/cef.ts": "9ffb640a071e19a9d60eb88045e84c6ce1a24fd530c69e5a6c52e5556213a617",
+        "packages/runtime/src/rpc-loopback.ts": "194ed8ae34ce81ff44fbf2fbb1310cbfcf42f753227398797912309833492f37",
+        "packages/contracts/src/rpc-native-handoff.ts": "55135d7712acd2b2b6e226c8c600d65d5f3299b994c19dc613edcf37dc4a85e3",
+        "packages/contracts/src/rpc-fragments.ts": "dba984e95b60f35742babe78d5453c25017e41f6e17c2dd59e0de5076f72238d",
+        "packages/contracts/src/rpc-websocket-wire.ts": "9b101c6d76e6b0bfb9fa5c27924b4446bbebd3b504e4a45e928a0af9f35bcfbd",
+        "native/cef-host/src/host.rs": "10020bbc4c3072c9b1a57789d6351088cbf5c790964f3f87062c97695646960e",
+        "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
+        "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
+        "benchmarks/lib/cef-transport-acceptance.ts": "e56da5ff3b2fd35d7e40d9d223b3ea1b36851b80a17711ba2ec30e42d0a526f8",
+        "benchmarks/lib/cef-acceptance.ts": "f244fdd841802f3c88872b1c31d91313110cc57d630f52f4ad9065dd18ff18dd",
+        "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+        "benchmarks/lib/native-diagnostic-events.json": "aca0861c4f0d4ddfb75221a6111102cebe230f63f16aba18b76d6d2b6b0b011b",
+        "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+        "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
+        "benchmarks/rpc-transport-comparison.ts": "4d947c78faa492d5bbab177089c3c44bc5dff1f97a575318378c30427f02d711",
+        "scripts/observe-process.py": "9177dae62064a0e57762c51c8014a91383035e37fa41b099d0dfe7dfb62f5da4",
+        "scripts/kernel_counters.py": "0b975e2ae7c4725363ddd0362b8a5d2e2fac09ae36cf43322c7df121392c7cc5"
+      },
+      "launches": 6,
+      "measuredLaunches": 5,
+      "warmups": 1,
+      "helpers": {
+        "qualified": 6,
+        "unobserved": 0
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "measuredTrials": [
+        {
+          "handoffMs": 2.799999952316284,
+          "structuredMs": 20.59999990463257,
+          "binaryMs": 338.2000000476837,
+          "cancellationMs": 13.899999856948853,
+          "throttledMs": 10.100000143051147
+        },
+        {
+          "handoffMs": 3.299999952316284,
+          "structuredMs": 19.59999990463257,
+          "binaryMs": 333.09999990463257,
+          "cancellationMs": 14.700000047683716,
+          "throttledMs": 9.700000047683716
+        },
+        {
+          "handoffMs": 6.199999809265137,
+          "structuredMs": 19.800000190734863,
+          "binaryMs": 331.7999999523163,
+          "cancellationMs": 13.5,
+          "throttledMs": 10.600000143051147
+        },
+        {
+          "handoffMs": 3.0999999046325684,
+          "structuredMs": 19.700000047683716,
+          "binaryMs": 358.5,
+          "cancellationMs": 14,
+          "throttledMs": 9.399999856948853
+        },
+        {
+          "handoffMs": 3.200000047683716,
+          "structuredMs": 21.799999952316284,
+          "binaryMs": 340.39999985694885,
+          "cancellationMs": 14.200000047683716,
+          "throttledMs": 9.900000095367432
+        }
+      ]
+    }
+  ],
+  "distributions": {
+    "baseline": {
+      "handoffMs": {
+        "count": 10,
+        "mean": 4.009999966621399,
+        "median": 3.3499999046325684,
+        "p95": 6.019999873638152,
+        "p99": 6.16399982213974,
+        "min": 2.799999952316284,
+        "max": 6.199999809265137,
+        "standardDeviation": 1.3025189196952909,
+        "meanBootstrap95": [
+          3.2797499483823778,
+          4.859999942779541
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 5.839999938011169,
+        "samples": [
+          3.5,
+          3.3999998569488525,
+          3.200000047683716,
+          5.6000001430511475,
+          5.799999952316284,
+          2.799999952316284,
+          3.299999952316284,
+          6.199999809265137,
+          3.0999999046325684,
+          3.200000047683716
+        ]
+      },
+      "structuredMs": {
+        "count": 10,
+        "mean": 20.410000014305115,
+        "median": 20.25,
+        "p95": 21.48499993085861,
+        "p99": 21.73699994802475,
+        "min": 19.59999990463257,
+        "max": 21.799999952316284,
+        "standardDeviation": 0.7694875265868645,
+        "meanBootstrap95": [
+          19.990000032782554,
+          20.900000000596044
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 21.16999990940094,
+        "samples": [
+          19.90000009536743,
+          20.90000009536743,
+          19.700000047683716,
+          21,
+          21.09999990463257,
+          20.59999990463257,
+          19.59999990463257,
+          19.800000190734863,
+          19.700000047683716,
+          21.799999952316284
+        ]
+      },
+      "binaryMs": {
+        "count": 10,
+        "mean": 348.90999999046323,
+        "median": 349.60000002384186,
+        "p95": 368.78500002622604,
+        "p99": 375.51700004339216,
+        "min": 331.7999999523163,
+        "max": 377.2000000476837,
+        "standardDeviation": 13.796573682517623,
+        "meanBootstrap95": [
+          341.27800001740457,
+          357.0022500234842
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 360.3700000047684,
+        "samples": [
+          351.39999985694885,
+          377.2000000476837,
+          354.7999999523163,
+          347.80000019073486,
+          355.90000009536743,
+          338.2000000476837,
+          333.09999990463257,
+          331.7999999523163,
+          358.5,
+          340.39999985694885
+        ]
+      },
+      "cancellationMs": {
+        "count": 10,
+        "mean": 14.589999961853028,
+        "median": 14.549999952316284,
+        "p95": 15.5,
+        "p99": 15.5,
+        "min": 13.5,
+        "max": 15.5,
+        "standardDeviation": 0.6999206298153997,
+        "meanBootstrap95": [
+          14.199749952554702,
+          14.97999994814396
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 15.5,
+        "samples": [
+          15.199999809265137,
+          15.5,
+          15.5,
+          14.399999856948853,
+          15,
+          13.899999856948853,
+          14.700000047683716,
+          13.5,
+          14,
+          14.200000047683716
+        ]
+      },
+      "throttledMs": {
+        "count": 10,
+        "mean": 11.030000019073487,
+        "median": 10.700000047683716,
+        "p95": 13.349999952316283,
+        "p99": 13.709999952316284,
+        "min": 9.399999856948853,
+        "max": 13.799999952316284,
+        "standardDeviation": 1.4275464312738357,
+        "meanBootstrap95": [
+          10.259750015735627,
+          11.890250009298324
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 12.899999952316284,
+        "samples": [
+          12.799999952316284,
+          13.799999952316284,
+          11.799999952316284,
+          10.799999952316284,
+          11.400000095367432,
+          10.100000143051147,
+          9.700000047683716,
+          10.600000143051147,
+          9.399999856948853,
+          9.900000095367432
+        ]
+      }
+    },
+    "candidate": {
+      "handoffMs": {
+        "count": 10,
+        "mean": 3.7099999666213987,
+        "median": 3.3499999046325684,
+        "p95": 5.254999995231628,
+        "p99": 5.290999960899353,
+        "min": 2.8999998569488525,
+        "max": 5.299999952316284,
+        "standardDeviation": 0.9255028775916566,
+        "meanBootstrap95": [
+          3.2199999803304675,
+          4.279999948143959
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 5.210000038146973,
+        "samples": [
+          5.200000047683716,
+          3,
+          3,
+          3.5,
+          2.8999998569488525,
+          3.1999998092651367,
+          3.6000001430511475,
+          5.299999952316284,
+          3,
+          4.3999998569488525
+        ]
+      },
+      "structuredMs": {
+        "count": 10,
+        "mean": 21.940000033378602,
+        "median": 21.350000023841858,
+        "p95": 24.31000007390976,
+        "p99": 24.3820000910759,
+        "min": 20,
+        "max": 24.40000009536743,
+        "standardDeviation": 1.7852482169418618,
+        "meanBootstrap95": [
+          20.990000032782554,
+          23.04025005757809
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 24.220000052452086,
+        "samples": [
+          20.59999990463257,
+          24.200000047683716,
+          20.100000143051147,
+          24.200000047683716,
+          22.700000047683716,
+          24.40000009536743,
+          20.5,
+          21.09999990463257,
+          20,
+          21.600000143051147
+        ]
+      },
+      "binaryMs": {
+        "count": 10,
+        "mean": 339.60000002384186,
+        "median": 341.65000009536743,
+        "p95": 367.95000008344647,
+        "p99": 376.2300001692772,
+        "min": 307.7000000476837,
+        "max": 378.30000019073486,
+        "standardDeviation": 20.603505658667146,
+        "meanBootstrap95": [
+          328.1267499727011,
+          352.671250076294
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 357.59999997615813,
+        "samples": [
+          307.7000000476837,
+          343.2000000476837,
+          321.2000000476837,
+          378.30000019073486,
+          352.89999985694885,
+          340.10000014305115,
+          325.7999999523163,
+          323.2999999523163,
+          348.2000000476837,
+          355.2999999523163
+        ]
+      },
+      "cancellationMs": {
+        "count": 10,
+        "mean": 14.209999990463256,
+        "median": 14.150000095367432,
+        "p95": 15.199999940395355,
+        "p99": 15.200000026226043,
+        "min": 13.400000095367432,
+        "max": 15.200000047683716,
+        "standardDeviation": 0.6190494216187145,
+        "meanBootstrap95": [
+          13.88000001847744,
+          14.579999948740006
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 15.199999833106995,
+        "samples": [
+          14.5,
+          14.200000047683716,
+          14.299999952316284,
+          15.199999809265137,
+          14.100000143051147,
+          13.400000095367432,
+          13.899999856948853,
+          13.599999904632568,
+          15.200000047683716,
+          13.700000047683716
+        ]
+      },
+      "throttledMs": {
+        "count": 10,
+        "mean": 10.630000019073487,
+        "median": 10.899999976158142,
+        "p95": 11.274999999999999,
+        "p99": 11.455,
+        "min": 8.900000095367432,
+        "max": 11.5,
+        "standardDeviation": 0.7008724546154075,
+        "meanBootstrap95": [
+          10.199750024080275,
+          10.979999949336053
+        ],
+        "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples",
+        "p90": 11.05,
+        "samples": [
+          10.700000047683716,
+          8.900000095367432,
+          10.200000047683716,
+          11,
+          10.900000095367432,
+          10.900000095367432,
+          10.900000095367432,
+          10.899999856948853,
+          11.5,
+          10.399999856948853
+        ]
+      }
+    }
+  },
+  "retainedPreflightFailures": [
+    {
+      "classification": "no-native-launch",
+      "reason": "The return-to-baseline wrapper resolved Bun 1.4.4 and the maintained 1.4.3 guard rejected before fixture creation. The original log remains retained; the final block used the explicit pinned executable."
+    },
+    {
+      "classification": "test-authoring",
+      "reason": "Initial error-shape assertions used the wrong Bun matcher and an intentionally throwing iterator was written as a generator; corrected tests use structural Node assert.throws and a regular throwing iterator. Product guards were unchanged."
+    }
+  ],
+  "limits": [
+    "Twenty measured launches plus four warmups on one development machine; not quiet-machine or end-user interaction qualification.",
+    "ABBA block order reduces simple monotonic drift but is not randomized per-launch isolation and cannot remove all machine-load effects.",
+    "Reported times are whole fixed workloads, not per-call latency; bootstrap mean intervals are descriptive, not release gates.",
+    "No startup, graphical terminal, power, RSS or performance claim against another framework.",
+    "All 24 real native workloads and ordered teardown passed; no historical shutdown failure is erased.",
+    "Same input native artifact for both revisions; only Bun-side codec and fingerprint/test code differ. Native authority, deadlines, byte limits and hexadecimal wire expansion are unchanged.",
+    "The smaller isolated built-in conversion cost did not translate into a clear combined-workload improvement. No performance win is claimed."
+  ],
+  "disposition": "Candidate not selected: mixed native-workload results do not justify a runtime change; baseline codec retained."
+}

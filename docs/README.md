@@ -84,3 +84,6 @@ separate Python/Rust contributor formatters.
 
 [Native acceptance tooling](native-acceptance-tooling.md) defines the shared M4
 suite, sanitized evidence export/replay and the M5 diagnostic handoff.
+
+[Native codec evaluation](native-rpc-codec-evaluation.md) records a rejected
+hex-conversion candidate and its actual current-engine workload measurements.
