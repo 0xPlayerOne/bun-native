@@ -115,3 +115,13 @@ Prototype-only typed-array lookalikes and proxies also reject through the owned
 protocol-failure path instead of throwing out of the callback with a live
 reservation. Both regressions failed before the correction. Source, transport,
 and consumer reservation lifetimes remain distinct.
+
+The integrated macOS foundation run `40092675168` failed its existing process
+reparenting fixture: the observed executable UUID and process version changed
+between snapshots. The fixture's parent announced the PID immediately after
+spawn, before the child interpreter had announced readiness. The test now waits
+for a pipe receipt emitted by the running child before taking either identity
+snapshot. A separate test-owned lifetime pipe keeps the child alive across parent
+exit and releases it by EOF on cleanup, without timed sleeps or permanent polling.
+Full kernel-identity equality remains required; the production observer and its
+executable/substitution checks are unchanged. The original failure is retained.

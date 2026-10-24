@@ -1,11 +1,11 @@
 """Kernel ABI bounds and an unprivileged real reparenting check on macOS."""
 
 import ctypes
+import os
+import selectors
 import struct
 import subprocess
 import sys
-import tempfile
-import time
 import unittest
 from contextlib import suppress
 from pathlib import Path
@@ -82,55 +82,70 @@ class KernelAbiTests(unittest.TestCase):
 class NativeParentIdentityTests(unittest.TestCase):
     def test_original_parent_unique_id_survives_reparenting(self):
         reader = MacProcessIds()
+        # Popen returning is not application readiness: the selected Python
+        # launcher can still exec its final interpreter. Only the running child
+        # may announce the identity we compare across its parent's exit.
+        child_code = "import os,sys; print(os.getpid(),flush=True); sys.stdin.buffer.read(1)"
         code = (
-            "import pathlib,subprocess,sys; "
-            "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(10)'],"
-            "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); "
-            "pathlib.Path(sys.argv[1]).write_text(str(child.pid)); sys.stdin.readline()"
+            "import subprocess,sys; "
+            "child=subprocess.Popen([sys.executable,'-c',sys.argv[2]],"
+            "stdin=int(sys.argv[1]),stdout=subprocess.PIPE,stderr=subprocess.DEVNULL); "
+            "ready=child.stdout.readline(); sys.stdout.buffer.write(ready); "
+            "sys.stdout.flush(); sys.stdin.buffer.read(1)"
         )
         child_identity = child_kernel = None
-        with tempfile.TemporaryDirectory(prefix="bunly-parent-identity-") as directory:
-            ready = Path(directory) / "child-pid"
+        lifetime_read, lifetime_write = os.pipe()
+        try:
             parent = subprocess.Popen(
-                [sys.executable, "-c", code, str(ready)],
+                [sys.executable, "-c", code, str(lifetime_read), child_code],
+                pass_fds=(lifetime_read,),
                 stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
             )
-            try:
-                deadline = time.monotonic() + 5
-                while not ready.exists() and time.monotonic() < deadline:
-                    time.sleep(0.01)
-                self.assertTrue(ready.exists(), "controlled child did not start")
-                pid = int(ready.read_text())
-                child_identity = (pid, psutil.Process(pid).create_time())
-                parent_kernel = reader.identity(parent.pid)
-                child_kernel = reader.identity(pid)
-                self.assertIsNotNone(parent_kernel)
-                self.assertIsNotNone(child_kernel)
-                self.assertEqual(child_kernel.parent_unique_id, parent_kernel.unique_id)
-                parent.stdin.close()
-                self.assertEqual(parent.wait(timeout=5), 0)
-                retained = reader.identity(pid)
-                self.assertEqual(retained, child_kernel)
-                self.assertEqual(retained.parent_unique_id, parent_kernel.unique_id)
-                self.assertNotEqual(psutil.Process(pid).ppid(), parent.pid)
-                self.assertIn(pid, reader.same_uid_pids())
-            finally:
-                if parent.poll() is None:
-                    parent.kill()
-                parent.wait(timeout=5)
-                if parent.stdin is not None and not parent.stdin.closed:
-                    parent.stdin.close()
-                if child_identity is not None and child_kernel is not None:
-                    with suppress(psutil.Error):
-                        current = psutil.Process(child_identity[0])
-                        if (
-                            current.create_time() == child_identity[1]
-                            and reader.identity(current.pid) == child_kernel
-                        ):
-                            current.kill()
-                            current.wait(timeout=2)
+        except BaseException:
+            os.close(lifetime_write)
+            raise
+        finally:
+            os.close(lifetime_read)
+        try:
+            with selectors.DefaultSelector() as readiness:
+                readiness.register(parent.stdout, selectors.EVENT_READ)
+                self.assertTrue(readiness.select(timeout=5), "controlled child did not start")
+                receipt = parent.stdout.readline(64)
+            self.assertRegex(receipt, rb"^[1-9][0-9]{0,9}\n$")
+            pid = int(receipt)
+            child_identity = (pid, psutil.Process(pid).create_time())
+            parent_kernel = reader.identity(parent.pid)
+            child_kernel = reader.identity(pid)
+            self.assertIsNotNone(parent_kernel)
+            self.assertIsNotNone(child_kernel)
+            self.assertEqual(child_kernel.parent_unique_id, parent_kernel.unique_id)
+            parent.stdin.close()
+            self.assertEqual(parent.wait(timeout=5), 0)
+            retained = reader.identity(pid)
+            self.assertEqual(retained, child_kernel)
+            self.assertEqual(retained.parent_unique_id, parent_kernel.unique_id)
+            self.assertNotEqual(psutil.Process(pid).ppid(), parent.pid)
+            self.assertIn(pid, reader.same_uid_pids())
+        finally:
+            # The child waits on this test-owned pipe, not a timed sleep. EOF
+            # releases it even if readiness or an assertion fails; no PID guess.
+            os.close(lifetime_write)
+            if parent.poll() is None:
+                parent.kill()
+            parent.wait(timeout=5)
+            for stream in (parent.stdin, parent.stdout):
+                if stream is not None and not stream.closed:
+                    stream.close()
+            if child_identity is not None and child_kernel is not None:
+                with suppress(psutil.Error):
+                    current = psutil.Process(child_identity[0])
+                    if (
+                        current.create_time() == child_identity[1]
+                        and reader.identity(current.pid) == child_kernel
+                    ):
+                        current.wait(timeout=2)
 
 
 if __name__ == "__main__":
