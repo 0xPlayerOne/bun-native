@@ -75,3 +75,5 @@ concurrent builds, measured results and retained security boundaries.
 
 [Formatting](formatting.md) documents the repository-wide Oxfmt gate and the
 separate Python/Rust contributor formatters.
+
+[Protected persistent cookies](session-credentials.md) records the explicit OS-provider policy, admission checks and disposable-runner qualification boundary.

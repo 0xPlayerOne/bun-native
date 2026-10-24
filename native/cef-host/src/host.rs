@@ -50,6 +50,8 @@ struct SessionRecord {
     creating: Option<u64>,
     busy: bool,
     disposing: Option<u64>,
+    internal_credential: bool,
+    credential_proof: Option<session::credentials::Probe>,
 }
 #[derive(Default)]
 struct HostState {
@@ -59,7 +61,12 @@ struct HostState {
     sessions: BTreeMap<u64, SessionRecord>,
     rpc_deliveries: rpc_authority::Deliveries,
     policy: capability_policy::Policy,
+    credential_probe: Option<u64>,
+    credential_ready: bool,
 }
+#[path = "credential_callbacks.rs"]
+mod credential_callbacks;
+
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
 fn number(value: &Value, key: &str) -> Result<u64, String> {
     value
@@ -690,6 +697,16 @@ fn finish_session_initialization(id: u64, context: &RequestContext) {
         return;
     }
     scheme::attach(context);
+    if STATE.with(|state| {
+        state
+            .borrow()
+            .sessions
+            .get(&id)
+            .is_some_and(|record| record.internal_credential)
+    }) {
+        credential_callbacks::initialized(id, context);
+        return;
+    }
     let request = STATE.with(|state| {
         state.borrow_mut().sessions.get_mut(&id).and_then(|record| {
             record.busy = false;
@@ -748,7 +765,10 @@ wrap_completion_callback! {
 wrap_completion_callback! {
     struct ContextClosed { id: u64 }
     impl CompletionCallback { fn on_complete(&self) {
-        let record = STATE.with(|s| s.borrow_mut().sessions.remove(&self.id));
+        let record = STATE.with(|s| { let mut state=s.borrow_mut();
+            if state.credential_probe==Some(self.id) {state.credential_probe=None;state.credential_ready=false;}
+            state.sessions.remove(&self.id)
+        });
         if let Some(mut record) = record {
             if let Some(request) = record.disposing.filter(|request| *request != 0) {
                 reply(request, Value::Null);
@@ -862,6 +882,11 @@ wrap_app! {
     pub struct BunlyApp;
     impl App {
         fn on_before_command_line_processing(&self, process_type: Option<&CefString>, command_line: Option<&mut CommandLine>) {
+            #[cfg(target_os = "linux")]
+            if process_type.is_none_or(|value|value.to_string().is_empty())
+                && crate::PATHS.get().and_then(|paths|paths.credential_policy.as_ref()).is_some() {
+                if let Some(line)=command_line.as_ref() {line.append_switch_with_value(Some(&CefString::from("password-store")),Some(&CefString::from("gnome-libsecret")));}
+            }
             #[cfg(feature = "rpc-qualification")]
             crate::rpc_qualification::configure_media_devices(process_type, command_line);
             #[cfg(not(feature = "rpc-qualification"))]
@@ -920,6 +945,7 @@ fn begin_session_operation(id: u64, require_cookies: bool) -> Result<RequestCont
             .sessions
             .get_mut(&id)
             .ok_or("INVALID_HANDLE: session")?;
+        if record.internal_credential {return Err("INVALID_HANDLE: internal credential context".into());}
         if record.disposing.is_some() || record.busy {
             return Err("RESOURCE_IN_USE: session operation".into());
         }
@@ -1252,13 +1278,23 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "rpc.loopback.configure" => {
             return Err("UNSUPPORTED_CAPABILITY: CEF loopback transport is not qualified".into())
         }
+        "credentials.probe" => credential_callbacks::start(request, args)?,
+        "credentials.accept" => {
+            credential_callbacks::accept(args)?;
+            reply(request, Value::Null);
+        }
+        "credentials.discard" => {
+            credential_callbacks::discard(args)?;
+            reply(request, Value::Null);
+        }
         "session.create" => {
             let persistence = string(args, "persistence")?;
             let partition = string(args, "partition")?.to_owned();
             if !matches!(persistence, "ephemeral" | "persistent") {
                 return Err("Invalid session persistence".into());
             }
-            if partition.is_empty()
+            if partition == session::credentials::PROBE_PARTITION
+                || partition.is_empty()
                 || partition.len() > 64
                 || !partition.bytes().enumerate().all(|(index, byte)| {
                     byte.is_ascii_alphanumeric() || (index > 0 && b"._-".contains(&byte))
@@ -1279,6 +1315,20 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 return Err("Session partition already has a native owner".into());
             }
             let persistent = persistence == "persistent";
+            let protected = match args.get("persistentCookies") {
+                None => false,
+                Some(Value::String(value)) if value == "os-protected" && persistent => true,
+                _ => return Err("Invalid protected-cookie intent".into()),
+            };
+            let credential_policy = crate::PATHS
+                .get()
+                .and_then(|paths| paths.credential_policy.as_ref());
+            if protected
+                && (credential_policy.is_none()
+                    || !STATE.with(|state| state.borrow().credential_ready))
+            {
+                return Err("UNSUPPORTED_CAPABILITY: OS-cookie provider has not passed native persistence qualification".into());
+            }
             if !persistent && args.get("persistentRoot").is_some() {
                 return Err("Ephemeral sessions cannot specify a persistent root".into());
             }
@@ -1300,14 +1350,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
             };
             let mut settings = RequestContextSettings::default();
             if let Some(profile) = profile.as_ref() {
+                session::credentials::application_profile(
+                    &profile.path,
+                    if protected { credential_policy } else { None },
+                )?;
                 settings.cache_path = CefString::from(profile.path.to_string_lossy().as_ref());
-                settings.persist_session_cookies = 0;
-                // No platform credential provider is qualified for Bunly yet.
-                // CEF 156 adds app-specific macOS names, but exposing settings
-                // alone does not qualify persistent credential encryption.
-                // Persist storage, but never silently persist credentials using
-                // a shared identity, plaintext fallback, or unqualified provider.
-                settings.cookieable_schemes_exclude_defaults = 1;
+                settings.persist_session_cookies = i32::from(protected);
+                settings.cookieable_schemes_exclude_defaults = i32::from(!protected);
             }
             let id = next_id()?;
             let mut handler = scheme::context_handler(id, network.clone());
@@ -1322,7 +1371,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         profile,
                         partition,
                         persistent,
-                        cookies_supported: !persistent,
+                        cookies_supported: !persistent || protected,
+                        internal_credential: false,
+                        credential_proof: None,
                         creating: Some(request),
                         busy: true,
                         disposing: None,
@@ -1343,6 +1394,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .sessions
                     .get_mut(&id)
                     .ok_or("INVALID_HANDLE: session")?;
+                if record.internal_credential {
+                    return Err("INVALID_HANDLE: internal credential context".into());
+                }
                 if record.disposing.is_some() || record.busy {
                     return Err("RESOURCE_IN_USE: session operation".into());
                 }
@@ -1557,7 +1611,11 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     record.window.clone().ok_or("Window not ready")?,
                     s.sessions
                         .get(&session)
-                        .filter(|record| record.disposing.is_none())
+                        .filter(|record| {
+                            !record.internal_credential
+                                && record.disposing.is_none()
+                                && !record.busy
+                        })
                         .map(|record| record.context.clone())
                         .ok_or("INVALID_HANDLE: session")?,
                 ))
@@ -1971,7 +2029,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;

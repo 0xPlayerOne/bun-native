@@ -1,3 +1,4 @@
+import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
@@ -321,6 +322,7 @@ export class CefBackend implements BrowserBackend {
       'session.ephemeral',
       'session.persistent',
       'session.cookies',
+      'session.protected-cookies',
       'session.cache',
       'session.flush',
       'session.network-policy',
@@ -338,6 +340,7 @@ export class CefBackend implements BrowserBackend {
   readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
   readonly #policyEpochs = new WeakMap<ViewHandle, number>()
   readonly #partitions = new Set<string>()
+  #credentialCheck: Promise<void> | undefined
   // Native application grants are one-shot. Fence local lifecycle transitions
   // before their queued native acknowledgement/handshake can arrive.
   readonly #rpcRetired = new WeakSet<ViewHandle>()
@@ -427,6 +430,17 @@ export class CefBackend implements BrowserBackend {
       !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(partition)
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid session options')
+    const persistentCookies = options.persistentCookies
+    if (
+      persistentCookies !== undefined &&
+      (persistentCookies !== 'os-protected' || persistence !== 'persistent')
+    )
+      throw new BunlyError(
+        'INVALID_ARGUMENT',
+        'Protected cookies require explicit persistent-session intent'
+      )
+    if (partition === 'bunly-internal-credential-proof')
+      throw new BunlyError('INVALID_ARGUMENT', 'Reserved native credential partition')
     const network =
       options.network === undefined ? undefined : normalizeSessionNetworkPolicy(options.network)
     const persistentRoot = options.persistentRoot
@@ -447,10 +461,16 @@ export class CefBackend implements BrowserBackend {
       throw new BunlyError('INVALID_ARGUMENT', 'Partition already has an owner')
     this.#partitions.add(partition)
     try {
+      if (persistentCookies !== undefined) {
+        this.#credentialCheck ??= qualifyCookieProvider(this.#transport, persistentRoot!)
+        await this.#credentialCheck
+        this.#active()
+      }
       const native = this.#createdId(
         await this.#transport.call('session.create', {
           persistence,
           partition,
+          ...(persistentCookies === undefined ? {} : { persistentCookies }),
           ...(persistentRoot === undefined ? {} : { persistentRoot }),
           ...(network === undefined ? {} : { network }),
         })

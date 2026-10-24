@@ -11,6 +11,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[path = "session_credentials.rs"]
+pub(crate) mod credentials;
+
 const ROOT_MARKER: &str = ".bunly-session-root.json";
 const ROOT_LOCK: &str = ".bunly-session-root.lock";
 const PROFILE_MARKER: &str = ".bunly-profile.json";

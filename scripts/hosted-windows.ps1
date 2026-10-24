@@ -1,7 +1,7 @@
 # Disposable hosted-runner setup only. Never changes a developer workstation.
 [CmdletBinding()]
 param(
-    [ValidateSet('smoke', 'rpc', 'full')][string]$Suite = 'full',
+    [ValidateSet('smoke', 'rpc', 'full', 'credentials')][string]$Suite = 'full',
     [switch]$Worker,
     [string]$Python,
     [string]$Bun
@@ -65,9 +65,9 @@ try {
     $script = $PSCommandPath
     # No password is put in a command line, file, or uploaded artifact.
     $arguments = "-NoProfile -NonInteractive -File `"$script`" -Worker -Suite $Suite -Python `"$pythonExe`" -Bun `"$bunExe`""
-    $child = Start-Process -FilePath $shell -ArgumentList $arguments -Credential $credential -LoadUserProfile -WorkingDirectory $root -PassThru -Wait -RedirectStandardOutput (Join-Path $evidence 'windows-standard.log') -RedirectStandardError (Join-Path $evidence 'windows-standard-error.log')
-    Get-Content (Join-Path $evidence 'windows-standard.log') -Tail 60
-    Get-Content (Join-Path $evidence 'windows-standard-error.log') -Tail 40
+    $child = Start-Process -FilePath $shell -ArgumentList $arguments -Credential $credential -LoadUserProfile -WorkingDirectory $root -PassThru -Wait -RedirectStandardOutput (Join-Path $evidence ('windows-standard-' + $Suite + '.log')) -RedirectStandardError (Join-Path $evidence ('windows-standard-error-' + $Suite + '.log'))
+    Get-Content (Join-Path $evidence ('windows-standard-' + $Suite + '.log')) -Tail 60
+    Get-Content (Join-Path $evidence ('windows-standard-error-' + $Suite + '.log')) -Tail 40
     if ($child.ExitCode -ne 0) { throw "Standard-user qualification failed with exit $($child.ExitCode)" }
 } finally {
     if ($created) { Remove-LocalUser -Name $name -ErrorAction Stop }

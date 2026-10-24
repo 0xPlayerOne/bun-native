@@ -23,3 +23,20 @@ filesystem fallback and renderer bridge are not adopted.
 CEF/Bun/native-helper binaries are obtained by the contributor build pipeline;
 none are committed as repository source. Public runtime signing/publishing is
 not enabled by this work. Application assembly consumes prebuilt components.
+
+## Cookie-provider format references
+
+The protected-cookie verifier is Bunly implementation using pinned Chromium
+156.0.8078.17 format/behavior references, not copied provider code:
+
+- https://github.com/chromium/chromium/blob/156.0.8078.17/net/extras/sqlite/sqlite_persistent_cookie_store.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/os_crypt/async/browser/keychain_key_provider.mm
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/os_crypt/async/browser/dpapi_key_provider.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/os_crypt/async/browser/freedesktop_secret_key_provider.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/os_crypt/async/browser/posix_key_provider.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/os_crypt/async/common/encryptor.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/crypto/apple/fake_keychain_v2.mm
+
+Fixed upstream fallback/mock secrets are used solely to reject those canary
+encryptions. No actual OS secret or application credential is embedded or read by
+the verifier. Chromium/CEF's bundled upstream notices remain required.

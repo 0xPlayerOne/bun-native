@@ -89,6 +89,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
           capabilities: Object.freeze([
             'session.persistent',
             'session.cookies',
+            'session.protected-cookies',
             'session.cache',
             'session.flush',
           ] as const),
