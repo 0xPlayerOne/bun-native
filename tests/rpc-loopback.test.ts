@@ -5,6 +5,7 @@ import type { RpcTransport } from '../packages/contracts/src/index.ts'
 import {
   RPC_WEBSOCKET_HEADER_BYTES,
   encodeRpcWebSocketRecord,
+  decodeRpcWebSocketRecord,
 } from '../packages/contracts/src/rpc-websocket-wire.ts'
 import { rpcLimits } from '../packages/contracts/src/rpc.ts'
 import { encodeRpc } from '../packages/contracts/src/rpc-wire.ts'
@@ -463,6 +464,7 @@ describe('authenticated Bun loopback RPC candidate', () => {
     expect(server.diagnostics()).toMatchObject({
       sockets: 0,
       authenticatedSockets: 0,
+      pendingNativeConfirmations: 0,
       closingSockets: 0,
       credentials: 0,
       timers: 0,
@@ -812,6 +814,7 @@ describe('authenticated Bun loopback RPC candidate', () => {
       upgradeReservations: 0,
       unauthenticatedSockets: 0,
       authenticatedSockets: 0,
+      pendingNativeConfirmations: 0,
       closingSockets: 0,
       credentials: 0,
       timers: 0,
@@ -824,4 +827,205 @@ describe('authenticated Bun loopback RPC candidate', () => {
       closed: true,
     })
   })
+})
+
+// Real socket tests with opaque policy-model bindings. The CEF integration
+// separately proves where the native confirmation binding is obtained.
+function nextSocketRecord(websocket: WebSocket) {
+  websocket.binaryType = 'arraybuffer'
+  return new Promise<ReturnType<typeof decodeRpcWebSocketRecord>>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup()
+      reject(new Error('Missing socket record'))
+    }, 2000)
+    const cleanup = () => {
+      clearTimeout(timer)
+      websocket.removeEventListener('message', message)
+      websocket.removeEventListener('close', ended)
+    }
+    const message = (event: MessageEvent) => {
+      cleanup()
+      try {
+        resolve(decodeRpcWebSocketRecord(new Uint8Array(event.data as ArrayBuffer), 128 * 1024))
+      } catch (error) {
+        reject(error)
+      }
+    }
+    const ended = () => {
+      cleanup()
+      reject(new Error('Socket closed before record'))
+    }
+    websocket.addEventListener('message', message, { once: true })
+    websocket.addEventListener('close', ended, { once: true })
+  })
+}
+
+test('native-confirmed loopback waits for the exact bound owner before admitting RPC', async () => {
+  const env = await environment()
+  const binding = env.binding()
+  let accepted = 0
+  const server = new RpcLoopbackServer({
+    requireNativeConfirmation: true,
+    accept(lease, candidate) {
+      accepted++
+      const rpc = new RpcServer(schema, defaultHandlers, lease, candidate)
+      cleanups.push(() => rpc.close())
+    },
+  })
+  cleanups.push(() => server.close())
+  const handoff = server.provision(binding)
+  let confirmationCount = 0
+  const link = new RpcLoopbackTransport({
+    ...handoff,
+    socket,
+    confirmNative: async (challenge) => {
+      expect(accepted).toBe(0)
+      expect(server.diagnostics()).toMatchObject({
+        pendingNativeConfirmations: 1,
+        authenticatedSockets: 0,
+        unauthenticatedSockets: 1,
+      })
+      confirmationCount++
+      server.confirmNative(binding, challenge)
+      // The ready message is permitted to arrive before this native promise
+      // completes; client admission still waits for both acknowledgements.
+      await Bun.sleep(5)
+    },
+  })
+  const client = new RpcClient(schema, link)
+  cleanups.push(() => client.close())
+  expect(await client.call('echo', 'native-bound')).toBe('native-bound')
+  expect(accepted).toBe(1)
+  expect(confirmationCount).toBe(1)
+  expect(server.diagnostics()).toMatchObject({
+    pendingNativeConfirmations: 0,
+    authenticatedSockets: 1,
+    unauthenticatedSockets: 0,
+    credentials: 0,
+  })
+})
+
+test('same-origin foreign binding cannot confirm a stolen credential or mutate its owner', async () => {
+  const owner = await environment()
+  const foreign = await environment()
+  const binding = owner.binding(),
+    wrong = foreign.binding()
+  let accepted = 0
+  const server = new RpcLoopbackServer({
+    requireNativeConfirmation: true,
+    accept(lease, candidate) {
+      accepted++
+      const rpc = new RpcServer(schema, defaultHandlers, lease, candidate)
+      cleanups.push(() => rpc.close())
+    },
+  })
+  cleanups.push(() => server.close())
+  const handoff = server.provision(binding),
+    ws = socket(handoff.endpoint)
+  cleanups.push(() => ws.close())
+  await opened(ws)
+  const record = nextSocketRecord(ws)
+  ws.send(encodeRpcWebSocketRecord({ kind: 'auth', credential: handoff.credential }))
+  const challenge = await record
+  expect(challenge.kind).toBe('challenge')
+  if (challenge.kind !== 'challenge') throw new Error('Expected challenge')
+  expect(() => server.confirmNative(wrong, challenge.challenge)).toThrow()
+  expect(() =>
+    server.confirmNative({ ...binding } as RpcAuthorityBinding, challenge.challenge)
+  ).toThrow()
+  expect(() => server.confirmNative(binding, new Uint8Array(32))).toThrow()
+  expect(accepted).toBe(0)
+  expect(server.diagnostics()).toMatchObject({
+    pendingNativeConfirmations: 1,
+    authenticatedSockets: 0,
+  })
+  const ready = nextSocketRecord(ws)
+  server.confirmNative(binding, challenge.challenge)
+  expect((await ready).kind).toBe('ready')
+  expect(accepted).toBe(1)
+  expect(() => server.confirmNative(binding, challenge.challenge)).toThrow()
+})
+
+test('pending native confirmation expires and revocation releases all owned resources', async () => {
+  for (const action of ['deadline', 'revoke', 'duplicate-auth'] as const) {
+    const env = await environment(),
+      binding = env.binding()
+    let accepted = 0
+    const server = new RpcLoopbackServer({
+      requireNativeConfirmation: true,
+      authenticationTimeoutMs: action === 'deadline' ? 25 : 2000,
+      accept() {
+        accepted++
+      },
+    })
+    cleanups.push(() => server.close())
+    const handoff = server.provision(binding),
+      ws = socket(handoff.endpoint)
+    cleanups.push(() => ws.close())
+    await opened(ws)
+    const ended = closed(ws),
+      next = nextSocketRecord(ws)
+    ws.send(encodeRpcWebSocketRecord({ kind: 'auth', credential: handoff.credential }))
+    const challenge = await next
+    expect(challenge.kind).toBe('challenge')
+    if (action === 'revoke') env.authority.revoke(env.view)
+    if (action === 'duplicate-auth')
+      ws.send(encodeRpcWebSocketRecord({ kind: 'auth', credential: handoff.credential }))
+    await ended
+    expect(accepted).toBe(0)
+    if (challenge.kind === 'challenge')
+      expect(() => server.confirmNative(binding, challenge.challenge)).toThrow()
+    await server.close()
+    expect(server.diagnostics()).toMatchObject({
+      sockets: 0,
+      credentials: 0,
+      pendingNativeConfirmations: 0,
+      timers: 0,
+      listeners: 0,
+      retainedBytes: 0,
+      receiveReservedBytes: 0,
+    })
+  }
+})
+
+test('native-confirming client rejects downgrade or failed native confirmation before sending RPC', async () => {
+  for (const requireNativeConfirmation of [false, true]) {
+    const env = await environment()
+    let calls = 0
+    const server = new RpcLoopbackServer({
+      requireNativeConfirmation,
+      accept(lease, candidate) {
+        const rpc = new RpcServer(
+          schema,
+          {
+            ...defaultHandlers,
+            echo: {
+              capability: 'echo',
+              handle: (value) => {
+                calls++
+                return value
+              },
+            },
+          },
+          lease,
+          candidate
+        )
+        cleanups.push(() => rpc.close())
+      },
+    })
+    cleanups.push(() => server.close())
+    const client = new RpcClient(
+      schema,
+      new RpcLoopbackTransport({
+        ...server.provision(env.binding()),
+        socket,
+        confirmNative: async () => {
+          throw new Error('No matching native owner')
+        },
+      })
+    )
+    cleanups.push(() => client.close())
+    await expect(client.call('echo', 'must-not-run')).rejects.toBeDefined()
+    expect(calls).toBe(0)
+  }
 })

@@ -1,4 +1,4 @@
-import type { CommandObservation } from '../lib/observed-command.ts'
+import { nativeDiagnosticLines, type CommandObservation } from '../lib/observed-command.ts'
 import { distribution } from './statistics.ts'
 
 export const nativeShutdownPhaseNames = [
@@ -25,7 +25,7 @@ export interface NativeShutdownObservation {
  * command also fails, without copying child text, paths, IDs or payloads.
  */
 export function observeNativeShutdown(
-  observation: Pick<CommandObservation, 'stderr'>
+  observation: Pick<CommandObservation, 'stderr' | 'nativeDiagnostics'>
 ): NativeShutdownObservation {
   const durationsMs: Record<NativeShutdownPhase, number | null> = {
     'process-stop': null,
@@ -40,7 +40,7 @@ export function observeNativeShutdown(
   let backendExitedNormally = false
   let hostReportedClean = false
   let hostReportedFailure = false
-  for (const line of observation.stderr) {
+  for (const line of nativeDiagnosticLines(observation)) {
     let event: Record<string, unknown>
     try {
       const value: unknown = JSON.parse(line)
