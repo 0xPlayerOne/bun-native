@@ -28,9 +28,10 @@ isolation. Native code selects the Secret Service backend; a fallback fails proo
 The private root binds its policy before CEF initialization. Protected application
 profile markers refuse a changed identity/provider or reopening with cookies
 disabled. Existing unqualified profile contents are not migrated or overwritten
-implicitly. Key identity changes need a deliberate migration or offline reset.
-The OS key is not deleted by profile reset, and ordinary origin storage is not
-claimed to be encrypted merely because cookies are.
+implicitly. Key identity changes require a new owned root or a separately designed
+migration. Per-profile reset deliberately preserves the root policy binding and
+the OS key; it is not an identity migration. Ordinary origin storage is not claimed
+to be encrypted merely because cookies are.
 
 ## Admission and lifecycle
 
