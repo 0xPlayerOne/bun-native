@@ -28,6 +28,8 @@ jobs:
           python-version: '3.11'
       - name: Install frozen application-side dependencies
         run: bun install --frozen-lockfile
+      - name: Validate bounded source scheduling
+        run: bun test tests/stream-source.test.ts tests/stream-source-fairness.test.ts
       - name: Qualify actual Bun PTYs on Linux or macOS
         if: runner.os != 'Windows'
         run: bun scripts/qualify-bun-pty.ts
