@@ -54,6 +54,10 @@ value produces exactly the admitted length and retains the permit until flush
 settles, including error/unwind paths. Counting is additional bounded CPU work;
 this change is not a claim of faster serialization or zero-copy transport.
 
+After joining the writer, the native host emits actual final reservation counts;
+any nonzero balance marks shutdown failed. Schema-3 fault acceptance and the RPC
+qualifier require exactly one zero-balance receipt in the correct teardown phase.
+
 The actual native RPC fixture now requires `outputAdmission` diagnostics and a
 schema-6 receipt. It checks cumulative peaks and current counts while exercising
 real control commands and renderer traffic. Deterministic native tests separately

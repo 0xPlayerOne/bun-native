@@ -318,6 +318,22 @@ pub fn stop() {
             }
         }
     }
+    // Thread joins prove write/flush ownership ended. Do not infer empty output
+    // merely from closing the sender while a writer might still retain a frame.
+    let output = output_diagnostics();
+    if output.frames != 0
+        || output.ordinary_frames != 0
+        || output.retained_wire_bytes != 0
+        || output.ordinary_wire_bytes != 0
+    {
+        crate::host::FAILED.store(true, Ordering::SeqCst);
+    }
+    eprintln!(
+        "{}",
+        json!({"event":"bunly.native.output-drained","schema":1,
+        "frames":output.frames,"ordinaryFrames":output.ordinary_frames,
+        "retainedWireBytes":output.retained_wire_bytes,"ordinaryWireBytes":output.ordinary_wire_bytes})
+    );
     #[cfg(windows)]
     if let Some(job) = JOB.get() {
         unsafe {
