@@ -24,6 +24,41 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 OUTPUT_LIMIT = 2 * 1024 * 1024
 
+# Keep whole-run native qualification receipts independently of noisy log tails.
+# Duplicates remain duplicates; overflow fails rather than evicting evidence.
+NATIVE_DIAGNOSTIC_COUNT = 128
+NATIVE_DIAGNOSTIC_BYTES = 64 * 1024
+NATIVE_DIAGNOSTIC_LINE_BYTES = 16 * 1024
+NATIVE_DIAGNOSTIC_EVENTS = frozenset(
+    json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "benchmarks/lib/native-diagnostic-events.json"
+        ).read_text(encoding="utf-8")
+    )
+)
+
+
+def phase_marker(item, stdout):
+    """Diagnostics only: native transport fixtures have no protocol stdout.
+
+    Stderr accepts one exact versioned marker and three fixed phase names. It
+    cannot supply native success, process ownership, or authority evidence.
+    """
+    if not isinstance(item, dict):
+        return None
+    if stdout and item.get("event") == "phase":
+        return str(item.get("phase", "unknown"))
+    if (
+        not stdout
+        and set(item) == {"event", "schema", "phase"}
+        and item.get("event") == "bunly.transport.phase"
+        and type(item.get("schema")) is int
+        and item["schema"] == 1
+        and item.get("phase") in ("transport-idle", "transport-work", "transport-complete")
+    ):
+        return item["phase"]
+    return None
+
 
 def owned_process(identity):
     """Use a fresh kernel identity; cached Process objects may refer to a reused PID."""
@@ -107,11 +142,13 @@ def observe(
         root, root_identity, known = None, None, {}
     if clone_cleanup is not None:
         clone_cleanup.bind(root)
-    lines, errors, samples, event_times = [], [], [], []
+    lines, errors, samples, event_times, native_diagnostics = [], [], [], [], []
+    native_diagnostic_bytes = 0
     state = {"phase": "startup", "bytes": 0, "overflow": False, "observerFailure": None}
     lock = threading.Lock()
 
     def drain(stream, output, phases=False):
+        nonlocal native_diagnostic_bytes
         for raw in iter(lambda: stream.readline(OUTPUT_LIMIT + 1), b""):
             received = time.monotonic()
             with lock:
@@ -124,8 +161,24 @@ def observe(
                 try:
                     item = json.loads(text)
                     if isinstance(item, dict):
-                        if phases and item.get("event") == "phase":
-                            state["phase"] = str(item.get("phase", "unknown"))
+                        if (
+                            not phases
+                            and isinstance(item.get("event"), str)
+                            and item["event"] in NATIVE_DIAGNOSTIC_EVENTS
+                        ):
+                            encoded_bytes = len(text.encode("utf-8"))
+                            if (
+                                len(native_diagnostics) >= NATIVE_DIAGNOSTIC_COUNT
+                                or encoded_bytes > NATIVE_DIAGNOSTIC_LINE_BYTES
+                                or native_diagnostic_bytes + encoded_bytes > NATIVE_DIAGNOSTIC_BYTES
+                            ):
+                                state["overflow"] = True
+                            else:
+                                native_diagnostics.append(text)
+                                native_diagnostic_bytes += encoded_bytes
+                        marked = phase_marker(item, phases)
+                        if marked is not None:
+                            state["phase"] = marked
                         # One allowlisted receipt timestamp supports startup
                         # profiling. No payload, identity or authority is taken
                         # from this optional diagnostic event.
@@ -428,6 +481,7 @@ def observe(
         "reports": reports,
         "stdoutTail": lines[-40:],
         "stderr": errors[-20:],
+        "nativeDiagnostics": native_diagnostics,
         "observedOrphans": survivors,
         "orphanDetails": orphan_details,
         "observedProcesses": len(known),

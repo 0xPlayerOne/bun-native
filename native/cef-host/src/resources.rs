@@ -17,6 +17,31 @@ pub(crate) const VERIFY_BUFFER_BYTES: usize = 64 * 1024;
 pub(crate) type VerificationBuffer = [u8; VERIFY_BUFFER_BYTES];
 pub const APP_CSP: &str = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
 
+// One explicit trusted-backend selection before any live views. Default builds
+// open no listener and keep APP_CSP byte-for-byte unchanged.
+static LOOPBACK_CSP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+#[cfg(any(feature = "rpc-qualification", test))]
+fn loopback_csp(port: u16) -> Result<String, &'static str> {
+    if port == 0 {
+        return Err("Invalid loopback port");
+    }
+    Ok(APP_CSP.replace(
+        "connect-src 'self';",
+        &format!("connect-src 'self' ws://127.0.0.1:{port};"),
+    ))
+}
+#[cfg(feature = "rpc-qualification")]
+pub(crate) fn rpc_loopback_configured() -> bool {
+    LOOPBACK_CSP.get().is_some()
+}
+#[cfg(feature = "rpc-qualification")]
+pub(crate) fn configure_rpc_loopback(port: u16) -> Result<(), &'static str> {
+    LOOPBACK_CSP
+        .set(loopback_csp(port)?)
+        .map_err(|_| "RPC loopback was already configured")?;
+    Ok(())
+}
+
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Asset {
@@ -69,7 +94,10 @@ impl<'de> Deserialize<'de> for Inventory {
 
 fn security_headers() -> Vec<(String, String)> {
     [
-        ("Content-Security-Policy", APP_CSP),
+        (
+            "Content-Security-Policy",
+            LOOPBACK_CSP.get().map_or(APP_CSP, String::as_str),
+        ),
         ("X-Content-Type-Options", "nosniff"),
         ("Cross-Origin-Resource-Policy", "same-origin"),
         ("Referrer-Policy", "no-referrer"),
@@ -1281,5 +1309,21 @@ mod streaming_tests {
             &cancelled
         )
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod loopback_csp_tests {
+    use super::*;
+    #[test]
+    fn optional_loopback_csp_adds_exactly_one_numeric_port_and_nothing_else() {
+        assert!(loopback_csp(0).is_err());
+        for port in [1, 1024, 43111, 65535] {
+            let csp = loopback_csp(port).unwrap();
+            let addition = format!(" ws://127.0.0.1:{port}");
+            assert_eq!(csp.replace(&addition, ""), APP_CSP);
+            assert_eq!(csp.matches("ws://").count(), 1);
+            assert!(!csp.contains("*"));
+        }
     }
 }

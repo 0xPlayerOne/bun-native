@@ -224,3 +224,29 @@ expected interruption as a clean shutdown. Neither suite enables production
 credentials, disables sandboxing or resolves an intermittent teardown failure by
 repeating until green. The automatic RPC lane retains the combined ephemeral
 session/authority checks on every supported platform.
+
+## Native transport qualification
+
+Build the explicit contributor artifact with `packaging,rpc-qualification`.
+`qualify:cef-transports -- PREPARED_APP --functional` executes both narrow CEF
+candidates with identical structured/binary/cancellation work, actual fixed CPU
+throttling, navigation revocation, service disconnect, native socket-owner proof,
+and ordered teardown. The ordinary three-platform RPC workflow requires this
+pair alongside RPC/session, browser-policy and network qualification. A functional
+pair is not a performance distribution.
+
+For paired descriptive distributions, run `--samples 5 --warmups 1` from a clean
+committed tree. Candidate order alternates, all attempts remain recorded, and no
+comparison is accepted until both candidates complete at least five independent
+measured launches. `--native-only` is a separate baseline-only diagnostic and is
+never reported comparable. Input/prepared artifacts and harness identities are
+checked across execution. Kernel providers and unavailable counters retain their
+actual semantics; an absent Windows provider is not numeric zero.
+
+Loopback reachability is a contributor-only top-origin fixture decision, not a
+frame permission or shipping transport. It requires the exact packaged fixture,
+a current native binding, a local-only ephemeral session and the selected numeric
+CSP endpoint; every socket still needs the separate native-owner challenge proof.
+Ordinary builds exclude the decision and reject loopback setup. No public debugging
+port, browser-security override, global content setting or automatic fallback is
+introduced. See ADR 0003 and the retained evidence for the final selection.

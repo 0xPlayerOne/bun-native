@@ -26,7 +26,7 @@ if (
   args.filter((argument) => argument.startsWith('--application=')).length > 1
 )
   throw new Error(
-    'Only --dev-origin=http://127.0.0.1:PORT and --application=main|sessions are supported'
+    'Only --dev-origin=http://127.0.0.1:PORT and --application=main|sessions|transport are supported'
   )
 const developmentOrigin = args
   .find((argument) => argument.startsWith('--dev-origin='))
@@ -34,7 +34,8 @@ const developmentOrigin = args
 const application =
   args.find((argument) => argument.startsWith('--application='))?.slice('--application='.length) ??
   'main'
-if (!['main', 'sessions'].includes(application)) throw new Error('Unknown CEF fixture application')
+if (!['main', 'sessions', 'transport'].includes(application))
+  throw new Error('Unknown CEF fixture application')
 if (developmentOrigin !== undefined) {
   const url = new URL(developmentOrigin)
   if (
@@ -56,6 +57,7 @@ try {
     entrypoints: [
       join(root, 'examples/cef/rpc-client.ts'),
       join(root, 'examples/cef/rpc-lifecycle.ts'),
+      join(root, 'examples/cef/transport-client.ts'),
     ],
     outdir: join(stage, 'public'),
     naming: '[name].js',

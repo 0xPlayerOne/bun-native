@@ -61,6 +61,7 @@ export { rpcMessagePort } from './rpc-port.ts'
 export { RpcLoopbackTransport } from './rpc-loopback.ts'
 export type { RpcLoopbackClientOptions } from './rpc-loopback.ts'
 export { cefRpcTransport, waitForCefRpcTransport } from './cef-rpc.ts'
+export { waitForCefLoopbackTransport } from './cef-loopback.ts'
 
 export {
   BinaryStreamSender,

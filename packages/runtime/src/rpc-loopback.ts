@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import type { SessionHandle } from '../../contracts/src/index.ts'
 import {
   DEFAULT_RPC_LIMITS,
@@ -41,6 +42,10 @@ export interface RpcLoopbackServerOptions {
   readonly closeTimeoutMs?: number
   readonly credentialTtlMs?: number
   readonly authenticationTimeoutMs?: number
+  /** Require a second proof through the same native-attested owner. A bearer
+   * credential and matching WebSocket Origin alone cannot identify a document.
+   */
+  readonly requireNativeConfirmation?: boolean
   readonly accept: (
     lease: RpcLease,
     transport: RpcTransport,
@@ -56,6 +61,7 @@ interface Ticket {
   readonly timer: ReturnType<typeof setTimeout>
   readonly revoked: () => void
   socket?: Bun.ServerWebSocket<SocketData>
+  challenge?: Uint8Array | undefined
 }
 
 interface SocketData {
@@ -232,6 +238,17 @@ export class RpcLoopbackServer {
   #retainedBytes = 0
   #receiveReservedBytes = 0
   #closed = false
+  readonly #authentication = {
+    upgrades: 0,
+    challenges: 0,
+    confirmations: 0,
+    failures: 0,
+    invalidOrigins: 0,
+    nullOrigins: 0,
+  }
+  authenticationDiagnostics() {
+    return Object.freeze({ ...this.#authentication })
+  }
   #finishClose!: () => void
   #rejectClose!: (error: unknown) => void
   #listenerStopped = false
@@ -249,6 +266,7 @@ export class RpcLoopbackServer {
       credentialTtlMs: options.credentialTtlMs ?? 5_000,
       authenticationTimeoutMs: options.authenticationTimeoutMs ?? 2_000,
       accept: options.accept,
+      requireNativeConfirmation: options.requireNativeConfirmation ?? false,
     }
     if (
       !Number.isSafeInteger(complete.maxFrameBytes) ||
@@ -278,7 +296,8 @@ export class RpcLoopbackServer {
       !Number.isSafeInteger(complete.authenticationTimeoutMs) ||
       complete.authenticationTimeoutMs < 1 ||
       complete.authenticationTimeoutMs > 60_000 ||
-      typeof complete.accept !== 'function'
+      typeof complete.accept !== 'function' ||
+      typeof complete.requireNativeConfirmation !== 'boolean'
     )
       throw new TypeError('Invalid RPC loopback server options')
     this.#options = complete
@@ -350,10 +369,20 @@ export class RpcLoopbackServer {
       return new Response('Not found', { status: 404 })
     }
     const origin = request.headers.get('origin')
+    if (origin === 'null')
+      this.#authentication.nullOrigins = Math.min(
+        Number.MAX_SAFE_INTEGER,
+        this.#authentication.nullOrigins + 1
+      )
     const host = request.headers.get('host')
     const unauthenticated = [...this.#sockets].filter((socket) => !socket.data.authenticated).length
     const allowedOrigin =
       origin !== null && [...this.#tickets.values()].some((ticket) => ticket.origin === origin)
+    if (!allowedOrigin)
+      this.#authentication.invalidOrigins = Math.min(
+        Number.MAX_SAFE_INTEGER,
+        this.#authentication.invalidOrigins + 1
+      )
     if (
       this.#closed ||
       request.method !== 'GET' ||
@@ -387,7 +416,13 @@ export class RpcLoopbackServer {
     this.#upgradeReservations++
     this.#receiveReservedBytes += data.receiveReservation
     try {
-      if (server.upgrade(request, { data })) return undefined
+      if (server.upgrade(request, { data })) {
+        this.#authentication.upgrades = Math.min(
+          Number.MAX_SAFE_INTEGER,
+          this.#authentication.upgrades + 1
+        )
+        return undefined
+      }
     } catch {
       // An unsuccessful upgrade owns no socket and must release both reservations.
     }
@@ -497,8 +532,8 @@ export class RpcLoopbackServer {
   }
 
   #authenticate(socket: Bun.ServerWebSocket<SocketData>, bytes: Uint8Array): void {
-    let handoffLease: RpcLease | undefined
     try {
+      if (socket.data.ticket) throw new RpcError('FORBIDDEN', 'Authentication already pending')
       const message = decodeRpcWebSocketRecord(bytes, this.#options.maxFrameBytes)
       if (message.kind !== 'auth') throw new RpcError('FORBIDDEN', 'Missing loopback credential')
       const key = credentialKey(message.credential)
@@ -511,13 +546,91 @@ export class RpcLoopbackServer {
         ticket.binding.signal.aborted
       )
         throw new RpcError('FORBIDDEN', 'Invalid loopback credential')
+      checkRpcAuthorityBinding(ticket.binding)
+      // Move once, but retain authority listeners and both bounded deadlines
+      // until the native challenge has been confirmed and the lease claimed.
       this.#tickets.delete(key)
       this.#active.set(key, ticket)
-      clearTimeout(ticket.timer)
-      ticket.binding.signal.removeEventListener('abort', ticket.revoked)
       ticket.socket = socket
       socket.data.ticket = ticket
-      socket.data.authenticated = true
+      if (this.#options.requireNativeConfirmation) {
+        ticket.challenge = crypto.getRandomValues(new Uint8Array(32))
+        this.#authentication.challenges = Math.min(
+          Number.MAX_SAFE_INTEGER,
+          this.#authentication.challenges + 1
+        )
+        if (
+          !this.#sendRecord(
+            socket,
+            encodeRpcWebSocketRecord({ kind: 'challenge', challenge: ticket.challenge }),
+            false
+          )
+        )
+          throw new RpcError('DISCONNECTED', 'Native confirmation challenge was dropped')
+      } else this.#establish(socket, ticket)
+    } catch {
+      this.#authentication.failures = Math.min(
+        Number.MAX_SAFE_INTEGER,
+        this.#authentication.failures + 1
+      )
+      this.#requestClose(socket, 1008, 'authentication failed')
+    }
+  }
+
+  /** Trusted adapter boundary. The binding must come from the exact native
+   * connection, never from an ID or a binding/credential supplied by page JS.
+   * A different valid view cannot confirm a stolen credential's socket.
+   */
+  confirmNative(binding: RpcAuthorityBinding, challenge: Uint8Array): void {
+    checkRpcAuthorityBinding(binding)
+    if (
+      this.#closed ||
+      !this.#options.requireNativeConfirmation ||
+      !(challenge instanceof Uint8Array) ||
+      !(challenge.buffer instanceof ArrayBuffer) ||
+      challenge.byteLength !== 32
+    )
+      throw new RpcError('FORBIDDEN', 'Invalid native confirmation')
+    const ticket = [...this.#active.values()].find((ticket) => ticket.binding === binding)
+    const socket = ticket?.socket
+    if (
+      !ticket ||
+      !socket ||
+      socket.data.closed ||
+      socket.data.closing ||
+      socket.data.authenticated ||
+      !ticket.challenge ||
+      ticket.expiresAt <= performance.now() ||
+      !timingSafeEqual(ticket.challenge, challenge)
+    )
+      throw new RpcError('FORBIDDEN', 'Native confirmation does not match this owner')
+    ticket.challenge.fill(0)
+    ticket.challenge = undefined
+    try {
+      this.#establish(socket, ticket)
+      this.#authentication.confirmations = Math.min(
+        Number.MAX_SAFE_INTEGER,
+        this.#authentication.confirmations + 1
+      )
+    } catch (error) {
+      this.#requestClose(socket, 1008, 'authentication failed')
+      throw error
+    }
+  }
+
+  #establish(socket: Bun.ServerWebSocket<SocketData>, ticket: Ticket): void {
+    let handoffLease: RpcLease | undefined
+    try {
+      checkRpcAuthorityBinding(ticket.binding)
+      if (
+        ticket.binding.signal.aborted ||
+        this.#closed ||
+        socket.data.closing ||
+        socket.data.closed ||
+        ticket.expiresAt <= performance.now()
+      )
+        throw new RpcError('REVOKED', 'Native owner was retired')
+      clearTimeout(ticket.timer)
       if (socket.data.authTimer) clearTimeout(socket.data.authTimer)
       socket.data.authTimer = undefined
       const transport = new ServerLoopbackTransport(
@@ -528,11 +641,9 @@ export class RpcLoopbackServer {
       )
       socket.data.transport = transport
       this.#transports.add(transport)
-      ticket.binding.signal.addEventListener('abort', ticket.revoked, { once: true })
       const claimed = claimRpcAuthorityBinding(ticket.binding)
       handoffLease = claimed.lease
-      if (!this.#sendRecord(socket, encodeRpcWebSocketRecord({ kind: 'ready' }), false))
-        throw new RpcError('DISCONNECTED', 'RPC loopback ready send was dropped')
+      socket.data.authenticated = true
       const accepted = (
         this.#options.accept as (
           lease: RpcLease,
@@ -542,10 +653,7 @@ export class RpcLoopbackServer {
       )(
         claimed.lease,
         transport,
-        Object.freeze({
-          identity: ticket.binding.identity,
-          session: claimed.session,
-        })
+        Object.freeze({ identity: ticket.binding.identity, session: claimed.session })
       )
       if (accepted && typeof (accepted as PromiseLike<unknown>).then === 'function') {
         void Promise.resolve(accepted).catch(() => {})
@@ -553,9 +661,15 @@ export class RpcLoopbackServer {
       }
       completeRpcAuthorityHandoff(claimed.lease)
       handoffLease = undefined
-    } catch {
+      // Do not expose ready before the server has synchronously claimed authority.
+      if (
+        socket.data.closing ||
+        !this.#sendRecord(socket, encodeRpcWebSocketRecord({ kind: 'ready' }), false)
+      )
+        throw new RpcError('DISCONNECTED', 'RPC loopback ready send was dropped')
+    } catch (error) {
       discardRpcAuthorityHandoff(handoffLease)
-      this.#requestClose(socket, 1008, 'authentication failed')
+      throw error
     }
   }
 
@@ -567,7 +681,12 @@ export class RpcLoopbackServer {
       pending.binding.signal.removeEventListener('abort', pending.revoked)
     }
     const active = this.#active.get(key)
-    if (active?.socket) this.#requestClose(active.socket, 1008, 'revoked')
+    if (active?.socket) {
+      clearTimeout(active.timer)
+      active.challenge?.fill(0)
+      active.challenge = undefined
+      this.#requestClose(active.socket, 1008, 'revoked')
+    }
   }
 
   #socketClosed(socket: Bun.ServerWebSocket<SocketData>): void {
@@ -589,6 +708,9 @@ export class RpcLoopbackServer {
     const ticket = socket.data.ticket
     if (ticket) {
       this.#active.delete(ticket.key)
+      clearTimeout(ticket.timer)
+      ticket.challenge?.fill(0)
+      ticket.challenge = undefined
       ticket.binding.signal.removeEventListener('abort', ticket.revoked)
     }
     transport?.socketClosed()
@@ -614,6 +736,7 @@ export class RpcLoopbackServer {
     upgradeReservations: number
     unauthenticatedSockets: number
     authenticatedSockets: number
+    pendingNativeConfirmations: number
     closingSockets: number
     credentials: number
     timers: number
@@ -652,10 +775,13 @@ export class RpcLoopbackServer {
       upgradeReservations: this.#upgradeReservations,
       unauthenticatedSockets,
       authenticatedSockets,
+      pendingNativeConfirmations: [...this.#active.values()].filter((ticket) => !!ticket.challenge)
+        .length,
       closingSockets,
       credentials: this.#tickets.size,
       timers:
         this.#tickets.size +
+        [...this.#active.values()].filter((ticket) => !!ticket.challenge).length +
         authenticationTimers +
         [...this.#sockets].filter((socket) => socket.data.closeTimer !== undefined).length,
       queuedFrames,
