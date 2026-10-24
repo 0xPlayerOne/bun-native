@@ -104,3 +104,16 @@ The [sanitized local record](../evidence/m4-sessions-local-2026-10-23.json) pres
 After rebasing on merged #94, 652 Bun tests and 199 Python tests passed. Two fresh native qualification attempts completed their ephemeral session assertions but hit the previously tracked CEF teardown watchdog (#92); both full runs failed and their outcomes are retained in the local evidence record. The native source tree is identical to the earlier ten-case checkpoint. Neither the old pass nor hosted smoke supersedes these later failures.
 
 Windows roots must use an ordinary local drive path. UNC/device namespaces, alternate streams, reserved device names, trailing-dot/space aliases, and reparse-point ancestors are rejected before profile creation. The actual Windows API check exposed a missing `Win32_System_IO` feature for LockFileEx; this is corrected without changing dependency versions. POSIX mode checks are not presented as Windows ACL qualification.
+
+## Complete offline profile reset
+
+[Complete session storage reset](session-storage-reset.md) adds an explicit
+runtime-only operation that removes every store in one stopped persistent profile
+under the native root/profile locks. It does not mislabel partial first-party
+clearing as complete HTML5 clearing or delete databases still owned by CEF. Live
+`clearSession({storage:true})` remains unsupported; callers must explicitly confirm
+whole-profile offline deletion. Recovery intent fences interrupted deletion until
+the same explicit reset completes. Other partitions and OS credential keys remain.
+The maintained native fixture verifies actual localStorage, IndexedDB, CacheStorage
+and service-worker persistence, live-lock rejection, interruption and selective
+profile reset. Credential-provider qualification remains a separate M4 concern.

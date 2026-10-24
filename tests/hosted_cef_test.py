@@ -49,7 +49,7 @@ class HostedQualificationTests(unittest.TestCase):
                 commands = hosted.commands("rpc", bun, app)
                 self.assertEqual(
                     [name for name, _ in commands],
-                    ["prebuilt", "development", "network", "transports"],
+                    ["prebuilt", "development", "network", "transports", "session-reset"],
                 )
                 self.assertEqual(
                     commands[1][1],
@@ -69,6 +69,10 @@ class HostedQualificationTests(unittest.TestCase):
                         str(app),
                         "--functional",
                     ],
+                )
+                self.assertEqual(
+                    commands[4][1],
+                    [bun, str(root / "scripts/qualify-cef-session-reset.ts"), str(app)],
                 )
                 self.assertNotIn("--emulated-functional", commands[0][1])
                 self.assertNotIn("--no-sandbox", commands[0][1])

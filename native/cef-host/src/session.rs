@@ -11,6 +11,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[path = "session_reset.rs"]
+pub(crate) mod reset;
+
 const ROOT_MARKER: &str = ".bunly-session-root.json";
 const ROOT_LOCK: &str = ".bunly-session-root.lock";
 const PROFILE_MARKER: &str = ".bunly-profile.json";
@@ -135,6 +138,9 @@ impl ProfileRoot {
         // ChromeBrowserContext requires an immediate child of root_cache_path.
         // Hash the logical partition so case-insensitive filesystems cannot alias
         // distinct names or interpret a Windows device/reserved path component.
+        if reset::pending(&self.path, partition)? {
+            return Err("Persistent session has an interrupted offline reset; complete that reset before opening".into());
+        }
         let profile = self.path.join(profile_directory(partition));
         if let Some(existing) = ownership.profiles.get_mut(&profile) {
             if existing.active {
@@ -520,7 +526,7 @@ fn lock_exclusive(file: &File) -> std::io::Result<()> {
 mod tests {
     use super::*;
 
-    fn temporary(name: &str) -> PathBuf {
+    pub(super) fn temporary(name: &str) -> PathBuf {
         normalized_canonical(&std::env::temp_dir())
             .unwrap()
             .join(format!(
