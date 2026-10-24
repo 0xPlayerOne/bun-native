@@ -76,7 +76,55 @@ impl Write for Counter {
         Ok(())
     }
 }
+// serde_json scans a complete unescaped string before handing its fragment to
+// Write. Check raw string/key lengths and bounded tree structure first, so the
+// counting writer is not asked to traverse an arbitrary-sized native value.
+fn charge(remaining: &mut usize, bytes: usize) -> Result<(), AdmissionError> {
+    if bytes > *remaining {
+        return Err(AdmissionError::InvalidFrame);
+    }
+    *remaining -= bytes;
+    Ok(())
+}
+fn bounded_shape(value: &Value, remaining: &mut usize, depth: usize) -> Result<(), AdmissionError> {
+    if depth > 128 {
+        return Err(AdmissionError::InvalidFrame);
+    }
+    match value {
+        Value::Null => charge(remaining, 4),
+        Value::Bool(value) => charge(remaining, if *value { 4 } else { 5 }),
+        // Exact numeric spelling and escaping are still measured by serde_json.
+        Value::Number(_) => charge(remaining, 1),
+        Value::String(value) => {
+            charge(remaining, 2)?;
+            charge(remaining, value.len())
+        }
+        Value::Array(values) => {
+            charge(remaining, 2)?;
+            for (index, value) in values.iter().enumerate() {
+                if index != 0 {
+                    charge(remaining, 1)?;
+                }
+                bounded_shape(value, remaining, depth + 1)?;
+            }
+            Ok(())
+        }
+        Value::Object(values) => {
+            charge(remaining, 2)?;
+            for (index, (key, value)) in values.iter().enumerate() {
+                if index != 0 {
+                    charge(remaining, 1)?;
+                }
+                charge(remaining, 3)?; // Key quotes and colon.
+                charge(remaining, key.len())?;
+                bounded_shape(value, remaining, depth + 1)?;
+            }
+            Ok(())
+        }
+    }
+}
 fn wire_bytes(value: &Value) -> Result<usize, AdmissionError> {
+    bounded_shape(value, &mut (FRAME_BYTES - 1), 0)?;
     let mut count = Counter(0);
     serde_json::to_writer(&mut count, value).map_err(|_| AdmissionError::InvalidFrame)?;
     Ok(count.0 + 1)
@@ -265,6 +313,60 @@ mod tests {
         let overhead = wire_bytes(&value).unwrap();
         value["data"]["packet"] = Value::String("x".repeat(bytes - overhead));
         value
+    }
+    #[test]
+    fn excessive_nesting_is_rejected_before_serialization_and_admission() {
+        let (tx, rx) = channel();
+        let mut value = Value::Null;
+        for _ in 0..129 {
+            value = Value::Array(vec![value]);
+        }
+        assert_eq!(tx.try_send(value), Err(AdmissionError::InvalidFrame));
+        assert!(rx.try_recv().is_err());
+        empty(&tx);
+    }
+    #[test]
+    fn raw_string_key_and_wide_tree_limits_precede_library_encoding() {
+        let large = Value::String("x".repeat(8 * 1024 * 1024));
+        let mut remaining = FRAME_BYTES - 1;
+        assert_eq!(
+            bounded_shape(&large, &mut remaining, 0),
+            Err(AdmissionError::InvalidFrame)
+        );
+        assert_eq!(remaining, FRAME_BYTES - 3); // Only quotes charged, no string traversal.
+        let mut object = serde_json::Map::new();
+        object.insert("k".repeat(FRAME_BYTES), Value::Null);
+        assert_eq!(
+            wire_bytes(&Value::Object(object)),
+            Err(AdmissionError::InvalidFrame)
+        );
+        let wide = Value::Array(vec![Value::Null; FRAME_BYTES]);
+        let mut remaining = FRAME_BYTES - 1;
+        assert_eq!(
+            bounded_shape(&wide, &mut remaining, 0),
+            Err(AdmissionError::InvalidFrame)
+        );
+        assert!(remaining < 5);
+        let mut depth = Value::Null;
+        for _ in 0..128 {
+            depth = Value::Array(vec![depth]);
+        }
+        assert_eq!(wire_bytes(&depth).unwrap(), 261);
+    }
+    #[test]
+    fn exact_library_count_is_preserved_for_mixed_values_and_control_characters() {
+        let alphabet: String = (0..=255)
+            .map(|value| char::from_u32(value).unwrap())
+            .collect();
+        for repeats in 0..32 {
+            let value = json!({"\u{0}key\n": [Value::Null, json!(true), json!(false),
+                json!(-42), json!(1.25), json!(f64::MAX),
+                json!({"text": alphabet.repeat(repeats)})]});
+            assert_eq!(
+                wire_bytes(&value).unwrap(),
+                serde_json::to_vec(&value).unwrap().len() + 1
+            );
+        }
     }
     #[test]
     fn exact_json_encoding_includes_escaping_unicode_and_newline() {

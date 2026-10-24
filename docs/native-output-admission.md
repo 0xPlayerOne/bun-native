@@ -47,12 +47,16 @@ promise that control can always be admitted or interrupt a blocked OS write.
 
 ## Encoding and accounting
 
-Admission counts the exact JSON encoding through a nonallocating, bounded writer
+Admission first bounds raw string/key lengths, minimum tree size and nesting
+(128 levels), before the library can scan a large unescaped fragment. It then
+counts the exact JSON encoding through a nonallocating, bounded writer
 and stops at the existing frame limit. Encoded-buffer allocation and blocking pipe
 I/O remain on the existing writer thread. The writer verifies that its immutable
 value produces exactly the admitted length and retains the permit until flush
 settles, including error/unwind paths. Counting is additional bounded CPU work;
 this change is not a claim of faster serialization or zero-copy transport.
+Construction and destruction of an already supplied native value are outside
+this encoding-work bound.
 
 After joining the writer, the native host emits actual final reservation counts;
 any nonzero balance marks shutdown failed. Schema-3 fault acceptance and the RPC
