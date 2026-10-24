@@ -51,7 +51,9 @@ def read_reports(directory):
 
 def events(observation):
     values = []
-    for line in observation.get("stdoutTail", []) + observation.get("stderr", []):
+    for line in observation.get("stdoutTail", []) + observation.get(
+        "nativeDiagnostics", observation.get("stderr", [])
+    ):
         try:
             value = json.loads(line)
         except ValueError:

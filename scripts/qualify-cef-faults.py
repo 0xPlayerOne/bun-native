@@ -9,10 +9,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from contextlib import suppress
 from pathlib import Path
 
 import psutil
+from cef_fault_acceptance import MODES, accept_fault
 from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
@@ -58,6 +58,20 @@ def readiness(path, nonce, mode):
         return False
 
 
+def snapshot(bun, artifact):
+    completed = subprocess.run(
+        [bun, str(ROOT / "scripts/cef-fault-integrity.ts"), str(artifact)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    if len(completed.stdout) > 8 * 1024**2:
+        raise ValueError("Native fault snapshot exceeded bound")
+    return json.loads(completed.stdout)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", type=Path)
@@ -74,6 +88,10 @@ def main():
     if source.is_symlink():
         raise ValueError("Prebuilt entry must not be a symbolic link")
     source = source.resolve(strict=True)
+    input_root = source if mac else source.parent
+    before = snapshot(args.bun, input_root)
+    if before["source"]["clean"] is not True:
+        raise ValueError("Native fault acceptance requires clean committed source")
     app = work / ("Fault.app" if mac else "Fault Unicode é Ω")
     shutil.copytree(source if mac else source.parent, app, symlinks=True)
     binary = app / "Contents/MacOS/bunly_host" if mac else app / source.name
@@ -105,8 +123,9 @@ def main():
         raise RuntimeError(result.stderr)
     if mac:
         signed(app)
+    prepared = snapshot(args.bun, app)
     reports = []
-    for mode in ("backend-exit", "backend-tree-exit", "renderer-exit", "gpu-exit"):
+    for mode in MODES:
         os.environ["BUNLY_CEF_FAULT"] = mode
         os.environ["BUNLY_CACHE_DIR"] = str(work / (mode + "-profile"))
         nonce = secrets.token_hex(24)
@@ -189,70 +208,14 @@ def main():
         data = observer.observe(
             [str(binary)], timeout=300 if args.emulated_functional else 25, counter_reader=sample
         )
-        text = "\n".join(data["stderr"])
-        clean = not any(
-            data[k]
-            for k in (
-                "timedOut",
-                "cancelled",
-                "observedOrphans",
-                "cleanupSurvivors",
-                "outputOverflow",
-            )
-        )
-        expected = (
-            data["exitCode"] == 0 and "bunly.native.gpu-recovered" in text
-            if mode == "gpu-exit"
-            else data["exitCode"] == 1
-            and (
-                "Renderer process terminated" in text if mode == "renderer-exit" else "Bun" in text
-            )
-        )
-        records = []
-        for line in data["stderr"]:
-            with suppress(ValueError):
-                records.append(json.loads(line))
-        ready = any(
-            r.get("event") == "bunly.fault.ready" and r.get("mode") == mode
-            for r in records
-            if isinstance(r, dict)
-        )
-        actual_exit = mode not in ("backend-exit", "backend-tree-exit") or any(
-            r.get("event") == "bunly.backend.exit"
-            and r.get("code") == 23
-            and r.get("forced") is False
-            for r in records
-            if isinstance(r, dict)
-        )
-        native_renderer_failure = mode != "renderer-exit" or (
-            any(
-                r.get("event") == "bunly.host.failure"
-                and r.get("error") == "Renderer process terminated before native shutdown"
-                for r in records
-                if isinstance(r, dict)
-            )
-            and any(
-                r.get("event") == "bunly.native.renderer-failure-observed"
-                and r.get("passed") is True
-                for r in records
-                if isinstance(r, dict)
-            )
-        )
-        orderly_exit = any(
-            r.get("event") == "bunly.host.shutdown" and r.get("clean") is (mode == "gpu-exit")
-            for r in records
-            if isinstance(r, dict)
-        )
-        passed = (
-            clean
-            and orderly_exit
-            and expected
-            and ready
-            and actual_exit
-            and native_renderer_failure
-            and (mode in ("backend-exit", "backend-tree-exit") or bool(injected))
-        )
-        reports.append({"mode": mode, "passed": passed, "injected": injected, "observation": data})
+        trial = {"mode": mode, "passed": False, "injected": injected, "observation": data}
+        try:
+            trial["acceptance"] = accept_fault(mode, data, injected)
+            trial["passed"] = True
+        except (ValueError, KeyError, TypeError) as error:
+            trial["failure"] = str(error)
+        passed = trial["passed"]
+        reports.append(trial)
         print(
             json.dumps(
                 {
@@ -265,12 +228,44 @@ def main():
             ),
             flush=True,
         )
+    after = snapshot(args.bun, input_root)
+    prepared_after = snapshot(args.bun, app)
+    stable = (
+        before["source"] == prepared["source"] == after["source"] == prepared_after["source"]
+        and before["hashes"] == prepared["hashes"] == after["hashes"] == prepared_after["hashes"]
+        and before["artifact"] == after["artifact"]
+        and prepared["artifact"] == prepared_after["artifact"]
+    )
+    helper_samples = {
+        "verified": [
+            t["mode"]
+            for t in reports
+            if t["observation"].get("postExitCleanup", {}).get("qualified") is True
+        ],
+        "unobserved": [
+            t["mode"]
+            for t in reports
+            if t["observation"].get("postExitCleanup", {}).get("status") == "not-observed"
+        ],
+    }
     result = {
-        "schema": 1,
+        "schema": 2,
+        "sourceBefore": before["source"],
+        "sourceAfter": after["source"],
+        "sourceHashes": before["hashes"],
+        "sourceHashesAfter": after["hashes"],
+        "inputArtifact": before["artifact"],
+        "preparedArtifact": prepared["artifact"],
+        "inputArtifactUnchanged": before["artifact"] == after["artifact"],
+        "preparedArtifactUnchanged": prepared["artifact"] == prepared_after["artifact"],
+        "sourceAndArtifactsUnchanged": stable,
+        "helperSamples": helper_samples,
         "profile": "real-native-private-process-faults",
         "platform": sys.platform,
         "deadlineProfile": "emulated-functional" if args.emulated_functional else "standard",
-        "passed": all(r["passed"] for r in reports),
+        "passed": stable
+        and all(r["passed"] for r in reports)
+        and (not mac or bool(helper_samples["verified"])),
         "trials": reports,
     }
     (work / "report.json").write_text(json.dumps(result, indent=2) + "\n")

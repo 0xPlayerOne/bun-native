@@ -22,5 +22,7 @@
   "bunly.profile-root-collision",
   "bunly.native.credentials",
   "bunly.native.session-reset",
-  "bunly.credential-policy"
+  "bunly.credential-policy",
+  "bunly.fault.ready",
+  "bunly.fault.descendant"
 ]

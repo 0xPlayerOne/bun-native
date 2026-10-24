@@ -4,11 +4,22 @@ import { waitForGpuInjection } from './fault-ack.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
+import { serveRpcFixture } from './rpc-fixture-service.ts'
 export default async function fault(backend: CefBackend): Promise<void> {
   const mode = process.env['BUNLY_CEF_FAULT']
   const faultDeadlineMs = pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
   if (!['backend-exit', 'backend-tree-exit', 'renderer-exit', 'gpu-exit'].includes(mode ?? ''))
     throw new Error('Explicit native qualification fault required')
+  // main.js imports rpc-client.js with top-level await. Fault readiness must
+  // provision that actual service, not bypass the unchanged asset/RPC checks.
+  const { stopRpc } = serveRpcFixture(backend)
+  try {
+    await runFault(backend, mode!, faultDeadlineMs)
+  } finally {
+    stopRpc()
+  }
+}
+async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: number): Promise<void> {
   const session = await backend.createSession({
     partition: 'private-fault',
     persistence: 'ephemeral',

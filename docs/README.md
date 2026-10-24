@@ -90,3 +90,6 @@ actual pinned Bun PTY qualification, without claiming native renderer or supervi
 
 [Native control admission](native-control-admission.md) documents reserved command
 capacity, cancellation/task ownership and the real native saturation fixture.
+
+[Native fault qualification](cef-fault-qualification.md) defines actual readiness,
+expected failure/cleanup receipts and the automatic seven-stage native gate.
