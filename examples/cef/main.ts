@@ -4,6 +4,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { cefRpcSchema } from './rpc-contract.ts'
 import { nativeRpcProbeReadiness } from './rpc-readiness.ts'
 import { qualifyRpcSessions } from './rpc-sessions.ts'
+import { qualifyControlAdmission } from './control-admission.ts'
 export default async function main(backend: CefBackend): Promise<void> {
   let ticks = 0
   const timer = setInterval(() => {
@@ -98,6 +99,7 @@ export default async function main(backend: CefBackend): Promise<void> {
     { limits: { maxFrameBytes: 24 * 1024, maxMetadataBytes: 16 * 1024 } }
   )
   try {
+    const controlAdmission = await qualifyControlAdmission(backend)
     const session = await backend.createSession({ partition: 'smoke', persistence: 'ephemeral' })
     const window = await backend.createWindow({
       title: 'Bunly CEF',
@@ -267,7 +269,8 @@ export default async function main(backend: CefBackend): Promise<void> {
     console.log(
       JSON.stringify({
         event: 'bunly.native.rpc',
-        schema: 4,
+        schema: 5,
+        controlAdmission,
         sessionAuthority: 'native-owner-isolation-and-partition-reuse',
         viewDisposal: 'isolated-and-parent-close',
         renderer: evidence.renderer,

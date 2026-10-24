@@ -87,3 +87,6 @@ suite, sanitized evidence export/replay and the M5 diagnostic handoff.
 
 [M5 progress](m5-progress.md) records bounded callback-source integration and
 actual pinned Bun PTY qualification, without claiming native renderer or supervisor completion.
+
+[Native control admission](native-control-admission.md) documents reserved command
+capacity, cancellation/task ownership and the real native saturation fixture.

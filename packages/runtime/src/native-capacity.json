@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "frameBytes": 65536,
+  "requests": 128,
+  "ordinaryRequests": 96,
+  "queuedBytes": 1048576,
+  "ordinaryQueuedBytes": 786432,
+  "controlFrameBytes": 1024,
+  "controlOperations": [
+    "quit",
+    "rpc.ack",
+    "rpc.disconnect",
+    "view.dispose",
+    "window.close",
+    "session.dispose",
+    "credentials.discard"
+  ],
+  "nativeRequests": 256,
+  "nativeOrdinaryRequests": 192,
+  "nativeQueuedBytes": 2097152,
+  "nativeOrdinaryQueuedBytes": 1572864
+}

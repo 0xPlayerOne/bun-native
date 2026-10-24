@@ -32,6 +32,10 @@ const original = await inventory(inputRoot)
 const sourceBefore = sourceIdentity(root)
 const paths = [
   'scripts/qualify-cef-development.ts',
+  'packages/runtime/src/native-transport.ts',
+  'packages/runtime/src/native-capacity.json',
+  'native/cef-host/src/command_budget.rs',
+  'native/cef-host/src/process.rs',
   'examples/cef/development.ts',
   'packages/runtime/src/cef.ts',
   'benchmarks/lib/cef-policy-acceptance.ts',

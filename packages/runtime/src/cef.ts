@@ -950,6 +950,10 @@ export class CefBackend implements BrowserBackend {
       listenerErrors: this.#listenerErrors,
     }
   }
+  /** Trusted-backend pipe accounting only; not renderer authority or native RSS. */
+  nativeTransportDiagnostics(): ReturnType<NativeTransport['diagnostics']> {
+    return this.#transport.diagnostics()
+  }
   async nativeDiagnostics(): Promise<unknown> {
     return this.#transport.call('diagnostics')
   }

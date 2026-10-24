@@ -78,6 +78,10 @@ const report: Record<string, unknown> = {
 }
 const files = [
   'scripts/qualify-cef-credentials.ts',
+  'packages/runtime/src/native-transport.ts',
+  'packages/runtime/src/native-capacity.json',
+  'native/cef-host/src/command_budget.rs',
+  'native/cef-host/src/process.rs',
   'examples/cef/credentials.ts',
   'examples/cef/credentials-client.ts',
   'packages/runtime/src/credential-proof.ts',
