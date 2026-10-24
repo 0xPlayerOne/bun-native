@@ -2,7 +2,7 @@
 
 An explicit OS-provider policy, verified before application cookie profiles open.
 
-**Status:** Implementation under qualification; not an enabled-by-default capability.
+**Delivery:** PR #103; final-head acceptance and merge criteria are recorded in [M4 completion](m4-completion.md). This is not an enabled-by-default capability.
 **Scope:** Issue #20. Synthetic proof tests are not OS-provider or release acceptance.
 
 ## Application contract
@@ -39,8 +39,8 @@ to be encrypted merely because cookies are.
 A single hidden, native-owned request context writes a random, nonsecret canary
 cookie for an unreachable `.invalid` origin. The context has no renderer/view and
 is denied by ordinary session/view operations. Native callbacks require the exact
-cookie's readback and actual flush completion. A ready proof on restart must be
-read rather than overwritten; losing its encryption key cannot manufacture a new
+cookie's readback and actual flush completion. Any existing proof on restart must
+be read rather than overwritten; losing its encryption key cannot manufacture a new
 success. The trusted Bun runtime then opens only this bounded canary SQLite file
 read-only and validates schema, owner, row identity, empty plaintext, ciphertext
 layout and selected provider. It never reads an application's cookie database or
@@ -55,11 +55,12 @@ one attempt; failure is retained for the backend lifetime, not retried until a
 lucky pass. Initialization, disposal and shutdown remain native-owned and bounded
 by the existing request/watchdog model.
 
-The proof context is retained for the host lifetime and counted independently in
-native diagnostics. Normal application operations cannot dispose it. It is closed
-through the existing context/connection teardown during host shutdown. There is
-no extra runtime process, polling service, external debug port or native compiler
-invocation in this path.
+The proof context is counted independently while initializing, then retired
+before disk verification. Normal application operations cannot access or dispose
+it. Root/profile kernel locks and the verified admission flag retain native
+ownership through host shutdown without retaining the proof's CEF context. There
+is no extra runtime process, polling service, external debug port or native
+compiler invocation in this path.
 
 ## Qualification boundary
 
@@ -114,7 +115,25 @@ Admission requires the exact retired receipt and an ordinary read-only SQLite
 open. Any remaining lock or failed open still rejects admission. No sleep,
 operation retry, provider override or larger request deadline is introduced.
 
-The preceding run passed all nine provider cases on macOS and Linux, while
-Windows failed at read-only database open. Those results remain retained as
-platform-specific evidence, not a completed three-platform qualification. Current
-retirement behavior must pass all supported targets before merge.
+Run `40060657696` passed the original nine provider cases on macOS and Linux,
+while Windows failed at read-only database open. The context-retirement correction
+then passed all nine cases on all three platforms in run `40062320516`. Both
+checkpoints remain in the [versioned evidence](../evidence/m4-credential-checkpoints.json).
+Neither checkpoint substitutes for final-head acceptance of the additional
+interrupted-admission control below.
+
+## Interrupted admission
+
+Only a newly created empty proof profile may write a canary. Every existing
+proof marker, including an unsealed marker left by an interrupted attempt,
+requires native readback of its existing persisted canary. It is never rewritten
+to make an unavailable provider appear usable. An absent/unreadable canary
+therefore fails closed and requires deliberate profile repair rather than an
+implicit reset. The hosted suite tests both ordinary provider unavailability and
+an unavailable provider with a retained unsealed canary, requiring the existing
+seal/nonce to remain unchanged. These are separate negative-control outcomes.
+
+The macOS foundation run also exposed a protocol-test race: its 100 ms deadline
+could expire during the host/page handshake. That test now advances an injected
+fixture clock only after actual HTTP admission. A separate test exercises the
+unchanged real-timer default; no application or native shutdown deadline changed.

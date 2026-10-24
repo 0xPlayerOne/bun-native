@@ -83,6 +83,8 @@ const files = [
   'packages/runtime/src/credential-proof.ts',
   'packages/runtime/src/cef.ts',
   'native/cef-host/src/credential_callbacks.rs',
+  'native/cef-host/src/cookie_completion.rs',
+  'native/cef-host/src/session_reset.rs',
   'native/cef-host/src/session_credentials.rs',
   'native/cef-host/src/host.rs',
   'native/cef-host/src/lib.rs',
@@ -168,14 +170,18 @@ const common = (mode: string, changes: Record<string, string> = {}) => ({
   BUNLY_CACHE_DIR: join(work, 'cache-' + mode),
   ...changes,
 })
-async function launch(mode: CredentialMode, changes: Record<string, string> = {}) {
+async function launch(
+  mode: CredentialMode,
+  changes: Record<string, string> = {},
+  trialName: string = mode
+) {
   const observation = await observedCommand([executable(app)], {
     cwd: work,
-    output: join(work, mode + '.process.json'),
+    output: join(work, trialName + '.process.json'),
     timeoutMs: 30000,
     env: common(mode, changes),
   }).result
-  const trial = { name: mode, passed: false, observation }
+  const trial = { name: trialName, passed: false, observation }
   trials.push(trial)
   acceptNativeCredentials(observation, mode)
   trial.passed = true
@@ -322,12 +328,40 @@ try {
       'Credential-enabled runtime rejects encryption/provider feature overrides'
     )
   }
+  // An interrupted admission can have persisted encrypted canary bytes but no
+  // completed seal. Reopening must read, never overwrite, that existing canary.
+  const interruptedRoot = join(profileWork, 'i')
+  await cp(profileRoot, interruptedRoot, { recursive: true, dereference: false })
+  const proofMarker = join(
+    interruptedRoot,
+    'bunly-profile-' + createHash('sha256').update('bunly-internal-credential-proof').digest('hex'),
+    '.bunly-credential-proof.json'
+  )
+  const interruptedSeal = JSON.parse(await readFile(proofMarker, 'utf8')) as Record<string, unknown>
+  assert.equal(interruptedSeal['ready'], true)
+  interruptedSeal['ready'] = false
+  await writeFile(proofMarker, JSON.stringify(interruptedSeal))
+  const unavailable = async (changes: Record<string, string>) => {
+    await launch('unavailable', changes)
+    await launch(
+      'unavailable',
+      { ...changes, BUNLY_PROFILE_ROOT: interruptedRoot },
+      'unsealed-unavailable'
+    )
+    const after = JSON.parse(await readFile(proofMarker, 'utf8')) as Record<string, unknown>
+    assert.deepEqual(
+      after,
+      interruptedSeal,
+      'Unavailable provider must not replace or seal an interrupted proof'
+    )
+    report['interruptedSealPreserved'] = true
+  }
   if (mac) {
     await tool(['/usr/bin/security', 'lock-keychain', keychain])
-    await launch('unavailable', { BUNLY_PROFILE_ROOT: join(profileWork, 'u') })
+    await unavailable({ BUNLY_PROFILE_ROOT: join(profileWork, 'u') })
     report['unavailabilityControl'] = 'locked-disposable-keychain-no-permission-ui'
   } else if (process.platform === 'linux') {
-    await launch('unavailable', {
+    await unavailable({
       BUNLY_PROFILE_ROOT: join(profileWork, 'u'),
       DBUS_SESSION_BUS_ADDRESS: 'unix:path=' + join(work, 'absent-session-bus'),
     })
@@ -341,7 +375,9 @@ try {
       'base64'
     )
     await writeFile(localState, JSON.stringify(state))
-    await launch('unavailable', { BUNLY_PROFILE_ROOT: broken })
+    // Both roots are private copies; preserve the distinct sealed/unsealed marker.
+    await writeFile(join(interruptedRoot, 'Local State'), JSON.stringify(state))
+    await unavailable({ BUNLY_PROFILE_ROOT: broken })
     report['unavailabilityControl'] = 'unreadable-DPAPI-envelope-in-private-root-copy'
   }
   if (keyring) assert.equal(keyring.exitCode, null, 'Owned Secret Service exited prematurely')

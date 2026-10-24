@@ -1,5 +1,9 @@
 # M4 protocol increment
 
+Current scope and final-head merge criteria are recorded in [M4 completion](m4-completion.md).
+The checkpoint sections below preserve their original limitations and are not
+a substitute for current-head platform acceptance.
+
 Typed application RPC and per-document capability policy.
 
 **Scope:** #18 portable protocol; #19 host policy and adversarial fixtures.

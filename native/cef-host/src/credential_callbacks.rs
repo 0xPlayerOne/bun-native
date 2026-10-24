@@ -93,7 +93,7 @@ pub(super) fn initialized(id: u64, context: &RequestContext) {
         complete(id, false, "store-unavailable");
         return;
     };
-    if probe.was_ready {
+    if !probe.needs_write {
         read(id, &manager, &probe);
         return;
     }
@@ -432,6 +432,7 @@ mod tests {
                 },
                 nonce: "a".repeat(64),
                 was_ready: false,
+                needs_write: false,
                 native_verified: true,
             },
         }

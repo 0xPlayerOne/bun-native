@@ -1,5 +1,11 @@
 # M4 browser sessions (issue #20)
 
+Current delivery and final-head acceptance are summarized in [M4 completion](m4-completion.md).
+The initial CEF 154 restrictions below are historical checkpoints; explicit
+[offline reset](session-storage-reset.md) and opt-in
+[OS-protected cookies](session-credentials.md) extend that baseline. They do not
+enable cookies by default or implement selective live HTML5 clearing.
+
 Persistent and ephemeral browser sessions are explicit request-context owners. This
 increment implements the issue #20 session path; it does not implement renderer
 authority and does not resolve the separate teardown issue #92.

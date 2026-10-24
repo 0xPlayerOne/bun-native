@@ -79,3 +79,5 @@ separate Python/Rust contributor formatters.
 [Protected persistent cookies](session-credentials.md) records the explicit OS-provider policy, admission checks and disposable-runner qualification boundary.
 
 - [Complete session storage reset](session-storage-reset.md): explicit offline whole-profile clearing and interruption recovery.
+
+[M4 completion](m4-completion.md) maps native IPC, policy, sessions, credential-provider acceptance and transport selection to the declared functional boundary.

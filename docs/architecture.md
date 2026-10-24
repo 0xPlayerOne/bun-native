@@ -2,7 +2,7 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1–M3 are complete for their declared acceptance profiles. M4 native renderer authority and session integration have passed their declared three-platform RPC fixtures; remaining M4 criteria and release qualification are separate.
+**Status:** M1–M3 are complete for their declared acceptance profiles. M4 delivery and its final-head merge gate are recorded in [M4 completion](m4-completion.md); production release qualification remains separate.
 **Scope:** Accepted host architecture and boundaries. See [M3 completion](m3-completion.md) for native platform evidence and limitations.
 
 ## Product boundary
@@ -104,9 +104,11 @@ namespace. No CEF objects or raw CDP targets appear in application handles.
 
 The mock supports lifecycle/navigation/ephemeral sessions only. CEF is backend one
 and additionally implements explicit persistent sessions, cookie CRUD, HTTP-cache
-clearing and flush. Pinned CEF has no complete HTML5 storage-clear API, and persistent cookies
-remain explicitly unsupported pending actual application-specific credential-provider
-qualification (CEF 156 now exposes macOS item-name settings); see [M4 browser sessions](m4-browser-sessions.md).
+clearing and flush. Complete profile clearing is an explicitly confirmed offline
+operation, not a selective live HTML5 clear. Persistent cookies remain disabled by
+default and require opt-in OS-provider policy plus native/persisted proof before
+admission; see [M4 browser sessions](m4-browser-sessions.md) and
+[protected persistent cookies](session-credentials.md).
 WebView2, WKWebView, and WebKitGTK are later adapters, not silent runtime fallbacks.
 A future system-webview build must include no hidden CEF payload or download.
 

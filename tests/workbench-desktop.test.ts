@@ -167,9 +167,36 @@ test('dropped terminal bytes reject the combined launch even when revision check
   }
 })
 test('missing terminal completion has a finite deadline and no passing zero value', async () => {
+  // Admit the real HTTP host/page before advancing the fixture deadline.
+  // Wall-clock load must not turn this into an unrelated handshake timeout.
+  const pending = new Map<() => void, number>()
+  const probe = await createWorkbenchDesktopProbe(
+    { ...options, timeoutMs: 100 },
+    assets,
+    (callback, milliseconds) => {
+      pending.set(callback, milliseconds)
+      return () => {
+        pending.delete(callback)
+      }
+    }
+  )
+  try {
+    expect([...pending.values()]).toEqual([100, 100])
+    await hostAndPage(probe)
+    // The renderer deadline was cancelled; only terminal readiness is missing.
+    expect(pending.size).toBe(1)
+    const expire = [...pending.keys()][0]!
+    expire()
+    await expect(probe.completion).rejects.toThrow()
+    expect(pending.size).toBe(0)
+  } finally {
+    await probe.close()
+    expect(pending.size).toBe(0)
+  }
+})
+test('ordinary workbench probing still expires with real timers', async () => {
   const probe = await createWorkbenchDesktopProbe({ ...options, timeoutMs: 100 }, assets)
   try {
-    await hostAndPage(probe)
     await expect(probe.completion).rejects.toThrow()
   } finally {
     await probe.close()

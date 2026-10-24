@@ -106,6 +106,8 @@ pub struct Probe {
     pub policy: Policy,
     pub nonce: String,
     pub was_ready: bool,
+    /// Only a newly created, empty proof profile may write a canary.
+    pub needs_write: bool,
     pub native_verified: bool,
 }
 
@@ -232,7 +234,8 @@ pub fn prepare_probe(path: &Path, policy: &Policy, proposed_nonce: &str) -> Resu
         return Err("Invalid bounded credential probe nonce".into());
     }
     let marker = path.join(PROOF_MARKER);
-    let seal = if exists(&marker)? {
+    let existing = exists(&marker)?;
+    let seal = if existing {
         let seal: Seal = owned_json(&marker)?;
         if seal.schema != 1
             || seal.policy != *policy
@@ -261,6 +264,7 @@ pub fn prepare_probe(path: &Path, policy: &Policy, proposed_nonce: &str) -> Resu
         policy: seal.policy,
         nonce: seal.nonce,
         was_ready: seal.ready,
+        needs_write: !existing,
         native_verified: false,
     })
 }
@@ -416,6 +420,22 @@ mod tests {
         assert!(application_profile(&path, Some(&p)).is_err());
         fs::remove_dir_all(path).unwrap();
     }
+    #[test]
+    fn interrupted_admission_rereads_the_existing_canary_without_rewriting_it() {
+        let path = directory();
+        let p = policy();
+        let first = prepare_probe(&path, &p, &"a".repeat(64)).unwrap();
+        assert!(first.needs_write && !first.was_ready);
+        let marker_before = fs::read(path.join(PROOF_MARKER)).unwrap();
+        let retry = prepare_probe(&path, &p, &"b".repeat(64)).unwrap();
+        assert!(!retry.needs_write && !retry.was_ready);
+        assert_eq!(retry.nonce, first.nonce);
+        assert_eq!(fs::read(path.join(PROOF_MARKER)).unwrap(), marker_before);
+        // This does not promote an interrupted attempt to successful verification.
+        assert!(seal_verified(&retry).is_err());
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn protected_application_profile_cannot_downgrade_to_disabled_or_other_identity() {
         let path = directory();
