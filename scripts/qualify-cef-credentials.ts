@@ -53,7 +53,9 @@ const parent = join(root, '.bunly/m3/credentials')
 await mkdir(parent, { recursive: true, mode: 0o700 })
 const work = await mkdtemp(join(parent, 'run-'))
 const app = join(work, mac ? 'Credential.app' : 'Credential Native')
-const profileRoot = join(work, 'protected-root')
+// Match the explicit Windows storage-path budget without global OS changes.
+const profileWork = process.platform === 'win32' ? await mkdtemp(join(root, '.bunly/c-')) : work
+const profileRoot = join(profileWork, 'p')
 const applicationId = 'dev.bunly.credentialfixture.r' + randomBytes(6).toString('hex')
 const sourceBefore = sourceIdentity(root)
 assert.equal(sourceBefore.clean, true, 'OS-provider acceptance requires committed clean source')
