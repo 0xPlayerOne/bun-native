@@ -84,7 +84,13 @@ describe('explicit build profiles with versioned capability metadata', () => {
     assert.deepEqual(metadata.extensions, [
       {
         backend: 'cef',
-        capabilities: ['session.persistent', 'session.cookies', 'session.cache', 'session.flush'],
+        capabilities: [
+          'session.persistent',
+          'session.cookies',
+          'session.protected-cookies',
+          'session.cache',
+          'session.flush',
+        ],
       },
     ])
     assert.equal(profileProvidesCapability(cef, 'cef', 'window.lifecycle'), true)

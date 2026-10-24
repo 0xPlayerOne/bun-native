@@ -166,19 +166,29 @@ const headers = {
   'referrer-policy': 'no-referrer',
   'cross-origin-resource-policy': 'same-origin',
 }
+/** Internal fixture clock seam; ordinary profiling always uses real bounded timers. */
+export type ProbeDeadline = (callback: () => void, milliseconds: number) => () => void
+export const scheduleProbeDeadline: ProbeDeadline = (callback, milliseconds) => {
+  const timer = setTimeout(callback, milliseconds)
+  return () => clearTimeout(timer)
+}
+
 /** Exact origins/tokens distinguish fixture roles; they are not a production authenticator. */
-export async function createDesktopProbe(options: {
-  readonly revision: string
-  readonly state: string
-  readonly counter: number
-  readonly framework: string
-  readonly version: string
-  readonly html: string
-  readonly javascript: string
-  readonly timeoutMs?: number
-  /** Exact private workbench origin; absent in the focused protocol fixture. */
-  readonly frameOrigin?: string
-}): Promise<DesktopProbe> {
+export async function createDesktopProbe(
+  options: {
+    readonly revision: string
+    readonly state: string
+    readonly counter: number
+    readonly framework: string
+    readonly version: string
+    readonly html: string
+    readonly javascript: string
+    readonly timeoutMs?: number
+    /** Exact private workbench origin; absent in the focused protocol fixture. */
+    readonly frameOrigin?: string
+  },
+  schedule: ProbeDeadline = scheduleProbeDeadline
+): Promise<DesktopProbe> {
   for (const value of [options.revision, options.state, options.framework, options.version])
     text(value)
   integer(options.counter)
@@ -231,7 +241,10 @@ export async function createDesktopProbe(options: {
     commandWaiter?.()
     if (!completed) rejectCompletion(error)
   }
-  const timer = setTimeout(() => fail(new Error('Desktop renderer readiness deadline')), timeoutMs)
+  const cancelDeadline = schedule(
+    () => fail(new Error('Desktop renderer readiness deadline')),
+    timeoutMs
+  )
   const authorized = (request: Request, expected: string): boolean => {
     const actual = request.headers.get('x-bunly-probe-token')
     return (
@@ -344,7 +357,7 @@ export async function createDesktopProbe(options: {
             throw new Error('Renderer mismatch')
           renderer = next
           completed = true
-          clearTimeout(timer)
+          cancelDeadline()
           resolveCompletion(Object.freeze({ host, renderer }))
         }
         return reply(202, { accepted: true })
@@ -379,7 +392,7 @@ export async function createDesktopProbe(options: {
     async close() {
       if (disposed) return
       disposed = true
-      clearTimeout(timer)
+      cancelDeadline()
       quit = true
       commandWaiter?.()
       if (!completed) rejectCompletion(new Error('Desktop probe closed before completion'))

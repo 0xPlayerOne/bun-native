@@ -42,6 +42,8 @@ export interface WindowOptions {
 }
 export interface SessionOptions {
   readonly persistence: 'ephemeral' | 'persistent'
+  /** Opt-in requires a configured, verified OS provider; absence keeps persistent cookies disabled. */
+  readonly persistentCookies?: 'os-protected'
   readonly partition: string
   /** Immutable per-session navigation/resource origins; absent means local content only. */
   readonly network?: SessionNetworkPolicy

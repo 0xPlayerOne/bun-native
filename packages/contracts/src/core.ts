@@ -6,6 +6,7 @@ export const CAPABILITIES = [
   'session.ephemeral',
   'session.persistent',
   'session.cookies',
+  'session.protected-cookies',
   'session.cache',
   'session.flush',
   'session.storage-clear',

@@ -11,6 +11,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[path = "session_credentials.rs"]
+pub(crate) mod credentials;
+
 #[path = "session_reset.rs"]
 pub(crate) mod reset;
 

@@ -2,7 +2,13 @@
 import { randomBytes } from 'node:crypto'
 import { createFixtureServer, type FixtureAssets } from '../fixtures/server.ts'
 import { fixtureBytes, checksum } from '../fixtures/data.ts'
-import { createDesktopProbe, type DesktopObservation, type DesktopProbe } from './desktop-probe.ts'
+import {
+  createDesktopProbe,
+  scheduleProbeDeadline,
+  type ProbeDeadline,
+  type DesktopObservation,
+  type DesktopProbe,
+} from './desktop-probe.ts'
 
 export interface WorkbenchCompletion {
   readonly scenario: 'terminal-render'
@@ -50,7 +56,8 @@ export interface WorkbenchDesktopProbe extends Omit<DesktopProbe, 'completion'> 
 /** Both frameworks receive the same xterm/UI assets. The nested preview remains an iframe. */
 export async function createWorkbenchDesktopProbe(
   options: Parameters<typeof createDesktopProbe>[0],
-  assets: FixtureAssets
+  assets: FixtureAssets,
+  schedule: ProbeDeadline = scheduleProbeDeadline
 ): Promise<WorkbenchDesktopProbe> {
   for (const name of ['html', 'script', 'terminalJs', 'terminalCss'] as const) {
     if (typeof assets[name] !== 'string' || !assets[name]?.length)
@@ -71,20 +78,20 @@ export async function createWorkbenchDesktopProbe(
     : options.html + frame
   let probe: DesktopProbe
   try {
-    probe = await createDesktopProbe({ ...options, html, frameOrigin: fixture.origin })
+    probe = await createDesktopProbe({ ...options, html, frameOrigin: fixture.origin }, schedule)
   } catch (error) {
     await fixture.close()
     throw error
   }
   const controller = new AbortController()
-  const timeout = setTimeout(
+  const cancelDeadline = schedule(
     () => controller.abort(new Error('Shared workbench readiness deadline')),
     options.timeoutMs ?? 20000
   )
   let closing: Promise<void> | undefined
   function stopWorkload(): void {
     controller.abort(new Error('Shared workbench stopped'))
-    clearTimeout(timeout)
+    cancelDeadline()
   }
   const workbench = (async () => {
     const response = await fetch(fixture.origin + '/__benchmark/completion', {
@@ -103,7 +110,7 @@ export async function createWorkbenchDesktopProbe(
         throw error
       }
     )
-    .finally(() => clearTimeout(timeout))
+    .finally(() => cancelDeadline())
   void completion.catch(() => {})
   return {
     configuration: Object.freeze({ ...probe.configuration, workbenchOrigin: fixture.origin }),

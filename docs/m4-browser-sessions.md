@@ -1,5 +1,11 @@
 # M4 browser sessions (issue #20)
 
+Current delivery and final-head acceptance are summarized in [M4 completion](m4-completion.md).
+The initial CEF 154 restrictions below are historical checkpoints; explicit
+[offline reset](session-storage-reset.md) and opt-in
+[OS-protected cookies](session-credentials.md) extend that baseline. They do not
+enable cookies by default or implement selective live HTML5 clearing.
+
 Persistent and ephemeral browser sessions are explicit request-context owners. This
 increment implements the issue #20 session path; it does not implement renderer
 authority and does not resolve the separate teardown issue #92.
@@ -141,6 +147,15 @@ the locally rejected hosted-only preparation command. The guard was not bypassed
 a fresh local contributor bundle was assembled instead. The current hosted matrix
 must qualify its own exact final head before merge. CEF 154 historical reports and
 transport timing distributions are not relabeled as CEF 156 measurements.
+
+## Explicit protected-cookie admission
+
+[Protected persistent cookies](session-credentials.md) describes the new opt-in
+provider policy, native-owned canary and read-only persistence check. Default
+persistent sessions continue to disable cookies. Protected creation is rejected
+unless the installed policy matches the platform and both native and persisted
+proofs succeed. Real OS-provider qualification remains a separate required gate;
+parser tests and an encrypted-looking version prefix alone are not acceptance.
 
 ## Complete offline profile reset
 

@@ -4,11 +4,10 @@ use crate::{
 };
 use cef::*;
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{
     cell::RefCell,
     collections::BTreeMap,
-    rc::Rc,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 #[path = "navigation.rs"]
@@ -50,6 +49,8 @@ struct SessionRecord {
     creating: Option<u64>,
     busy: bool,
     disposing: Option<u64>,
+    internal_credential: bool,
+    credential_proof: Option<session::credentials::Probe>,
 }
 #[derive(Default)]
 struct HostState {
@@ -59,7 +60,13 @@ struct HostState {
     sessions: BTreeMap<u64, SessionRecord>,
     rpc_deliveries: rpc_authority::Deliveries,
     policy: capability_policy::Policy,
+    credential_probe: Option<u64>,
+    retired_credential_probe: Option<credential_callbacks::RetiredProbe>,
+    credential_ready: bool,
 }
+#[path = "credential_callbacks.rs"]
+mod credential_callbacks;
+
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
 fn number(value: &Value, key: &str) -> Result<u64, String> {
     value
@@ -622,7 +629,12 @@ wrap_task! {
 fn finalize_sessions() {
     let sessions = STATE.with(|state| {
         let mut state = state.borrow_mut();
-        if state.sessions.values().any(|record| record.busy) {
+        if state.sessions.values().any(|record| record.busy)
+            || state
+                .retired_credential_probe
+                .as_ref()
+                .is_some_and(|proof| !proof.released)
+        {
             return None;
         }
         Some(
@@ -690,6 +702,16 @@ fn finish_session_initialization(id: u64, context: &RequestContext) {
         return;
     }
     scheme::attach(context);
+    if STATE.with(|state| {
+        state
+            .borrow()
+            .sessions
+            .get(&id)
+            .is_some_and(|record| record.internal_credential)
+    }) {
+        credential_callbacks::initialized(id, context);
+        return;
+    }
     let request = STATE.with(|state| {
         state.borrow_mut().sessions.get_mut(&id).and_then(|record| {
             record.busy = false;
@@ -748,7 +770,10 @@ wrap_completion_callback! {
 wrap_completion_callback! {
     struct ContextClosed { id: u64 }
     impl CompletionCallback { fn on_complete(&self) {
-        let record = STATE.with(|s| s.borrow_mut().sessions.remove(&self.id));
+        let record = STATE.with(|s| { let mut state=s.borrow_mut();
+            if state.credential_probe==Some(self.id) {state.credential_probe=None;state.retired_credential_probe=None;state.credential_ready=false;}
+            state.sessions.remove(&self.id)
+        });
         if let Some(mut record) = record {
             if let Some(request) = record.disposing.filter(|request| *request != 0) {
                 reply(request, Value::Null);
@@ -862,6 +887,11 @@ wrap_app! {
     pub struct BunlyApp;
     impl App {
         fn on_before_command_line_processing(&self, process_type: Option<&CefString>, command_line: Option<&mut CommandLine>) {
+            #[cfg(target_os = "linux")]
+            if process_type.is_none_or(|value|value.to_string().is_empty())
+                && crate::PATHS.get().and_then(|paths|paths.credential_policy.as_ref()).is_some() {
+                if let Some(line)=command_line.as_ref() {line.append_switch_with_value(Some(&CefString::from("password-store")),Some(&CefString::from("gnome-libsecret")));}
+            }
             #[cfg(feature = "rpc-qualification")]
             crate::rpc_qualification::configure_media_devices(process_type, command_line);
             #[cfg(not(feature = "rpc-qualification"))]
@@ -920,6 +950,7 @@ fn begin_session_operation(id: u64, require_cookies: bool) -> Result<RequestCont
             .sessions
             .get_mut(&id)
             .ok_or("INVALID_HANDLE: session")?;
+        if record.internal_credential {return Err("INVALID_HANDLE: internal credential context".into());}
         if record.disposing.is_some() || record.busy {
             return Err("RESOURCE_IN_USE: session operation".into());
         }
@@ -993,11 +1024,11 @@ struct CookieReadState {
     error: Option<String>,
 }
 wrap_cookie_visitor! {
-    struct ReadCookies { state: Rc<RefCell<CookieReadState>> }
+    struct ReadCookies { state: Arc<Mutex<CookieReadState>>, completion: Arc<crate::cookie_completion::VisitCompletion> }
     impl CookieVisitor { fn visit(&self, cookie: Option<&Cookie>, count: i32, total: i32, _delete: Option<&mut i32>) -> i32 {
-        let Some(cookie) = cookie else { self.state.borrow_mut().error = Some("CEF returned a missing cookie".into()); return 0; };
+        let Some(cookie) = cookie else { self.state.lock().unwrap().error = Some("CEF returned a missing cookie".into()); return 0; };
         if count < 0 || total < 1 || count >= total || total > 128 {
-            self.state.borrow_mut().error = Some("Cookie result exceeds the bounded 128-cookie limit".into());
+            self.state.lock().unwrap().error = Some("Cookie result exceeds the bounded 128-cookie limit".into());
             return 0;
         }
         let name = cookie.name.to_string();
@@ -1005,12 +1036,12 @@ wrap_cookie_visitor! {
         let domain = cookie.domain.to_string();
         let path = cookie.path.to_string();
         if name.is_empty() || name.len() > 256 || value.len() > 4096 || domain.len() > 255 || path.len() > 1024 {
-            self.state.borrow_mut().error = Some("CEF returned an invalid or excessive cookie".into());
+            self.state.lock().unwrap().error = Some("CEF returned an invalid or excessive cookie".into());
             return 0;
         }
         let same_site = match same_site_name(cookie.same_site) {
             Ok(value) => value,
-            Err(error) => { self.state.borrow_mut().error = Some(error); return 0; }
+            Err(error) => { self.state.lock().unwrap().error = Some(error); return 0; }
         };
         let mut result = json!({
             "name":name,
@@ -1023,13 +1054,13 @@ wrap_cookie_visitor! {
         });
         if cookie.has_expires != 0 {
             let Some(expires) = basetime_to_unix_millis(cookie.expires.val) else {
-                self.state.borrow_mut().error = Some("CEF returned an invalid cookie expiry".into());
+                self.state.lock().unwrap().error = Some("CEF returned an invalid cookie expiry".into());
                 return 0;
             };
             result["expires"] = json!(expires);
         }
         let encoded = serde_json::to_vec(&result).map_or(usize::MAX, |bytes| bytes.len());
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state.lock().unwrap();
         state.encoded_bytes = state.encoded_bytes.saturating_add(encoded);
         if state.encoded_bytes > 48 * 1024 {
             state.error = Some("Cookie result exceeds the bounded 48 KiB response limit".into());
@@ -1040,12 +1071,27 @@ wrap_cookie_visitor! {
     } }
 }
 wrap_completion_callback! {
-    struct CookiesRead { id: u64, request: u64, state: Rc<RefCell<CookieReadState>> }
+    struct CookiesRead { id: u64, request: u64, state: Arc<Mutex<CookieReadState>> }
     impl CompletionCallback { fn on_complete(&self) {
         operation_finished(self.id);
-        let mut state = self.state.borrow_mut();
+        let mut state = self.state.lock().unwrap();
         if let Some(message) = state.error.take() { error(self.request, &message); }
         else { reply(self.request, Value::Array(std::mem::take(&mut state.values))); }
+    } }
+}
+wrap_task! {
+    struct CookiesEnumerated { id:u64, request:u64, state:Arc<Mutex<CookieReadState>> }
+    impl Task { fn execute(&self) {
+        let context=STATE.with(|state|state.borrow().sessions.get(&self.id)
+            .filter(|record| !record.internal_credential && record.busy && record.disposing.is_none())
+            .map(|record|record.context.clone()));
+        let Some(manager)=context.and_then(|context|context.cookie_manager(None)) else {
+            operation_finished(self.id); error(self.request,"Cookie enumeration owner unavailable");return;
+        };
+        let mut done=CookiesRead::new(self.id,self.request,self.state.clone());
+        if manager.flush_store(Some(&mut done))==0 {
+            operation_finished(self.id); error(self.request,"Cookie enumeration flush could not be scheduled");
+        }
     } }
 }
 wrap_set_cookie_callback! {
@@ -1252,13 +1298,23 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "rpc.loopback.configure" => {
             return Err("UNSUPPORTED_CAPABILITY: CEF loopback transport is not qualified".into())
         }
+        "credentials.probe" => credential_callbacks::start(request, args)?,
+        "credentials.accept" => {
+            credential_callbacks::accept(args)?;
+            reply(request, Value::Null);
+        }
+        "credentials.discard" => {
+            credential_callbacks::discard(args)?;
+            reply(request, Value::Null);
+        }
         "session.create" => {
             let persistence = string(args, "persistence")?;
             let partition = string(args, "partition")?.to_owned();
             if !matches!(persistence, "ephemeral" | "persistent") {
                 return Err("Invalid session persistence".into());
             }
-            if partition.is_empty()
+            if partition == session::credentials::PROBE_PARTITION
+                || partition.is_empty()
                 || partition.len() > 64
                 || !partition.bytes().enumerate().all(|(index, byte)| {
                     byte.is_ascii_alphanumeric() || (index > 0 && b"._-".contains(&byte))
@@ -1279,6 +1335,20 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 return Err("Session partition already has a native owner".into());
             }
             let persistent = persistence == "persistent";
+            let protected = match args.get("persistentCookies") {
+                None => false,
+                Some(Value::String(value)) if value == "os-protected" && persistent => true,
+                _ => return Err("Invalid protected-cookie intent".into()),
+            };
+            let credential_policy = crate::PATHS
+                .get()
+                .and_then(|paths| paths.credential_policy.as_ref());
+            if protected
+                && (credential_policy.is_none()
+                    || !STATE.with(|state| state.borrow().credential_ready))
+            {
+                return Err("UNSUPPORTED_CAPABILITY: OS-cookie provider has not passed native persistence qualification".into());
+            }
             if !persistent && args.get("persistentRoot").is_some() {
                 return Err("Ephemeral sessions cannot specify a persistent root".into());
             }
@@ -1301,14 +1371,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
             };
             let mut settings = RequestContextSettings::default();
             if let Some(profile) = profile.as_ref() {
+                session::credentials::application_profile(
+                    &profile.path,
+                    if protected { credential_policy } else { None },
+                )?;
                 settings.cache_path = CefString::from(profile.path.to_string_lossy().as_ref());
-                settings.persist_session_cookies = 0;
-                // No platform credential provider is qualified for Bunly yet.
-                // CEF 156 adds app-specific macOS names, but exposing settings
-                // alone does not qualify persistent credential encryption.
-                // Persist storage, but never silently persist credentials using
-                // a shared identity, plaintext fallback, or unqualified provider.
-                settings.cookieable_schemes_exclude_defaults = 1;
+                settings.persist_session_cookies = i32::from(protected);
+                settings.cookieable_schemes_exclude_defaults = i32::from(!protected);
             }
             let id = next_id()?;
             let mut handler = scheme::context_handler(id, network.clone());
@@ -1323,7 +1392,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         profile,
                         partition,
                         persistent,
-                        cookies_supported: !persistent,
+                        cookies_supported: !persistent || protected,
+                        internal_credential: false,
+                        credential_proof: None,
                         creating: Some(request),
                         busy: true,
                         disposing: None,
@@ -1344,6 +1415,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .sessions
                     .get_mut(&id)
                     .ok_or("INVALID_HANDLE: session")?;
+                if record.internal_credential {
+                    return Err("INVALID_HANDLE: internal credential context".into());
+                }
                 if record.disposing.is_some() || record.busy {
                     return Err("RESOURCE_IN_USE: session operation".into());
                 }
@@ -1362,8 +1436,15 @@ fn dispatch(command: &Value) -> Result<(), String> {
             let manager = context
                 .cookie_manager(None)
                 .ok_or_else(|| operation_schedule_failed(id, "Cookie manager unavailable"))?;
-            let state = Rc::new(RefCell::new(CookieReadState::default()));
-            let mut visitor = ReadCookies::new(state.clone());
+            let state = Arc::new(Mutex::new(CookieReadState::default()));
+            let completed = state.clone();
+            let completion = Arc::new(crate::cookie_completion::VisitCompletion::new(move || {
+                let mut task = CookiesEnumerated::new(id, request, completed);
+                if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+                    fail("Cookie enumeration completion could not be scheduled");
+                }
+            }));
+            let mut visitor = ReadCookies::new(state, completion.clone());
             let started = match url.as_ref() {
                 Some(url) => manager.visit_url_cookies(
                     Some(&CefString::from(url.as_str())),
@@ -1378,15 +1459,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     "Cookie enumeration could not be scheduled",
                 ));
             }
-            // The visitor is never invoked for an empty store. Flush is queued
-            // behind enumeration on CEF's cookie sequence and supplies completion.
-            let mut completed = CookiesRead::new(id, request, state);
-            if manager.flush_store(Some(&mut completed)) == 0 {
-                return Err(operation_schedule_failed(
-                    id,
-                    "Cookie enumeration completion could not be scheduled",
-                ));
-            }
+            // GetCookieList can complete after FlushCookieStore, especially on
+            // restart. Wait for final visitor release before scheduling its flush.
+            completion.arm();
         }
         "session.cookie.set" => {
             let id = number(args, "id")?;
@@ -1558,7 +1633,11 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     record.window.clone().ok_or("Window not ready")?,
                     s.sessions
                         .get(&session)
-                        .filter(|record| record.disposing.is_none())
+                        .filter(|record| {
+                            !record.internal_credential
+                                && record.disposing.is_none()
+                                && !record.busy
+                        })
                         .map(|record| record.context.clone())
                         .ok_or("INVALID_HANDLE: session")?,
                 ))
@@ -1972,7 +2051,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.len(),"persistentSessions":s.sessions.values().filter(|record| record.persistent).count(),"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":PENDING.load(Ordering::SeqCst),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;

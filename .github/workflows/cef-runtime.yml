@@ -122,6 +122,28 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite rpc
+      # Provision real OS providers only after the ordinary RPC/storage matrix.
+      # Secrets and keyring databases remain in private disposable output, never artifacts.
+      - name: Install disposable Linux credential-provider prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y gnome-keyring libsecret-tools libglib2.0-bin
+      - name: Qualify protected cookies on Linux or macOS
+        if: runner.os != 'Windows'
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite credentials
+          else
+            python scripts/hosted_cef.py run --suite credentials
+          fi
+      - name: Qualify protected cookies as a Windows standard user
+        if: runner.os == 'Windows'
+        timeout-minutes: 10
+        shell: pwsh
+        run: ./scripts/hosted-windows.ps1 -Suite credentials
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}
         shell: bash
