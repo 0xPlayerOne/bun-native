@@ -104,7 +104,10 @@ def smoke(observation):
     )
 
 
-def validate(manifest, reports):
+def validate(manifest, reports, *, expected_identity=("154.0.34", "154.0.8037.98")):
+    # This module replays frozen M3 evidence by default. Current-engine callers
+    # must supply their independently pinned expected CEF/Chromium pair; never
+    # infer the expected version from the report being validated.
     source = manifest["sourceCommit"]
     require(manifest.get("target") == "darwin-arm64", "Unexpected native target")
     prebuilt = reports["prebuilt"]
@@ -244,8 +247,7 @@ def validate(manifest, reports):
         )
     identity = reports["cef-identity"]
     require(
-        identity.get("cefVersion") == "154.0.34"
-        and identity.get("chromiumVersion") == "154.0.8037.98"
+        (identity.get("cefVersion"), identity.get("chromiumVersion")) == expected_identity
         and identity.get("source") == "exported-api",
         "Wrong loaded CEF identity",
     )

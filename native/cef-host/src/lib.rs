@@ -118,7 +118,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     if config.schema != 1
         || config.protocol != 1
         || config.bun_version != "1.4.3"
-        || config.cef_version != "154.0.34"
+        || config.cef_version != "156.0.7"
     {
         return Err("Runtime/ABI manifest mismatch".into());
     }
@@ -235,7 +235,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     #[cfg(target_os = "macos")]
     eprintln!(
         "{}",
-        serde_json::json!({"event":"bunly.credential-policy","mode":"non-interactive-existing-authorization-only","persistentLocalStorage":profile_root.is_some(),"persistentCookies":false,"reason":"CEF 154 exposes no supported app-specific macOS credential identity"})
+        serde_json::json!({"event":"bunly.credential-policy","mode":"non-interactive-existing-authorization-only","persistentLocalStorage":profile_root.is_some(),"persistentCookies":false,"reason":"Application-specific persistent credential provider is not yet qualified"})
     );
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
