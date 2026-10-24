@@ -45,7 +45,7 @@ export async function nativePeer() {
     }
     input.write(JSON.stringify(value) + '\n')
   }
-  send({ v: 1, event: 'ready', abi: 1, cef: '154.0.34' })
+  send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7' })
   await transport.ready
   return {
     transport,

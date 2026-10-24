@@ -104,9 +104,9 @@ namespace. No CEF objects or raw CDP targets appear in application handles.
 
 The mock supports lifecycle/navigation/ephemeral sessions only. CEF is backend one
 and additionally implements explicit persistent sessions, cookie CRUD, HTTP-cache
-clearing and flush. Pinned CEF has no complete HTML5 storage-clear API, and macOS
-persistent cookies remain explicitly unsupported pending an app-specific credential
-identity; see [M4 browser sessions](m4-browser-sessions.md).
+clearing and flush. Pinned CEF has no complete HTML5 storage-clear API, and persistent cookies
+remain explicitly unsupported pending actual application-specific credential-provider
+qualification (CEF 156 now exposes macOS item-name settings); see [M4 browser sessions](m4-browser-sessions.md).
 WebView2, WKWebView, and WebKitGTK are later adapters, not silent runtime fallbacks.
 A future system-webview build must include no hidden CEF payload or download.
 

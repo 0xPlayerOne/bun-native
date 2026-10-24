@@ -24,8 +24,8 @@ const identity: CefRuntimeIdentity = {
   abi: 1,
   target: 'darwin-arm64',
   bun: '1.4.3',
-  cef: '154.0.34',
-  chromium: '154.0.8037.98',
+  cef: '156.0.7',
+  chromium: '156.0.8078.17',
   cefRs: 'a'.repeat(40),
   nativeToolchain: 'rust-1.91.0',
 }
@@ -47,7 +47,7 @@ function fixture(extra?: { path: string; bytes: Buffer }) {
     {
       path: 'resources/runtime.json',
       bytes: Buffer.from(
-        JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '154.0.34' })
+        JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
       ),
     },
     { path: 'LICENSE', bytes: Buffer.from('fixture-only-not-a-browser') },
@@ -144,7 +144,7 @@ test('complete runtime signature and identity are checked before networking', as
 test('runtime manifest rejects traversal, symlink write-through, aliases, special modes and missing helpers', () => {
   const f = fixture()
   expect(verifyCefManifest(envelope(f.manifest), { fixture: rootPem }, identity).identity.cef).toBe(
-    '154.0.34'
+    '156.0.7'
   )
   for (const member of [
     { path: '../outside', type: 'file', mode: 0o700, size: 0, sha256: digest(Buffer.alloc(0)) },
@@ -367,7 +367,7 @@ for (const grant of [
             schema: 1,
             protocol: 1,
             bun_version: '1.4.3',
-            cef_version: '154.0.34',
+            cef_version: '156.0.7',
             ...grant,
           })
         )

@@ -2,8 +2,9 @@
 //! disable cookie persistence until an app-specific credential provider is qualified.
 //! This process-local setting grants no Keychain access, changes no ACL or trust
 //! store, and does not replace encryption with a mock/plaintext implementation.
-//! CEF 154 uses Chromium's shared Keychain names. Persistent profiles must remain
-//! unsupported for cookies until M4 qualifies application-specific credential storage.
+//! CEF 156 exposes application-specific Keychain names, but this prerequisite
+//! upgrade does not configure or qualify a provider. Persistent cookies remain
+//! unsupported until application identity, provider failure and restart are tested.
 use std::{marker::PhantomData, rc::Rc};
 
 #[link(name = "Security", kind = "framework")]

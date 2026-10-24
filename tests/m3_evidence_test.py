@@ -27,6 +27,10 @@ class M3EvidenceTests(unittest.TestCase):
         self.assertFalse(summary["windowsNativeQualified"])
         self.assertFalse(summary["linuxNativeQualified"])
 
+    def test_historical_engine_cannot_satisfy_current_engine_qualification(self):
+        with self.assertRaisesRegex(ValueError, "loaded CEF identity"):
+            validate(self.manifest, self.reports, expected_identity=("156.0.7", "156.0.8078.17"))
+
     def test_missing_fault_or_forced_backend_exit_is_not_a_pass(self):
         changed = copy.deepcopy(self.reports)
         changed["faults"]["trials"].pop()

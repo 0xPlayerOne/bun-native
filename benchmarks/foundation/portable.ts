@@ -19,7 +19,7 @@ export interface ProfileWorkload {
   readonly parameters: Readonly<Record<string, number | string>>
   run(): void | Promise<void>
 }
-const ready = Buffer.from('{"v":1,"event":"ready","abi":1,"cef":"154.0.34"}\n')
+const ready = Buffer.from('{"v":1,"event":"ready","abi":1,"cef":"156.0.7"}\n')
 const shutdown = Buffer.from('{"v":1,"event":"shutdown"}\n')
 
 function nativeInput(events: number, title: string, chunkBytes: number) {
@@ -95,8 +95,8 @@ async function cacheFixture(parent: string) {
       abi: 1,
       target: 'darwin-arm64',
       bun: '1.4.3',
-      cef: '154.0.34',
-      chromium: '154.0.8037.98',
+      cef: '156.0.7',
+      chromium: '156.0.8078.17',
       cefRs: 'b'.repeat(40),
       nativeToolchain: 'rust-1.91.0',
     }
@@ -108,7 +108,7 @@ async function cacheFixture(parent: string) {
       [
         'resources/runtime.json',
         Buffer.from(
-          JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '154.0.34' })
+          JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
         ),
       ],
       ['LICENSE', Buffer.from('Synthetic fixture only, not a distributed runtime.')],

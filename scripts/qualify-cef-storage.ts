@@ -79,7 +79,7 @@ async function qualify(work: string, volume: string) {
   }
   await writeFile(
     join(payload, 'resources/runtime.json'),
-    JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '154.0.34' })
+    JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
   )
   await writeFile(join(payload, 'LICENSE'), 'Synthetic storage qualification only')
   await writeFile(join(payload, 'large.bin'), Buffer.alloc(16 * 1024 * 1024, 81))
@@ -89,9 +89,9 @@ async function qualify(work: string, volume: string) {
     abi: 1,
     target: 'darwin-arm64',
     bun: '1.4.3',
-    cef: '154.0.34',
-    chromium: '154.0.8037.98',
-    cefRs: '163744c8286d5f593d89202c7807751a7898db28',
+    cef: '156.0.7',
+    chromium: '156.0.8078.17',
+    cefRs: 'a46b48c6221f99414a5c6b37ff86491772f9b0a2',
     nativeToolchain: 'rust-1.91.0',
   }
   const archive = join(work, 'fixture.tar.gz')
