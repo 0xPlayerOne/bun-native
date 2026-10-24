@@ -76,6 +76,8 @@ export function validateCommandObservation(input: unknown): CommandObservation {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new Error('Missing process observation')
   const v = input as Record<string, unknown>
+  if (Object.hasOwn(v, 'observationExport'))
+    throw new Error('Sanitized evidence requires the exported-observation validator')
   if (
     v['schema'] !== 1 ||
     !Number.isSafeInteger(v['exitCode']) ||

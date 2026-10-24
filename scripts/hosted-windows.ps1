@@ -1,7 +1,7 @@
 # Disposable hosted-runner setup only. Never changes a developer workstation.
 [CmdletBinding()]
 param(
-    [ValidateSet('smoke', 'rpc', 'full', 'credentials', 'pty')][string]$Suite = 'full',
+    [ValidateSet('smoke', 'rpc', 'full', 'credentials', 'm4-acceptance', 'pty')][string]$Suite = 'full',
     [switch]$Worker,
     [string]$Python,
     [string]$Bun

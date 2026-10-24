@@ -82,5 +82,8 @@ separate Python/Rust contributor formatters.
 
 [M4 completion](m4-completion.md) maps native IPC, policy, sessions, credential-provider acceptance and transport selection to the declared functional boundary.
 
+[Native acceptance tooling](native-acceptance-tooling.md) defines the shared M4
+suite, sanitized evidence export/replay and the M5 diagnostic handoff.
+
 [M5 progress](m5-progress.md) records bounded callback-source integration and
 actual pinned Bun PTY qualification, without claiming native renderer or supervisor completion.

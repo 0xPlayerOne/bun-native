@@ -93,13 +93,18 @@ export class CallbackStreamSource {
   /** Snapshot only the declared view before returning. False means the source must not continue. */
   push(bytes: Uint8Array): boolean {
     if (this.#ended || this.#settled) return false
-    if (!(bytes instanceof Uint8Array)) {
+    let buffer: unknown, length: number, offset: number
+    try {
+      if (!(bytes instanceof Uint8Array)) throw new TypeError('Invalid source view')
+      buffer = backingBuffer.call(bytes)
+      length = byteLength.call(bytes)
+      offset = byteOffset.call(bytes)
+    } catch {
+      // Proxies and prototype-only lookalikes have no native typed-array slots.
+      // Reject through the owned failure path, not an exception from the callback.
       this.#fail('PROTOCOL_ERROR')
       return false
     }
-    const buffer: unknown = backingBuffer.call(bytes)
-    const length: number = byteLength.call(bytes)
-    const offset: number = byteOffset.call(bytes)
     if (!(buffer instanceof ArrayBuffer) || !length) {
       this.#fail('PROTOCOL_ERROR')
       return false
@@ -153,11 +158,14 @@ export class CallbackStreamSource {
     if (this.#active || this.#settled) return
     const bytes = this.#queue.shift()
     if (!bytes && !this.#ended) return
+    // A writer may transfer (detach) the supplied buffer during handoff. Keep
+    // its admitted size until settlement rather than rereading a detached view.
+    const length = bytes?.byteLength ?? 0
     this.#active = true
     try {
       if (bytes) {
         await this.#writer.write(bytes)
-        this.#acknowledgedBytes += bytes.byteLength
+        this.#acknowledgedBytes += length
       } else {
         await this.#writer.end()
         const result = await this.#writer.finished
@@ -171,7 +179,7 @@ export class CallbackStreamSource {
     } catch (error) {
       this.#fail(error instanceof StreamError ? error.code : 'CONSUMER_FAILED')
     } finally {
-      if (bytes) this.#retained -= bytes.byteLength
+      if (bytes) this.#retained -= length
       this.#active = false
       this.#collect()
       this.#schedule()

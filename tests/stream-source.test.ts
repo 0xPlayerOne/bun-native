@@ -200,3 +200,44 @@ test('a disconnected idle writer immediately stops its source and releases its r
   expect(f.stops()).toBe(1)
   expect(f.budget.diagnostics().reservedBytes).toBe(0)
 })
+
+test('transferred writer buffers retain their admitted byte count until settlement', async () => {
+  const held = deferred<void>()
+  let writes = 0
+  const f = fixture(async (bytes) => {
+    structuredClone(bytes, { transfer: [bytes.buffer] })
+    if (++writes === 1) await held.promise
+  })
+  expect(f.source.push(new Uint8Array([1, 2, 3, 4]))).toBe(true)
+  await tick()
+  expect(f.source.diagnostics().retainedBytes).toBe(4)
+  expect(f.source.diagnostics().acknowledgedBytes).toBe(0)
+  held.resolve()
+  await tick()
+  expect(f.source.diagnostics().retainedBytes).toBe(0)
+  expect(f.source.diagnostics().acknowledgedBytes).toBe(4)
+  expect(f.source.push(new Uint8Array(16))).toBe(true)
+  expect(await f.source.end()).toEqual({ ok: true })
+  await f.source.drained
+  expect(f.source.diagnostics().acknowledgedBytes).toBe(20)
+  expect(f.source.diagnostics().retainedBytes).toBe(0)
+  expect(f.budget.diagnostics()).toEqual({ reservedBytes: 0, streams: 0, views: 0 })
+})
+
+test('invalid typed-array slots fail closed without escaping the producer callback or retaining admission', async () => {
+  const revoked = Proxy.revocable(new Uint8Array([1]), {})
+  revoked.revoke()
+  for (const bytes of [
+    Object.create(Uint8Array.prototype) as Uint8Array,
+    new Proxy(new Uint8Array([1]), {}),
+    revoked.proxy,
+  ]) {
+    const f = fixture()
+    expect(f.source.push(bytes)).toBe(false)
+    expect(await f.source.finished).toEqual({ ok: false, code: 'PROTOCOL_ERROR' })
+    await f.source.drained
+    expect(f.stops()).toBe(1)
+    expect(f.source.diagnostics().retainedBytes).toBe(0)
+    expect(f.budget.diagnostics()).toEqual({ reservedBytes: 0, streams: 0, views: 0 })
+  }
+})

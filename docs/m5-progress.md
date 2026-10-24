@@ -103,3 +103,15 @@ loop turn was not proof that the asynchronous terminal parser finished. Cleanup
 now waits for its actual completion promise before checking reservation release.
 The earlier failures remain retained and require corrected-head hosted acceptance.
 See [Bun PTY provenance](../provenance/bun-pty.md) for pinned source attribution.
+
+## Integration review corrections
+
+PR #104's merged diagnostics, shared M4 suite and explicit evidence decoder are
+retained. Review reproduced a callback-source accounting defect when a writer
+transferred its supplied buffer: the detached view reported zero bytes, so the
+source failed to release its admitted byte count and could falsely overload later
+input. Accounting now retains the original admitted length until the write settles.
+Prototype-only typed-array lookalikes and proxies also reject through the owned
+protocol-failure path instead of throwing out of the callback with a live
+reservation. Both regressions failed before the correction. Source, transport,
+and consumer reservation lifetimes remain distinct.
