@@ -308,6 +308,26 @@ fn verify_owned_file(path: &Path, file: &File) -> Result<(), String> {
     Ok(())
 }
 
+/// CEF156 CacheStorage adds 210 UTF-16 units below our root for the selected
+/// SHA-256 profile, origin hash, cache UUID and index. Do not assume every CEF
+/// component opts into extended Windows paths merely because Rust can open them.
+/// Offline maintenance still accepts longer existing roots so callers can recover.
+pub fn validate_cef_profile_path(root: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    use std::os::windows::ffi::OsStrExt;
+    #[cfg(windows)]
+    if !windows_root_within_storage_budget(root.as_os_str().encode_wide().count()) {
+        return Err("Windows persistent profile root is too long for the pinned CEF storage layout; use a root of at most 48 UTF-16 units".into());
+    }
+    #[cfg(not(windows))]
+    let _ = root;
+    Ok(())
+}
+#[cfg(any(windows, test))]
+fn windows_root_within_storage_budget(units: usize) -> bool {
+    units <= 48
+}
+
 fn profile_directory(partition: &str) -> String {
     format!("bunly-profile-{:x}", Sha256::digest(partition.as_bytes()))
 }
@@ -537,6 +557,21 @@ mod tests {
                     .unwrap()
                     .as_nanos()
             ))
+    }
+
+    #[test]
+    fn windows_storage_path_budget_retains_space_for_native_nested_stores() {
+        let suffix = format!(
+            "/bunly-profile-{}/Service Worker/CacheStorage/{}/{}/index-dir/the-real-index",
+            "a".repeat(64),
+            "b".repeat(40),
+            "c".repeat(36)
+        );
+        assert_eq!(suffix.encode_utf16().count(), 210);
+        assert!(windows_root_within_storage_budget(48));
+        assert!(48 + suffix.encode_utf16().count() < 260);
+        assert!(!windows_root_within_storage_budget(49));
+        assert!(!windows_root_within_storage_budget(usize::MAX));
     }
 
     #[test]

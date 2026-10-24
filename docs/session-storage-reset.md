@@ -159,3 +159,23 @@ second root owner is excluded throughout that transition. An interruption before
 rename is a retained recoverable phase, not permission to reopen partial data.
 The original failed Windows tests and run remain preserved; no lock check or
 assertion was skipped. Final-head Windows execution must qualify the correction.
+
+### Windows native storage path budget
+
+The corrected handle-transition tests passed on Windows, but the first real
+CacheStorage seed still failed with an internal error before reset began. The
+fixture's long root plus Bunly's full SHA-256 profile name and Chromium's origin
+hash/cache UUID/index layout exceeded legacy Windows path bounds. The pinned
+layout adds 210 UTF-16 units below the root. Normal CEF persistent-session creation
+now rejects roots longer than 48 UTF-16 units with an actionable error before
+creating the request context, rather than allowing a partially usable profile.
+Offline reset remains available for longer existing roots. Qualification uses an
+explicit short private root while retaining Unicode application paths and every
+actual storage assertion. No global long-path setting, shortened digest, storage
+API skip or fallback is used. Current-head Windows execution must validate this
+correction; the prior failed seed is retained, not promoted to a successful reset.
+
+Pinned layout references: Chromium 156.0.8078.17
+`content/browser/cache_storage/cache_storage_manager.cc`, `cache_storage.cc`, and
+`net/disk_cache/simple/simple_index_file.cc`. This is the supported pinned storage
+profile, not a promise that all arbitrary-depth Windows paths are usable.

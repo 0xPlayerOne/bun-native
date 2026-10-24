@@ -34,7 +34,10 @@ const work = await mkdtemp(join(root, '.bunly/m3/session-reset/run-'))
 const app = join(work, mac ? 'Reset Unicode Ω.app' : 'Reset Unicode Ω')
 const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(input))
 const resources = join(app, mac ? 'Contents/Resources' : 'resources')
-const profileRoot = join(work, 'bunly-reset-fixture-root')
+// Keep the pinned Windows cache layout below legacy path bounds without changing
+// machine policy. Reports and Unicode executable coverage stay in the original run.
+const profileWork = process.platform === 'win32' ? await mkdtemp(join(root, '.bunly/r-')) : work
+const profileRoot = join(profileWork, 'reset-root')
 const profile = (partition: string) =>
   join(profileRoot, 'bunly-profile-' + createHash('sha256').update(partition).digest('hex'))
 const sourceBefore = sourceIdentity(root)
@@ -64,6 +67,8 @@ const report: Record<string, unknown> = {
   schema: 1,
   classification: 'native-offline-whole-profile-reset',
   target: `${process.platform}-${process.arch}`,
+  profileRootUtf16Units: profileRoot.length,
+  profileLayout: 'explicit-private-root-with-pinned-Windows-storage-budget',
   passed: false,
   sourceBefore,
   sourceHashes: hashes,

@@ -171,7 +171,7 @@ pub fn execute(root: &Path, partition: &str) -> Result<ResetResult, String> {
         if std::env::var("BUNLY_RESET_FIXTURE_PAUSE").as_deref() == Ok("quarantined")
             && stage == "quarantined"
         {
-            if root.file_name().and_then(|name| name.to_str()) != Some("bunly-reset-fixture-root") {
+            if root.file_name().and_then(|name| name.to_str()) != Some("reset-root") {
                 return Err("Offline reset interruption requires the owned fixture root".into());
             }
             let mut options = OpenOptions::new();
