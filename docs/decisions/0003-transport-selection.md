@@ -54,7 +54,7 @@ benchmarks or application startup/interaction speed claims.
 
 Raw per-launch metrics, distributions, queue peaks, native receipts and provider-
 specific idle observations are preserved in
-[the sanitized local record](../evidence/m4-native-transports-local.json).
+[the sanitized local record](../../evidence/m4-native-transports-local.json).
 The original observer reports remain private and are bound by SHA-256 and byte
 length. No comparison ratio is substituted for a rejected or unavailable trial.
 
