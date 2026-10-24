@@ -164,6 +164,10 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
     require({t["mode"] for t in faults["trials"]} == FAULTS, "Missing or duplicate native fault")
     for trial in faults["trials"]:
         mode, observation = trial["mode"], trial["observation"]
+        if faults.get("schema") == 2:
+            from cef_fault_acceptance import accept_fault
+
+            accept_fault(mode, observation, trial["injected"])
         require(trial.get("passed") is True, "Native fault failed")
         clean_process(observation, 0 if mode == "gpu-exit" else 1)
         records = events(observation)
