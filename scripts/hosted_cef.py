@@ -126,8 +126,6 @@ def commands(suite, bun, app):
         result.append(
             ("session-reset", [bun, str(ROOT / "scripts/qualify-cef-session-reset.ts"), str(app)])
         )
-    if suite in ("m4-acceptance", "full"):
-        result.extend(commands("credentials", bun, app))
     if suite == "full":
         result += [
             (
@@ -141,12 +139,18 @@ def commands(suite, bun, app):
                 ],
             ),
         ]
+    if suite in ("m4-acceptance", "full"):
+        result.extend(commands("credentials", bun, app))
     return result
 
 
 def require_stage_prerequisites(suite, name, steps):
     if name == "credentials" and suite != "credentials":
-        expected = [name for name, _ in commands("rpc", "bun", Path("app"))]
+        expected = [
+            stage
+            for stage, _ in commands("full" if suite == "full" else "rpc", "bun", Path("app"))
+            if stage != "credentials"
+        ]
         if [row["name"] for row in steps] != expected or not all(row["passed"] for row in steps):
             raise ValueError("Credential qualification requires every ordinary M4 stage to pass")
 

@@ -32,8 +32,8 @@ class HostedQualificationTests(unittest.TestCase):
                 "network",
                 "transports",
                 "session-reset",
-                "credentials",
                 "faults",
+                "credentials",
             ],
         )
         self.assertTrue(
@@ -42,7 +42,7 @@ class HostedQualificationTests(unittest.TestCase):
                 for _, args in full
             )
         )
-        self.assertEqual(full[-1][1][-2:], ["--bun", "/bun"])
+        self.assertEqual(full[-2][1][-2:], ["--bun", "/bun"])
         with self.assertRaises(ValueError):
             hosted.commands("arbitrary-shell", "/bun", Path("/app"))
 
@@ -114,7 +114,9 @@ class HostedQualificationTests(unittest.TestCase):
                 self.assertEqual(
                     m4, hosted.commands("rpc", bun, app) + hosted.commands("credentials", bun, app)
                 )
-                self.assertEqual(hosted.commands("full", bun, app)[:-1], m4)
+                self.assertEqual(
+                    [row for row in hosted.commands("full", bun, app) if row[0] != "faults"], m4
+                )
                 self.assertEqual(len({name for name, _ in m4}), 6)
                 self.assertTrue(m4[0][1][1].endswith("qualify-cef-rpc.ts"))
                 self.assertEqual(m4[-1][0], "credentials")
@@ -184,6 +186,16 @@ class HostedQualificationTests(unittest.TestCase):
                 check=True,
                 timeout=180,
             )
+
+    def test_full_runs_every_ordinary_fault_case_before_provider_provisioning(self):
+        names = [name for name, _ in hosted.commands("full", "bun", Path("app"))]
+        self.assertEqual(names[-1], "credentials")
+        self.assertLess(names.index("faults"), names.index("credentials"))
+        rows = [{"name": name, "passed": True} for name in names[:-1]]
+        hosted.require_stage_prerequisites("full", "credentials", rows)
+        rows[-1]["passed"] = False
+        with self.assertRaises(ValueError):
+            hosted.require_stage_prerequisites("full", "credentials", rows)
 
     def test_stale_or_duplicate_reports_never_pass(self):
         with (

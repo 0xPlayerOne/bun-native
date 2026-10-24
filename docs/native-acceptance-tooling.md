@@ -4,7 +4,8 @@
 permission policy, external network/redirect/certificate policy, both functional
 transport candidates, offline whole-profile reset, then protected cookies.
 Automatic PR jobs and manual `m4-acceptance` use the same Python command map.
-`full` now adds native fault qualification after those six stages. `smoke`, `rpc`
+`full` adds native fault qualification before the final provider stage, so
+provider installation never precedes any selected ordinary workload. `smoke`, `rpc`
 and `credentials` remain explicitly narrower diagnostic selections.
 
 The hosted workflow prepares a contributor artifact, a standard-user account and
