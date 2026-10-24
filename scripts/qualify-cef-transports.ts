@@ -46,6 +46,10 @@ await mkdir(parent, { recursive: true, mode: 0o700 })
 const work = await mkdtemp(join(parent, 'run-'))
 const paths = [
   'scripts/qualify-cef-transports.ts',
+  'packages/runtime/src/native-transport.ts',
+  'packages/runtime/src/native-capacity.json',
+  'native/cef-host/src/command_budget.rs',
+  'native/cef-host/src/process.rs',
   'examples/cef/transport.ts',
   'examples/cef/transport-client.ts',
   'examples/cef/transport-contract.ts',

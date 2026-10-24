@@ -1,4 +1,5 @@
 import type { Readable, Writable } from 'node:stream'
+import capacity from './native-capacity.json'
 export interface NativeEvent {
   readonly v: 1
   readonly event: string
@@ -7,7 +8,9 @@ export interface NativeEvent {
   readonly abi?: number
   readonly cef?: string
 }
+type Abandoned = { timer: ReturnType<typeof setTimeout>; ordinary: boolean }
 type Pending = {
+  readonly ordinary: boolean
   resolve(value: unknown): void
   reject(error: Error): void
   timer: ReturnType<typeof setTimeout>
@@ -24,10 +27,13 @@ export class NativeTransport {
   readonly #output: Writable
   readonly #pending = new Map<number, Pending>()
   readonly #listeners = new Set<(event: NativeEvent) => void>()
-  readonly #abandoned = new Map<number, ReturnType<typeof setTimeout>>()
+  readonly #abandoned = new Map<number, Abandoned>()
   #next = 0
   #closed = false
   #queuedBytes = 0
+  #ordinaryQueuedBytes = 0
+  #ordinaryRequests = 0
+  #controlAdmissionsUnderPressure = 0
   #ready = false
   #requestTimeoutMs = 10000
   #failure: Error | null = null
@@ -74,7 +80,7 @@ export class NativeTransport {
     try {
       if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
       if (this.#closed || !this.#ready) throw new Error('Native transport is not ready')
-      if (this.#pending.size + this.#abandoned.size >= 128)
+      if (this.#pending.size + this.#abandoned.size >= capacity.requests)
         throw new Error('Native request capacity exceeded')
       if (
         typeof operation !== 'string' ||
@@ -90,7 +96,7 @@ export class NativeTransport {
         throw new Error('Invalid native request arguments')
       if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError')
       if (this.#closed || !this.#ready) throw new Error('Native transport is not ready')
-      if (this.#pending.size + this.#abandoned.size >= 128)
+      if (this.#pending.size + this.#abandoned.size >= capacity.requests)
         throw new Error('Native request capacity exceeded')
       if (this.#next >= Number.MAX_SAFE_INTEGER)
         throw new Error('Native request identity exhausted')
@@ -98,7 +104,18 @@ export class NativeTransport {
       // The operation grammar above contains no JSON metacharacters.
       const json = `{"v":1,"id":${id},"op":"${operation}","args":${serialized}}\n`
       const length = Buffer.byteLength(json)
-      if (length > 65536 || this.#queuedBytes + length > 1024 * 1024)
+      // Only bounded lifecycle/ack operations may consume the reserved headroom.
+      // This scheduling class grants no native authority and is never page-supplied.
+      const ordinary = !(
+        length <= capacity.controlFrameBytes && capacity.controlOperations.includes(operation)
+      )
+      if (ordinary && this.#ordinaryRequests >= capacity.ordinaryRequests)
+        throw new Error('Native ordinary request capacity exceeded')
+      if (
+        length > capacity.frameBytes ||
+        this.#queuedBytes + length > capacity.queuedBytes ||
+        (ordinary && this.#ordinaryQueuedBytes + length > capacity.ordinaryQueuedBytes)
+      )
         throw new Error('Native output capacity exceeded')
       const bytes = Buffer.from(json)
       this.#next = id
@@ -109,7 +126,7 @@ export class NativeTransport {
           this.#pending.delete(id)
           pending.removeAbort()
           // Cancellation does not acknowledge native side effects. Keep the original deadline.
-          this.#abandoned.set(id, pending.timer)
+          this.#abandoned.set(id, { timer: pending.timer, ordinary: pending.ordinary })
           reject(
             signal?.reason instanceof Error
               ? signal.reason
@@ -123,19 +140,35 @@ export class NativeTransport {
           timeoutMs
         )
         this.#pending.set(id, {
+          ordinary,
           resolve,
           reject,
           timer,
           removeAbort: () => signal?.removeEventListener('abort', abort),
         })
         signal?.addEventListener('abort', abort, { once: true })
-        this.#queuedBytes += bytes.length
+        if (!ordinary && this.#ordinaryRequests >= capacity.ordinaryRequests)
+          this.#controlAdmissionsUnderPressure = Math.min(
+            Number.MAX_SAFE_INTEGER,
+            this.#controlAdmissionsUnderPressure + 1
+          )
+        if (ordinary) this.#ordinaryRequests++
+        this.#queuedBytes += length
+        if (ordinary) this.#ordinaryQueuedBytes += length
+        let released = false
+        const releaseWrite = () => {
+          if (released) return
+          released = true
+          this.#queuedBytes -= length
+          if (ordinary) this.#ordinaryQueuedBytes -= length
+        }
         try {
           this.#output.write(bytes, (error) => {
-            this.#queuedBytes = Math.max(0, this.#queuedBytes - bytes.length)
+            releaseWrite()
             if (error) this.fail(error)
           })
         } catch (error) {
+          releaseWrite()
           this.fail(error)
         }
       })
@@ -148,6 +181,9 @@ export class NativeTransport {
       requests: this.#pending.size,
       abandoned: this.#abandoned.size,
       queuedBytes: this.#queuedBytes,
+      ordinaryRequests: this.#ordinaryRequests,
+      ordinaryQueuedBytes: this.#ordinaryQueuedBytes,
+      controlAdmissionsUnderPressure: this.#controlAdmissionsUnderPressure,
       listeners: this.#listeners.size,
       closed: this.#closed,
     }
@@ -167,10 +203,12 @@ export class NativeTransport {
       pending.reject(error)
     }
     this.#pending.clear()
-    for (const timer of this.#abandoned.values()) clearTimeout(timer)
+    for (const abandoned of this.#abandoned.values()) clearTimeout(abandoned.timer)
     this.#abandoned.clear()
     this.#listeners.clear()
-    this.#queuedBytes = 0
+    this.#ordinaryRequests = 0
+    // Raw writes retain their byte reservations until the adapter callback settles.
+    // Destroying a pipe is not proof that an uncooperative adapter released bytes.
     // Release the read loop and inherited protocol pipes on failure as well as
     // shutdown. The native owner observes EOF and performs its bounded teardown.
     this.#input.destroy()
@@ -319,13 +357,15 @@ export class NativeTransport {
       throw new Error('Invalid native error response')
     const abandoned = this.#abandoned.get(Number(id))
     if (abandoned !== undefined) {
-      clearTimeout(abandoned)
+      clearTimeout(abandoned.timer)
       this.#abandoned.delete(Number(id))
+      if (abandoned.ordinary) this.#ordinaryRequests--
       return false
     }
     const pending = this.#pending.get(Number(id))
     if (!pending) throw new Error('Unexpected or duplicate native response')
     this.#pending.delete(Number(id))
+    if (pending.ordinary) this.#ordinaryRequests--
     clearTimeout(pending.timer)
     pending.removeAbort()
     if (frame['ok']) pending.resolve(frame['value'])

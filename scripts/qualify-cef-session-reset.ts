@@ -43,6 +43,10 @@ const profile = (partition: string) =>
 const sourceBefore = sourceIdentity(root)
 const tracked = [
   'scripts/qualify-cef-session-reset.ts',
+  'packages/runtime/src/native-transport.ts',
+  'packages/runtime/src/native-capacity.json',
+  'native/cef-host/src/command_budget.rs',
+  'native/cef-host/src/process.rs',
   'examples/cef/session-reset.ts',
   'examples/cef/session-reset-client.ts',
   'packages/runtime/src/session-reset.ts',
