@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "classification": "retained-M4-final-functional-acceptance-not-new-execution",
+  "head": "ecb4740773a14656341d7843933b875d3e388f4f",
+  "testedMergeSource": "45d3366d4c09b47e74393f23def5c91dcc531896",
+  "mergeCommit": "25d0b5da999176dcf59bc873d44d39845b4c642a",
+  "tree": "eb01658679fdbab71810b5848e2f1d581a36e12a",
+  "workflowRun": 40063935689,
+  "runtime": {
+    "bun": "1.4.3",
+    "cef": "156.0.7",
+    "chromium": "156.0.8078.17"
+  },
+  "platforms": [
+    {
+      "target": "darwin-arm64",
+      "provider": "macos-keychain",
+      "cases": 10,
+      "caseNames": [
+        "seed",
+        "present",
+        "clear",
+        "cleared",
+        "intent-denied",
+        "identity-mismatch",
+        "reject-password-store",
+        "reject-use-mock-keychain",
+        "unavailable",
+        "unsealed-unavailable"
+      ],
+      "providerCleanupCompleted": true,
+      "interruptedSealPreserved": true,
+      "sourceAndArtifactsUnchanged": true,
+      "credentialReport": {
+        "sha256": "e35a984281c69e85b321efc69fe2f61ed14bb5536f0aae749cc757ece2bc9c44",
+        "bytes": 300867
+      },
+      "helperSampling": {
+        "verified": [
+          "seed",
+          "present",
+          "clear",
+          "cleared",
+          "intent-denied",
+          "unavailable"
+        ],
+        "unobserved": [
+          "unsealed-unavailable"
+        ]
+      }
+    },
+    {
+      "target": "linux-x64",
+      "provider": "linux-secret-service",
+      "cases": 10,
+      "caseNames": [
+        "seed",
+        "present",
+        "clear",
+        "cleared",
+        "intent-denied",
+        "identity-mismatch",
+        "reject-password-store",
+        "reject-use-mock-keychain",
+        "unavailable",
+        "unsealed-unavailable"
+      ],
+      "providerCleanupCompleted": true,
+      "interruptedSealPreserved": true,
+      "sourceAndArtifactsUnchanged": true,
+      "credentialReport": {
+        "sha256": "5829458a892f0a680fda08bfec4851012c9a8350c76e75646a0ddcbecb9be95f",
+        "bytes": 876483
+      }
+    },
+    {
+      "target": "win32-x64",
+      "provider": "windows-dpapi",
+      "cases": 10,
+      "caseNames": [
+        "seed",
+        "present",
+        "clear",
+        "cleared",
+        "intent-denied",
+        "identity-mismatch",
+        "reject-password-store",
+        "reject-use-mock-keychain",
+        "unavailable",
+        "unsealed-unavailable"
+      ],
+      "providerCleanupCompleted": true,
+      "interruptedSealPreserved": true,
+      "sourceAndArtifactsUnchanged": true,
+      "credentialReport": {
+        "sha256": "6bf1ee2c15f8de22cf7e3a0f35d4706b674a69c38e0cf4be99f808efe4a25c17",
+        "bytes": 888874
+      }
+    }
+  ],
+  "checks": {
+    "passed": 40,
+    "skipped": 11
+  },
+  "limits": [
+    "Historical exported observation correlation IDs are redacted, not independently replayable live identities.",
+    "Every actual cleanup failure remains fatal; unobserved helpers are not verified.",
+    "No production signing, release approval, all-store encryption or causal shutdown-fix claim."
+  ]
+}

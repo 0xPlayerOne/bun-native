@@ -264,11 +264,11 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     );
     #[cfg(target_os = "macos")]
     let _keychain_policy = keychain::NonInteractiveKeychain::enter()?;
-    #[cfg(target_os = "macos")]
-    eprintln!(
-        "{}",
-        serde_json::json!({"event":"bunly.credential-policy","mode":"non-interactive-existing-authorization-only","persistentLocalStorage":profile_root.is_some(),"persistentCookies":false,"reason":"Application-specific persistent credential provider is not yet qualified"})
-    );
+    match config.credential_policy.as_ref() {
+        Some(policy) => session::credentials::Diagnostic::Pending(policy),
+        None => session::credentials::Diagnostic::Disabled,
+    }
+    .emit();
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
     let mut settings = Settings {

@@ -26,7 +26,15 @@ class HostedQualificationTests(unittest.TestCase):
         self.assertEqual([name for name, _ in smoke], ["prebuilt"])
         self.assertEqual(
             [name for name, _ in full],
-            ["prebuilt", "development", "network", "transports", "faults"],
+            [
+                "prebuilt",
+                "development",
+                "network",
+                "transports",
+                "session-reset",
+                "faults",
+                "credentials",
+            ],
         )
         self.assertTrue(
             all(
@@ -34,7 +42,7 @@ class HostedQualificationTests(unittest.TestCase):
                 for _, args in full
             )
         )
-        self.assertEqual(full[-1][1][-2:], ["--bun", "/bun"])
+        self.assertEqual(full[-2][1][-2:], ["--bun", "/bun"])
         with self.assertRaises(ValueError):
             hosted.commands("arbitrary-shell", "/bun", Path("/app"))
 
@@ -96,6 +104,99 @@ class HostedQualificationTests(unittest.TestCase):
                     "credentials", [name for name, _ in hosted.commands("rpc", bun, app)]
                 )
 
+    def test_m4_acceptance_is_one_exact_portable_suite_definition(self):
+        for root, app, bun in (
+            (PurePosixPath("/repo"), PurePosixPath("/app"), "/bun"),
+            (PureWindowsPath("C:/repo"), PureWindowsPath("C:/app.exe"), "C:/bun.exe"),
+        ):
+            with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
+                m4 = hosted.commands("m4-acceptance", bun, app)
+                self.assertEqual(
+                    m4, hosted.commands("rpc", bun, app) + hosted.commands("credentials", bun, app)
+                )
+                self.assertEqual(
+                    [row for row in hosted.commands("full", bun, app) if row[0] != "faults"], m4
+                )
+                self.assertEqual(len({name for name, _ in m4}), 6)
+                self.assertTrue(m4[0][1][1].endswith("qualify-cef-rpc.ts"))
+                self.assertEqual(m4[-1][0], "credentials")
+
+    def test_automatic_and_manual_workflows_use_the_same_m4_selection(self):
+        workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertIn("options: [portable, smoke, full, m4-acceptance]", workflow)
+        self.assertIn("run --suite m4-acceptance", workflow)
+        self.assertIn("-Suite m4-acceptance", workflow)
+        self.assertNotIn("run --suite rpc", workflow)
+        windows = (hosted.ROOT / "scripts/hosted-windows.ps1").read_text()
+        self.assertIn("'m4-acceptance'", windows)
+
+    def test_provider_stage_cannot_run_after_failed_or_incomplete_ordinary_acceptance(self):
+        rows = [
+            {"name": name, "passed": True} for name, _ in hosted.commands("rpc", "bun", Path("app"))
+        ]
+        hosted.require_stage_prerequisites("m4-acceptance", "credentials", rows)
+        hosted.require_stage_prerequisites("credentials", "credentials", [])
+        for invalid in ([], rows[:-1], list(reversed(rows)), [*rows, rows[0]]):
+            with self.assertRaises(ValueError):
+                hosted.require_stage_prerequisites("m4-acceptance", "credentials", invalid)
+        for index in range(len(rows)):
+            failed = [dict(row) for row in rows]
+            failed[index]["passed"] = False
+            with self.assertRaises(ValueError):
+                hosted.require_stage_prerequisites("full", "credentials", failed)
+
+    def test_provider_packages_are_delayed_and_forbidden_on_a_workstation(self):
+        workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertNotIn("apt-get install -y gnome-keyring", workflow)
+        for platform in ("darwin", "win32"):
+            with (
+                patch.object(hosted.sys, "platform", platform),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                hosted.prepare_credential_prerequisites()
+                run.assert_not_called()
+        with (
+            patch.object(hosted.sys, "platform", "linux"),
+            patch.object(hosted, "standard_user", return_value=True),
+            patch.dict("os.environ", {"GITHUB_ACTIONS": "false", "RUNNER_ENVIRONMENT": "local"}),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            with self.assertRaises(ValueError):
+                hosted.prepare_credential_prerequisites()
+            run.assert_not_called()
+        with (
+            patch.object(hosted.sys, "platform", "linux"),
+            patch.object(hosted, "standard_user", return_value=True),
+            patch.dict(
+                "os.environ", {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted"}
+            ),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            hosted.prepare_credential_prerequisites()
+            run.assert_called_once_with(
+                [
+                    "sudo",
+                    "apt-get",
+                    "install",
+                    "-y",
+                    "gnome-keyring",
+                    "libsecret-tools",
+                    "libglib2.0-bin",
+                ],
+                check=True,
+                timeout=180,
+            )
+
+    def test_full_runs_every_ordinary_fault_case_before_provider_provisioning(self):
+        names = [name for name, _ in hosted.commands("full", "bun", Path("app"))]
+        self.assertEqual(names[-1], "credentials")
+        self.assertLess(names.index("faults"), names.index("credentials"))
+        rows = [{"name": name, "passed": True} for name in names[:-1]]
+        hosted.require_stage_prerequisites("full", "credentials", rows)
+        rows[-1]["passed"] = False
+        with self.assertRaises(ValueError):
+            hosted.require_stage_prerequisites("full", "credentials", rows)
+
     def test_stale_or_duplicate_reports_never_pass(self):
         with (
             tempfile.TemporaryDirectory() as directory,
@@ -146,6 +247,23 @@ class HostedQualificationTests(unittest.TestCase):
             self.assertIn("[fixture-nonce]", text)
             self.assertIn("b" * 64, text)
             self.assertNotIn("not-for-upload", text)
+
+
+class EvidenceExportTests(unittest.TestCase):
+    def test_explicit_export_is_idempotent_and_keeps_failure_accounting(self):
+        from export_native_evidence import sanitize_report
+
+        raw = {
+            "observation": {"schema": 1, "exitCode": 2, "samples": [], "observationId": "a" * 48}
+        }
+        exported = sanitize_report(raw)
+        self.assertEqual(exported["observation"]["exitCode"], 2)
+        self.assertNotIn("observationId", exported["observation"])
+        self.assertIn("observationId", raw["observation"])
+        self.assertEqual(sanitize_report(exported), exported)
+        raw["observation"]["observationId"] = "malformed"
+        with self.assertRaises(ValueError):
+            sanitize_report(raw)
 
 
 if __name__ == "__main__":

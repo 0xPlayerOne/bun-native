@@ -26,6 +26,7 @@ test('manual platform choices stay on bounded standard hosted runners', () => {
     'portable',
     'smoke',
     'full',
+    'm4-acceptance',
   ])
   expect(workflow.permissions).toEqual({ contents: 'read' })
   for (const name of ['manual-plan', 'manual-native']) {

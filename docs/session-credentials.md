@@ -137,3 +137,11 @@ The macOS foundation run also exposed a protocol-test race: its 100 ms deadline
 could expire during the host/page handshake. That test now advances an injected
 fixture clock only after actual HTTP admission. A separate test exercises the
 unchanged real-timer default; no application or native shutdown deadline changed.
+
+## Diagnostic states
+
+`bunly.credential-policy` reports disabled-by-default, proof-pending, admitted or
+unavailable. Configured policy is not evidence of successful admission. The event
+contains the provider name and admission boolean, never the application identity,
+proof nonce, private database path or OS secret. Default cookie enablement remains
+false even after an explicitly protected session is admitted.

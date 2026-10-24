@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises'
+import { CONTRACT_VERSION } from '../../contracts/src/core.ts'
+import { BUILD_PROFILES, PROFILE_CAPABILITY_VERSION } from '../../contracts/src/profiles.ts'
 import { inspectArtifact, resolveArtifact } from '../../artifacts/src/index.ts'
 import type { ResolveOptions } from '../../artifacts/src/index.ts'
 export async function main(args: string[]): Promise<void> {
@@ -7,13 +9,14 @@ export async function main(args: string[]): Promise<void> {
       JSON.stringify(
         {
           name: 'Bunly',
-          stage: 'M1 foundation',
+          stage: 'M4 functional acceptance',
           bun: process.versions['bun'] ?? null,
           target: `${process.platform}-${process.arch}`,
-          nativeRuntime: 'not yet implemented',
-          cef: 'M3',
-          contractVersion: 1,
-          capabilityVersion: 1,
+          frameworkSupport: BUILD_PROFILES.cef.adapters,
+          installedRuntime: { status: 'not-probed', reason: 'No installed runtime selected' },
+          qualification: { scope: 'declared-functional-profiles', releaseQualified: false },
+          contractVersion: CONTRACT_VERSION,
+          capabilityVersion: PROFILE_CAPABILITY_VERSION,
         },
         null,
         2

@@ -84,6 +84,33 @@ impl Policy {
     }
 }
 
+/// Public policy/admission state, never an OS secret or a proof nonce.
+pub enum Diagnostic<'a> {
+    Disabled,
+    Pending(&'a Policy),
+    Admitted(&'a Policy),
+    Unavailable(&'a Policy),
+}
+impl Diagnostic<'_> {
+    fn value(&self) -> serde_json::Value {
+        let (state, policy) = match self {
+            Self::Disabled => ("disabled-by-default", None),
+            Self::Pending(policy) => ("proof-pending", Some(*policy)),
+            Self::Admitted(policy) => ("admitted", Some(*policy)),
+            Self::Unavailable(policy) => ("unavailable", Some(*policy)),
+        };
+        serde_json::json!({
+            "event": "bunly.credential-policy", "schema": 1, "state": state,
+            "provider": policy.map(|policy| policy.provider.name()),
+            "persistentCookiesDefault": false,
+            "persistentCookiesAdmitted": matches!(self, Self::Admitted(_)),
+        })
+    }
+    pub fn emit(&self) {
+        eprintln!("{}", self.value());
+    }
+}
+
 #[derive(Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Owner {
@@ -352,6 +379,23 @@ mod tests {
             fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
         }
         path
+    }
+    #[test]
+    fn diagnostics_distinguish_configuration_from_successful_admission() {
+        let policy = policy();
+        for (diagnostic, state, admitted) in [
+            (Diagnostic::Disabled, "disabled-by-default", false),
+            (Diagnostic::Pending(&policy), "proof-pending", false),
+            (Diagnostic::Admitted(&policy), "admitted", true),
+            (Diagnostic::Unavailable(&policy), "unavailable", false),
+        ] {
+            let value = diagnostic.value();
+            assert_eq!(value["state"], state);
+            assert_eq!(value["persistentCookiesAdmitted"], admitted);
+            assert_eq!(value["persistentCookiesDefault"], false);
+            assert_eq!(value["provider"].is_null(), state == "disabled-by-default");
+            assert!(!value.to_string().contains(&policy.application_id));
+        }
     }
     #[test]
     fn platform_provider_and_shared_scope_are_explicit() {

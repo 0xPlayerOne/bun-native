@@ -55,7 +55,8 @@
     "profile:foundation:native": "bun scripts/profile-foundation-native.ts",
     "profile:rpc-loopback": "bun scripts/profile-rpc-loopback.ts",
     "qualify:cef-credentials": "bun scripts/qualify-cef-credentials.ts",
-    "qualify:cef-session-reset": "bun scripts/qualify-cef-session-reset.ts"
+    "qualify:cef-session-reset": "bun scripts/qualify-cef-session-reset.ts",
+    "qualify:m4": "python scripts/hosted_cef.py run --suite m4-acceptance"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
