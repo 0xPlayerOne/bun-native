@@ -147,3 +147,15 @@ collision, strict module-marker correction and failed private runner generation.
 No prior failed run was relabeled successful. Final-head hosted execution remains
 a separate requirement for all supported platforms; no release/security or
 persistent-credential acceptance follows from the local reset results alone.
+
+### Windows quarantine correction
+
+The first hosted Windows run exposed a real lifecycle error: renaming the profile
+directory failed while the selected child lock descriptor remained open. The
+reset now commits its intent, keeps the root lock continuously held, closes the
+selected profile handle only for the directory move, then reacquires and validates
+the quarantined profile lock before deletion. A deterministic test proves that a
+second root owner is excluded throughout that transition. An interruption before
+rename is a retained recoverable phase, not permission to reopen partial data.
+The original failed Windows tests and run remain preserved; no lock check or
+assertion was skipped. Final-head Windows execution must qualify the correction.

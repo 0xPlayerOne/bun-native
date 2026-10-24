@@ -283,9 +283,10 @@ fn execute_inner(
             }
         }
     }
-    let profile_file = open_owned_lock(&selected.join(PROFILE_LOCK))?;
-    lock_exclusive(&profile_file).map_err(|_| "Persistent profile is still in use")?;
-    verify_owned_file(&selected.join(PROFILE_LOCK), &profile_file)?;
+    let mut profile_file = Some(open_owned_lock(&selected.join(PROFILE_LOCK))?);
+    lock_exclusive(profile_file.as_ref().unwrap())
+        .map_err(|_| "Persistent profile is still in use")?;
+    verify_owned_file(&selected.join(PROFILE_LOCK), profile_file.as_ref().unwrap())?;
     let mut inventory = Inventory::default();
     inspect_tree(selected, Path::new(""), 0, &mut inventory)?;
     checkpoint("validated")?;
@@ -294,9 +295,22 @@ fn execute_inner(
     }
     checkpoint("intent")?;
     if profile_present {
+        // Windows can deny moving a directory while its child lock handle is
+        // open. The already-held root lock and committed reset intent remain
+        // authoritative throughout this ownership-preserving handle transition.
+        drop(profile_file.take());
+        verify_owned_file(&root.join(ROOT_LOCK), root_file)?;
+        checkpoint("before-quarantine")?;
         fs::rename(&profile, &quarantine)
             .map_err(|error| format!("Cannot quarantine selected profile: {error}"))?;
         sync_directory(root)?;
+    }
+    if profile_file.is_none() {
+        let reopened = open_owned_lock(&quarantine.join(PROFILE_LOCK))?;
+        lock_exclusive(&reopened)
+            .map_err(|_| "Quarantined profile lock could not be reacquired")?;
+        verify_owned_file(&quarantine.join(PROFILE_LOCK), &reopened)?;
+        profile_file = Some(reopened);
     }
     checkpoint("quarantined")?;
     // Keep the marker and lock until all data children have gone. The durable
@@ -436,6 +450,7 @@ mod tests {
     fn interrupted_deletion_fences_reopen_and_resumes_without_touching_other_profiles() {
         for stage in [
             "intent",
+            "before-quarantine",
             "quarantined",
             "entry-removed",
             "data-removed",
@@ -460,6 +475,26 @@ mod tests {
             fs::remove_dir_all(root).unwrap();
         }
     }
+    #[test]
+    fn root_lock_excludes_other_owners_during_profile_handle_transition() {
+        let (root, _, _) = setup();
+        let mut saw_transition = false;
+        execute_inner(&root, "A", |stage| {
+            if stage == "before-quarantine" {
+                saw_transition = true;
+                assert!(pending(&root, "A")?);
+                assert!(
+                    ProfileRoot::open(&root).is_err(),
+                    "root lock must remain held while the child handle closes"
+                );
+            }
+            Ok(())
+        })
+        .unwrap();
+        assert!(saw_transition);
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn corrupt_or_unowned_recovery_state_fails_closed() {
         let (root, a, _) = setup();
