@@ -224,7 +224,9 @@ def run(suite):
         if suite == "full" and sys.platform != "darwin":
             from report_m3_platform import validate
 
-            result["acceptance"] = validate(target(), "standard", reports)
+            result["acceptance"] = validate(
+                target(), "standard", reports, expected_identity=("156.0.7", "156.0.8078.17")
+            )
         result["passed"] = True
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         result["failure"] = str(error)

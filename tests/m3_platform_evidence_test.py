@@ -247,6 +247,29 @@ class PlatformEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "actual CEF identity"):
             validate("linux-x64", "emulated-functional", report)
 
+    def test_current_engine_requires_an_explicit_pin_without_relabeling_old_evidence(self):
+        old = fixture()
+        current = fixture()
+        current["identity"].update(cefVersion="156.0.7", chromiumVersion="156.0.8078.17")
+        self.assertTrue(validate("linux-x64", "emulated-functional", old)["passed"])
+        self.assertTrue(
+            validate(
+                "linux-x64",
+                "emulated-functional",
+                current,
+                expected_identity=("156.0.7", "156.0.8078.17"),
+            )["passed"]
+        )
+        with self.assertRaisesRegex(ValueError, "actual CEF identity"):
+            validate("linux-x64", "emulated-functional", current)
+        with self.assertRaisesRegex(ValueError, "actual CEF identity"):
+            validate(
+                "linux-x64",
+                "emulated-functional",
+                old,
+                expected_identity=("156.0.7", "156.0.8078.17"),
+            )
+
     def test_preserved_linux_reports_reproduce_the_declared_summary(self):
         # Replays real historical records; this test does not launch a browser.
         directory = Path(__file__).resolve().parents[1] / "evidence/m3-linux"

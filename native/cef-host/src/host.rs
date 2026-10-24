@@ -1278,7 +1278,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 settings.cache_path = CefString::from(profile.path.to_string_lossy().as_ref());
                 settings.persist_session_cookies = 0;
                 // No platform credential provider is qualified for Bunly yet.
-                // CEF 154 also lacks app-specific macOS Keychain settings.
+                // CEF 156 adds app-specific macOS names, but exposing settings
+                // alone does not qualify persistent credential encryption.
                 // Persist storage, but never silently persist credentials using
                 // a shared identity, plaintext fallback, or unqualified provider.
                 settings.cookieable_schemes_exclude_defaults = 1;

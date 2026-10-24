@@ -42,9 +42,9 @@ const identity: CefRuntimeIdentity = {
   abi: 1,
   target: 'darwin-arm64',
   bun: Bun.version,
-  cef: '154.0.34',
-  chromium: '154.0.8037.98',
-  cefRs: '163744c8286d5f593d89202c7807751a7898db28',
+  cef: '156.0.7',
+  chromium: '156.0.8078.17',
+  cefRs: 'a46b48c6221f99414a5c6b37ff86491772f9b0a2',
   nativeToolchain: 'rust-1.91.0',
 }
 async function command(name: string, args: string[], cwd = root) {
@@ -72,7 +72,7 @@ try {
   const noticeInputs = [
     ['.bunly/m3/cef-license.txt', 'CEF-LICENSE.txt'],
     ['.bunly/m3/bun-license.md', 'BUN-LICENSE.md'],
-    ['.bunly/m3/cef-cache/154.0.34/cef_macos_aarch64/CREDITS.html', 'CHROMIUM-CREDITS.html'],
+    ['.bunly/m3/cef-cache/156.0.7/cef_macos_aarch64/CREDITS.html', 'CHROMIUM-CREDITS.html'],
     ['LICENSE', 'BUNLY-LICENSE'],
     ['provenance/cef-host.md', 'CEF-BINDINGS.md'],
   ] as const
