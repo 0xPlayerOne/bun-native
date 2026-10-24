@@ -122,3 +122,28 @@ Unit tests cover explicit intent, live lock collision, unknown/corrupt metadata,
 linked files, inventory bounds and every maintained recovery phase. Launcher
 regressions cover old runtimes, malformed/duplicate receipts, output bounds,
 timeouts and cancellation. Those synthetic peers are not native browser evidence.
+
+## Integrated local checkpoint
+
+Clean source `5a732dde6bf99f365f56ae14ef073336583f442b` passed the nine-case actual
+CEF 156 reset qualifier on macOS arm64. Normal launches verified all four browser
+stores, preserved the second profile and completed ordered shutdown. The exact
+native root-lock error is required in addition to the runtime API rejecting the
+live reset. The deliberately cancelled maintenance process remains an unclean
+negative control; its durable intent was subsequently observed to block opening
+before successful explicit recovery.
+
+The same checkpoint passed the 11-case RPC/session matrix, both functional CEF
+transport candidates, native network/redirect/certificate and permission-policy
+fixtures. An ordinary host passed its 11-case smoke matrix and separately performed
+an explicit offline reset while refusing the contributor interruption requirement.
+Portable validation passed 708 Bun and 205 Python tests; native checks passed
+3 M1 tests, 107 ordinary CEF tests and 112 contributor CEF tests. Counts for the
+focused eight Rust reset tests and four Bun launcher tests overlap those totals.
+
+The [sanitized record](../evidence/m4-session-reset-local.json) retains report
+fingerprints, the initial dirty-tree implementation diagnostic, fixture-name
+collision, strict module-marker correction and failed private runner generation.
+No prior failed run was relabeled successful. Final-head hosted execution remains
+a separate requirement for all supported platforms; no release/security or
+persistent-credential acceptance follows from the local reset results alone.

@@ -1,0 +1,525 @@
+{
+  "schema": 1,
+  "classification": "local-cef156-offline-complete-profile-reset",
+  "source": {
+    "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "target": "darwin-arm64",
+  "cef": "156.0.7",
+  "chromium": "156.0.8078.17",
+  "bun": "1.4.3",
+  "cefRust": "1.91.0",
+  "report": {
+    "bytes": 365333,
+    "sha256": "7a322275934dbdfa03bac3c1d8e373f0c443e31c879f5f05a62910f78eb24a08"
+  },
+  "sourceHashes": {
+    "scripts/qualify-cef-session-reset.ts": "748edf16c913903ddb572686cb56b40b582203b28d65e6fb5503adde7d608e09",
+    "examples/cef/session-reset.ts": "d8b7dd1d7474df2ba48080e93d8c95d7ebcba43e9732ccf984dd1e94b601c0bd",
+    "examples/cef/session-reset-client.ts": "25eab12445f84b06a0d8d196453cc1151343f0abea54c64444d0221e15f7ea41",
+    "packages/runtime/src/session-reset.ts": "1929dfb2763a7b8e9e1e74d44ad513ff8a6cf0478887c9f7a3a3a6ded4acb7d2",
+    "native/cef-host/src/session_reset.rs": "c6fb81741bac0a4ed4bfda35f30c2c80cc724021a901e8745d24687af486199b",
+    "native/cef-host/src/session.rs": "651a146f42ec38520979235fd03a91b9ad39d06afe22f2ab908e392146152e35",
+    "native/cef-host/src/lib.rs": "93ad1db7802803bc6fc7480b27c2630da3ca4449d148181f679787f97f121b50"
+  },
+  "inputArtifactUnchanged": true,
+  "preparedArtifactUnchanged": true,
+  "trials": [
+    {
+      "name": "seed",
+      "classification": "native-storage-launch",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "name": "present",
+      "classification": "native-storage-launch",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "name": "native-live-lock-rejected",
+      "classification": "expected-native-lock-rejection",
+      "outcome": {
+        "exitCode": 78,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": false,
+          "status": "not-observed"
+        }
+      }
+    },
+    {
+      "name": "live-root-rejected",
+      "classification": "expected-maintenance-rejection",
+      "passed": true
+    },
+    {
+      "name": "hold",
+      "classification": "native-storage-launch",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "name": "interrupted-reset",
+      "classification": "expected-unclean-interruption",
+      "outcome": {
+        "exitCode": -9,
+        "timedOut": false,
+        "cancelled": true,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": false,
+          "qualified": false,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "name": "blocked",
+      "classification": "native-storage-launch",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "name": "recovered-reset",
+      "passed": true,
+      "result": {
+        "cacheCleared": true,
+        "cookiesCleared": true,
+        "offline": true,
+        "partition": "A",
+        "recoveredInterruption": true,
+        "remainingEntriesRemoved": 221,
+        "remainingLogicalBytesRemoved": 2579378,
+        "schema": 1,
+        "storageCleared": true
+      },
+      "selectedDirectoryRemoved": true,
+      "otherProfilePreserved": true
+    },
+    {
+      "name": "cleared",
+      "classification": "native-storage-launch",
+      "outcome": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphans": 0,
+        "cleanupSurvivors": 0,
+        "helperCleanup": {
+          "passed": true,
+          "qualified": true,
+          "status": "completed"
+        }
+      }
+    }
+  ],
+  "validation": {
+    "rpc": {
+      "passed": true,
+      "source": {
+        "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 1617770,
+        "sha256": "322ac07b4b0a67362cc0e61c5ea6af73463b9e84eb8907167d973892f88a8ef4"
+      },
+      "log": {
+        "bytes": 559,
+        "sha256": "0a970a8c3dbce5946af1780790b7159f9e1ba0b72f86449206d72b60b0ed7774"
+      },
+      "inputArtifactUnchanged": true,
+      "cases": 11
+    },
+    "transports": {
+      "passed": true,
+      "source": {
+        "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 1490643,
+        "sha256": "46b5de1efdac37824d7952f1c8afcff90eed5a89ebb1922b4010416b39926ce9"
+      },
+      "log": {
+        "bytes": 386,
+        "sha256": "d893f43b73d68f5426b8fcc8d5d016f2f5eeec740f73f873ac8953bea7930eb9"
+      },
+      "inputArtifactUnchanged": true,
+      "preparedArtifactUnchanged": true,
+      "comparable": false,
+      "candidates": [
+        {
+          "candidate": "native-mediated",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        },
+        {
+          "candidate": "authenticated-loopback",
+          "passed": true,
+          "outcome": {
+            "exitCode": 0,
+            "timedOut": false,
+            "cancelled": false,
+            "outputOverflow": false,
+            "observedOrphans": 0,
+            "cleanupSurvivors": 0,
+            "helperCleanup": {
+              "passed": true,
+              "qualified": true,
+              "status": "completed"
+            }
+          }
+        }
+      ]
+    },
+    "network": {
+      "passed": true,
+      "source": {
+        "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 144764,
+        "sha256": "a536b629afd86b8a6039ba46e879fb8044cdf9b84dda4260ca22001e871f028a"
+      },
+      "log": {
+        "bytes": 296,
+        "sha256": "3551765948636a34638fc02b0507e61ccb67d6e701968580935b2eb65a82a90a"
+      },
+      "inputArtifactUnchanged": true,
+      "traffic": {
+        "forbidden": 0,
+        "untrustedTls": 0,
+        "child": 2,
+        "worker": 2,
+        "isolatedLeak": 0,
+        "allowedData": 4
+      }
+    },
+    "policy": {
+      "passed": true,
+      "source": {
+        "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 283174,
+        "sha256": "ab7817a462ce499370a3374485a7e6c153838b3351503b930ebc6afd93e42f64"
+      },
+      "log": {
+        "bytes": 147,
+        "sha256": "64e7189e8cca40640764212a72e68bf8ea2fccd56b1a9097c3b32d0fff48bb65"
+      },
+      "inputArtifactUnchanged": true,
+      "deniedRequests": 0
+    },
+    "ordinary": {
+      "passed": true,
+      "source": {
+        "commit": "5a732dde6bf99f365f56ae14ef073336583f442b",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "report": {
+        "bytes": 1648463,
+        "sha256": "50249e15886905acb3d26b7571c3f71b960bdab5339da3bfd9b6c195928ece00"
+      },
+      "log": {
+        "bytes": 137,
+        "sha256": "ca4a29ab3b31cf9929b4720c95a0cc75bae0a9f581d73abdb015205d5d862101"
+      },
+      "inputArtifactUnchanged": true,
+      "cases": 11
+    },
+    "ordinaryResetControl": {
+      "passed": true,
+      "report": {
+        "bytes": 370,
+        "sha256": "01df7ceee680993276f3639bca650fc754e725c7dcf739f356ff730ff2cb6a4a"
+      },
+      "result": {
+        "cacheCleared": true,
+        "cookiesCleared": true,
+        "offline": true,
+        "partition": "ordinary",
+        "recoveredInterruption": false,
+        "remainingEntriesRemoved": 4,
+        "remainingLogicalBytesRemoved": 86,
+        "schema": 1,
+        "storageCleared": true
+      },
+      "fixtureRequirementRejected": true,
+      "ordinaryResetSucceeded": true,
+      "scope": "native ordinary host with privately constructed marked filesystem fixture, not an additional browser-storage execution"
+    },
+    "integrated-portable": {
+      "bytes": 76154,
+      "sha256": "257097c77e1460db971b1380f3faf63a480f38b260020bbe4323c590231cf1e0"
+    },
+    "integrated-foundation": {
+      "bytes": 15738,
+      "sha256": "36296284c4c5759a615d55ab440a539f7d63bbfc0eb050b138c0f4519bc8dea0"
+    },
+    "integrated-workflows": {
+      "bytes": 13,
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    },
+    "integrated-native-default": {
+      "bytes": 14292,
+      "sha256": "f73885e1d3668c007279841972c779ae95d9ead73618dbf42e92fbc0742ee635"
+    },
+    "integrated-native-probe-clippy": {
+      "bytes": 177,
+      "sha256": "1716531a73c855553dbff89fd5d1cf63b4d989fb3b1696a86464cb4170f50b7f"
+    },
+    "integrated-native-probe-tests": {
+      "bytes": 10736,
+      "sha256": "b7874e91f1327c221b88cac764c8bf0c520ea8945d43c3f6e8619e9063c783b5"
+    },
+    "integrated-native-probe-build": {
+      "bytes": 179,
+      "sha256": "c56677d89bac844c32b8aaa1292552816df5e6b04afb53b5edc174aff10518cb"
+    },
+    "integrated-windows-api": {
+      "bytes": 4358,
+      "sha256": "63f4d917616ed90129a1c7880d48d24824ef88d4753163419eb246cd7935d8e1"
+    },
+    "reset-recovery-tests": {
+      "bytes": 1129,
+      "sha256": "4f99c3ffbaf29f601076a82a7cca02d900225d80d8d364da27a88b1cf81e796f"
+    },
+    "launcher-tests-initial": {
+      "bytes": 485,
+      "sha256": "55b05bbbe24691ef6533f275875014bbec456dcd0912b4ec366ad8dc9e35a370"
+    },
+    "counts": {
+      "bun": 708,
+      "python": 205,
+      "foundationOverlapping": 139,
+      "m1Rust": 3,
+      "ordinaryCef": 107,
+      "contributorCef": 112,
+      "offlineResetRustOverlapping": 8,
+      "launcherBunOverlapping": 4
+    }
+  },
+  "advisories": [
+    {
+      "name": "audit-js-root",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "elapsedSeconds": 0.292
+    },
+    {
+      "name": "audit-js-0",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electron",
+      "exitCode": 0,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "elapsedSeconds": 0.295
+    },
+    {
+      "name": "audit-js-1",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/adapters/electrobun",
+      "exitCode": 0,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "elapsedSeconds": 0.241
+    },
+    {
+      "name": "audit-js-2",
+      "command": [
+        "bun",
+        "audit",
+        "--json"
+      ],
+      "directory": "benchmarks/fixtures",
+      "exitCode": 0,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "elapsedSeconds": 0.289
+    },
+    {
+      "name": "audit-cargo-0",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "sha256": "e91ed92f16ea6142924c3dfee32dbab111712f6d11f994f1c6d76de35a3e606e",
+      "elapsedSeconds": 0.673
+    },
+    {
+      "name": "audit-cargo-1",
+      "command": [
+        "cargo",
+        "audit",
+        "--file",
+        "native/cef-host/Cargo.lock",
+        "--json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "sha256": "140a8d85f15c3e88c3528b998b23a27cf636d68289565f58ca0c4474cadf61ce",
+      "elapsedSeconds": 1.506
+    },
+    {
+      "name": "audit-python",
+      "command": [
+        "pip-audit",
+        "-r",
+        "requirements.txt",
+        "--format",
+        "json"
+      ],
+      "directory": ".",
+      "exitCode": 0,
+      "sha256": "8d88b26b743a97d2b6f1c83d71c708b1509c44b2f04ebed424f268fc5f6e12aa",
+      "elapsedSeconds": 6.958
+    }
+  ],
+  "retainedDiagnostics": [
+    {
+      "name": "initial-native-implementation-diagnostic",
+      "passed": true,
+      "source": {
+        "commit": "3edd89cc7ba09920b8b9b4f51459072e30138bfa",
+        "clean": false,
+        "reason": "dirty-checkout"
+      },
+      "cases": 8,
+      "report": {
+        "bytes": 341960,
+        "sha256": "b55c637f51b0fe352dda113a3ad868eaaf9c870a72f8123e5338a8ad896e597c"
+      },
+      "disposition": "dirty-tree CEF154 implementation diagnostic, not final CEF156 acceptance"
+    },
+    {
+      "name": "reset-tests-initial",
+      "passed": false,
+      "log": {
+        "bytes": 5824,
+        "sha256": "89f764f8ee54ff1d0a675452932de909471d0f98fcf2f003174d501aee3d1253"
+      },
+      "reason": "Parallel timestamp-only test directory names collided before reset; atomic unique fixture identifiers fixed setup without retrying reset operations."
+    },
+    {
+      "name": "typecheck-initial",
+      "passed": false,
+      "log": {
+        "bytes": 658,
+        "sha256": "1aef41a0a0386969fdf366a779f10db2a7a3373e2643efae20a80fae2a26736e"
+      },
+      "reason": "Synthetic peer needed an explicit module marker for strict TypeScript; corrected without weakening the checker."
+    },
+    {
+      "name": "ordinary-reset-control",
+      "passed": false,
+      "log": {
+        "bytes": 3621,
+        "sha256": "e28539d06fd158ff2138c7d7631969330334246b4fadfa602fe0295a281e285b"
+      },
+      "reason": "Private script placeholder replacement malformed an environment key, failing before execution. Original script/log retained; corrected private runner then proved ordinary behavior."
+    }
+  ],
+  "limits": [
+    "Whole selected persistent profile reset is explicitly offline, destructive and confirmed; live selective HTML5 clear remains unsupported.",
+    "Actual browser stores exercised: localStorage, IndexedDB, CacheStorage, service-worker registration; entire profile removal is not a partial first-party origin clear.",
+    "Interrupted reset is an expected unclean negative control and never counted as normal shutdown.",
+    "Kernel root/profile locks and durable intent fence cooperative ownership; no hostile same-user race, secure overwrite or full power-loss atomicity claim.",
+    "OS credential keys, root-global browser data, backups and other profile directories are not deleted.",
+    "Inventory and launcher output/deadline bounds fail closed; oversized profiles require deliberate maintenance.",
+    "Persistent credential-provider qualification and full M4 closure remain separate.",
+    "Current-head hosted execution must qualify Linux, macOS and Windows independently."
+  ]
+}
