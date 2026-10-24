@@ -56,11 +56,13 @@
     "profile:rpc-loopback": "bun scripts/profile-rpc-loopback.ts",
     "qualify:cef-credentials": "bun scripts/qualify-cef-credentials.ts",
     "qualify:cef-session-reset": "bun scripts/qualify-cef-session-reset.ts",
-    "qualify:m4": "python scripts/hosted_cef.py run --suite m4-acceptance"
+    "qualify:m4": "python scripts/hosted_cef.py run --suite m4-acceptance",
+    "qualify:bun-pty": "bun scripts/qualify-bun-pty.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
     "@types/node": "22.15.30",
+    "@xterm/headless": "5.5.0",
     "code-foundry": "1.48.2",
     "oxc-parser": "0.154.0",
     "oxfmt": "0.68.0",
