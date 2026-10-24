@@ -169,6 +169,19 @@ fixture runs behind 96 pending ordinary requests. See
 This does not close #23–#27 or implement native-to-Bun event priority, a dedicated
 renderer bulk lane, process-tree ownership, or graphical load acceptance.
 
+## Native fault readiness and automatic coverage
+
+The fault fixture now provisions the same bounded RPC service as its packaged
+page requires. Previously all four cases failed before fault injection because
+page readiness could never complete. Current schema-2 fault acceptance binds
+clean source and unchanged artifacts, uses the complete bounded native receipts,
+requires ordered teardown and expected failure classification, and verifies an
+actual observed non-detached child in the backend-tree case. The automatic
+three-platform native lane uses `full`, adding faults before provider setup.
+See [fault qualification](cef-fault-qualification.md) for exact guarantees and
+limits. This does not close #25 or claim detached PTY supervision or a causal
+fix for the historical CEF watchdog.
+
 ## Native event output reservations
 
 The reverse private pipe now charges queued and writer-owned frames against

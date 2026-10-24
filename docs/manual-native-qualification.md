@@ -32,8 +32,8 @@ policy, both functional transports, complete offline reset and real OS-provider
 qualification, in that order. Provider setup cannot run after an earlier failed
 stage. `full` includes all of M4 acceptance plus the four native fault cases and
 explicit OS isolation evidence, with provider provisioning kept last. Both are restricted to disposable hosted workers;
-never spoof their guard on a personal credential store. The automatic PR lane uses
-the same `m4-acceptance` command map. See [suite/export semantics](native-acceptance-tooling.md).
+never spoof their guard on a personal credential store. The automatic PR lane now selects
+`full`, including faults, from this same command map. See [suite/export semantics](native-acceptance-tooling.md).
 
 Each platform has a 60-minute job ceiling and the native execution step has a
 20-minute ceiling. There are no automatic retries or slower deadline fallbacks.

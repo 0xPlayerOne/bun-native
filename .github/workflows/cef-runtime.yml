@@ -1,4 +1,4 @@
-name: Native CEF runtime and M4 authority
+name: Native CEF runtime, authority and fault supervision
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -113,17 +113,17 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite m4-acceptance
+            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite full
           else
-            python scripts/hosted_cef.py run --suite m4-acceptance
+            python scripts/hosted_cef.py run --suite full
           fi
       - name: Run the shared Windows matrix as a standard user
         if: runner.os == 'Windows'
         timeout-minutes: 20
         shell: pwsh
-        run: ./scripts/hosted-windows.ps1 -Suite m4-acceptance
-      # m4-acceptance provisions disposable providers only after all ordinary
-      # RPC/storage stages; automatic and manual runs use the same suite map.
+        run: ./scripts/hosted-windows.ps1 -Suite full
+      # full adds fault supervision before provider setup; automatic and manual
+      # runs share the same seven-stage map and unchanged native deadlines.
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}
         shell: bash

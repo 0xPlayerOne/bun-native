@@ -37,7 +37,9 @@ pub struct Snapshot {
     pub peak_wire_bytes: usize,
 }
 #[derive(Default)]
-struct Budget(Mutex<Snapshot>);
+struct Budget {
+    state: Mutex<Snapshot>,
+}
 struct Permit {
     budget: Arc<Budget>,
     bytes: usize,
@@ -45,7 +47,11 @@ struct Permit {
 }
 impl Drop for Permit {
     fn drop(&mut self) {
-        let mut state = self.budget.0.lock().expect("Native output budget poisoned");
+        let mut state = self
+            .budget
+            .state
+            .lock()
+            .expect("Native output budget poisoned");
         state.frames -= 1;
         state.retained_wire_bytes -= self.bytes;
         if self.ordinary {
@@ -167,7 +173,7 @@ impl EventFrame {
 pub struct EventMonitor(Arc<Budget>);
 impl EventMonitor {
     pub fn snapshot(&self) -> Snapshot {
-        *self.0 .0.lock().expect("Native output budget poisoned")
+        *self.0.state.lock().expect("Native output budget poisoned")
     }
 }
 #[derive(Clone)]
@@ -195,7 +201,7 @@ impl EventSender {
         {
             let mut state = self
                 .budget
-                .0
+                .state
                 .lock()
                 .map_err(|_| AdmissionError::Unavailable)?;
             if state.frames >= RECORDS
