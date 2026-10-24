@@ -214,7 +214,7 @@ pub fn start() -> Result<(), String> {
                     // ABI negotiation uses immutable metadata only. Waiting for a
                     // GPU-busy UI queue must not consume the backend-start deadline.
                     handshake();
-                    emit(json!({"v":1,"id":id,"ok":true,"value":{"abi":1,"cef":"154.0.34"}}));
+                    emit(json!({"v":1,"id":id,"ok":true,"value":{"abi":1,"cef":"156.0.7"}}));
                 }
                 Ok(false) => crate::host::enqueue(value),
                 Err(error) => {
@@ -242,7 +242,7 @@ pub fn start() -> Result<(), String> {
         .set(Mutex::new(vec![writer, reader, startup, supervisor]))
         .map_err(|_| "thread owners already initialized")?;
     emit(
-        json!({"v":1,"event":"ready","abi":1,"cef":"154.0.34","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms()}}),
+        json!({"v":1,"event":"ready","abi":1,"cef":"156.0.7","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms()}}),
     );
     Ok(())
 }

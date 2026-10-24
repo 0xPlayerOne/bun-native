@@ -111,7 +111,7 @@ try {
       schema: 1,
       protocol: 1,
       bun_version: Bun.version,
-      cef_version: '154.0.34',
+      cef_version: '156.0.7',
       maintenance_protocol: 1,
       ...(developmentOrigin ? { development_origin: developmentOrigin } : {}),
     }) + '\n'

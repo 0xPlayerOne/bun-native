@@ -73,7 +73,9 @@ def isolation(observation, target):
     }
 
 
-def validate(target, profile, reports):
+def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.8037.98")):
+    # Historical replay stays pinned to the engine actually measured. Hosted
+    # current-engine qualification supplies a separate expected pair explicitly.
     require(target in ("linux-x64", "win32-x64"), "Unsupported native platform")
     require(profile in ("standard", "emulated-functional"), "Unknown deadline profile")
     require(set(reports) == REQUIRED, "Incomplete native platform evidence")
@@ -216,8 +218,7 @@ def validate(target, profile, reports):
     identity = reports["identity"]
     require(
         identity.get("source") == "exported-api"
-        and identity.get("cefVersion") == "154.0.34"
-        and identity.get("chromiumVersion") == "154.0.8037.98",
+        and (identity.get("cefVersion"), identity.get("chromiumVersion")) == expected_identity,
         "Wrong actual CEF identity",
     )
     require(

@@ -105,6 +105,43 @@ After rebasing on merged #94, 652 Bun tests and 199 Python tests passed. Two fre
 
 Windows roots must use an ordinary local drive path. UNC/device namespaces, alternate streams, reserved device names, trailing-dot/space aliases, and reparse-point ancestors are rejected before profile creation. The actual Windows API check exposed a missing `Win32_System_IO` feature for LockFileEx; this is corrected without changing dependency versions. POSIX mode checks are not presented as Windows ACL qualification.
 
+## Credential-provider prerequisite upgrade
+
+The framework contributor dependency now targets released cef-rs
+`a46b48c6221f99414a5c6b37ff86491772f9b0a2`, CEF 156.0.7 / Chromium 156.0.8078.17.
+This release includes application-specific macOS Keychain service/account fields
+from upstream CEF PR #4247. The prior CEF 154 qualification remains historical;
+its absence of these fields is not a statement about the newer engine.
+
+The upgrade alone does not enable persistent cookies, access a Keychain item,
+relax the noninteractive policy or claim that encrypted storage is qualified.
+Real per-platform cookie persistence, provider failure and application-identity
+qualification must accompany any later enablement. Full HTML5 clearing remains
+a separate API/lifecycle concern; no new complete request-context storage-clear
+API is assumed merely from a version change.
+
+### CEF 156 integrated local checkpoint
+
+Clean integrated source `bf8e5eed67704d5b729a23727d58dd33e184b316` passed 704 Bun
+and 205 Python tests, both native workspaces (3 M1 and 99 default CEF tests),
+and 104 contributor CEF tests with strict Clippy and real builds. The actual
+loaded framework reports CEF 156.0.7 / Chromium 156.0.8078.17; its binary identity
+probe does not attest the sandbox merely from compilation or a version string.
+
+Real macOS execution passed both CEF transport candidates, the 11-case adversarial
+RPC/session matrix, remote-network/redirect/certificate and permission-policy
+fixtures, the ordinary 11-case prebuilt matrix, twelve concurrent-asset foundation
+launches, and the ten-case session restart/locking/interruption matrix. The
+interrupted session remains an expected unclean negative control, not clean
+shutdown evidence. Inputs and harness source identities remained unchanged.
+
+The [sanitized runtime-upgrade record](../evidence/m4-cef156-prerequisite-local.json)
+preserves report fingerprints, counters, initial historical-replay failures and
+the locally rejected hosted-only preparation command. The guard was not bypassed;
+a fresh local contributor bundle was assembled instead. The current hosted matrix
+must qualify its own exact final head before merge. CEF 154 historical reports and
+transport timing distributions are not relabeled as CEF 156 measurements.
+
 ## Complete offline profile reset
 
 [Complete session storage reset](session-storage-reset.md) adds an explicit
