@@ -1298,7 +1298,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "rpc.loopback.configure" => {
             return Err("UNSUPPORTED_CAPABILITY: CEF loopback transport is not qualified".into())
         }
-        "credentials.probe" => credential_callbacks::start(request, args)?,
+        "credentials.probe" => credential_callbacks::start(request, args).inspect_err(|_| {
+            if let Some(policy) = crate::PATHS
+                .get()
+                .and_then(|paths| paths.credential_policy.as_ref())
+            {
+                session::credentials::Diagnostic::Unavailable(policy).emit();
+            }
+        })?,
         "credentials.accept" => {
             credential_callbacks::accept(args)?;
             reply(request, Value::Null);

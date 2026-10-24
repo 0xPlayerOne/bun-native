@@ -124,5 +124,5 @@ uses real MessageChannels and a mock-owned view: a blocked bulk consumer leaves 
 independent typed RPC lane usable, then drains and verifies 1 MiB of fixture bytes.
 
 These tests do not qualify CEF, WKWebView, WebView2, kernel wakeups, native process
-cleanup, real PTYs, browser permissions or comparative performance. Actions remain
-unavailable; no runner dispatch is required for the listed local commands.
+cleanup, real PTYs, browser permissions or comparative performance. The local commands do not require runner dispatch; hosted native acceptance is
+separate and does not promote this portable foundation to native stream support.
