@@ -15,7 +15,7 @@ on:
         type: choice
         required: true
         default: full
-        options: [portable, smoke, full]
+        options: [portable, smoke, full, m4-acceptance]
 permissions:
   contents: read
 concurrency:
@@ -66,7 +66,7 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal --component rustfmt --component clippy
           if [ '${{ runner.os }}' = Linux ]; then
             sudo apt-get update -qq
-            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2 libgbm1 xvfb dbus-x11
+            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2 libgbm1 xvfb dbus-x11 gnome-keyring libsecret-tools libglib2.0-bin
           fi
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
           python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
@@ -113,37 +113,17 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite rpc
+            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite m4-acceptance
           else
-            python scripts/hosted_cef.py run --suite rpc
+            python scripts/hosted_cef.py run --suite m4-acceptance
           fi
       - name: Run the shared Windows matrix as a standard user
         if: runner.os == 'Windows'
         timeout-minutes: 20
         shell: pwsh
-        run: ./scripts/hosted-windows.ps1 -Suite rpc
-      # Provision real OS providers only after the ordinary RPC/storage matrix.
-      # Secrets and keyring databases remain in private disposable output, never artifacts.
-      - name: Install disposable Linux credential-provider prerequisites
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          sudo apt-get install -y gnome-keyring libsecret-tools libglib2.0-bin
-      - name: Qualify protected cookies on Linux or macOS
-        if: runner.os != 'Windows'
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a dbus-run-session -- python scripts/hosted_cef.py run --suite credentials
-          else
-            python scripts/hosted_cef.py run --suite credentials
-          fi
-      - name: Qualify protected cookies as a Windows standard user
-        if: runner.os == 'Windows'
-        timeout-minutes: 10
-        shell: pwsh
-        run: ./scripts/hosted-windows.ps1 -Suite credentials
+        run: ./scripts/hosted-windows.ps1 -Suite m4-acceptance
+      # m4-acceptance provisions disposable providers only after all ordinary
+      # RPC/storage stages; automatic and manual runs use the same suite map.
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}
         shell: bash
@@ -189,7 +169,7 @@ jobs:
               'macos': {'os': 'macos-15', 'target': 'darwin-arm64'},
           }
           name = os.environ['PLATFORM']
-          if name not in (*rows, 'all') or os.environ['SUITE'] not in ('portable', 'smoke', 'full'):
+          if name not in (*rows, 'all') or os.environ['SUITE'] not in ('portable', 'smoke', 'full', 'm4-acceptance'):
               raise SystemExit('Unsupported platform or test suite')
           matrix = {'include': list(rows.values()) if name == 'all' else [rows[name]]}
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
@@ -244,7 +224,7 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal --component rustfmt --component clippy
           if [ "$RUNNER_OS" = Linux ]; then
             sudo apt-get update -qq
-            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2 libgbm1 xvfb dbus-x11
+            sudo apt-get install -y ninja-build libgtk-3-dev libnss3 libasound2 libgbm1 xvfb dbus-x11 gnome-keyring libsecret-tools libglib2.0-bin
           fi
       - name: Configure MSVC for the Windows contributor build
         if: inputs.suite != 'portable' && runner.os == 'Windows'

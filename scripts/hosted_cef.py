@@ -12,9 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from export_native_evidence import NONCE, sanitize_report
+
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / ".bunly/hosted-evidence"
-SUITES = ("smoke", "rpc", "full", "credentials")
+SUITES = ("smoke", "rpc", "full", "credentials", "m4-acceptance")
 
 
 def target(system=None, machine=None):
@@ -98,9 +100,13 @@ def commands(suite, bun, app):
     # The RPC suite wraps the same prebuilt matrix and additionally rejects
     # missing real renderer/native protocol evidence. It writes the same report
     # family; a generic successful smoke report cannot satisfy its exit status.
-    entrypoint = "qualify-cef-rpc.ts" if suite == "rpc" else "qualify-cef-prebuilt.ts"
+    entrypoint = (
+        "qualify-cef-rpc.ts"
+        if suite in ("rpc", "m4-acceptance", "full")
+        else "qualify-cef-prebuilt.ts"
+    )
     result = [("prebuilt", [bun, str(ROOT / "scripts" / entrypoint), str(app)])]
-    if suite in ("rpc", "full"):
+    if suite in ("rpc", "m4-acceptance", "full"):
         result.append(
             ("development", [bun, str(ROOT / "scripts/qualify-cef-development.ts"), str(app)])
         )
@@ -116,10 +122,12 @@ def commands(suite, bun, app):
                 ],
             )
         )
-    if suite == "rpc":
+    if suite in ("rpc", "m4-acceptance", "full"):
         result.append(
             ("session-reset", [bun, str(ROOT / "scripts/qualify-cef-session-reset.ts"), str(app)])
         )
+    if suite in ("m4-acceptance", "full"):
+        result.extend(commands("credentials", bun, app))
     if suite == "full":
         result += [
             (
@@ -134,6 +142,13 @@ def commands(suite, bun, app):
             ),
         ]
     return result
+
+
+def require_stage_prerequisites(suite, name, steps):
+    if name == "credentials" and suite != "credentials":
+        expected = [name for name, _ in commands("rpc", "bun", Path("app"))]
+        if [row["name"] for row in steps] != expected or not all(row["passed"] for row in steps):
+            raise ValueError("Credential qualification requires every ordinary M4 stage to pass")
 
 
 def execute(name, args, timeout=600):
@@ -224,6 +239,7 @@ def run(suite):
         reports["identity"] = identity
         write("identity.json", identity)
         for name, args in commands(suite, bun, app):
+            require_stage_prerequisites(suite, name, result["steps"])
             before = set((ROOT / ".bunly/m3" / name).glob("run-*/report.json"))
             code = execute(name, args)
             row = {"name": name, "exitCode": code, "passed": False}
@@ -239,10 +255,13 @@ def run(suite):
         if not all(step["passed"] for step in result["steps"]):
             raise ValueError("Native qualification failed; see per-scenario diagnostics")
         if suite == "full" and sys.platform != "darwin":
-            from report_m3_platform import validate
+            from report_m3_platform import REQUIRED, validate
 
             result["acceptance"] = validate(
-                target(), "standard", reports, expected_identity=("156.0.7", "156.0.8078.17")
+                target(),
+                "standard",
+                {name: reports[name] for name in REQUIRED},
+                expected_identity=("156.0.7", "156.0.8078.17"),
             )
         result["passed"] = True
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
@@ -278,7 +297,10 @@ def collect():
         if path.suffix not in (".json", ".log") or path.is_symlink() or not path.is_file():
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        text = re.sub(r"(?<![a-fA-F0-9])[a-fA-F0-9]{48}(?![a-fA-F0-9])", "[fixture-nonce]", text)
+        if path.suffix == ".json":
+            text = json.dumps(sanitize_report(json.loads(text)), indent=2) + "\n"
+        else:
+            text = NONCE.sub("[fixture-nonce]", text)
         path.write_text(text, encoding="utf-8")
     summary = EVIDENCE / "qualification.json"
     if os.environ.get("GITHUB_STEP_SUMMARY"):

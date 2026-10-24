@@ -383,6 +383,7 @@ pub(super) fn accept(args: &Value) -> Result<(), String> {
         return Err("Invalid cookie proof digest".into());
     }
     credentials::seal_verified(&probe)?;
+    credentials::Diagnostic::Admitted(&probe.policy).emit();
     STATE.with(|state| {
         let mut state = state.borrow_mut();
         state.credential_ready = true;
@@ -407,6 +408,9 @@ pub(super) fn discard(args: &Value) -> Result<(), String> {
             })
         {
             return Err("Credential proof retirement is not complete".into());
+        }
+        if let Some(proof) = state.retired_credential_probe.as_ref() {
+            credentials::Diagnostic::Unavailable(&proof.proof.policy).emit();
         }
         state.retired_credential_probe = None;
         state.credential_probe = None;

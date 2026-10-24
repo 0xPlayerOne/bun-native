@@ -3,8 +3,9 @@
 Native-bound IPC, scoped policy, explicit browser sessions and transport selection.
 
 **Scope:** M4 #18–#22, functional acceptance on the declared CEF profiles.
-**Delivery:** PR #103 is the final credential increment. M4 closes only after its
-current-head platform acceptance and squash merge; no failed check is overridden.
+**Delivery:** PR #103 merged as `25d0b5da999176dcf59bc873d44d39845b4c642a`;
+M4 and #18–#22 closed on October 24, 2026 after final-head platform acceptance.
+No failed check was overridden.
 **Boundary:** Not production-release approval, a complete security audit, or a
 claim that the independently tracked CEF shutdown intermittency has been fixed.
 
@@ -59,7 +60,7 @@ removal, not secure overwrite, key deletion, snapshot deletion or a guarantee of
 power-loss atomicity. Hostile same-user filesystem races remain outside the
 private-directory/cooperative-lock threat model.
 
-## Retained native checkpoint and final merge gate
+## Retained checkpoint and completed final acceptance
 
 The pinned engine is CEF 156.0.7 / Chromium 156.0.8078.17 with Bun 1.4.3.
 The [sanitized checkpoint record](../evidence/m4-credential-checkpoints.json)
@@ -71,14 +72,16 @@ adjacent native RPC/session, policy, network, paired-transport and storage-reset
 stages. Engine identity, exact source, report fingerprints and cleanup outcomes
 are retained. Source identity and input/prepared artifacts remained unchanged.
 
-That checkpoint is **not** substituted for the later final head. The maintained
-suite now adds an unavailable provider with an existing unsealed canary, requiring
-its seal/nonce to remain unchanged: **ten cases on each target**. Final acceptance
-requires the current head's normal validation and all three native jobs, exact
-native receipts, successful provider-fixture cleanup, and unchanged source and
-artifact inventories. The final PR #103 acceptance record identifies that head,
-its tested merge tree, hosted runs and report digests. Only after that gate passes
-may the PR, #20 and M4 be closed.
+That checkpoint is **not** substituted for the final ten-case acceptance.
+The [final acceptance manifest](../evidence/m4-final-acceptance.json) records
+implementation head `ecb4740773a14656341d7843933b875d3e388f4f`, tested merge
+source `45d3366d4c09b47e74393f23def5c91dcc531896`, merged commit `25d0b5d`,
+and workflow run `40063935689`. Their Git trees match. All three platforms passed
+ten credential cases, nine reset cases and the adjacent RPC, permission, network
+and functional transport stages. Provider cleanup and interrupted-proof continuity
+passed. All 40 non-skipped checks passed; eleven skips are not successes.
+The manifest retains exact report hashes, case names and macOS sampling gaps.
+It is a projection of retained execution, not a new run or a replacement of failures.
 
 Earlier Linux restart and Windows read-only-open failures remain failed records.
 The runtime fixes wait for actual cookie-visitor completion and release the
@@ -112,6 +115,8 @@ reload already exists. M7 implements the native OS adapters and integration
 surfaces. M8 owns distribution signing/notarization, update/migration behavior and
 broader release qualification. M9 owns controlled adoption/performance comparisons.
 
-Issue #92 still tracks intermittent native CEF teardown. No deadline extension,
+Historical issue #92 is closed in GitHub, but its retained evidence does not
+establish a causal fix for intermittent native CEF teardown. M5 #25 owns the
+supervision/diagnostic follow-up and #27 owns load/shutdown acceptance. No deadline extension,
 sandbox/security-cloning exemption or suppression converts that failure into
 success. The functional checkpoint is not a release-support declaration.

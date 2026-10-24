@@ -27,9 +27,13 @@ gh workflow run cef-runtime.yml --ref main -f platform=all -f suite=portable
 `portable` runs the frozen installation, TypeScript checks/build/tests, browser
 boundaries, and Python tests. `smoke` additionally builds the pinned native
 runtime and executes the complete prebuilt startup/rejection/lifecycle matrix.
-`full` also runs development-origin isolation and the four native fault cases,
-with explicit browser identity and OS isolation evidence. Windows/Linux full
-results must satisfy the existing platform-evidence validator.
+`m4-acceptance` runs native RPC, browser permissions, network/redirect/certificate
+policy, both functional transports, complete offline reset and real OS-provider
+qualification, in that order. Provider setup cannot run after an earlier failed
+stage. `full` includes all of M4 acceptance plus the four native fault cases and
+explicit OS isolation evidence. Both are restricted to disposable hosted workers;
+never spoof their guard on a personal credential store. The automatic PR lane uses
+the same `m4-acceptance` command map. See [suite/export semantics](native-acceptance-tooling.md).
 
 Each platform has a 60-minute job ceiling and the native execution step has a
 20-minute ceiling. There are no automatic retries or slower deadline fallbacks.
