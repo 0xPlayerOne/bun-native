@@ -168,3 +168,15 @@ fixture runs behind 96 pending ordinary requests. See
 
 This does not close #23–#27 or implement native-to-Bun event priority, a dedicated
 renderer bulk lane, process-tree ownership, or graphical load acceptance.
+
+## Native event output reservations
+
+The reverse private pipe now charges queued and writer-owned frames against
+shared byte/count bounds, with finite headroom for small native replies and
+lifecycle events. A read-only monitor survives sender closure without hiding an
+active blocked write. Existing FIFO order and consumer/RPC authority are unchanged.
+The ordinary budget admits the complete existing 128-packet pool after hexadecimal
+expansion; saturation remains explicit failure, never a dropped terminal stream.
+See [native output admission](native-output-admission.md). Schema-6 native RPC
+acceptance requires exercised output-budget diagnostics. Full renderer bulk-lane
+integration, global scheduling and descendant supervision remain open.

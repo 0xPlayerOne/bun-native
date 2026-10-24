@@ -35,7 +35,7 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 5,
+      schema: 6,
       controlAdmission: {
         ordinaryRequests: 96,
         ordinaryOverflowDenied: true,
@@ -44,6 +44,7 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
         controlAdmittedWhileFull: true,
         fifoPreserved: true,
         nativeBudgetBounded: true,
+        outputBudget: 'bounded-native-fifo-wire-reservations',
         finalSessions: 0,
         priorTaskReservationsReleased: true,
       },

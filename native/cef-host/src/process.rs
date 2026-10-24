@@ -1,18 +1,18 @@
 //! One application process. Pipe I/O never blocks CEF's UI thread.
 use serde_json::{json, Value};
 use std::{
-    io::{BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader, Read},
     process::{Child, Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{sync_channel, SyncSender},
         Condvar, Mutex, OnceLock,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 static CHILD: OnceLock<Mutex<Child>> = OnceLock::new();
-static OUTPUT: OnceLock<Mutex<Option<SyncSender<Value>>>> = OnceLock::new();
+static OUTPUT: OnceLock<Mutex<Option<crate::event_queue::EventSender>>> = OnceLock::new();
+static OUTPUT_MONITOR: OnceLock<crate::event_queue::EventMonitor> = OnceLock::new();
 static THREADS: OnceLock<Mutex<Vec<JoinHandle<()>>>> = OnceLock::new();
 static HANDSHAKE: OnceLock<(Mutex<bool>, Condvar)> = OnceLock::new();
 fn handshake() {
@@ -66,6 +66,12 @@ pub fn emit(value: Value) {
     if failed && !expected_exit() {
         crate::host::fail("Application event queue unavailable or full");
     }
+}
+pub fn output_diagnostics() -> crate::event_queue::Snapshot {
+    OUTPUT_MONITOR
+        .get()
+        .map(|monitor| monitor.snapshot())
+        .unwrap_or_default()
 }
 pub fn start() -> Result<(), String> {
     let paths = crate::PATHS.get().ok_or("missing runtime paths")?;
@@ -153,22 +159,17 @@ pub fn start() -> Result<(), String> {
             });
         }
     });
-    let (tx, rx) = sync_channel::<Value>(256);
+    let (tx, rx) = crate::event_queue::channel();
+    OUTPUT_MONITOR
+        .set(tx.monitor())
+        .map_err(|_| "output accounting already active")?;
     OUTPUT
         .set(Mutex::new(Some(tx)))
         .map_err(|_| "channel already active")?;
     let writer = thread::spawn(move || {
         // Blocking receipt has no fixed-rate idle timer. EOF closes the queue.
-        while let Ok(value) = rx.recv() {
-            let mut bytes = match serde_json::to_vec(&value) {
-                Ok(b) => b,
-                Err(_) => {
-                    crate::host::fail("Cannot serialize native event");
-                    break;
-                }
-            };
-            bytes.push(b'\n');
-            if input.write_all(&bytes).and_then(|_| input.flush()).is_err() {
+        while let Ok(frame) = rx.recv() {
+            if frame.write_to(&mut input).is_err() {
                 if !expected_exit() {
                     crate::host::fail("Bun input closed");
                 }

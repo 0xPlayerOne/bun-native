@@ -12,7 +12,7 @@ function fixture() {
   // Synthetic parser inputs, explicitly not a native execution claim.
   const rpc = {
     event: 'bunly.native.rpc',
-    schema: 5,
+    schema: 6,
     controlAdmission: {
       ordinaryRequests: 96,
       ordinaryOverflowDenied: true,
@@ -21,6 +21,7 @@ function fixture() {
       controlAdmittedWhileFull: true,
       fifoPreserved: true,
       nativeBudgetBounded: true,
+      outputBudget: 'bounded-native-fifo-wire-reservations',
       finalSessions: 0,
       priorTaskReservationsReleased: true,
     },
@@ -114,8 +115,9 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
     acceptNativeRpc({ ...complete, stderr: [...complete.stderr, complete.stderr[1]!] })
   )
   for (const change of [
-    { schema: 4 },
+    { schema: 5 },
     { controlAdmission: undefined },
+    { controlAdmission: { ...rpc.controlAdmission, outputBudget: undefined } },
     { controlAdmission: { ...rpc.controlAdmission, controlAdmittedWhileFull: false } },
     { controlAdmission: { ...rpc.controlAdmission, controlCompleted: false } },
     { controlAdmission: { ...rpc.controlAdmission, fifoPreserved: false } },
