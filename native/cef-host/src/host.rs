@@ -61,6 +61,7 @@ struct HostState {
     rpc_deliveries: rpc_authority::Deliveries,
     policy: capability_policy::Policy,
     credential_probe: Option<u64>,
+    retired_credential_probe: Option<credential_callbacks::RetiredProbe>,
     credential_ready: bool,
 }
 #[path = "credential_callbacks.rs"]
@@ -628,7 +629,12 @@ wrap_task! {
 fn finalize_sessions() {
     let sessions = STATE.with(|state| {
         let mut state = state.borrow_mut();
-        if state.sessions.values().any(|record| record.busy) {
+        if state.sessions.values().any(|record| record.busy)
+            || state
+                .retired_credential_probe
+                .as_ref()
+                .is_some_and(|proof| !proof.released)
+        {
             return None;
         }
         Some(
@@ -765,7 +771,7 @@ wrap_completion_callback! {
     struct ContextClosed { id: u64 }
     impl CompletionCallback { fn on_complete(&self) {
         let record = STATE.with(|s| { let mut state=s.borrow_mut();
-            if state.credential_probe==Some(self.id) {state.credential_probe=None;state.credential_ready=false;}
+            if state.credential_probe==Some(self.id) {state.credential_probe=None;state.retired_credential_probe=None;state.credential_ready=false;}
             state.sessions.remove(&self.id)
         });
         if let Some(mut record) = record {

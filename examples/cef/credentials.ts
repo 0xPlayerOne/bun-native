@@ -130,7 +130,7 @@ export default async function credentials(backend: CefBackend): Promise<void> {
     const native = (await backend.nativeDiagnostics()) as Record<string, unknown>
     assert.equal(native['sessions'], 0)
     assert.equal(native['views'], 0)
-    assert.equal(native['credentialProbeContexts'], 1)
+    assert.equal(native['credentialProbeContexts'], 0)
     assert.equal(native['credentialProviderReady'], true)
     assert.equal(backend.diagnostics().listeners, 0)
     console.error(

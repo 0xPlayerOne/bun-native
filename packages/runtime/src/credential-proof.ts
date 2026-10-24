@@ -14,7 +14,7 @@ const APPLICATION =
   /^[a-z][a-z0-9]*(?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z][a-z0-9]*(?:[a-z0-9-]*[a-z0-9])?)+$/
 interface Proof {
   schema: 1
-  status: 'flushed'
+  status: 'flushed-and-retired'
   provider: 'macos-keychain' | 'windows-dpapi' | 'linux-secret-service'
   applicationId: string
   profilePath: string
@@ -37,6 +37,7 @@ type ProofStage =
   | 'database-path'
   | 'database-sidecar'
   | 'database-open'
+  | 'database-configure'
   | 'database-version'
   | 'cookie-record'
   | 'ciphertext-envelope'
@@ -74,7 +75,7 @@ function proofValue(value: unknown, root: string, platform: string): Proof {
     !provider ||
     p['provider'] !== provider ||
     p['schema'] !== 1 ||
-    p['status'] !== 'flushed' ||
+    p['status'] !== 'flushed-and-retired' ||
     typeof p['applicationId'] !== 'string' ||
     p['applicationId'].length > 128 ||
     !APPLICATION.test(p['applicationId']) ||
@@ -187,6 +188,7 @@ export async function verifyCookieProof(
     const db = new Database(path, { readonly: true, create: false, strict: true })
     let encrypted: Uint8Array
     try {
+      stage = 'database-configure'
       db.exec('PRAGMA query_only=ON; PRAGMA trusted_schema=OFF; PRAGMA busy_timeout=0;')
       stage = 'database-version'
       const version = db

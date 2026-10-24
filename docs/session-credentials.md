@@ -101,3 +101,20 @@ errors, private paths, cookie values or provider secrets. The original Linux
 restart admission failure and Windows initial admission failure remain retained
 until current-head hosted execution establishes the corrected behavior. No
 personal credential store is used for local validation.
+
+## Retiring the proof context before disk verification
+
+Chromium's Windows cookie database uses an exclusive OS file handle. Read-only
+SQLite verification must not disable this lock, use an immutable/raw-file bypass,
+or copy a live database. After native canary readback and flush, Bunly closes
+connections, releases the hidden CEF context and its profile keepalive, and
+crosses the native UI/IO retirement sequence before returning the proof receipt.
+Only metadata survives; the application root/profile kernel locks remain held.
+Admission requires the exact retired receipt and an ordinary read-only SQLite
+open. Any remaining lock or failed open still rejects admission. No sleep,
+operation retry, provider override or larger request deadline is introduced.
+
+The preceding run passed all nine provider cases on macOS and Linux, while
+Windows failed at read-only database open. Those results remain retained as
+platform-specific evidence, not a completed three-platform qualification. Current
+retirement behavior must pass all supported targets before merge.

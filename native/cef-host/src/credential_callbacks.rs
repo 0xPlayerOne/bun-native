@@ -210,41 +210,145 @@ wrap_task! {
     struct ProbeCompleted { id:u64, valid:bool, reason:String }
     impl Task { fn execute(&self) { finish(self.id,self.valid,&self.reason); } }
 }
+/// Metadata only: no CEF references survive into persisted-proof verification.
+/// ProfileRoot retains the native root/profile locks through CEF shutdown.
+pub(super) struct RetiredProbe {
+    id: u64,
+    request: Option<u64>,
+    proof: Probe,
+    pub(super) released: bool,
+    reason: String,
+}
+
+impl RetiredProbe {
+    fn admission_proof(&self, id: u64) -> Result<Probe, &'static str> {
+        if self.id != id || !self.released || self.request.is_some() {
+            return Err("Credential proof context is not retired");
+        }
+        if !self.proof.native_verified {
+            return Err("Native cookie proof was not verified");
+        }
+        Ok(self.proof.clone())
+    }
+}
+
 fn finish(id: u64, valid: bool, reason: &str) {
-    let result = STATE.with(|state| {
+    let context = STATE.with(|state| {
         let mut state = state.borrow_mut();
         let record = state.sessions.get_mut(&id)?;
         if !record.internal_credential {
             return None;
         }
         let request = record.creating.take()?;
+        let mut proof = record.credential_proof.clone()?;
+        proof.native_verified = valid;
         record.busy = false;
-        let probe = record.credential_proof.as_mut()?;
-        probe.native_verified = valid;
-        Some((request, probe.clone()))
+        record.disposing = Some(0);
+        record.network.retire();
+        let context = record.context.clone();
+        state.retired_credential_probe = Some(RetiredProbe {
+            id,
+            request: Some(request),
+            proof,
+            released: false,
+            reason: reason.into(),
+        });
+        Some(context)
     });
-    if let Some((request, probe)) = result {
+    let Some(context) = context else {
+        return;
+    };
+    // Chromium protects its Windows cookie database with an exclusive OS handle.
+    // Preserve that protection: retire our hidden context before SQLite access.
+    context.clear_scheme_handler_factories();
+    let mut closed = ProbeContextClosed::new(id);
+    context.close_all_connections(Some(&mut closed));
+}
+
+fn context_closed(id: u64) {
+    let record = STATE.with(|state| state.borrow_mut().sessions.remove(&id));
+    if let Some(mut record) = record {
+        drop(record.context);
+        if let Some(profile) = record.profile.take() {
+            session::retire(profile);
+        }
+    }
+    // CEF posts profile keepalive release/destruction to UI; destruction then
+    // posts network cleanup. Tasks below carry IDs, never retired CEF pointers.
+    let mut task = ProbeReleaseUi::new(id);
+    if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+        fail("Credential context retirement could not be scheduled");
+    }
+}
+
+fn released(id: u64) {
+    let completed = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let retired = state.retired_credential_probe.as_mut()?;
+        if retired.id != id || retired.released {
+            return None;
+        }
+        retired.released = true;
+        Some((
+            retired.request.take()?,
+            retired.proof.clone(),
+            retired.reason.clone(),
+        ))
+    });
+    if let Some((request, probe, reason)) = completed {
         if QUITTING.load(Ordering::SeqCst) {
             error(request, "Host stopped during credential qualification");
-        } else if valid {
+        } else if probe.native_verified {
             reply(
                 request,
                 json!({"ready":false,"id":id,"proof":{
                     "schema":1,"provider":probe.policy.provider.name(),"applicationId":probe.policy.application_id,
                     "profilePath":probe.path,"nonce":probe.nonce,"origin":credentials::PROBE_ORIGIN,
-                    "cookieName":credentials::PROBE_COOKIE,"tag":probe.policy.provider.tag(),"status":"flushed"
+                    "cookieName":credentials::PROBE_COOKIE,"tag":probe.policy.provider.tag(),"status":"flushed-and-retired"
                 }}),
             );
         } else {
             reply(
                 request,
-                json!({"ready":false,"id":id,"proof":{"schema":1,"status":"unavailable","reason":reason}}),
+                json!({"ready":false,"id":id,"proof":{
+                    "schema":1,"status":"unavailable","reason":reason
+                }}),
             );
         }
     }
     if FINALIZING.load(Ordering::SeqCst) {
         finalize_sessions();
     }
+}
+
+wrap_completion_callback! {
+    struct ProbeContextClosed { id:u64 }
+    impl CompletionCallback { fn on_complete(&self) {
+        let mut task=ProbeRetireContext::new(self.id);
+        if post_task(ThreadId::UI,Some(&mut task))==0 { fail("Credential context release unavailable"); }
+    } }
+}
+wrap_task! {
+    struct ProbeRetireContext { id:u64 }
+    impl Task { fn execute(&self) { context_closed(self.id); } }
+}
+wrap_task! {
+    struct ProbeReleaseUi { id:u64 }
+    impl Task { fn execute(&self) {
+        let mut task=ProbeReleaseIo::new(self.id);
+        if post_task(ThreadId::IO,Some(&mut task))==0 { fail("Credential IO retirement fence unavailable"); }
+    } }
+}
+wrap_task! {
+    struct ProbeReleaseIo { id:u64 }
+    impl Task { fn execute(&self) {
+        let mut task=ProbeReleased::new(self.id);
+        if post_task(ThreadId::UI,Some(&mut task))==0 { fail("Credential UI retirement fence unavailable"); }
+    } }
+}
+wrap_task! {
+    struct ProbeReleased { id:u64 }
+    impl Task { fn execute(&self) { released(self.id); } }
 }
 
 pub(super) fn accept(args: &Value) -> Result<(), String> {
@@ -254,22 +358,11 @@ pub(super) fn accept(args: &Value) -> Result<(), String> {
         if state.credential_ready || state.credential_probe != Some(id) {
             return Err("Credential proof is stale");
         }
-        let record = state
-            .sessions
-            .get(&id)
-            .ok_or("Credential proof context unavailable")?;
-        if !record.internal_credential
-            || record.creating.is_some()
-            || record.busy
-            || record.disposing.is_some()
-        {
-            return Err("Credential proof context is not ready");
-        }
-        record
-            .credential_proof
-            .clone()
-            .filter(|proof| proof.native_verified)
-            .ok_or("Native cookie proof was not verified")
+        state
+            .retired_credential_probe
+            .as_ref()
+            .ok_or("Credential proof receipt unavailable")?
+            .admission_proof(id)
     })?;
     if string(args, "nonce")? != probe.nonce
         || string(args, "tag")? != probe.policy.provider.tag()
@@ -290,27 +383,81 @@ pub(super) fn accept(args: &Value) -> Result<(), String> {
         return Err("Invalid cookie proof digest".into());
     }
     credentials::seal_verified(&probe)?;
-    STATE.with(|state| state.borrow_mut().credential_ready = true);
+    STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        state.credential_ready = true;
+        state.credential_probe = None;
+        state.retired_credential_probe = None;
+    });
     Ok(())
 }
 
 pub(super) fn discard(args: &Value) -> Result<(), String> {
     let id = number(args, "id")?;
-    let context = STATE.with(|state| {
+    STATE.with(|state| {
         let mut state = state.borrow_mut();
         if state.credential_ready || state.credential_probe != Some(id) {
-            return Err("Credential proof cannot be discarded");
+            return Err("Credential proof cannot be discarded".into());
         }
-        let record = state
-            .sessions
-            .get_mut(&id)
-            .ok_or("Credential proof context unavailable")?;
-        if record.creating.is_some() || record.busy || record.disposing.is_some() {
-            return Err("Credential proof is busy");
+        if !state
+            .retired_credential_probe
+            .as_ref()
+            .is_some_and(|retired| {
+                retired.id == id && retired.released && retired.request.is_none()
+            })
+        {
+            return Err("Credential proof retirement is not complete".into());
         }
-        record.disposing = Some(0);
-        Ok(record.context.clone())
-    })?;
-    begin_dispose_flush(id, context);
-    Ok(())
+        state.retired_credential_probe = None;
+        state.credential_probe = None;
+        Ok(())
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn retired() -> RetiredProbe {
+        RetiredProbe {
+            id: 1,
+            request: Some(9),
+            released: false,
+            reason: "readback".into(),
+            proof: Probe {
+                path: std::path::PathBuf::from("unused"),
+                policy: credentials::Policy {
+                    application_id: "dev.bunly.test".into(),
+                    provider: credentials::Provider::WindowsDpapi,
+                    shared_key_scope: None,
+                },
+                nonce: "a".repeat(64),
+                was_ready: false,
+                native_verified: true,
+            },
+        }
+    }
+    #[test]
+    fn admission_requires_retirement_and_completion_of_the_exact_native_receipt() {
+        let mut proof = retired();
+        assert!(proof.admission_proof(1).is_err());
+        proof.released = true;
+        assert!(proof.admission_proof(1).is_err());
+        proof.request = None;
+        assert!(proof.admission_proof(1).is_ok());
+        assert!(proof.admission_proof(2).is_err());
+        proof.proof.native_verified = false;
+        assert!(proof.admission_proof(1).is_err());
+    }
+    #[test]
+    fn metadata_retirement_does_not_allow_an_earlier_or_pending_receipt() {
+        let mut proof = retired();
+        proof.released = true;
+        proof.request = None;
+        assert!(proof.admission_proof(1).is_ok());
+        proof.released = false;
+        assert!(proof.admission_proof(1).is_err());
+        proof.released = true;
+        proof.request = Some(10);
+        assert!(proof.admission_proof(1).is_err());
+    }
 }

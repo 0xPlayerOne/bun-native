@@ -69,7 +69,7 @@ async function fixture(platform = 'darwin') {
     )
   const proof = {
     schema: 1,
-    status: 'flushed',
+    status: 'flushed-and-retired',
     provider:
       platform === 'darwin'
         ? 'macos-keychain'
@@ -404,6 +404,17 @@ test('credential failures identify only a bounded stage, never underlying filesy
         return true
       }
     )
+  } finally {
+    await f.close()
+  }
+})
+
+test('a flushed but live native proof context is not a retired verification receipt', async () => {
+  const f = await fixture()
+  try {
+    await assert.rejects(verifyCookieProof({ ...f.proof, status: 'flushed' }, f.root, 'darwin'), {
+      code: 'UNSUPPORTED_CAPABILITY',
+    })
   } finally {
     await f.close()
   }
