@@ -143,6 +143,48 @@ class HostedQualificationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 hosted.require_stage_prerequisites("full", "credentials", failed)
 
+    def test_provider_packages_are_delayed_and_forbidden_on_a_workstation(self):
+        workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertNotIn("apt-get install -y gnome-keyring", workflow)
+        for platform in ("darwin", "win32"):
+            with (
+                patch.object(hosted.sys, "platform", platform),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                hosted.prepare_credential_prerequisites()
+                run.assert_not_called()
+        with (
+            patch.object(hosted.sys, "platform", "linux"),
+            patch.object(hosted, "standard_user", return_value=True),
+            patch.dict("os.environ", {"GITHUB_ACTIONS": "false", "RUNNER_ENVIRONMENT": "local"}),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            with self.assertRaises(ValueError):
+                hosted.prepare_credential_prerequisites()
+            run.assert_not_called()
+        with (
+            patch.object(hosted.sys, "platform", "linux"),
+            patch.object(hosted, "standard_user", return_value=True),
+            patch.dict(
+                "os.environ", {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted"}
+            ),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            hosted.prepare_credential_prerequisites()
+            run.assert_called_once_with(
+                [
+                    "sudo",
+                    "apt-get",
+                    "install",
+                    "-y",
+                    "gnome-keyring",
+                    "libsecret-tools",
+                    "libglib2.0-bin",
+                ],
+                check=True,
+                timeout=180,
+            )
+
     def test_stale_or_duplicate_reports_never_pass(self):
         with (
             tempfile.TemporaryDirectory() as directory,

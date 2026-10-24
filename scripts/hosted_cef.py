@@ -151,6 +151,25 @@ def require_stage_prerequisites(suite, name, steps):
             raise ValueError("Credential qualification requires every ordinary M4 stage to pass")
 
 
+def prepare_credential_prerequisites():
+    # Installing Secret Service before ordinary tests permits D-Bus activation
+    # of an unowned prompting daemon. Keep installation after all ordinary gates,
+    # immediately before the explicit fixture starts its isolated provider.
+    if sys.platform != "linux":
+        return
+    if (
+        os.environ.get("GITHUB_ACTIONS") != "true"
+        or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+        or not standard_user()
+    ):
+        raise ValueError("Provider prerequisites require a disposable hosted standard user")
+    subprocess.run(
+        ["sudo", "apt-get", "install", "-y", "gnome-keyring", "libsecret-tools", "libglib2.0-bin"],
+        check=True,
+        timeout=180,
+    )
+
+
 def execute(name, args, timeout=600):
     destination = EVIDENCE / (name + ".log")
     with destination.open("w", encoding="utf-8") as output:
@@ -240,6 +259,8 @@ def run(suite):
         write("identity.json", identity)
         for name, args in commands(suite, bun, app):
             require_stage_prerequisites(suite, name, result["steps"])
+            if name == "credentials":
+                prepare_credential_prerequisites()
             before = set((ROOT / ".bunly/m3" / name).glob("run-*/report.json"))
             code = execute(name, args)
             row = {"name": name, "exitCode": code, "passed": False}

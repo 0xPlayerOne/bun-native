@@ -8,7 +8,9 @@ Automatic PR jobs and manual `m4-acceptance` use the same Python command map.
 and `credentials` remain explicitly narrower diagnostic selections.
 
 The hosted workflow prepares a contributor artifact, a standard-user account and
-Linux display/session-bus/provider prerequisites. `bun run qualify:m4` invokes
+Linux display/session-bus prerequisites. Linux provider packages are installed
+by the guarded hosted orchestrator only after ordinary acceptance succeeds; early
+installation can let D-Bus activate an unrelated prompting keyring daemon. `bun run qualify:m4` invokes
 that suite on such an already prepared disposable hosted environment; it is not
 a personal-workstation command. Credential fixtures keep their independent
 GitHub-hosted standard-user guard. Do not spoof it. No personal Keychain or user
@@ -44,3 +46,15 @@ supervision and diagnostic follow-up; #27 must retain all failed load/shutdown
 trials and cannot claim reliability from a later successful run. This risk does
 not block independent stream protocol work. Current-engine performance profiling
 remains separate from historical CEF154 transport distributions.
+
+## Retained initial unified-suite failure
+
+The first #104 Linux run (`40073776822`, head `d18310f`) failed the real storage
+seed before reset or credential qualification. The log also recorded automatic
+Secret Service activation and cancelled prompts after provider packages had been
+installed early. The credential prerequisite gate refused to continue. Restore the
+previous isolation ordering: install provider packages only after every ordinary
+M4 stage passes, immediately before the fixture creates its private provider.
+This corrects test-environment ordering, not application credential policy. The
+original failed report is retained; fresh platform execution must qualify this
+correction. No timeout, browser assertion or provider guard is weakened.
