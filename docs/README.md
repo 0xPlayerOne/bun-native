@@ -81,3 +81,6 @@ separate Python/Rust contributor formatters.
 - [Complete session storage reset](session-storage-reset.md): explicit offline whole-profile clearing and interruption recovery.
 
 [M4 completion](m4-completion.md) maps native IPC, policy, sessions, credential-provider acceptance and transport selection to the declared functional boundary.
+
+[M5 progress](m5-progress.md) records bounded callback-source integration and
+actual pinned Bun PTY qualification, without claiming native renderer or supervisor completion.

@@ -1,7 +1,7 @@
 # Disposable hosted-runner setup only. Never changes a developer workstation.
 [CmdletBinding()]
 param(
-    [ValidateSet('smoke', 'rpc', 'full', 'credentials')][string]$Suite = 'full',
+    [ValidateSet('smoke', 'rpc', 'full', 'credentials', 'pty')][string]$Suite = 'full',
     [switch]$Worker,
     [string]$Python,
     [string]$Bun
@@ -33,7 +33,11 @@ if ($Worker) {
     $env:GIT_CONFIG_COUNT = '1'
     $env:GIT_CONFIG_KEY_0 = 'safe.directory'
     $env:GIT_CONFIG_VALUE_0 = $root.Replace('\', '/')
-    & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite
+    if ($Suite -eq 'pty') {
+        & $Bun (Join-Path $PSScriptRoot 'qualify-bun-pty.ts')
+    } else {
+        & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite
+    }
     exit $LASTEXITCODE
 }
 if (-not $admin) { throw 'Creating the disposable standard account requires the hosted build administrator' }

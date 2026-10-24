@@ -126,3 +126,13 @@ independent typed RPC lane usable, then drains and verifies 1 MiB of fixture byt
 These tests do not qualify CEF, WKWebView, WebView2, kernel wakeups, native process
 cleanup, real PTYs, browser permissions or comparative performance. Actions remain
 unavailable; no runner dispatch is required for the listed local commands.
+
+## Push-only producer adapters
+
+The runtime-only `CallbackStreamSource` feeds this writer from bounded callback
+sources. It reserves its own additional capacity from a shared pool, owns exact
+chunk snapshots, and stops an unpausable producer explicitly on overload. Source
+EOF is distinct from process exit; `drained` is distinct from OS cleanup. The
+[M5 increment](m5-progress.md) qualifies actual Bun PTY callback bytes through the
+portable stream path. It does not yet grant native renderer authority or implement
+xterm, a full terminal service, descendant supervision or reconnect.
