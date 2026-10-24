@@ -121,11 +121,11 @@ class HostedQualificationTests(unittest.TestCase):
                 self.assertTrue(m4[0][1][1].endswith("qualify-cef-rpc.ts"))
                 self.assertEqual(m4[-1][0], "credentials")
 
-    def test_automatic_and_manual_workflows_use_the_same_m4_selection(self):
+    def test_automatic_and_manual_workflows_use_full_with_faults_before_providers(self):
         workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
         self.assertIn("options: [portable, smoke, full, m4-acceptance]", workflow)
-        self.assertIn("run --suite m4-acceptance", workflow)
-        self.assertIn("-Suite m4-acceptance", workflow)
+        self.assertIn("run --suite full", workflow)
+        self.assertIn("-Suite full", workflow)
         self.assertNotIn("run --suite rpc", workflow)
         windows = (hosted.ROOT / "scripts/hosted-windows.ps1").read_text()
         self.assertIn("'m4-acceptance'", windows)
