@@ -63,6 +63,12 @@ impl NetworkPolicy {
         }
         Ok(url.to_string())
     }
+    #[cfg(feature = "rpc-qualification")]
+    pub fn is_local_only_fixture(&self) -> bool {
+        self.origins.is_empty()
+            && self.development.is_none()
+            && !self.retired.load(Ordering::Acquire)
+    }
     pub fn retire(&self) {
         self.retired.store(true, Ordering::Release);
     }
@@ -93,6 +99,23 @@ fn valid_origin(value: &str) -> bool {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[cfg(feature = "rpc-qualification")]
+    #[test]
+    fn loopback_fixture_cannot_use_remote_development_or_retired_contexts() {
+        let local = NetworkPolicy::new(None, None).unwrap();
+        assert!(local.is_local_only_fixture());
+        local.retire();
+        assert!(!local.is_local_only_fixture());
+        assert!(!NetworkPolicy::new(None, Some("http://127.0.0.1:43111"))
+            .unwrap()
+            .is_local_only_fixture());
+        assert!(!NetworkPolicy::new(
+            Some(&json!({"allowedOrigins":["https://remote.invalid"]})),
+            None
+        )
+        .unwrap()
+        .is_local_only_fixture());
+    }
     #[test]
     fn exact_origins_are_bounded_and_not_urls_aliases_or_prefixes() {
         for origin in [

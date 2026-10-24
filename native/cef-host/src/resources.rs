@@ -31,6 +31,10 @@ fn loopback_csp(port: u16) -> Result<String, &'static str> {
     ))
 }
 #[cfg(feature = "rpc-qualification")]
+pub(crate) fn rpc_loopback_configured() -> bool {
+    LOOPBACK_CSP.get().is_some()
+}
+#[cfg(feature = "rpc-qualification")]
 pub(crate) fn configure_rpc_loopback(port: u16) -> Result<(), &'static str> {
     LOOPBACK_CSP
         .set(loopback_csp(port)?)

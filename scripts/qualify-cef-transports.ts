@@ -61,6 +61,11 @@ const paths = [
   'native/cef-host/src/resources.rs',
   'native/cef-host/src/rpc_transport_qualification.rs',
   'benchmarks/lib/cef-transport-acceptance.ts',
+  'benchmarks/lib/cef-acceptance.ts',
+  'benchmarks/lib/observed-command.ts',
+  'benchmarks/lib/native-diagnostic-events.json',
+  'benchmarks/foundation/native-shutdown.ts',
+  'native/cef-host/src/network_policy.rs',
   'benchmarks/rpc-transport-comparison.ts',
   'scripts/observe-process.py',
   'scripts/kernel_counters.py',
@@ -104,6 +109,7 @@ const report: Record<string, unknown> = {
     'Kernel measurements use qualified provider semantics and adjacent matched identities only; gaps remain unavailable, not zero.',
     'CPU throttling is the actual fixed Chromium CDP method with verified native completion, not a claim of physical CPU/hardware input equivalence.',
     'Functional/hosted observations are not quiet-machine performance or production release qualification.',
+    'Loopback uses contributor-only top-origin reachability in a local-only ephemeral fixture; native socket-owner authentication remains separate. No shipping permission support is implied.',
     'Historical intermittent native shutdown failures are not erased by passing launches.',
   ],
   copyAccounting: {
@@ -259,7 +265,12 @@ try {
 } catch (error) {
   report['failure'] = error instanceof Error ? error.message : String(error)
 } finally {
-  report['sourceAfter'] = sourceIdentity(root)
+  const after = sourceIdentity(root)
+  report['sourceAfter'] = after
+  if (!functional && (!after.clean || after.commit !== before.commit)) {
+    report.passed = false
+    report['failure'] = 'Committed source changed during comparison'
+  }
   report['sourceHashesAfter'] = await fingerprints()
   if (JSON.stringify(report['sourceHashes']) !== JSON.stringify(report['sourceHashesAfter'])) {
     report.passed = false

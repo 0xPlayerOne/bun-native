@@ -58,8 +58,9 @@ export function acceptNativeTransport(
     'nativeConfirmation',
     'fragmentBudget',
     'idleProfile',
+    'networkPermission',
   ])
-  assert.equal(record['schema'], 1)
+  assert.equal(record['schema'], 2)
   assert.equal(record['passed'], true)
   assert.equal(record['candidate'], candidate)
   assert.deepEqual(record['workload'], RPC_TRANSPORT_WORKLOAD)
@@ -86,6 +87,16 @@ export function acceptNativeTransport(
     accepted: candidate === 'authenticated-loopback' ? 2 : 0,
     rejected: candidate === 'authenticated-loopback' ? 1 : 0,
   })
+  const permission = object(record['networkPermission'])
+  keys(permission, ['scope', 'observedGrants'])
+  assert.equal(
+    permission['scope'],
+    candidate === 'authenticated-loopback'
+      ? 'contributor-only-top-origin-reachability'
+      : 'not-requested'
+  )
+  const grants = bounded(permission['observedGrants'], 8)
+  assert.ok(candidate === 'authenticated-loopback' ? grants > 0 : grants === 0)
   const metrics = object(record['metrics'])
   keys(metrics, ['handoffMs', 'structuredMs', 'binaryMs', 'cancellationMs', 'throttledMs'])
   const peaks = object(record['queuePeaks'])

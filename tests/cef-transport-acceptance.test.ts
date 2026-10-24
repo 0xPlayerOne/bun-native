@@ -9,7 +9,8 @@ import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
 function fixture() {
   const evidence = {
     event: 'bunly.native.transport',
-    schema: 1,
+    schema: 2,
+    networkPermission: { scope: 'contributor-only-top-origin-reachability', observedGrants: 1 },
     passed: true,
     candidate: 'authenticated-loopback',
     workload: RPC_TRANSPORT_WORKLOAD,
@@ -75,6 +76,10 @@ test('transport acceptance requires all real native work, throttle completion, d
   for (const change of [
     { passed: false },
     { schema: 0 },
+    { schema: 1 },
+    { networkPermission: { scope: 'production', observedGrants: 1 } },
+    { networkPermission: { scope: 'contributor-only-top-origin-reachability', observedGrants: 0 } },
+    { networkPermission: { scope: 'contributor-only-top-origin-reachability', observedGrants: 9 } },
     { candidate: 'native-mediated' },
     { extra: true },
     { validation: { ...f.evidence.validation, navigationRevocation: false } },
@@ -203,5 +208,26 @@ test('idle metrics reject contradictory availability, empty matches and duplicat
       metrics: [{ ...metric, phase: 'startup' }],
     }).status,
     'unavailable'
+  )
+})
+
+test('transport qualification uses complete native receipts despite noisy stderr tails', () => {
+  const f = fixture(),
+    report = f.withEvidence(f.evidence)
+  const retained = {
+    ...report,
+    nativeDiagnostics: report.stderr,
+    stderr: ['ordinary Chromium noise'],
+  }
+  assert.doesNotThrow(() => acceptNativeTransport(retained, 'authenticated-loopback', 0))
+  assert.throws(() =>
+    acceptNativeTransport({ ...report, nativeDiagnostics: [] }, 'authenticated-loopback', 0)
+  )
+  assert.throws(() =>
+    acceptNativeTransport(
+      { ...retained, nativeDiagnostics: [...report.stderr, report.stderr[1]!] },
+      'authenticated-loopback',
+      0
+    )
   )
 })

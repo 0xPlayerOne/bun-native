@@ -267,8 +267,9 @@ report the prepared-app command separately. Cross-platform release qualification
 performance selection (#22), remaining session capabilities, and CEF teardown issue #92
 remain separate.
 
-The authenticated loopback candidate from #94 remains separate. Native-private
-credential/CSP handoff and the paired CEF comparison remain open under #22.
+The authenticated loopback candidate from #94 now has a native-private
+credential/CSP handoff and a contributor-only paired CEF qualifier. The selected
+application baseline remains native-mediated; see ADR 0003 for evidence and limits.
 
 ## MessagePort reference transport
 
@@ -363,8 +364,29 @@ receipt. This is not a streaming or zero-copy API.
 `serveLoopbackRpc` and `waitForCefLoopbackTransport` are internal experimental
 contributor integrations, not supported CEF application transports. Ordinary
 native builds reject their configuration. They implement an additional socket
-challenge confirmed through the exact native binding, but real CEF execution is
-blocked earlier by app-scheme loopback permission. The standalone Bun candidate
-and real-socket tests do not substitute for browser acceptance. See
-[ADR 0003](decisions/0003-transport-selection.md) for failed controls, the selected
-baseline, maintained profiling commands and the remaining comparison criteria.
+challenge confirmed through the exact native binding. The contributor qualifier
+adds a separate, explicitly recorded top-origin network-reachability decision for
+its fixed packaged fixture, local-only ephemeral context, and configured numeric
+CSP endpoint. This is not requesting-frame permission or a production browser
+permission API. Same-origin children receive no native RPC binding, and a second
+valid main frame cannot confirm another document's stolen socket credential.
+
+The original no-grant control fails before WebSocket upgrade and remains recorded.
+The paired fixture does not change global content settings, disable browser
+security, or grant another permission type. Ordinary builds reject loopback setup;
+normal application startup opens no listener. The native bridge remains active for
+revocation throughout a loopback connection. See
+[ADR 0003](decisions/0003-transport-selection.md) for the selected baseline,
+maintained profiling commands and comparative qualification boundaries.
+
+## Bounded whole-run qualification receipts
+
+Process observation retains native qualification events separately from the last
+20 stderr lines. The exact shared event-name allowlist excludes arbitrary page
+payloads and transport credentials. Retention is capped at 128 records, 16 KiB per
+record and 64 KiB in total, inside the existing 2 MiB output bound. Exhaustion
+fails the observation; it never evicts a prior failure or deduplicates repeated
+receipts. New observations use this complete retained stream for native event and
+ordered shutdown acceptance. Legacy reports without the field continue to use
+their historical tails, so missing old evidence remains missing. An empty retained
+stream cannot be repaired by selecting more favorable tail events.

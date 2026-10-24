@@ -44,6 +44,43 @@ pub(crate) fn allowed_fixture(value: &str, rate: i32) -> bool {
     })
 }
 
+/// Fixture network reachability is top-origin scoped, not requester-frame
+/// authorization. The host separately requires a live native binding, local-only
+/// ephemeral context and explicitly configured endpoint. Socket admission still
+/// requires proof through that binding; this is not a production permission API.
+pub(crate) fn loopback_fixture_request(origin: &str, url: &str, bits: u32) -> bool {
+    if !matches!(origin, "app://ui" | "app://ui/")
+        || i64::from(bits) != i64::from(PermissionRequestTypes::LOOPBACK_NETWORK.get_raw())
+        || !allowed_fixture(url, 1)
+    {
+        return false;
+    }
+    let Ok(url) = url::Url::parse(url) else {
+        return false;
+    };
+    if url.fragment().is_some() {
+        return false;
+    }
+    let parameters = url.query_pairs().collect::<Vec<_>>();
+    parameters.len() == 2
+        && parameters
+            .iter()
+            .filter(|(key, value)| key == "candidate" && value == "authenticated-loopback")
+            .count()
+            == 1
+        && parameters
+            .iter()
+            .filter(|(key, value)| {
+                key == "role"
+                    && matches!(
+                        value.as_ref(),
+                        "main" | "revoke" | "attack-owner" | "attack-foreign"
+                    )
+            })
+            .count()
+            == 1
+}
+
 struct Pending {
     request: u64,
     rate: i32,
@@ -177,6 +214,44 @@ pub fn close() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn loopback_network_fixture_never_confuses_reachability_with_other_permissions() {
+        let mask = u32::try_from(i64::from(
+            PermissionRequestTypes::LOOPBACK_NETWORK.get_raw(),
+        ))
+        .unwrap();
+        let url = "app://ui/transport.html?candidate=authenticated-loopback&role=main";
+        assert!(loopback_fixture_request("app://ui", url, mask));
+        assert!(loopback_fixture_request("app://ui/", url, mask));
+        for origin in [
+            "null",
+            "app://ui/extra",
+            "app://foreign",
+            "https://ui",
+            "app://user@ui",
+            "app://ui:123",
+        ] {
+            assert!(!loopback_fixture_request(origin, url, mask));
+        }
+        for other in [
+            "app://ui/transport.html",
+            "app://ui/other.html?candidate=authenticated-loopback&role=main",
+            "app://ui/transport.html?candidate=native-mediated&role=main",
+            "app://ui/transport.html?candidate=authenticated-loopback&role=unprivileged",
+            "app://ui/transport.html?candidate=authenticated-loopback&role=main&role=attack-owner",
+            "app://ui/transport.html?candidate=authenticated-loopback&role=main#foreign",
+            "https://ui/transport.html?candidate=authenticated-loopback&role=main",
+        ] {
+            assert!(
+                !loopback_fixture_request("app://ui", other, mask),
+                "{other}"
+            );
+        }
+        for bits in [0, 1, mask | 1, u32::MAX] {
+            assert!(!loopback_fixture_request("app://ui", url, bits));
+        }
+    }
+
     #[test]
     fn completed_probe_deadlines_remain_bounded_until_actual_task_disposal() {
         static USED: AtomicUsize = AtomicUsize::new(0);

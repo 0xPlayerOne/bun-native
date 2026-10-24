@@ -20,9 +20,12 @@ export default async function transport(backend: CefBackend): Promise<void> {
     rejectFailure = reject
   })
   void failure.catch(() => {})
+  let reachabilityGrants = 0
   const consoleFailures: string[] = []
   const nativeEvents: string[] = []
   const offFailure = backend.observe((event) => {
+    if (event.event === 'policy.loopback-fixture-network' && ++reachabilityGrants > 8)
+      rejectFailure(new Error('Excessive fixture network permission receipts'))
     if (event.event.startsWith('policy.')) {
       consoleFailures.push(event.event + ':' + String(event.data?.['permissions']))
       if (consoleFailures.length > 4) consoleFailures.shift()
@@ -324,10 +327,20 @@ export default async function transport(backend: CefBackend): Promise<void> {
     offFailure()
     assert.equal(pending.size, 0)
     assert.equal(backend.diagnostics().listeners, 0)
+    assert.ok(
+      candidate === 'authenticated-loopback' ? reachabilityGrants > 0 : reachabilityGrants === 0
+    )
     console.error(
       JSON.stringify({
         event: 'bunly.native.transport',
-        schema: 1,
+        schema: 2,
+        networkPermission: {
+          scope:
+            candidate === 'authenticated-loopback'
+              ? 'contributor-only-top-origin-reachability'
+              : 'not-requested',
+          observedGrants: reachabilityGrants,
+        },
         passed: true,
         candidate,
         workload: RPC_TRANSPORT_WORKLOAD,

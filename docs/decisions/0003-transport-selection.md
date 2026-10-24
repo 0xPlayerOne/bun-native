@@ -135,3 +135,31 @@ The native baseline is a functional/security selection, not a measured performan
 victory over loopback. Issue #22 still retains its unexecuted paired and platform
 comparison criteria. Broader M4 session clearing/persistent credentials and the
 historical intermittent teardown investigation remain separate work.
+
+## Paired contributor qualification follow-up
+
+The no-grant failure above remains a valid control. A subsequent narrow fixture
+path separates Chromium's top-origin loopback reachability from RPC authority.
+It accepts only the exact loopback-network prompt when the native binding is
+current, the session is ephemeral/local-only, the named packaged transport page
+is running, and its numeric CSP endpoint was explicitly configured before session
+creation. Other permissions, remote/development sessions, stale bindings and
+ordinary builds remain denied. No content-setting default, persistent browser
+grant, network-security flag or arbitrary developer-tools endpoint is changed.
+
+This path is for comparative qualification, not a supported production permission
+API. Top-origin reachability cannot attest the requesting child frame. Socket
+admission therefore still requires both the one-use credential and a new challenge
+confirmed through the exact native owner; the real same-origin foreign-owner attack
+must fail without executing its RPC. The selected native baseline avoids this
+additional permission and listener lifecycle in ordinary applications.
+
+Actual paired functional execution completed on the development machine. One
+initial attempt completed the application work but failed the wrapper because
+ordinary Chromium logs displaced the throttle receipts from the stderr tail.
+That failed report is retained. The maintained observer now retains a bounded,
+complete allowlisted native-event stream, keeps duplicates, and fails on overflow.
+The acceptance test still requires both actual native throttle completions.
+Clean-source measured trials and final-head hosted platform results are recorded
+separately; neither a functional pair nor a retrospective report replay supplies
+those missing distributions.

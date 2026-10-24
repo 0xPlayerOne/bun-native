@@ -110,7 +110,6 @@ def commands(suite, bun, app):
                     bun,
                     str(ROOT / "scripts/qualify-cef-transports.ts"),
                     str(app),
-                    "--native-only",
                     "--functional",
                 ],
             )

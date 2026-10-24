@@ -961,8 +961,9 @@ export class CefBackend implements BrowserBackend {
   }
 
   /** @internal Experimental contributor-only CEF candidate; ordinary native builds
-   * reject it because current Chromium app-scheme loopback permission is not
-   * safely qualified. No prompt exemption, security flag or automatic fallback.
+   * reject it: general Chromium app-scheme loopback permission is not a supported
+   * shipping capability. The named contributor fixture has a separately recorded
+   * reachability decision; no security flag or automatic fallback is used.
    * No listener exists until called. Configure before sessions/views
    * so the host can admit exactly this numeric-loopback port in application CSP.
    */

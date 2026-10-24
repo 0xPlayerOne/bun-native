@@ -67,7 +67,6 @@ class HostedQualificationTests(unittest.TestCase):
                         bun,
                         str(root / "scripts/qualify-cef-transports.ts"),
                         str(app),
-                        "--native-only",
                         "--functional",
                     ],
                 )

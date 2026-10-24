@@ -2287,6 +2287,12 @@ wrap_permission_handler! {
         }
         fn on_show_permission_prompt(&self, browser: Option<&mut Browser>, _prompt: u64,
             origin: Option<&CefString>, permissions: u32, callback: Option<&mut PermissionPromptCallback>) -> i32 {
+            #[cfg(feature = "rpc-qualification")]
+            if qualification_loopback_permission(self.id, browser.as_deref(), origin, permissions) {
+                event("policy.loopback-fixture-network", self.id, json!({"permissions":permissions}));
+                if let Some(callback) = callback { callback.cont(PermissionRequestResult::ACCEPT); }
+                return 1;
+            }
             let _ = (browser, origin, permissions);
             // CEF supplies no requesting frame here. Origin equality cannot
             // distinguish a same-origin child from the granted main document.
@@ -2302,6 +2308,66 @@ wrap_download_handler! {
         // this available, and CEF default handling is never allowed to choose a path.
         fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { event("policy.download-denied", self.id, Value::Null); 0 }
     }
+}
+
+// Contributor-only candidate qualification. LOOPBACK_NETWORK is a top-origin
+// reachability permission, NOT a frame grant or RPC authority. The fixed local
+// fixture CSP permits only its configured numeric endpoint. Every socket still
+// needs a fresh challenge confirmed by its exact native document owner.
+#[cfg(feature = "rpc-qualification")]
+fn qualification_loopback_permission(
+    id: u64,
+    browser: Option<&Browser>,
+    origin: Option<&CefString>,
+    permissions: u32,
+) -> bool {
+    if !crate::resources::rpc_loopback_configured()
+        || RPC_STOPPED.load(Ordering::SeqCst)
+        || QUITTING.load(Ordering::SeqCst)
+    {
+        return false;
+    }
+    let Some(origin) = origin else {
+        return false;
+    };
+    let Some(browser) = browser else {
+        return false;
+    };
+    let Some(frame) = browser.main_frame() else {
+        return false;
+    };
+    let context = observed(browser, &frame);
+    if !crate::rpc_transport_qualification::loopback_fixture_request(
+        &origin.to_string(),
+        &context.url,
+        permissions,
+    ) {
+        return false;
+    }
+    // Read CEF identities before the state borrow; no callback-capable CEF call
+    // is made while that borrow is held.
+    let browser_id = browser.identifier();
+    let owned = STATE.with(|state| {
+        let state = state.borrow();
+        let record = state.views.get(&id)?;
+        if record.close.is_some()
+            || state
+                .windows
+                .get(&record.window)
+                .is_none_or(|window| window.closing.is_some())
+            || !state.sessions.get(&record.session).is_some_and(|session| {
+                !session.persistent
+                    && session.disposing.is_none()
+                    && session.network.is_local_only_fixture()
+            })
+        {
+            return None;
+        }
+        let binding = record.rpc.binding()?;
+        record.rpc.authorize(&context, binding.identity()).ok()?;
+        record.browser.clone()
+    });
+    owned.is_some_and(|owned| owned.identifier() == browser_id)
 }
 
 fn callback_scope(
