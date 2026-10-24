@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / ".bunly/hosted-evidence"
-SUITES = ("smoke", "rpc", "full")
+SUITES = ("smoke", "rpc", "full", "credentials")
 
 
 def target(system=None, machine=None):
@@ -93,6 +93,8 @@ def standard_user():
 def commands(suite, bun, app):
     if suite not in SUITES:
         raise ValueError("Unknown qualification suite")
+    if suite == "credentials":
+        return [("credentials", [bun, str(ROOT / "scripts/qualify-cef-credentials.ts"), str(app)])]
     # The RPC suite wraps the same prebuilt matrix and additionally rejects
     # missing real renderer/native protocol evidence. It writes the same report
     # family; a generic successful smoke report cannot satisfy its exit status.
@@ -246,7 +248,10 @@ def run(suite):
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         result["failure"] = str(error)
     finally:
-        write("qualification.json", result)
+        write(
+            "qualification-credentials.json" if suite == "credentials" else "qualification.json",
+            result,
+        )
         print(json.dumps(result), flush=True)
     return 0 if result["passed"] else 1
 
@@ -259,6 +264,7 @@ def collect():
         ROOT / ".bunly/m3/development",
         ROOT / ".bunly/m3/network",
         ROOT / ".bunly/m3/transports",
+        ROOT / ".bunly/m3/credentials",
         ROOT / ".bunly/m3/session-reset",
         ROOT / ".bunly/m3/faults",
     ):

@@ -202,6 +202,9 @@ fn execute_inner(
     partition: &str,
     mut checkpoint: impl FnMut(&str) -> Result<(), String>,
 ) -> Result<ResetResult, String> {
+    if partition == credentials::PROBE_PARTITION {
+        return Err("Internal credential proof cannot be reset as an application profile".into());
+    }
     if !valid_partition(partition) {
         return Err("Invalid persistent session partition".into());
     }
@@ -432,6 +435,27 @@ mod tests {
         owner.release_after_shutdown().unwrap();
         fs::remove_dir_all(root).unwrap();
     }
+    #[test]
+    fn application_reset_cannot_erase_the_sealed_credential_proof() {
+        let (root, _, _) = setup();
+        let owner = ProfileRoot::open(&root).unwrap();
+        let proof = owner
+            .acquire(root.to_str().unwrap(), credentials::PROBE_PARTITION)
+            .unwrap();
+        let sentinel = proof.path.join("sealed-proof-sentinel");
+        fs::write(&sentinel, b"preserve credential continuity").unwrap();
+        drop(proof);
+        owner.release_after_shutdown().unwrap();
+        assert!(execute(&root, credentials::PROBE_PARTITION)
+            .unwrap_err()
+            .contains("Internal credential proof"));
+        assert_eq!(
+            fs::read(sentinel).unwrap(),
+            b"preserve credential continuity"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn live_root_and_unknown_profiles_are_never_erased() {
         let (root, a, _) = setup();

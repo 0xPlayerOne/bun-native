@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
 mod asset_service;
 pub mod capability_policy;
+mod cookie_completion;
 mod deadlines;
 mod handshake;
 pub mod host;
@@ -35,6 +36,7 @@ pub struct Paths {
     pub entry: PathBuf,
     pub dev_origin: Option<String>,
     pub(crate) deadlines: deadlines::DeadlineProfile,
+    pub(crate) credential_policy: Option<session::credentials::Policy>,
 }
 pub static PATHS: OnceLock<Paths> = OnceLock::new();
 #[derive(Deserialize)]
@@ -44,6 +46,8 @@ struct Config {
     protocol: u32,
     bun_version: String,
     cef_version: String,
+    #[serde(default)]
+    credential_policy: Option<session::credentials::Policy>,
     #[serde(default)]
     maintenance_protocol: u32,
     #[serde(default)]
@@ -140,6 +144,10 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         );
         return Ok(0);
     }
+    if let Some(policy) = config.credential_policy.as_ref() {
+        policy.validate()?;
+        session::credentials::forbidden_override(std::env::args())?;
+    }
     let dev_origin = config
         .development_origin
         .as_deref()
@@ -224,6 +232,11 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     let profile_root = std::env::var_os("BUNLY_PROFILE_ROOT")
         .map(|path| session::ProfileRoot::open(&PathBuf::from(path)))
         .transpose()?;
+    if let Some(root) = profile_root.as_ref() {
+        session::credentials::bind_root(root, config.credential_policy.as_ref())?;
+    } else if config.credential_policy.is_some() {
+        return Err("Protected-cookie policy requires an explicit persistent profile root".into());
+    }
     let cef_root = profile_root
         .as_ref()
         .map(|root| root.path().to_path_buf())
@@ -242,6 +255,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
             entry,
             dev_origin,
             deadlines: config.qualification_profile,
+            credential_policy: config.credential_policy.clone(),
         })
         .map_err(|_| "Host cannot be initialized twice")?;
     eprintln!(
@@ -257,13 +271,16 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     );
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
-    let settings = Settings {
+    let mut settings = Settings {
         no_sandbox: 0,
         command_line_args_disabled: 1,
         root_cache_path: CefString::from(cef_root.to_string_lossy().as_ref()),
         log_file: CefString::from(cef_root.join("cef.log").to_string_lossy().as_ref()),
         ..Default::default()
     };
+    if let Some(policy) = config.credential_policy.as_ref() {
+        policy.configure(&mut settings);
+    }
     if initialize(
         Some(args.as_main_args()),
         Some(&settings),

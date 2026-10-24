@@ -77,6 +77,25 @@ class HostedQualificationTests(unittest.TestCase):
                 self.assertNotIn("--emulated-functional", commands[0][1])
                 self.assertNotIn("--no-sandbox", commands[0][1])
 
+    def test_credential_suite_is_explicit_and_does_not_replace_ordinary_rpc(self):
+        for root, app, bun in (
+            (PurePosixPath("/repo"), PurePosixPath("/app"), "/bun"),
+            (PureWindowsPath("C:/repo"), PureWindowsPath("C:/app.exe"), "C:/bun.exe"),
+        ):
+            with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
+                self.assertEqual(
+                    hosted.commands("credentials", bun, app),
+                    [
+                        (
+                            "credentials",
+                            [bun, str(root / "scripts/qualify-cef-credentials.ts"), str(app)],
+                        )
+                    ],
+                )
+                self.assertNotIn(
+                    "credentials", [name for name, _ in hosted.commands("rpc", bun, app)]
+                )
+
     def test_stale_or_duplicate_reports_never_pass(self):
         with (
             tempfile.TemporaryDirectory() as directory,
