@@ -125,3 +125,33 @@ snapshot. A separate test-owned lifetime pipe keeps the child alive across paren
 exit and releases it by EOF on cleanup, without timed sleeps or permanent polling.
 Full kernel-identity equality remains required; the production observer and its
 executable/substitution checks are unchanged. The original failure is retained.
+
+## Bounded callback-source drain turns
+
+The source adapter now yields to the Bun event loop after at most **16 chunk
+handoffs** before scheduling further work. The initial drain stays notification-driven;
+only pending work creates one owned `setImmediate` continuation. Idle sources do
+not install a timer or recurring poll. Cancellation clears a pending continuation,
+and no extra output is sent after retirement. Consumer acknowledgment, exact byte
+order, byte/count reservations and unsettled-writer ownership remain unchanged.
+
+The counter resets only when that event-loop continuation runs. An empty internal
+queue is not evidence that the event loop progressed: a producer can refill it in
+a later microtask. Resetting at emptiness would allow the same starvation again.
+Counters expose the quantum, executed yields and whether a yield remains pending.
+
+The regression first reproduced all 2,048 immediately acknowledged chunks draining
+before an already queued control/cancellation task could run. A three-source
+fixture also finished its entire output first. The corrected fixtures require
+control progress within 16 handoffs per source, exact eventual byte order, effective
+cancellation and released reservations. A separate delayed-microtask refill case
+failed the initial candidate and passes the retained-counter correction. These are
+finite deterministic scheduling assertions, not a wall-clock latency threshold.
+The PTY workflow runs the source regression suite on all three declared platforms
+before its actual PTY cases.
+
+This quantum is a conservative implementation bound, not a measured optimal batch
+size or production responsiveness claim. It does not preempt a synchronous consumer,
+cap arbitrary producer CPU time, reserve a native control lane, or implement global
+fair scheduling across CEF views. Full native scheduler/load acceptance under
+#26/#27 and native stream authority and terminal supervision remain outstanding.

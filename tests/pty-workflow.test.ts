@@ -22,3 +22,28 @@ test('PTY qualification keeps pinned targets, standard-user Windows execution an
   expect(runner).toContain('qualify-bun-pty.ts')
   expect(runner).toContain('must not be an administrator')
 })
+
+test('source scheduling regressions execute before real PTY qualification on every target', async () => {
+  const source = await readFile(join(root, '.github/workflows/bun-pty.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: { pty: { steps: Record<string, unknown>[] } }
+  }
+  const steps = workflow.jobs.pty.steps
+  const install = steps.findIndex(
+    (step) => step['name'] === 'Install frozen application-side dependencies'
+  )
+  const regression = steps.findIndex(
+    (step) => step['name'] === 'Validate bounded source scheduling'
+  )
+  expect(install).toBeGreaterThanOrEqual(0)
+  expect(regression).toBeGreaterThan(install)
+  expect(steps[regression]?.['run']).toBe(
+    'bun test tests/stream-source.test.ts tests/stream-source-fairness.test.ts'
+  )
+  expect(steps[regression]?.['if']).toBeUndefined()
+  for (const name of [
+    'Qualify actual Bun PTYs on Linux or macOS',
+    'Qualify actual Bun PTYs as a Windows standard user',
+  ])
+    expect(steps.findIndex((step) => step['name'] === name)).toBeGreaterThan(regression)
+})

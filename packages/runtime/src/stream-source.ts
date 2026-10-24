@@ -8,6 +8,10 @@ const byteLength = Object.getOwnPropertyDescriptor(typedArray, 'byteLength')!.ge
 const byteOffset = Object.getOwnPropertyDescriptor(typedArray, 'byteOffset')!.get!
 const backingBuffer = Object.getOwnPropertyDescriptor(typedArray, 'buffer')!.get!
 
+// A ready writer can replenish a source through a continuous microtask chain.
+// Yield a bounded drain to the event loop; never install an idle polling timer.
+const DRAIN_CHUNKS_PER_TURN = 16
+
 export interface StreamSourceOptions {
   /** One shared pool and stable owner across sources/reconnects, never packet-provided. */
   readonly budget: StreamBudget
@@ -36,6 +40,9 @@ export class CallbackStreamSource {
   #peak = 0
   #active = false
   #scheduled = false
+  #drainChunks = 0
+  #yieldTask: ReturnType<typeof setImmediate> | undefined
+  #yieldCount = 0
   #ended = false
   #settled = false
   #released = false
@@ -148,11 +155,24 @@ export class CallbackStreamSource {
   }
   #schedule(): void {
     if (this.#active || this.#scheduled || this.#settled) return
+    // A later microtask can refill an empty queue without giving control work
+    // a turn. Retain the quantum until our actual event-loop yield executes.
+    if (!this.#queue.length && !this.#ended) return
     this.#scheduled = true
-    queueMicrotask(() => {
-      this.#scheduled = false
-      void this.#pump()
-    })
+    if (this.#drainChunks >= DRAIN_CHUNKS_PER_TURN) {
+      this.#yieldTask = setImmediate(() => {
+        this.#yieldTask = undefined
+        this.#drainChunks = 0
+        this.#yieldCount++
+        this.#scheduled = false
+        void this.#pump()
+      })
+    } else {
+      queueMicrotask(() => {
+        this.#scheduled = false
+        void this.#pump()
+      })
+    }
   }
   async #pump(): Promise<void> {
     if (this.#active || this.#settled) return
@@ -164,6 +184,7 @@ export class CallbackStreamSource {
     this.#active = true
     try {
       if (bytes) {
+        this.#drainChunks++
         await this.#writer.write(bytes)
         this.#acknowledgedBytes += length
       } else {
@@ -190,6 +211,9 @@ export class CallbackStreamSource {
     this.#settled = true
     this.#reason = code
     this.#ended = true
+    if (this.#yieldTask !== undefined) clearImmediate(this.#yieldTask)
+    this.#yieldTask = undefined
+    this.#scheduled = false
     this.#removeAbort()
     for (const bytes of this.#queue) this.#retained -= bytes.byteLength
     this.#queue.length = 0
@@ -224,6 +248,9 @@ export class CallbackStreamSource {
       settled: this.#settled,
       reason: this.#reason ?? null,
       sourceStopFailed: this.#sourceStopFailed,
+      drainQuantum: DRAIN_CHUNKS_PER_TURN,
+      yieldCount: this.#yieldCount,
+      yieldPending: this.#yieldTask !== undefined,
     })
   }
 }
