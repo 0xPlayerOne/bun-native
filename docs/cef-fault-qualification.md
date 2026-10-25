@@ -106,3 +106,10 @@ This expands observed failure/cleanup coverage; it does not implement terminal
 process ownership, arbitrary detached descendants, termination-denial handling,
 restart/backoff, managed backend replacement, or resolve historical intermittent
 CEF shutdown behavior. Those remain explicit M5/M6 boundaries.
+
+The first local schema-4 run completed native cleanup and preserved every foreign
+control, but failed the new shell case because the parser incorrectly expected
+parent IDs in the existing resource-sample rows. The corrected report retains the
+actual parent/birth identities captured by the controller's sampling callback and
+requires their PID/birth pair to match an actual resource sample. No parent ID is
+invented for an older report; the original failed run remains failed.

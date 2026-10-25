@@ -185,7 +185,7 @@ def main():
                     and tree_path.stat().st_size <= 1024
                 ):
                     tree = json.loads(tree_path.read_text())
-                    pids = tree.get("pids")
+                    pids = tree.get("pids") if isinstance(tree, dict) else None
                     if (
                         set(tree) == {"mode", "nonce", "backend", "pids"}
                         and tree["mode"] == mode
@@ -209,10 +209,15 @@ def main():
                                     and server.ppid() == shell.pid
                                     and pid in pids
                                 ):
-                                    tree_seen[pid] = process.create_time()
+                                    tree_seen[pid] = {
+                                        "pid": pid,
+                                        "parentPid": process.ppid(),
+                                        "creationTime": process.create_time(),
+                                    }
                                     if all(
                                         item in tree_seen
-                                        and descendants[item].create_time() == tree_seen[item]
+                                        and descendants[item].create_time()
+                                        == tree_seen[item]["creationTime"]
                                         for item in pids
                                     ):
                                         temporary = injected_path.with_suffix(".pending")
@@ -285,6 +290,9 @@ def main():
             )
         finally:
             foreign_control = control.finish()
+        # Preserve independently sampled ancestry separately from the resource
+        # rows, whose existing schema does not contain parent PID information.
+        data["descendantIdentities"] = list(tree_seen.values())
         trial = {
             "mode": mode,
             "passed": False,

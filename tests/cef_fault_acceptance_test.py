@@ -119,6 +119,14 @@ def fixture(mode):
                 ]
             }
         ],
+        "descendantIdentities": (
+            [
+                {"pid": 102, "parentPid": 101, "creationTime": 1},
+                {"pid": 103, "parentPid": 102, "creationTime": 1},
+            ]
+            if mode == "backend-shell-tree-exit"
+            else []
+        ),
         "nativeDiagnostics": [json.dumps(row) for row in records],
     }, injections
 
@@ -285,7 +293,7 @@ class ExtendedSupervisionTests(unittest.TestCase):
                 {
                     "processes": [
                         {"pid": 102, "parentPid": 101, "creationTime": 1},
-                        {"pid": 103, "parentPid": 999, "creationTime": 1},
+                        {"pid": 103, "parentPid": 102, "creationTime": 9},
                     ]
                 }
             ],
@@ -293,6 +301,20 @@ class ExtendedSupervisionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 accept_fault(
                     "backend-shell-tree-exit", {**observation, "samples": samples}, injections
+                )
+        for identities in (
+            [],
+            observation["descendantIdentities"] * 2,
+            [
+                {"pid": 102, "parentPid": 101, "creationTime": 1},
+                {"pid": 103, "parentPid": 999, "creationTime": 1},
+            ],
+        ):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "backend-shell-tree-exit",
+                    {**observation, "descendantIdentities": identities},
+                    injections,
                 )
         rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
         for row in rows:

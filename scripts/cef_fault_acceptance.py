@@ -205,17 +205,43 @@ def accept_fault(mode, observation, injections, *, require_output=True):
             and server.get("parentPid") == shell["pid"],
             "Wrong shell/grandchild ownership chain",
         )
+        identities = observation.get("descendantIdentities")
+        require(
+            isinstance(identities, list) and len(identities) == 2,
+            "Missing independent descendant identities",
+        )
+        require(
+            all(
+                isinstance(row, dict)
+                and set(row) == {"pid", "parentPid", "creationTime"}
+                and positive_integer(row["pid"])
+                and positive_integer(row["parentPid"])
+                and finite_nonnegative(row["creationTime"])
+                and row["creationTime"] > 0
+                for row in identities
+            ),
+            "Malformed independent descendant identity",
+        )
+        require(
+            len({row["pid"] for row in identities}) == 2,
+            "Duplicate independent descendant identity",
+        )
         for descendant in descendants:
+            matching_identity = [
+                row
+                for row in identities
+                if row["pid"] == descendant["pid"] and row["parentPid"] == descendant["parentPid"]
+            ]
+            require(len(matching_identity) == 1, "Wrong independently observed descendant ancestry")
+            identity = matching_identity[0]
             require(
                 any(
-                    row.get("pid") == descendant["pid"]
-                    and row.get("parentPid") == descendant["parentPid"]
-                    and finite_nonnegative(row.get("creationTime"))
-                    and row["creationTime"] > 0
+                    row.get("pid") == identity["pid"]
+                    and row.get("creationTime") == identity["creationTime"]
                     for sample in observation.get("samples", [])
                     for row in sample.get("processes", [])
                 ),
-                "Descendant ancestry lacks actual process observation",
+                "Descendant identity lacks actual process observation",
             )
         confirmed = exactly("bunly.fault.tree-observed")
         require(
@@ -256,5 +282,8 @@ def accept_fault(mode, observation, injections, *, require_output=True):
     else:
         require(descendants == [], "Unexpected descendant fixture")
     if mode != "backend-shell-tree-exit":
+        require(
+            not observation.get("descendantIdentities"), "Unexpected observed descendant identities"
+        )
         require(not matching("bunly.fault.tree-observed"), "Unexpected tree observation")
     return {"mode": mode, "expectedApplicationFailure": mode != "gpu-exit", "orderedShutdown": True}
