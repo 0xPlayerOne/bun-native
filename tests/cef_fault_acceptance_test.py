@@ -13,7 +13,36 @@ from cef_fault_acceptance import MODES, PHASES, accept_fault
 def fixture(mode):
     records = [{"event": "bunly.fault.ready", "mode": mode, "pid": 101}]
     injections = []
-    if mode.startswith("backend-"):
+    if mode == "backend-hang":
+        records = [
+            {"event": "bunly.runtime.profile", "profile": "standard"},
+            *records,
+            {"event": "bunly.fault.blocked", "mode": mode, "pid": 101, "quitRequested": True},
+        ]
+    elif mode.startswith("backend-"):
+        if mode == "backend-shell-tree-exit":
+            records.extend(
+                [
+                    {
+                        "event": "bunly.fault.descendant",
+                        "pid": 102,
+                        "parentPid": 101,
+                        "role": "shell",
+                    },
+                    {
+                        "event": "bunly.fault.descendant",
+                        "pid": 103,
+                        "parentPid": 102,
+                        "role": "server",
+                    },
+                    {
+                        "event": "bunly.fault.tree-observed",
+                        "mode": mode,
+                        "count": 2,
+                        "serverResponded": True,
+                    },
+                ]
+            )
         if mode == "backend-tree-exit":
             records.append({"event": "bunly.fault.descendant", "pid": 102})
         records.append(
@@ -45,8 +74,12 @@ def fixture(mode):
                 {
                     "event": "bunly.backend.exit",
                     "pid": 101,
-                    "code": 23 if mode.startswith("backend-") else 0,
-                    "forced": False,
+                    "code": None
+                    if mode == "backend-hang"
+                    else 23
+                    if mode.startswith("backend-")
+                    else 0,
+                    "forced": mode == "backend-hang",
                 }
             )
         if phase == "process-stop":
@@ -65,7 +98,7 @@ def fixture(mode):
                 "event": "bunly.host.shutdown-phase",
                 "phase": phase,
                 "state": "complete",
-                "durationMs": 1,
+                "durationMs": 2000 if mode == "backend-hang" and phase == "process-stop" else 1,
             }
         )
     records.append({"event": "bunly.host.shutdown", "clean": mode == "gpu-exit"})
@@ -78,7 +111,14 @@ def fixture(mode):
         "observedOrphans": [],
         "cleanupSurvivors": [],
         "stderr": ["ordinary log noise"] * 20,
-        "samples": [{"processes": [{"pid": 102, "creationTime": 1}]}],
+        "samples": [
+            {
+                "processes": [
+                    {"pid": 102, "parentPid": 101, "creationTime": 1},
+                    {"pid": 103, "parentPid": 102, "creationTime": 1},
+                ]
+            }
+        ],
         "nativeDiagnostics": [json.dumps(row) for row in records],
     }, injections
 
@@ -207,3 +247,60 @@ class NativeOutputFaultTests(unittest.TestCase):
                             },
                             injections,
                         )
+
+
+class ExtendedSupervisionTests(unittest.TestCase):
+    def test_hung_backend_requires_forcing_after_the_original_grace_deadline(self):
+        observation, injections = fixture("backend-hang")
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        for event, field, value in (
+            ("bunly.backend.exit", "forced", False),
+            ("bunly.backend.exit", "code", 0),
+            ("bunly.backend.exit", "code", True),
+            ("bunly.fault.blocked", "quitRequested", False),
+            ("bunly.runtime.profile", "profile", "unknown"),
+            ("bunly.host.shutdown-phase", "durationMs", 1999),
+        ):
+            changed = copy.deepcopy(rows)
+            for row in changed:
+                if row["event"] == event and (
+                    field != "durationMs"
+                    or row.get("phase") == "process-stop"
+                    and row.get("state") == "complete"
+                ):
+                    row[field] = value
+            with self.subTest(event=event, field=field), self.assertRaises(ValueError):
+                accept_fault(
+                    "backend-hang",
+                    {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    injections,
+                )
+
+    def test_shell_and_listening_grandchild_require_distinct_observed_ancestry(self):
+        observation, injections = fixture("backend-shell-tree-exit")
+        for samples in (
+            [],
+            [{"processes": [{"pid": 102, "parentPid": 101, "creationTime": 1}]}],
+            [
+                {
+                    "processes": [
+                        {"pid": 102, "parentPid": 101, "creationTime": 1},
+                        {"pid": 103, "parentPid": 999, "creationTime": 1},
+                    ]
+                }
+            ],
+        ):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "backend-shell-tree-exit", {**observation, "samples": samples}, injections
+                )
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        for row in rows:
+            if row["event"] == "bunly.fault.tree-observed":
+                row["serverResponded"] = False
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "backend-shell-tree-exit",
+                {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
+                injections,
+            )

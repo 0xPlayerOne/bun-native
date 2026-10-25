@@ -5,7 +5,8 @@ import math
 
 from report_m3_acceptance import clean_process, require
 
-MODES = ("backend-exit", "backend-tree-exit", "renderer-exit", "gpu-exit")
+LEGACY_MODES = ("backend-exit", "backend-tree-exit", "renderer-exit", "gpu-exit")
+MODES = (*LEGACY_MODES, "backend-shell-tree-exit", "backend-hang")
 PHASES = ("process-stop", "host-release", "asset-service-stop", "cef-shutdown")
 
 
@@ -61,12 +62,50 @@ def accept_fault(mode, observation, injections, *, require_output=True):
     for row in phases[1::2]:
         require(finite_nonnegative(row.get("durationMs")), "Invalid native shutdown duration")
     backend = exactly("bunly.backend.exit")
-    require(
-        backend.get("code") == (23 if mode.startswith("backend-") else 0)
-        and backend.get("forced") is False
-        and backend.get("pid") == ready["pid"],
-        "Wrong or forced backend exit",
-    )
+    if mode == "backend-hang":
+        require(
+            backend.get("forced") is True
+            and (
+                backend.get("code") is None
+                or type(backend.get("code")) is int
+                and backend["code"] == 1
+            )
+            and backend.get("pid") == ready["pid"],
+            "Blocked backend did not require owned forced termination",
+        )
+        blocked = exactly("bunly.fault.blocked")
+        require(
+            blocked
+            == {
+                "event": "bunly.fault.blocked",
+                "mode": mode,
+                "pid": ready["pid"],
+                "quitRequested": True,
+            },
+            "Missing exact blocked-backend receipt",
+        )
+        require(
+            records.index(ready) < records.index(blocked) < records.index(phases[0]),
+            "Block/quit receipt order is invalid",
+        )
+        profile = exactly("bunly.runtime.profile")
+        require(
+            profile.get("profile") in ("standard", "emulated-functional"),
+            "Unknown native grace profile",
+        )
+        grace_ms = 2000 if profile["profile"] == "standard" else 5000
+        require(
+            phases[1]["durationMs"] >= grace_ms,
+            "Forced exit did not exercise the original grace deadline",
+        )
+    else:
+        require(
+            backend.get("code") == (23 if mode.startswith("backend-") else 0)
+            and backend.get("forced") is False
+            and backend.get("pid") == ready["pid"],
+            "Wrong or forced backend exit",
+        )
+        require(not matching("bunly.fault.blocked"), "Unexpected blocked-backend receipt")
     require(
         records.index(ready)
         < records.index(phases[0])
@@ -97,7 +136,10 @@ def accept_fault(mode, observation, injections, *, require_output=True):
     require(not matching("bunly.host.error"), "Startup failure is not fault acceptance")
     failures = [row.get("error") for row in matching("bunly.host.failure")]
     require(all(isinstance(value, str) for value in failures), "Malformed host failure")
-    if mode.startswith("backend-"):
+    if mode == "backend-hang":
+        require(failures == [], "Unrelated failure is not hung-backend acceptance")
+        require(injections == [], "Blocked backend must not inject a browser fault")
+    elif mode.startswith("backend-"):
         require(
             1 <= len(failures) <= 2
             and len(set(failures)) == len(failures)
@@ -150,7 +192,51 @@ def accept_fault(mode, observation, injections, *, require_output=True):
                 "GPU recovery did not follow actual injection",
             )
     descendants = matching("bunly.fault.descendant")
-    if mode == "backend-tree-exit":
+    if mode == "backend-shell-tree-exit":
+        require(len(descendants) == 2, "Missing shell/server descendant pair")
+        shell, server = descendants
+        require(
+            shell.get("role") == "shell"
+            and server.get("role") == "server"
+            and positive_integer(shell.get("pid"))
+            and positive_integer(server.get("pid"))
+            and len({ready["pid"], shell["pid"], server["pid"]}) == 3
+            and shell.get("parentPid") == ready["pid"]
+            and server.get("parentPid") == shell["pid"],
+            "Wrong shell/grandchild ownership chain",
+        )
+        for descendant in descendants:
+            require(
+                any(
+                    row.get("pid") == descendant["pid"]
+                    and row.get("parentPid") == descendant["parentPid"]
+                    and finite_nonnegative(row.get("creationTime"))
+                    and row["creationTime"] > 0
+                    for sample in observation.get("samples", [])
+                    for row in sample.get("processes", [])
+                ),
+                "Descendant ancestry lacks actual process observation",
+            )
+        confirmed = exactly("bunly.fault.tree-observed")
+        require(
+            confirmed
+            == {
+                "event": "bunly.fault.tree-observed",
+                "mode": mode,
+                "count": 2,
+                "serverResponded": True,
+            },
+            "Missing observed listening-server receipt",
+        )
+        require(
+            records.index(ready)
+            < records.index(shell)
+            < records.index(server)
+            < records.index(confirmed)
+            < records.index(phases[0]),
+            "Tree readiness did not precede backend failure",
+        )
+    elif mode == "backend-tree-exit":
         require(
             len(descendants) == 1 and positive_integer(descendants[0].get("pid")),
             "Missing owned descendant",
@@ -169,4 +255,6 @@ def accept_fault(mode, observation, injections, *, require_output=True):
         )
     else:
         require(descendants == [], "Unexpected descendant fixture")
+    if mode != "backend-shell-tree-exit":
+        require(not matching("bunly.fault.tree-observed"), "Unexpected tree observation")
     return {"mode": mode, "expectedApplicationFailure": mode != "gpu-exit", "orderedShutdown": True}

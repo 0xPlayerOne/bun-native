@@ -67,3 +67,42 @@ replacement, or native renderer bulk streams. Those remain M5/M6 work. Passing
 fault cases do not establish a causal fix for the historical CEF shutdown
 watchdog intermittency. No security cloning, sandbox, provider guard, byte limit
 or deadline is weakened to obtain acceptance.
+
+## M5 extended supervision cases (schema 4)
+
+The current full suite preserves the original four cases and adds two fixed
+backend scenarios. Historical schemas retain their original case count; an older
+receipt is not evidence that either new scenario ran.
+
+`backend-hang` requests ordinary native shutdown and then blocks the Bun thread
+with `Atomics.wait`, so application callbacks and shutdown listeners cannot run.
+Acceptance requires the exact blocked receipt, the same backend identity, actual
+forced termination after the unchanged native graceful-exit deadline, all ordered
+native teardown phases, zero output reservations and no observer survivors. The
+native host must return failed exit 1, not successful exit 0 or watchdog exit 2.
+The minimum grace-duration assertion tests escalation semantics, not a performance
+budget; no native timeout is extended to accommodate the fixture.
+
+`backend-shell-tree-exit` starts an actual OS shell which retains a listening Bun
+HTTP-server grandchild. The backend verifies one response from that private
+numeric-loopback endpoint, then waits for the external observer to attest both
+live descendant identities and their exact parent chain. The observer publishes
+an atomic nonce-bound receipt; the backend waits via one filesystem notification
+subscription and one deadline, not a timed sleep or transport poll. Only then does
+the backend deliberately exit 23. Both descendants retain their process lifetime,
+so native process-group/Job Object cleanup must reclaim them. This is explicitly
+non-detached inheritance, not qualification of a PTY's separate session/group.
+
+Every schema-4 trial also launches a separate, same-executable Bun process under
+the test controller. It is not a child of the native host. It must remain alive
+through native cleanup and then exit normally when its own input pipe closes.
+Cleanup targets only its owned `Popen` handle, never a name-wide or PID-discovered
+process. Missing, killed, substituted or accidentally included controls reject the
+trial. These private processes are disposable qualification resources, not new
+Bunly runtime sidecars.
+
+The retained exit-notification and byte-accounting implementation is unchanged.
+This expands observed failure/cleanup coverage; it does not implement terminal
+process ownership, arbitrary detached descendants, termination-denial handling,
+restart/backoff, managed backend replacement, or resolve historical intermittent
+CEF shutdown behavior. Those remain explicit M5/M6 boundaries.
