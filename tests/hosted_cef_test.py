@@ -278,12 +278,20 @@ if __name__ == "__main__":
 
 class GraphicalTerminalStageTests(unittest.TestCase):
     def test_full_runs_graphical_terminals_before_providers_and_uses_its_report_family(self):
-        commands = hosted.commands("full", "/bun", Path("/app"))
+        # Keep the fixture portable: Path renders the native separator on
+        # Windows. Compare the exact supplied path, not a Unix-only spelling.
+        app = Path("/app")
+        commands = hosted.commands("full", "/bun", app)
         names = [name for name, _ in commands]
         self.assertEqual(names[-2:], ["terminals", "credentials"])
         self.assertEqual(
             dict(commands)["terminals"],
-            ["/bun", str(hosted.ROOT / "scripts/qualify-cef-terminals.ts"), "/app", "--functional"],
+            [
+                "/bun",
+                str(hosted.ROOT / "scripts/qualify-cef-terminals.ts"),
+                str(app),
+                "--functional",
+            ],
         )
         self.assertEqual(
             hosted.report_directory("terminals"), hosted.ROOT / ".bunly/m5/graphical-terminals"
