@@ -249,7 +249,7 @@ def main():
         ],
     }
     result = {
-        "schema": 2,
+        "schema": 3,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

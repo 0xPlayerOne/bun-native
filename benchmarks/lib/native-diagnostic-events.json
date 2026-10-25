@@ -24,5 +24,7 @@
   "bunly.native.session-reset",
   "bunly.credential-policy",
   "bunly.fault.ready",
-  "bunly.fault.descendant"
+  "bunly.fault.descendant",
+  "bunly.native.output-drained",
+  "bunly.network.https-observation"
 ]

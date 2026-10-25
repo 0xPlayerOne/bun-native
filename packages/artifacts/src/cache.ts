@@ -370,7 +370,10 @@ export async function resolveArtifact(
       if (code(error) !== 'EEXIST') throw error
       try {
         const stat = await lstat(lockPath)
-        if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)
+        // Lookup can retain an inode while its owner unlinks the last name.
+        // A zero-link observation grants no ownership: only the next 'wx' open
+        // can acquire it. Keep the same bounded wait, and never remove this lock.
+        if (!stat.isFile() || stat.isSymbolicLink() || (stat.nlink !== 0 && stat.nlink !== 1))
           throw new ArtifactError('UNSAFE_CACHE', 'Cache lock is not a private regular file')
       } catch (error) {
         if (code(error) !== 'ENOENT') throw error

@@ -229,7 +229,7 @@ export default async function main(backend: CefBackend): Promise<void> {
     console.log(
       JSON.stringify({
         event: 'bunly.native.rpc',
-        schema: 5,
+        schema: 6,
         controlAdmission,
         sessionAuthority: 'native-owner-isolation-and-partition-reuse',
         viewDisposal: 'isolated-and-parent-close',
