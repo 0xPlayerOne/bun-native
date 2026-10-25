@@ -75,3 +75,10 @@ consumer callback during delivery, then requires another actual RPC roundtrip.
 Already-owned packets arriving after lane retirement are discarded and their exact
 reservations released without revoking RPC. Native delivery acknowledgment remains
 separate from consumer completion.
+
+The first two actual native fixture attempts failed page readiness and remain
+failed evidence. Review corrected premature retirement on the initial native-
+approved navigation (a deterministic regression reproduces it) and removed a
+duplicate RPC entrypoint: the stream bundle already includes the shared RPC client.
+The native callback still retires subsequent untrusted navigation immediately,
+and no bridge subscriber limit or qualification deadline was relaxed.

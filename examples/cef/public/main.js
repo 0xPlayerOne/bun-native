@@ -1,5 +1,5 @@
 import { observePolicyViolations } from './nested/policy-violations.mjs'
-import './rpc-client.js'
+// stream-client bundles the one shared RPC client used by both workloads.
 import './stream-client.js'
 const check = (condition, message) => {
   if (!condition) throw new Error(message)
