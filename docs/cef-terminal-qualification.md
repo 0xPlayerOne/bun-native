@@ -87,10 +87,9 @@ Chromium throttling.
 The fixture covers direct owned children only. Detached descendants, generalized
 scrollback/reconnect policy, release qualification, identical-workload competitor
 baselines, and measured regression budgets remain open under #24/#25/#27.
-The qualifier also depends on the reviewed native-stream and terminal-service
-increments. Until those commits are integrated, their imports are deliberately
-unresolved in this worktree; parser/contract tests are the independently runnable
-validation boundary.
+The reviewed native-stream and terminal-service increments are integrated.
+Local native execution is required alongside parser/contract tests; cross-platform
+acceptance still requires the current head's hosted execution.
 
 ## Maintained full-acceptance stage
 
@@ -106,3 +105,24 @@ not merely a printed final marker. Source callback counts and stream chunk count
 are distinct: legitimate bounded splitting preserves byte/hash identity and exact
 stream-write-to-consumer counts. Instrumentation itself is capped and runtime hashes
 are incremental. No unrelated smoke receipt is fabricated to satisfy this workload.
+
+## Retained integration findings
+
+The initial graphical workload reached bulk output, then the fixed eight-chunk
+source cap rejected fragmented PTY callbacks. Normal output failure is now reported
+immediately instead of becoming a generic missing-marker timeout. The terminal
+service's lossless pending-byte coalescing resolved this without changing the
+32-KiB source reservation, eight-chunk cap, record volume or overload criterion.
+Only unsent blocks coalesce; active and allocated slack remain charged.
+
+Schema 2 additionally verifies each fixed record's exact index and Unicode text
+in the actual terminal screen, not merely equality of two dynamically computed
+hashes. A corrupted value with a matching producer/consumer hash must still fail.
+The earlier six-launch schema-1 local profile is retained as a checkpoint, not
+relabeled as this stronger acceptance.
+
+Consumer callback duration measures the complete sink operation, including any
+explicitly held test gate, not pure xterm parsing or display-presentation latency.
+Control roundtrip measures the application RPC path, not physical keystroke latency.
+Process-tree RSS is sampled resident memory and can double-count shared pages; it
+is not an exclusive allocation measurement or a sustained-memory-plateau claim.

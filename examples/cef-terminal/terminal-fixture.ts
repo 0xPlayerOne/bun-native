@@ -396,7 +396,7 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
     console.error(
       JSON.stringify({
         event: 'bunly.native.graphical-terminal',
-        schema: 1,
+        schema: 2,
         classification: 'functional',
         renderer: await pageReport.promise,
         runtime: {

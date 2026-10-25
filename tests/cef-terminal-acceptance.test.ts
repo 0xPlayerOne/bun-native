@@ -21,11 +21,12 @@ function receipt() {
       callbacks: 2,
       callbackDurationsMs: [0.5, 1.25],
       unicodeObserved: true,
+      recordContentsVerified: true,
     }
   })
   return {
     event: 'bunly.native.graphical-terminal',
-    schema: 1,
+    schema: 2,
     classification: 'functional',
     renderer: {
       terminals: renderer,
@@ -183,6 +184,8 @@ test('graphical terminal acceptance rejects missing, duplicate, malformed and pa
 test('graphical terminal acceptance rejects false control, consumer, exit and release receipts', () => {
   for (const mutate of [
     (row: ReturnType<typeof receipt>) => (row.renderer.rpcWhileHeld = false),
+    (row: ReturnType<typeof receipt>) =>
+      (row.renderer.terminals[0]!.recordContentsVerified = false),
     (row: ReturnType<typeof receipt>) => (row.renderer.parserCallbacks = false),
     (row: ReturnType<typeof receipt>) => (row.runtime.terminals[0]!.processExit.observed = false),
     (row: ReturnType<typeof receipt>) => (row.runtime.terminals[1]!.released = false),

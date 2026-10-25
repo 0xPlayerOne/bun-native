@@ -73,6 +73,7 @@ export interface TerminalRecordReceipt {
   readonly order: readonly number[]
   readonly callbacks: number
   readonly callbackDurationsMs: readonly number[]
+  readonly recordContentsVerified: boolean
   readonly unicodeObserved: boolean
 }
 const checksum = (value: unknown): string => {
@@ -96,6 +97,7 @@ const recordReceipt = (value: unknown): TerminalRecordReceipt => {
     'callbacks',
     'callbackDurationsMs',
     'unicodeObserved',
+    'recordContentsVerified',
   ])
   if (!Array.isArray(row['order'])) throw new TypeError('Expected record order')
   return Object.freeze({
@@ -107,6 +109,7 @@ const recordReceipt = (value: unknown): TerminalRecordReceipt => {
     callbacks: integer(row['callbacks'], 4096),
     callbackDurationsMs: durations(row['callbackDurationsMs']),
     unicodeObserved: row['unicodeObserved'] === true,
+    recordContentsVerified: row['recordContentsVerified'] === true,
   })
 }
 

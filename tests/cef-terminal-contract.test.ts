@@ -16,6 +16,7 @@ const terminal = (identity: number) => ({
   callbacks: 1,
   callbackDurationsMs: [0],
   unicodeObserved: true,
+  recordContentsVerified: true,
 })
 const report = () => ({
   terminals: Array.from({ length: TERMINAL_COUNT }, (_, index) => terminal(index)),

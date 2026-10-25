@@ -105,7 +105,7 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
     ],
     'Malformed graphical terminal receipt'
   )
-  assert.equal(receipt['schema'], 1)
+  assert.equal(receipt['schema'], 2)
   assert.equal(receipt['classification'], 'functional')
   const renderer = object(receipt['renderer'], 'Missing renderer observations')
   exact(
@@ -184,6 +184,7 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
     assert.ok(integer(observed['callbackCount'], 'Missing runtime callbacks') > 0)
     assert.ok(Number(observed['callbackCount']) <= 4096)
     trueValue(terminal['unicodeObserved'], 'Actual terminal Unicode was not observed')
+    trueValue(terminal['recordContentsVerified'], 'Fixed record contents were not verified')
     assert.equal(
       observed['streamWriteCount'],
       terminalCallbacks,

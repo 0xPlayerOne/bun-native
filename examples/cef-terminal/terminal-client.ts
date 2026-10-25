@@ -1,5 +1,9 @@
 import { Terminal } from '@xterm/xterm'
-import { TerminalRecords, type ParsedRecord } from './terminal-records.ts'
+import {
+  TerminalRecords,
+  verifyFixedRecordPayloads,
+  type ParsedRecord,
+} from './terminal-records.ts'
 import { RpcClient } from '../../packages/client/src/rpc.ts'
 import { waitForCefRpcTransport } from '../../packages/client/src/cef-rpc.ts'
 import { waitForCefStreamTransport } from '../../packages/client/src/cef-streams.ts'
@@ -129,6 +133,7 @@ class GraphicalConsumer {
       callbacks: this.callbacks,
       callbackDurationsMs: Object.freeze([...this.callbackDurationsMs]),
       unicodeObserved: this.screen.unicodeObserved,
+      recordContentsVerified: verifyFixedRecordPayloads(this.records, TERMINAL_RECORDS),
     })
   }
   dispose(): void {

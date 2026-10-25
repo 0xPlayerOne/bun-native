@@ -66,3 +66,21 @@ export class TerminalRecords {
     return this.#accent && this.#emoji
   }
 }
+
+/** Verify the fixed workload's semantics, not merely matching two dynamic hashes. */
+export function verifyFixedRecordPayloads(records: readonly ParsedRecord[], count: number): true {
+  if (!Number.isSafeInteger(count) || count < 1 || count > 2048 || records.length > 256)
+    throw new Error('Invalid fixed record bounds')
+  const payloads = records.filter((record) => record.value['type'] === 'record')
+  if (payloads.length !== count) throw new Error('Missing or excessive fixed payloads')
+  for (let index = 0; index < payloads.length; index++) {
+    const value = payloads[index]!.value
+    if (
+      Object.keys(value).sort().join(',') !== 'index,text,type' ||
+      value['index'] !== index ||
+      value['text'] !== `fixed-${index}-café-🐙`
+    )
+      throw new Error('Fixed terminal payload changed or reordered')
+  }
+  return true
+}
