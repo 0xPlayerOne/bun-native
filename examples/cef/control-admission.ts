@@ -5,9 +5,32 @@ function record(value: unknown): Record<string, unknown> {
   assert.ok(value && typeof value === 'object' && !Array.isArray(value))
   return value as Record<string, unknown>
 }
+/** Actual queue counters are bounded wire-equivalent accounting, not RSS. */
+export function checkOutputAdmission(value: unknown): void {
+  const state = record(value)
+  for (const [field, limit] of [
+    ['frames', 256],
+    ['ordinaryFrames', 192],
+    ['retainedWireBytes', 8 * 1024 * 1024],
+    ['ordinaryWireBytes', 7 * 1024 * 1024],
+    ['peakFrames', 256],
+    ['peakWireBytes', 8 * 1024 * 1024],
+  ] as const) {
+    const count = state[field]
+    assert.ok(
+      typeof count === 'number' && Number.isSafeInteger(count) && count >= 0 && count <= limit
+    )
+  }
+  assert.ok(Number(state['ordinaryFrames']) <= Number(state['frames']))
+  assert.ok(Number(state['ordinaryWireBytes']) <= Number(state['retainedWireBytes']))
+  assert.ok(Number(state['frames']) <= Number(state['peakFrames']))
+  assert.ok(Number(state['retainedWireBytes']) <= Number(state['peakWireBytes']))
+  assert.ok(Number(state['peakFrames']) > 0 && Number(state['peakWireBytes']) > 0)
+}
 function admitted(value: unknown) {
   const diagnostic = record(value)
   const admission = record(diagnostic['commandAdmission'])
+  checkOutputAdmission(diagnostic['outputAdmission'])
   for (const [field, limit] of [
     ['requests', 256],
     ['ordinaryRequests', 192],
@@ -58,6 +81,7 @@ export async function qualifyControlAdmission(backend: CefBackend) {
     controlAdmittedWhileFull: true,
     fifoPreserved: true,
     nativeBudgetBounded: true,
+    outputBudget: 'bounded-native-fifo-wire-reservations',
     finalSessions: 0,
     priorTaskReservationsReleased: true,
   })

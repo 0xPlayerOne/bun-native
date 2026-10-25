@@ -13,6 +13,8 @@ const paths = [
   'scripts/qualify-cef-faults.py',
   'scripts/cef-fault-integrity.ts',
   'scripts/cef_fault_acceptance.py',
+  'native/cef-host/src/process.rs',
+  'native/cef-host/src/event_queue.rs',
   'native/cef-host/src/exit_notification.rs',
   'scripts/observe-process.py',
   'scripts/cef_process_role.py',

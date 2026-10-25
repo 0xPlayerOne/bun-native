@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { ordinaryHttpsEvidence } from './network-evidence.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import type { NativeEvent } from '../../packages/runtime/src/native-transport.ts'
 import { cefRpcSchema } from './rpc-contract.ts'
@@ -40,9 +41,15 @@ export default async function network(backend: CefBackend): Promise<void> {
         const message = event.event === 'view.console' ? event.data?.['message'] : undefined
         if (typeof message === 'string' && message.startsWith('BUNLY_NETWORK_FAILED:'))
           finish(new Error(message))
-        else if (matches(event)) {
-          finish()
-          resolve()
+        else {
+          try {
+            if (matches(event)) {
+              finish()
+              resolve()
+            }
+          } catch (error) {
+            finish(error instanceof Error ? error : new Error('Invalid native network evidence'))
+          }
         }
       })
       timer = setTimeout(
@@ -188,13 +195,10 @@ export default async function network(backend: CefBackend): Promise<void> {
     await backend.navigate(view, second + '/landing')
     await recovered.promise
     recovered.close()
-    const httpsLoaded = waiting(
-      'ordinary HTTPS verification',
-      (event) =>
-        event.event === 'view.loaded' &&
-        event.data?.['url'] === publicHttps + '/' &&
-        Number(event.data['status']) >= 200 &&
-        Number(event.data['status']) < 300
+    const httpsLoaded = waiting('ordinary HTTPS verification', (event) =>
+      ordinaryHttpsEvidence(event, publicHttps + '/', (receipt) =>
+        console.error(JSON.stringify(receipt))
+      )
     )
     await backend.navigate(view, publicHttps + '/')
     await httpsLoaded.promise
