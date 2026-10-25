@@ -25,5 +25,6 @@
   "bunly.credential-policy",
   "bunly.fault.ready",
   "bunly.fault.descendant",
-  "bunly.native.output-drained"
+  "bunly.native.output-drained",
+  "bunly.network.https-observation"
 ]

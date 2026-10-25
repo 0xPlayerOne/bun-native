@@ -76,3 +76,31 @@ ownership and representative interaction latency/full-process-tree measurements
 remain M5 work. Managed backend replacement remains M6. Neither this admission
 bound nor passing shutdown tests establishes a causal fix for the historical CEF
 watchdog intermittency.
+
+## Preserved platform failures and acceptance corrections
+
+The `3bd828f` hosted run failed two existing acceptance prerequisites; neither is
+converted into a passing historical result. macOS rejected a contended acquisition
+lock during cancellation (`UNSAFE_CACHE`), while Linux reached the public HTTPS
+step but retained no matching successful load receipt. Its native output drained
+to zero and ordered teardown completed with the expected failed host status;
+credential qualification correctly refused to run after that earlier failure.
+
+The cache waiter now treats a regular-file zero-link snapshot as a concurrent
+unlink observation, not an acquired lock or permission to remove someone else's
+file. Only a later successful exclusive `wx` creation grants ownership. The
+existing cancellation/deadline and wait interval remain unchanged. Isolated
+filesystem-observation regressions model release, a still-held path, multiple
+links, a symlink and a directory. The release and held-path controls failed on the
+original code; all unsafe shapes still reject. File integrity checks elsewhere
+continue to require exactly one link. The historical runner did not retain the
+actual stat fields, so this correction is not a claim of complete causal proof
+for that one observation.
+
+The public HTTPS fixture now retains a bounded native HTTP status or load-error
+code and fails promptly on a non-2xx or malformed result. It still requires the
+same exact HTTPS URL, ordinary certificate verifier and actual native 2xx load;
+there is no endpoint substitution, trust exception, retry, synthetic success or
+deadline extension. The earlier run's missing status cannot be reconstructed.
+External endpoint availability remains a qualification prerequisite, not a
+runtime reliability claim.
