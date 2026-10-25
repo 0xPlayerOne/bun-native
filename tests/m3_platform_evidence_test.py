@@ -270,6 +270,53 @@ class PlatformEvidenceTests(unittest.TestCase):
                 expected_identity=("156.0.7", "156.0.8078.17"),
             )
 
+    def test_current_supervision_requires_six_cases_and_an_independent_control(self):
+        from cef_fault_acceptance import MODES
+        from cef_fault_acceptance_test import fixture as fault_fixture
+
+        report = fixture()
+        trials = []
+        for mode in MODES:
+            observation, injections = fault_fixture(mode)
+            records = [json.loads(line) for line in observation["nativeDiagnostics"]]
+            for row in records:
+                if row["event"] == "bunly.runtime.profile":
+                    row["profile"] = "emulated-functional"
+                if (
+                    mode == "backend-hang"
+                    and row["event"] == "bunly.host.shutdown-phase"
+                    and row.get("phase") == "process-stop"
+                    and row.get("state") == "complete"
+                ):
+                    row["durationMs"] = 5000
+            observation["nativeDiagnostics"] = [json.dumps(row) for row in records]
+            trials.append(
+                {
+                    "mode": mode,
+                    "passed": True,
+                    "injected": injections,
+                    "observation": observation,
+                    "foreignControl": {
+                        "pid": 909,
+                        "creationTime": 1.25,
+                        "ready": True,
+                        "aliveAfterHostExit": True,
+                        "releasedNormally": True,
+                        "sameExecutableAsBackend": True,
+                    },
+                }
+            )
+        report["faults"].update(schema=4, trials=trials)
+        self.assertEqual(validate("linux-x64", "emulated-functional", report)["faultCases"], 6)
+        missing = copy.deepcopy(report)
+        missing["faults"]["trials"].pop()
+        with self.assertRaises(ValueError):
+            validate("linux-x64", "emulated-functional", missing)
+        missing = copy.deepcopy(report)
+        missing["faults"]["trials"][0].pop("foreignControl")
+        with self.assertRaises(ValueError):
+            validate("linux-x64", "emulated-functional", missing)
+
     def test_preserved_linux_reports_reproduce_the_declared_summary(self):
         # Replays real historical records; this test does not launch a browser.
         directory = Path(__file__).resolve().parents[1] / "evidence/m3-linux"

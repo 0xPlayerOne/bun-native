@@ -13,6 +13,7 @@ from pathlib import Path
 
 import psutil
 from cef_fault_acceptance import MODES, accept_fault
+from cef_fault_control import ForeignControl, accept_foreign_control
 from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
@@ -121,6 +122,20 @@ def main():
     )
     if result.returncode:
         raise RuntimeError(result.stderr)
+    subprocess.run(
+        [
+            args.bun,
+            "build",
+            str(ROOT / "examples/cef/fault-tree-child.ts"),
+            "--target=bun",
+            "--format=esm",
+            "--outfile",
+            str(application.parent / "fault-tree-child.js"),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=20,
+    )
     if mac:
         signed(app)
     prepared = snapshot(args.bun, app)
@@ -131,6 +146,10 @@ def main():
         nonce = secrets.token_hex(24)
         ready_path = work / (mode + ".ready.json")
         injected_path = work / (mode + ".injected.json")
+        tree_path = work / (mode + ".tree.json")
+        os.environ["BUNLY_CEF_FAULT_TREE"] = str(tree_path)
+        tree_seen = {}
+        tree_confirmed = []
         os.environ["BUNLY_CEF_FAULT_READY"] = str(ready_path)
         os.environ["BUNLY_CEF_FAULT_INJECTED"] = str(injected_path)
         os.environ["BUNLY_CEF_FAULT_NONCE"] = nonce
@@ -145,6 +164,9 @@ def main():
             ready_path=ready_path,
             injected_path=injected_path,
             nonce=nonce,
+            tree_path=tree_path,
+            tree_seen=tree_seen,
+            tree_confirmed=tree_confirmed,
         ):
             try:
                 process = psutil.Process(pid)
@@ -155,7 +177,59 @@ def main():
                 ):
                     root_identity.append((pid, process.create_time()))
                 if (
-                    mode not in ("backend-exit", "backend-tree-exit")
+                    mode == "backend-shell-tree-exit"
+                    and root_identity
+                    and not tree_confirmed
+                    and tree_path.is_file()
+                    and not tree_path.is_symlink()
+                    and tree_path.stat().st_size <= 1024
+                ):
+                    tree = json.loads(tree_path.read_text())
+                    pids = tree.get("pids") if isinstance(tree, dict) else None
+                    if (
+                        set(tree) == {"mode", "nonce", "backend", "pids"}
+                        and tree["mode"] == mode
+                        and tree["nonce"] == nonce
+                        and isinstance(pids, list)
+                        and len(pids) == 2
+                        and len(set(pids)) == 2
+                        and all(type(item) is int and 0 < item < 2**31 for item in pids)
+                    ):
+                        owner = psutil.Process(root_identity[0][0])
+                        if owner.create_time() == root_identity[0][1]:
+                            descendants = {
+                                child.pid: child for child in owner.children(recursive=True)
+                            }
+                            if tree["backend"] in descendants and all(
+                                item in descendants for item in pids
+                            ):
+                                shell, server = [descendants[item] for item in pids]
+                                if (
+                                    shell.ppid() == tree["backend"]
+                                    and server.ppid() == shell.pid
+                                    and pid in pids
+                                ):
+                                    tree_seen[pid] = {
+                                        "pid": pid,
+                                        "parentPid": process.ppid(),
+                                        "creationTime": process.create_time(),
+                                    }
+                                    if all(
+                                        item in tree_seen
+                                        and descendants[item].create_time()
+                                        == tree_seen[item]["creationTime"]
+                                        for item in pids
+                                    ):
+                                        temporary = injected_path.with_suffix(".pending")
+                                        with temporary.open("x", encoding="utf-8") as receipt:
+                                            json.dump(
+                                                {"mode": mode, "nonce": nonce, "pids": pids},
+                                                receipt,
+                                            )
+                                        temporary.replace(injected_path)
+                                        tree_confirmed.append(True)
+                if (
+                    mode in ("renderer-exit", "gpu-exit")
                     and not injected
                     and root_identity
                     and readiness(ready_path, nonce, mode)
@@ -194,7 +268,7 @@ def main():
                                         },
                                         receipt,
                                     )
-            except (psutil.Error, OSError):
+            except (psutil.Error, OSError, ValueError, TypeError):
                 pass
             return {
                 "provider": "private-fault-observation",
@@ -205,11 +279,29 @@ def main():
                 "sampledScopes": 0,
             }
 
-        data = observer.observe(
-            [str(binary)], timeout=300 if args.emulated_functional else 25, counter_reader=sample
+        control = ForeignControl(
+            application.parent.parent / ("bun.exe" if sys.platform == "win32" else "bun")
         )
-        trial = {"mode": mode, "passed": False, "injected": injected, "observation": data}
         try:
+            data = observer.observe(
+                [str(binary)],
+                timeout=300 if args.emulated_functional else 25,
+                counter_reader=sample,
+            )
+        finally:
+            foreign_control = control.finish()
+        # Preserve independently sampled ancestry separately from the resource
+        # rows, whose existing schema does not contain parent PID information.
+        data["descendantIdentities"] = list(tree_seen.values())
+        trial = {
+            "mode": mode,
+            "passed": False,
+            "injected": injected,
+            "observation": data,
+            "foreignControl": foreign_control,
+        }
+        try:
+            accept_foreign_control(foreign_control, data)
             trial["acceptance"] = accept_fault(mode, data, injected)
             trial["passed"] = True
         except (ValueError, KeyError, TypeError) as error:
@@ -249,7 +341,7 @@ def main():
         ],
     }
     result = {
-        "schema": 3,
+        "schema": 4,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

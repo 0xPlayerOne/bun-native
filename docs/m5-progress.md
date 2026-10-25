@@ -203,3 +203,13 @@ process exit, output drain and group cleanup remain separate observations. See
 [native process exit](native-process-exit.md) for timing, identity and remaining
 supervisor boundaries. This does not close #25/#26 or implement detached terminal
 ownership, restart policy or managed backend replacement.
+
+## Blocked backends and observed shell/server descendants
+
+The maintained native fault suite now adds forced shutdown of a deliberately
+blocked backend and cleanup of an observed non-detached shell/server-grandchild
+chain. Each case also proves survival of an independently owned same-executable
+process. Current schema-4 qualification retains all six cases and the original
+shutdown deadlines; earlier four-case evidence remains version scoped. See
+[native fault qualification](cef-fault-qualification.md). This closes neither
+detached PTY supervision nor the broader #25 restart/termination-denial scope.
