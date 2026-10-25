@@ -138,6 +138,12 @@ sources. It reserves its own additional capacity from a shared pool, owns exact
 chunk snapshots, and stops an unpausable producer explicitly on overload. Source
 EOF is distinct from process exit; `drained` is distinct from OS cleanup. The
 [M5 increment](m5-progress.md) qualifies actual Bun PTY callback bytes through the
-portable stream path. Native renderer authority is a separate adapter; neither
-increment implements graphical xterm, a full terminal service, descendant
-supervision or reconnect.
+portable stream path. Native renderer authority, the terminal service and graphical
+qualification are separate integration layers; none implies descendant supervision
+or a reconnect/replay backlog.
+
+Runtime callback sources may explicitly opt into lossless pending-byte coalescing.
+Only an unsent block can grow, no batching timer delays the first byte, and unused
+block capacity remains charged alongside active/transferred buffers. Generic
+sources default to their original callback chunk behavior. See
+[terminal service](terminal-service.md) for the terminal-owned use and limits.

@@ -22,21 +22,32 @@ export interface StreamSourceOptions {
   readonly maxChunkBytes?: number
   readonly maxRetainedBytes?: number
   readonly maxQueuedChunks?: number
+  /** Lossless byte streams only: append to an unsent block, never delay its delivery. */
+  readonly coalescePending?: boolean
+}
+interface SourceChunk {
+  readonly bytes: Uint8Array
+  readonly capacity: number
+  length: number
 }
 /** Bounded callback-source bridge. Not native view authorization or a PTY supervisor.
  * A push-only producer with no pause API fails explicitly on overload; it cannot
  * silently drop bytes, accumulate promises, or pretend transport handoff is consumption.
  */
 export class CallbackStreamSource {
-  readonly #queue: Uint8Array[] = []
+  readonly #queue: SourceChunk[] = []
   readonly #chunk: number
   readonly #capacity: number
   readonly #frames: number
+  readonly #coalesce: boolean
   readonly #releaseReservation: () => void
   readonly #stopSource: (code: StreamErrorCode) => void
   readonly #writer: BinaryStreamWriter
   #removeAbort = () => {}
   #retained = 0
+  #allocated = 0
+  #peakAllocated = 0
+  #coalescedBytes = 0
   #peak = 0
   #active = false
   #scheduled = false
@@ -59,9 +70,11 @@ export class CallbackStreamSource {
     this.#chunk = options.maxChunkBytes ?? 16 * 1024
     this.#capacity = options.maxRetainedBytes ?? 256 * 1024
     this.#frames = options.maxQueuedChunks ?? 32
+    this.#coalesce = options.coalescePending ?? false
     if (
       !(options.budget instanceof StreamBudget) ||
       typeof options.stopSource !== 'function' ||
+      typeof this.#coalesce !== 'boolean' ||
       ![this.#chunk, this.#capacity, this.#frames].every((n) => Number.isSafeInteger(n) && n > 0) ||
       this.#chunk > 64 * 1024 ||
       this.#capacity < this.#chunk ||
@@ -116,29 +129,49 @@ export class CallbackStreamSource {
       this.#fail('PROTOCOL_ERROR')
       return false
     }
-    const count = Math.ceil(length / this.#chunk)
+    const tail = this.#coalesce ? this.#queue.at(-1) : undefined
+    const appended = tail ? Math.min(length, tail.capacity - tail.length) : 0
+    const remaining = length - appended
+    const count = Math.ceil(remaining / this.#chunk)
     if (
       length > this.#capacity - this.#retained ||
+      remaining > this.#capacity - this.#allocated ||
       count > this.#frames - this.#queue.length - Number(this.#active)
     ) {
       this.#fail('OVERLOADED')
       return false
     }
-    // Admission precedes every allocation. Stage atomically, so a failed copy
-    // cannot leave partially appended data with incorrect byte accounting.
-    const chunks: Uint8Array[] = []
+    // Allocate only inside the already-reserved source capacity. Coalescing
+    // blocks count their unused slack too; an active or transferred block stays
+    // charged until its writer settles. No copy ever modifies an active block.
+    const chunks: SourceChunk[] = []
+    let allocated = 0
     try {
-      for (let cursor = 0; cursor < length; cursor += this.#chunk) {
+      for (let cursor = appended; cursor < length;) {
         const size = Math.min(this.#chunk, length - cursor)
-        const chunk = new Uint8Array(size)
+        const capacity = this.#coalesce
+          ? Math.min(this.#chunk, this.#capacity - this.#allocated - allocated)
+          : size
+        const chunk = new Uint8Array(capacity)
         chunk.set(new Uint8Array(buffer, offset + cursor, size))
-        chunks.push(chunk)
+        chunks.push({ bytes: chunk, capacity, length: size })
+        allocated += capacity
+        cursor += size
+      }
+      // Stage every new block before changing a previously admitted tail. A
+      // failed allocation/copy cancels owned work rather than emitting a prefix.
+      if (tail && appended) {
+        tail.bytes.set(new Uint8Array(buffer, offset, appended), tail.length)
+        tail.length += appended
       }
     } catch {
       this.#fail('OVERLOADED')
       return false
     }
     for (const chunk of chunks) this.#queue.push(chunk)
+    this.#allocated += allocated
+    this.#peakAllocated = Math.max(this.#peakAllocated, this.#allocated)
+    this.#coalescedBytes += appended
     this.#retained += length
     this.#peak = Math.max(this.#peak, this.#retained)
     this.#schedule()
@@ -176,16 +209,17 @@ export class CallbackStreamSource {
   }
   async #pump(): Promise<void> {
     if (this.#active || this.#settled) return
-    const bytes = this.#queue.shift()
-    if (!bytes && !this.#ended) return
+    const chunk = this.#queue.shift()
+    if (!chunk && !this.#ended) return
     // A writer may transfer (detach) the supplied buffer during handoff. Keep
     // its admitted size until settlement rather than rereading a detached view.
-    const length = bytes?.byteLength ?? 0
+    const length = chunk?.length ?? 0
+    const allocated = chunk?.capacity ?? 0
     this.#active = true
     try {
-      if (bytes) {
+      if (chunk) {
         this.#drainChunks++
-        await this.#writer.write(bytes)
+        await this.#writer.write(chunk.bytes.subarray(0, length))
         this.#acknowledgedBytes += length
       } else {
         await this.#writer.end()
@@ -200,7 +234,10 @@ export class CallbackStreamSource {
     } catch (error) {
       this.#fail(error instanceof StreamError ? error.code : 'CONSUMER_FAILED')
     } finally {
-      if (bytes) this.#retained -= length
+      if (chunk) {
+        this.#retained -= length
+        this.#allocated -= allocated
+      }
       this.#active = false
       this.#collect()
       this.#schedule()
@@ -215,7 +252,10 @@ export class CallbackStreamSource {
     this.#yieldTask = undefined
     this.#scheduled = false
     this.#removeAbort()
-    for (const bytes of this.#queue) this.#retained -= bytes.byteLength
+    for (const chunk of this.#queue) {
+      this.#retained -= chunk.length
+      this.#allocated -= chunk.capacity
+    }
     this.#queue.length = 0
     // Mark retired before callbacks: stopping/cancellation may synchronously reenter.
     try {
@@ -240,6 +280,10 @@ export class CallbackStreamSource {
   diagnostics() {
     return Object.freeze({
       retainedBytes: this.#retained,
+      allocatedBytes: this.#allocated,
+      peakAllocatedBytes: this.#peakAllocated,
+      coalescedBytes: this.#coalescedBytes,
+      coalescing: this.#coalesce,
       peakRetainedBytes: this.#peak,
       queuedChunks: this.#queue.length + Number(this.#active),
       acknowledgedBytes: this.#acknowledgedBytes,

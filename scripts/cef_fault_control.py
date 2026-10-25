@@ -1,6 +1,8 @@
 """An independently owned same-executable negative control for native cleanup tests."""
 
+import http.client
 import json
+import re
 import subprocess
 import threading
 
@@ -106,3 +108,31 @@ def accept_foreign_control(control, observation):
         for row in sample.get("processes", [])
     ):
         raise ValueError("Foreign control was part of the native owned process tree")
+
+
+def notify_tree_observation(port, nonce, pids):
+    """One bounded numeric-loopback publication after independent ancestry observation."""
+    if (
+        type(port) is not int
+        or not 0 < port <= 65535
+        or not isinstance(nonce, str)
+        or not re.fullmatch(r"[a-f0-9]{48}", nonce)
+        or not isinstance(pids, list)
+        or len(pids) != 2
+        or any(type(pid) is not int or not 0 < pid < 2**31 for pid in pids)
+        or len(set(pids)) != 2
+    ):
+        raise ValueError("Invalid tree notification identity")
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+    try:
+        connection.request(
+            "POST",
+            "/observed",
+            body=json.dumps({"mode": "backend-shell-tree-exit", "nonce": nonce, "pids": pids}),
+            headers={"x-bunly-observation": nonce, "Content-Type": "application/json"},
+        )
+        response = connection.getresponse()
+        if response.status != 204 or response.read(1):
+            raise ValueError("Invalid tree notification acknowledgment")
+    finally:
+        connection.close()

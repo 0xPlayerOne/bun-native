@@ -26,6 +26,7 @@ const paths = [
   'examples/cef/fault.ts',
   'examples/cef/fault-supervision.ts',
   'examples/cef/fault-tree-child.ts',
+  'examples/cef/fault-tree-notification.ts',
   'examples/cef/fault-ack.ts',
   'examples/cef/rpc-fixture-service.ts',
   'examples/cef/rpc-contract.ts',

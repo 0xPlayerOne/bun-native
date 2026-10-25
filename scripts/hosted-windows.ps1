@@ -34,6 +34,8 @@ if ($Worker) {
     $env:GIT_CONFIG_KEY_0 = 'safe.directory'
     $env:GIT_CONFIG_VALUE_0 = $root.Replace('\', '/')
     if ($Suite -eq 'pty') {
+        & $Bun test tests/terminal-service.test.ts tests/terminal-service-real.test.ts
+        if ($LASTEXITCODE -ne 0) { throw 'Standard-user terminal service regression failed' }
         & $Bun (Join-Path $PSScriptRoot 'qualify-bun-pty.ts')
     } else {
         & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite

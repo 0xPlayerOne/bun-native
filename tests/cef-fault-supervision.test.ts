@@ -28,15 +28,20 @@ test('tree observation binds exact mode, nonce and ordered owned process identit
   expect(() => validateTreeObservation(receipt, 'not-a-nonce', pids)).toThrow()
 })
 
-test('tree readiness handles existing and atomically published files without polling', async () => {
+test('tree readiness handles existing and atomically published receipts after explicit notification', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bunly-tree-receipt-'))
   const path = join(root, 'receipt.json')
   try {
-    const waiter = waitForTreeObservation(path, nonce, pids, 1000)
+    let notify!: () => void
+    const notified = new Promise<void>((resolve) => {
+      notify = resolve
+    })
+    const waiter = waitForTreeObservation(path, nonce, pids, 1000, () => notified)
     await writeFile(join(root, 'pending'), JSON.stringify(receipt), { flag: 'wx', mode: 0o600 })
     await rename(join(root, 'pending'), path)
+    notify()
     await waiter
-    await waitForTreeObservation(path, nonce, pids, 1000)
+    await waitForTreeObservation(path, nonce, pids, 1000, async () => {})
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -48,22 +53,31 @@ test('malformed, oversized and unsafe tree receipts never become readiness', asy
   try {
     for (const text of ['{', JSON.stringify({ ...receipt, pids: [999, 102] }), ' '.repeat(1025)]) {
       await writeFile(path, text, { mode: 0o600 })
-      await expect(waitForTreeObservation(path, nonce, pids, 1000)).rejects.toThrow()
+      await expect(
+        waitForTreeObservation(path, nonce, pids, 1000, async () => {})
+      ).rejects.toThrow()
     }
     await rm(path)
     await mkdir(path)
-    await expect(waitForTreeObservation(path, nonce, pids, 1000)).rejects.toThrow('Unsafe')
+    await expect(waitForTreeObservation(path, nonce, pids, 1000, async () => {})).rejects.toThrow(
+      'Unsafe'
+    )
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 })
 
-test('absent tree observation expires and retires its filesystem subscription', async () => {
+test('absent tree notification expires and aborts its one owned request', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bunly-tree-receipt-'))
   try {
-    await expect(waitForTreeObservation(join(root, 'absent'), nonce, pids, 10)).rejects.toThrow(
-      'deadline'
-    )
+    let signal: AbortSignal | undefined
+    await expect(
+      waitForTreeObservation(join(root, 'absent'), nonce, pids, 10, (owned) => {
+        signal = owned
+        return new Promise<void>(() => {})
+      })
+    ).rejects.toThrow('deadline')
+    expect(signal?.aborted).toBe(true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

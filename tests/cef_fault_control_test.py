@@ -1,11 +1,13 @@
 """Independent negative-control acceptance, not fabricated process execution."""
 
+import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from cef_fault_control import accept_foreign_control
+from cef_fault_control import accept_foreign_control, notify_tree_observation
 
 
 class ForeignControlAcceptanceTests(unittest.TestCase):
@@ -53,3 +55,54 @@ class ForeignControlAcceptanceTests(unittest.TestCase):
         ):
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 accept_foreign_control({**control, field: value}, {"samples": []})
+
+
+class TreeNotificationTests(unittest.TestCase):
+    @patch("cef_fault_control.http.client.HTTPConnection")
+    def test_one_exact_loopback_publication_and_owned_cleanup(self, factory):
+        connection = factory.return_value
+        connection.getresponse.return_value = Mock(status=204)
+        connection.getresponse.return_value.read.return_value = b""
+        notify_tree_observation(12345, "a" * 48, [101, 102])
+        factory.assert_called_once_with("127.0.0.1", 12345, timeout=1)
+        connection.request.assert_called_once()
+        args, kwargs = connection.request.call_args
+        self.assertEqual(args, ("POST", "/observed"))
+        self.assertEqual(
+            json.loads(kwargs["body"]),
+            {"mode": "backend-shell-tree-exit", "nonce": "a" * 48, "pids": [101, 102]},
+        )
+        connection.close.assert_called_once()
+
+    @patch("cef_fault_control.http.client.HTTPConnection")
+    def test_bad_identity_never_opens_a_socket(self, factory):
+        for port, nonce, pids in (
+            (True, "a" * 48, [101, 102]),
+            (0, "a" * 48, [101, 102]),
+            (65536, "a" * 48, [101, 102]),
+            (123, "bad", [101, 102]),
+            (123, "a" * 48, [101, 101]),
+            (123, "a" * 48, [True, 102]),
+        ):
+            with self.assertRaises(ValueError):
+                notify_tree_observation(port, nonce, pids)
+        factory.assert_not_called()
+
+    @patch("cef_fault_control.http.client.HTTPConnection")
+    def test_failed_or_wrong_acknowledgment_is_not_retried(self, factory):
+        for status, body in ((403, b""), (200, b""), (204, b"x")):
+            connection = Mock()
+            factory.return_value = connection
+            connection.getresponse.return_value = Mock(status=status)
+            connection.getresponse.return_value.read.return_value = body
+            with self.assertRaises(ValueError):
+                notify_tree_observation(123, "a" * 48, [101, 102])
+            connection.request.assert_called_once()
+            connection.close.assert_called_once()
+        connection = Mock()
+        connection.request.side_effect = OSError("unavailable")
+        factory.return_value = connection
+        with self.assertRaises(OSError):
+            notify_tree_observation(123, "a" * 48, [101, 102])
+        connection.request.assert_called_once()
+        connection.close.assert_called_once()
