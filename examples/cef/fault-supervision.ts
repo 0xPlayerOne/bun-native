@@ -1,115 +1,62 @@
 import assert from 'node:assert/strict'
-import { constants, watch } from 'node:fs'
-import { dirname, isAbsolute, join } from 'node:path'
+import { constants } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { lstat, open, writeFile } from 'node:fs/promises'
 
-const mode = 'backend-shell-tree-exit'
-/** Private contributor receipts, not a process-authority API. */
-export function validateTreeObservation(
-  value: unknown,
-  nonce: string,
-  pids: readonly number[]
-): void {
-  assert.match(nonce, /^[a-f0-9]{48}$/)
-  assert.equal(pids.length, 2)
-  assert.equal(new Set(pids).size, 2)
-  assert.ok(pids.every((pid) => Number.isSafeInteger(pid) && pid > 0 && pid < 2 ** 31))
-  assert.ok(value && typeof value === 'object' && !Array.isArray(value))
-  const row = value as Record<string, unknown>
-  assert.deepEqual(Object.keys(row).sort(), ['mode', 'nonce', 'pids'])
-  assert.equal(row['mode'], mode)
-  assert.equal(row['nonce'], nonce)
-  assert.deepEqual(row['pids'], pids)
-}
+import { validateTreeObservation } from './fault-tree-notification.ts'
+export { validateTreeObservation } from './fault-tree-notification.ts'
 
-/** One filesystem notification subscription and one deadline, no polling loop. */
-export function waitForTreeObservation(
+const mode = 'backend-shell-tree-exit'
+
+/** Read the same exact private receipt only after an explicit retained notification.
+ * File visibility alone and an OS watcher registration are not readiness signals.
+ */
+export async function waitForTreeObservation(
   path: string,
   nonce: string,
   pids: readonly number[],
-  timeoutMs: number
+  timeoutMs: number,
+  notification: (signal: AbortSignal) => Promise<void>
 ): Promise<void> {
   assert.ok(
     isAbsolute(path) && Number.isSafeInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000
   )
   validateTreeObservation({ mode, nonce, pids }, nonce, pids)
   const expected = [...pids]
-  return new Promise((resolve, reject) => {
-    let ended = false,
-      checking = false,
-      dirty = false
-    const deadline = performance.now() + timeoutMs
-    const timer = setTimeout(
-      () => finish(new Error('Owned descendants were not observed before deadline')),
-      timeoutMs
-    )
-    let watcher: ReturnType<typeof watch> | undefined
-    function finish(error?: unknown) {
-      if (ended) return
-      ended = true
-      clearTimeout(timer)
-      watcher?.close()
-      if (error) reject(error)
-      else resolve()
-    }
-    async function check() {
-      if (ended) return
-      if (checking) {
-        dirty = true
-        return
-      }
-      checking = true
-      try {
-        do {
-          dirty = false
-          const stat = await lstat(path).catch((error: NodeJS.ErrnoException) => {
-            if (error.code === 'ENOENT') return undefined
-            throw error
-          })
-          if (!stat) continue
-          if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 1024)
-            throw new Error('Unsafe tree observation file')
-          const file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
-          try {
-            const info = await file.stat()
-            if (
-              !info.isFile() ||
-              info.nlink !== 1 ||
-              info.dev !== stat.dev ||
-              info.ino !== stat.ino
-            )
-              throw new Error('Changed tree observation file')
-            const bytes = Buffer.alloc(1025)
-            const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
-            if (bytesRead > 1024) throw new Error('Tree observation exceeds bound')
-            validateTreeObservation(
-              JSON.parse(bytes.subarray(0, bytesRead).toString()),
-              nonce,
-              expected
-            )
-            if (performance.now() >= deadline) throw new Error('Late tree observation')
-            finish()
-          } finally {
-            await file.close()
-          }
-        } while (dirty && !ended)
-      } catch (error) {
-        finish(error)
-      } finally {
-        checking = false
-      }
-    }
+  const deadline = performance.now() + timeoutMs
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      Promise.resolve().then(() => notification(controller.signal)),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort()
+          reject(new Error('Owned descendants were not observed before deadline'))
+        }, timeoutMs)
+      }),
+    ])
+    const stat = await lstat(path)
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 1024)
+      throw new Error('Unsafe tree observation file')
+    const file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
     try {
-      watcher = watch(dirname(path), () => {
-        void check()
-      })
-      watcher.on('error', finish)
-      void check()
-    } catch (error) {
-      finish(error)
+      const info = await file.stat()
+      if (!info.isFile() || info.nlink !== 1 || info.dev !== stat.dev || info.ino !== stat.ino)
+        throw new Error('Changed tree observation file')
+      const bytes = Buffer.alloc(1025)
+      const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
+      if (bytesRead > 1024) throw new Error('Tree observation exceeds bound')
+      validateTreeObservation(JSON.parse(bytes.subarray(0, bytesRead).toString()), nonce, expected)
+      if (performance.now() >= deadline) throw new Error('Late tree observation')
+    } finally {
+      await file.close()
     }
-  })
+  } finally {
+    clearTimeout(timer)
+    controller.abort()
+  }
 }
 
 /** Fixed contributor shell only; callers never supply shell command text. */
@@ -209,11 +156,22 @@ export async function startObservedShellTree(timeoutMs: number): Promise<void> {
           role: index === 0 ? 'shell' : 'server',
         })
       )
-    await writeFile(tree, JSON.stringify({ mode, nonce, backend: process.pid, pids }), {
-      flag: 'wx',
-      mode: 0o600,
+    await writeFile(
+      tree,
+      JSON.stringify({ mode, nonce, backend: process.pid, pids, port: ready['port'] }),
+      {
+        flag: 'wx',
+        mode: 0o600,
+      }
+    )
+    await waitForTreeObservation(observed, nonce, pids, timeoutMs, async (signal) => {
+      const response = await fetch(`http://127.0.0.1:${ready['port']}/observation`, {
+        headers: { 'x-bunly-observation': nonce },
+        signal,
+        redirect: 'error',
+      })
+      assert.equal(response.status, 204, 'Missing independent tree notification')
     })
-    await waitForTreeObservation(observed, nonce, pids, timeoutMs)
     console.error(
       JSON.stringify({ event: 'bunly.fault.tree-observed', mode, count: 2, serverResponded: true })
     )

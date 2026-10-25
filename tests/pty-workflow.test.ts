@@ -47,3 +47,19 @@ test('source scheduling regressions execute before real PTY qualification on eve
   ])
     expect(steps.findIndex((step) => step['name'] === name)).toBeGreaterThan(regression)
 })
+
+test('runtime terminal service executes before PTY qualification and under the Windows standard user', async () => {
+  const workflow = await readFile(join(root, '.github/workflows/bun-pty.yml'), 'utf8')
+  const runner = await readFile(join(root, 'scripts/hosted-windows.ps1'), 'utf8')
+  const tests = 'tests/terminal-service.test.ts tests/terminal-service-real.test.ts'
+  expect(workflow).toContain('bun test ' + tests)
+  const pty = runner.slice(
+    runner.indexOf("if ($Suite -eq 'pty')"),
+    runner.indexOf('exit $LASTEXITCODE')
+  )
+  expect(pty.indexOf('& $Bun test ' + tests)).toBeGreaterThanOrEqual(0)
+  expect(pty.indexOf('& $Bun test ' + tests)).toBeLessThan(pty.indexOf('qualify-bun-pty.ts'))
+  expect(pty).toContain(
+    "if ($LASTEXITCODE -ne 0) { throw 'Standard-user terminal service regression failed' }"
+  )
+})
