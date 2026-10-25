@@ -433,6 +433,12 @@ test('common native document revocation aborts a stream-only owner and fences de
       documentId: 'native-3-1',
       origin: 'app://ui',
     }
+    peer.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'app://ui/index.html', documentId: 'native-3-1', applicationTrust: true },
+    })
     peer.send({ v: 1, event: 'stream.connected', target: 3, data })
     await turn()
     assert.equal(connections, 1)

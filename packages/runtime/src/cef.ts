@@ -1228,7 +1228,11 @@ export class CefBackend implements BrowserBackend {
     else if (event.event === 'view.closed' && view) this.#dropView(view)
     else if (view && (event.event === 'view.navigating' || event.event === 'view.loaded')) {
       if (typeof event.data?.['url'] !== 'string') throw new Error('Missing native navigation URL')
-      if (event.event === 'view.navigating') this.#retireRpc(view)
+      // Initial native-approved navigation establishes the first document. Only
+      // subsequent/untrusted navigation retires it; the native callback owns
+      // this eligibility bit, never the page.
+      if (event.event === 'view.navigating' && event.data['applicationTrust'] !== true)
+        this.#retireRpc(view)
       const resource = this.#registry.get<'view', ViewResource>(view, 'view')
       const url = normalizeUrl(event.data['url'])
       const documentId = nativeDocumentId(event.data)
