@@ -156,6 +156,31 @@ cap arbitrary producer CPU time, reserve a native control lane, or implement glo
 fair scheduling across CEF views. Full native scheduler/load acceptance under
 #26/#27 and native stream authority and terminal supervision remain outstanding.
 
+## Runtime terminal-service increment
+
+The bounded #24 core now has a persistent runtime `TerminalService` with opaque
+object-identity handles, shared global/per-owner terminal and output reservations,
+explicit executable/cwd/argv/environment validation, bounded binary input and
+dimensions, resize, direct-child signal, independent process-exit and PTY-close
+observations, and finite close/cancel results. Runtime ownership is established
+before the stream writer or PTY driver can execute callbacks. Application handlers,
+diagnostic IDs and renderer-provided process identifiers are not resource authority.
+
+Actual PTY callback bytes use `CallbackStreamSource` and the caller's explicit
+`BinaryStreamWriter`. Overflow, consumer failure and peer disconnect stop the exact
+owned producer instead of dropping bytes. Process exit does not imply PTY EOF or
+output drain; PTY status 1 is retained as non-clean and ambiguous. Reservations stay
+charged when a spawn, driver or consumer refuses to settle. The explicit policy is
+disconnect-stop with no replay, scrollback store, reconnect, or hidden retry. See
+[runtime terminal service](terminal-service.md) for the state and limit contract.
+
+A controlled fake driver covers races, deadlines and retained ownership. A fixed
+repository child under pinned Bun 1.4.3 covers real input, resize, split/invalid
+bytes, nonzero exit, close and headless-xterm ACK/hash behavior. This portable core
+still does not supply the renderer ACK/authority lane, graphical terminal behavior,
+detached-descendant supervision, Windows jobs, managed backend replacement or M6
+generation adoption.
+
 ## Native command control reservations
 
 The next #26 increment reserves bounded request and wire-byte capacity for exact
