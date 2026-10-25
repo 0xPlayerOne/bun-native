@@ -27,5 +27,7 @@
   "bunly.fault.ready",
   "bunly.fault.descendant",
   "bunly.native.output-drained",
-  "bunly.network.https-observation"
+  "bunly.network.https-observation",
+  "bunly.fault.blocked",
+  "bunly.fault.tree-observed"
 ]

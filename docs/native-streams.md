@@ -82,3 +82,8 @@ approved navigation (a deterministic regression reproduces it) and removed a
 duplicate RPC entrypoint: the stream bundle already includes the shared RPC client.
 The native callback still retires subsequent untrusted navigation immediately,
 and no bridge subscriber limit or qualification deadline was relaxed.
+
+Stream revocation uses the same exact-shape, small-message lifecycle reserve as
+RPC revocation. A saturated-ordinary-output regression failed before the stream
+event was included. This reserves admission without changing FIFO order or the
+existing total native output byte/count limits.
