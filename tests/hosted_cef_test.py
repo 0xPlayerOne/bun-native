@@ -33,6 +33,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "transports",
                 "session-reset",
                 "faults",
+                "terminals",
                 "credentials",
             ],
         )
@@ -42,7 +43,7 @@ class HostedQualificationTests(unittest.TestCase):
                 for _, args in full
             )
         )
-        self.assertEqual(full[-2][1][-2:], ["--bun", "/bun"])
+        self.assertEqual(dict(full)["faults"][-2:], ["--bun", "/bun"])
         with self.assertRaises(ValueError):
             hosted.commands("arbitrary-shell", "/bun", Path("/app"))
 
@@ -115,7 +116,12 @@ class HostedQualificationTests(unittest.TestCase):
                     m4, hosted.commands("rpc", bun, app) + hosted.commands("credentials", bun, app)
                 )
                 self.assertEqual(
-                    [row for row in hosted.commands("full", bun, app) if row[0] != "faults"], m4
+                    [
+                        row
+                        for row in hosted.commands("full", bun, app)
+                        if row[0] not in ("faults", "terminals")
+                    ],
+                    m4,
                 )
                 self.assertEqual(len({name for name, _ in m4}), 6)
                 self.assertTrue(m4[0][1][1].endswith("qualify-cef-rpc.ts"))
@@ -268,3 +274,23 @@ class EvidenceExportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GraphicalTerminalStageTests(unittest.TestCase):
+    def test_full_runs_graphical_terminals_before_providers_and_uses_its_report_family(self):
+        commands = hosted.commands("full", "/bun", Path("/app"))
+        names = [name for name, _ in commands]
+        self.assertEqual(names[-2:], ["terminals", "credentials"])
+        self.assertEqual(
+            dict(commands)["terminals"],
+            ["/bun", str(hosted.ROOT / "scripts/qualify-cef-terminals.ts"), "/app", "--functional"],
+        )
+        self.assertEqual(
+            hosted.report_directory("terminals"), hosted.ROOT / ".bunly/m5/graphical-terminals"
+        )
+        self.assertEqual(hosted.report_directory("network"), hosted.ROOT / ".bunly/m3/network")
+        rows = [{"name": name, "passed": True} for name in names[:-1]]
+        hosted.require_stage_prerequisites("full", "credentials", rows)
+        rows[-1]["passed"] = False
+        with self.assertRaises(ValueError):
+            hosted.require_stage_prerequisites("full", "credentials", rows)
