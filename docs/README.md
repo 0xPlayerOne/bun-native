@@ -93,3 +93,6 @@ capacity, cancellation/task ownership and the real native saturation fixture.
 
 [Native fault qualification](cef-fault-qualification.md) defines actual readiness,
 expected failure/cleanup receipts and the automatic seven-stage native gate.
+
+[Native process exit](native-process-exit.md) describes the notification-driven
+backend shutdown handoff and its unchanged identity and deadline boundaries.

@@ -62,6 +62,7 @@ const paths = [
   'packages/contracts/src/rpc-fragments.ts',
   'packages/contracts/src/rpc-websocket-wire.ts',
   'native/cef-host/src/host.rs',
+  'native/cef-host/src/exit_notification.rs',
   'native/cef-host/src/resources.rs',
   'native/cef-host/src/rpc_transport_qualification.rs',
   'benchmarks/lib/cef-transport-acceptance.ts',

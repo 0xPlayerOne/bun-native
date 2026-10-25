@@ -53,6 +53,7 @@ const sources = [
   'packages/runtime/src/native-capacity.json',
   'native/cef-host/src/command_budget.rs',
   'native/cef-host/src/process.rs',
+  'native/cef-host/src/exit_notification.rs',
   'examples/cef/network.ts',
   'native/cef-host/src/network_policy.rs',
   'native/cef-host/src/scheme.rs',

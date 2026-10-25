@@ -1,4 +1,5 @@
 //! One application process. Pipe I/O never blocks CEF's UI thread.
+use crate::exit_notification::{ExitNotification, ExitWait};
 use serde_json::{json, Value};
 use std::{
     io::{BufRead, BufReader, Read, Write},
@@ -9,7 +10,7 @@ use std::{
         Condvar, Mutex, OnceLock,
     },
     thread::{self, JoinHandle},
-    time::{Duration, Instant},
+    time::Instant,
 };
 static CHILD: OnceLock<Mutex<Child>> = OnceLock::new();
 static OUTPUT: OnceLock<Mutex<Option<SyncSender<Value>>>> = OnceLock::new();
@@ -52,6 +53,7 @@ fn exited_unreaped(pid: u32, blocking: bool) -> std::io::Result<bool> {
     }
 }
 static STOPPING: AtomicBool = AtomicBool::new(false);
+static EXIT: ExitNotification = ExitNotification::new();
 #[cfg(windows)]
 static JOB: OnceLock<usize> = OnceLock::new();
 fn expected_exit() -> bool {
@@ -145,6 +147,9 @@ pub fn start() -> Result<(), String> {
                 Err(std::io::Error::last_os_error())
             }
         };
+        // Retain completion even when it arrives before shutdown starts. This
+        // watcher does not acquire CHILD's mutex and never reaps the Unix child.
+        EXIT.publish(matches!(result, Ok(true)));
         if !expected_exit() {
             crate::host::fail(if matches!(result, Ok(true)) {
                 "Bun backend process exited before native shutdown"
@@ -260,27 +265,11 @@ pub fn stop() {
     if let Some(child) = CHILD.get() {
         if let Ok(mut child) = child.lock() {
             let end = Instant::now() + crate::deadlines::current().backend_exit();
-            let mut exited = false;
+            let exited = EXIT.wait_until(end) == ExitWait::Exited;
+            // One final non-reaping ownership check before signalling the group,
+            // not a repeated exit poll. A timeout does not authorize a reused PID.
             #[cfg(unix)]
-            let mut identity_reserved = true;
-            while Instant::now() < end {
-                #[cfg(unix)]
-                match exited_unreaped(child.id(), false) {
-                    Ok(value) => exited = value,
-                    Err(_) => {
-                        identity_reserved = false;
-                        break;
-                    }
-                }
-                #[cfg(windows)]
-                {
-                    exited = child.try_wait().ok().flatten().is_some();
-                }
-                if exited {
-                    break;
-                }
-                thread::sleep(Duration::from_millis(10));
-            }
+            let identity_reserved = exited_unreaped(child.id(), false).is_ok();
             // Never reap before killing the owned process group: PID reuse must
             // not turn cleanup into a signal to an unrelated process group.
             #[cfg(unix)]
@@ -342,6 +331,63 @@ mod tests {
         assert_eq!(child.wait().unwrap().code(), Some(23));
         assert!(exited_unreaped(child.id(), false).is_err());
     }
+    #[test]
+    fn pipe_eof_does_not_publish_process_exit_or_reap_its_identity() {
+        use std::sync::{mpsc, Arc};
+        use std::time::Duration;
+        struct OwnedChild(Child);
+        impl Drop for OwnedChild {
+            fn drop(&mut self) {
+                if self.0.try_wait().ok().flatten().is_none() {
+                    let _ = self.0.kill();
+                    let _ = self.0.wait();
+                }
+            }
+        }
+        let mut child = OwnedChild(
+            Command::new("/bin/sh")
+                .args(["-c", "exec 1>&-; read ignored; exit 0"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        let notification = Arc::new(ExitNotification::new());
+        let watcher = {
+            let notification = notification.clone();
+            let pid = child.0.id();
+            thread::spawn(move || {
+                notification.publish(matches!(exited_unreaped(pid, true), Ok(true)))
+            })
+        };
+        let mut output = child.0.stdout.take().unwrap();
+        let (send, receive) = mpsc::channel();
+        let reader = thread::spawn(move || send.send(output.read(&mut [0_u8; 1])).unwrap());
+        assert_eq!(
+            receive
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap()
+                .unwrap(),
+            0
+        );
+        reader.join().unwrap();
+        assert_eq!(
+            notification.wait_until(Instant::now()),
+            ExitWait::DeadlineExceeded
+        );
+        assert!(!exited_unreaped(child.0.id(), false).unwrap());
+        // Only releasing the child's input lifetime permits real process exit.
+        drop(child.0.stdin.take());
+        assert_eq!(
+            notification.wait_until(Instant::now() + Duration::from_secs(5)),
+            ExitWait::Exited
+        );
+        watcher.join().unwrap();
+        assert!(exited_unreaped(child.0.id(), false).unwrap());
+        assert_eq!(child.0.wait().unwrap().code(), Some(0));
+    }
+
     #[test]
     fn exit_observation_rejects_process_group_selectors() {
         assert!(exited_unreaped(0, false).is_err());
