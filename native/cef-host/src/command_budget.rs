@@ -158,6 +158,8 @@ mod tests {
                 "quit",
                 "rpc.ack",
                 "rpc.disconnect",
+                "stream.ack",
+                "stream.disconnect",
                 "view.dispose",
                 "window.close",
                 "session.dispose",
@@ -176,7 +178,10 @@ mod tests {
         for i in 0..64 {
             permits.push(
                 budget
-                    .reserve(&limits().control_operations[i % 7], 128)
+                    .reserve(
+                        &limits().control_operations[i % limits().control_operations.len()],
+                        128,
+                    )
                     .unwrap(),
             );
         }

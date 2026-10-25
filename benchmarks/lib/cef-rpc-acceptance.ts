@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { nativeEvents, acceptNativeSmoke } from './cef-acceptance.ts'
 import { observeNativeShutdown, requireNativeShutdown } from '../foundation/native-shutdown.ts'
 import { validateCommandObservation, type CommandObservation } from './observed-command.ts'
+import { createHash } from 'node:crypto'
 
 export const nativeRpcCases = Object.freeze(
   [
@@ -18,6 +19,39 @@ export const nativeRpcCases = Object.freeze(
     'wrong-frame',
   ].sort()
 )
+function fixtureChunk(stream: number, sequence: number, bytes: number): Uint8Array {
+  const chunk = new Uint8Array(bytes)
+  for (let index = 0; index < chunk.length; index++)
+    chunk[index] = (stream * 61 + sequence * 17 + index * 13) & 0xff
+  return chunk
+}
+function streamRow(stream: number, sizes: readonly number[]) {
+  const hash = createHash('sha256')
+  for (let index = 0; index < sizes.length; index++)
+    hash.update(fixtureChunk(stream, index + 1, sizes[index]!))
+  return {
+    chunks: sizes.length,
+    bytes: sizes.reduce((total, size) => total + size, 0),
+    sha256: hash.digest('hex'),
+  }
+}
+export const nativeStreamEvidence = Object.freeze({
+  renderer: {
+    schema: 1,
+    alpha: streamRow(1, [16 * 1024, 777]),
+    beta: streamRow(2, [4096, 8192]),
+    controlWhileConsumerAckWithheld: 'bun:stream-paused',
+    cancellation: 'consumer-aborted',
+    rpcAfterLaneClose: 'bun:stream-lane-closed',
+  },
+  host: {
+    schema: 1,
+    alpha: streamRow(1, [16 * 1024, 777]),
+    beta: streamRow(2, [4096, 8192]),
+    cancellation: 'producer-cancelled',
+    laneRetired: true,
+  },
+})
 
 /** Validate retained native observations; a generic/older smoke flag is insufficient. */
 export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = false): void {
@@ -62,7 +96,7 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 6,
+      schema: 7,
       controlAdmission: {
         ordinaryRequests: 96,
         ordinaryOverflowDenied: true,
@@ -93,6 +127,7 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
       staleDelivered: false,
       resourcesBounded: true,
       protocolCases: nativeRpcCases,
+      streams: nativeStreamEvidence,
     },
     'Native RPC workload evidence does not match the required cases'
   )

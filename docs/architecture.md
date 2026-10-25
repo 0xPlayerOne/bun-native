@@ -84,6 +84,12 @@ and close; returning to the original origin does not regrant it. This is not an
 isolated-world defense against XSS in a trusted application document. A
 frontend-provided descriptor or resource ID is never such a binding.
 
+The M5 native binary adapter reuses that exact document binding while keeping
+independent RPC and stream subscriptions, sequences and one-packet admission.
+Its frozen renderer closure authenticates the actual current and entered V8
+context; the existing lossless stream protocol retains consumer acknowledgment
+above native handoff. See [native CEF streams](native-streams.md).
+
 The issue #21 policy increment keeps application-native capabilities separate
 from browser/user permissions and binds both to the current native host registry,
 main-frame callback, generation, origin and session through a captured opaque
