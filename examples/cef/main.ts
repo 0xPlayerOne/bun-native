@@ -5,6 +5,7 @@ import { serveRpcFixture } from './rpc-fixture-service.ts'
 import { nativeRpcProbeReadiness } from './rpc-readiness.ts'
 import { qualifyRpcSessions } from './rpc-sessions.ts'
 import { qualifyControlAdmission } from './control-admission.ts'
+import { serveStreamFixture } from './stream-fixture-service.ts'
 export default async function main(backend: CefBackend): Promise<void> {
   let ticks = 0
   const timer = setInterval(() => {
@@ -15,6 +16,10 @@ export default async function main(backend: CefBackend): Promise<void> {
   const probes = nativeRpcProbeReadiness((listener) => backend.observe(listener), pageDeadlineMs)
   const evidence: { renderer?: unknown; hostile: boolean; stale: boolean; protocol: Set<string> } =
     { hostile: false, stale: false, protocol: new Set() }
+  let resolveStreamEvidence!: (value: unknown) => void
+  const streamEvidence = new Promise<unknown>((resolve) => {
+    resolveStreamEvidence = resolve
+  })
   const offEvidence = backend.observe((event) => {
     const message = event.data?.['message']
     if (event.event === 'view.console' && typeof message === 'string') {
@@ -23,6 +28,8 @@ export default async function main(backend: CefBackend): Promise<void> {
       if (message.startsWith('BUNLY_RPC_BORROW_DIAGNOSTIC:')) console.error(message)
       if (message.startsWith('BUNLY_RPC_EVIDENCE:'))
         evidence.renderer = JSON.parse(message.slice('BUNLY_RPC_EVIDENCE:'.length))
+      if (message.startsWith('BUNLY_STREAM_EVIDENCE:'))
+        resolveStreamEvidence(JSON.parse(message.slice('BUNLY_STREAM_EVIDENCE:'.length)))
       if (message === 'BUNLY_RPC_HOSTILE_OK') evidence.hostile = true
       if (message === 'BUNLY_RPC_STALE_DELIVERED') evidence.stale = true
     }
@@ -58,6 +65,7 @@ export default async function main(backend: CefBackend): Promise<void> {
     }
   }
   const { waits, stopRpc } = serveRpcFixture(backend)
+  const streams = serveStreamFixture(backend)
   try {
     const controlAdmission = await qualifyControlAdmission(backend)
     const session = await backend.createSession({ partition: 'smoke', persistence: 'ephemeral' })
@@ -72,6 +80,17 @@ export default async function main(backend: CefBackend): Promise<void> {
       trust: { kind: 'application', origin: 'app://ui' },
     })
     await page.wait()
+    const [rendererStreams, hostStreams] = (await Promise.all([
+      streamEvidence,
+      streams.completed,
+    ])) as [Record<string, unknown>, Record<string, unknown>]
+    assert.deepEqual(rendererStreams['alpha'], hostStreams['alpha'])
+    assert.deepEqual(rendererStreams['beta'], hostStreams['beta'])
+    assert.equal(rendererStreams['controlWhileConsumerAckWithheld'], 'bun:stream-paused')
+    assert.equal(rendererStreams['cancellation'], 'consumer-aborted')
+    assert.equal(hostStreams['cancellation'], 'producer-cancelled')
+    assert.equal(rendererStreams['rpcAfterLaneClose'], 'bun:stream-lane-closed')
+    assert.equal(hostStreams['laneRetired'], true)
     // Only the explicit adversarial qualifier requires compile-time native probes.
     // Ordinary smoke builds retain all real RPC/lifecycle/session work.
     if (process.env['BUNLY_RPC_QUALIFICATION'] === '1') await probes.wait()
@@ -220,16 +239,34 @@ export default async function main(backend: CefBackend): Promise<void> {
     const rpcResources = (await backend.nativeDiagnostics()) as Record<string, unknown>
     assert.equal(rpcResources['rpcBindings'], 0)
     assert.equal(rpcResources['rpcIncomingBytes'], 0)
+    assert.equal(rpcResources['streamIncomingBytes'], 0)
+    assert.equal(rpcResources['streamDeliveryPackets'], 0)
+    assert.equal(rpcResources['streamDeliveryBytes'], 0)
+    assert.deepEqual(backend.streamDiagnostics().budget, {
+      reservedBytes: 0,
+      streams: 0,
+      views: 0,
+    })
     // Lost renderer receipts remain charged until host teardown, not silently
     // released on revoke. Even repeated close/navigation must stay within caps.
     assert.ok(Number.isSafeInteger(rpcResources['rpcDeliveryPackets']))
     assert.ok(Number(rpcResources['rpcDeliveryPackets']) <= 128)
     assert.ok(Number.isSafeInteger(rpcResources['rpcDeliveryBytes']))
     assert.ok(Number(rpcResources['rpcDeliveryBytes']) <= 128 * 24 * 1024)
+    assert.equal(
+      rpcResources['nativeDeliveryPackets'],
+      Number(rpcResources['rpcDeliveryPackets']) + Number(rpcResources['streamDeliveryPackets'])
+    )
+    assert.equal(
+      rpcResources['nativeDeliveryBytes'],
+      Number(rpcResources['rpcDeliveryBytes']) + Number(rpcResources['streamDeliveryBytes'])
+    )
+    assert.ok(Number(rpcResources['nativeDeliveryPackets']) <= 128)
+    assert.ok(Number(rpcResources['nativeDeliveryBytes']) <= 128 * 24 * 1024)
     console.log(
       JSON.stringify({
         event: 'bunly.native.rpc',
-        schema: 6,
+        schema: 7,
         controlAdmission,
         sessionAuthority: 'native-owner-isolation-and-partition-reuse',
         viewDisposal: 'isolated-and-parent-close',
@@ -243,6 +280,7 @@ export default async function main(backend: CefBackend): Promise<void> {
         staleDelivered: evidence.stale,
         resourcesBounded: true,
         protocolCases: [...evidence.protocol].sort(),
+        streams: { renderer: rendererStreams, host: hostStreams },
       })
     )
     console.log(
@@ -265,6 +303,7 @@ export default async function main(backend: CefBackend): Promise<void> {
     } else await backend.dispose()
   } finally {
     offEvidence()
+    streams.stop()
     stopRpc()
     clearInterval(timer)
     page.close()

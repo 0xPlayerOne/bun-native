@@ -7,6 +7,16 @@ pub const MAX_PACKET_BYTES: usize = 24 * 1024;
 // globally, including revoked connections awaiting a discard acknowledgement.
 pub const MAX_GLOBAL_PACKETS: usize = 128;
 pub const MAX_GLOBAL_BYTES: usize = MAX_GLOBAL_PACKETS * MAX_PACKET_BYTES;
+// Bulk traffic may not consume the complete native-delivery pool. The
+// remaining 32 packets/768 KiB stay available to RPC/control deliveries.
+pub const MAX_STREAM_GLOBAL_PACKETS: usize = 96;
+pub const MAX_STREAM_GLOBAL_BYTES: usize = MAX_STREAM_GLOBAL_PACKETS * MAX_PACKET_BYTES;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Lane {
+    Rpc,
+    Stream,
+}
 
 #[derive(Debug, Clone)]
 pub struct Observed {
@@ -42,13 +52,14 @@ impl Binding {
 }
 
 pub struct Delivery {
+    pub lane: Lane,
     pub binding: Binding,
     pub bytes: usize,
     pub request: Option<u64>,
 }
 #[derive(Default)]
 pub struct Deliveries {
-    pending: BTreeMap<(u64, u64), Delivery>,
+    pending: BTreeMap<(Lane, u64, u64), Delivery>,
     bytes: usize,
 }
 impl Deliveries {
@@ -58,6 +69,19 @@ impl Deliveries {
     pub fn bytes(&self) -> usize {
         self.bytes
     }
+    pub fn len_lane(&self, lane: Lane) -> usize {
+        self.pending
+            .values()
+            .filter(|delivery| delivery.lane == lane)
+            .count()
+    }
+    pub fn bytes_lane(&self, lane: Lane) -> usize {
+        self.pending
+            .values()
+            .filter(|delivery| delivery.lane == lane)
+            .map(|delivery| delivery.bytes)
+            .sum()
+    }
     pub fn reserve(
         &mut self,
         binding: Binding,
@@ -65,19 +89,44 @@ impl Deliveries {
         bytes: usize,
         request: u64,
     ) -> Result<(), &'static str> {
-        let key = (binding.connection, sequence);
+        self.reserve_lane(Lane::Rpc, binding, sequence, bytes, request)
+    }
+    pub fn reserve_lane(
+        &mut self,
+        lane: Lane,
+        binding: Binding,
+        sequence: u64,
+        bytes: usize,
+        request: u64,
+    ) -> Result<(), &'static str> {
+        let key = (lane, binding.connection, sequence);
+        let stream_packets = self
+            .pending
+            .values()
+            .filter(|delivery| delivery.lane == Lane::Stream)
+            .count();
+        let stream_bytes = self
+            .pending
+            .values()
+            .filter(|delivery| delivery.lane == Lane::Stream)
+            .map(|delivery| delivery.bytes)
+            .sum::<usize>();
         if bytes == 0
             || bytes > MAX_PACKET_BYTES
             || self.pending.len() >= MAX_GLOBAL_PACKETS
             || self.bytes + bytes > MAX_GLOBAL_BYTES
+            || (lane == Lane::Stream
+                && (stream_packets >= MAX_STREAM_GLOBAL_PACKETS
+                    || stream_bytes + bytes > MAX_STREAM_GLOBAL_BYTES))
             || self.pending.contains_key(&key)
         {
-            return Err("RPC global delivery bound exceeded");
+            return Err("Native global delivery bound exceeded");
         }
         self.bytes += bytes;
         self.pending.insert(
             key,
             Delivery {
+                lane,
                 binding,
                 bytes,
                 request: Some(request),
@@ -92,13 +141,29 @@ impl Deliveries {
             .filter_map(|delivery| delivery.request.take())
             .collect()
     }
+    pub fn retire_lane(&mut self, lane: Lane, identity: Identity) -> Vec<u64> {
+        self.pending
+            .values_mut()
+            .filter(|delivery| delivery.lane == lane && delivery.binding.identity() == identity)
+            .filter_map(|delivery| delivery.request.take())
+            .collect()
+    }
     pub fn complete(
         &mut self,
         observed: &Observed,
         identity: Identity,
         sequence: u64,
     ) -> Option<Delivery> {
-        let key = (identity.connection, sequence);
+        self.complete_lane(Lane::Rpc, observed, identity, sequence)
+    }
+    pub fn complete_lane(
+        &mut self,
+        lane: Lane,
+        observed: &Observed,
+        identity: Identity,
+        sequence: u64,
+    ) -> Option<Delivery> {
+        let key = (lane, identity.connection, sequence);
         if !self.pending.get(&key)?.binding.matches(observed, identity) {
             return None;
         }
@@ -106,6 +171,15 @@ impl Deliveries {
         self.bytes -= delivery.bytes;
         Some(delivery)
     }
+}
+
+#[derive(Debug, Default)]
+struct LaneState {
+    subscribed: bool,
+    received: u64,
+    incoming: Option<(u64, usize)>,
+    delivered: u64,
+    outgoing: Option<(u64, usize)>,
 }
 
 #[derive(Debug)]
@@ -118,12 +192,10 @@ pub struct Authority {
     initial_request_seen: bool,
     awaiting_explicit_callback: bool,
     eligible: bool,
+    stream_eligible: bool,
     binding: Option<Binding>,
-    subscribed: bool,
-    received: u64,
-    incoming: Option<(u64, usize)>,
-    delivered: u64,
-    outgoing: Option<(u64, usize)>,
+    rpc: LaneState,
+    stream: LaneState,
 }
 impl Authority {
     pub fn new(view: u64, initial_url: String, approved_origin: Option<String>) -> Self {
@@ -139,12 +211,10 @@ impl Authority {
             initial_request_seen: false,
             awaiting_explicit_callback: false,
             eligible,
+            stream_eligible: false,
             binding: None,
-            subscribed: false,
-            received: 0,
-            incoming: None,
-            delivered: 0,
-            outgoing: None,
+            rpc: LaneState::default(),
+            stream: LaneState::default(),
         }
     }
     /// Policy consumers share this document clock. Exhaustion must not become
@@ -162,7 +232,13 @@ impl Authority {
         self.eligible
     }
     pub fn incoming_bytes(&self) -> usize {
-        self.incoming.map_or(0, |(_, bytes)| bytes)
+        self.incoming_bytes_lane(Lane::Rpc)
+    }
+    pub fn incoming_bytes_lane(&self, lane: Lane) -> usize {
+        self.lane(lane).incoming.map_or(0, |(_, bytes)| bytes)
+    }
+    pub fn incoming_packet_lane(&self, lane: Lane) -> bool {
+        self.lane(lane).incoming.is_some()
     }
 
     pub fn navigation_start(&mut self, url: &str, redirect: bool) -> Option<Binding> {
@@ -215,6 +291,7 @@ impl Authority {
             context,
         };
         self.binding = Some(binding.clone());
+        self.stream_eligible = true;
         Some(binding)
     }
     pub fn authorize(&self, observed: &Observed, identity: Identity) -> Result<(), &'static str> {
@@ -233,11 +310,22 @@ impl Authority {
         observed: &Observed,
         identity: Identity,
     ) -> Result<Binding, &'static str> {
+        self.subscribe_lane(Lane::Rpc, observed, identity)
+    }
+    pub fn subscribe_lane(
+        &mut self,
+        lane: Lane,
+        observed: &Observed,
+        identity: Identity,
+    ) -> Result<Binding, &'static str> {
         self.authorize(observed, identity)?;
-        if self.subscribed {
-            return Err("RPC listener already registered");
+        if lane == Lane::Stream && !self.stream_eligible {
+            return Err("Native stream lane was retired");
         }
-        self.subscribed = true;
+        if self.lane(lane).subscribed {
+            return Err("Native lane listener already registered");
+        }
+        self.lane_mut(lane).subscribed = true;
         Ok(self.binding.clone().unwrap())
     }
     pub fn authenticate(
@@ -247,17 +335,28 @@ impl Authority {
         sequence: u64,
         bytes: usize,
     ) -> Result<(), &'static str> {
+        self.authenticate_lane(Lane::Rpc, observed, identity, sequence, bytes)
+    }
+    pub fn authenticate_lane(
+        &mut self,
+        lane: Lane,
+        observed: &Observed,
+        identity: Identity,
+        sequence: u64,
+        bytes: usize,
+    ) -> Result<(), &'static str> {
         self.authorize(observed, identity)?;
-        if !self.subscribed
+        let state = self.lane_mut(lane);
+        if !state.subscribed
             || bytes == 0
             || bytes > MAX_PACKET_BYTES
-            || self.incoming.is_some()
-            || next(self.received) != Some(sequence)
+            || state.incoming.is_some()
+            || next(state.received) != Some(sequence)
         {
-            return Err("RPC receive bound or sequence denied");
+            return Err("Native lane receive bound or sequence denied");
         }
-        self.received = sequence;
-        self.incoming = Some((sequence, bytes));
+        state.received = sequence;
+        state.incoming = Some((sequence, bytes));
         Ok(())
     }
     pub fn acknowledge_receive(
@@ -266,11 +365,21 @@ impl Authority {
         identity: Identity,
         sequence: u64,
     ) -> Result<(), &'static str> {
+        self.acknowledge_receive_lane(Lane::Rpc, observed, identity, sequence)
+    }
+    pub fn acknowledge_receive_lane(
+        &mut self,
+        lane: Lane,
+        observed: &Observed,
+        identity: Identity,
+        sequence: u64,
+    ) -> Result<(), &'static str> {
         self.authorize(observed, identity)?;
-        if self.incoming.map(|(seq, _)| seq) != Some(sequence) {
-            return Err("RPC receive acknowledgement mismatch");
+        let state = self.lane_mut(lane);
+        if state.incoming.map(|(seq, _)| seq) != Some(sequence) {
+            return Err("Native lane receive acknowledgement mismatch");
         }
-        self.incoming = None;
+        state.incoming = None;
         Ok(())
     }
     pub fn begin_delivery(
@@ -279,32 +388,51 @@ impl Authority {
         identity: Identity,
         bytes: usize,
     ) -> Result<u64, &'static str> {
+        self.begin_delivery_lane(Lane::Rpc, observed, identity, bytes)
+    }
+    pub fn begin_delivery_lane(
+        &mut self,
+        lane: Lane,
+        observed: &Observed,
+        identity: Identity,
+        bytes: usize,
+    ) -> Result<u64, &'static str> {
         self.authorize(observed, identity)?;
-        if !self.subscribed || bytes == 0 || bytes > MAX_PACKET_BYTES || self.outgoing.is_some() {
-            return Err("RPC delivery bound denied");
+        let state = self.lane_mut(lane);
+        if !state.subscribed || bytes == 0 || bytes > MAX_PACKET_BYTES || state.outgoing.is_some() {
+            return Err("Native lane delivery bound denied");
         }
-        self.delivered = next(self.delivered).ok_or("RPC sequence exhausted")?;
-        self.outgoing = Some((self.delivered, bytes));
-        Ok(self.delivered)
+        state.delivered = next(state.delivered).ok_or("Native lane sequence exhausted")?;
+        state.outgoing = Some((state.delivered, bytes));
+        Ok(state.delivered)
     }
     pub fn finish_delivery(
         &mut self,
         identity: Identity,
         sequence: u64,
     ) -> Result<(), &'static str> {
-        if self.binding.as_ref().map(Binding::identity) != Some(identity)
-            || self.outgoing.map(|(seq, _)| seq) != Some(sequence)
-        {
-            return Err("RPC delivery acknowledgement mismatch");
+        self.finish_delivery_lane(Lane::Rpc, identity, sequence)
+    }
+    pub fn finish_delivery_lane(
+        &mut self,
+        lane: Lane,
+        identity: Identity,
+        sequence: u64,
+    ) -> Result<(), &'static str> {
+        let bound = self.binding.as_ref().map(Binding::identity) == Some(identity);
+        let state = self.lane_mut(lane);
+        if !bound || state.outgoing.map(|(seq, _)| seq) != Some(sequence) {
+            return Err("Native lane delivery acknowledgement mismatch");
         }
-        self.outgoing = None;
+        state.outgoing = None;
         Ok(())
     }
     pub fn release(&mut self, observed: &Observed, identity: Identity) -> Option<Binding> {
         let binding = self.binding.as_ref()?;
         // A context may die before GRANT arrives. Its native serial and actual
         // callback frame still identify the pending, never-subscribed grant.
-        let pending = !self.subscribed
+        let pending = !self.rpc.subscribed
+            && !self.stream.subscribed
             && identity.connection == 0
             && identity.generation == 0
             && identity.context == binding.context
@@ -318,16 +446,38 @@ impl Authority {
     }
     pub fn revoke(&mut self) -> Option<Binding> {
         self.eligible = false;
-        self.subscribed = false;
-        self.incoming = None;
-        self.outgoing = None;
+        self.stream_eligible = false;
+        self.rpc = LaneState::default();
+        self.stream = LaneState::default();
         self.binding.take()
+    }
+    pub fn revoke_stream(
+        &mut self,
+        observed: &Observed,
+        identity: Identity,
+    ) -> Result<(), &'static str> {
+        self.authorize(observed, identity)?;
+        self.stream_eligible = false;
+        self.stream = LaneState::default();
+        Ok(())
     }
     pub fn revoke_frame(&mut self, frame: &str) -> Option<Binding> {
         if self.binding.as_ref().is_some_and(|b| b.frame == frame) {
             self.revoke()
         } else {
             None
+        }
+    }
+    fn lane(&self, lane: Lane) -> &LaneState {
+        match lane {
+            Lane::Rpc => &self.rpc,
+            Lane::Stream => &self.stream,
+        }
+    }
+    fn lane_mut(&mut self, lane: Lane) -> &mut LaneState {
+        match lane {
+            Lane::Rpc => &mut self.rpc,
+            Lane::Stream => &mut self.stream,
         }
     }
 }
@@ -479,8 +629,121 @@ mod tests {
         assert!(a.begin_delivery(&observed(), id, 1).is_err());
         a.finish_delivery(id, seq).unwrap();
         assert!(a.finish_delivery(id, seq).is_err());
-        a.received = MAX_ID;
+        a.rpc.received = MAX_ID;
         assert!(a.authenticate(&observed(), id, MAX_ID, 1).is_err());
+    }
+    #[test]
+    fn stream_lane_has_independent_subscription_sequences_and_pending_bytes() {
+        let (mut authority, identity) = bound();
+        authority
+            .subscribe_lane(Lane::Stream, &observed(), identity)
+            .unwrap();
+        authority
+            .authenticate(&observed(), identity, 1, MAX_PACKET_BYTES)
+            .unwrap();
+        authority
+            .authenticate_lane(Lane::Stream, &observed(), identity, 1, 17)
+            .unwrap();
+        assert_eq!(authority.incoming_bytes(), MAX_PACKET_BYTES);
+        assert_eq!(authority.incoming_bytes_lane(Lane::Stream), 17);
+        assert!(authority
+            .authenticate_lane(Lane::Stream, &observed(), identity, 2, 1)
+            .is_err());
+        authority
+            .acknowledge_receive_lane(Lane::Stream, &observed(), identity, 1)
+            .unwrap();
+        authority
+            .authenticate_lane(Lane::Stream, &observed(), identity, 2, 1)
+            .unwrap();
+        let rpc = authority.begin_delivery(&observed(), identity, 1).unwrap();
+        let stream = authority
+            .begin_delivery_lane(Lane::Stream, &observed(), identity, 1)
+            .unwrap();
+        assert_eq!((rpc, stream), (1, 1));
+        authority.finish_delivery(identity, rpc).unwrap();
+        authority
+            .finish_delivery_lane(Lane::Stream, identity, stream)
+            .unwrap();
+    }
+    #[test]
+    fn retired_stream_lane_cannot_resubscribe_while_rpc_remains_authorized() {
+        let (mut authority, identity) = bound();
+        authority
+            .subscribe_lane(Lane::Stream, &observed(), identity)
+            .unwrap();
+        authority.revoke_stream(&observed(), identity).unwrap();
+        assert!(authority.authorize(&observed(), identity).is_ok());
+        assert!(authority
+            .subscribe_lane(Lane::Stream, &observed(), identity)
+            .is_err());
+        assert!(authority.begin_delivery(&observed(), identity, 1).is_ok());
+    }
+    #[test]
+    fn lane_keying_and_stream_reserve_keep_rpc_delivery_headroom() {
+        let (authority, identity) = bound();
+        let binding = authority.binding().unwrap();
+        let mut deliveries = Deliveries::default();
+        deliveries
+            .reserve(binding.clone(), 1, MAX_PACKET_BYTES, 1)
+            .unwrap();
+        deliveries
+            .reserve_lane(Lane::Stream, binding.clone(), 1, MAX_PACKET_BYTES, 2)
+            .unwrap();
+        for sequence in 2..=MAX_STREAM_GLOBAL_PACKETS as u64 {
+            deliveries
+                .reserve_lane(
+                    Lane::Stream,
+                    binding.clone(),
+                    sequence,
+                    MAX_PACKET_BYTES,
+                    sequence + 1,
+                )
+                .unwrap();
+        }
+        assert!(deliveries
+            .reserve_lane(Lane::Stream, binding.clone(), 200, 1, 200)
+            .is_err());
+        for sequence in 2..=(MAX_GLOBAL_PACKETS - MAX_STREAM_GLOBAL_PACKETS) as u64 {
+            deliveries
+                .reserve(binding.clone(), sequence, MAX_PACKET_BYTES, sequence + 200)
+                .unwrap();
+        }
+        assert_eq!(deliveries.len(), MAX_GLOBAL_PACKETS);
+        assert_eq!(deliveries.bytes(), MAX_GLOBAL_BYTES);
+        assert_eq!(
+            deliveries
+                .complete_lane(Lane::Stream, &observed(), identity, 1)
+                .unwrap()
+                .lane,
+            Lane::Stream
+        );
+        assert_eq!(
+            deliveries.complete(&observed(), identity, 1).unwrap().lane,
+            Lane::Rpc
+        );
+    }
+    #[test]
+    fn retiring_stream_lane_settles_waiters_but_keeps_cef_owned_bytes() {
+        let (authority, identity) = bound();
+        let binding = authority.binding().unwrap();
+        let mut deliveries = Deliveries::default();
+        deliveries.reserve(binding.clone(), 1, 11, 1).unwrap();
+        deliveries
+            .reserve_lane(Lane::Stream, binding, 1, 13, 2)
+            .unwrap();
+        assert_eq!(deliveries.retire_lane(Lane::Stream, identity), vec![2]);
+        assert_eq!(deliveries.bytes(), 24);
+        assert!(deliveries
+            .complete(&observed(), identity, 1)
+            .unwrap()
+            .request
+            .is_some());
+        assert!(deliveries
+            .complete_lane(Lane::Stream, &observed(), identity, 1)
+            .unwrap()
+            .request
+            .is_none());
+        assert_eq!(deliveries.bytes(), 0);
     }
     #[test]
     fn navigation_release_and_close_never_regrant_old_origin() {

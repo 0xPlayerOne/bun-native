@@ -38,8 +38,8 @@ coverage outside its stated profile.
 ## Active technical guides
 
 [Packaged origin](packaged-origin.md), [artifact acquisition](artifact-acquisition.md),
-[RPC](rpc.md), [streams](streams.md), and [provenance](provenance.md) describe their
-implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
+[RPC](rpc.md), [streams](streams.md), [native CEF streams](native-streams.md), and
+[provenance](provenance.md) describe their implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
 [M5 progress](m5-progress.md) are partial implementation notes, not closeout claims.
 The [authenticated loopback candidate](rpc-loopback.md) and proposed
 [transport ADR](decisions/0003-transport-selection.md) define #22's implemented
@@ -85,8 +85,9 @@ separate Python/Rust contributor formatters.
 [Native acceptance tooling](native-acceptance-tooling.md) defines the shared M4
 suite, sanitized evidence export/replay and the M5 diagnostic handoff.
 
-[M5 progress](m5-progress.md) records bounded callback-source integration and
-actual pinned Bun PTY qualification, without claiming native renderer or supervisor completion.
+[M5 progress](m5-progress.md) records bounded callback-source integration,
+actual pinned Bun PTY qualification and the native renderer stream lane without
+claiming graphical terminal or supervisor completion.
 
 [Native control admission](native-control-admission.md) documents reserved command
 capacity, cancellation/task ownership and the real native saturation fixture.

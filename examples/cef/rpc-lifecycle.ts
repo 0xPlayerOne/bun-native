@@ -1,5 +1,6 @@
 import { RpcClient } from '../../packages/client/src/rpc.ts'
 import { waitForCefRpcTransport } from '../../packages/client/src/cef-rpc.ts'
+import { waitForCefStreamTransport } from '../../packages/client/src/cef-streams.ts'
 import { cefRpcSchema } from './rpc-contract.ts'
 
 const mode = new URL(location.href).searchParams.get('mode')
@@ -10,8 +11,16 @@ if (mode === 'unprivileged') {
   } catch (error) {
     if (!(error instanceof Error) || !('code' in error) || error.code !== 'DEADLINE_EXCEEDED')
       throw error
-    console.log('BUNLY_RPC_UNPRIVILEGED')
   }
+  try {
+    await waitForCefStreamTransport(100)
+    throw new Error('Revoked or remote document received a stream bridge')
+  } catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'DEADLINE_EXCEEDED')
+      throw error
+    console.log('BUNLY_STREAM_UNPRIVILEGED')
+  }
+  console.log('BUNLY_RPC_UNPRIVILEGED')
 } else {
   const client = new RpcClient(cefRpcSchema, await waitForCefRpcTransport(), {
     limits: { maxFrameBytes: 24 * 1024, maxMetadataBytes: 16 * 1024 },

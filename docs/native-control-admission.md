@@ -1,8 +1,9 @@
 # Native control admission
 
 M5 #26 increment. This bounds admission in the private **Bun-to-CEF command
-pipe**; it does not implement the dedicated renderer bulk lane or a global
-priority scheduler. Native origin/document authorization remains mandatory.
+pipe**. The later binary renderer lane reuses these limits but does not turn them
+into a global priority scheduler. Native origin/document authorization remains
+mandatory.
 
 ## Shared policy
 

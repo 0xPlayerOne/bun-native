@@ -62,8 +62,9 @@ platform acceptance requires actual execution of the pinned runtime.
 
 ## Remaining M5 work
 
-This does not close #23, #24, #25, #26 or #27. Native CEF view/document authorization
-and bulk/control transport integration, graphical xterm consumption, real application terminal
+The native CEF view/document-authorized stream lane is now implemented alongside
+RPC; see [native CEF streams](native-streams.md). This still does not close #23,
+#24, #25, #26 or #27. Graphical xterm consumption, real application terminal
 handles and reconnect/scrollback policy remain open. Process groups/Windows jobs,
 detached descendants, readiness/restart policies and generation-safe cleanup are
 #25 work. The qualifier stops only its fixed direct child; that is not a universal
@@ -154,7 +155,8 @@ This quantum is a conservative implementation bound, not a measured optimal batc
 size or production responsiveness claim. It does not preempt a synchronous consumer,
 cap arbitrary producer CPU time, reserve a native control lane, or implement global
 fair scheduling across CEF views. Full native scheduler/load acceptance under
-#26/#27 and native stream authority and terminal supervision remain outstanding.
+#26/#27 and terminal supervision remain outstanding; the bounded native stream
+authority lane is documented separately in [native CEF streams](native-streams.md).
 
 ## Runtime terminal-service increment
 
@@ -228,6 +230,22 @@ process exit, output drain and group cleanup remain separate observations. See
 [native process exit](native-process-exit.md) for timing, identity and remaining
 supervisor boundaries. This does not close #25/#26 or implement detached terminal
 ownership, restart policy or managed backend replacement.
+
+## Native CEF stream integration
+
+The existing native document grant now installs a separate frozen stream bridge
+with independent subscription, sequences and one-packet pending state. It uses
+the portable `BinaryStreamSender`/`BinaryStreamReceiver` and consumer ACK, not RPC
+encoding or loopback. A 96-packet stream sublimit inside the unchanged
+128-packet/3 MiB native delivery pool preserves RPC/control capacity, and retired
+CEF-owned bytes remain charged until exact lane-keyed receipts.
+
+`CefBackend.serveStreams()` supplies a stable view owner, global shared budget and
+document abort signal before views exist. The maintained native prebuilt/RPC stage
+checks ordered checksums, paused-consumer control progress, multiple streams,
+cancellation, child borrowing denial, navigation/return revocation and final zero
+stream accounting. No runtime process/thread, deadline, loopback selection or
+graphical terminal service is added.
 
 ## Blocked backends and observed shell/server descendants
 
