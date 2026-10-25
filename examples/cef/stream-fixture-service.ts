@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { requireStreamRetirement } from './stream-retirement.ts'
 import { createHash } from 'node:crypto'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 
@@ -51,8 +52,12 @@ export function serveStreamFixture(backend: CefBackend) {
       await assert.rejects(pending, { code: 'CANCELLED' })
       assert.deepEqual(await cancelled.finished, { ok: false, code: 'CANCELLED' })
       const retiring = await sender.open('retire')
-      await assert.rejects(retiring.write(new Uint8Array([7])))
-      await sender.closed
+      // A discarded delivery can close the transport before the separately
+      // queued native revocation receipt aborts its owner. Require both, without
+      // assuming synchronous publication or extending the fixture deadline.
+      await requireStreamRetirement(sender.closed, connection.signal, async () => {
+        await assert.rejects(retiring.write(new Uint8Array([7])))
+      })
       assert.equal(connection.signal.aborted, true)
       resolve({
         schema: 1,
