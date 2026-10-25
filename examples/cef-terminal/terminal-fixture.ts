@@ -276,7 +276,18 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
         })
         const callbacks = driver.probes.get(token)
         assert.ok(callbacks)
-        state.terminals.push({ handle, observation: service.observe(handle), writer, callbacks })
+        const observation = service.observe(handle)
+        // A failed normal output stream is a fixture failure, not a missing
+        // marker to wait for until the page deadline. Negative controls below
+        // retain their explicitly expected cancellation/overload outcomes.
+        void observation.outputFinished.then((result) => {
+          if (role === 'main' && !result.ok) {
+            const error = new Error('Main terminal output failed: ' + result.code)
+            fail(error)
+            pageReport.reject(error)
+          }
+        })
+        state.terminals.push({ handle, observation, writer, callbacks })
       }
     })().catch((error) => {
       state.failure = error instanceof Error ? error : new Error(String(error))
