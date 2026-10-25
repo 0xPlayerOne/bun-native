@@ -1,7 +1,7 @@
 //! Thin CEF adapters around an incarnation-bound renderer bridge.
 //! Registry borrows contain no JS execution or CEF calls (including is_same).
 use crate::{
-    rpc_authority::MAX_PACKET_BYTES,
+    rpc_authority::{Lane, MAX_PACKET_BYTES},
     rpc_protocol::{self as wire, Identity},
 };
 use cef::*;
@@ -10,6 +10,13 @@ use std::{cell::RefCell, collections::BTreeMap};
 #[path = "rpc_context_diagnostics.rs"]
 mod diagnostics;
 
+#[derive(Clone, Default)]
+struct LaneContext {
+    receiver: Option<V8Value>,
+    send_ack: Option<(u64, V8Value)>,
+    sent: u64,
+    delivered: u64,
+}
 #[derive(Clone)]
 struct Context {
     serial: u64,
@@ -17,10 +24,23 @@ struct Context {
     frame: Frame,
     frame_id: String,
     identity: Option<Identity>,
-    receiver: Option<V8Value>,
-    send_ack: Option<(u64, V8Value)>,
-    sent: u64,
-    delivered: u64,
+    stream_retired: bool,
+    rpc: LaneContext,
+    stream: LaneContext,
+}
+impl Context {
+    fn lane(&self, lane: Lane) -> &LaneContext {
+        match lane {
+            Lane::Rpc => &self.rpc,
+            Lane::Stream => &self.stream,
+        }
+    }
+    fn lane_mut(&mut self, lane: Lane) -> &mut LaneContext {
+        match lane {
+            Lane::Rpc => &mut self.rpc,
+            Lane::Stream => &mut self.stream,
+        }
+    }
 }
 #[derive(Default)]
 struct Registry {
@@ -95,11 +115,13 @@ fn settle(context: Context, notify_browser: bool) {
         );
     }
     // Remove registry state before either callback, since each can re-enter.
-    if let Some((_, callback)) = context.send_ack {
-        invoke_bool(&context.context, &callback, false);
-    }
-    if let Some(callback) = context.receiver {
-        invoke(&context.context, &callback, None);
+    for lane in [context.rpc, context.stream] {
+        if let Some((_, callback)) = lane.send_ack {
+            invoke_bool(&context.context, &callback, false);
+        }
+        if let Some(callback) = lane.receiver {
+            invoke(&context.context, &callback, None);
+        }
     }
 }
 fn invoke_bool(context: &V8Context, callback: &V8Value, value: bool) {
@@ -115,6 +137,26 @@ fn invoke_bool(context: &V8Context, callback: &V8Value, value: bool) {
 fn revoke(browser: i32, expected: &Context, notify_browser: bool) {
     if let Some(context) = take(browser, expected) {
         settle(context, notify_browser);
+    }
+}
+fn close_stream(browser: i32, expected: &Context, notify_browser: bool) {
+    let retired = update(browser, expected, |context| {
+        context.stream_retired = true;
+        std::mem::take(&mut context.stream)
+    });
+    let Some(retired) = retired else {
+        return;
+    };
+    if notify_browser {
+        if let Some(identity) = expected.identity {
+            send(&expected.frame, wire::STREAM_RELEASE, identity, 0, None);
+        }
+    }
+    if let Some((_, callback)) = retired.send_ack {
+        invoke_bool(&expected.context, &callback, false);
+    }
+    if let Some(callback) = retired.receiver {
+        invoke(&expected.context, &callback, None);
     }
 }
 fn same_context(context: &Context) -> bool {
@@ -133,6 +175,7 @@ fn same_context(context: &Context) -> bool {
 fn execute(
     browser: i32,
     identity: Identity,
+    lane: Lane,
     operation: &str,
     arguments: &[Option<V8Value>],
 ) -> Result<(), &'static str> {
@@ -140,11 +183,18 @@ fn execute(
     if current.identity != Some(identity) || !same_context(&current) {
         return Err("RPC function belongs to another document context");
     }
+    if lane == Lane::Stream && current.stream_retired {
+        return Err("Native stream lane was retired");
+    }
     if operation == "close" {
         if !arguments.is_empty() {
             return Err("RPC close takes no arguments");
         }
-        revoke(browser, &current, true);
+        if lane == Lane::Stream {
+            close_stream(browser, &current, true);
+        } else {
+            revoke(browser, &current, true);
+        }
         return Ok(());
     }
     if operation == "subscribe" {
@@ -157,25 +207,33 @@ fn execute(
         }
         let callback = arguments[0].clone();
         let registered = update(browser, &current, |context| {
-            if context.receiver.is_some() {
+            let state = context.lane_mut(lane);
+            if state.receiver.is_some() {
                 return false;
             }
-            context.receiver = callback;
+            state.receiver = callback;
             true
         })
         .unwrap_or(false);
         if !registered {
             return Err("RPC listener already registered or context replaced");
         }
-        if !send(&current.frame, wire::SUBSCRIBED, identity, 0, None) {
+        let subscribed = if lane == Lane::Rpc {
+            wire::SUBSCRIBED
+        } else {
+            wire::STREAM_SUBSCRIBED
+        };
+        if !send(&current.frame, subscribed, identity, 0, None) {
             revoke(browser, &current, true);
             return Err("RPC subscribe allocation failed");
         }
         #[cfg(feature = "rpc-qualification")]
-        crate::rpc_qualification::subscribed(&current.frame, identity);
+        if lane == Lane::Rpc {
+            crate::rpc_qualification::subscribed(&current.frame, identity);
+        }
         return Ok(());
     }
-    if current.receiver.is_none()
+    if current.lane(lane).receiver.is_none()
         || arguments.len() != 2
         || arguments[0]
             .as_ref()
@@ -193,15 +251,21 @@ fn execute(
         return Err("RPC packet size denied");
     }
     let owned = unsafe { std::slice::from_raw_parts(pointer.cast::<u8>(), bytes) }.to_vec();
-    let sequence = wire::next(current.sent).ok_or("RPC sequence exhausted")?;
-    let mut message = wire::message(wire::PACKET, identity, sequence, Some(&owned))
+    let sequence = wire::next(current.lane(lane).sent).ok_or("Native lane sequence exhausted")?;
+    let packet_name = if lane == Lane::Rpc {
+        wire::PACKET
+    } else {
+        wire::STREAM_PACKET
+    };
+    let mut message = wire::message(packet_name, identity, sequence, Some(&owned))
         .ok_or("RPC allocation failed")?;
     let reserved = update(browser, &current, |context| {
-        if context.send_ack.is_some() || context.sent != current.sent {
+        let state = context.lane_mut(lane);
+        if state.send_ack.is_some() || state.sent != current.lane(lane).sent {
             return false;
         }
-        context.sent = sequence;
-        context.send_ack = Some((sequence, arguments[1].clone().unwrap()));
+        state.sent = sequence;
+        state.send_ack = Some((sequence, arguments[1].clone().unwrap()));
         true
     })
     .unwrap_or(false);
@@ -222,13 +286,14 @@ fn write_exception(error: Option<&mut CefString>, reason: &str) -> bool {
 fn execute_callback(
     browser: i32,
     identity: Identity,
+    lane: Lane,
     operation: &str,
     arguments: &[Option<V8Value>],
     error: Option<&mut CefString>,
 ) {
     #[cfg(feature = "rpc-context-diagnostics")]
     let diagnostic = diagnostics::begin(browser, identity, operation);
-    let result = execute(browser, identity, operation, arguments);
+    let result = execute(browser, identity, lane, operation, arguments);
     let exception_written = match result {
         Err(reason) => write_exception(error, reason),
         Ok(()) => false,
@@ -240,10 +305,10 @@ fn execute_callback(
 }
 
 wrap_v8_handler! {
-    struct RpcV8Handler { browser: i32, identity: Identity, operation: String }
+    struct RpcV8Handler { browser: i32, identity: Identity, lane: Lane, operation: String }
     impl V8Handler {
         fn execute(&self, _name: Option<&CefString>, _object: Option<&mut V8Value>, arguments: Option<&[Option<V8Value>]>, _retval: Option<&mut Option<V8Value>>, error: Option<&mut CefString>) -> i32 {
-            execute_callback(self.browser, self.identity, &self.operation, arguments.unwrap_or_default(), error);
+            execute_callback(self.browser, self.identity, self.lane, &self.operation, arguments.unwrap_or_default(), error);
             1
         }
     }
@@ -264,10 +329,7 @@ fn install(browser: i32, expected: &Context, identity: Identity) -> bool {
     result
 }
 fn install_entered(browser: i32, expected: &Context, identity: Identity) -> bool {
-    let (Some(global), Some(bridge)) = (
-        expected.context.global(),
-        v8_value_create_object(None, None),
-    ) else {
+    let Some(global) = expected.context.global() else {
         return false;
     };
     let attributes = sys::cef_v8_propertyattribute_t(
@@ -276,11 +338,25 @@ fn install_entered(browser: i32, expected: &Context, identity: Identity) -> bool
             | sys::cef_v8_propertyattribute_t::V8_PROPERTY_ATTRIBUTE_DONTENUM.0,
     )
     .into();
-    for operation in ["send", "subscribe", "close"] {
-        let key = CefString::from(operation);
-        let mut handler = RpcV8Handler::new(browser, identity, operation.to_owned());
-        let mut function = v8_value_create_function(Some(&key), Some(&mut handler));
-        if bridge.set_value_bykey(Some(&key), function.as_mut(), attributes) == 0 {
+    for (lane, global_name) in [(Lane::Rpc, "__bunlyRpc"), (Lane::Stream, "__bunlyStreams")] {
+        let Some(bridge) = v8_value_create_object(None, None) else {
+            return false;
+        };
+        for operation in ["send", "subscribe", "close"] {
+            let key = CefString::from(operation);
+            let mut handler = RpcV8Handler::new(browser, identity, lane, operation.to_owned());
+            let mut function = v8_value_create_function(Some(&key), Some(&mut handler));
+            if bridge.set_value_bykey(Some(&key), function.as_mut(), attributes) == 0 {
+                return false;
+            }
+        }
+        let mut bridge = Some(bridge);
+        if global.set_value_bykey(
+            Some(&CefString::from(global_name)),
+            bridge.as_mut(),
+            attributes,
+        ) == 0
+        {
             return false;
         }
     }
@@ -291,22 +367,13 @@ fn install_entered(browser: i32, expected: &Context, identity: Identity) -> bool
     {
         return false;
     }
-    let mut bridge = Some(bridge);
-    if global.set_value_bykey(
-        Some(&CefString::from("__bunlyRpc")),
-        bridge.as_mut(),
-        attributes,
-    ) == 0
-    {
-        return false;
-    }
     // Fixed no-payload event is merely a wakeup. It conveys no authority.
     // Page listeners may re-enter; no registry borrow survives this call.
     let mut result = None;
     let mut error = None;
     expected.context.eval(
         Some(&CefString::from(
-            "globalThis.dispatchEvent(new Event('bunly:rpc-ready'))",
+            "Object.freeze(globalThis.__bunlyRpc);Object.freeze(globalThis.__bunlyStreams);globalThis.dispatchEvent(new Event('bunly:rpc-ready'));globalThis.dispatchEvent(new Event('bunly:streams-ready'))",
         )),
         None,
         0,
@@ -342,10 +409,9 @@ fn context_created(browser: &Browser, frame: &Frame, context: &V8Context) {
         frame: frame.clone(),
         frame_id,
         identity: None,
-        receiver: None,
-        send_ack: None,
-        sent: 0,
-        delivered: 0,
+        stream_retired: false,
+        rpc: LaneContext::default(),
+        stream: LaneContext::default(),
     };
     let old = REGISTRY.with(|registry| registry.borrow_mut().contexts.insert(browser, new_context));
     if let Some(old) = old {
@@ -371,30 +437,44 @@ fn browser_destroyed(browser: &Browser) {
         revoke(id, &expected, false);
     }
 }
-fn acknowledge(browser: i32, expected: &Context, sequence: u64) {
+fn acknowledge(browser: i32, expected: &Context, lane: Lane, sequence: u64) {
     let callback = update(browser, expected, |context| {
-        if context.send_ack.as_ref().map(|(seq, _)| *seq) != Some(sequence) {
+        let state = context.lane_mut(lane);
+        if state.send_ack.as_ref().map(|(seq, _)| *seq) != Some(sequence) {
             return None;
         }
-        context.send_ack.take().map(|(_, callback)| callback)
+        state.send_ack.take().map(|(_, callback)| callback)
     })
     .flatten();
     if let Some(callback) = callback {
         invoke_bool(&expected.context, &callback, true);
     }
 }
-fn receipt(browser: i32, frame: &Frame, identity: Identity, sequence: u64, consumed: bool) {
+fn receipt(
+    browser: i32,
+    frame: &Frame,
+    identity: Identity,
+    lane: Lane,
+    sequence: u64,
+    consumed: bool,
+) {
     // Run after the message callback unwinds and CEF releases its input buffer.
     // The task owns metadata only; byte reservations remain at the sender.
-    let mut task = DeliveryReceipt::new(browser, frame.clone(), identity, sequence, consumed);
+    let mut task = DeliveryReceipt::new(browser, frame.clone(), identity, lane, sequence, consumed);
     post_task(ThreadId::RENDERER, Some(&mut task));
 }
 wrap_task! {
-    struct DeliveryReceipt { browser: i32, frame: Frame, identity: Identity, sequence: u64, consumed: bool }
+    struct DeliveryReceipt { browser: i32, frame: Frame, identity: Identity, lane: Lane, sequence: u64, consumed: bool }
     impl Task {
         fn execute(&self) {
-            let live = snapshot(self.browser).is_some_and(|current| current.identity == Some(self.identity));
-            send(&self.frame, if self.consumed && live { wire::DELIVERED } else { wire::DISCARDED }, self.identity, self.sequence, None);
+            let live = snapshot(self.browser).is_some_and(|current| current.identity == Some(self.identity) && (self.lane == Lane::Rpc || !current.stream_retired));
+            let name = match (self.lane, self.consumed && live) {
+                (Lane::Rpc, true) => wire::DELIVERED,
+                (Lane::Rpc, false) => wire::DISCARDED,
+                (Lane::Stream, true) => wire::STREAM_DELIVERED,
+                (Lane::Stream, false) => wire::STREAM_DISCARDED,
+            };
+            send(&self.frame, name, self.identity, self.sequence, None);
         }
     }
 }
@@ -402,27 +482,43 @@ fn deliver(
     browser: i32,
     expected: &Context,
     identity: Identity,
+    lane: Lane,
     sequence: u64,
     message: &ProcessMessage,
 ) {
+    // A packet already owned by CEF can arrive after lane-local retirement.
+    // Discard and release that exact packet without revoking sibling RPC.
+    if lane == Lane::Stream && expected.stream_retired {
+        receipt(browser, &expected.frame, identity, lane, sequence, false);
+        return;
+    }
     let Some(mut bytes) = wire::binary(message) else {
-        revoke(browser, expected, true);
+        if lane == Lane::Stream {
+            close_stream(browser, expected, true);
+        } else {
+            revoke(browser, expected, true);
+        }
         return;
     };
-    let Some(callback) = expected.receiver.clone() else {
+    let Some(callback) = expected.lane(lane).receiver.clone() else {
         drop(bytes);
-        receipt(browser, &expected.frame, identity, sequence, false);
-        revoke(browser, expected, true);
+        receipt(browser, &expected.frame, identity, lane, sequence, false);
+        if lane == Lane::Stream {
+            close_stream(browser, expected, true);
+        } else {
+            revoke(browser, expected, true);
+        }
         return;
     };
-    if wire::next(expected.delivered) != Some(sequence) {
+    if wire::next(expected.lane(lane).delivered) != Some(sequence) {
         return;
     }
     if update(browser, expected, |context| {
-        if context.delivered != expected.delivered {
+        let state = context.lane_mut(lane);
+        if state.delivered != expected.lane(lane).delivered {
             return false;
         }
-        context.delivered = sequence;
+        state.delivered = sequence;
         true
     }) != Some(true)
     {
@@ -439,7 +535,9 @@ fn deliver(
         .and_then(|value| invoke(&expected.context, &callback, Some(value)))
         .is_some_and(|value| value.is_bool() != 0 && value.bool_value() != 0);
     let still_current = snapshot(browser).is_some_and(|current| {
-        current.serial == expected.serial && current.identity == Some(identity)
+        current.serial == expected.serial
+            && current.identity == Some(identity)
+            && (lane == Lane::Rpc || !current.stream_retired)
     });
     // No positive acknowledgement for a missing/throwing listener or reentrant
     // replacement. DISCARDED only releases the original transport reservation.
@@ -447,11 +545,16 @@ fn deliver(
         browser,
         &expected.frame,
         identity,
+        lane,
         sequence,
         consumed && still_current,
     );
     if !consumed {
-        revoke(browser, expected, true);
+        if lane == Lane::Stream {
+            close_stream(browser, expected, true);
+        } else {
+            revoke(browser, expected, true);
+        }
     }
 }
 fn process_message(
@@ -464,10 +567,21 @@ fn process_message(
         return 0;
     }
     let name = CefString::from(&message.name()).to_string();
-    if ![wire::GRANT, wire::REVOKE, wire::ACK, wire::DELIVER].contains(&name.as_str()) {
+    if ![
+        wire::GRANT,
+        wire::REVOKE,
+        wire::ACK,
+        wire::DELIVER,
+        wire::STREAM_REVOKE,
+        wire::STREAM_ACK,
+        wire::STREAM_DELIVER,
+    ]
+    .contains(&name.as_str())
+    {
         return 0;
     }
-    let Some((identity, sequence)) = wire::read(message, name == wire::DELIVER) else {
+    let payload = [wire::DELIVER, wire::STREAM_DELIVER].contains(&name.as_str());
+    let Some((identity, sequence)) = wire::read(message, payload) else {
         return 1;
     };
     let id = browser.identifier();
@@ -491,8 +605,13 @@ fn process_message(
                 send(frame, "bunly.rpc.qualification", live, case, None);
             }
         }
-        if name == wire::DELIVER {
-            receipt(id, frame, identity, sequence, false);
+        if payload {
+            let lane = if name == wire::STREAM_DELIVER {
+                Lane::Stream
+            } else {
+                Lane::Rpc
+            };
+            receipt(id, frame, identity, lane, sequence, false);
         }
         return 1;
     };
@@ -510,8 +629,15 @@ fn process_message(
     }
     match name.as_str() {
         wire::REVOKE if sequence == 0 => revoke(id, &expected, false),
-        wire::ACK if sequence > 0 => acknowledge(id, &expected, sequence),
-        wire::DELIVER if sequence > 0 => deliver(id, &expected, identity, sequence, message),
+        wire::STREAM_REVOKE if sequence == 0 => close_stream(id, &expected, false),
+        wire::ACK if sequence > 0 => acknowledge(id, &expected, Lane::Rpc, sequence),
+        wire::STREAM_ACK if sequence > 0 => acknowledge(id, &expected, Lane::Stream, sequence),
+        wire::DELIVER if sequence > 0 => {
+            deliver(id, &expected, identity, Lane::Rpc, sequence, message)
+        }
+        wire::STREAM_DELIVER if sequence > 0 => {
+            deliver(id, &expected, identity, Lane::Stream, sequence, message)
+        }
         _ => (),
     }
     1

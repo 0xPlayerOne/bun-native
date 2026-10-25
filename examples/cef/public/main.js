@@ -1,9 +1,11 @@
 import { observePolicyViolations } from './nested/policy-violations.mjs'
 import './rpc-client.js'
+import './stream-client.js'
 const check = (condition, message) => {
   if (!condition) throw new Error(message)
 }
 try {
+  check(Object.isFrozen(globalThis.__bunlyStreams), 'Native stream bridge is not frozen')
   const response = await fetch('/next.html', { cache: 'no-store' })
   check(
     response.ok && (await response.text()).includes('Navigation complete'),
@@ -95,14 +97,19 @@ try {
         bridgePresent: frame.contentWindow?.bridgePresent,
         outcome: frame.contentWindow?.borrowedBridge,
         error: frame.contentWindow?.borrowedError,
+        streamBridgePresent: frame.contentWindow?.streamBridgePresent,
+        borrowedStream: frame.contentWindow?.borrowedStream,
+        streamError: frame.contentWindow?.streamError,
       })
   )
   check(frame.contentWindow?.hostileFixtureRan === true, 'External hostile fixture did not run')
   check(frame.contentWindow?.bridgePresent === false, 'Child frame received RPC bridge')
+  check(frame.contentWindow?.streamBridgePresent === false, 'Child frame received stream bridge')
   check(
     frame.contentWindow?.borrowedBridge === 'denied',
     'Child frame borrowed main-frame RPC function'
   )
+  check(frame.contentWindow?.borrowedStream === 'denied', 'Child frame borrowed stream function')
   console.log('BUNLY_RPC_HOSTILE_OK')
   // Keep the hostile context alive until its owner document is disposed.
   // CEF process-message delivery is asynchronous and may be lost on detach;

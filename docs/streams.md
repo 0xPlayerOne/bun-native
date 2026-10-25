@@ -2,8 +2,10 @@
 
 M5 protocol foundation, separate from request/response RPC and from native control.
 
-**Issue:** #23. **Status:** portable implementation and local qualification;
-production transport, native authorization and PTY/renderer integration remain open.
+**Issue:** #23. **Status:** portable implementation plus native CEF authorization
+and transport integration; graphical xterm/PTY application integration remains open.
+
+See [native CEF streams](native-streams.md) for the selected adapter and bounds.
 
 ## Application API
 
@@ -98,9 +100,9 @@ explicit source cursor and idempotency policy for replay, outside this protocol.
 Consumed bytes are not proof that a compromised recipient honestly rendered them.
 ACK is a flow-control statement by the authorized consumer, not an authentication
 primitive. IDs, sink names and owner objects do not authenticate remote messages.
-#19 must bind the real native view/frame/document and revoke the supplied lifetime
-at navigation start. No loopback server, remote debugging port or renderer privilege
-has been enabled by this implementation.
+The CEF adapter binds the real native view/frame/document and revokes the supplied
+lifetime at navigation start. No loopback server, remote debugging port or renderer
+privilege is enabled by this lane.
 
 `StreamFramer` handles fragmented/coalesced byte input with one bounded partial
 packet and no output array. It rejects incomplete EOF, impossible lengths and
@@ -112,6 +114,7 @@ selected production adapter must implement its actual I/O and close contract.
 
 ```sh
 bun test tests/streams.test.ts
+bun test tests/cef-stream-client.test.ts tests/cef-stream.test.ts
 bun run typecheck:browser
 bun run boundaries
 bun scripts/stream-workbench.ts
@@ -124,8 +127,9 @@ uses real MessageChannels and a mock-owned view: a blocked bulk consumer leaves 
 independent typed RPC lane usable, then drains and verifies 1 MiB of fixture bytes.
 
 These tests do not qualify CEF, WKWebView, WebView2, kernel wakeups, native process
-cleanup, real PTYs, browser permissions or comparative performance. The local commands do not require runner dispatch; hosted native acceptance is
-separate and does not promote this portable foundation to native stream support.
+cleanup, real PTYs, browser permissions or comparative performance. The local
+commands do not require runner dispatch. The separate maintained CEF fixture in
+[native CEF streams](native-streams.md) qualifies only that native adapter.
 
 ## Push-only producer adapters
 
@@ -134,5 +138,6 @@ sources. It reserves its own additional capacity from a shared pool, owns exact
 chunk snapshots, and stops an unpausable producer explicitly on overload. Source
 EOF is distinct from process exit; `drained` is distinct from OS cleanup. The
 [M5 increment](m5-progress.md) qualifies actual Bun PTY callback bytes through the
-portable stream path. It does not yet grant native renderer authority or implement
-graphical xterm, a full terminal service, descendant supervision or reconnect.
+portable stream path. Native renderer authority is a separate adapter; neither
+increment implements graphical xterm, a full terminal service, descendant
+supervision or reconnect.

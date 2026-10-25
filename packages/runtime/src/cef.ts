@@ -16,6 +16,10 @@ import {
 } from '../../contracts/src/rpc-native-handoff.ts'
 import { RpcError, rpcLimits } from '../../contracts/src/rpc.ts'
 import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
+import { BinaryStreamReceiver, BinaryStreamSender } from '../../contracts/src/streams.ts'
+import { StreamBudget } from '../../contracts/src/stream-budget.ts'
+import { STREAM_CHUNK_BYTES } from '../../contracts/src/stream-wire.ts'
+import type { BinaryStreamOptions, BinaryStreamSink } from '../../contracts/src/streams.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
@@ -66,6 +70,29 @@ interface CefRpcService {
   readonly options: RpcServerOptions
   readonly listener: RpcLoopbackServer | undefined
 }
+export interface CefStreamConnection {
+  readonly view: ViewHandle
+  readonly signal: AbortSignal
+  /** Select exactly one endpoint for this native lane. */
+  sender(options?: Omit<BinaryStreamOptions, 'budget' | 'owner' | 'signal'>): BinaryStreamSender
+  receiver(
+    sinks: Readonly<Record<string, BinaryStreamSink>>,
+    options?: Omit<BinaryStreamOptions, 'budget' | 'owner' | 'signal'>
+  ): BinaryStreamReceiver
+}
+export interface CefStreamServiceOptions {
+  readonly budget?: StreamBudget
+}
+interface CefStreamService {
+  readonly origins: ReadonlySet<string>
+  readonly budget: StreamBudget
+  readonly connect: (connection: CefStreamConnection) => void | Promise<void>
+}
+interface CefStreamNativeConnection {
+  readonly view: ViewHandle
+  readonly transport: CefLaneTransport
+  readonly controller: AbortController
+}
 function nativeRpcOptions(options: RpcServerOptions): RpcServerOptions {
   const limits = rpcLimits({
     maxFrameBytes: NATIVE_RPC_MESSAGE_BYTES,
@@ -114,18 +141,21 @@ function unhex(value: unknown): Uint8Array {
     packet[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
   return packet
 }
-class CefRpcTransport implements RpcTransport {
+class CefLaneTransport implements RpcTransport {
   #message: ((packet: Uint8Array) => void) | undefined
   #closed: (() => void) | undefined
   #ended = false
   constructor(
     readonly native: NativeTransport,
-    readonly identity: Readonly<{ connection: number; context: number; generation: number }>
+    readonly identity: Readonly<{ connection: number; context: number; generation: number }>,
+    readonly lane: 'rpc' | 'stream'
   ) {}
   send(packet: Uint8Array): Promise<void> {
     if (this.#ended)
       return Promise.reject(new RpcError('DISCONNECTED', 'Native RPC transport closed'))
-    return this.native.call('rpc.deliver', { ...this.identity, packet: hex(packet) }).then(() => {})
+    return this.native
+      .call(`${this.lane}.deliver`, { ...this.identity, packet: hex(packet) })
+      .then(() => {})
   }
   subscribe(message: (packet: Uint8Array) => void, closed: () => void): () => void {
     if (this.#message) throw new TypeError('Native RPC transport permits one subscriber')
@@ -140,7 +170,9 @@ class CefRpcTransport implements RpcTransport {
     if (this.#ended || !this.#message) return
     this.#message(packet)
     if (this.#ended) return
-    void this.native.call('rpc.ack', { ...this.identity, sequence }).catch(() => this.end(false))
+    void this.native
+      .call(`${this.lane}.ack`, { ...this.identity, sequence })
+      .catch(() => this.end(false))
   }
   close(): void {
     this.end(true)
@@ -148,10 +180,19 @@ class CefRpcTransport implements RpcTransport {
   end(tellNative: boolean): void {
     if (this.#ended) return
     this.#ended = true
-    if (tellNative) void this.native.call('rpc.disconnect', { ...this.identity }).catch(() => {})
+    if (tellNative)
+      void this.native.call(`${this.lane}.disconnect`, { ...this.identity }).catch(() => {})
     this.#closed?.()
     this.#message = undefined
     this.#closed = undefined
+  }
+}
+class CefRpcTransport extends CefLaneTransport {
+  constructor(
+    native: NativeTransport,
+    identity: Readonly<{ connection: number; context: number; generation: number }>
+  ) {
+    super(native, identity, 'rpc')
   }
 }
 export type NativeCapabilityGrant =
@@ -344,7 +385,9 @@ export class CefBackend implements BrowserBackend {
   // Native application grants are one-shot. Fence local lifecycle transitions
   // before their queued native acknowledgement/handshake can arrive.
   readonly #rpcRetired = new WeakSet<ViewHandle>()
+  readonly #streamRetired = new WeakSet<ViewHandle>()
   readonly #rpcConnections = new Map<number, CefRpcConnection>()
+  readonly #streamConnections = new Map<number, CefStreamNativeConnection>()
   readonly #rpcFragments = new RpcFragmentBudget()
   #nativeConfirmations = 0
   #nativeConfirmationRejections = 0
@@ -353,6 +396,10 @@ export class CefBackend implements BrowserBackend {
   #nativeRevocations = 0
   #rpcService: CefRpcService | undefined
   #rpcClosing: Promise<void> | undefined
+  #streamService: CefStreamService | undefined
+  #streamBudget: StreamBudget | undefined
+  #streamConfigured = false
+  #streamConnectionFailures = 0
   #shutdown: Promise<void> | undefined
   #rpcConfigured = false
   #disposed = false
@@ -369,6 +416,7 @@ export class CefBackend implements BrowserBackend {
     })
     this.closed = transport.closed.then(async () => {
       this.#disposed = true
+      this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
         for (const handle of this.#registry.handles(kind)) {
@@ -780,6 +828,7 @@ export class CefBackend implements BrowserBackend {
   }
   #dropView(view: ViewHandle): void {
     if (this.#registry.isDisposed(view, 'view')) return
+    this.#retireRpc(view)
     const { native, window, session } = this.#registry.get<'view', ViewResource>(view, 'view')
     this.#registry.dispose(view, 'view')
     this.#native.delete(native)
@@ -957,6 +1006,46 @@ export class CefBackend implements BrowserBackend {
   async nativeDiagnostics(): Promise<unknown> {
     return this.#transport.call('diagnostics')
   }
+  /** Configure the independent native binary lane before creating any view.
+   * The callback receives the opaque local ViewHandle as budget owner; renderer
+   * packet metadata is never promoted to application authority.
+   */
+  serveStreams(
+    origins: readonly string[],
+    connect: (connection: CefStreamConnection) => void | Promise<void>,
+    options: CefStreamServiceOptions = {}
+  ): () => void {
+    this.#active()
+    if (
+      this.#streamConfigured ||
+      this.#registry.count('view') !== 0 ||
+      this.#registry.count('session') !== 0
+    )
+      throw new BunlyError(
+        'INVALID_ARGUMENT',
+        'Configure one stream service before creating sessions or views'
+      )
+    if (
+      typeof connect !== 'function' ||
+      !origins.length ||
+      origins.length > 32 ||
+      origins.some((value) => originOf(value) !== value || value === 'null')
+    )
+      throw new TypeError('Supply exact approved stream origins and a connection callback')
+    const budget = options.budget ?? new StreamBudget()
+    if (!(budget instanceof StreamBudget)) throw new TypeError('Invalid shared stream budget')
+    const service: CefStreamService = {
+      origins: new Set(origins),
+      budget,
+      connect,
+    }
+    this.#streamConfigured = true
+    this.#streamService = service
+    this.#streamBudget = budget
+    return () => {
+      if (this.#streamService === service) this.#stopStreams(true)
+    }
+  }
   serveRpc<S extends RpcSchema>(
     schema: S,
     handlers: RpcHandlers<S>,
@@ -1085,6 +1174,14 @@ export class CefBackend implements BrowserBackend {
     this.#rpcClosing = service.listener?.close() ?? Promise.resolve()
     return this.#rpcClosing
   }
+  #stopStreams(tellNative: boolean): void {
+    this.#streamService = undefined
+    for (const connection of this.#streamConnections.values()) {
+      connection.controller.abort(new Error('Native stream service retired'))
+      connection.transport.end(tellNative)
+    }
+    this.#streamConnections.clear()
+  }
 
   rpcDiagnostics() {
     return {
@@ -1102,10 +1199,18 @@ export class CefBackend implements BrowserBackend {
       ),
     }
   }
+  streamDiagnostics() {
+    return {
+      connections: this.#streamConnections.size,
+      connectionFailures: this.#streamConnectionFailures,
+      budget: this.#streamBudget?.diagnostics() ?? null,
+    }
+  }
   dispose(): Promise<void> {
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
+    this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
     this.#shutdown = Promise.all([rpcClosed, this.#transport.call('quit').then(() => this.closed)])
       .then(() => {})
@@ -1123,6 +1228,7 @@ export class CefBackend implements BrowserBackend {
     else if (event.event === 'view.closed' && view) this.#dropView(view)
     else if (view && (event.event === 'view.navigating' || event.event === 'view.loaded')) {
       if (typeof event.data?.['url'] !== 'string') throw new Error('Missing native navigation URL')
+      if (event.event === 'view.navigating') this.#retireRpc(view)
       const resource = this.#registry.get<'view', ViewResource>(view, 'view')
       const url = normalizeUrl(event.data['url'])
       const documentId = nativeDocumentId(event.data)
@@ -1142,6 +1248,9 @@ export class CefBackend implements BrowserBackend {
     } else if (view && event.event === 'rpc.connected') this.#rpcConnected(view, event.data)
     else if (event.event === 'rpc.packet') this.#rpcPacket(view, event.data)
     else if (event.event === 'rpc.revoked') this.#rpcRevoked(view, event.data)
+    else if (view && event.event === 'stream.connected') this.#streamConnected(view, event.data)
+    else if (event.event === 'stream.packet') this.#streamPacket(view, event.data)
+    else if (event.event === 'stream.revoked') this.#streamRevoked(view, event.data)
     for (const observer of Array.from(this.#observers)) {
       if (!this.#observers.has(observer)) continue
       try {
@@ -1154,6 +1263,158 @@ export class CefBackend implements BrowserBackend {
   #retireRpc(view: ViewHandle): void {
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
+    this.#streamRetired.add(view)
+    for (const [id, connection] of this.#streamConnections) {
+      if (connection.view !== view) continue
+      this.#streamConnections.delete(id)
+      connection.controller.abort(new Error('Native stream document retired'))
+      connection.transport.end(true)
+    }
+  }
+  #streamConnected(view: ViewHandle, data: Record<string, unknown> | null | undefined): void {
+    if (this.#disposed || !data) return
+    const resource = this.#registry.get<'view', ViewResource>(view, 'view')
+    const connection = data['connection']
+    const validIdentity = [connection, data['context'], data['generation']].every(
+      (value) => Number.isSafeInteger(value) && Number(value) > 0
+    )
+    const disconnect = () => {
+      if (validIdentity)
+        void this.#transport
+          .call('stream.disconnect', {
+            connection,
+            context: data['context'],
+            generation: data['generation'],
+          })
+          .catch(() => {})
+    }
+    const service = this.#streamService
+    if (!service) {
+      disconnect()
+      return
+    }
+    if (
+      this.#streamRetired.has(view) ||
+      this.#closing.has(view) ||
+      this.#closing.has(resource.window)
+    ) {
+      disconnect()
+      return
+    }
+    const trust = resource.state.trust
+    if (
+      !validIdentity ||
+      trust.kind !== 'application' ||
+      originOf(resource.state.url) !== trust.origin ||
+      data['origin'] !== trust.origin ||
+      typeof data['frameId'] !== 'string' ||
+      data['frameId'].length < 1 ||
+      data['frameId'].length > 256 ||
+      data['documentId'] !== resource.state.documentId ||
+      this.#streamConnections.has(Number(connection))
+    )
+      throw new Error('Invalid native stream connection')
+    if (!service.origins.has(trust.origin)) {
+      disconnect()
+      return
+    }
+    const transport = new CefLaneTransport(
+      this.#transport,
+      Object.freeze({
+        connection: Number(connection),
+        context: Number(data['context']),
+        generation: Number(data['generation']),
+      }),
+      'stream'
+    )
+    const controller = new AbortController()
+    const nativeConnection: CefStreamNativeConnection = { view, transport, controller }
+    this.#streamConnections.set(Number(connection), nativeConnection)
+    let selected = false
+    const select = <T>(create: () => T): T => {
+      if (selected || controller.signal.aborted)
+        throw new BunlyError('INVALID_ARGUMENT', 'Native stream lane endpoint already selected')
+      selected = true
+      return create()
+    }
+    const shared = (options: Omit<BinaryStreamOptions, 'budget' | 'owner' | 'signal'> = {}) => {
+      if (options.maxChunkBytes !== undefined && options.maxChunkBytes > STREAM_CHUNK_BYTES)
+        throw new TypeError('Native CEF stream chunks cannot exceed 16 KiB')
+      return {
+        ...options,
+        budget: service.budget,
+        owner: view,
+        signal: controller.signal,
+      }
+    }
+    const exposed: CefStreamConnection = Object.freeze({
+      view,
+      signal: controller.signal,
+      sender: (options?: Omit<BinaryStreamOptions, 'budget' | 'owner' | 'signal'>) =>
+        select(() => new BinaryStreamSender(transport, shared(options))),
+      receiver: (
+        sinks: Readonly<Record<string, BinaryStreamSink>>,
+        options?: Omit<BinaryStreamOptions, 'budget' | 'owner' | 'signal'>
+      ) => select(() => new BinaryStreamReceiver(transport, shared(options), sinks)),
+    })
+    const failed = () => {
+      if (this.#streamConnections.get(Number(connection)) !== nativeConnection) return
+      this.#streamConnectionFailures++
+      this.#streamConnections.delete(Number(connection))
+      controller.abort(new Error('Native stream callback failed'))
+      transport.end(true)
+    }
+    try {
+      // Endpoint selection is synchronous; later asynchronous setup failures
+      // still retire this exact incarnation, never a replacement connection.
+      const initialized = service.connect(exposed)
+      void Promise.resolve(initialized).catch(failed)
+      if (!selected) throw new Error('Native stream callback did not select an endpoint')
+    } catch {
+      failed()
+    }
+  }
+  #streamPacket(
+    view: ViewHandle | undefined,
+    data: Record<string, unknown> | null | undefined
+  ): void {
+    if (
+      !data ||
+      !Number.isSafeInteger(data['connection']) ||
+      !Number.isSafeInteger(data['sequence'])
+    )
+      throw new Error('Invalid native stream packet metadata')
+    const connection = this.#streamConnections.get(Number(data['connection']))
+    if (!connection) return
+    if (connection.view !== view) throw new Error('Native stream view mismatch')
+    if (
+      data['context'] !== connection.transport.identity.context ||
+      data['generation'] !== connection.transport.identity.generation ||
+      Number(data['sequence']) < 1
+    )
+      throw new Error('Native stream incarnation mismatch')
+    const packet = unhex(data['packet'])
+    if (data['copiedBytes'] !== packet.byteLength)
+      throw new Error('Native stream copy accounting mismatch')
+    connection.transport.receive(packet, Number(data['sequence']))
+  }
+  #streamRevoked(
+    view: ViewHandle | undefined,
+    data: Record<string, unknown> | null | undefined
+  ): void {
+    if (!data || !Number.isSafeInteger(data['connection'])) return
+    const connection = this.#streamConnections.get(Number(data['connection']))
+    if (!connection) return
+    if (connection.view !== view) throw new Error('Native stream view mismatch')
+    if (
+      data['context'] !== connection.transport.identity.context ||
+      data['generation'] !== connection.transport.identity.generation
+    )
+      throw new Error('Native stream revocation incarnation mismatch')
+    this.#streamConnections.delete(Number(data['connection']))
+    this.#streamRetired.add(connection.view)
+    connection.controller.abort(new Error('Native stream document revoked'))
+    connection.transport.end(false)
   }
   #rpcConnected(view: ViewHandle, data: Record<string, unknown> | null | undefined): void {
     const service = this.#rpcService
@@ -1299,6 +1560,9 @@ export class CefBackend implements BrowserBackend {
     data: Record<string, unknown> | null | undefined
   ): void {
     if (!data || !Number.isSafeInteger(data['connection'])) return
+    // The native binding is shared. Its revocation must also stop stream-only
+    // owners; an RPC server need not have subscribed in this document.
+    this.#streamRevoked(view, data)
     const connection = this.#rpcConnections.get(Number(data['connection']))
     if (!connection) return
     if (connection.view !== view) throw new Error('Native RPC view mismatch')

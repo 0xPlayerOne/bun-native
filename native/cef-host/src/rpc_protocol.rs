@@ -12,6 +12,14 @@ pub const ACK: &str = "bunly.rpc.ack";
 pub const DELIVER: &str = "bunly.rpc.deliver";
 pub const DELIVERED: &str = "bunly.rpc.delivered";
 pub const DISCARDED: &str = "bunly.rpc.discarded";
+pub const STREAM_SUBSCRIBED: &str = "bunly.stream.subscribed";
+pub const STREAM_RELEASE: &str = "bunly.stream.release";
+pub const STREAM_REVOKE: &str = "bunly.stream.revoke";
+pub const STREAM_PACKET: &str = "bunly.stream.packet";
+pub const STREAM_ACK: &str = "bunly.stream.ack";
+pub const STREAM_DELIVER: &str = "bunly.stream.deliver";
+pub const STREAM_DELIVERED: &str = "bunly.stream.delivered";
+pub const STREAM_DISCARDED: &str = "bunly.stream.discarded";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Identity {
