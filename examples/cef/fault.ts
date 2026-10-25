@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { pageTimeout } from './page-readiness.ts'
 import { waitForGpuInjection } from './fault-ack.ts'
+import { startObservedShellTree } from './fault-supervision.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
@@ -8,7 +9,16 @@ import { serveRpcFixture } from './rpc-fixture-service.ts'
 export default async function fault(backend: CefBackend): Promise<void> {
   const mode = process.env['BUNLY_CEF_FAULT']
   const faultDeadlineMs = pageTimeout(process.env['BUNLY_TEST_PAGE_TIMEOUT_MS'])
-  if (!['backend-exit', 'backend-tree-exit', 'renderer-exit', 'gpu-exit'].includes(mode ?? ''))
+  if (
+    ![
+      'backend-exit',
+      'backend-tree-exit',
+      'backend-shell-tree-exit',
+      'backend-hang',
+      'renderer-exit',
+      'gpu-exit',
+    ].includes(mode ?? '')
+  )
     throw new Error('Explicit native qualification fault required')
   // main.js imports rpc-client.js with top-level await. Fault readiness must
   // provision that actual service, not bypass the unchanged asset/RPC checks.
@@ -63,6 +73,22 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
         flag: 'wx',
         mode: 0o600,
       })
+    }
+    if (mode === 'backend-shell-tree-exit') await startObservedShellTree(faultDeadlineMs)
+    if (mode === 'backend-hang') {
+      // The native quit command is queued before the trusted backend blocks.
+      // No JS shutdown handler or timer can run until native escalation kills it.
+      void backend.dispose().catch(() => {})
+      console.error(
+        JSON.stringify({
+          event: 'bunly.fault.blocked',
+          mode,
+          pid: process.pid,
+          quitRequested: true,
+        })
+      )
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0)
+      throw new Error('Deliberately blocked backend unexpectedly resumed')
     }
     if (mode === 'backend-tree-exit') {
       const descendant = Bun.spawn([process.execPath, '-e', 'setInterval(() => {}, 1000)'], {

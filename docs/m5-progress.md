@@ -221,3 +221,13 @@ checks ordered checksums, paused-consumer control progress, multiple streams,
 cancellation, child borrowing denial, navigation/return revocation and final zero
 stream accounting. No runtime process/thread, deadline, loopback selection or
 graphical terminal service is added.
+
+## Blocked backends and observed shell/server descendants
+
+The maintained native fault suite now adds forced shutdown of a deliberately
+blocked backend and cleanup of an observed non-detached shell/server-grandchild
+chain. Each case also proves survival of an independently owned same-executable
+process. Current schema-4 qualification retains all six cases and the original
+shutdown deadlines; earlier four-case evidence remains version scoped. See
+[native fault qualification](cef-fault-qualification.md). This closes neither
+detached PTY supervision nor the broader #25 restart/termination-denial scope.

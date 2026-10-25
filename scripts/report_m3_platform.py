@@ -160,16 +160,28 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
         faults.get("platform") == target.split("-")[0] and faults.get("deadlineProfile") == profile,
         "Wrong fault platform/profile",
     )
-    require(faults.get("passed") is True and len(faults["trials"]) == 4, "Incomplete native faults")
-    require({t["mode"] for t in faults["trials"]} == FAULTS, "Missing or duplicate native fault")
+    from cef_fault_acceptance import MODES
+
+    fault_modes = set(MODES) if faults.get("schema") == 4 else FAULTS
+    require(
+        faults.get("passed") is True and len(faults["trials"]) == len(fault_modes),
+        "Incomplete native faults",
+    )
+    require(
+        {t["mode"] for t in faults["trials"]} == fault_modes, "Missing or duplicate native fault"
+    )
     for trial in faults["trials"]:
         mode, observation = trial["mode"], trial["observation"]
-        if faults.get("schema") in (2, 3):
+        if faults.get("schema") in (2, 3, 4):
             from cef_fault_acceptance import accept_fault
 
             accept_fault(
-                mode, observation, trial["injected"], require_output=faults.get("schema") == 3
+                mode, observation, trial["injected"], require_output=faults.get("schema") in (3, 4)
             )
+        if faults.get("schema") == 4:
+            from cef_fault_control import accept_foreign_control
+
+            accept_foreign_control(trial.get("foreignControl"), observation)
         require(trial.get("passed") is True, "Native fault failed")
         clean_process(observation, 0 if mode == "gpu-exit" else 1)
         records = events(observation)
@@ -184,7 +196,7 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
             ),
             "Unverified fault shutdown",
         )
-        if mode in ("backend-exit", "backend-tree-exit"):
+        if mode in ("backend-exit", "backend-tree-exit", "backend-shell-tree-exit"):
             require(
                 any(
                     r.get("event") == "bunly.backend.exit"
@@ -194,7 +206,7 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
                 ),
                 "Backend failure not observed",
             )
-        else:
+        elif mode != "backend-hang":
             require(len(trial["injected"]) == 1, "Missing actual native helper fault")
             injection = trial["injected"][0]
             require(
@@ -246,7 +258,7 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
         "passed": True,
         "prebuiltTrials": len(seen),
         "lifecycleCycles": 20 * len(POSITIVES),
-        "faultCases": 4,
+        "faultCases": len(fault_modes),
         "forbiddenDevelopmentRequests": 0,
         "isolationObservations": security,
         "performanceQualified": False,
