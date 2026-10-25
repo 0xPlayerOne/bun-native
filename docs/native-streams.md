@@ -87,3 +87,10 @@ Stream revocation uses the same exact-shape, small-message lifecycle reserve as
 RPC revocation. A saturated-ordinary-output regression failed before the stream
 event was included. This reserves admission without changing FIFO order or the
 existing total native output byte/count limits.
+
+Hosted macOS and Linux exposed independent retirement receipt ordering: a
+discarded delivery can close the stream transport before the native revocation
+event aborts its owner. Acceptance now awaits both observations under the original
+10-second bound, without assuming they occur in one callback. Neither is omitted
+or inferred from the other. Deterministic regressions cover both orders, missing
+receipts and action/transport failure; original hosted failures remain retained.
