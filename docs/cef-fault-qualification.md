@@ -113,3 +113,16 @@ parent IDs in the existing resource-sample rows. The corrected report retains th
 actual parent/birth identities captured by the controller's sampling callback and
 requires their PID/birth pair to match an actual resource sample. No parent ID is
 invented for an older report; the original failed run remains failed.
+
+### Windows shell command-line correction
+
+The initial six-case Windows run passed the existing fault cases and the hung
+backend control but failed before the new shell server's readiness: `cmd.exe`
+reported a network-path error. The fixed command uses Bun's
+`windowsVerbatimArguments` for its already-quoted `/d /s /v:off /c` expression;
+CRT argument escaping must not add backslashes to that command-language string.
+The executable/entry remain fixed fixture environment values, not user command
+text. A Windows-only execution regression runs a real child from a Unicode path
+containing spaces and verifies its shell parent. The full native case still must
+prove a listening grandchild, independently observed ancestry, exact backend exit
+and group/job cleanup. The failed platform report is retained, not reclassified.

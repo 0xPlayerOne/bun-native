@@ -112,13 +112,9 @@ export function waitForTreeObservation(
   })
 }
 
-/** The shell remains a child and the listening Bun server is its grandchild. */
-export async function startObservedShellTree(timeoutMs: number): Promise<void> {
-  const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
-  const tree = process.env['BUNLY_CEF_FAULT_TREE'] ?? ''
-  const observed = process.env['BUNLY_CEF_FAULT_INJECTED'] ?? ''
-  assert.ok(isAbsolute(tree) && isAbsolute(observed) && /^[a-f0-9]{48}$/.test(nonce))
-  const entry = fileURLToPath(new URL('./fault-tree-child.js', import.meta.url))
+/** Fixed contributor shell only; callers never supply shell command text. */
+export function spawnFaultShell(entry: string, nonce: string) {
+  assert.ok(isAbsolute(entry) && !/[\0\r\n]/.test(entry))
   const windows = process.platform === 'win32'
   const systemRoot = process.env['SystemRoot']
   if (windows) assert.ok(systemRoot && isAbsolute(systemRoot))
@@ -127,6 +123,7 @@ export async function startObservedShellTree(timeoutMs: number): Promise<void> {
         join(systemRoot!, 'System32', 'cmd.exe'),
         '/d',
         '/s',
+        '/v:off',
         '/c',
         '""%BUNLY_FAULT_RUNTIME%" "%BUNLY_FAULT_ENTRY%""',
       ]
@@ -138,7 +135,10 @@ export async function startObservedShellTree(timeoutMs: number): Promise<void> {
         process.execPath,
         entry,
       ]
-  const shell = Bun.spawn(cmd, {
+  return Bun.spawn(cmd, {
+    // cmd /s /c parses its own enclosing quotes; CRT escaping inserts literal
+    // backslashes and breaks the Unicode/space-containing packaged path.
+    windowsVerbatimArguments: windows,
     env: {
       BUNLY_CEF_FAULT_NONCE: nonce,
       BUNLY_FAULT_RUNTIME: process.execPath,
@@ -149,6 +149,16 @@ export async function startObservedShellTree(timeoutMs: number): Promise<void> {
     stdout: 'pipe',
     stderr: 'inherit',
   })
+}
+
+/** The shell remains a child and the listening Bun server is its grandchild. */
+export async function startObservedShellTree(timeoutMs: number): Promise<void> {
+  const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
+  const tree = process.env['BUNLY_CEF_FAULT_TREE'] ?? ''
+  const observed = process.env['BUNLY_CEF_FAULT_INJECTED'] ?? ''
+  assert.ok(isAbsolute(tree) && isAbsolute(observed) && /^[a-f0-9]{48}$/.test(nonce))
+  const entry = fileURLToPath(new URL('./fault-tree-child.js', import.meta.url))
+  const shell = spawnFaultShell(entry, nonce)
   const reader = shell.stdout.getReader()
   let deadline: ReturnType<typeof setTimeout> | undefined
   try {
