@@ -146,7 +146,14 @@ test('admission establishes opaque ownership before touching the writer or drive
   const handle = await service.create(owner, writer, valid())
   expect(countAtWriterAccess).toBe(1)
   expect(Object.isFrozen(handle)).toBe(true)
-  expect(driver.options[0]?.env).toEqual({ TERM: 'xterm-256color' })
+  // Windows needs its explicitly documented SystemRoot fallback. No other
+  // ambient variable is admitted; equality remains exact on every platform.
+  expect(driver.options[0]?.env).toEqual({
+    TERM: 'xterm-256color',
+    ...(process.platform === 'win32' && process.env['SystemRoot']
+      ? { SystemRoot: process.env['SystemRoot'] }
+      : {}),
+  })
   expect(driver.options[0]?.executable).toBe(process.execPath)
   await expect(service.create(owner, new Writer(), valid())).rejects.toMatchObject({
     code: 'OVERLOADED',
