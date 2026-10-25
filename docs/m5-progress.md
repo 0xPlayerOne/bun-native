@@ -193,3 +193,13 @@ expansion; saturation remains explicit failure, never a dropped terminal stream.
 See [native output admission](native-output-admission.md). Schema-6 native RPC
 acceptance requires exercised output-budget diagnostics. Full renderer bulk-lane
 integration, global scheduling and descendant supervision remain open.
+
+## Backend exit notification handoff
+
+Shutdown now consumes the existing OS watcher's retained exit notification instead
+of running an independent 10-ms process-state poll. The same graceful deadline,
+non-reaping Unix ownership check and Windows job lifetime remain in force. EOF,
+process exit, output drain and group cleanup remain separate observations. See
+[native process exit](native-process-exit.md) for timing, identity and remaining
+supervisor boundaries. This does not close #25/#26 or implement detached terminal
+ownership, restart policy or managed backend replacement.
