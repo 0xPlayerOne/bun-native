@@ -1,6 +1,7 @@
 """Real native-process faults on a private prebuilt app; no process-name-wide termination."""
 
 import argparse
+import http.client
 import importlib.util
 import json
 import os
@@ -13,7 +14,7 @@ from pathlib import Path
 
 import psutil
 from cef_fault_acceptance import MODES, accept_fault
-from cef_fault_control import ForeignControl, accept_foreign_control
+from cef_fault_control import ForeignControl, accept_foreign_control, notify_tree_observation
 from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
@@ -150,6 +151,7 @@ def main():
         os.environ["BUNLY_CEF_FAULT_TREE"] = str(tree_path)
         tree_seen = {}
         tree_confirmed = []
+        tree_notification = {"attempted": False, "acknowledged": False}
         os.environ["BUNLY_CEF_FAULT_READY"] = str(ready_path)
         os.environ["BUNLY_CEF_FAULT_INJECTED"] = str(injected_path)
         os.environ["BUNLY_CEF_FAULT_NONCE"] = nonce
@@ -167,6 +169,7 @@ def main():
             tree_path=tree_path,
             tree_seen=tree_seen,
             tree_confirmed=tree_confirmed,
+            tree_notification=tree_notification,
         ):
             try:
                 process = psutil.Process(pid)
@@ -187,7 +190,9 @@ def main():
                     tree = json.loads(tree_path.read_text())
                     pids = tree.get("pids") if isinstance(tree, dict) else None
                     if (
-                        set(tree) == {"mode", "nonce", "backend", "pids"}
+                        set(tree) == {"mode", "nonce", "backend", "pids", "port"}
+                        and type(tree["port"]) is int
+                        and 0 < tree["port"] <= 65535
                         and tree["mode"] == mode
                         and tree["nonce"] == nonce
                         and isinstance(pids, list)
@@ -227,7 +232,14 @@ def main():
                                                 receipt,
                                             )
                                         temporary.replace(injected_path)
+                                        # One publication attempt only after both exact process
+                                        # identities were independently observed. The existing
+                                        # descendant listener retains the notification, avoiding
+                                        # filesystem-watcher startup races without polling.
                                         tree_confirmed.append(True)
+                                        tree_notification["attempted"] = True
+                                        notify_tree_observation(tree["port"], nonce, pids)
+                                        tree_notification["acknowledged"] = True
                 if (
                     mode in ("renderer-exit", "gpu-exit")
                     and not injected
@@ -268,7 +280,7 @@ def main():
                                         },
                                         receipt,
                                     )
-            except (psutil.Error, OSError, ValueError, TypeError):
+            except (psutil.Error, OSError, ValueError, TypeError, http.client.HTTPException):
                 pass
             return {
                 "provider": "private-fault-observation",
@@ -299,10 +311,16 @@ def main():
             "injected": injected,
             "observation": data,
             "foreignControl": foreign_control,
+            "treeNotification": tree_notification if mode == "backend-shell-tree-exit" else None,
         }
         try:
             accept_foreign_control(foreign_control, data)
             trial["acceptance"] = accept_fault(mode, data, injected)
+            if mode == "backend-shell-tree-exit" and tree_notification != {
+                "attempted": True,
+                "acknowledged": True,
+            }:
+                raise ValueError("Independent tree notification did not complete")
             trial["passed"] = True
         except (ValueError, KeyError, TypeError) as error:
             trial["failure"] = str(error)

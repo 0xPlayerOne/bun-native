@@ -159,3 +159,27 @@ output. Non-byte typed arrays reject as input. Executable, working directory and
 argument values are snapshotted during validation, so changed getters or a custom
 iterator cannot substitute unchecked spawn data. Synchronous abort during a driver
 write retains an observer for that operation's later rejection.
+
+## Lossless pending-callback coalescing
+
+Terminal output opts into `CallbackStreamSource.coalescePending`. Arbitrary small
+PTY callbacks append to the last **unsent** block; an active writer's block is
+never changed. A first partial block is submitted immediately through the same
+notification-driven drain, not held for a batching timer or a minimum size.
+Default generic callback sources preserve their original chunk behavior unless
+explicitly opted in. Byte-stream order and consumer acknowledgments are unchanged.
+
+All block allocation, including unused capacity and transferred active buffers,
+is charged against the existing source reservation until actual writer settlement.
+A final fractional block uses only the remaining reservation. Frame limits and
+byte limits remain simultaneous; overflow still stops the exact owned child.
+No terminal output is discarded, replayed or decoded to text in this adapter.
+Diagnostics separate payload bytes, allocated bytes, allocation peak and appended
+bytes. This is not a whole-process memory bound or a throughput claim.
+
+Actual graphical integration initially hit an eight-chunk source limit during a
+32-record burst because callback boundaries were treated as separate queued
+frames. Pending-byte coalescing addresses that fragmentation without increasing
+the fixed 32-KiB source budget, the eight-chunk limit or the renderer workload.
+The original failed graphical runs and unchanged-source failing coalescing tests
+are retained. Byte-exact output and explicit overload still require qualification.

@@ -507,6 +507,7 @@ export class TerminalService {
         owner,
         maxRetainedBytes: options.maxOutputBytes,
         maxQueuedChunks: options.maxQueuedOutputChunks,
+        coalescePending: true,
         stopSource: () => this.#stopExact(resource, resource.requestedSignal ?? 'SIGKILL'),
       })
       resource.outputFinished = resource.source.finished
