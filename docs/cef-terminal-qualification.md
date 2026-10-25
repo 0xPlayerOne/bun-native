@@ -126,3 +126,17 @@ explicitly held test gate, not pure xterm parsing or display-presentation latenc
 Control roundtrip measures the application RPC path, not physical keystroke latency.
 Process-tree RSS is sampled resident memory and can double-count shared pages; it
 is not an exclusive allocation measurement or a sustained-memory-plateau claim.
+
+## Clean-source local acceptance checkpoint
+
+The retained [local evidence](../evidence/m5-graphical-terminal-local.json) binds
+implementation `0434aa4f7cdd2e71ba467f4eb80e9486b73169bc` to one warmup and five
+measured native launches. All six schema-2 workloads, exact displayed record
+contents, byte/checksum checks, native ordered shutdowns and helper/clone cleanup
+passed with unchanged source and input/prepared artifacts. Prior failed trials
+remain fingerprinted alongside, not replaced by these successes.
+
+This is a small local functional/descriptive checkpoint. It supplies no identical
+competitor baseline, physical-input latency, sustained-memory plateau, measured
+release threshold or background/minimized qualification. Current-head hosted
+platform acceptance remains necessary before this increment merges.
