@@ -54,6 +54,8 @@ const sources = [
   'native/cef-host/src/command_budget.rs',
   'native/cef-host/src/process.rs',
   'examples/cef/network.ts',
+  'examples/cef/network-evidence.ts',
+  'native/cef-host/src/event_queue.rs',
   'native/cef-host/src/network_policy.rs',
   'native/cef-host/src/scheme.rs',
   'native/cef-host/src/host.rs',

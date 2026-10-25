@@ -12,7 +12,7 @@ function fixture() {
   // Synthetic parser inputs, explicitly not a native execution claim.
   const rpc = {
     event: 'bunly.native.rpc',
-    schema: 5,
+    schema: 6,
     controlAdmission: {
       ordinaryRequests: 96,
       ordinaryOverflowDenied: true,
@@ -21,6 +21,7 @@ function fixture() {
       controlAdmittedWhileFull: true,
       fifoPreserved: true,
       nativeBudgetBounded: true,
+      outputBudget: 'bounded-native-fifo-wire-reservations',
       finalSessions: 0,
       priorTaskReservationsReleased: true,
     },
@@ -68,6 +69,14 @@ function fixture() {
       JSON.stringify({ event: 'bunly.host.shutdown-phase', phase: 'process-stop', state: 'start' }),
       JSON.stringify({ event: 'bunly.backend.exit', code: 0, forced: false }),
       JSON.stringify({
+        event: 'bunly.native.output-drained',
+        schema: 1,
+        frames: 0,
+        ordinaryFrames: 0,
+        retainedWireBytes: 0,
+        ordinaryWireBytes: 0,
+      }),
+      JSON.stringify({
         event: 'bunly.host.shutdown-phase',
         phase: 'process-stop',
         state: 'complete',
@@ -114,8 +123,9 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
     acceptNativeRpc({ ...complete, stderr: [...complete.stderr, complete.stderr[1]!] })
   )
   for (const change of [
-    { schema: 4 },
+    { schema: 5 },
     { controlAdmission: undefined },
+    { controlAdmission: { ...rpc.controlAdmission, outputBudget: undefined } },
     { controlAdmission: { ...rpc.controlAdmission, controlAdmittedWhileFull: false } },
     { controlAdmission: { ...rpc.controlAdmission, controlCompleted: false } },
     { controlAdmission: { ...rpc.controlAdmission, fifoPreserved: false } },
@@ -220,4 +230,21 @@ test('native RPC suite requires the complete unique launch matrix on every platf
     observation: { ...trial.observation, postExitCleanup: undefined },
   }))
   assert.equal(acceptNativeRpcSuite(nonMac).helperCleanup.scope, 'not-applicable')
+})
+
+test('native RPC acceptance requires final output drain after backend exit and before process-stop completion', () => {
+  const { rpc, withRpc } = fixture()
+  const original = withRpc(rpc)
+  const line = original.stderr.find((line) => line.includes('bunly.native.output-drained'))!
+  const without = original.stderr.filter((entry) => entry !== line)
+  for (const stderr of [
+    without,
+    [...original.stderr, line],
+    [line, ...without],
+    [...without, line],
+    original.stderr.map((entry) =>
+      entry === line ? entry.replace('"retainedWireBytes":0', '"retainedWireBytes":1') : entry
+    ),
+  ])
+    assert.throws(() => acceptNativeRpc({ ...original, stderr }))
 })

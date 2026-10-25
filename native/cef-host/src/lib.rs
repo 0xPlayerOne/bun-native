@@ -7,6 +7,7 @@ pub mod capability_policy;
 mod command_budget;
 mod cookie_completion;
 mod deadlines;
+mod event_queue;
 mod handshake;
 pub mod host;
 #[cfg(target_os = "macos")]

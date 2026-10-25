@@ -18,9 +18,12 @@ only actual native runs establish fault qualification.
 
 ## Current acceptance contract
 
-`qualify-cef-faults.py` emits schema 2 reports with clean source identity, exact
+`qualify-cef-faults.py` emits schema 3 reports with clean source identity, exact
 harness fingerprints, complete input/prepared artifact inventories, and unchanged
-before/after verification. It preserves all four attempts. A later successful
+before/after verification. Schema 3 additionally requires all native output
+reservations to return to zero after backend exit and writer join. The prior
+schema-2 readiness checkpoint retains its original guarantees, not a retroactive
+output-accounting claim. It preserves all four attempts. A later successful
 case cannot erase an earlier failure. Run with the pinned Bun and an explicitly
 prepared contributor artifact; no credential-provider fixture is involved.
 

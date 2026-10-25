@@ -17,7 +17,7 @@ def finite_nonnegative(value):
     return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
 
-def accept_fault(mode, observation, injections):
+def accept_fault(mode, observation, injections, *, require_output=True):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
     clean_process(observation, 0 if mode == "gpu-exit" else 1)
@@ -79,6 +79,21 @@ def accept_fault(mode, observation, injections):
     require(
         records.index(shutdown) > records.index(phases[-1]), "Host completed before native teardown"
     )
+    if require_output or matching("bunly.native.output-drained"):
+        drained = exactly("bunly.native.output-drained")
+        counters = ("frames", "ordinaryFrames", "retainedWireBytes", "ordinaryWireBytes")
+        require(
+            set(drained) == {"event", "schema", *counters} and drained["schema"] == 1,
+            "Malformed output drain receipt",
+        )
+        require(
+            all(type(drained[key]) is int and drained[key] == 0 for key in counters),
+            "Native output reservations remain after writer completion",
+        )
+        require(
+            records.index(backend) < records.index(drained) < records.index(phases[1]),
+            "Output drain did not follow backend exit and writer join",
+        )
     require(not matching("bunly.host.error"), "Startup failure is not fault acceptance")
     failures = [row.get("error") for row in matching("bunly.host.failure")]
     require(all(isinstance(value, str) for value in failures), "Malformed host failure")

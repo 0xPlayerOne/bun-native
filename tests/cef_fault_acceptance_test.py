@@ -49,6 +49,17 @@ def fixture(mode):
                     "forced": False,
                 }
             )
+        if phase == "process-stop":
+            records.append(
+                {
+                    "event": "bunly.native.output-drained",
+                    "schema": 1,
+                    "frames": 0,
+                    "ordinaryFrames": 0,
+                    "retainedWireBytes": 0,
+                    "ordinaryWireBytes": 0,
+                }
+            )
         records.append(
             {
                 "event": "bunly.host.shutdown-phase",
@@ -162,3 +173,37 @@ class NativeFaultAcceptanceTests(unittest.TestCase):
         observation["nativeDiagnostics"] = []
         with self.assertRaises(ValueError):
             accept_fault("gpu-exit", observation, injections)
+
+
+class NativeOutputFaultTests(unittest.TestCase):
+    def test_drain_is_required_zero_and_old_schema_requires_explicit_legacy_selection(self):
+        for mode in MODES:
+            observation, injections = fixture(mode)
+            rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+            absent = {
+                **observation,
+                "nativeDiagnostics": [
+                    json.dumps(row) for row in rows if row["event"] != "bunly.native.output-drained"
+                ],
+            }
+            with self.assertRaises(ValueError):
+                accept_fault(mode, absent, injections)
+            accept_fault(mode, absent, injections, require_output=False)
+            for field in ("frames", "ordinaryFrames", "retainedWireBytes", "ordinaryWireBytes"):
+                for value in (1, -1, False, "0", None):
+                    changed = copy.deepcopy(rows)
+                    for row in changed:
+                        if row["event"] == "bunly.native.output-drained":
+                            row[field] = value
+                    with (
+                        self.subTest(mode=mode, field=field, value=value),
+                        self.assertRaises(ValueError),
+                    ):
+                        accept_fault(
+                            mode,
+                            {
+                                **observation,
+                                "nativeDiagnostics": [json.dumps(row) for row in changed],
+                            },
+                            injections,
+                        )

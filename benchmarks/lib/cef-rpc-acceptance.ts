@@ -29,13 +29,40 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
       true,
       'Native RPC helper/clone cleanup was not qualified'
     )
-  const records = nativeEvents(report).filter((event) => event['event'] === 'bunly.native.rpc')
+  const events = nativeEvents(report)
+  const drained = events.filter((event) => event['event'] === 'bunly.native.output-drained')
+  assert.deepEqual(
+    drained,
+    [
+      {
+        event: 'bunly.native.output-drained',
+        schema: 1,
+        frames: 0,
+        ordinaryFrames: 0,
+        retainedWireBytes: 0,
+        ordinaryWireBytes: 0,
+      },
+    ],
+    'Native output reservations did not drain exactly once'
+  )
+  const atDrain = events.indexOf(drained[0]!)
+  assert.ok(events.findIndex((event) => event['event'] === 'bunly.backend.exit') < atDrain)
+  assert.ok(
+    atDrain <
+      events.findIndex(
+        (event) =>
+          event['event'] === 'bunly.host.shutdown-phase' &&
+          event['phase'] === 'process-stop' &&
+          event['state'] === 'complete'
+      )
+  )
+  const records = events.filter((event) => event['event'] === 'bunly.native.rpc')
   assert.equal(records.length, 1, 'Native RPC evidence missing or duplicated')
   assert.deepEqual(
     records[0],
     {
       event: 'bunly.native.rpc',
-      schema: 5,
+      schema: 6,
       controlAdmission: {
         ordinaryRequests: 96,
         ordinaryOverflowDenied: true,
@@ -44,6 +71,7 @@ export function acceptNativeRpc(report: CommandObservation, requireMacCleanup = 
         controlAdmittedWhileFull: true,
         fifoPreserved: true,
         nativeBudgetBounded: true,
+        outputBudget: 'bounded-native-fifo-wire-reservations',
         finalSessions: 0,
         priorTaskReservationsReleased: true,
       },
