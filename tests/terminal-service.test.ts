@@ -224,12 +224,14 @@ test('early binary output, nonzero exit, PTY status and acknowledged drain stay 
     failure: null,
   })
   await flush()
-  expect(writer.writes).toEqual([first])
+  // Callback boundaries are not terminal record boundaries. Both early fragments
+  // may occupy one unsent block, but no byte is acknowledged before settlement.
+  expect(writer.writes).toEqual([new Uint8Array([...first, ...second])])
   expect(service.diagnostics().reservedOutputBytes).toBeGreaterThan(0)
   writer.hold.resolve()
   expect(await observed.outputFinished).toEqual({ ok: true })
   await observed.released
-  expect(writer.writes).toEqual([first, second])
+  expect(writer.writes).toEqual([new Uint8Array([...first, ...second])])
   expect(service.diagnostics()).toMatchObject({ terminals: 0, sourceStreams: 0 })
 })
 
@@ -239,7 +241,8 @@ test('output overload and peer disconnect stop only the exact owned producer', a
   const firstWriter = new Writer()
   const first = await service.create({}, firstWriter, valid({ maxQueuedOutputChunks: 1 }))
   const firstProcess = driver.processes[0]!
-  firstProcess.observer.output(new Uint8Array([1]))
+  // Fill the single admitted chunk; one further byte requires a second slot.
+  firstProcess.observer.output(new Uint8Array(16 * 1024))
   firstProcess.observer.output(new Uint8Array([2]))
   expect(await service.observe(first).outputFinished).toEqual({ ok: false, code: 'OVERLOADED' })
   expect(firstProcess.signals).toEqual(['SIGKILL'])

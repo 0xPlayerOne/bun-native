@@ -136,3 +136,9 @@ EOF is distinct from process exit; `drained` is distinct from OS cleanup. The
 [M5 increment](m5-progress.md) qualifies actual Bun PTY callback bytes through the
 portable stream path. It does not yet grant native renderer authority or implement
 graphical xterm, a full terminal service, descendant supervision or reconnect.
+
+Runtime callback sources may explicitly opt into lossless pending-byte coalescing.
+Only an unsent block can grow, no batching timer delays the first byte, and unused
+block capacity remains charged alongside active/transferred buffers. Generic
+sources default to their original callback chunk behavior. See
+[terminal service](terminal-service.md) for the terminal-owned use and limits.

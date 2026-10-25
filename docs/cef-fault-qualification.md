@@ -126,3 +126,26 @@ text. A Windows-only execution regression runs a real child from a Unicode path
 containing spaces and verifies its shell parent. The full native case still must
 prove a listening grandchild, independently observed ancestry, exact backend exit
 and group/job cleanup. The failed platform report is retained, not reclassified.
+
+## Explicit descendant-observation notification
+
+The pinned macOS filesystem watcher schedules FSEvents registration asynchronously
+and starts from the current event cursor. A receipt published immediately after
+`watch()` can therefore precede registration. The retained local discriminator
+failed 18 of 20 finite trials; resolving path aliases did not repair it. The
+original failed logs remain separate from acceptance.
+
+The shell-tree fixture now reuses its already-owned descendant HTTP listener for
+a single retained observer notification. The observer first proves the exact
+backend/shell/server ancestry and creation times, then atomically publishes the
+same bounded receipt and sends one nonce-bound POST to numeric loopback. The
+backend waits on one request, then independently reads and validates the private
+file's identity, size and exact nonce/PID tuple. Early notification is retained.
+Wrong, duplicate and oversized messages reject. The original deadline remains;
+there is no filesystem poll, arbitrary sleep, retry-to-green, new process or
+additional listening service. This is contributor fixture coordination, not an
+application authority API or a same-user adversary boundary.
+
+Upstream inspected: Bun commit `c6da4a4d3010e5553438c60f6bd76d981976867c`,
+`src/runtime/node/fs_events.rs` (`register_watcher`, deferred `schedule`, and
+`FSEventStreamCreate` with the current-event cursor). No Bun source was modified.
