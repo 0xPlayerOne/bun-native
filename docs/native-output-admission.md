@@ -62,8 +62,8 @@ After joining the writer, the native host emits actual final reservation counts;
 any nonzero balance marks shutdown failed. Schema-3 fault acceptance and the RPC
 qualifier require exactly one zero-balance receipt in the correct teardown phase.
 
-The actual native RPC fixture now requires `outputAdmission` diagnostics and a
-schema-6 receipt. It checks cumulative peaks and current counts while exercising
+The actual native RPC/stream fixture now requires `outputAdmission` diagnostics and
+a schema-7 receipt. It checks cumulative peaks and current counts while exercising
 real control commands and renderer traffic. Deterministic native tests separately
 saturate frame/byte bounds, preserve control headroom and FIFO, hold writes/flush,
 discard queued work, close all senders, simulate short/failed writes and run
@@ -71,9 +71,9 @@ concurrent producers. Those queue tests are not graphical load measurements.
 
 ## Remaining work
 
-Native bulk-stream authority, global per-view scheduling, terminal group/job
-ownership and representative interaction latency/full-process-tree measurements
-remain M5 work. Managed backend replacement remains M6. Neither this admission
+Global per-view scheduling, terminal group/job ownership and representative
+interaction latency/full-process-tree measurements remain M5 work. Managed backend
+replacement remains M6. Neither this admission
 bound nor passing shutdown tests establishes a causal fix for the historical CEF
 watchdog intermittency.
 

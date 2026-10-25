@@ -10,6 +10,8 @@
     "quit",
     "rpc.ack",
     "rpc.disconnect",
+    "stream.ack",
+    "stream.disconnect",
     "view.dispose",
     "window.close",
     "session.dispose",

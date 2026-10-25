@@ -57,6 +57,7 @@ try {
     entrypoints: [
       join(root, 'examples/cef/rpc-client.ts'),
       join(root, 'examples/cef/rpc-lifecycle.ts'),
+      join(root, 'examples/cef/stream-client.ts'),
       join(root, 'examples/cef/transport-client.ts'),
     ],
     outdir: join(stage, 'public'),

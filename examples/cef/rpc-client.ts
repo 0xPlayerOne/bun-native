@@ -9,9 +9,10 @@ const probeSchema = defineRpc({
   ...cefRpcSchema,
   echo: procedure((value: unknown) => value, cefRpcSchema.echo.output),
 })
-const client = new RpcClient(probeSchema, await waitForCefRpcTransport(), {
+export const cefRpcClient = new RpcClient(probeSchema, await waitForCefRpcTransport(), {
   limits: { maxFrameBytes: 24 * 1024, maxMetadataBytes: 16 * 1024 },
 })
+const client = cefRpcClient
 const echoed = await client.call('echo', 'renderer')
 if (echoed !== 'bun:renderer') throw new Error('Native JSON RPC roundtrip failed')
 await client.call('echo', 123).then(

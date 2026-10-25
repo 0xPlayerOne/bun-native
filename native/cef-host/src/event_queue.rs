@@ -150,7 +150,11 @@ fn control(value: &Value, bytes: usize) -> bool {
         }
         return matches!(
             event,
-            "rpc.revoked" | "view.closed" | "window.closed" | "view.renderer-exit"
+            "rpc.revoked"
+                | "stream.revoked"
+                | "view.closed"
+                | "window.closed"
+                | "view.renderer-exit"
         ) && object
             .keys()
             .all(|key| matches!(key.as_str(), "v" | "event" | "target" | "data"))
@@ -462,6 +466,7 @@ mod tests {
         for accepted in [
             json!({"v":1,"event":"ready","abi":1,"data":{}}),
             json!({"v":1,"event":"rpc.revoked","target":1,"data":{"connection":1}}),
+            json!({"v":1,"event":"stream.revoked","target":1,"data":{"connection":1}}),
             json!({"v":1,"event":"view.closed","target":1,"data":null}),
             json!({"v":1,"event":"window.closed","target":1,"data":null}),
             json!({"v":1,"event":"view.renderer-exit","target":1,"data":{"code":9}}),

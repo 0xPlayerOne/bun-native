@@ -5,6 +5,7 @@ import {
   acceptNativeRpcSuite,
   nativeRpcCases,
   nativeRpcLaunchNames,
+  nativeStreamEvidence,
 } from '../benchmarks/lib/cef-rpc-acceptance.ts'
 import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
 
@@ -12,7 +13,7 @@ function fixture() {
   // Synthetic parser inputs, explicitly not a native execution claim.
   const rpc = {
     event: 'bunly.native.rpc',
-    schema: 6,
+    schema: 7,
     controlAdmission: {
       ordinaryRequests: 96,
       ordinaryOverflowDenied: true,
@@ -43,6 +44,7 @@ function fixture() {
     staleDelivered: false,
     resourcesBounded: true,
     protocolCases: nativeRpcCases,
+    streams: nativeStreamEvidence,
   }
   const report: CommandObservation = {
     exitCode: 0,
@@ -123,7 +125,7 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
     acceptNativeRpc({ ...complete, stderr: [...complete.stderr, complete.stderr[1]!] })
   )
   for (const change of [
-    { schema: 5 },
+    { schema: 6 },
     { controlAdmission: undefined },
     { controlAdmission: { ...rpc.controlAdmission, outputBudget: undefined } },
     { controlAdmission: { ...rpc.controlAdmission, controlAdmittedWhileFull: false } },
@@ -140,6 +142,13 @@ test('native RPC acceptance rejects old smoke, incomplete attacks, unstarted can
     { staleDelivered: true },
     { resourcesBounded: false },
     { renderer: { ...rpc.renderer, cancellation: 'locally-cancelled' } },
+    { streams: undefined },
+    {
+      streams: {
+        ...nativeStreamEvidence,
+        renderer: { ...nativeStreamEvidence.renderer, alpha: undefined },
+      },
+    },
   ])
     assert.throws(() => acceptNativeRpc(withRpc({ ...rpc, ...change })))
 })

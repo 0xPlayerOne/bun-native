@@ -164,6 +164,38 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
         json!({"connection":binding.connection,"context":binding.context,"generation":binding.generation,"documentId":binding.document}),
     );
 }
+fn revoke_stream_lane(id: u64, binding: rpc_authority::Binding, notify_renderer: bool) {
+    let (browser, requests) = STATE.with(|s| {
+        let mut state = s.borrow_mut();
+        let requests = state
+            .rpc_deliveries
+            .retire_lane(rpc_authority::Lane::Stream, binding.identity());
+        (
+            state
+                .views
+                .get(&id)
+                .and_then(|record| record.browser.clone()),
+            requests,
+        )
+    });
+    for request in requests {
+        error(request, "Stream document authority was revoked");
+    }
+    if notify_renderer {
+        if let Some(frame) = browser.and_then(|browser| browser.main_frame()) {
+            if let Some(mut message) =
+                wire::message(wire::STREAM_REVOKE, binding.identity(), 0, None)
+            {
+                frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
+            }
+        }
+    }
+    event(
+        "stream.revoked",
+        id,
+        json!({"connection":binding.connection,"context":binding.context,"generation":binding.generation,"documentId":binding.document}),
+    );
+}
 fn observed(browser: &Browser, frame: &Frame) -> rpc_authority::Observed {
     rpc_authority::Observed {
         browser: browser.identifier(),
@@ -253,7 +285,15 @@ fn renderer_message(
     };
     let name = CefString::from(&message.name()).to_string();
     if (RPC_STOPPED.load(Ordering::SeqCst) || QUITTING.load(Ordering::SeqCst))
-        && ![wire::RELEASE, wire::DELIVERED, wire::DISCARDED].contains(&name.as_str())
+        && ![
+            wire::RELEASE,
+            wire::DELIVERED,
+            wire::DISCARDED,
+            wire::STREAM_RELEASE,
+            wire::STREAM_DELIVERED,
+            wire::STREAM_DISCARDED,
+        ]
+        .contains(&name.as_str())
     {
         return 1;
     }
@@ -289,13 +329,19 @@ fn renderer_message(
         wire::PACKET,
         wire::DELIVERED,
         wire::DISCARDED,
+        wire::STREAM_SUBSCRIBED,
+        wire::STREAM_RELEASE,
+        wire::STREAM_PACKET,
+        wire::STREAM_DELIVERED,
+        wire::STREAM_DISCARDED,
     ]
     .contains(&name.as_str())
     {
         return 0;
     }
     let context = observed(browser, frame);
-    let Some((identity, sequence)) = wire::read(message, name == wire::PACKET) else {
+    let packet = [wire::PACKET, wire::STREAM_PACKET].contains(&name.as_str());
+    let Some((identity, sequence)) = wire::read(message, packet) else {
         #[cfg(feature = "rpc-qualification")]
         {
             let binding = STATE.with(|s| s.borrow().views.get(&id).and_then(|r| r.rpc.binding()));
@@ -401,14 +447,46 @@ fn renderer_message(
         revoke_renderer(id, old);
         return 1;
     }
-    if [wire::DELIVERED, wire::DISCARDED].contains(&name.as_str()) && sequence > 0 {
+    if name == wire::STREAM_RELEASE && sequence == 0 {
+        let binding = STATE.with(|s| {
+            let mut state = s.borrow_mut();
+            let record = state.views.get_mut(&id)?;
+            let binding = record.rpc.binding()?;
+            record.rpc.revoke_stream(&context, identity).ok()?;
+            Some(binding)
+        });
+        if let Some(binding) = binding {
+            revoke_stream_lane(id, binding, false);
+        }
+        return 1;
+    }
+    if [
+        wire::DELIVERED,
+        wire::DISCARDED,
+        wire::STREAM_DELIVERED,
+        wire::STREAM_DISCARDED,
+    ]
+    .contains(&name.as_str())
+        && sequence > 0
+    {
+        let lane = if [wire::STREAM_DELIVERED, wire::STREAM_DISCARDED].contains(&name.as_str()) {
+            rpc_authority::Lane::Stream
+        } else {
+            rpc_authority::Lane::Rpc
+        };
         let completed = STATE.with(|s| {
             let mut state = s.borrow_mut();
-            let delivery = state
-                .rpc_deliveries
-                .complete(&context, identity, sequence)?;
+            let delivery = if lane == rpc_authority::Lane::Rpc {
+                state
+                    .rpc_deliveries
+                    .complete(&context, identity, sequence)?
+            } else {
+                state
+                    .rpc_deliveries
+                    .complete_lane(lane, &context, identity, sequence)?
+            };
             if let Some(record) = state.views.get_mut(&id) {
-                let _ = record.rpc.finish_delivery(identity, sequence);
+                let _ = record.rpc.finish_delivery_lane(lane, identity, sequence);
             }
             Some(delivery)
         });
@@ -420,7 +498,7 @@ fn renderer_message(
                         .get(&id)
                         .is_some_and(|r| r.rpc.authorize(&context, identity).is_ok())
                 });
-                if name == wire::DELIVERED && live {
+                if [wire::DELIVERED, wire::STREAM_DELIVERED].contains(&name.as_str()) && live {
                     reply(request, Value::Null);
                 } else {
                     error(request, "RPC delivery discarded");
@@ -463,25 +541,94 @@ fn renderer_message(
         }
         return 1;
     }
-    if name == wire::PACKET && sequence > 0 {
+    if name == wire::STREAM_SUBSCRIBED && sequence == 0 {
+        let binding = STATE.with(|s| {
+            s.borrow_mut()
+                .views
+                .get_mut(&id)?
+                .rpc
+                .subscribe_lane(rpc_authority::Lane::Stream, &context, identity)
+                .ok()
+        });
+        if let Some(binding) = binding {
+            event(
+                "stream.connected",
+                id,
+                json!({"connection":binding.connection,"context":binding.context,"frameId":binding.frame,"documentId":binding.document,"generation":binding.generation,"origin":rpc_authority::exact_origin(&context.url)}),
+            );
+        }
+        return 1;
+    }
+    if packet && sequence > 0 {
         let Some(bytes) = wire::binary(message) else {
             return 1;
         };
+        let lane = if name == wire::STREAM_PACKET {
+            rpc_authority::Lane::Stream
+        } else {
+            rpc_authority::Lane::Rpc
+        };
         let accepted = STATE.with(|s| {
             let mut state = s.borrow_mut();
-            let retained: usize = state.views.values().map(|r| r.rpc.incoming_bytes()).sum();
-            if retained + bytes.len() > rpc_authority::MAX_GLOBAL_BYTES {
+            let retained: usize = state
+                .views
+                .values()
+                .map(|record| {
+                    record.rpc.incoming_bytes()
+                        + record.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)
+                })
+                .sum();
+            let retained_packets = state
+                .views
+                .values()
+                .map(|record| {
+                    usize::from(record.rpc.incoming_packet_lane(rpc_authority::Lane::Rpc))
+                        + usize::from(record.rpc.incoming_packet_lane(rpc_authority::Lane::Stream))
+                })
+                .sum::<usize>();
+            if retained_packets >= rpc_authority::MAX_GLOBAL_PACKETS
+                || retained + bytes.len() > rpc_authority::MAX_GLOBAL_BYTES
+            {
                 return false;
             }
-            state.views.get_mut(&id).is_some_and(|r| {
-                r.rpc
-                    .authenticate(&context, identity, sequence, bytes.len())
-                    .is_ok()
+            if lane == rpc_authority::Lane::Stream {
+                let packets = state
+                    .views
+                    .values()
+                    .filter(|record| record.rpc.incoming_packet_lane(lane))
+                    .count();
+                let lane_bytes = state
+                    .views
+                    .values()
+                    .map(|record| record.rpc.incoming_bytes_lane(lane))
+                    .sum::<usize>();
+                if packets >= rpc_authority::MAX_STREAM_GLOBAL_PACKETS
+                    || lane_bytes + bytes.len() > rpc_authority::MAX_STREAM_GLOBAL_BYTES
+                {
+                    return false;
+                }
+            }
+            state.views.get_mut(&id).is_some_and(|record| {
+                if lane == rpc_authority::Lane::Rpc {
+                    record
+                        .rpc
+                        .authenticate(&context, identity, sequence, bytes.len())
+                        .is_ok()
+                } else {
+                    record
+                        .rpc
+                        .authenticate_lane(lane, &context, identity, sequence, bytes.len())
+                        .is_ok()
+                }
             })
         });
         if accepted {
             event(
-                "rpc.packet",
+                if lane == rpc_authority::Lane::Rpc {
+                    "rpc.packet"
+                } else {
+                    "stream.packet"
+                },
                 id,
                 json!({"connection":identity.connection,"context":identity.context,"generation":identity.generation,"sequence":sequence,"packet":hex(&bytes),"copiedBytes":bytes.len()}),
             );
@@ -1899,6 +2046,109 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
             reply(request, Value::Null);
         }
+        "stream.ack" => {
+            let (id, binding, frame, context) = rpc_target(args)?;
+            let sequence = number(args, "sequence")?;
+            let mut message = wire::message(wire::STREAM_ACK, binding.identity(), sequence, None)
+                .ok_or("Stream allocation failed")?;
+            STATE.with(|s| {
+                s.borrow_mut()
+                    .views
+                    .get_mut(&id)
+                    .ok_or("Stale stream connection")?
+                    .rpc
+                    .acknowledge_receive_lane(
+                        rpc_authority::Lane::Stream,
+                        &context,
+                        binding.identity(),
+                        sequence,
+                    )
+            })?;
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
+            reply(request, Value::Null);
+        }
+        "stream.deliver" => {
+            let (id, binding, frame, context) = rpc_target(args)?;
+            let bytes = unhex(packet_string(args, "packet")?)?;
+            let sequence = STATE.with(|s| {
+                s.borrow_mut()
+                    .views
+                    .get_mut(&id)
+                    .ok_or("Stale stream connection")?
+                    .rpc
+                    .begin_delivery_lane(
+                        rpc_authority::Lane::Stream,
+                        &context,
+                        binding.identity(),
+                        bytes.len(),
+                    )
+            })?;
+            let Some(mut delivery) = wire::message(
+                wire::STREAM_DELIVER,
+                binding.identity(),
+                sequence,
+                Some(&bytes),
+            ) else {
+                STATE.with(|s| {
+                    if let Some(record) = s.borrow_mut().views.get_mut(&id) {
+                        let _ = record.rpc.finish_delivery_lane(
+                            rpc_authority::Lane::Stream,
+                            binding.identity(),
+                            sequence,
+                        );
+                    }
+                });
+                return Err("Stream allocation failed".into());
+            };
+            let reserved = STATE.with(|s| {
+                s.borrow_mut().rpc_deliveries.reserve_lane(
+                    rpc_authority::Lane::Stream,
+                    binding.clone(),
+                    sequence,
+                    bytes.len(),
+                    request,
+                )
+            });
+            if let Err(reason) = reserved {
+                STATE.with(|s| {
+                    if let Some(record) = s.borrow_mut().views.get_mut(&id) {
+                        let _ = record.rpc.finish_delivery_lane(
+                            rpc_authority::Lane::Stream,
+                            binding.identity(),
+                            sequence,
+                        );
+                    }
+                });
+                return Err(reason.into());
+            }
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut delivery));
+        }
+        "stream.disconnect" => {
+            let identity = wire::Identity {
+                connection: number(args, "connection")?,
+                context: number(args, "context")?,
+                generation: number(args, "generation")?,
+            };
+            let result = STATE.with(|s| {
+                let mut state = s.borrow_mut();
+                let (id, record) = state.views.iter_mut().find(|(_, record)| {
+                    record
+                        .rpc
+                        .binding()
+                        .is_some_and(|binding| binding.identity() == identity)
+                })?;
+                let binding = record.rpc.binding()?;
+                let browser = record.browser.clone()?;
+                let frame = browser.main_frame()?;
+                let context = observed(&browser, &frame);
+                record.rpc.revoke_stream(&context, identity).ok()?;
+                Some((*id, binding))
+            });
+            if let Some((id, binding)) = result {
+                revoke_stream_lane(id, binding, true);
+            }
+            reply(request, Value::Null);
+        }
         #[cfg(feature = "rpc-qualification")]
         "rpc.qualification.throttle" => {
             let id = number(args, "id")?;
@@ -2073,7 +2323,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes()).sum::<usize>(),"rpcDeliveryPackets":s.rpc_deliveries.len(),"rpcDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
