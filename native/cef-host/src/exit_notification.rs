@@ -28,10 +28,9 @@ impl ExitNotification {
     /// Called once by the already-owned OS watcher. Keep the first observation;
     /// a later callback cannot repair an error or replace an earlier identity.
     pub fn publish(&self, exited: bool) {
-        let at = Instant::now();
         if let Ok(mut observed) = self.observed.lock() {
             if observed.is_none() {
-                *observed = Some((exited, at));
+                *observed = Some((exited, Instant::now()));
             }
         }
         self.changed.notify_all();
