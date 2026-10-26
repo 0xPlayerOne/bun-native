@@ -89,7 +89,12 @@ export interface TerminalProcessExit {
   readonly exitCode: number | null
   readonly signalCode: NodeJS.Signals | number | null
   readonly waitError: boolean
-  readonly failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED' | null
+  readonly failure:
+    | 'SPAWN_FAILED'
+    | 'DEADLINE_EXCEEDED'
+    | 'TERMINATION_DENIED'
+    | 'SUPERVISION_FAILED'
+    | null
 }
 
 export interface TerminalClosure {
@@ -123,6 +128,9 @@ export interface TerminalCloseResult {
 }
 
 export interface TerminalDriverSpawnOptions {
+  /** Backend lifetime for bounded native admission, never renderer authority. */
+  readonly signal?: AbortSignal
+  readonly spawnTimeoutMs?: number
   readonly executable: string
   readonly cwd: string
   readonly argv: readonly string[]
@@ -133,6 +141,10 @@ export interface TerminalDriverSpawnOptions {
 }
 
 export interface TerminalDriverObserver {
+  /** Attested failure before any command was created. */
+  processNotStarted?(terminalCreated: boolean): void
+  /** Unknown command/group ownership: settle failure without releasing reservations. */
+  processFailed?(failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED'): void
   output(bytes: Uint8Array): void
   terminalClosed(status: number): void
   processExited(exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>): void
@@ -304,7 +316,7 @@ function validateOptions(
   let argumentBytes = 0
   for (let index = 0; index < argumentCount; index++) {
     const value = argv[index]
-    boundedString(value, 'Argument')
+    if (value !== '') boundedString(value, 'Argument')
     argumentBytes += Buffer.byteLength(value)
     argumentsSnapshot.push(value)
   }
@@ -561,17 +573,31 @@ export class TerminalService {
       )
     }
     const observer: TerminalDriverObserver = Object.freeze({
+      processNotStarted: (terminalCreated: boolean) => {
+        resource.processReleased = true
+        if (!terminalCreated) resource.terminalReleased = true
+        this.#settleProcessFailure(resource, 'SPAWN_FAILED')
+        this.#collect(resource)
+      },
       output: (bytes: Uint8Array) => {
         resource.source?.push(bytes)
       },
       terminalClosed: (status: number) => this.#terminalClosed(resource, status),
+      processFailed: (failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED') => {
+        resource.driverFailure = true
+        this.#settleProcessFailure(resource, failure)
+        this.#cancelResource(resource, 'SIGKILL')
+      },
       processExited: (exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>) =>
         this.#processExited(resource, exit),
     })
     let spawned: TerminalDriverProcess | Promise<TerminalDriverProcess>
     resource.spawnInvoked = true
     try {
-      spawned = this.#driver.spawn(options, observer)
+      spawned = this.#driver.spawn(
+        { ...options, signal: resource.spawnController.signal },
+        observer
+      )
     } catch {
       this.#spawnRejected(resource)
       throw new TerminalError('SPAWN_FAILED')
@@ -899,7 +925,10 @@ export class TerminalService {
     this.#collect(resource)
   }
 
-  #settleProcessFailure(resource: Resource, failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED'): void {
+  #settleProcessFailure(
+    resource: Resource,
+    failure: NonNullable<TerminalProcessExit['failure']>
+  ): void {
     if (resource.processSettled) return
     resource.processSettled = true
     resource.processExit.resolve(

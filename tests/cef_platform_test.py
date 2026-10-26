@@ -101,13 +101,17 @@ class FaultReadinessTests(unittest.TestCase):
         self.temporary.cleanup()
 
     def test_missing_marker_does_not_trigger_a_timed_guess(self):
-        self.assertFalse(faults.readiness(self.path, self.nonce, "renderer-exit"))
+        self.assertFalse(faults.fault_readiness(self.path, self.nonce, "renderer-exit"))
 
     def test_only_matching_complete_page_marker_is_accepted(self):
-        self.path.write_text(json.dumps({"nonce": self.nonce, "mode": "renderer-exit", "pid": 123}))
-        self.assertTrue(faults.readiness(self.path, self.nonce, "renderer-exit"))
-        self.assertFalse(faults.readiness(self.path, "b" * 48, "renderer-exit"))
-        self.assertFalse(faults.readiness(self.path, self.nonce, "gpu-exit"))
+        self.path.write_text(
+            json.dumps(
+                {"nonce": self.nonce, "mode": "renderer-exit", "pid": 123, "rendererPid": 456}
+            )
+        )
+        self.assertTrue(faults.fault_readiness(self.path, self.nonce, "renderer-exit"))
+        self.assertFalse(faults.fault_readiness(self.path, "b" * 48, "renderer-exit"))
+        self.assertFalse(faults.fault_readiness(self.path, self.nonce, "gpu-exit"))
 
     def test_malformed_oversized_and_linked_markers_rejected(self):
         for value in [
@@ -117,10 +121,10 @@ class FaultReadinessTests(unittest.TestCase):
             "[]",
         ]:
             self.path.write_text(value)
-            self.assertFalse(faults.readiness(self.path, self.nonce, "renderer-exit"))
+            self.assertFalse(faults.fault_readiness(self.path, self.nonce, "renderer-exit"))
         self.path.unlink()
         self.path.symlink_to("missing")
-        self.assertFalse(faults.readiness(self.path, self.nonce, "renderer-exit"))
+        self.assertFalse(faults.fault_readiness(self.path, self.nonce, "renderer-exit"))
 
 
 if __name__ == "__main__":

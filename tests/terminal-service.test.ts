@@ -728,7 +728,6 @@ test('validation, rapid resize, signals, stale handles and throwing stops fail c
   for (const options of [
     valid({ executable: 'relative' }),
     valid({ cwd: 'relative' }),
-    valid({ argv: [''] }),
     valid({ argv: ['a'.repeat(65 * 1024)] }),
     valid({ env: { 'bad-key': 'x' } }),
     valid({ env: { SAFE: 'x\0y' } }),
@@ -860,4 +859,64 @@ test('a driver aborting synchronously cannot leave its later write rejection uno
   await service.observe(handle).released
   expect(service.diagnostics().terminals).toBe(0)
   await service.dispose()
+})
+
+test('native supervision denial is not process exit and cannot release capacity', async () => {
+  for (const failure of ['TERMINATION_DENIED', 'SUPERVISION_FAILED'] as const) {
+    const clock = new Clock()
+    const driver = new FakeDriver()
+    driver.beforeReturn = (_observer, process) => {
+      process.autoStop = false
+    }
+    const service = new TerminalService({
+      driver,
+      scheduler: clock,
+      limits: { maxTerminals: 1, maxTerminalsPerOwner: 1 },
+    })
+    const handle = await service.create({}, new Writer(), valid())
+    const process = driver.processes[0]!
+    process.observer.processFailed!(failure)
+    process.observer.terminalClosed(0)
+    expect(await service.observe(handle).processExited).toMatchObject({
+      observed: false,
+      waitError: true,
+      failure,
+    })
+    expect(service.diagnostics()).toMatchObject({ terminals: 1, driverFailures: 1 })
+    await expect(service.create({}, new Writer(), valid())).rejects.toMatchObject({
+      code: 'OVERLOADED',
+    })
+    const disposal = service.dispose()
+    clock.advance(5000)
+    expect((await disposal)[0]).toMatchObject({ processExited: false, released: false })
+  }
+})
+
+test('empty arguments are preserved while an empty executable is rejected', async () => {
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver })
+  await expect(service.create({}, new Writer(), valid({ executable: '' }))).rejects.toMatchObject({
+    code: 'INVALID_ARGUMENT',
+  })
+  const handle = await service.create({}, new Writer(), valid({ argv: ['', 'x', ''] }))
+  expect(driver.options[0]!.argv).toEqual(['', 'x', ''])
+  await service.cancel(handle)
+})
+
+test('attested failure before a PTY exists releases reservations without invented closure', async () => {
+  const service = new TerminalService({
+    driver: {
+      spawn(_options, observer) {
+        observer.processNotStarted?.(false)
+        throw new Error('No process or PTY created')
+      },
+    },
+  })
+  for (let index = 0; index < 66; index++) {
+    await expect(service.create({}, new Writer(), valid())).rejects.toMatchObject({
+      code: 'SPAWN_FAILED',
+    })
+    await flush()
+    expect(service.diagnostics().terminals).toBe(0)
+  }
 })
