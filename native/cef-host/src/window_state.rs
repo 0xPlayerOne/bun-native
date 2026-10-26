@@ -132,7 +132,7 @@ fn windows_snapshot(hwnd: windows_sys::Win32::Foundation::HWND) -> Result<Value,
         if ok == 0
             || needed < 2
             || needed as usize > std::mem::size_of_val(&buffer)
-            || needed % 2 != 0
+            || !needed.is_multiple_of(2)
         {
             return None;
         }
