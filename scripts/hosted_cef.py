@@ -275,6 +275,34 @@ def run(suite):
         os.environ["PYTHON"] = sys.executable
         os.environ["BUNLY_BENCH_SANDBOX"] = "1"
         app = artifact()
+        if suite != "credentials":
+            executable_dir = app / "Contents/MacOS" if sys.platform == "darwin" else app.parent
+            suffix = ".exe" if sys.platform == "win32" else ""
+            code = execute(
+                "terminal-owner",
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/qualify_terminal_owner.py"),
+                    "--bun",
+                    bun,
+                    "--owner",
+                    str(executable_dir / ("bunly-terminal-owner" + suffix)),
+                    "--host",
+                    str(
+                        ROOT
+                        / "native/cef-host/target/release"
+                        / ("bunly-terminal-fixture-host" + suffix)
+                    ),
+                    "--output",
+                    str(EVIDENCE / "terminal-owner.json"),
+                ],
+            )
+            owner_report = json.loads((EVIDENCE / "terminal-owner.json").read_text())
+            result["terminalOwnership"] = {
+                "passed": code == 0 and owner_report.get("passed") is True
+            }
+            if not result["terminalOwnership"]["passed"]:
+                raise ValueError("Actual native terminal ownership qualification failed")
         _, _, library = layout(app)
         code = execute(
             "identity",

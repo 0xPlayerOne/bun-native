@@ -1,3 +1,5 @@
+import { NativeTerminalDriver, type NativeTerminalConfiguration } from './terminal-owner.ts'
+import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
@@ -352,6 +354,28 @@ export class CefBackend implements BrowserBackend {
   #rpcConfigured = false
   #disposed = false
   #listenerErrors = 0
+  /** Native-owned discovery; caller explicitly accepts the non-detaching profile. */
+  async createTerminalDriver(options: {
+    readonly profile: 'non-detaching'
+  }): Promise<NativeTerminalDriver> {
+    if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+    const ready = await this.#transport.ready
+    if (this.#disposed || !ready.data?.['terminalOwner'])
+      throw new Error('Native terminal owner unavailable')
+    return new NativeTerminalDriver(
+      ready.data['terminalOwner'] as NativeTerminalConfiguration,
+      options.profile
+    )
+  }
+  async createTerminalService(
+    options: Omit<TerminalServiceOptions, 'driver'> & { readonly profile: 'non-detaching' }
+  ): Promise<TerminalService> {
+    return new TerminalService({
+      ...(options.limits ? { limits: options.limits } : {}),
+      ...(options.scheduler ? { scheduler: options.scheduler } : {}),
+      driver: await this.createTerminalDriver(options),
+    })
+  }
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
@@ -617,6 +641,21 @@ export class CefBackend implements BrowserBackend {
       id: captured.resource.native,
       scope: captured.nativeScope,
     })
+  }
+  /** @internal Fixed, native-bound contributor fault. Ordinary builds reject it.
+   * No page-supplied task or PID. Success means native dispatch was accepted, not that
+   * the renderer exited; the qualifier separately requires the actual exit.
+   */
+  async qualifyRendererCrash(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const result = await this.#transport.call('rpc.qualification.renderer.crash', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+    })
+    if (result !== null) throw new Error('Invalid native renderer injection receipt')
+    // The intended side effect revokes this document. Do not require it to stay
+    // live after the native action, or turn a real termination into stale-scope failure.
   }
   /** @internal Fixed contributor-only real Chromium throttle probe. */
   async qualifyTransportThrottle(scope: PolicyScope, rate: 1 | 4): Promise<void> {
