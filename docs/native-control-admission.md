@@ -1,8 +1,9 @@
 # Native control admission
 
 M5 #26 increment. This bounds admission in the private **Bun-to-CEF command
-pipe**. The later binary renderer lane reuses these limits but does not turn them
-into a global priority scheduler. Native origin/document authorization remains
+pipe**. The later binary renderer lane reuses these limits and is now fed through
+the runtime's bounded shared owner scheduler; these admission counters alone are
+not a global priority scheduler. Native origin/document authorization remains
 mandatory.
 
 ## Shared policy
@@ -60,9 +61,11 @@ The native-to-Bun event queue is not changed by this increment.
 Request IDs and wire/dispatch ordering remain unchanged. Cleanup is admitted
 behind existing work; it does not overtake side effects whose ordering matters.
 These limits do not preempt a blocked syscall or synchronous callback, guarantee
-wall-clock latency, reserve renderer transport capacity, or implement global
-view fairness. No polling, extra worker, native deadline change or security
-exception is introduced. Those remaining scheduling/load requirements stay in #26/#27.
+wall-clock latency, or reserve renderer transport capacity. Runtime stream packet
+work has a separate bounded owner scheduler; native command admission itself does
+not reorder already-admitted lifecycle commands. No polling, extra worker, native
+deadline change or security exception is introduced. Native-host UI scheduling and
+representative load acceptance remain in #26/#27.
 
 ## Qualification
 

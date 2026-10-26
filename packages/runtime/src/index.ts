@@ -90,6 +90,12 @@ export { resetPersistentSessionStorage } from './session-reset.ts'
 
 export { CallbackStreamSource } from './stream-source.ts'
 export type { StreamSourceOptions } from './stream-source.ts'
+export { FairWorkScheduler } from './fair-scheduler.ts'
+export type {
+  FairWorkHandle,
+  FairWorkPriority,
+  FairWorkSchedulerOptions,
+} from './fair-scheduler.ts'
 
 export { BunTerminalDriver, TerminalError, TerminalService } from './terminal.ts'
 export { NativeTerminalDriver } from './terminal-owner.ts'

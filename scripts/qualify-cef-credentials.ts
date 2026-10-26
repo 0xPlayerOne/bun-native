@@ -86,6 +86,8 @@ const files = [
   'examples/cef/credentials-client.ts',
   'packages/runtime/src/credential-proof.ts',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
+  'packages/runtime/src/fair-scheduler.ts',
   'native/cef-host/src/credential_callbacks.rs',
   'native/cef-host/src/cookie_completion.rs',
   'native/cef-host/src/session_reset.rs',
