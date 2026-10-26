@@ -11,17 +11,28 @@ export function deferred<T>() {
   void promise.catch(() => {})
   return { promise, resolve, reject }
 }
-export async function bounded<T>(promise: Promise<T>): Promise<T> {
+export async function bounded<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
+  let detach = () => {}
+  const revoked = () =>
+    Object.assign(new Error('Native load connection revoked'), { code: 'CONNECTION_REVOKED' })
   try {
+    if (signal?.aborted) throw revoked()
     return await Promise.race([
       promise,
+      new Promise<never>((_, reject) => {
+        if (!signal) return
+        const abort = () => reject(revoked())
+        signal.addEventListener('abort', abort, { once: true })
+        detach = () => signal.removeEventListener('abort', abort)
+      }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error('Load operation deadline')), 15_000)
       }),
     ])
   } finally {
     clearTimeout(timer)
+    detach()
   }
 }
 export class Probe {

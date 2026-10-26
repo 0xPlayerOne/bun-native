@@ -251,9 +251,12 @@ export default async function loadFixture(backend: CefBackend) {
           handles.map((handle) => service.write(handle, encoder.encode(`batch:${activeBatch}\n`)))
         )
         operation = 'consumer-receipts'
-        const accepted = await bounded(Promise.all(receipts.map((entry) => entry.promise)))
+        const accepted = await bounded(
+          Promise.all(receipts.map((entry) => entry.promise)),
+          connection?.signal
+        )
         operation = 'stream-ack'
-        await bounded(Promise.all(probes.map((probe) => probe.pending)))
+        await bounded(Promise.all(probes.map((probe) => probe.pending)), connection?.signal)
         const acknowledgedAt = performance.now()
         const triggerToConsumptionAckMs = acknowledgedAt - begin
         for (let terminal = 0; terminal < LOAD.terminals; terminal++) {
@@ -296,7 +299,10 @@ export default async function loadFixture(backend: CefBackend) {
     for (const probe of probes) probe.reset()
     await Promise.all(handles.map((handle) => service.write(handle, encoder.encode('exit\n'))))
     operation = 'final-records'
-    const final = await bounded(Promise.all(finished.map((entry) => entry.promise)))
+    const final = await bounded(
+      Promise.all(finished.map((entry) => entry.promise)),
+      connection?.signal
+    )
     operation = 'exit-output-release'
     const exits = await bounded(
       Promise.all(
