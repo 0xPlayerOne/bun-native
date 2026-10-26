@@ -78,11 +78,14 @@ and any nonzero terminal, stream or native final reservation.
 
 ## Unsupported modes and remaining gates
 
-The current maintained native API can create and close a visible window but has
-no qualified background-visibility or minimize control. The report therefore
-records foreground as the actually exercised visible window and both background
-and minimized as `NOT_QUALIFIED`; it does not invent those modes or disable
-Chromium throttling.
+The maintained API includes exact-handle show/hide and the separate
+[native window-mode prerequisite](cef-window-modes.md) adds CEF-only readback,
+minimize and restore with independent page visibility qualification. The original
+functional schema retains its historical labels; it does not qualify combined
+background or minimized terminal load. The [sustained load follow-up](terminal-load-qualification.md)
+must exercise those native operations on the current source. An inactive visible
+window is not proof of foreground interaction, and hidden is not interchangeable
+with minimized. No Chromium throttling is disabled.
 
 The fixture covers direct owned children only. Detached descendants, generalized
 scrollback/reconnect policy, release qualification, identical-workload competitor
@@ -140,3 +143,45 @@ This is a small local functional/descriptive checkpoint. It supplies no identica
 competitor baseline, physical-input latency, sustained-memory plateau, measured
 release threshold or background/minimized qualification. Current-head hosted
 platform acceptance remains necessary before this increment merges.
+
+## Native ownership integration in draft #117
+
+The current fixture obtains `backend.createTerminalDriver({ profile: 'non-detaching' })`
+and retains its callback probe around that native driver. Missing or mismatched
+packaged owners fail the fixture. Earlier graphical receipts remain historical for
+their recorded source; they are not evidence for this new ownership path. The
+shared hosted runner executes the actual owner/descendant qualifier before the
+unchanged full eight CEF/provider stages. See [native terminal ownership](terminal-owner.md).
+
+## Guarded service-generation integration
+
+The current schema-3 functional receipt also exercises ServiceSupervisor through
+CefBackend's installed, hash-verified non-detaching native terminal driver. Three
+successive exit-7 generations require explicit readiness, fresh identities and
+consumers, fragmented input, exact callback/consumer hashes, output/PTY/process
+completion and release/disposal before replacement. A fourth independent guarded
+child must remain responsive and finish normally afterward. Stale-generation
+input is rejected with no extra launch or replay. A fifth explicitly stopped
+service records its real platform exit, never restarts, and returns all terminal,
+source, timer and observer reservations to zero.
+
+This is combined native-guardian/service execution, not a standalone driver test
+relabeled as native acceptance. The complete native terminal-parent-loss matrix
+remains separately required. It does not claim backend replacement, arbitrary
+shell job-control containment, Unix guardian hard-kill cleanup or a CEF watchdog
+fix. The graphical workload, cancellation/overload controls, exact byte/order
+checks and native shutdown gates remain unchanged.
+
+The initial combined run at b5f3004 completed its three native-guarded restart
+generations, then the fixture incorrectly wrapped synchronous stale-handle
+validation in assert.rejects. The corrected test uses assert.throws and still
+requires the exact INVALID_HANDLE code and no additional native launch. The
+failed run is retained; no supervisor or native ownership behavior changed.
+
+The subsequent fixture also incorrectly treated every observed ready-state
+snapshot as a unique transition, producing nine recorded observer assertions.
+The observer is now explicitly one-shot per opaque generation when sending its
+non-idempotent test input. It still requires three unique ready generations,
+three exact exits and outputs, zero observer failures and no replay. Repeated
+state snapshots are a documented observer contract, not new process generations;
+no supervisor callback or failure accounting was changed.

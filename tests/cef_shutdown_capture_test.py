@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from capture_cef_shutdown import (
     Capture,
     decode_thread_info,
+    finish_capture,
     read_threads,
     root_executable_matches,
     verified_target,
@@ -23,6 +24,10 @@ from macos_process_identity import KernelIdentity
 
 class ShutdownCaptureTests(unittest.TestCase):
     def setUp(self):
+        # Simulated macOS identities must also run on Windows portable CI.
+        uid = patch("capture_cef_shutdown.os.getuid", return_value=501, create=True)
+        uid.start()
+        self.addCleanup(uid.stop)
         self.app = Path("/private/fixture/Terminal.app")
         self.root_id = KernelIdentity(11, 9, 1, b"a" * 16)
         self.child_id = KernelIdentity(12, 11, 1, b"b" * 16)
@@ -51,6 +56,9 @@ class ShutdownCaptureTests(unittest.TestCase):
             kernel=self.kernel,
             main_identity=(1, 2),
             main_hash="hash",
+            helper=Path(self.child.exe.return_value),
+            helper_stamp=(1, 2, 3, 4, 5),
+            helper_hash="hash",
         )
 
     def target(self, role="network"):
@@ -159,3 +167,66 @@ class ShutdownCaptureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_threads(10)
             query.assert_called_once()
+
+    def test_prelaunch_helper_substitution_cannot_become_a_new_capture_baseline(self):
+        for stamp, digest in [((1, 99, 3, 4, 5), "hash"), ((1, 2, 3, 4, 5), "changed")]:
+            with self.subTest(stamp=stamp, digest=digest):
+
+                def executable(path, expected=None, stamp=stamp, digest=digest):
+                    if path == self.tracker.helper:
+                        return stamp, digest
+                    return (1, 2, 3, 4, 5), "hash"
+
+                with (
+                    patch("capture_cef_shutdown.psutil.Process", return_value=self.root),
+                    patch("capture_cef_shutdown.executable_digest", side_effect=executable),
+                    self.assertRaisesRegex(ValueError, "helper-changed-since-launch"),
+                ):
+                    verified_target(self.tracker, self.app, "network")
+
+    def test_missing_tracker_and_unknown_roles_fail_before_process_inspection(self):
+        for tracker, role in [(None, "network"), (self.tracker, "other")]:
+            with (
+                patch("capture_cef_shutdown.psutil.Process") as process,
+                self.assertRaises(ValueError),
+            ):
+                verified_target(tracker, self.app, role)
+            process.assert_not_called()
+
+    def test_capture_completion_separates_absent_partial_and_verified_snapshots(self):
+        self.assertEqual(finish_capture(None)["status"], "disabled")
+        with tempfile.TemporaryDirectory() as directory:
+            capture = Capture(self.app, Path(directory), "network", 0)
+            self.assertEqual(finish_capture(capture)["status"], "not-started")
+            capture.worker = Mock()
+            capture.worker.is_alive.return_value = False
+            capture.records = [{"index": index, "identityRevalidated": True} for index in range(10)]
+            self.assertTrue(finish_capture(capture)["captureComplete"])
+            capture.records[9].pop("identityRevalidated")
+            self.assertEqual(finish_capture(capture)["status"], "incomplete")
+            capture.records.append({"failure": "target-exited"})
+            self.assertFalse(finish_capture(capture)["captureComplete"])
+
+    def test_unsettled_read_is_cancelled_without_reading_its_mutable_records(self):
+        capture = Mock()
+        capture.worker.is_alive.return_value = True
+        result = finish_capture(capture, timeout=0)
+        self.assertEqual(result["status"], "worker-did-not-settle")
+        self.assertFalse(result["captureComplete"])
+        self.assertEqual(result["records"], [])
+        capture.worker.join.assert_called_once_with(timeout=0)
+        capture.stop.set.assert_called_once()
+
+    def test_capture_has_one_daemon_worker_and_no_idle_thread(self):
+        with tempfile.TemporaryDirectory() as directory:
+            capture = Capture(self.app, Path(directory), "network", 10)
+            with patch("capture_cef_shutdown.threading.Thread") as thread:
+                capture(self.tracker)
+                thread.assert_not_called()
+                capture.started -= 11
+                capture(self.tracker)
+                capture(self.tracker)
+                thread.assert_called_once_with(
+                    target=capture.run, args=(self.tracker,), daemon=True
+                )
+                thread.return_value.start.assert_called_once()

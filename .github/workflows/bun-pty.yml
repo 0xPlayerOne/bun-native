@@ -29,11 +29,12 @@ jobs:
       - name: Install frozen application-side dependencies
         run: bun install --frozen-lockfile
       - name: Validate bounded source scheduling
-        run: bun test tests/stream-source.test.ts tests/stream-source-fairness.test.ts
+        run: bun test tests/fair-scheduler.test.ts tests/stream-source.test.ts tests/stream-source-fairness.test.ts
       - name: Qualify actual Bun PTYs on Linux or macOS
         if: runner.os != 'Windows'
         run: |
           bun test tests/terminal-service.test.ts tests/terminal-service-real.test.ts
+          bun run qualify:services
           bun scripts/qualify-bun-pty.ts
       - name: Qualify actual Bun PTYs as a Windows standard user
         if: runner.os == 'Windows'

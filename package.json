@@ -57,8 +57,14 @@
     "qualify:cef-credentials": "bun scripts/qualify-cef-credentials.ts",
     "qualify:cef-session-reset": "bun scripts/qualify-cef-session-reset.ts",
     "qualify:m4": "python scripts/hosted_cef.py run --suite m4-acceptance",
+    "qualify:services": "bun test tests/service-supervisor.test.ts tests/service-supervisor-real.test.ts",
     "qualify:bun-pty": "bun scripts/qualify-bun-pty.ts",
-    "qualify:cef-terminals": "bun scripts/qualify-cef-terminals.ts"
+    "qualify:cef-terminals": "bun scripts/qualify-cef-terminals.ts",
+    "qualify:terminal-soak": "bun scripts/qualify-terminal-soak.ts",
+    "qualify:cef-window-modes": "bun scripts/qualify-cef-window-modes.ts",
+    "qualify:terminal-window-load": "bun scripts/qualify-terminal-window-load.ts",
+    "profile:terminal:review": "bun scripts/review-terminal-regression.ts",
+    "verify:terminal-acceptance": "bun scripts/verify-terminal-acceptance.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

@@ -14,7 +14,13 @@ from pathlib import Path
 
 import psutil
 from cef_fault_acceptance import MODES, accept_fault
-from cef_fault_control import ForeignControl, accept_foreign_control, notify_tree_observation
+from cef_fault_control import (
+    ForeignControl,
+    accept_foreign_control,
+    fault_readiness,
+    fault_target_matches,
+    notify_tree_observation,
+)
 from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
@@ -41,23 +47,6 @@ def signed(app):
         capture_output=True,
         timeout=20,
     )
-
-
-def readiness(path, nonce, mode):
-    """A fresh private marker follows real page readiness, not a guessed startup delay."""
-    try:
-        if path.is_symlink() or path.stat().st_size > 4096:
-            return False
-        value = json.loads(path.read_text())
-        return (
-            set(value) == {"mode", "nonce", "pid"}
-            and value["nonce"] == nonce
-            and value["mode"] == mode
-            and type(value["pid"]) is int
-            and value["pid"] > 0
-        )
-    except (OSError, ValueError, TypeError):
-        return False
 
 
 def snapshot(bun, artifact):
@@ -180,7 +169,7 @@ def main():
                 ):
                     root_identity.append((pid, process.create_time()))
                 if (
-                    mode == "backend-shell-tree-exit"
+                    mode in ("backend-tree-exit", "backend-shell-tree-exit")
                     and root_identity
                     and not tree_confirmed
                     and tree_path.is_file()
@@ -196,8 +185,8 @@ def main():
                         and tree["mode"] == mode
                         and tree["nonce"] == nonce
                         and isinstance(pids, list)
-                        and len(pids) == 2
-                        and len(set(pids)) == 2
+                        and len(pids) == (1 if mode == "backend-tree-exit" else 2)
+                        and len(set(pids)) == len(pids)
                         and all(type(item) is int and 0 < item < 2**31 for item in pids)
                     ):
                         owner = psutil.Process(root_identity[0][0])
@@ -208,10 +197,10 @@ def main():
                             if tree["backend"] in descendants and all(
                                 item in descendants for item in pids
                             ):
-                                shell, server = [descendants[item] for item in pids]
+                                first = descendants[pids[0]]
                                 if (
-                                    shell.ppid() == tree["backend"]
-                                    and server.ppid() == shell.pid
+                                    first.ppid() == tree["backend"]
+                                    and (len(pids) == 1 or descendants[pids[1]].ppid() == first.pid)
                                     and pid in pids
                                 ):
                                     tree_seen[pid] = {
@@ -238,13 +227,15 @@ def main():
                                         # filesystem-watcher startup races without polling.
                                         tree_confirmed.append(True)
                                         tree_notification["attempted"] = True
-                                        notify_tree_observation(tree["port"], nonce, pids)
+                                        notify_tree_observation(
+                                            tree["port"], nonce, pids, mode=mode
+                                        )
                                         tree_notification["acknowledged"] = True
                 if (
-                    mode in ("renderer-exit", "gpu-exit")
+                    mode == "gpu-exit"
                     and not injected
                     and root_identity
-                    and readiness(ready_path, nonce, mode)
+                    and fault_target_matches(fault_readiness(ready_path, nonce, mode), mode, pid)
                 ):
                     expected = "renderer" if mode == "renderer-exit" else "gpu-process"
                     executable = Path(process.exe()).resolve()
@@ -266,6 +257,11 @@ def main():
                                         "creationTime": identity,
                                         "role": expected,
                                         "roleEvidence": evidence,
+                                        **(
+                                            {"targetAuthority": "native-main-frame"}
+                                            if mode == "renderer-exit"
+                                            else {}
+                                        ),
                                     }
                                 )
                                 process.kill()
@@ -304,19 +300,31 @@ def main():
             foreign_control = control.finish()
         # Preserve independently sampled ancestry separately from the resource
         # rows, whose existing schema does not contain parent PID information.
-        data["descendantIdentities"] = list(tree_seen.values())
+        data["descendantIdentities"] = (
+            list(tree_seen.values()) if mode == "backend-shell-tree-exit" else []
+        )
         trial = {
             "mode": mode,
             "passed": False,
             "injected": injected,
             "observation": data,
             "foreignControl": foreign_control,
-            "treeNotification": tree_notification if mode == "backend-shell-tree-exit" else None,
+            "treeNotification": (
+                tree_notification
+                if mode in ("backend-tree-exit", "backend-shell-tree-exit")
+                else None
+            ),
         }
         try:
             accept_foreign_control(foreign_control, data)
-            trial["acceptance"] = accept_fault(mode, data, injected)
-            if mode == "backend-shell-tree-exit" and tree_notification != {
+            trial["acceptance"] = accept_fault(
+                mode,
+                data,
+                injected,
+                require_renderer_handshake=True,
+                renderer_platform=sys.platform,
+            )
+            if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
                 "attempted": True,
                 "acknowledged": True,
             }:
@@ -359,7 +367,7 @@ def main():
         ],
     }
     result = {
-        "schema": 4,
+        "schema": 7,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

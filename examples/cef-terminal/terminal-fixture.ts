@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { qualifyNativeServices } from './native-services.ts'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import type { BinaryStreamWriter, StreamOutcome } from '../../packages/contracts/src/streams.ts'
@@ -6,7 +7,6 @@ import type { ViewHandle } from '../../packages/contracts/src/index.ts'
 import type { CefBackend, CefStreamConnection } from '../../packages/runtime/src/cef.ts'
 import type { RpcContext, RpcHandlers } from '../../packages/runtime/src/rpc.ts'
 import {
-  BunTerminalDriver,
   TerminalService,
   type TerminalClosure,
   type TerminalDriver,
@@ -87,7 +87,7 @@ class PtyCallbackProbe {
 }
 
 class CapturingTerminalDriver implements TerminalDriver {
-  readonly delegate = new BunTerminalDriver()
+  constructor(readonly delegate: TerminalDriver) {}
   readonly probes = new Map<string, PtyCallbackProbe>()
   spawn(options: TerminalDriverSpawnOptions, observer: TerminalDriverObserver) {
     const token = options.env['BUNLY_TERMINAL_FIXTURE']
@@ -124,7 +124,9 @@ const line = (value: string) => new TextEncoder().encode(value + '\n')
 
 export default async function terminalFixture(backend: CefBackend): Promise<void> {
   Error.stackTraceLimit = 4
-  const driver = new CapturingTerminalDriver()
+  const driver = new CapturingTerminalDriver(
+    await backend.createTerminalDriver({ profile: 'non-detaching' })
+  )
   const service = new TerminalService({
     driver,
     limits: {
@@ -384,6 +386,7 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
     assert.ok(stopStreamService)
     stopStreamService()
     stopStreams = undefined
+    const nativeServices = await qualifyNativeServices(backend)
     const terminalDiagnostics = service.diagnostics()
     const streamDiagnostics = backend.streamDiagnostics()
     const writers = [...views.values()].flatMap((state) => state.terminals.map((row) => row.writer))
@@ -396,7 +399,8 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
     console.error(
       JSON.stringify({
         event: 'bunly.native.graphical-terminal',
-        schema: 2,
+        schema: 3,
+        nativeServices,
         classification: 'functional',
         renderer: await pageReport.promise,
         runtime: {

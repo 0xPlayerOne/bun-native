@@ -110,17 +110,18 @@ def accept_foreign_control(control, observation):
         raise ValueError("Foreign control was part of the native owned process tree")
 
 
-def notify_tree_observation(port, nonce, pids):
+def notify_tree_observation(port, nonce, pids, *, mode="backend-shell-tree-exit"):
     """One bounded numeric-loopback publication after independent ancestry observation."""
     if (
-        type(port) is not int
+        mode not in ("backend-tree-exit", "backend-shell-tree-exit")
+        or type(port) is not int
         or not 0 < port <= 65535
         or not isinstance(nonce, str)
         or not re.fullmatch(r"[a-f0-9]{48}", nonce)
         or not isinstance(pids, list)
-        or len(pids) != 2
+        or len(pids) != (1 if mode == "backend-tree-exit" else 2)
         or any(type(pid) is not int or not 0 < pid < 2**31 for pid in pids)
-        or len(set(pids)) != 2
+        or len(set(pids)) != len(pids)
     ):
         raise ValueError("Invalid tree notification identity")
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
@@ -128,7 +129,7 @@ def notify_tree_observation(port, nonce, pids):
         connection.request(
             "POST",
             "/observed",
-            body=json.dumps({"mode": "backend-shell-tree-exit", "nonce": nonce, "pids": pids}),
+            body=json.dumps({"mode": mode, "nonce": nonce, "pids": pids}),
             headers={"x-bunly-observation": nonce, "Content-Type": "application/json"},
         )
         response = connection.getresponse()
@@ -136,3 +137,58 @@ def notify_tree_observation(port, nonce, pids):
             raise ValueError("Invalid tree notification acknowledgment")
     finally:
         connection.close()
+
+
+def fault_readiness(path, nonce, mode):
+    """Read one bounded private marker; renderer injection requires native frame proof."""
+    try:
+        if (
+            mode not in ("renderer-exit", "gpu-exit")
+            or path.is_symlink()
+            or path.stat().st_size > 4096
+        ):
+            return None
+
+        def exact_object(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("Duplicate fault readiness field")
+                value[key] = item
+            return value
+
+        with path.open("rb") as source:
+            encoded = source.read(4097)
+        if len(encoded) > 4096:
+            return None
+        value = json.loads(encoded, object_pairs_hook=exact_object)
+        fields = {"mode", "nonce", "pid"}
+        if mode == "renderer-exit":
+            fields.add("rendererPid")
+        if (
+            not isinstance(value, dict)
+            or set(value) != fields
+            or value["nonce"] != nonce
+            or value["mode"] != mode
+        ):
+            return None
+        if type(value["pid"]) is not int or not 0 < value["pid"] < 2**31:
+            return None
+        if mode == "renderer-exit" and (
+            type(value["rendererPid"]) is not int
+            or not 0 < value["rendererPid"] < 2**31
+            or value["rendererPid"] == value["pid"]
+        ):
+            return None
+        return value
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def fault_target_matches(readiness, mode, pid):
+    """A role match alone cannot select a renderer that is not the fault page's host."""
+    return (
+        isinstance(readiness, dict)
+        and bool(readiness)
+        and (mode == "gpu-exit" or mode == "renderer-exit" and readiness["rendererPid"] == pid)
+    )

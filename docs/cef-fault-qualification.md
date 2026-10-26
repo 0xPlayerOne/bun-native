@@ -149,3 +149,109 @@ application authority API or a same-user adversary boundary.
 Upstream inspected: Bun commit `c6da4a4d3010e5553438c60f6bd76d981976867c`,
 `src/runtime/node/fs_events.rs` (`register_watcher`, deferred `schedule`, and
 `FSEventStreamCreate` with the current-event cursor). No Bun source was modified.
+
+## Direct-child observation handshake
+
+The original `backend-tree-exit` fixture waited 150 ms after spawn, which was not
+proof that the independent process observer had sampled the child. A retained
+hosted Mac run terminated normally but failed its unchanged actual-observation
+criterion. This fixture now keeps the same inherited-output child alive until a
+single authenticated numeric-loopback notification follows independently checked
+parentage, PID and creation time. It reuses the shell-tree notification contract
+with an explicit one-child mode. The original observation assertion, native
+shutdown deadlines and failed-exit classification remain unchanged. No retry,
+longer sleep or invented sampling success is used.
+
+## Native main-frame renderer targeting (schema 5)
+
+Renderer fault selection no longer chooses the first process with a renderer
+command-line role. Chromium may also own spare renderers. The prior Windows
+checkpoint `40272832729` killed an owned renderer but produced no native test-view
+termination callback; the application then failed its unchanged readiness/exit
+deadline. That report does not identify which process hosted the test page, so
+attribution to a spare renderer remains unproven. It exposed a real missing
+qualification binding regardless of that particular outcome.
+
+Only contributor `rpc-qualification` helpers emit their own OS PID, directly from
+compiled native code, after subscribing the current main-frame bridge. The
+browser verifies the complete native frame/context/connection/generation and
+origin before retaining one immutable proof per live document. Navigation and
+revocation erase it; conflicting, child-frame, stale and invalid identities are
+rejected. An ordinary build has neither this message handler nor the proof query.
+The query is restricted to the exact packaged fault page and an opaque captured
+native policy scope, revalidated before and after reentrant browser operations.
+No JavaScript field supplies a target PID and no runtime kill API is introduced.
+
+The fault fixture waits for both its original page assertions and native document
+readiness before querying this proof. The private bounded readiness marker names
+that exact renderer. The independent observer still requires executable placement,
+renderer role, current native-host ancestry and unchanged process creation time
+before signalling its owned process object; another same-role candidate is ignored.
+These are fixture-scoped provenance checks, not general-purpose process authority.
+
+Schema 5 additionally requires the injected renderer PID to equal the native-frame
+proof. Earlier schemas retain their explicitly selected historical guarantees;
+role-only evidence cannot qualify the new schema. Missing, malformed, duplicate
+or foreign target receipts fail. Existing exact expected backend exits, six fault
+modes, unchanged deadlines, independent-process controls, output-drain receipts and
+all post-exit cleanup assertions remain required.
+
+## Native main-frame fault delivery (schema 6)
+
+The `c449f68` Linux hosted renderer case reported PID 1 from inside its
+sandbox PID namespace. No process was injected, and the fixture timed out.
+The failed report remains retained. A same-role process or numeric PID
+translation is not substituted. An intermediate TaskManager candidate
+(`410e78a`) failed locally because no eligible main task was available for
+this embedded browser. That candidate is not selected; its failed report and
+implementation remain in history.
+
+Current fault qualification sends one fixed CEF process message through the
+existing main-frame/document binding. The trusted backend supplies only its
+opaque captured scope, not a PID, task ID, exit code or expression. The native
+host rechecks that entire scope and main-frame RPC authority, then the helper
+independently verifies its current context, connection, generation, main frame,
+subscription and exact packaged fixture URL. Only then does that renderer log
+its fixed execution receipt and exit abnormally with code 86. Ordinary builds
+exclude the command/message/exit branch; there is no page-callable fault API,
+public debugging port, OS process-name scan, timeout increase or sandbox change.
+
+A dispatch acknowledgment is not execution evidence. Schema 6 separately
+requires the actual native-helper injection receipt, CEF's observed abnormal
+renderer exit with code 86, the backend's completion acknowledgment, failed-host
+classification, ordered teardown and zero output balances. It forbids any
+simultaneous external PID injection. Historical schema 5 keeps its original
+PID-identity checks when explicitly replayed. GPU injection still uses the
+independently verified executable, ancestry, birth identity and process role.
+
+The first document-message run (`df90561`) reached and terminated the intended
+renderer, but its receipt incorrectly compared the POSIX raw wait status with
+the decoded exit value. Pinned Chromium `base/process/kill_posix.cc` preserves
+waitpid status (`86 << 8`, or 22016); Windows `kill_win.cc` preserves exit code 86. Current acceptance keeps both the raw code and fixed decoded value and
+checks them against the independently selected target platform. Different
+signals/statuses and unknown platforms still fail. That first failed run is
+retained, not relabeled a pass.
+
+## Captured native handshake receipt (schema 7)
+
+The schema-6 current-head Windows run actually terminated the intended renderer
+with native code 86, but the sandboxed helper's stderr was not captured by the
+parent observer. The missing receipt remained a failed qualification; the
+successful exit was not used to waive it. Linux and macOS schema-6 full suites
+passed and remain scoped to that source.
+
+Current qualification uses a two-phase native CEF message handshake. The exact
+main-frame context first acknowledges it is armed; the browser verifies current
+frame/document/generation authority and one bounded pending request, logs the
+captured schema-2 handshake receipt, then sends the commit. The renderer exits
+only after the matching commit in that same context. A premature/replayed commit,
+foreign acknowledgment or duplicate request does not qualify. One small pending
+metadata record is retained on missing acknowledgment until host exit; no timer,
+worker or unbounded map is added. Ordinary builds exclude all handshake state.
+
+The handshake receipt proves arming/commit dispatch, not completed termination.
+The actual CEF termination callback with independently platform-checked code,
+backend observation, failed-host status, strict teardown and zero balances are
+still separately required. Historical schema-6 helper-stderr receipts retain
+their previous contract. No inheritance flag, sandbox, deadline or verifier is
+relaxed to collect evidence.

@@ -1,0 +1,560 @@
+{
+  "schema": 1,
+  "classification": "local-descriptive-qualification-with-retained-failures",
+  "qualifiedRun": "run-LpSEdA",
+  "profileAccepted": false,
+  "source": {
+    "commit": "c23014dbb7f4d04a323ca23c935f1bc9c47c7978",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceTree": "6efdcd2afbda627fd9dbb26e0606f9e8a5d3329a",
+  "publishedEquivalentImplementation": "db1a8028afcddd1d1525fcb6c196635638adfbbd",
+  "rebaseEvidence": "Unpublished implementation rebased onto merged #115 (6c01202); complete Git tree stayed identical. No force push. Native execution used the recorded clean source commit; current-source hashes are checked by the replay command.",
+  "sourceHashes": {
+    "examples/cef-terminal-load/fixture.ts": "96c3e7ef9c9d6062d2b654906295c2effbbf86bb5573199a941a12438d64b7c9",
+    "examples/cef-terminal-load/client.ts": "2f83d7956c48f27f570b0cd6d42e5cb9e582db9984c479f4b3a3982aaefa23c5",
+    "examples/cef-terminal-load/child.ts": "1ee7ae400e5117a139a021b948530a9ecf90c6443053cf24ecd9d73a03ea52b4",
+    "examples/cef-terminal-load/contract.ts": "505766afa312f2227c0ced35f10507178bc806cb5e1db8703ce5cf88ad5476e1",
+    "examples/cef-terminal-load/workload.ts": "ed78358f4eae9cf7fe420d1ab834616b68270339465ec37545168ddc131347d3",
+    "benchmarks/lib/terminal-load-acceptance.ts": "c473112b04589e0789c78cbaa77c62d70ef713bf9c43dd08691694fc5ccdf11a",
+    "benchmarks/lib/terminal-load-baselines.ts": "15c5b197476113946e50a29c91b6aa4007ef7cbca137f1c05423e5a0d699c4fe",
+    "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+    "tsconfig.browser.json": "eb5cc9822a26eed16a2e4b83ce3aabafb39787ac980597eb3bc7256f820f9c00",
+    "package.json": "4e1bcb99e67d53037a08e66c0c110c2a5f208a94bac3f7099bd3a2b312e63a7c",
+    "bun.lock": "099dff47e6a1637ef753b1364b7acc8023525e16a2baa8464be4b640db28284f",
+    "scripts/qualify-cef-terminals.ts": "73b65ae7e01391ee89d1eeeb6526caea793ddeaa28a0da3b33e6bd2089a04bfe",
+    "examples/cef-terminal/terminal-fixture.ts": "9a7984e74237d7e9d70fc93ad663bed62931392973b7faaae077ec3dbbc9afb0",
+    "examples/cef-terminal/terminal-client.ts": "19a2c2385ec8004176392b12219539a8cab5b6b5ffae857829028a99697f419f",
+    "examples/cef-terminal/terminal-records.ts": "f674f878aec04b6b79b3dd4a699bb5d06dcb5788cffc1f11a52381c04bbc3d3c",
+    "examples/cef-terminal/terminal-child.ts": "0289e15dd08350b607ef9f5444181baa625f363138bf76f5909c0287a8c2f7d1",
+    "examples/cef-terminal/terminal-contract.ts": "639ee4104b47459d1495b35e0cd1d39e32fc1bd65199805101b03d0d4aafa057",
+    "examples/cef-terminal/public/index.html": "111cdce0a5f1a974eb428013e9506f63e084c2a8ca9296ae8e9716257707bcef",
+    "examples/cef-terminal/public/fixture.css": "363fc74a9de35edd45aa59bddad4d3ec8a05b686923333251ee499335cf68e27",
+    "benchmarks/lib/cef-terminal-acceptance.ts": "7c6f8176475ed596fc5b2467e78e5a5f4fe9bd97249334413327b472d134f9ec",
+    "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+    "benchmarks/lib/observation.ts": "8f9bfb08ca3127546d3064573ce88e86b8e58fdf0348286ce1c1e167444a34af",
+    "benchmarks/lib/native-diagnostic-events.json": "ca5923d391ae13dd6efdec8b0b534e308fc3bd7a895d66382deb1832f6ab3b2e",
+    "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+    "packages/runtime/src/cef.ts": "cad610318e643dfbce992059d35da353afdb2c6896d804b40d5374b26d6bc717",
+    "packages/runtime/src/terminal.ts": "e1d1245d17e0bcaaf3e9e5db817ffb31659e3aabbc92ff8dae30fbd1a114d9e7",
+    "packages/runtime/src/stream-source.ts": "9af32c8e18607ecca28b9fe95e46044861ee5f9511b506027bd0ce90e762ecb3",
+    "packages/client/src/cef-streams.ts": "214b785c2479d8ffcdf600c6a22c82c87cca5ba4a3c48c8c7638e3e8be960e4d",
+    "packages/contracts/src/streams.ts": "86dbec3be488df79af7246e8237dd9459f89cf506d587113bea3599e31b1f9f9",
+    "native/cef-host/src/host.rs": "cba24058b4f80ceb1c5f919313e7fced97588f9c81fe46560902e0a5e36f726b",
+    "native/cef-host/src/renderer_rpc.rs": "7f44f424e5260a4b803e41d35ccd86cfd103c5edaab887b5aff0086114ce8950",
+    "native/cef-host/src/rpc_authority.rs": "0f7df4fbe7da1883d5cb5b43005df0311d036d27eacb076d5855bd7124e7728a",
+    "native/cef-host/src/rpc_protocol.rs": "71ec2fbd9d67f05e7b1bc0292f04a0b5d250c147003ed8ff21d6aab6f22fa92e",
+    "native/cef-host/src/process.rs": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2",
+    "native/cef-host/src/event_queue.rs": "2ff299e2e1ab4f47f8eb708684b83e1ed25446f1c19d1de763b3f928cfeee5a3",
+    "native/cef-host/src/exit_notification.rs": "c895a537d3d86e78d337b59e9a3b56dca9b252bf232978e093aa246ebd7ede6e",
+    "scripts/observe-process.py": "bfa8c48bec1d832d3ba775ff1a67bd89c2f3f8d02011d871eab96233ae98f692",
+    "scripts/probe_cef_identity.py": "301af33bb78867977df321936fb7a747fcbf97e9fb744c7ba75ef77f1323d31c"
+  },
+  "sourceAndArtifactsUnchanged": true,
+  "runtimeIdentity": {
+    "event": "cef-binary-identity",
+    "schema": 1,
+    "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+    "cefVersion": "156.0.7",
+    "cefCommitNumber": 3652,
+    "chromiumVersion": "156.0.8078.17",
+    "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+    "source": "exported-api",
+    "sandbox": "unverified"
+  },
+  "bun": "1.4.3",
+  "target": "darwin-arm64",
+  "nativeInputSource": "c17d20f7ffdec59de965b9d9d5b944ca65a36128 (immutable prepared CEF 156 application; JS-only qualification bundles)",
+  "samplesPerMode": 5,
+  "warmupsPerMode": 1,
+  "trialOrder": {
+    "seed": 2709,
+    "order": [
+      {
+        "index": -1,
+        "mode": "hidden"
+      },
+      {
+        "index": -1,
+        "mode": "visible"
+      },
+      {
+        "index": 0,
+        "mode": "visible"
+      },
+      {
+        "index": 0,
+        "mode": "hidden"
+      },
+      {
+        "index": 1,
+        "mode": "visible"
+      },
+      {
+        "index": 1,
+        "mode": "hidden"
+      },
+      {
+        "index": 2,
+        "mode": "visible"
+      },
+      {
+        "index": 2,
+        "mode": "hidden"
+      },
+      {
+        "index": 3,
+        "mode": "visible"
+      },
+      {
+        "index": 3,
+        "mode": "hidden"
+      },
+      {
+        "index": 4,
+        "mode": "hidden"
+      },
+      {
+        "index": 4,
+        "mode": "visible"
+      }
+    ]
+  },
+  "counts": {
+    "attempted": 12,
+    "passed": 7,
+    "failed": 5,
+    "measuredPassed": 6,
+    "measuredFailed": 4
+  },
+  "trials": [
+    {
+      "index": -1,
+      "mode": "hidden",
+      "warmup": true,
+      "passed": false,
+      "rawSha256": "1dd002b5b956d686375920470094063203b4a50ce684798a4a1f41be7ae2c74b",
+      "workloadCompleted": false,
+      "completedBatchesPerTerminal": 205,
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "workloadFailure": {
+        "kind": "failure",
+        "phase": "sustained",
+        "batch": 205,
+        "error": "Stream deadline exceeded"
+      },
+      "exitCode": 1,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false
+    },
+    {
+      "index": -1,
+      "mode": "visible",
+      "warmup": true,
+      "passed": true,
+      "rawSha256": "56c649d588c4c9e7187ddde92938533915a0d6b715eba0cf61655a477e6d9004",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30001.291916000002,
+        "consumedBytes": 4635561,
+        "controlP95Ms": 2.4000000953674316,
+        "controlP99Ms": 16.102999904155727,
+        "rssQuarterMediansBytes": [
+          880173056,
+          912154624,
+          916865024,
+          948699136
+        ],
+        "treeCpuPercentOfOneCore": 33.43006461406071
+      }
+    },
+    {
+      "index": 0,
+      "mode": "visible",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "0beb8049cada9203e360d46c1ee4c8a54fe6a86e68e3eb70547a28128f0f4ae1",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30001.285499999998,
+        "consumedBytes": 4635560,
+        "controlP95Ms": 2.5,
+        "controlP99Ms": 3.000999999046325,
+        "rssQuarterMediansBytes": [
+          878329856,
+          908574720,
+          915849216,
+          946569216
+        ],
+        "treeCpuPercentOfOneCore": 33.80507364752736
+      }
+    },
+    {
+      "index": 0,
+      "mode": "hidden",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "ee3b368c7976d8df98c341f74e86fc1899b1daa4cf3dbfd8d7dbbc86787fab47",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30000.050957999996,
+        "consumedBytes": 4635560,
+        "controlP95Ms": 2,
+        "controlP99Ms": 2.799999952316284,
+        "rssQuarterMediansBytes": [
+          802168832,
+          844726272,
+          867319808,
+          838008832
+        ],
+        "treeCpuPercentOfOneCore": 29.701716016638315
+      }
+    },
+    {
+      "index": 1,
+      "mode": "visible",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "1423e83ee4be0052e2af60d497865b57e0c5a034f147500bcd95f59dcd78f335",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30000.898917,
+        "consumedBytes": 4635561,
+        "controlP95Ms": 2.8999998569488525,
+        "controlP99Ms": 3.1000001430511475,
+        "rssQuarterMediansBytes": [
+          883671040,
+          907657216,
+          916979712,
+          950312960
+        ],
+        "treeCpuPercentOfOneCore": 40.2974903304214
+      }
+    },
+    {
+      "index": 1,
+      "mode": "hidden",
+      "warmup": false,
+      "passed": false,
+      "rawSha256": "0b3c7202ff2cf5b500615260ca42049d91923c41cec16aa76252b191632aa05e",
+      "workloadCompleted": false,
+      "completedBatchesPerTerminal": 413,
+      "failure": "Command failed: unexpected exit 2 (expected 0); observed orphan count 1; post-exit cleanup failed",
+      "workloadFailure": {
+        "kind": "failure",
+        "phase": "sustained",
+        "batch": 413,
+        "error": "Load operation deadline"
+      },
+      "exitCode": 2,
+      "observedOrphans": 1,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": false,
+      "teardownWatchdogObserved": true
+    },
+    {
+      "index": 2,
+      "mode": "visible",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "b44b39dc4bd77e26db97ef9d0491a025a60e19f031ca8cb40bc3a891196323a2",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 29999.399541000003,
+        "consumedBytes": 4635561,
+        "controlP95Ms": 2.5,
+        "controlP99Ms": 6.099999904632568,
+        "rssQuarterMediansBytes": [
+          874987520,
+          907526144,
+          917995520,
+          953122816
+        ],
+        "treeCpuPercentOfOneCore": 33.309630732891726
+      }
+    },
+    {
+      "index": 2,
+      "mode": "hidden",
+      "warmup": false,
+      "passed": false,
+      "rawSha256": "8d264fcbabb0758d0f5042d1acabb3570c337ec9a10fb4fe53f0c707141747cc",
+      "workloadCompleted": false,
+      "completedBatchesPerTerminal": 347,
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "workloadFailure": {
+        "kind": "failure",
+        "phase": "sustained",
+        "batch": 347,
+        "error": "Load operation deadline"
+      },
+      "exitCode": 1,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false
+    },
+    {
+      "index": 3,
+      "mode": "visible",
+      "warmup": false,
+      "passed": false,
+      "rawSha256": "5b4a056a38397e9ffaa196a368be32b93b61f991d9f1ae451c2e2ad925830c28",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": "Command failed: unexpected exit 2 (expected 0); observed orphan count 1; post-exit cleanup failed",
+      "workloadFailure": null,
+      "exitCode": 2,
+      "observedOrphans": 1,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": false,
+      "teardownWatchdogObserved": true
+    },
+    {
+      "index": 3,
+      "mode": "hidden",
+      "warmup": false,
+      "passed": false,
+      "rawSha256": "7f6bce404966fc19228a0847e11425b3ef6b451986bfd63b6497f6edae719501",
+      "workloadCompleted": false,
+      "completedBatchesPerTerminal": 325,
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "workloadFailure": {
+        "kind": "failure",
+        "phase": "sustained",
+        "batch": 325,
+        "error": "Load operation deadline"
+      },
+      "exitCode": 1,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false
+    },
+    {
+      "index": 4,
+      "mode": "hidden",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "2f566584066e18e1c09cae537a1d05ce9409bef125f050e103748e3d009fec2b",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30000.512792,
+        "consumedBytes": 4635560,
+        "controlP95Ms": 2.299999952316284,
+        "controlP99Ms": 5.101000142097472,
+        "rssQuarterMediansBytes": [
+          807239680,
+          856506368,
+          873365504,
+          854409216
+        ],
+        "treeCpuPercentOfOneCore": 30.900580171047874
+      }
+    },
+    {
+      "index": 4,
+      "mode": "visible",
+      "warmup": false,
+      "passed": true,
+      "rawSha256": "72ca3545b1ed23977d4cab982735974f717903e1ed2142d60aa403a6af1d9215",
+      "workloadCompleted": true,
+      "completedBatchesPerTerminal": 700,
+      "failure": null,
+      "workloadFailure": null,
+      "exitCode": 0,
+      "observedOrphans": 0,
+      "cleanupSurvivors": 0,
+      "postExitCleanupPassed": true,
+      "teardownWatchdogObserved": false,
+      "sustained": {
+        "elapsedMs": 30001.305375000004,
+        "consumedBytes": 4635561,
+        "controlP95Ms": 2.200000047683716,
+        "controlP99Ms": 2.3999998569488525,
+        "rssQuarterMediansBytes": [
+          870752256,
+          904511488,
+          912982016,
+          943161344
+        ],
+        "treeCpuPercentOfOneCore": 30.43854911616476
+      }
+    }
+  ],
+  "archive": {
+    "bytes": 3525219,
+    "sha256": "02d83fd450111c5fc7dbb75e382e4e746e60f85574f363a977bff7e17356c15e"
+  },
+  "expanded": {
+    "bytes": 75013076,
+    "sha256": "af8cdde89220659467f4e05498df7690abf500bd211f4bd939d786ba89cf490f"
+  },
+  "historicalRunsRetained": [
+    "run-47dWOi",
+    "run-LpSEdA",
+    "run-MTHqVc",
+    "run-l5KwpU",
+    "run-w2WDab"
+  ],
+  "checks": {
+    "portable": {
+      "passed": true,
+      "logSha256": "097f2043fbfed5f11e2d942c369adde525a0745344cb4b674aa20f0c0be5e016"
+    },
+    "foundation": {
+      "passed": true,
+      "logSha256": "99f4e6878043a089d7cc275099c66059d84a188fcc5fd106650fa7d5563d3e0e"
+    },
+    "workflows": {
+      "passed": true,
+      "logSha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    },
+    "doctor": {
+      "passed": true,
+      "logSha256": "527de0f43b97b1f13e13148619b19ad37870e02f7a9bf00ff874d448fcc274c5"
+    }
+  },
+  "portableTestCounts": {
+    "typescriptPassed": 840,
+    "typescriptSkipped": 1,
+    "pythonPassed": 229,
+    "foundationPassed": 145
+  },
+  "baselineEligibility": {
+    "schema": 1,
+    "workload": "graphical-pty-load-v1",
+    "sources": {
+      "benchmarks/references.json": "d41e0f00468574fab85a5d7553e752837202e43e46c193ca76c01ca7e624783d",
+      "benchmarks/adapters/electron/package.json": "985c969b114d06aeebf3e0459d89a50836d37602bd9ca325f3ab91060e4b6348",
+      "benchmarks/adapters/electron/bun.lock": "fa1234fdbde57e6b761aee12f32c3c1bed7e48e7d5cf44b1df9a1cde13643e6d",
+      "benchmarks/adapters/electron/driver.ts": "bf7bc4ea43c7fcc2126eaa3cfa6e0fcc428051a0efbacfcb6160d7ba1636fa11",
+      "benchmarks/adapters/electron/main.cjs": "ccdce33b7b72dd9cb43a1290c96809b60f7c2c6eac9892e803e7911da74e27f3",
+      "benchmarks/adapters/electrobun/package.json": "8f8904886571c27e1a9b30c22f76e57b661a074c5120ddb947ca5e5a1d907910",
+      "benchmarks/adapters/electrobun/bun.lock": "568b828051c687b132adc32f59cd84e1c730f0593a98d3258d56e107629cede9",
+      "benchmarks/adapters/electrobun/driver.ts": "ccd1cccfccd01708369823ba5664ae50ff7b13410ec023947e28e0d1f3c184e8",
+      "benchmarks/adapters/electrobun/template/main.ts.txt": "c75f758f61912312e808532ecbaf788b4d69fbf03d528ebd13e4ebbc48f1cc48"
+    },
+    "variants": [
+      {
+        "identity": {
+          "id": "electron",
+          "framework": "electron",
+          "version": "44.9.3",
+          "sourceCommit": "c542df1ecbc2c2978e8f53f8c7baf602404d166f",
+          "runtime": "Node",
+          "runtimeVersion": "unverified",
+          "engine": "chromium",
+          "engineVersion": null,
+          "securityProfile": "unverified",
+          "configuration": "default"
+        },
+        "request": "graphical-pty-load-v1",
+        "result": {
+          "status": "unsupported",
+          "reason": "Not implemented by the initial Electron adapter; no synthetic timing substituted",
+          "correctness": {
+            "passed": false,
+            "details": "No executed desktop scenario"
+          },
+          "metrics": {}
+        },
+        "execution": "capability-refused-no-runtime-trial",
+        "comparison": "REFUSED",
+        "reason": "Existing adapter has no true PTY load. Its sandboxed synthetic ANSI renderer fixture cannot substitute for this workload."
+      },
+      {
+        "identity": {
+          "id": "electrobun",
+          "framework": "Electrobun",
+          "version": "2.0.3-beta.26",
+          "sourceCommit": "c4bbeca07829d9b1634d31598ef6091fb19ace2a",
+          "runtime": "Bun",
+          "runtimeVersion": "unverified",
+          "engine": "chromium",
+          "engineVersion": null,
+          "securityProfile": "rpc-disabled+cef-process-sandbox-unverified",
+          "configuration": "tuned"
+        },
+        "request": "graphical-pty-load-v1",
+        "result": {
+          "status": "unsupported",
+          "reason": "This initial Electrobun adapter implements launch and terminal rendering only",
+          "correctness": {
+            "passed": false,
+            "details": "Not executed, no timing assigned"
+          },
+          "metrics": {}
+        },
+        "execution": "capability-refused-no-runtime-trial",
+        "comparison": "REFUSED",
+        "reason": "Existing adapter has no true PTY load; exact Chromium binary and CEF sandbox remain unverified. Packaged Bun is not replaced."
+      }
+    ],
+    "ratios": null,
+    "regressionBudgets": null,
+    "classification": "capability-preflight-not-comparative-execution"
+  },
+  "performanceAccepted": false,
+  "regressionBudget": "Finite output/retention/reservation correctness limits only; no calibrated RSS/latency budget.",
+  "limitations": [
+    "Visible does not prove foreground OS focus; hidden requires document visibilitychange after native exact-handle hide. Minimized/occluded native receipts remain unsupported.",
+    "Local macOS execution only. Current-source Windows/Linux load acceptance remains unexecuted.",
+    "Failed warmups/trials invalidate profile acceptance. Success-conditioned quantiles do not imply reliable responsiveness.",
+    "Rising RSS quarter medians do not demonstrate a memory plateau.",
+    "Four load deadlines and two shutdown-watchdog observations retained; one trial has both. Attribution to throttling, renderer, native handoff or scheduling is unresolved.",
+    "Original #115 navigation/cancellation/held/overload scenarios passed separately, not concurrently repeated within the sustained profile.",
+    "Physical input/paint, identical baseline runtime execution, quiet matched-security/engine calibration and #25 parent-loss acceptance remain outstanding."
+  ]
+}

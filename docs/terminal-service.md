@@ -41,6 +41,23 @@ shared `StreamBudget` backs `CallbackStreamSource`; its reservation is deliberat
 additional because callback snapshots can remain live while terminal cleanup is in
 progress.
 
+All terminal callback sources within one `TerminalService` instance share one
+bounded owner-round-robin scheduler.
+It admits at most 16 source handoffs per event-loop turn, retains 16 control
+slots inside its 256-item queue, and rotates the stable terminal owner before
+serving the next queued item. A held writer therefore retains its own active
+bytes without blocking another terminal's queued source work. Scheduler capacity
+denial fails the exact source as `OVERLOADED`; it never discards terminal bytes.
+
+This is a per-service aggregate budget, independent of the CEF backend's packet
+scheduler and other service instances. A standalone `CallbackStreamSource` creates
+its own scheduler unless its caller supplies a shared one. Multiple unrelated
+instances therefore do not have a single global total dispatch bound. Unit tests
+exercise twelve noisy sources sharing one owner beside a quiet owner, including
+continuous and microtask-separated refill, exact bytes/hashes, held writer
+reservations and settled queues without idle callbacks. Native UI turn scheduling
+and representative graphical/platform measurements remain incomplete under #26.
+
 PTY callback bytes pass unchanged into `CallbackStreamSource`, which snapshots and
 chunks them before the callback returns. `BinaryStreamWriter.write` supplies the
 existing consumer ACK boundary. There is no alternate protocol, implicit string
@@ -143,8 +160,8 @@ exercises a real PTY, explicit environment, Unicode input, resize, split/invalid
 output, nonzero exit, PTY closure, acknowledged byte hashes and explicit close
 through the headless xterm consumer.
 
-The service owns and signals only Bun's direct `Subprocess`. It is not a process-tree
-supervisor, does not manage detached descendants or Windows jobs, and makes no
+The generic default `BunTerminalDriver` owns and signals only Bun's direct
+`Subprocess`. It does not manage detached descendants or Windows jobs and makes no
 universal descendant-ownership claim. Native renderer authorization, graphical
 xterm behavior, representative latency/RSS qualification, managed backend
 replacement and cross-generation terminal adoption remain separate work.
@@ -177,9 +194,34 @@ No terminal output is discarded, replayed or decoded to text in this adapter.
 Diagnostics separate payload bytes, allocated bytes, allocation peak and appended
 bytes. This is not a whole-process memory bound or a throughput claim.
 
+Terminal diagnostics additionally expose scheduler queue depth, wait time, bounded
+turn/yield counts, rejected work, and explicit zero coalesced/dropped scheduler
+work. Pending cancellation removes queued source work; an active writer remains
+charged until its acknowledgment settles.
+
 Actual graphical integration initially hit an eight-chunk source limit during a
 32-record burst because callback boundaries were treated as separate queued
 frames. Pending-byte coalescing addresses that fragmentation without increasing
 the fixed 32-KiB source budget, the eight-chunk limit or the renderer workload.
 The original failed graphical runs and unchanged-source failing coalescing tests
 are retained. Byte-exact output and explicit overload still require qualification.
+
+## Opt-in native group owner
+
+The desktop path uses `await backend.createTerminalService({ profile: 'non-detaching' })`.
+Its native-owned configuration discovers the verified packaged owner and binds the
+host lifetime before admission. Unix retained groups and Windows per-terminal Jobs
+supply descendant ownership within the declared profile. The graphical fixture uses
+this driver; generic direct Bun use remains explicit and separately documented.
+See [native terminal ownership](terminal-owner.md) for protocol, failure accounting,
+platform acceptance and unsupported guardian/detached-group boundaries.
+
+## Opted-in service supervision
+
+[ServiceSupervisor](service-supervisor.md) adds explicit readiness and finite
+application-child restart around this service. `launch()` returns an admitted
+handle, a spawn promise and lifecycle observations together, so supervisors retain
+ownership even when spawning fails or times out. `create()` remains the convenience
+API for callers that only need successful creation. TerminalService itself never
+restarts children or replays input; M6 backend reload and native descendant
+containment remain separate.

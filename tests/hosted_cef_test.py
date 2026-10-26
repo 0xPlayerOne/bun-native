@@ -33,7 +33,9 @@ class HostedQualificationTests(unittest.TestCase):
                 "transports",
                 "session-reset",
                 "faults",
+                "window-modes",
                 "terminals",
+                "terminal-load",
                 "credentials",
             ],
         )
@@ -119,7 +121,7 @@ class HostedQualificationTests(unittest.TestCase):
                     [
                         row
                         for row in hosted.commands("full", bun, app)
-                        if row[0] not in ("faults", "terminals")
+                        if row[0] not in ("faults", "window-modes", "terminals", "terminal-load")
                     ],
                     m4,
                 )
@@ -283,7 +285,7 @@ class GraphicalTerminalStageTests(unittest.TestCase):
         app = Path("/app")
         commands = hosted.commands("full", "/bun", app)
         names = [name for name, _ in commands]
-        self.assertEqual(names[-2:], ["terminals", "credentials"])
+        self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
         self.assertEqual(
             dict(commands)["terminals"],
             [
@@ -302,3 +304,87 @@ class GraphicalTerminalStageTests(unittest.TestCase):
         rows[-1]["passed"] = False
         with self.assertRaises(ValueError):
             hosted.require_stage_prerequisites("full", "credentials", rows)
+
+
+class NativeWindowStageTests(unittest.TestCase):
+    def test_full_uses_native_modes_with_disposable_linux_wm_and_preserves_provider_gate(self):
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app)
+                names = [name for name, _ in selected]
+                self.assertEqual(
+                    names[-4:], ["window-modes", "terminals", "terminal-load", "credentials"]
+                )
+                expected = (
+                    [
+                        sys.executable,
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                        "--disposable-runner",
+                        "--bun",
+                        "/bun",
+                        str(app),
+                    ]
+                    if system == "linux"
+                    else [
+                        "/bun",
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes.ts"),
+                        str(app),
+                    ]
+                )
+                self.assertEqual(dict(selected)["window-modes"], expected)
+                self.assertNotIn(
+                    "window-modes", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "window-modes")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+        self.assertEqual(
+            hosted.report_directory("window-modes"), hosted.ROOT / ".bunly/m5/window-modes"
+        )
+        workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertEqual(workflow.count("libgbm1 xvfb dbus-x11 openbox"), 2)
+
+
+class NativeTerminalLoadStageTests(unittest.TestCase):
+    def test_explicit_window_load_is_required_before_credentials_on_every_platform(self):
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app)
+                names = [name for name, _ in selected]
+                self.assertEqual(len(names), 10)
+                self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
+                expected = (
+                    [
+                        sys.executable,
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                        "--disposable-runner",
+                        "--terminal-load",
+                        "--bun",
+                        "/bun",
+                        str(app),
+                    ]
+                    if system == "linux"
+                    else [
+                        "/bun",
+                        str(hosted.ROOT / "scripts/qualify-terminal-window-load.ts"),
+                        "cef",
+                        str(app),
+                        "--functional",
+                    ]
+                )
+                self.assertEqual(dict(selected)["terminal-load"], expected)
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                rows[-1]["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "terminal-load", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("terminal-load"), hosted.ROOT / ".bunly/m5/terminal-load"
+        )

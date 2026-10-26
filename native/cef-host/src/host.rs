@@ -12,6 +12,8 @@ use std::{
 };
 #[path = "navigation.rs"]
 mod navigation;
+#[path = "window_state.rs"]
+mod window_state;
 pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
 fn command_budget() -> &'static Arc<crate::command_budget::CommandBudget> {
@@ -322,20 +324,25 @@ fn renderer_message(
         }
         return 1;
     }
-    if ![
-        wire::READY,
-        wire::SUBSCRIBED,
-        wire::RELEASE,
-        wire::PACKET,
-        wire::DELIVERED,
-        wire::DISCARDED,
-        wire::STREAM_SUBSCRIBED,
-        wire::STREAM_RELEASE,
-        wire::STREAM_PACKET,
-        wire::STREAM_DELIVERED,
-        wire::STREAM_DISCARDED,
-    ]
-    .contains(&name.as_str())
+    #[cfg(feature = "rpc-qualification")]
+    let fault_ack = name == wire::RENDERER_ARMED;
+    #[cfg(not(feature = "rpc-qualification"))]
+    let fault_ack = false;
+    if !fault_ack
+        && ![
+            wire::READY,
+            wire::SUBSCRIBED,
+            wire::RELEASE,
+            wire::PACKET,
+            wire::DELIVERED,
+            wire::DISCARDED,
+            wire::STREAM_SUBSCRIBED,
+            wire::STREAM_RELEASE,
+            wire::STREAM_PACKET,
+            wire::STREAM_DELIVERED,
+            wire::STREAM_DISCARDED,
+        ]
+        .contains(&name.as_str())
     {
         return 0;
     }
@@ -359,6 +366,40 @@ fn renderer_message(
         }
         return 1;
     };
+    #[cfg(feature = "rpc-qualification")]
+    if fault_ack {
+        let authorized = sequence == 0
+            && context.main
+            && context.url == "app://ui/index.html"
+            && !QUITTING.load(Ordering::SeqCst)
+            && STATE.with(|state| {
+                let state = state.borrow();
+                state.views.get(&id).is_some_and(|view| {
+                    view.close.is_none()
+                        && view.rpc.authorize(&context, identity).is_ok()
+                        && state
+                            .windows
+                            .get(&view.window)
+                            .is_some_and(|window| window.closing.is_none())
+                })
+            });
+        if authorized {
+            if let Some(request) = crate::renderer_fault::acknowledged(id, identity) {
+                if let Some(mut commit) = wire::message(wire::RENDERER_COMMIT, identity, 0, None) {
+                    eprintln!(
+                        "{}",
+                        json!({"event":"bunly.native.renderer-injected", "schema":2,
+                        "authority":"native-main-frame-handshake", "exitCode":86})
+                    );
+                    reply(request, Value::Null);
+                    frame.send_process_message(ProcessId::RENDERER, Some(&mut commit));
+                } else {
+                    error(request, "Renderer fault commit allocation failed");
+                }
+            }
+        }
+        return 1;
+    }
     if name == wire::READY {
         if sequence != 0 || identity.connection != 0 || identity.generation != 0 {
             return 1;
@@ -1866,10 +1907,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
             });
             let mut native = View::from(&view);
             window.add_child_view(Some(&mut native));
-            if let Some(layout) = window.set_to_box_layout(Some(&BoxLayoutSettings {
-                horizontal: 0,
-                ..Default::default()
-            })) {
+            if let Some(layout) =
+                window.set_to_box_layout(Some(&window_state::browser_layout_settings()))
+            {
                 let views = STATE.with(|s| {
                     s.borrow()
                         .views
@@ -1909,11 +1949,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        #[cfg(feature = "rpc-qualification")]
+        "window.qualification.visibility" => window_state::qualification(request, args)?,
+        "window.state" | "window.minimize" | "window.restore" | "window.activate" => {
+            window_state::dispatch(request, operation, args)?;
+        }
         "window.close" | "window.show" | "window.hide" | "window.resize" => {
             let id = number(args, "id")?;
-            let window = STATE
-                .with(|s| s.borrow().windows.get(&id).and_then(|r| r.window.clone()))
-                .ok_or("INVALID_HANDLE: window")?;
+            let window = window_state::live(id)?;
             match operation {
                 "window.close" => {
                     let revocations = STATE.with(|s| {
@@ -2159,6 +2202,46 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         #[cfg(feature = "rpc-qualification")]
+        "rpc.qualification.renderer.crash" => {
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            let (browser, identity) = STATE.with(|state| {
+                let state = state.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                if scope.origin != "app://ui" {
+                    return Err("Renderer injection requires the packaged fault fixture");
+                }
+                let view = state.views.get(&id).ok_or("Fault fixture unavailable")?;
+                Ok::<_, &str>((
+                    view.browser.clone().ok_or("Fault browser unavailable")?,
+                    view.rpc
+                        .binding()
+                        .ok_or("Fault binding unavailable")?
+                        .identity(),
+                ))
+            })?;
+            let frame = browser.main_frame().ok_or("Fault main frame unavailable")?;
+            if CefString::from(&frame.url()).to_string() != "app://ui/index.html" {
+                return Err("Renderer injection requires the exact packaged fault page".into());
+            }
+            let mut message = wire::message(wire::RENDERER_CRASH, identity, 0, None)
+                .ok_or("Fault message allocation failed")?;
+            STATE.with(|state| {
+                let state = state.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                state
+                    .views
+                    .get(&id)
+                    .ok_or("Fault fixture closed")?
+                    .rpc
+                    .authorize(&observed(&browser, &frame), identity)
+            })?;
+            // One bounded contributor request remains pending until the same
+            // native document acknowledges it is armed. No role/PID is adopted.
+            crate::renderer_fault::begin(id, request, identity)?;
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
+        }
+        #[cfg(feature = "rpc-qualification")]
         "rpc.qualification.throttle" => {
             let id = number(args, "id")?;
             let scope = policy_scope(args)?;
@@ -2355,6 +2438,8 @@ wrap_window_delegate! {
     impl ViewDelegate { fn preferred_size(&self, _view: Option<&mut View>) -> Size { Size { width: self.width, height: self.height } } }
     impl PanelDelegate {}
     impl WindowDelegate {
+        fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn on_window_activation_changed(&self, _window: Option<&mut Window>, _active: i32) { window_state::activation_changed(self.id); }
         fn window_runtime_style(&self) -> RuntimeStyle { RuntimeStyle::ALLOY }
         fn on_window_created(&self, window: Option<&mut Window>) {
             let Some(window) = window else {

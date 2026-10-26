@@ -59,6 +59,16 @@ export class RpcServer<S extends RpcSchema> {
   readonly #revoked: () => void
   #sequence = 0
   #closed = false
+  #pendingReplies = 0
+  #idleWaiter:
+    | {
+        promise: Promise<void>
+        resolve(): void
+        reject(error: RpcError): void
+        timer: unknown
+        deadline: number
+      }
+    | undefined
   readonly closed: Promise<RpcError>
   constructor(
     schema: S,
@@ -202,6 +212,7 @@ export class RpcServer<S extends RpcSchema> {
       this.#clock.clear(job.timer)
       this.#jobs.delete(job.id)
       job.release()
+      this.#settleIdle()
     }
   }
   #cancel(job: Job, code: 'CANCELLED' | 'DEADLINE_EXCEEDED'): void {
@@ -221,25 +232,65 @@ export class RpcServer<S extends RpcSchema> {
   }
   #send(packet: Uint8Array, beforeSend?: () => void): void {
     if (this.#closed) return
-    void this.#channel
-      .send(packet, undefined, beforeSend)
-      .catch((error) =>
+    this.#pendingReplies++
+    void this.#channel.send(packet, undefined, beforeSend).then(
+      () => {
+        this.#pendingReplies--
+        this.#settleIdle()
+      },
+      (error) => {
+        this.#pendingReplies--
         this.#channel.close(
           error instanceof RpcError
             ? error
             : new RpcError('DISCONNECTED', 'RPC response delivery failed')
         )
-      )
+      }
+    )
   }
   #disconnect(reason: RpcError): void {
     if (this.#closed) return
     this.#closed = true
+    this.#settleIdle(reason)
     this.#guard.signal.removeEventListener('abort', this.#revoked)
     for (const job of this.#jobs.values()) {
       job.replied = true
       this.#clock.clear(job.timer)
       job.controller.abort(reason)
     }
+  }
+  /** Wait for currently admitted handlers AND adapter-completed replies.
+   * Call outside a handler, with producers quiescent. This does not freeze new requests.
+   * One waiter is coalesced per server, under the existing send deadline; timeout
+   * or revocation rejects without releasing any execution or native reservation.
+   */
+  whenIdle(): Promise<void> {
+    if (this.#closed) return Promise.reject(new RpcError('DISCONNECTED', 'RPC server closed'))
+    if (!this.#jobs.size && !this.#pendingReplies) return Promise.resolve()
+    if (this.#idleWaiter) return this.#idleWaiter.promise
+    let resolve!: () => void, reject!: (error: RpcError) => void
+    const promise = new Promise<void>((yes, no) => {
+      resolve = yes
+      reject = no
+    })
+    void promise.catch(() => {})
+    const deadline = this.#clock.now() + this.#limits.sendTimeoutMs
+    const timer = this.#clock.set(this.#limits.sendTimeoutMs, () =>
+      this.#settleIdle(new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded'))
+    )
+    this.#idleWaiter = { promise, resolve, reject, timer, deadline }
+    return promise
+  }
+  #settleIdle(error?: RpcError): void {
+    const waiter = this.#idleWaiter
+    if (!waiter) return
+    if (!error && this.#clock.now() >= waiter.deadline)
+      error = new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded')
+    if (!error && (this.#jobs.size || this.#pendingReplies)) return
+    this.#idleWaiter = undefined
+    this.#clock.clear(waiter.timer)
+    if (error) waiter.reject(error)
+    else waiter.resolve()
   }
   close(): void {
     this.#channel.close()

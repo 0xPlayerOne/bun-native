@@ -2,6 +2,12 @@
 
 NetworkService shutdown state and native control results after the foundation merge.
 
+**Current disposition (October 26, 2026):** M5 functional acceptance is complete
+through #123. This remains an independent unresolved native reliability risk;
+#92 is closed in the tracker, not evidence of a causal fix. PR #121 owns the
+reviewed diagnostic tooling. The dated sections below preserve their original
+source versions, outcomes and then-current milestone statements.
+
 **Status:** Unresolved intermittent failure; no verified native runtime fix or release qualification.
 **Tracking:** [Issue #92](https://github.com/0xPlayerOne/bunly/issues/92).
 **Evidence date:** October 23, 2026.
@@ -331,3 +337,41 @@ Native edits are limited to callback token construction in `host.rs`, the contex
 handler in `scheme.rs`, the new audit module/feature, and two checkpoints plus its
 module declaration in `lib.rs`. No process-spawn/terminal-owner section, window
 method, or `window_state.rs` was edited.
+
+## Current-main integration and capture hardening (October 26)
+
+The diagnostic branch now incorporates the accepted M5 source, including native
+terminal ownership, window states and reply-drained teardown. The original
+October 25 ledger is unchanged; its mixed source components and sampler-confounded
+failures are not relabeled as current-source acceptance.
+
+The NetworkService capture now compares the helper's exact path, file identity
+and full digest with the ordinary observer's **prelaunch** fingerprint. Merely
+hashing a stable replacement at the correct pathname after launch cannot create
+a trusted baseline. Regression controls reproduce the earlier acceptance of a
+changed inode or changed content before the first capture; both now reject.
+Missing provenance and unknown roles reject before process inspection. These are
+contributor diagnostic ownership gates, not same-user attacker containment or a
+change to the normal clone-cleanup policy.
+
+The command saves `process.json` before joining its diagnostic worker. The single
+read-only worker is created only when the requested offset is reached, has a
+bounded join, and cannot keep the diagnostic process alive after that join expires.
+A timed-out join requests cooperative cancellation and does not serialize the
+worker's concurrently mutable records. Its pre-read ledger remains available.
+There is no target signal, suspension, debugger attachment or shutdown extension.
+
+`capture.json` now records schema 1 and an explicit status: `disabled`,
+`not-started`, `complete`, `incomplete`, or `worker-did-not-settle`. Only ten ordered,
+identity-revalidated snapshots qualify as a complete capture. Short individual
+thread reads still remain unavailable fields, not invented zeros or stack data.
+The capture command exits 1 for absent/partial/unsettled requested captures.
+Exit 0 means only capture completion (or disabled control capture), **not** that
+the separate application, workload or cleanup passed; those require the ordinary
+validators against `process.json` and the workload output.
+
+Portable tests simulate macOS identity on all hosts, including Windows, without
+calling unavailable Unix APIs. Native tests check both the optional lifetime audit
+and the zero-sized no-owner token used in default builds. The hosted native lane
+compiles/tests the opt-in feature separately; ordinary qualification artifacts
+remain built without `shutdown-diagnostics`.

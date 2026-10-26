@@ -1,5 +1,10 @@
 # M5 — streams, terminals and responsiveness
 
+**Current acceptance:** See [M5 completion](m5-completion.md) for the integrated
+functional scope, evidence replay, measured review and remaining release risks.
+The increment records below preserve their original scope and limitations; earlier
+statements that later M5 increments are pending are historical checkpoints.
+
 ## Existing portable stream foundation
 
 The earlier #23 increment already provides independent binary framing,
@@ -68,7 +73,7 @@ RPC; see [native CEF streams](native-streams.md). This still does not close #23,
 handles and reconnect/scrollback policy remain open. Process groups/Windows jobs,
 detached descendants, readiness/restart policies and generation-safe cleanup are
 #25 work. The qualifier stops only its fixed direct child; that is not a universal
-supervisor. Fair native scheduling and representative interaction/tail-latency/RSS
+supervisor. Native-host UI scheduling and representative interaction/tail-latency/RSS
 measurements remain #26/#27. No performance improvement is inferred from these
 functional tests.
 
@@ -152,11 +157,14 @@ The PTY workflow runs the source regression suite on all three declared platform
 before its actual PTY cases.
 
 This quantum is a conservative implementation bound, not a measured optimal batch
-size or production responsiveness claim. It does not preempt a synchronous consumer,
-cap arbitrary producer CPU time, reserve a native control lane, or implement global
-fair scheduling across CEF views. Full native scheduler/load acceptance under
-#26/#27 and terminal supervision remain outstanding; the bounded native stream
-authority lane is documented separately in [native CEF streams](native-streams.md).
+size or production responsiveness claim. It does not preempt a synchronous consumer
+or cap arbitrary producer CPU time. Runtime TerminalService sources and the CEF
+stream lane now use a shared stable-owner scheduler: 16 handoffs per event-loop
+turn, 256 queued items, and 16 reserved lifecycle/control items. Queue depth,
+wait time, yields, rejected work, explicit coalescing and zero drops are exposed
+through diagnostics. Queued cancellation removes only unstarted work; active
+writer/native reservations remain charged until settlement. Native-host UI queue
+fairness and representative load acceptance remain outstanding under #26/#27.
 
 ## Runtime terminal-service increment
 
@@ -218,8 +226,9 @@ active blocked write. Existing FIFO order and consumer/RPC authority are unchang
 The ordinary budget admits the complete existing 128-packet pool after hexadecimal
 expansion; saturation remains explicit failure, never a dropped terminal stream.
 See [native output admission](native-output-admission.md). Schema-6 native RPC
-acceptance requires exercised output-budget diagnostics. Full renderer bulk-lane
-integration, global scheduling and descendant supervision remain open.
+acceptance requires exercised output-budget diagnostics. Native-host UI scheduling
+and descendant supervision remain open; runtime stream scheduling is covered by
+the deterministic shared-owner regressions.
 
 ## Backend exit notification handoff
 

@@ -35,3 +35,63 @@ test('terminal screen parsing rejects duplicates, changed prior rows, gaps and o
   assert.throws(() => reader.update(screen(Array.from({ length: 601 }, () => ({ text: '' })))))
   assert.throws(() => reader.update(screen([{ text: 'x'.repeat(1001) }])))
 })
+
+test('sustained screen observations keep a bounded rolling history without resetting xterm', () => {
+  const reader = new TerminalRecords({ maxRecords: 10000, retainedRecords: 600 })
+  for (let batch = 0; batch < 300; batch++) {
+    const start = batch * 32
+    const rows = Array.from({ length: Math.min(start + 32, 200) }, (_, i) => ({
+      text: marker(Math.max(0, start + 32 - 200) + i, 'record'),
+    }))
+    assert.equal(reader.update(screen(rows)).length, 32)
+    assert.equal(reader.count, start + 32)
+    assert.ok(reader.records.length <= 600)
+  }
+  assert.equal(reader.count, 9600)
+  assert.equal(reader.records.length, 600)
+  assert.throws(() => reader.update(screen([{ text: marker(9601) }])), /missing or reordered/)
+  assert.throws(() => reader.update(screen([{ text: marker(9599, 'changed') }])), /changed/)
+})
+
+test('unchanged scrollback is compared without decoding and parsing every old record again', () => {
+  const original = globalThis.atob
+  let decoded = 0
+  globalThis.atob = (input) => {
+    decoded++
+    return original(input)
+  }
+  try {
+    const reader = new TerminalRecords()
+    const rows = [{ text: marker(0) }, { text: marker(1, 'record') }]
+    assert.equal(reader.update(screen(rows)).length, 2)
+    for (let n = 0; n < 100; n++) assert.equal(reader.update(screen(rows)).length, 0)
+    assert.equal(decoded, 2, 'Only newly encountered records need binary/JSON decoding')
+    assert.equal(reader.update(screen([...rows, { text: marker(2, 'final') }])).length, 1)
+    assert.equal(decoded, 3)
+    assert.throws(() => reader.update(screen([{ text: marker(1, 'altered') }])), /changed/)
+    assert.equal(decoded, 3, 'A changed prior wire record must fail before decoding')
+  } finally {
+    globalThis.atob = original
+  }
+})
+
+test('cached screen checks retain exact wire spelling, duplicate detection and rolling eviction', () => {
+  const reader = new TerminalRecords({ maxRecords: 100, retainedRecords: 2 })
+  reader.update(screen([{ text: marker(0) }]))
+  const altered = `BUNLYTERM|0|${btoa('{ "type": "ready" }')}|END`
+  assert.throws(() => reader.update(screen([{ text: altered }])), /changed/)
+  assert.throws(
+    () => reader.update(screen([{ text: marker(0) }, { text: marker(0) }])),
+    /Duplicate/
+  )
+  for (let sequence = 1; sequence < 100; sequence++) {
+    assert.equal(
+      reader.update(screen([{ text: marker(sequence - 1) }, { text: marker(sequence) }])).length,
+      1
+    )
+    assert.equal(reader.records.length, 2)
+  }
+  assert.equal(reader.count, 100)
+  assert.throws(() => reader.update(screen([{ text: marker(0) }])), /changed/)
+  assert.throws(() => reader.update(screen([{ text: marker(99, 'changed') }])), /changed/)
+})

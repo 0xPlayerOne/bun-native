@@ -83,7 +83,9 @@ def root_executable_matches(tracker, actual, expected):
 
 def verified_target(tracker, app, role):
     """Require both live ancestry and kernel original-parent identity."""
-    if tracker.invalid or tracker.root_kernel is None:
+    if role not in ("host", "network"):
+        raise ValueError("unsupported-capture-role")
+    if tracker is None or tracker.invalid or tracker.root_kernel is None:
         raise ValueError("unverified-owned-root")
     root = psutil.Process(tracker.root_pid)
     mismatches = {
@@ -117,6 +119,15 @@ def verified_target(tracker, app, role):
             if proc.uids().real != os.getuid() or identity is None:
                 continue
             stamp, digest = executable_digest(path)
+            # Do not trust a replacement at the expected pathname merely because
+            # it is stable across snapshots. CloneCleanup pinned this helper
+            # before Popen, independently of role selection and capture timing.
+            if role == "network" and (
+                path != tracker.helper
+                or stamp != tracker.helper_stamp
+                or digest != tracker.helper_hash
+            ):
+                raise ValueError("helper-changed-since-launch")
             birth = proc.create_time()
             if tracker.kernel.identity(proc.pid) != identity:
                 raise ValueError("target-identity-changed")
@@ -134,16 +145,21 @@ class Capture:
         self.started = time.monotonic()
         self.worker = None
         self.records = []
+        self.stop = threading.Event()
 
     def __call__(self, tracker):
         if self.worker is None and time.monotonic() - self.started >= self.after:
-            self.worker = threading.Thread(target=self.run, args=(tracker,))
+            # Read-only diagnostics must not keep the command alive after its
+            # bounded join expires. No application ownership lives in this worker.
+            self.worker = threading.Thread(target=self.run, args=(tracker,), daemon=True)
             self.worker.start()
 
     def run(self, tracker):
         try:
             target = verified_target(tracker, self.app, self.role)
             for index in range(10):
+                if self.stop.is_set():
+                    raise ValueError("capture-cancelled")
                 if verified_target(tracker, self.app, self.role) != target:
                     raise ValueError("target-replaced-before-capture")
                 record = {
@@ -160,13 +176,44 @@ class Capture:
                     json.dumps(self.records, indent=2) + "\n"
                 )
                 record["threads"] = read_threads(target[0])
+                if self.stop.is_set():
+                    raise ValueError("capture-cancelled")
                 if verified_target(tracker, self.app, self.role) != target:
                     raise ValueError("target-replaced-after-capture")
                 record["identityRevalidated"] = True
                 if index < 9:
-                    time.sleep(0.25)
+                    self.stop.wait(0.25)
         except (OSError, ValueError, psutil.Error) as error:
             self.records.append({"failure": type(error).__name__ + ": " + str(error)})
+
+
+def finish_capture(capture, timeout=12):
+    """Never qualify partial snapshots or read worker-owned records before join."""
+    if capture is None:
+        return {"schema": 1, "status": "disabled", "captureComplete": False, "records": []}
+    if capture.worker is None:
+        return {"schema": 1, "status": "not-started", "captureComplete": False, "records": []}
+    capture.worker.join(timeout=timeout)
+    if capture.worker.is_alive():
+        capture.stop.set()
+        # The pre-read ledger remains available. Do not race the worker while
+        # serializing records or pretend incomplete data is a qualified capture.
+        return {
+            "schema": 1,
+            "status": "worker-did-not-settle",
+            "captureComplete": False,
+            "records": [],
+        }
+    complete = len(capture.records) == 10 and all(
+        row.get("identityRevalidated") is True and row.get("index") == index
+        for index, row in enumerate(capture.records)
+    )
+    return {
+        "schema": 1,
+        "status": "complete" if complete else "incomplete",
+        "captureComplete": complete,
+        "records": capture.records,
+    }
 
 
 def main():
@@ -220,11 +267,9 @@ def main():
     result = observer.observe(
         [str(executable)], timeout=90, sandbox_reader=presence, cleanup_observer=capture
     )
-    if capture is not None and capture.worker is not None:
-        capture.worker.join(timeout=12)
-        if capture.worker.is_alive():
-            raise RuntimeError("capture-worker-did-not-settle")
+    # Preserve the ordinary observer result even if diagnostic completion fails.
     (output / "process.json").write_text(json.dumps(result, indent=2) + "\n")
+    captured = finish_capture(capture)
     (output / "capture.json").write_text(
         json.dumps(
             {
@@ -233,14 +278,25 @@ def main():
                 else "read-only-thread-state",
                 "role": args.role,
                 "after": args.after,
-                "records": [] if capture is None else capture.records,
+                **captured,
             },
             indent=2,
         )
         + "\n"
     )
-    print(json.dumps({"exitCode": result["exitCode"], "output": str(output)}))
+    print(
+        json.dumps(
+            {
+                "exitCode": result["exitCode"],
+                "captureStatus": captured["status"],
+                "output": str(output),
+            }
+        )
+    )
+    # This status is diagnostic completion only; process.json remains authoritative
+    # for the separate application/workload/cleanup outcome.
+    return 0 if captured["status"] in ("disabled", "complete") else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

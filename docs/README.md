@@ -85,9 +85,11 @@ separate Python/Rust contributor formatters.
 [Native acceptance tooling](native-acceptance-tooling.md) defines the shared M4
 suite, sanitized evidence export/replay and the M5 diagnostic handoff.
 
-[M5 progress](m5-progress.md) records bounded callback-source integration,
-actual pinned Bun PTY qualification and the native renderer stream lane without
-claiming graphical terminal or supervisor completion.
+[M5 completion](m5-completion.md) maps accepted native streams, graphical terminals,
+service supervision and measured load to the declared support boundary.
+[M5 progress](m5-progress.md) preserves the individual implementation checkpoints.
+[Terminal regression review](terminal-regression-review.md) defines retained-evidence
+replay and measured review envelopes without inventing a release threshold.
 
 [Native control admission](native-control-admission.md) documents reserved command
 capacity, cancellation/task ownership and the real native saturation fixture.
@@ -100,3 +102,8 @@ pipe ownership, reserved control capacity and active-writer accounting.
 
 [Native process exit](native-process-exit.md) describes the notification-driven
 backend shutdown handoff and its unchanged identity and deadline boundaries.
+
+- [Sustained graphical terminal load](terminal-load-qualification.md): visible/hidden real PTY phases, bounded measurements, retained failed trials and historical qualification checkpoints.
+
+[Native window-state terminal load](terminal-window-load.md) defines distinct foreground,
+inactive-visible, hidden and minimized execution with actual native and page receipts.

@@ -71,3 +71,27 @@ test('actual descendant listener completes one pending HTTP notification without
     server.stop(true)
   }
 })
+
+for (const early of [true, false]) {
+  test(`direct child observation is explicit and retained before/after wait: early=${early}`, async () => {
+    const mode = 'backend-tree-exit'
+    const pids = [101]
+    const body = { mode, nonce, pids }
+    const gate = treeObservationGate(nonce, pids, mode)
+    expect((await gate(request('/observed', { ...body, pids: [102] }))).status).toBe(400)
+    expect(
+      (await gate(request('/observed', { ...body, mode: 'backend-shell-tree-exit' }))).status
+    ).toBe(400)
+    expect((await gate(request('/observed', { ...body, pids: [101, 102] }))).status).toBe(400)
+    let waiting: Promise<Response>
+    if (early) {
+      expect((await gate(request('/observed', body))).status).toBe(204)
+      waiting = gate(request('/observation'))
+    } else {
+      waiting = gate(request('/observation'))
+      expect((await gate(request('/observed', body))).status).toBe(204)
+    }
+    expect((await waiting).status).toBe(204)
+    expect((await gate(request('/observed', body))).status).toBe(409)
+  })
+}

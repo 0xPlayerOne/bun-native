@@ -81,3 +81,22 @@ mod tests {
         );
     }
 }
+
+#[cfg(all(test, not(feature = "shutdown-diagnostics")))]
+mod disabled_tests {
+    use super::*;
+
+    #[test]
+    fn ordinary_build_has_no_audit_owner_storage() {
+        assert_eq!(std::mem::size_of::<Token>(), 0);
+        for kind in [
+            Kind::ContextHandler,
+            Kind::SessionReady,
+            Kind::FlushCallback,
+            Kind::ConnectionsClosed,
+        ] {
+            let token = Token::new(kind);
+            assert_eq!(std::mem::size_of_val(&token), 0);
+        }
+    }
+}

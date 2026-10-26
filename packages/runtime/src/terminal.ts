@@ -3,6 +3,7 @@ import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import type { RpcScheduler } from '../../contracts/src/rpc.ts'
 import { rpcScheduler } from '../../contracts/src/rpc.ts'
 import type { BinaryStreamWriter, StreamOutcome } from '../../contracts/src/streams.ts'
+import { FairWorkScheduler } from './fair-scheduler.ts'
 import { CallbackStreamSource } from './stream-source.ts'
 
 const terminalBrand: unique symbol = Symbol('bunly.terminal')
@@ -88,7 +89,12 @@ export interface TerminalProcessExit {
   readonly exitCode: number | null
   readonly signalCode: NodeJS.Signals | number | null
   readonly waitError: boolean
-  readonly failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED' | null
+  readonly failure:
+    | 'SPAWN_FAILED'
+    | 'DEADLINE_EXCEEDED'
+    | 'TERMINATION_DENIED'
+    | 'SUPERVISION_FAILED'
+    | null
 }
 
 export interface TerminalClosure {
@@ -107,6 +113,13 @@ export interface TerminalObservation {
   readonly released: Promise<void>
 }
 
+/** A launch remains observable even when started rejects before returning a handle. */
+export interface TerminalLaunch {
+  readonly handle: TerminalHandle
+  readonly started: Promise<TerminalHandle>
+  readonly observation: TerminalObservation
+}
+
 export interface TerminalCloseResult {
   readonly processExited: boolean
   readonly terminalClosed: boolean
@@ -115,6 +128,9 @@ export interface TerminalCloseResult {
 }
 
 export interface TerminalDriverSpawnOptions {
+  /** Backend lifetime for bounded native admission, never renderer authority. */
+  readonly signal?: AbortSignal
+  readonly spawnTimeoutMs?: number
   readonly executable: string
   readonly cwd: string
   readonly argv: readonly string[]
@@ -125,6 +141,10 @@ export interface TerminalDriverSpawnOptions {
 }
 
 export interface TerminalDriverObserver {
+  /** Attested failure before any command was created. */
+  processNotStarted?(terminalCreated: boolean): void
+  /** Unknown command/group ownership: settle failure without releasing reservations. */
+  processFailed?(failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED'): void
   output(bytes: Uint8Array): void
   terminalClosed(status: number): void
   processExited(exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>): void
@@ -296,7 +316,7 @@ function validateOptions(
   let argumentBytes = 0
   for (let index = 0; index < argumentCount; index++) {
     const value = argv[index]
-    boundedString(value, 'Argument')
+    if (value !== '') boundedString(value, 'Argument')
     argumentBytes += Buffer.byteLength(value)
     argumentsSnapshot.push(value)
   }
@@ -403,6 +423,7 @@ export interface TerminalServiceOptions {
   readonly driver?: TerminalDriver
   readonly limits?: Partial<TerminalServiceLimits>
   readonly scheduler?: RpcScheduler
+  readonly fairScheduler?: FairWorkScheduler
 }
 
 /** Persistent runtime owner for Bun PTYs; application callbacks never own the subprocess. */
@@ -412,6 +433,7 @@ export class TerminalService {
   readonly #clock: RpcScheduler
   readonly #capacity: TerminalCapacity
   readonly #sourceBudget: StreamBudget
+  readonly #fairScheduler: FairWorkScheduler
   readonly #entries = new WeakMap<TerminalHandle, Resource>()
   readonly #live = new Set<Resource>()
   #sequence = 0
@@ -445,6 +467,7 @@ export class TerminalService {
       maxStreams: limits.maxTerminals,
       maxStreamsPerView: limits.maxTerminalsPerOwner,
     })
+    this.#fairScheduler = options.fairScheduler ?? new FairWorkScheduler()
   }
 
   async create(
@@ -452,6 +475,10 @@ export class TerminalService {
     writer: BinaryStreamWriter,
     input: TerminalSpawnOptions
   ): Promise<TerminalHandle> {
+    return this.launch(owner, writer, input).started
+  }
+
+  launch(owner: object, writer: BinaryStreamWriter, input: TerminalSpawnOptions): TerminalLaunch {
     if (this.#disposed) throw new TerminalError('DISPOSED', 'Terminal service disposed')
     if (!owner || typeof owner !== 'object')
       throw new TerminalError('INVALID_ARGUMENT', 'A stable runtime owner object is required')
@@ -501,17 +528,30 @@ export class TerminalService {
     this.#entries.set(handle, resource)
     this.#live.add(resource)
     if (lifetimeSignal) this.#attachLifetimeSignal(resource, lifetimeSignal)
+    const started = this.#spawn(resource, writer, options, lifetimeSignal)
+    return Object.freeze({ handle, started, observation: this.observe(handle) })
+  }
+
+  async #spawn(
+    resource: Resource,
+    writer: BinaryStreamWriter,
+    options: ReturnType<typeof validateOptions>,
+    lifetimeSignal: AbortSignal | undefined
+  ): Promise<TerminalHandle> {
+    const { handle, owner } = resource
     try {
       resource.source = new CallbackStreamSource(writer, {
         budget: this.#sourceBudget,
-        owner,
+        owner: owner!,
         maxRetainedBytes: options.maxOutputBytes,
         maxQueuedChunks: options.maxQueuedOutputChunks,
         coalescePending: true,
+        scheduler: this.#fairScheduler,
         stopSource: () => this.#stopExact(resource, resource.requestedSignal ?? 'SIGKILL'),
       })
       resource.outputFinished = resource.source.finished
     } catch (error) {
+      resource.outputFinished = Promise.resolve({ ok: false, code: 'CONSUMER_FAILED' })
       resource.sourceDrained = true
       this.#notSpawned(resource, 'SPAWN_FAILED')
       throw error
@@ -533,17 +573,31 @@ export class TerminalService {
       )
     }
     const observer: TerminalDriverObserver = Object.freeze({
+      processNotStarted: (terminalCreated: boolean) => {
+        resource.processReleased = true
+        if (!terminalCreated) resource.terminalReleased = true
+        this.#settleProcessFailure(resource, 'SPAWN_FAILED')
+        this.#collect(resource)
+      },
       output: (bytes: Uint8Array) => {
         resource.source?.push(bytes)
       },
       terminalClosed: (status: number) => this.#terminalClosed(resource, status),
+      processFailed: (failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED') => {
+        resource.driverFailure = true
+        this.#settleProcessFailure(resource, failure)
+        this.#cancelResource(resource, 'SIGKILL')
+      },
       processExited: (exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>) =>
         this.#processExited(resource, exit),
     })
     let spawned: TerminalDriverProcess | Promise<TerminalDriverProcess>
     resource.spawnInvoked = true
     try {
-      spawned = this.#driver.spawn(options, observer)
+      spawned = this.#driver.spawn(
+        { ...options, signal: resource.spawnController.signal },
+        observer
+      )
     } catch {
       this.#spawnRejected(resource)
       throw new TerminalError('SPAWN_FAILED')
@@ -715,6 +769,7 @@ export class TerminalService {
       closing: resources.filter((resource) => resource.state === 'closing').length,
       pendingDriverWrites: resources.reduce((sum, resource) => sum + resource.driverWrites, 0),
       driverFailures: resources.filter((resource) => resource.driverFailure).length,
+      scheduling: this.#fairScheduler.diagnostics(),
       disposed: this.#disposed,
     })
   }
@@ -870,7 +925,10 @@ export class TerminalService {
     this.#collect(resource)
   }
 
-  #settleProcessFailure(resource: Resource, failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED'): void {
+  #settleProcessFailure(
+    resource: Resource,
+    failure: NonNullable<TerminalProcessExit['failure']>
+  ): void {
     if (resource.processSettled) return
     resource.processSettled = true
     resource.processExit.resolve(

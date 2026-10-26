@@ -1,7 +1,11 @@
+import { NativeTerminalDriver, type NativeTerminalConfiguration } from './terminal-owner.ts'
+import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
+import { parseCefWindowState, type CefWindowState } from './cef-window-state.ts'
+export type { CefWindowState } from './cef-window-state.ts'
 import { RpcServer } from './rpc.ts'
 import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
 import { RpcLoopbackServer } from './rpc-loopback.ts'
@@ -15,11 +19,13 @@ import {
   decodeNativeLoopbackConfirmation,
 } from '../../contracts/src/rpc-native-handoff.ts'
 import { RpcError, rpcLimits } from '../../contracts/src/rpc.ts'
-import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
+import type { RpcSchema } from '../../contracts/src/rpc.ts'
 import { BinaryStreamReceiver, BinaryStreamSender } from '../../contracts/src/streams.ts'
 import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import { STREAM_CHUNK_BYTES } from '../../contracts/src/stream-wire.ts'
 import type { BinaryStreamOptions, BinaryStreamSink } from '../../contracts/src/streams.ts'
+import { FairWorkScheduler } from './fair-scheduler.ts'
+import { CefLaneTransport } from './cef-lane-transport.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
@@ -116,17 +122,6 @@ interface ViewResource extends NativeResource {
   state: ViewState
 }
 const MAX_NATIVE_RPC_PACKET = 24 * 1024
-function hex(packet: Uint8Array): string {
-  if (
-    !(packet instanceof Uint8Array) ||
-    packet.byteLength < 1 ||
-    packet.byteLength > MAX_NATIVE_RPC_PACKET
-  )
-    throw new RpcError('PROTOCOL_ERROR', 'Native RPC packet size denied')
-  let result = ''
-  for (const byte of packet) result += byte.toString(16).padStart(2, '0')
-  return result
-}
 function unhex(value: unknown): Uint8Array {
   if (
     typeof value !== 'string' ||
@@ -140,52 +135,6 @@ function unhex(value: unknown): Uint8Array {
   for (let index = 0; index < packet.length; index++)
     packet[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
   return packet
-}
-class CefLaneTransport implements RpcTransport {
-  #message: ((packet: Uint8Array) => void) | undefined
-  #closed: (() => void) | undefined
-  #ended = false
-  constructor(
-    readonly native: NativeTransport,
-    readonly identity: Readonly<{ connection: number; context: number; generation: number }>,
-    readonly lane: 'rpc' | 'stream'
-  ) {}
-  send(packet: Uint8Array): Promise<void> {
-    if (this.#ended)
-      return Promise.reject(new RpcError('DISCONNECTED', 'Native RPC transport closed'))
-    return this.native
-      .call(`${this.lane}.deliver`, { ...this.identity, packet: hex(packet) })
-      .then(() => {})
-  }
-  subscribe(message: (packet: Uint8Array) => void, closed: () => void): () => void {
-    if (this.#message) throw new TypeError('Native RPC transport permits one subscriber')
-    this.#message = message
-    this.#closed = closed
-    return () => {
-      this.#message = undefined
-      this.#closed = undefined
-    }
-  }
-  receive(packet: Uint8Array, sequence: number): void {
-    if (this.#ended || !this.#message) return
-    this.#message(packet)
-    if (this.#ended) return
-    void this.native
-      .call(`${this.lane}.ack`, { ...this.identity, sequence })
-      .catch(() => this.end(false))
-  }
-  close(): void {
-    this.end(true)
-  }
-  end(tellNative: boolean): void {
-    if (this.#ended) return
-    this.#ended = true
-    if (tellNative)
-      void this.native.call(`${this.lane}.disconnect`, { ...this.identity }).catch(() => {})
-    this.#closed?.()
-    this.#message = undefined
-    this.#closed = undefined
-  }
 }
 class CefRpcTransport extends CefLaneTransport {
   constructor(
@@ -388,6 +337,7 @@ export class CefBackend implements BrowserBackend {
   readonly #streamRetired = new WeakSet<ViewHandle>()
   readonly #rpcConnections = new Map<number, CefRpcConnection>()
   readonly #streamConnections = new Map<number, CefStreamNativeConnection>()
+  readonly #streamScheduler = new FairWorkScheduler()
   readonly #rpcFragments = new RpcFragmentBudget()
   #nativeConfirmations = 0
   #nativeConfirmationRejections = 0
@@ -404,6 +354,28 @@ export class CefBackend implements BrowserBackend {
   #rpcConfigured = false
   #disposed = false
   #listenerErrors = 0
+  /** Native-owned discovery; caller explicitly accepts the non-detaching profile. */
+  async createTerminalDriver(options: {
+    readonly profile: 'non-detaching'
+  }): Promise<NativeTerminalDriver> {
+    if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+    const ready = await this.#transport.ready
+    if (this.#disposed || !ready.data?.['terminalOwner'])
+      throw new Error('Native terminal owner unavailable')
+    return new NativeTerminalDriver(
+      ready.data['terminalOwner'] as NativeTerminalConfiguration,
+      options.profile
+    )
+  }
+  async createTerminalService(
+    options: Omit<TerminalServiceOptions, 'driver'> & { readonly profile: 'non-detaching' }
+  ): Promise<TerminalService> {
+    return new TerminalService({
+      ...(options.limits ? { limits: options.limits } : {}),
+      ...(options.scheduler ? { scheduler: options.scheduler } : {}),
+      driver: await this.createTerminalDriver(options),
+    })
+  }
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
@@ -670,6 +642,21 @@ export class CefBackend implements BrowserBackend {
       scope: captured.nativeScope,
     })
   }
+  /** @internal Fixed, native-bound contributor fault. Ordinary builds reject it.
+   * No page-supplied task or PID. Success means native dispatch was accepted, not that
+   * the renderer exited; the qualifier separately requires the actual exit.
+   */
+  async qualifyRendererCrash(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const result = await this.#transport.call('rpc.qualification.renderer.crash', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+    })
+    if (result !== null) throw new Error('Invalid native renderer injection receipt')
+    // The intended side effect revokes this document. Do not require it to stay
+    // live after the native action, or turn a real termination into stale-scope failure.
+  }
   /** @internal Fixed contributor-only real Chromium throttle probe. */
   async qualifyTransportThrottle(scope: PolicyScope, rate: 1 | 4): Promise<void> {
     this.#active()
@@ -764,6 +751,47 @@ export class CefBackend implements BrowserBackend {
     if (this.#closing.has(view) || this.#closing.has(resource.window))
       throw new BunlyError('DISPOSED', 'View is closing')
     return resource
+  }
+  #liveWindow(window: WindowHandle): NativeResource {
+    this.#active()
+    const resource = this.#registry.get<'window', NativeResource>(window, 'window')
+    if (this.#closing.has(window)) throw new BunlyError('DISPOSED', 'Window is closing')
+    return resource
+  }
+  async #windowStateOperation(
+    window: WindowHandle,
+    operation: 'window.state' | 'window.minimize' | 'window.restore' | 'window.activate',
+    options?: OperationOptions
+  ): Promise<CefWindowState> {
+    const resource = this.#liveWindow(window)
+    const result = await this.#transport.call(operation, { id: resource.native }, options?.signal)
+    this.#liveWindow(window)
+    return parseCefWindowState(result)
+  }
+  /** @internal Read-only contributor fixture; ordinary builds reject it. */
+  async qualifyWindowVisibility(window: WindowHandle): Promise<unknown> {
+    const resource = this.#liveWindow(window)
+    const value = await this.#transport.call('window.qualification.visibility', {
+      id: resource.native,
+    })
+    this.#liveWindow(window)
+    return value
+  }
+  /** Snapshot of the actual owned CEF window on its UI thread; never cached intent. */
+  windowState(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.state', options)
+  }
+  /** Request minimization and return immediate native readback, not transition completion. */
+  minimizeWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.minimize', options)
+  }
+  /** Request activation; actual focus depends on the OS. Returned state is not promised intent. */
+  activateWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.activate', options)
+  }
+  /** CEF Restore restores minimized/maximized windows; use showWindow to unhide. */
+  restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.restore', options)
   }
   async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
     this.#active()
@@ -1183,6 +1211,25 @@ export class CefBackend implements BrowserBackend {
     this.#streamConnections.clear()
   }
 
+  /** Await admitted RPC work and actual native reply receipts before controlled
+   * teardown. Producers must be quiescent; this never grants or restores authority. */
+  async drainRpc(view: ViewHandle): Promise<void> {
+    this.#active()
+    const resource = this.#liveView(view)
+    const document = resource.state.documentId
+    const current = [...this.#rpcConnections.entries()].find(([, value]) => value.view === view)
+    if (!current?.[1].server) throw new RpcError('REVOKED', 'Native RPC document unavailable')
+    const [id, connection] = current
+    await connection.server!.whenIdle()
+    this.#active()
+    if (
+      this.#liveView(view) !== resource ||
+      resource.state.documentId !== document ||
+      this.#rpcConnections.get(id) !== connection
+    )
+      throw new RpcError('REVOKED', 'Native RPC document changed during drain')
+  }
+
   rpcDiagnostics() {
     return {
       connections: this.#rpcConnections.size,
@@ -1204,6 +1251,7 @@ export class CefBackend implements BrowserBackend {
       connections: this.#streamConnections.size,
       connectionFailures: this.#streamConnectionFailures,
       budget: this.#streamBudget?.diagnostics() ?? null,
+      scheduling: this.#streamScheduler.diagnostics(),
     }
   }
   dispose(): Promise<void> {
@@ -1329,7 +1377,9 @@ export class CefBackend implements BrowserBackend {
         context: Number(data['context']),
         generation: Number(data['generation']),
       }),
-      'stream'
+      'stream',
+      this.#streamScheduler,
+      view
     )
     const controller = new AbortController()
     const nativeConnection: CefStreamNativeConnection = { view, transport, controller }

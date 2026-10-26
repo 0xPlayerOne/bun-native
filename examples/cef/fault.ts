@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { rendererFaultExit } from './fault-exit.ts'
 import { pageTimeout } from './page-readiness.ts'
 import { waitForGpuInjection } from './fault-ack.ts'
-import { startObservedShellTree } from './fault-supervision.ts'
+import { startObservedDirectChild, startObservedShellTree } from './fault-supervision.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
@@ -45,15 +46,24 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
   })
   void page.catch(() => {})
   let rendererExitSeen = false
+  let rendererExitCode: unknown
+  let pageReady = false
+  let documentReady = false
   const off = backend.observe((event) => {
-    if (event.event === 'view.renderer-exit') rendererExitSeen = true
+    if (event.event === 'view.renderer-exit') {
+      rendererExitSeen = true
+      rendererExitCode = event.data?.['code']
+    }
     const text = String(event.data?.['message'] ?? '')
-    if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') finish()
+    if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') pageReady = true
+    if (event.event === 'view.loaded' && event.data?.['url'] === 'app://ui/index.html')
+      documentReady = true
+    if (pageReady && (mode !== 'renderer-exit' || documentReady)) finish()
     if (text.startsWith('BUNLY_ASSET_TEST_FAILED')) reject(new Error(text))
   })
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    await backend.createView({
+    const view = await backend.createView({
       window,
       session,
       url: 'app://ui/index.html',
@@ -61,7 +71,10 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
     })
     timer = setTimeout(() => reject(new Error('Fault fixture page deadline')), faultDeadlineMs)
     await page
-    console.error(JSON.stringify({ event: 'bunly.fault.ready', mode, pid: process.pid }))
+    const rendererScope =
+      mode === 'renderer-exit' ? await backend.capturePolicyScope(view) : undefined
+    const readiness = { mode, pid: process.pid }
+    console.error(JSON.stringify({ event: 'bunly.fault.ready', ...readiness }))
     const ready = process.env['BUNLY_CEF_FAULT_READY']
     if (ready !== undefined) {
       const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
@@ -69,7 +82,7 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
         isAbsolute(ready) && /^[a-f0-9]{48}$/.test(nonce),
         'Invalid private fault readiness configuration'
       )
-      await writeFile(ready, JSON.stringify({ mode, nonce, pid: process.pid }), {
+      await writeFile(ready, JSON.stringify({ ...readiness, nonce }), {
         flag: 'wx',
         mode: 0o600,
       })
@@ -90,18 +103,11 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0)
       throw new Error('Deliberately blocked backend unexpectedly resumed')
     }
-    if (mode === 'backend-tree-exit') {
-      const descendant = Bun.spawn([process.execPath, '-e', 'setInterval(() => {}, 1000)'], {
-        stdin: 'ignore',
-        stdout: 'inherit',
-        stderr: 'inherit',
-      })
-      console.error(JSON.stringify({ event: 'bunly.fault.descendant', pid: descendant.pid }))
-      await Bun.sleep(150)
-      process.exit(23)
-    }
+    if (mode === 'backend-tree-exit') await startObservedDirectChild(faultDeadlineMs)
     if (mode === 'backend-exit') process.exit(23)
     if (mode === 'renderer-exit') {
+      assert.ok(rendererScope)
+      await backend.qualifyRendererCrash(rendererScope)
       let deadline: ReturnType<typeof setTimeout> | undefined
       try {
         await Promise.race([
@@ -114,9 +120,8 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
           }),
         ])
         assert.ok(rendererExitSeen, 'Missing native renderer exit event')
-        console.error(
-          JSON.stringify({ event: 'bunly.native.renderer-failure-observed', passed: true })
-        )
+
+        console.error(JSON.stringify(rendererFaultExit(rendererExitCode, process.platform)))
         return
       } finally {
         if (deadline) clearTimeout(deadline)

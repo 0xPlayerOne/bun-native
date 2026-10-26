@@ -140,12 +140,50 @@ def commands(suite, bun, app):
             ),
         ]
     if suite == "full":
+        # A real window manager is a qualification prerequisite on Linux, not
+        # an application dependency or permission to reuse a contributor desktop.
+        window = (
+            [
+                sys.executable,
+                str(ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                "--disposable-runner",
+                "--bun",
+                bun,
+                str(app),
+            ]
+            if sys.platform == "linux"
+            else [bun, str(ROOT / "scripts/qualify-cef-window-modes.ts"), str(app)]
+        )
+        result.append(("window-modes", window))
         result.append(
             (
                 "terminals",
                 [bun, str(ROOT / "scripts/qualify-cef-terminals.ts"), str(app), "--functional"],
             )
         )
+    if suite == "full":
+        # Keep real native state and default renderer throttling in the load gate.
+        # Linux owns an isolated window manager, never the contributor's desktop.
+        load = (
+            [
+                sys.executable,
+                str(ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                "--disposable-runner",
+                "--terminal-load",
+                "--bun",
+                bun,
+                str(app),
+            ]
+            if sys.platform == "linux"
+            else [
+                bun,
+                str(ROOT / "scripts/qualify-terminal-window-load.ts"),
+                "cef",
+                str(app),
+                "--functional",
+            ]
+        )
+        result.append(("terminal-load", load))
     if suite in ("m4-acceptance", "full"):
         result.extend(commands("credentials", bun, app))
     return result
@@ -197,9 +235,13 @@ def execute(name, args, timeout=600):
 
 
 def report_directory(name):
-    return (
-        ROOT / ".bunly/m5/graphical-terminals" if name == "terminals" else ROOT / ".bunly/m3" / name
-    )
+    if name == "terminals":
+        return ROOT / ".bunly/m5/graphical-terminals"
+    if name == "window-modes":
+        return ROOT / ".bunly/m5/window-modes"
+    if name == "terminal-load":
+        return ROOT / ".bunly/m5/terminal-load"
+    return ROOT / ".bunly/m3" / name
 
 
 def new_report(name, before):
@@ -258,6 +300,34 @@ def run(suite):
         os.environ["PYTHON"] = sys.executable
         os.environ["BUNLY_BENCH_SANDBOX"] = "1"
         app = artifact()
+        if suite != "credentials":
+            executable_dir = app / "Contents/MacOS" if sys.platform == "darwin" else app.parent
+            suffix = ".exe" if sys.platform == "win32" else ""
+            code = execute(
+                "terminal-owner",
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/qualify_terminal_owner.py"),
+                    "--bun",
+                    bun,
+                    "--owner",
+                    str(executable_dir / ("bunly-terminal-owner" + suffix)),
+                    "--host",
+                    str(
+                        ROOT
+                        / "native/cef-host/target/release"
+                        / ("bunly-terminal-fixture-host" + suffix)
+                    ),
+                    "--output",
+                    str(EVIDENCE / "terminal-owner.json"),
+                ],
+            )
+            owner_report = json.loads((EVIDENCE / "terminal-owner.json").read_text())
+            result["terminalOwnership"] = {
+                "passed": code == 0 and owner_report.get("passed") is True
+            }
+            if not result["terminalOwnership"]["passed"]:
+                raise ValueError("Actual native terminal ownership qualification failed")
         _, _, library = layout(app)
         code = execute(
             "identity",
@@ -327,6 +397,8 @@ def collect():
         ROOT / ".bunly/m3/session-reset",
         ROOT / ".bunly/m3/faults",
         ROOT / ".bunly/m5/graphical-terminals",
+        ROOT / ".bunly/m5/window-modes",
+        ROOT / ".bunly/m5/terminal-load",
     ):
         for path in directory.glob("run-*/report.json"):
             if not path.is_symlink() and path.stat().st_size <= 128 * 1024**2:
