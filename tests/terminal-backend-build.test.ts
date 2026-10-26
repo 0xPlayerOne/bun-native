@@ -34,3 +34,39 @@ test('prepared terminal clone replaces stale bootstrap with exact current CefBac
     await rm(work, { recursive: true, force: true })
   }
 }, 15000)
+
+// The current functional fixture also exercises managed native service generations.
+test('functional terminal preparation rebuilds the guarded service child with the bootstrap', async () => {
+  const work = await mkdtemp(join(tmpdir(), 'bunly-terminal-service-build-'))
+  try {
+    await mkdir(join(work, 'backend'))
+    await writeFile(
+      join(work, 'backend/service-child.js'),
+      'throw new Error("stale service child")\n'
+    )
+    const result = await buildTerminalBackend(root, work, false)
+    assert.deepEqual(Object.keys(result).sort(), [
+      'application.js',
+      'main.js',
+      'service-child.js',
+      'terminal-child.js',
+    ])
+    assert.equal(result['service-child.js']!.source, 'examples/cef-terminal/service-child.ts')
+    const expected = await Bun.build({
+      entrypoints: [join(root, 'examples/cef-terminal/service-child.ts')],
+      target: 'bun',
+      format: 'esm',
+      minify: false,
+    })
+    assert.ok(expected.success)
+    const actual = await readFile(join(work, 'backend/service-child.js'))
+    assert.equal(
+      createHash('sha256').update(actual).digest('hex'),
+      createHash('sha256')
+        .update(await expected.outputs[0]!.text())
+        .digest('hex')
+    )
+  } finally {
+    await rm(work, { recursive: true, force: true })
+  }
+}, 15000)

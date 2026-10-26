@@ -17,6 +17,7 @@ export async function buildTerminalBackend(root: string, resources: string, load
       load ? 'examples/cef-terminal-load/child.ts' : 'examples/cef-terminal/terminal-child.ts',
       'terminal-child.js',
     ],
+    ...(!load ? ([['examples/cef-terminal/service-child.ts', 'service-child.js']] as const) : []),
   ] as const
   const result: Record<string, { source: string; bytes: number; sha256: string }> = {}
   for (const [source, name] of entries) {
