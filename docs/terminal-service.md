@@ -215,3 +215,13 @@ supply descendant ownership within the declared profile. The graphical fixture u
 this driver; generic direct Bun use remains explicit and separately documented.
 See [native terminal ownership](terminal-owner.md) for protocol, failure accounting,
 platform acceptance and unsupported guardian/detached-group boundaries.
+
+## Opted-in service supervision
+
+[ServiceSupervisor](service-supervisor.md) adds explicit readiness and finite
+application-child restart around this service. `launch()` returns an admitted
+handle, a spawn promise and lifecycle observations together, so supervisors retain
+ownership even when spawning fails or times out. `create()` remains the convenience
+API for callers that only need successful creation. TerminalService itself never
+restarts children or replays input; M6 backend reload and native descendant
+containment remain separate.

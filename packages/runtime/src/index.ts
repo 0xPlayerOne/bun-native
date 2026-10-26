@@ -114,3 +114,17 @@ export type {
   TerminalServiceOptions,
   TerminalSpawnOptions,
 } from './terminal.ts'
+
+export { ServiceSupervisor } from './service-supervisor.ts'
+export type {
+  ServiceCallbackContext,
+  ServiceFailure,
+  ServiceGeneration,
+  ServiceOutput,
+  ServiceReadiness,
+  ServiceRestartPolicy,
+  ServiceSnapshot,
+  ServiceState,
+  ServiceSupervisorOptions,
+} from './service-supervisor.ts'
+export type { TerminalLaunch } from './terminal.ts'
