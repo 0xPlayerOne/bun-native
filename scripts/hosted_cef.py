@@ -140,6 +140,21 @@ def commands(suite, bun, app):
             ),
         ]
     if suite == "full":
+        # A real window manager is a qualification prerequisite on Linux, not
+        # an application dependency or permission to reuse a contributor desktop.
+        window = (
+            [
+                sys.executable,
+                str(ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                "--disposable-runner",
+                "--bun",
+                bun,
+                str(app),
+            ]
+            if sys.platform == "linux"
+            else [bun, str(ROOT / "scripts/qualify-cef-window-modes.ts"), str(app)]
+        )
+        result.append(("window-modes", window))
         result.append(
             (
                 "terminals",
@@ -197,9 +212,11 @@ def execute(name, args, timeout=600):
 
 
 def report_directory(name):
-    return (
-        ROOT / ".bunly/m5/graphical-terminals" if name == "terminals" else ROOT / ".bunly/m3" / name
-    )
+    if name == "terminals":
+        return ROOT / ".bunly/m5/graphical-terminals"
+    if name == "window-modes":
+        return ROOT / ".bunly/m5/window-modes"
+    return ROOT / ".bunly/m3" / name
 
 
 def new_report(name, before):

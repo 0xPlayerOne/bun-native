@@ -78,11 +78,13 @@ and any nonzero terminal, stream or native final reservation.
 
 ## Unsupported modes and remaining gates
 
-The current maintained native API can create and close a visible window but has
-no qualified background-visibility or minimize control. The report therefore
-records foreground as the actually exercised visible window and both background
-and minimized as `NOT_QUALIFIED`; it does not invent those modes or disable
-Chromium throttling.
+The separate [native window-mode prerequisite](cef-window-modes.md) adds CEF-only
+readback, minimize and restore operations, with independent page visibility
+qualification. This terminal fixture still reports background and minimized as
+`NOT_QUALIFIED` until the combined load follow-up uses those operations and passes
+on the current source. An inactive visible window is not proof of foreground
+interaction, and hidden is not interchangeable with minimized. No Chromium
+throttling is disabled.
 
 The fixture covers direct owned children only. Detached descendants, generalized
 scrollback/reconnect policy, release qualification, identical-workload competitor

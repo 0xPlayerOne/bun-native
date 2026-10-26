@@ -33,6 +33,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "transports",
                 "session-reset",
                 "faults",
+                "window-modes",
                 "terminals",
                 "credentials",
             ],
@@ -119,7 +120,7 @@ class HostedQualificationTests(unittest.TestCase):
                     [
                         row
                         for row in hosted.commands("full", bun, app)
-                        if row[0] not in ("faults", "terminals")
+                        if row[0] not in ("faults", "window-modes", "terminals")
                     ],
                     m4,
                 )
@@ -302,3 +303,43 @@ class GraphicalTerminalStageTests(unittest.TestCase):
         rows[-1]["passed"] = False
         with self.assertRaises(ValueError):
             hosted.require_stage_prerequisites("full", "credentials", rows)
+
+
+class NativeWindowStageTests(unittest.TestCase):
+    def test_full_uses_native_modes_with_disposable_linux_wm_and_preserves_provider_gate(self):
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app)
+                names = [name for name, _ in selected]
+                self.assertEqual(names[-3:], ["window-modes", "terminals", "credentials"])
+                expected = (
+                    [
+                        sys.executable,
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                        "--disposable-runner",
+                        "--bun",
+                        "/bun",
+                        str(app),
+                    ]
+                    if system == "linux"
+                    else [
+                        "/bun",
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes.ts"),
+                        str(app),
+                    ]
+                )
+                self.assertEqual(dict(selected)["window-modes"], expected)
+                self.assertNotIn(
+                    "window-modes", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "window-modes")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+        self.assertEqual(
+            hosted.report_directory("window-modes"), hosted.ROOT / ".bunly/m5/window-modes"
+        )
+        workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertEqual(workflow.count("libgbm1 xvfb dbus-x11 openbox"), 2)

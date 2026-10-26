@@ -4,7 +4,9 @@
   "include": [
     "packages/contracts/src/**/*.ts",
     "packages/client/src/**/*.ts",
-    "examples/workbench/browser.ts"
+    "examples/workbench/browser.ts",
+    "examples/cef-window-state/client.ts",
+    "examples/cef-window-state/contract.ts"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**"]
 }
