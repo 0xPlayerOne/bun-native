@@ -111,3 +111,69 @@ correlation, physical-input acceptance, a measured plateau/regression decision,
 and the separately owned #25 parent-loss blocker remain explicit milestone gates.
 No codec/native ratio or successful functional profile establishes end-user
 performance, production readiness or a historical native watchdog fix.
+
+## Retained macOS acceptance attempt
+
+The [evidence manifest](../evidence/m5-terminal-load/manifest.json) and
+[compressed raw export](../evidence/m5-terminal-load/raw-evidence.json.gz) retain
+all five development/qualification attempts, including the sandbox setup failure,
+initial harness failures and the successful exploratory visible/hidden run.
+Fixture nonces and local user/temporary paths are redacted; original file hashes,
+ordered samples, outcomes, complete batch records and native receipts remain.
+No binary, browser profile, credential or crash dump is included.
+
+The final declared profile ran on clean source
+`c23014dbb7f4d04a323ca23c935f1bc9c47c7978` with Bun 1.4.3 and the immutable
+`c17d20f` native input. The unchanged CEF library identifies as
+`156.0.7+g47dbc1d+chromium-156.0.8078.17`. After #115 merged, the unpublished
+implementation was rebased onto `6c01202` as
+`db1a8028afcddd1d1525fcb6c196635638adfbbd`; the entire implementation Git tree
+remained exactly `6efdcd2afbda627fd9dbb26e0606f9e8a5d3329a`. This records code
+identity across the rebase; it does not pretend a second native run occurred.
+
+**The repeated profile failed acceptance: 7/12 launches passed, 5/12 failed.**
+Those counts include one warmup per mode; measured launches were 6 passed and
+4 failed. Every planned trial ran, and input/prepared inventories and source
+hashes stayed unchanged. The original schema-2 functional compatibility run
+passed separately on the same clean implementation.
+
+| Trial  | Mode    | Retained outcome                                                                                                                  |
+| ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Warmup | Hidden  | Stream deadline during sustained batch 205; ordinary cleanup completed                                                            |
+| 1      | Hidden  | Load-operation deadline at batch 413; subsequent CEF teardown watchdog, one observed utility orphan, failed cleanup qualification |
+| 2      | Hidden  | Load-operation deadline at batch 347; ordinary cleanup completed                                                                  |
+| 3      | Visible | All 700 batches completed; subsequent CEF teardown watchdog, one observed utility orphan, failed cleanup qualification            |
+| 3      | Hidden  | Load-operation deadline at batch 325; ordinary cleanup completed                                                                  |
+
+The observer terminated the two observed utility orphans and recorded zero
+post-cleanup surviving processes. That does **not** erase the orphan or failed
+clone-cleanup qualifications. No historical watchdog fix or #25 parent-loss
+resolution is inferred. The stream handoff, renderer and scheduling contribution
+to these deadlines remains unresolved; successful hidden trials do not prove the
+failed trials were merely browser throttling.
+
+Successful measured visible trials had sustained-phase RSS quarter medians
+rising from approximately 830–843 MiB in the first quarter to 899–909 MiB in the
+last. This is not a demonstrated plateau. Successful-trial application RPC tails
+and repeated-launch bootstrap summaries are retained in the archive, conditioned
+on those successes; the failed trials prevent a reliable responsiveness or
+performance-budget acceptance claim.
+
+Replay the published observations against the current source fingerprints:
+
+```sh
+bun scripts/verify-terminal-load-evidence.ts
+```
+
+A successful replay means the export is internally consistent: it must reproduce
+**7 passes and 5 retained failures**, not turn this profile green. The replay also
+rechecks the original functional receipt and rejects modified source hashes.
+
+Completed local checks on the qualified implementation:
+`bun run check:portable` (840 TypeScript passes, one existing skip, 229 Python
+passes, browser/reference typechecks, boundaries, formatting/lint and build),
+`bun run check:foundation` (145 passes), `bun run check:workflows`, and
+`bun run foundry:doctor`. Doctor retains its existing unreleased-runtime-pin
+warning. Normal commit hooks passed. Native Rust checks/build were not rerun:
+there are no native source changes and this uses the explicitly supplied immutable
+bundle. Windows/Linux load execution and coordinator review remain pending.

@@ -100,3 +100,5 @@ pipe ownership, reserved control capacity and active-writer accounting.
 
 [Native process exit](native-process-exit.md) describes the notification-driven
 backend shutdown handoff and its unchanged identity and deadline boundaries.
+
+- [Sustained graphical terminal load](terminal-load-qualification.md): visible/hidden real PTY phases, bounded measurements, retained failed trials and remaining #27 acceptance gates.
