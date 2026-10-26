@@ -11,6 +11,9 @@ export interface ParsedRecord {
 }
 export class TerminalRecords {
   readonly records: ParsedRecord[] = []
+  // btoa creates the canonical record spelling independently of a potentially
+  // large screen string. Keep the same finite rolling window as parsed records.
+  readonly #encoded: string[] = []
   #next = 0
   #base = 0
   constructor(readonly limits = { maxRecords: 256, retainedRecords: 256 }) {
@@ -53,8 +56,16 @@ export class TerminalRecords {
         throw new Error('Duplicate or excessive displayed record')
       seen.add(sequence)
       const encoded = match[2]!
+      if (sequence < this.#next) {
+        const index = sequence - this.#base
+        if (this.records[index]?.sequence !== sequence || this.#encoded[index] !== encoded)
+          throw new Error('A displayed record changed after consumption')
+        continue
+      }
+      if (sequence !== this.#next) throw new Error('Displayed records missing or reordered')
       const binary = atob(encoded)
-      if (btoa(binary) !== encoded) throw new Error('Noncanonical terminal record')
+      const canonical = btoa(binary)
+      if (canonical !== encoded) throw new Error('Noncanonical terminal record')
       const value: unknown = JSON.parse(
         this.#decoder.decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)))
       )
@@ -65,17 +76,13 @@ export class TerminalRecords {
         typeof (value as Record<string, unknown>)['type'] !== 'string'
       )
         throw new Error('Malformed terminal record')
-      if (sequence < this.#next) {
-        if (JSON.stringify(value) !== JSON.stringify(this.records[sequence - this.#base]?.value))
-          throw new Error('A displayed record changed after consumption')
-        continue
-      }
-      if (sequence !== this.#next) throw new Error('Displayed records missing or reordered')
       const record = Object.freeze({ sequence, value: value as Record<string, unknown> })
       this.records.push(record)
+      this.#encoded.push(canonical)
       this.#next++
       if (this.records.length > this.limits.retainedRecords) {
         this.records.shift()
+        this.#encoded.shift()
         this.#base++
       }
       added.push(record)

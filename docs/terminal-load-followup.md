@@ -168,3 +168,26 @@ background/minimized load, coordinator current-head Windows/Linux/macOS gates,
 byte-identical baseline eligibility, quiet repeated baseline calibration, measured
 RSS/latency acceptance budgets, and independent descendant-supervision acceptance.
 No issue, milestone or PR was closed or merged; #118 remains draft.
+
+## Shared screen-verifier allocation correction
+
+Review found that each xterm callback decoded, UTF-8-converted, JSON-parsed and
+stringified every already observed record still present in scrollback. A finite
+regression showed 202 base64 decodes for just two unchanged records across 101
+observations. This was measurement overhead in the shared fixture, not required
+terminal rendering or a native transport cost.
+
+The common CEF/Electron verifier now retains each newly verified canonical wire
+spelling beside its parsed record in the same bounded rolling window (at most
+600 records). Every callback still scans the actual full xterm screen, reconstructs
+wrapped lines, detects duplicate/reordered/gapped records, verifies Unicode and
+rejects any changed old wire spelling. Only newly encountered records are decoded
+and parsed. The canonical string is produced by btoa, not a cached slice of the
+entire screen snapshot. Eviction removes both representations together; terminals
+are not cleared/reset and no source byte, output record, checksum, callback or
+workload cadence is removed. Same-JSON/different-wire changes now reject too.
+
+This is a shared measurement implementation change, so new profiles must identify
+it and cannot be relabeled as the older harness. It has not yet established a
+causal fix for the retained hidden-renderer stalls or native shutdown watchdog,
+a final memory plateau, or a comparative performance advantage.
