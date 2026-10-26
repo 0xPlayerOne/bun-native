@@ -194,8 +194,6 @@ pub struct Authority {
     eligible: bool,
     stream_eligible: bool,
     binding: Option<Binding>,
-    #[cfg(feature = "rpc-qualification")]
-    renderer_process: Option<(Identity, u32)>,
     rpc: LaneState,
     stream: LaneState,
 }
@@ -215,8 +213,6 @@ impl Authority {
             eligible,
             stream_eligible: false,
             binding: None,
-            #[cfg(feature = "rpc-qualification")]
-            renderer_process: None,
             rpc: LaneState::default(),
             stream: LaneState::default(),
         }
@@ -294,10 +290,6 @@ impl Authority {
             generation: self.generation,
             context,
         };
-        #[cfg(feature = "rpc-qualification")]
-        {
-            self.renderer_process = None;
-        }
         self.binding = Some(binding.clone());
         self.stream_eligible = true;
         Some(binding)
@@ -312,40 +304,6 @@ impl Authority {
             return Err("RPC native incarnation mismatch");
         }
         Ok(())
-    }
-    /// Contributor-only identity supplied by compiled renderer code, never a JS field.
-    #[cfg(feature = "rpc-qualification")]
-    pub fn record_renderer_process(
-        &mut self,
-        observed: &Observed,
-        identity: Identity,
-        pid: u64,
-    ) -> Result<(), &'static str> {
-        self.authorize(observed, identity)?;
-        if !self.rpc.subscribed || !(1..=i32::MAX as u64).contains(&pid) {
-            return Err("Renderer proof requires a live subscribed process");
-        }
-        let proof = (identity, pid as u32);
-        if self
-            .renderer_process
-            .is_some_and(|previous| previous != proof)
-        {
-            return Err("Renderer process proof changed within one native incarnation");
-        }
-        self.renderer_process = Some(proof);
-        Ok(())
-    }
-    #[cfg(feature = "rpc-qualification")]
-    pub fn renderer_process(
-        &self,
-        observed: &Observed,
-        identity: Identity,
-    ) -> Result<u32, &'static str> {
-        self.authorize(observed, identity)?;
-        self.renderer_process
-            .filter(|(current, _)| *current == identity && self.rpc.subscribed)
-            .map(|(_, pid)| pid)
-            .ok_or("Native renderer process proof is unavailable")
     }
     pub fn subscribe(
         &mut self,
@@ -487,10 +445,6 @@ impl Authority {
         self.revoke()
     }
     pub fn revoke(&mut self) -> Option<Binding> {
-        #[cfg(feature = "rpc-qualification")]
-        {
-            self.renderer_process = None;
-        }
         self.eligible = false;
         self.stream_eligible = false;
         self.rpc = LaneState::default();
@@ -559,79 +513,6 @@ mod tests {
             .subscribe(&observed(), binding.identity())
             .unwrap();
         (authority, binding.identity())
-    }
-    #[cfg(feature = "rpc-qualification")]
-    #[test]
-    fn renderer_process_proof_requires_the_exact_subscribed_native_incarnation() {
-        let (mut authority, identity) = bound();
-        assert!(authority.renderer_process(&observed(), identity).is_err());
-        for pid in [0, i32::MAX as u64 + 1, u64::MAX] {
-            assert!(authority
-                .record_renderer_process(&observed(), identity, pid)
-                .is_err());
-        }
-        for context in [
-            Observed {
-                main: false,
-                ..observed()
-            },
-            Observed {
-                browser: 99,
-                ..observed()
-            },
-            Observed {
-                frame: "foreign".into(),
-                ..observed()
-            },
-            Observed {
-                url: "https://example.test/".into(),
-                ..observed()
-            },
-        ] {
-            assert!(authority
-                .record_renderer_process(&context, identity, 123)
-                .is_err());
-        }
-        assert!(authority
-            .record_renderer_process(
-                &observed(),
-                Identity {
-                    generation: 99,
-                    ..identity
-                },
-                123
-            )
-            .is_err());
-        authority.rpc.subscribed = false;
-        assert!(authority
-            .record_renderer_process(&observed(), identity, 123)
-            .is_err());
-        authority.rpc.subscribed = true;
-        authority
-            .record_renderer_process(&observed(), identity, 123)
-            .unwrap();
-        assert_eq!(authority.renderer_process(&observed(), identity), Ok(123));
-    }
-    #[cfg(feature = "rpc-qualification")]
-    #[test]
-    fn renderer_process_proof_is_immutable_and_revoked_with_its_document() {
-        let (mut authority, identity) = bound();
-        authority
-            .record_renderer_process(&observed(), identity, 123)
-            .unwrap();
-        authority
-            .record_renderer_process(&observed(), identity, 123)
-            .unwrap();
-        assert!(authority
-            .record_renderer_process(&observed(), identity, 456)
-            .is_err());
-        assert_eq!(authority.renderer_process(&observed(), identity), Ok(123));
-        authority.revoke();
-        assert!(authority.renderer_process(&observed(), identity).is_err());
-        assert_eq!(authority.renderer_process, None);
-        assert!(authority
-            .record_renderer_process(&observed(), identity, 123)
-            .is_err());
     }
     #[test]
     fn global_delivery_reservations_survive_revoke_until_exact_discard() {

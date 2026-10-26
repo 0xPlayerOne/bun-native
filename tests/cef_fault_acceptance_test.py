@@ -364,13 +364,16 @@ class NativeRendererTaskTests(unittest.TestCase):
         observation, _ = fixture("renderer-exit")
         rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
         del rows[0]["rendererPid"]
+        for row in rows:
+            if row["event"] == "bunly.native.renderer-failure-observed":
+                row["exitCode"] = 86
         rows.insert(
             1,
             {
                 "event": "bunly.native.renderer-injected",
                 "schema": 1,
-                "authority": "native-main-frame-task",
-                "accepted": True,
+                "authority": "native-main-frame-message",
+                "exitCode": 86,
             },
         )
         observation["nativeDiagnostics"] = [json.dumps(row) for row in rows]
@@ -395,8 +398,8 @@ class NativeRendererTaskTests(unittest.TestCase):
         for key, value in (
             ("schema", 2),
             ("schema", True),
-            ("accepted", False),
-            ("accepted", 1),
+            ("exitCode", 0),
+            ("exitCode", True),
             ("authority", "renderer-role"),
             ("pid", 1),
         ):

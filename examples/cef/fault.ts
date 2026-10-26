@@ -45,10 +45,14 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
   })
   void page.catch(() => {})
   let rendererExitSeen = false
+  let rendererExitCode: unknown
   let pageReady = false
   let documentReady = false
   const off = backend.observe((event) => {
-    if (event.event === 'view.renderer-exit') rendererExitSeen = true
+    if (event.event === 'view.renderer-exit') {
+      rendererExitSeen = true
+      rendererExitCode = event.data?.['code']
+    }
     const text = String(event.data?.['message'] ?? '')
     if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') pageReady = true
     if (event.event === 'view.loaded' && event.data?.['url'] === 'app://ui/index.html')
@@ -115,8 +119,13 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
           }),
         ])
         assert.ok(rendererExitSeen, 'Missing native renderer exit event')
+        assert.equal(rendererExitCode, 86, 'Wrong native renderer exit code')
         console.error(
-          JSON.stringify({ event: 'bunly.native.renderer-failure-observed', passed: true })
+          JSON.stringify({
+            event: 'bunly.native.renderer-failure-observed',
+            passed: true,
+            exitCode: 86,
+          })
         )
         return
       } finally {

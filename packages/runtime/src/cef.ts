@@ -640,32 +640,8 @@ export class CefBackend implements BrowserBackend {
       scope: captured.nativeScope,
     })
   }
-  /** @internal Compiled-renderer proof for the exact native-bound fault document.
-   * Ordinary native builds reject it; this is not a page-supplied PID or kill API.
-   */
-  async qualifyRendererProcess(scope: PolicyScope): Promise<number> {
-    this.#active()
-    const captured = this.#capturedPolicyScope(scope)
-    const result = record(
-      await this.#transport.call('rpc.qualification.renderer', {
-        id: captured.resource.native,
-        scope: captured.nativeScope,
-      })
-    )
-    this.#capturedPolicyScope(scope)
-    const pid = result['pid']
-    if (
-      Object.keys(result).length !== 1 ||
-      typeof pid !== 'number' ||
-      !Number.isSafeInteger(pid) ||
-      pid < 1 ||
-      pid >= 2 ** 31
-    )
-      throw new Error('Invalid native renderer process proof')
-    return pid
-  }
   /** @internal Fixed, native-bound contributor fault. Ordinary builds reject it.
-   * No page-supplied task or PID. Success means CEF accepted the request, not that
+   * No page-supplied task or PID. Success means native dispatch was accepted, not that
    * the renderer exited; the qualifier separately requires the actual exit.
    */
   async qualifyRendererCrash(scope: PolicyScope): Promise<void> {

@@ -160,7 +160,7 @@ def accept_fault(
         )
         require(injections == [], "Backend case must not inject a browser fault")
     elif mode == "renderer-exit" and require_renderer_task:
-        require(injections == [], "Native task fault must not also signal a guessed OS process")
+        require(injections == [], "Native document fault must not also signal a guessed OS process")
         require(
             set(ready) == {"event", "mode", "pid"},
             "Unexpected namespace PID in native-task readiness",
@@ -171,11 +171,11 @@ def accept_fault(
             == {
                 "event": "bunly.native.renderer-injected",
                 "schema": 1,
-                "authority": "native-main-frame-task",
-                "accepted": True,
+                "authority": "native-main-frame-message",
+                "exitCode": 86,
             }
             and type(injection.get("schema")) is int
-            and injection.get("accepted") is True,
+            and type(injection.get("exitCode")) is int,
             "Missing exact native main-frame task injection",
         )
         require(
@@ -184,12 +184,14 @@ def accept_fault(
         )
         observed = exactly("bunly.native.renderer-failure-observed")
         require(
-            observed.get("passed") is True
+            observed
+            == {"event": "bunly.native.renderer-failure-observed", "passed": True, "exitCode": 86}
+            and type(observed.get("exitCode")) is int
             and records.index(ready)
             < records.index(injection)
             < records.index(observed)
             < records.index(backend),
-            "Actual renderer failure did not follow the native task injection",
+            "Actual renderer failure did not follow the native document injection",
         )
     else:
         require(

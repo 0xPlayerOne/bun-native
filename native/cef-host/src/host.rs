@@ -18,10 +18,6 @@ fn command_budget() -> &'static Arc<crate::command_budget::CommandBudget> {
     static BUDGET: OnceLock<Arc<crate::command_budget::CommandBudget>> = OnceLock::new();
     BUDGET.get_or_init(|| Arc::new(crate::command_budget::CommandBudget::default()))
 }
-#[cfg(feature = "rpc-qualification")]
-fn valid_renderer_task(task: i64, info: &TaskInfo) -> bool {
-    task >= 0 && info.id == task && info.type_ == TaskType::RENDERER && info.is_killable == 1
-}
 static FINALIZING: AtomicBool = AtomicBool::new(false);
 // Failure can arrive on the pipe thread before its UI teardown task runs.
 // Fence application dispatch immediately; receipt/discard cleanup may still drain.
@@ -299,18 +295,6 @@ fn renderer_message(
         ]
         .contains(&name.as_str())
     {
-        return 1;
-    }
-    #[cfg(feature = "rpc-qualification")]
-    if name == wire::RENDERER_PROOF {
-        if let Some((identity, pid)) = wire::read(message, false) {
-            let context = observed(browser, frame);
-            STATE.with(|state| {
-                if let Some(view) = state.borrow_mut().views.get_mut(&id) {
-                    let _ = view.rpc.record_renderer_process(&context, identity, pid);
-                }
-            });
-        }
         return 1;
     }
     #[cfg(feature = "rpc-qualification")]
@@ -2166,94 +2150,45 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         #[cfg(feature = "rpc-qualification")]
-        "rpc.qualification.renderer" => {
-            let id = number(args, "id")?;
-            let scope = policy_scope(args)?;
-            let browser = STATE.with(|s| {
-                let state = s.borrow();
-                captured_ready_scope(&state, id, &scope)?;
-                if scope.origin != "app://ui" {
-                    return Err("Renderer proof requires the packaged fault fixture");
-                }
-                state
-                    .views
-                    .get(&id)
-                    .and_then(|view| view.browser.clone())
-                    .ok_or("Fault fixture browser unavailable")
-            })?;
-            let frame = browser
-                .main_frame()
-                .ok_or("Fault fixture main frame unavailable")?;
-            if CefString::from(&frame.url()).to_string() != "app://ui/index.html" {
-                return Err("Renderer proof requires the exact packaged fault page".into());
-            }
-            let context = observed(&browser, &frame);
-            let pid = STATE.with(|s| {
-                let state = s.borrow();
-                captured_ready_scope(&state, id, &scope)?;
-                let record = state.views.get(&id).ok_or("Fault fixture closed")?;
-                let binding = record
-                    .rpc
-                    .binding()
-                    .ok_or("Fault fixture binding unavailable")?;
-                record.rpc.renderer_process(&context, binding.identity())
-            })?;
-            reply(request, json!({"pid":pid}));
-        }
-        #[cfg(feature = "rpc-qualification")]
         "rpc.qualification.renderer.crash" => {
             let id = number(args, "id")?;
             let scope = policy_scope(args)?;
-            let browser = STATE.with(|state| {
+            let (browser, identity) = STATE.with(|state| {
                 let state = state.borrow();
                 captured_ready_scope(&state, id, &scope)?;
                 if scope.origin != "app://ui" {
                     return Err("Renderer injection requires the packaged fault fixture");
                 }
-                state
-                    .views
-                    .get(&id)
-                    .and_then(|view| view.browser.clone())
-                    .ok_or("Fault fixture browser unavailable")
+                let view = state.views.get(&id).ok_or("Fault fixture unavailable")?;
+                Ok::<_, &str>((
+                    view.browser.clone().ok_or("Fault browser unavailable")?,
+                    view.rpc
+                        .binding()
+                        .ok_or("Fault binding unavailable")?
+                        .identity(),
+                ))
             })?;
-            let frame = browser
-                .main_frame()
-                .ok_or("Fault fixture main frame unavailable")?;
+            let frame = browser.main_frame().ok_or("Fault main frame unavailable")?;
             if CefString::from(&frame.url()).to_string() != "app://ui/index.html" {
                 return Err("Renderer injection requires the exact packaged fault page".into());
             }
-            // The renderer's OS PID can be 1 inside a Linux sandbox namespace.
-            // Use CEF's own WebContents -> main-task mapping; never translate or
-            // signal an externally supplied PID, task ID, process name or role.
-            let manager = task_manager_get().ok_or("CEF task manager unavailable")?;
-            let task = manager.task_id_for_browser_id(browser.identifier());
-            let mut info = TaskInfo::default();
-            if manager.task_info(task, Some(&mut info)) == 0 || !valid_renderer_task(task, &info) {
-                return Err("Native main-frame task unavailable or not killable".into());
-            }
+            let mut message = wire::message(wire::RENDERER_CRASH, identity, 0, None)
+                .ok_or("Fault message allocation failed")?;
             STATE.with(|state| {
                 let state = state.borrow();
                 captured_ready_scope(&state, id, &scope)?;
-                let record = state.views.get(&id).ok_or("Fault fixture closed")?;
-                let binding = record
+                state
+                    .views
+                    .get(&id)
+                    .ok_or("Fault fixture closed")?
                     .rpc
-                    .binding()
-                    .ok_or("Fault fixture binding unavailable")?;
-                record
-                    .rpc
-                    .authorize(&observed(&browser, &frame), binding.identity())
+                    .authorize(&observed(&browser, &frame), identity)
             })?;
-            if manager.task_id_for_browser_id(browser.identifier()) != task
-                || manager.kill_task(task) == 0
-            {
-                return Err("Native main-frame task injection was rejected".into());
-            }
-            eprintln!(
-                "{}",
-                json!({"event":"bunly.native.renderer-injected", "schema":1,
-                "authority":"native-main-frame-task", "accepted":true})
-            );
+            // FIFO acknowledgment precedes deliberate target retirement. It is
+            // not an execution receipt: the native renderer must independently
+            // emit its fixed receipt and CEF must observe its abnormal exit.
             reply(request, Value::Null);
+            frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
         }
         #[cfg(feature = "rpc-qualification")]
         "rpc.qualification.throttle" => {
@@ -3068,48 +3003,5 @@ mod command_task_lifetime_tests {
         drop(posted_reference);
         assert_eq!(budget.snapshot().requests, 0);
         assert_eq!(budget.snapshot().retained_wire_bytes, 0);
-    }
-}
-
-#[cfg(all(test, feature = "rpc-qualification"))]
-mod renderer_fault_task_tests {
-    use super::*;
-    #[test]
-    fn only_the_exact_killable_main_renderer_task_is_eligible() {
-        let valid = TaskInfo {
-            id: 123,
-            type_: TaskType::RENDERER,
-            is_killable: 1,
-            ..Default::default()
-        };
-        assert!(valid_renderer_task(123, &valid));
-        for id in [-1, 0, 124] {
-            assert!(!valid_renderer_task(id, &valid));
-        }
-        for type_ in [
-            TaskType::BROWSER,
-            TaskType::GPU,
-            TaskType::UTILITY,
-            TaskType::ZYGOTE,
-            TaskType::UNKNOWN,
-            TaskType::DEDICATED_WORKER,
-        ] {
-            assert!(!valid_renderer_task(
-                123,
-                &TaskInfo {
-                    type_,
-                    ..valid.clone()
-                }
-            ));
-        }
-        for is_killable in [0, -1, 2] {
-            assert!(!valid_renderer_task(
-                123,
-                &TaskInfo {
-                    is_killable,
-                    ..valid.clone()
-                }
-            ));
-        }
     }
 }

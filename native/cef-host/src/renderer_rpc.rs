@@ -229,18 +229,6 @@ fn execute(
         }
         #[cfg(feature = "rpc-qualification")]
         if lane == Lane::Rpc {
-            // This PID comes from this compiled helper, not the page. The browser
-            // binds the proof to the same native main frame and document identity.
-            if !send(
-                &current.frame,
-                wire::RENDERER_PROOF,
-                identity,
-                u64::from(std::process::id()),
-                None,
-            ) {
-                revoke(browser, &current, true);
-                return Err("Renderer proof allocation failed");
-            }
             crate::rpc_qualification::subscribed(&current.frame, identity);
         }
         return Ok(());
@@ -579,16 +567,21 @@ fn process_message(
         return 0;
     }
     let name = CefString::from(&message.name()).to_string();
-    if ![
-        wire::GRANT,
-        wire::REVOKE,
-        wire::ACK,
-        wire::DELIVER,
-        wire::STREAM_REVOKE,
-        wire::STREAM_ACK,
-        wire::STREAM_DELIVER,
-    ]
-    .contains(&name.as_str())
+    #[cfg(feature = "rpc-qualification")]
+    let is_fault = name == wire::RENDERER_CRASH;
+    #[cfg(not(feature = "rpc-qualification"))]
+    let is_fault = false;
+    if !is_fault
+        && ![
+            wire::GRANT,
+            wire::REVOKE,
+            wire::ACK,
+            wire::DELIVER,
+            wire::STREAM_REVOKE,
+            wire::STREAM_ACK,
+            wire::STREAM_DELIVER,
+        ]
+        .contains(&name.as_str())
     {
         return 0;
     }
@@ -637,6 +630,25 @@ fn process_message(
         return 1;
     }
     if expected.identity != Some(identity) {
+        return 1;
+    }
+    #[cfg(feature = "rpc-qualification")]
+    if is_fault {
+        if renderer_fault_allowed(
+            sequence,
+            expected.rpc.receiver.is_some(),
+            expected.context.is_valid() != 0,
+            &CefString::from(&frame.url()).to_string(),
+        ) {
+            // A fixed abnormal exit in this exact native-bound main renderer.
+            // No OS PID escapes its namespace and no page-callable kill API exists.
+            eprintln!(
+                "{}",
+                serde_json::json!({"event":"bunly.native.renderer-injected",
+                "schema":1, "authority":"native-main-frame-message", "exitCode":86})
+            );
+            std::process::exit(86);
+        }
         return 1;
     }
     match name.as_str() {
@@ -739,5 +751,46 @@ mod tests {
             sys::cef_string_utf16_clear(&mut raw);
         }
         assert_eq!(observed, "RPC function belongs to another document context");
+    }
+}
+
+#[cfg(feature = "rpc-qualification")]
+fn renderer_fault_allowed(sequence: u64, subscribed: bool, live: bool, url: &str) -> bool {
+    sequence == 0 && subscribed && live && url == "app://ui/index.html"
+}
+#[cfg(all(test, feature = "rpc-qualification"))]
+mod renderer_fault_tests {
+    use super::*;
+    #[test]
+    fn fixed_fault_requires_live_subscribed_fixture_with_no_caller_parameters() {
+        assert!(renderer_fault_allowed(0, true, true, "app://ui/index.html"));
+        assert!(!renderer_fault_allowed(
+            1,
+            true,
+            true,
+            "app://ui/index.html"
+        ));
+        assert!(!renderer_fault_allowed(
+            0,
+            false,
+            true,
+            "app://ui/index.html"
+        ));
+        assert!(!renderer_fault_allowed(
+            0,
+            true,
+            false,
+            "app://ui/index.html"
+        ));
+        for url in [
+            "https://ui/index.html",
+            "app://ui/other.html",
+            "app://ui/index.html?fault=1",
+            "app://foreign/index.html",
+            "app://ui/index.html#main",
+            "about:blank",
+        ] {
+            assert!(!renderer_fault_allowed(0, true, true, url));
+        }
     }
 }
