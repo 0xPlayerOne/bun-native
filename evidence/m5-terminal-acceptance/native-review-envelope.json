@@ -1,0 +1,838 @@
+{
+  "schema": 1,
+  "classification": "terminal-measured-review-envelope-not-a-release-threshold",
+  "source": "00a61e88d92bc17ac006b126a6f06d6d41230123",
+  "reportSha256": "6fe6b4abb517a19afb41952b777b3574368731d0c92235c1bb119978e2ad83da",
+  "context": {
+    "workload": {
+      "id": "graphical-pty-window-load-v3",
+      "terminals": 2,
+      "recordsPerBatch": 32,
+      "phases": [
+        {
+          "name": "warmup",
+          "batches": 20,
+          "intervalMs": 100
+        },
+        {
+          "name": "ramp",
+          "batches": 40,
+          "intervalMs": 50
+        },
+        {
+          "name": "sustained",
+          "batches": 600,
+          "intervalMs": 50
+        },
+        {
+          "name": "recovery",
+          "batches": 40,
+          "intervalMs": 100
+        }
+      ],
+      "maxBatchBytes": 32768,
+      "maxCallbacksPerBatch": 256,
+      "modes": [
+        "foreground",
+        "background",
+        "hidden",
+        "minimized"
+      ]
+    },
+    "runtime": {
+      "bun": "1.4.3",
+      "cef": "156.0.7",
+      "chromium": "156.0.8078.17",
+      "engineSha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+      "terminalOwnership": "native-non-detaching"
+    },
+    "environment": {
+      "os": "Darwin",
+      "release": "25.6.0",
+      "arch": "arm64",
+      "logicalCpus": 12,
+      "memoryBytes": 68719476736,
+      "psutil": "7.0.0",
+      "python": "3.11.15",
+      "runClass": "local-smoke"
+    },
+    "workloadSources": {
+      "examples/cef-terminal-load/fixture.ts": "713cdc83742cf43f099f2d067fdad6ed9ad2905a5d1407c9ec6dd0c57b826489",
+      "examples/cef-terminal-load/client.ts": "82e026470fd506506e7de75336ac153d773432ac89731c90b9f4d2f5f5754e1e",
+      "examples/cef-terminal-load/consumer.ts": "01f71918c4f7726f7eb265ca2719b2ca33181996d87d30e2506a769c9f2217e3",
+      "examples/cef-terminal-load/diagnostics.ts": "7fc01bb1965873f31f52ec5d1aa1e9804f52b5d39ae9223121d8ca2c2668d11b",
+      "examples/cef-terminal-load/probe.ts": "bec995f57b9ae8e6bdd24e591181bf6dc8ac406a4a265bc14d661ba629d4e632",
+      "examples/cef-terminal-load/child.ts": "1ee7ae400e5117a139a021b948530a9ecf90c6443053cf24ecd9d73a03ea52b4",
+      "examples/cef-terminal-load/contract.ts": "baa32f0fed7f81a217ea57a3d06f9a0c614bb9577512438add4d41544863951d",
+      "examples/cef-terminal-load/workload.ts": "4aec46d4e724d96410655368b286b9fb6e32f2e0e2ef2f33c530fb02bca1e4ce",
+      "examples/cef-terminal-load/profile.ts": "1452047b7c80a658cff64be558d33af39f434f35efcea1508be6b3bb0c900662",
+      "examples/cef-terminal-load/mode-state.ts": "87eebbaafeb9b6e5b70200d92fad3c4d4f45b327bee7dcfb4e84c9cc7433c269",
+      "examples/cef-terminal-load/window-modes.ts": "1a00eb110d0ec91c4c2b79fe23296b2d53e1cf40541371aba90d6062e6f4296c",
+      "examples/cef-terminal/terminal-records.ts": "efbb9eacf53a5d09662b68d65a41ff920d6bec7406aaea855cbb58056a82f4b0",
+      "benchmarks/lib/terminal-load-acceptance.ts": "3773a89d53654ec8c510b6e7b354885ff049fdb0c3415b796a9bfe133d8f088b",
+      "scripts/qualify-cef-terminals.ts": "c488cc1fff903cb11a22e158fa3307bc94318f12932059e43ee88e1ea7db9f8f",
+      "scripts/observe-process.py": "bfa8c48bec1d832d3ba775ff1a67bd89c2f3f8d02011d871eab96233ae98f692",
+      "scripts/qualify-terminal-window-load.ts": "3a6ba265a466689165fc04fa16e37447a751db1cacc41c965309f1bec9bf42d6",
+      "scripts/qualify-terminal-soak.ts": "d815399cdd994aadfb76d000d9e4fb4189e561207affa2e2c6278d490699d713",
+      "scripts/build-terminal-backend.ts": "16e4343cfa5e7a4054f4436c082d1a23d289d2912e63d54429a228e1cf262c8f",
+      "scripts/probe_cef_identity.py": "301af33bb78867977df321936fb7a747fcbf97e9fb744c7ba75ef77f1323d31c",
+      "benchmarks/lib/statistics.ts": "834a12469ccf637a665846e769c2d7579fc715c1f031a96435d02f2c326de1f7",
+      "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+      "benchmarks/lib/observation.ts": "8f9bfb08ca3127546d3064573ce88e86b8e58fdf0348286ce1c1e167444a34af",
+      "benchmarks/lib/native-diagnostic-events.json": "ca1d9b3fe52f7e4d1112ba521f41efdd9f9066e32fde3e138fd2ede5d75bdcce",
+      "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+      "examples/cef-terminal/public/index.html": "111cdce0a5f1a974eb428013e9506f63e084c2a8ca9296ae8e9716257707bcef",
+      "examples/cef-terminal/public/fixture.css": "363fc74a9de35edd45aa59bddad4d3ec8a05b686923333251ee499335cf68e27"
+    }
+  },
+  "launchesPerMode": 5,
+  "modes": [
+    {
+      "mode": "foreground",
+      "metrics": {
+        "controlP95Ms": {
+          "count": 5,
+          "mean": 2.219999980926514,
+          "median": 2.1000001430511475,
+          "p95": 2.6799999237060543,
+          "p99": 2.775999946594238,
+          "min": 2,
+          "max": 2.799999952316284,
+          "standardDeviation": 0.33466397997994424,
+          "meanBootstrap95": [
+            2.0200000286102293,
+            2.519999933242798
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "controlP99Ms": {
+          "count": 5,
+          "mean": 2.5206000752449027,
+          "median": 2.4000000953674316,
+          "p95": 3.021000121116637,
+          "p99": 3.0850001359939565,
+          "min": 2.200000047683716,
+          "max": 3.1010001397132863,
+          "standardDeviation": 0.38369300736139406,
+          "meanBootstrap95": [
+            2.240400056838989,
+            2.8410001025199874
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP95Ms": {
+          "count": 5,
+          "mean": 0.34100005149841217,
+          "median": 0.3050001621246292,
+          "p95": 0.39999985694885254,
+          "p99": 0.39999985694885254,
+          "min": 0.3000001907348633,
+          "max": 0.39999985694885254,
+          "standardDeviation": 0.053897873999270665,
+          "meanBootstrap95": [
+            0.30197517943382085,
+            0.3809999179840079
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP99Ms": {
+          "count": 5,
+          "mean": 0.5000000476837159,
+          "median": 0.40000009536743164,
+          "p95": 0.7999999046325683,
+          "p99": 0.8799998664855957,
+          "min": 0.40000009536743164,
+          "max": 0.8999998569488525,
+          "standardDeviation": 0.22360669112594897,
+          "meanBootstrap95": [
+            0.40000009536743164,
+            0.6999999523162842
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP95Ms": {
+          "count": 5,
+          "mean": 6.962358819999608,
+          "median": 6.731737200000134,
+          "p95": 7.57373882000007,
+          "p99": 7.596647764000473,
+          "min": 6.389202699999987,
+          "max": 7.602375000000573,
+          "standardDeviation": 0.5359800319445723,
+          "meanBootstrap95": [
+            6.573720719499901,
+            7.379120839999812
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP99Ms": {
+          "count": 5,
+          "mean": 9.107514786000397,
+          "median": 9.162602499999885,
+          "p95": 9.681877452000982,
+          "p99": 9.71946422640087,
+          "min": 8.266233929997938,
+          "max": 9.728860920000843,
+          "standardDeviation": 0.569052909197979,
+          "meanBootstrap95": [
+            8.682699141999288,
+            9.52164230000093
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP95Ms": {
+          "count": 5,
+          "mean": 6.736367930000169,
+          "median": 6.536777099998835,
+          "p95": 7.366385380001265,
+          "p99": 7.397255436001454,
+          "min": 6.153454799999462,
+          "max": 7.404972950001501,
+          "standardDeviation": 0.544011120789756,
+          "meanBootstrap95": [
+            6.330075882500458,
+            7.16031073000111
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP99Ms": {
+          "count": 5,
+          "mean": 8.925662817999887,
+          "median": 8.943637000000416,
+          "p95": 9.513150565999362,
+          "p99": 9.57237171319956,
+          "min": 8.137111760001023,
+          "max": 9.58717699999961,
+          "standardDeviation": 0.5426510540643744,
+          "meanBootstrap95": [
+            8.514403422000374,
+            9.310899753699294
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "throughputBytesPerSecond": {
+          "count": 5,
+          "mean": 154510.9750655811,
+          "median": 154510.4147392474,
+          "p95": 154516.24392439198,
+          "p99": 154516.4227475731,
+          "min": 154504.7975759116,
+          "max": 154516.46745336836,
+          "standardDeviation": 4.9389435544735845,
+          "meanBootstrap95": [
+            154507.51765742258,
+            154514.80985259142
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treeCpuPercentOfOneCore": {
+          "count": 5,
+          "mean": 38.41144085704435,
+          "median": 37.79305685139068,
+          "p95": 40.92653108359959,
+          "p99": 41.21556686946247,
+          "min": 35.85687617912252,
+          "max": 41.287825815928194,
+          "standardDeviation": 2.056973903320036,
+          "meanBootstrap95": [
+            36.94306610648366,
+            40.196584577312976
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treePeakRssBytes": {
+          "count": 5,
+          "mean": 967199948.8,
+          "median": 969162752,
+          "p95": 970565222.4,
+          "p99": 970636001.28,
+          "min": 957661184,
+          "max": 970653696,
+          "standardDeviation": 5409975.960226366,
+          "meanBootstrap95": [
+            962301132.8,
+            970178723.84
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "lateSustainedRssIncreaseBytes": {
+          "count": 5,
+          "mean": 28645785.6,
+          "median": 30588928,
+          "p95": 32764723.2,
+          "p99": 33081917.44,
+          "min": 21233664,
+          "max": 33161216,
+          "standardDeviation": 4690813.880229826,
+          "meanBootstrap95": [
+            24785715.2,
+            31853772.8
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        }
+      }
+    },
+    {
+      "mode": "background",
+      "metrics": {
+        "controlP95Ms": {
+          "count": 5,
+          "mean": 2.240000057220459,
+          "median": 2.200000047683716,
+          "p95": 2.520000123977661,
+          "p99": 2.58400013923645,
+          "min": 2.0999999046325684,
+          "max": 2.6000001430511475,
+          "standardDeviation": 0.2073644629728232,
+          "meanBootstrap95": [
+            2.1200000286102294,
+            2.420000123977661
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "controlP99Ms": {
+          "count": 5,
+          "mean": 2.760400036811828,
+          "median": 2.799999952316284,
+          "p95": 3.040199961185455,
+          "p99": 3.0880399159431455,
+          "min": 2.5,
+          "max": 3.0999999046325684,
+          "standardDeviation": 0.23008753884445277,
+          "meanBootstrap95": [
+            2.5999100479841224,
+            2.940199961185455
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP95Ms": {
+          "count": 5,
+          "mean": 0.3400001049041748,
+          "median": 0.3000001907348633,
+          "p95": 0.40000004768371583,
+          "p99": 0.40000008583068847,
+          "min": 0.3000001907348633,
+          "max": 0.40000009536743164,
+          "standardDeviation": 0.054772138222070964,
+          "meanBootstrap95": [
+            0.3000001907348633,
+            0.38000006675720216
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP99Ms": {
+          "count": 5,
+          "mean": 0.5000000953674316,
+          "median": 0.40000009536743164,
+          "p95": 0.8000000953674316,
+          "p99": 0.8800000953674316,
+          "min": 0.40000009536743164,
+          "max": 0.9000000953674316,
+          "standardDeviation": 0.22360679774997896,
+          "meanBootstrap95": [
+            0.40000009536743164,
+            0.7000000953674317
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP95Ms": {
+          "count": 5,
+          "mean": 6.9376322599997,
+          "median": 6.851553849998891,
+          "p95": 7.408841300001549,
+          "p99": 7.516691580002145,
+          "min": 6.686954449999939,
+          "max": 7.543654150002293,
+          "standardDeviation": 0.3473585940707024,
+          "meanBootstrap95": [
+            6.739656129999274,
+            7.247392260000851
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP99Ms": {
+          "count": 5,
+          "mean": 9.186644551999425,
+          "median": 9.137433420000269,
+          "p95": 9.521832663999545,
+          "p99": 9.532515196799624,
+          "min": 8.81849791999666,
+          "max": 9.535185829999644,
+          "standardDeviation": 0.3099127390203423,
+          "meanBootstrap95": [
+            8.94436008799928,
+            9.428929015999572
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP95Ms": {
+          "count": 5,
+          "mean": 6.702554580000242,
+          "median": 6.601281550001931,
+          "p95": 7.189904029999806,
+          "p99": 7.296549125999828,
+          "min": 6.454702399999632,
+          "max": 7.323210399999834,
+          "standardDeviation": 0.3570452269107881,
+          "meanBootstrap95": [
+            6.4973367900003804,
+            7.016202429999765
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP99Ms": {
+          "count": 5,
+          "mean": 8.97617066799943,
+          "median": 8.965909499997684,
+          "p95": 9.315968578001298,
+          "p99": 9.381513043601684,
+          "min": 8.654375749999236,
+          "max": 9.39789916000178,
+          "standardDeviation": 0.2701900509497179,
+          "meanBootstrap95": [
+            8.783344916248945,
+            9.211273282000757
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "throughputBytesPerSecond": {
+          "count": 5,
+          "mean": 154511.66712504235,
+          "median": 154511.1203745841,
+          "p95": 154515.1925220859,
+          "p99": 154515.90457925608,
+          "min": 154508.48455753434,
+          "max": 154516.0825935486,
+          "standardDeviation": 2.7545141681424132,
+          "meanBootstrap95": [
+            154509.62035442953,
+            154514.07732626423
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treeCpuPercentOfOneCore": {
+          "count": 5,
+          "mean": 39.07580615295145,
+          "median": 39.160351894720655,
+          "p95": 40.208846989111954,
+          "p99": 40.28243168673014,
+          "min": 37.825470697326395,
+          "max": 40.300827861134685,
+          "standardDeviation": 1.041167771566126,
+          "meanBootstrap95": [
+            38.26284138209649,
+            39.88877092380641
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treePeakRssBytes": {
+          "count": 5,
+          "mean": 971197644.8,
+          "median": 971603968,
+          "p95": 973445529.6,
+          "p99": 973767966.72,
+          "min": 967229440,
+          "max": 973848576,
+          "standardDeviation": 2419662.207866875,
+          "meanBootstrap95": [
+            968998420.48,
+            972924518.4
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "lateSustainedRssIncreaseBytes": {
+          "count": 5,
+          "mean": 30294016,
+          "median": 29835264,
+          "p95": 32482918.4,
+          "p99": 32553697.28,
+          "min": 27607040,
+          "max": 32571392,
+          "standardDeviation": 2056599.927663132,
+          "meanBootstrap95": [
+            28639232,
+            31834112
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        }
+      }
+    },
+    {
+      "mode": "hidden",
+      "metrics": {
+        "controlP95Ms": {
+          "count": 5,
+          "mean": 2.240000009536743,
+          "median": 2.200000047683716,
+          "p95": 2.299999952316284,
+          "p99": 2.299999952316284,
+          "min": 2.200000047683716,
+          "max": 2.299999952316284,
+          "standardDeviation": 0.05477220351562305,
+          "meanBootstrap95": [
+            2.200000047683716,
+            2.2799999713897705
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "controlP99Ms": {
+          "count": 5,
+          "mean": 2.6802000188827515,
+          "median": 2.700000047683716,
+          "p95": 2.7799999713897705,
+          "p99": 2.7959999561309816,
+          "min": 2.5999999046325684,
+          "max": 2.799999952316284,
+          "standardDeviation": 0.08342779084373311,
+          "meanBootstrap95": [
+            2.6201999807357788,
+            2.740200009346008
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP95Ms": {
+          "count": 5,
+          "mean": 0.5400000596046448,
+          "median": 0.5000002384185791,
+          "p95": 0.5999999046325684,
+          "p99": 0.5999999046325684,
+          "min": 0.5000000119209289,
+          "max": 0.5999999046325684,
+          "standardDeviation": 0.05477211428109128,
+          "meanBootstrap95": [
+            0.5000001478195191,
+            0.5799999713897706
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP99Ms": {
+          "count": 5,
+          "mean": 0.6602000851631162,
+          "median": 0.6999998116493225,
+          "p95": 0.7000000476837158,
+          "p99": 0.7000000476837158,
+          "min": 0.6000001430511475,
+          "max": 0.7000000476837158,
+          "standardDeviation": 0.05449938276443046,
+          "meanBootstrap95": [
+            0.6202001705169675,
+            0.7000000004768372
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP95Ms": {
+          "count": 5,
+          "mean": 6.521923640000322,
+          "median": 6.531893150001087,
+          "p95": 6.576062679999131,
+          "p99": 6.584342295998876,
+          "min": 6.443829499998356,
+          "max": 6.586412199998812,
+          "standardDeviation": 0.05148322854719017,
+          "meanBootstrap95": [
+            6.479609249999311,
+            6.560803557250092
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP99Ms": {
+          "count": 5,
+          "mean": 7.707877333998598,
+          "median": 7.608651999998546,
+          "p95": 8.057800487999248,
+          "p99": 8.07049316959915,
+          "min": 7.257314669997176,
+          "max": 8.073666339999125,
+          "standardDeviation": 0.3313651196941455,
+          "meanBootstrap95": [
+            7.42001661894757,
+            7.964150535999105
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP95Ms": {
+          "count": 5,
+          "mean": 6.362966780000197,
+          "median": 6.371305900001789,
+          "p95": 6.429394789999368,
+          "p99": 6.435065357999181,
+          "min": 6.257369399999971,
+          "max": 6.436482999999134,
+          "standardDeviation": 0.06760203283628267,
+          "meanBootstrap95": [
+            6.308891210000402,
+            6.410412160000196
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP99Ms": {
+          "count": 5,
+          "mean": 7.4419044679997395,
+          "median": 7.470312000000562,
+          "p95": 7.927807649998883,
+          "p99": 7.959864929998354,
+          "min": 6.9569827499984225,
+          "max": 7.967879249998222,
+          "standardDeviation": 0.4400903188808114,
+          "meanBootstrap95": [
+            7.0955863359994655,
+            7.783782662548606
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "throughputBytesPerSecond": {
+          "count": 5,
+          "mean": 154509.08844698366,
+          "median": 154509.00147985874,
+          "p95": 154510.05085277438,
+          "p99": 154510.20908431598,
+          "min": 154508.43827785796,
+          "max": 154510.2486422014,
+          "standardDeviation": 0.7346534712696638,
+          "meanBootstrap95": [
+            154508.57326308847,
+            154509.69995232087
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treeCpuPercentOfOneCore": {
+          "count": 5,
+          "mean": 25.130849067457376,
+          "median": 25.13625996031578,
+          "p95": 25.621056491812556,
+          "p99": 25.711375162540183,
+          "min": 24.592719257182328,
+          "max": 25.73395483022209,
+          "standardDeviation": 0.40826516435662447,
+          "meanBootstrap95": [
+            24.816610158118145,
+            25.47863515604659
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treePeakRssBytes": {
+          "count": 5,
+          "mean": 907791564.8,
+          "median": 906264576,
+          "p95": 912808345.6,
+          "p99": 912855531.52,
+          "min": 903430144,
+          "max": 912867328,
+          "standardDeviation": 4629261.436335088,
+          "meanBootstrap95": [
+            904154316.8,
+            911371304.9599999
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "lateSustainedRssIncreaseBytes": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        }
+      }
+    },
+    {
+      "mode": "minimized",
+      "metrics": {
+        "controlP95Ms": {
+          "count": 5,
+          "mean": 2.240000009536743,
+          "median": 2.200000047683716,
+          "p95": 2.299999952316284,
+          "p99": 2.299999952316284,
+          "min": 2.200000047683716,
+          "max": 2.299999952316284,
+          "standardDeviation": 0.05477220351562305,
+          "meanBootstrap95": [
+            2.200000047683716,
+            2.2799999713897705
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "controlP99Ms": {
+          "count": 5,
+          "mean": 2.700399952888488,
+          "median": 2.7009998106956474,
+          "p95": 2.880000067234039,
+          "p99": 2.896000089740753,
+          "min": 2.500999999046325,
+          "max": 2.9000000953674316,
+          "standardDeviation": 0.15779832726457999,
+          "meanBootstrap95": [
+            2.580599923610687,
+            2.82020007610321
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP95Ms": {
+          "count": 5,
+          "mean": 0.540000011920929,
+          "median": 0.5000002384185791,
+          "p95": 0.5999996757507324,
+          "p99": 0.599999677658081,
+          "min": 0.5000002384185791,
+          "max": 0.5999996781349182,
+          "standardDeviation": 0.054771945605836245,
+          "meanBootstrap95": [
+            0.5000002384185791,
+            0.5799997878074645
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "consumerP99Ms": {
+          "count": 5,
+          "mean": 0.7002000942230222,
+          "median": 0.7000000476837158,
+          "p95": 0.7799999713897705,
+          "p99": 0.7959999561309814,
+          "min": 0.6010003757476797,
+          "max": 0.7999999523162842,
+          "standardDeviation": 0.07035750826471204,
+          "meanBootstrap95": [
+            0.6406002445220941,
+            0.7599999904632568
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP95Ms": {
+          "count": 5,
+          "mean": 6.587261519999819,
+          "median": 6.561049999999249,
+          "p95": 6.778712049999449,
+          "p99": 6.808584049999132,
+          "min": 6.432922900000629,
+          "max": 6.816052049999053,
+          "standardDeviation": 0.14729549199252379,
+          "meanBootstrap95": [
+            6.484151399999755,
+            6.702134865749778
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "roundtripP99Ms": {
+          "count": 5,
+          "mean": 7.736374568000573,
+          "median": 7.618226580002953,
+          "p95": 8.209853140000442,
+          "p99": 8.312040100000557,
+          "min": 7.422001669999408,
+          "max": 8.337586840000585,
+          "standardDeviation": 0.3510238944076372,
+          "meanBootstrap95": [
+            7.516629986000211,
+            8.050180758951502
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP95Ms": {
+          "count": 5,
+          "mean": 6.4359644599998855,
+          "median": 6.441981549999673,
+          "p95": 6.615340069999584,
+          "p99": 6.645868013999468,
+          "min": 6.283266050000111,
+          "max": 6.65349999999944,
+          "standardDeviation": 0.1422263674000968,
+          "meanBootstrap95": [
+            6.330174570000109,
+            6.54827477399961
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "ptyCallbackP99Ms": {
+          "count": 5,
+          "mean": 7.499082430000979,
+          "median": 7.476673000000537,
+          "p95": 7.83137992600088,
+          "p99": 7.892978577199753,
+          "min": 7.278815079998421,
+          "max": 7.908378239999472,
+          "standardDeviation": 0.2517862879619069,
+          "meanBootstrap95": [
+            7.333598214000347,
+            7.7113361100009765
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "throughputBytesPerSecond": {
+          "count": 5,
+          "mean": 154511.67023859266,
+          "median": 154510.78760763467,
+          "p95": 154516.94953909694,
+          "p99": 154517.90109891965,
+          "min": 154507.3756132261,
+          "max": 154518.13898887532,
+          "standardDeviation": 4.019530149851682,
+          "meanBootstrap95": [
+            154509.0212374593,
+            154515.29318997063
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treeCpuPercentOfOneCore": {
+          "count": 5,
+          "mean": 25.466022020250282,
+          "median": 25.606826233649084,
+          "p95": 26.053148997783488,
+          "p99": 26.138955648644057,
+          "min": 24.591556231766614,
+          "max": 26.1604073113592,
+          "standardDeviation": 0.5713576776948578,
+          "meanBootstrap95": [
+            24.997664232519604,
+            25.887050549744508
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "treePeakRssBytes": {
+          "count": 5,
+          "mean": 909583974.4,
+          "median": 913244160,
+          "p95": 914142003.2,
+          "p99": 914315018.24,
+          "min": 901431296,
+          "max": 914358272,
+          "standardDeviation": 5746600.123633173,
+          "meanBootstrap95": [
+            904629452.8,
+            913702912
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        },
+        "lateSustainedRssIncreaseBytes": {
+          "count": 5,
+          "mean": 0,
+          "median": 0,
+          "p95": 0,
+          "p99": 0,
+          "min": 0,
+          "max": 0,
+          "standardDeviation": 0,
+          "meanBootstrap95": [
+            0,
+            0
+          ],
+          "method": "linear-interpolated quantiles; 1000 deterministic percentile-bootstrap mean resamples"
+        }
+      }
+    }
+  ],
+  "limits": [
+    "Descriptive local launch distributions; system load and ordered adapter blocks are not experimentally isolated.",
+    "Confidence intervals describe the mean of per-launch metrics, not a confidence bound on every user interaction.",
+    "A 30-second RSS trend is not a memory-plateau or universal leak proof; review the separate longer soak.",
+    "A non-overlapping adverse shift requires investigation, not an automatic busy-machine millisecond CI failure.",
+    "Hard byte/order/ownership/queue/shutdown gates are checked separately by the actual workload validator."
+  ]
+}

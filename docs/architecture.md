@@ -2,7 +2,7 @@
 
 A stable desktop host with replaceable Bun application behavior.
 
-**Status:** M1–M3 are complete for their declared acceptance profiles. M4 delivery and its final-head merge gate are recorded in [M4 completion](m4-completion.md); production release qualification remains separate.
+**Status:** M1–M3 are complete for their declared acceptance profiles. M4 delivery and its final-head merge gate are recorded in [M4 completion](m4-completion.md); [M5 completion](m5-completion.md) records native stream/terminal/service integration and measured load; production release qualification remains separate.
 **Scope:** Accepted host architecture and boundaries. See [M3 completion](m3-completion.md) for native platform evidence and limitations.
 
 ## Product boundary
