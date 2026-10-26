@@ -129,6 +129,9 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
       assert.equal(state.maximized, false)
       assert.equal(state.fullscreen, false)
     }
+    // Native create returns before the initial document has committed.
+    // The read-only diagnostic requires the actual authenticated fixture page.
+    await page(0, 'visible')
     await capture('visible', true, false)
     await backend.showWindow(window, false)
     await capture('hidden', false, false)

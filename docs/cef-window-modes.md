@@ -193,3 +193,9 @@ observations. It also requests a fixed read-only page-state console snapshot.
 No identifiers, window titles or private desktop names are emitted. No window
 operation, event synthesis, reload, scheduling flag or acceptance deadline is
 changed by the diagnostic. It is not a restore fix or a passing receipt.
+
+The first local diagnostic run (`582daa3`) called its exact-page probe before
+initial navigation committed and correctly rejected the still-loading frame.
+The fixture now awaits its existing authenticated initial visibility receipt
+before that first read. The probe's URL check and the ten-second sequence
+deadline are unchanged. This is diagnostic readiness, not a restore correction.
