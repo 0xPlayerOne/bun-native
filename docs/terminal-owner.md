@@ -171,3 +171,20 @@ status; a private explicit environment selects the existing Python executable.
 Readiness diagnostics distinguish independent shell, native-owned shell and
 lifecycle stages. This correction still requires actual Windows execution; a
 startup failure is not a descendant-cleanup pass.
+
+## Terminal-screen readiness receipts
+
+The ownership fixture now consumes PTY output through the existing pinned
+xterm-headless parser before interpreting its bounded readiness record or the
+8-KiB trailing-output marker. Windows ConPTY output is a terminal stream, not
+newline-delimited JSON: terminal setup, cursor repaint and line wrapping may
+surround or split records. The independent non-PTY shell keeps its plain JSON
+receipt. This changes only contributor evidence, not the native ownership
+protocol or application output.
+
+A fixed base64 frame survives terminal wrapping; readiness is emitted only after
+actual parser completion. The parser rejects duplicate displayed records and
+more than 128 KiB of callback output. Regression tests exercise split control
+sequences, wrapping, incomplete records and the exact trailing-output length.
+The earlier Windows native-owned-shell readiness failures remain recorded;
+current Windows execution is required before attributing recovery to this change.

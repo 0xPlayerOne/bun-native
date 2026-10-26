@@ -1,3 +1,4 @@
+import { OwnerTerminalConsumer } from './terminal-owner-consumer.ts'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { BinaryStreamWriter, StreamOutcome } from '../../packages/contracts/src/streams.ts'
@@ -8,19 +9,15 @@ const [owner, python] = process.argv.slice(2)
 if (!owner || !python || Bun.version !== '1.4.3')
   throw new Error('Pinned owner fixture arguments required')
 let finish!: (value: StreamOutcome) => void
-let output = ''
-let sent = false
+const output = new OwnerTerminalConsumer((record) => {
+  console.log(JSON.stringify({ ...record, backend: process.pid }))
+})
 const writer: BinaryStreamWriter = {
   finished: new Promise<StreamOutcome>((resolve) => {
     finish = resolve
   }),
   async write(bytes) {
-    output += Buffer.from(bytes).toString()
-    if (!sent && output.includes('\n')) {
-      const record = JSON.parse(output.slice(0, output.indexOf('\n')))
-      sent = true
-      console.log(JSON.stringify({ ...record, backend: process.pid }))
-    }
+    await output.consume(bytes)
   },
   async end() {
     finish({ ok: true })
@@ -79,6 +76,7 @@ const handle = await service.create({}, writer, {
   env: {
     BUNLY_FIXTURE_SOURCE_FD: String(configuration.hostFd),
     BUNLY_OWNER_FIXTURE_PYTHON: python,
+    BUNLY_OWNER_FIXTURE_TERMINAL: '1',
   },
 })
 const observation = service.observe(handle)
@@ -96,7 +94,7 @@ for await (const command of input) {
         event: 'result',
         process: await observation.processExited,
         output: await observation.outputFinished,
-        final: output.includes('FINAL-' + 'x'.repeat(8192)),
+        final: output.final,
       })
     )
     break
@@ -110,4 +108,5 @@ for await (const command of input) {
   }
 }
 await service.dispose()
+output.dispose()
 process.exit(0)
