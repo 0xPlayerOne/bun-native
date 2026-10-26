@@ -1,7 +1,8 @@
 # Native event output admission
 
 M5 #26: bound the native-to-Bun side of the existing private FIFO. This is not a
-new renderer bulk transport or a global fair scheduler.
+new renderer bulk transport; the runtime stream lane adds shared fair scheduling
+separately from this output admission queue.
 
 ## Ownership and bounds
 
@@ -71,7 +72,7 @@ concurrent producers. Those queue tests are not graphical load measurements.
 
 ## Remaining work
 
-Global per-view scheduling, terminal group/job ownership and representative
+Native-host UI per-work scheduling, terminal group/job ownership and representative
 interaction latency/full-process-tree measurements remain M5 work. Managed backend
 replacement remains M6. Neither this admission
 bound nor passing shutdown tests establishes a causal fix for the historical CEF

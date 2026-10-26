@@ -39,12 +39,37 @@ for the separate `BLST ACK` emitted after the application consumer finishes.
 The private native-to-Bun pipe keeps its existing 8 MiB total/7 MiB ordinary FIFO
 bounds. Hex-expanded full-pool traffic remains within that envelope. `stream.ack`
 and `stream.disconnect` share the finite control reserve; bulk `stream.deliver`
-remains ordinary traffic. No process, thread, poller or deadline is introduced.
+remains ordinary traffic. The runtime CEF lane additionally uses one shared,
+owner-round-robin scheduler per `CefBackend`, shared across its authenticated views:
+at most 16 stream packet
+handoffs are dispatched per event-loop turn, with a bounded 256-item queue and
+16 reserved lifecycle/control items. This queue is a scheduling bound, not a
+second native capacity pool; native packet reservations and receipts remain the
+authority for ownership.
+
+The per-backend turn budget is independent of each `TerminalService` scheduler
+and other backend instances; these bounds do not form one process-global total.
+The scheduler retains its count through empty queues and microtask refills. A
+single live continuation owns dispatch/yield across cancellation; stale callbacks
+cannot reset the count. Yield observers run only for queued work and cannot
+interrupt peer progress. Idle queues schedule no recurring callback.
+
+Outgoing packets are size-checked and encoded into an immutable snapshot of the
+exact admitted slice before `send()` returns. Deferred handoff does not retain
+caller-owned mutable/transferable storage. Submit failures reject the owned send
+and disconnect that lane; receive callback or receipt failures disconnect without
+claiming a successful ACK. Independent lanes remain live. Native view, context,
+generation and copy accounting are validated before receive scheduling; the wire
+kind used for scheduling grants no authority.
+
+These are Bun-side handoff bounds. Native UI per-turn work still requires actual
+owner integration and graphical/native measurement. This patch does not complete
+#26; #115 qualification and platform acceptance remain separate gates.
 
 ## Trusted APIs and qualification
 
 `CefBackend.serveStreams()` must run before sessions or views are created. It owns
-one global `StreamBudget` and invokes the application with the stable opaque
+one `StreamBudget` for that backend and invokes the application with the stable opaque
 `ViewHandle`, a document `AbortSignal`, and one-time sender/receiver factories.
 The callback selects exactly one endpoint before returning. It never promotes
 renderer-supplied IDs to authority. Disposal releases the connection and listeners

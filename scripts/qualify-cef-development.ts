@@ -38,6 +38,8 @@ const paths = [
   'native/cef-host/src/process.rs',
   'examples/cef/development.ts',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
+  'packages/runtime/src/fair-scheduler.ts',
   'benchmarks/lib/cef-policy-acceptance.ts',
   'benchmarks/lib/observed-command.ts',
   'benchmarks/foundation/native-shutdown.ts',

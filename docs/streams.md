@@ -147,3 +147,24 @@ Only an unsent block can grow, no batching timer delays the first byte, and unus
 block capacity remains charged alongside active/transferred buffers. Generic
 sources default to their original callback chunk behavior. See
 [terminal service](terminal-service.md) for the terminal-owned use and limits.
+
+## Shared fair scheduling
+
+Related runtime sources may share one `FairWorkScheduler`. TerminalService owns
+one scheduler for all of its terminals, and the CEF stream service owns one for
+all authenticated stream lanes/views. It rotates stable owner objects before
+considering the next queued item, so one owner with many noisy streams cannot
+consume a whole turn ahead of a quiet owner. The default bound is 16 dispatched
+items per event-loop turn, a 256-item queue, and 16 reserved control items.
+Bulk admission is rejected when only the control reserve remains; it is never
+dropped or silently coalesced.
+
+The scheduler uses a microtask notification while work remains in the current
+turn and one `setImmediate` event-loop yield at the bound. It installs no idle
+poll or recurring timer. FIFO remains local to each stream/source, and a queued
+cancel or document navigation removes only not-yet-started scheduler work.
+An active writer/native call keeps its existing reservation until its real
+promise or adapter callback settles. `queueDepth`, `maxWaitMs`, `yields`,
+`rejected`, `coalesced` and `dropped` diagnostics are bounded low-overhead
+counters; `coalesced` and `dropped` are explicitly zero at the scheduler layer.
+Transport handoff remains distinct from the consumer `BLST ACK`.
