@@ -78,13 +78,14 @@ and any nonzero terminal, stream or native final reservation.
 
 ## Unsupported modes and remaining gates
 
-The separate [native window-mode prerequisite](cef-window-modes.md) adds CEF-only
-readback, minimize and restore operations, with independent page visibility
-qualification. This terminal fixture still reports background and minimized as
-`NOT_QUALIFIED` until the combined load follow-up uses those operations and passes
-on the current source. An inactive visible window is not proof of foreground
-interaction, and hidden is not interchangeable with minimized. No Chromium
-throttling is disabled.
+The maintained API includes exact-handle show/hide and the separate
+[native window-mode prerequisite](cef-window-modes.md) adds CEF-only readback,
+minimize and restore with independent page visibility qualification. The original
+functional schema retains its historical labels; it does not qualify combined
+background or minimized terminal load. The [sustained load follow-up](terminal-load-qualification.md)
+must exercise those native operations on the current source. An inactive visible
+window is not proof of foreground interaction, and hidden is not interchangeable
+with minimized. No Chromium throttling is disabled.
 
 The fixture covers direct owned children only. Detached descendants, generalized
 scrollback/reconnect policy, release qualification, identical-workload competitor
