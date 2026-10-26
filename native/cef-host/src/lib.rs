@@ -30,6 +30,7 @@ mod rpc_qualification;
 mod rpc_transport_qualification;
 mod scheme;
 mod session;
+mod shutdown_audit;
 mod terminal_runtime;
 #[cfg(not(feature = "sandbox"))]
 compile_error!("Bunly requires compiled sandbox support");
@@ -306,7 +307,9 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     shutdown_phase("host-release", host::release);
     // Stop work and fence continuations before the CEF runtime is disposed.
     shutdown_phase("asset-service-stop", || drop(asset_service));
+    shutdown_audit::checkpoint("before-cef-shutdown");
     shutdown_phase("cef-shutdown", shutdown);
+    shutdown_audit::checkpoint("after-cef-shutdown");
     session::release_after_cef_shutdown()?;
     eprintln!(
         "{}",

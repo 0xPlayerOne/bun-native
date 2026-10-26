@@ -94,3 +94,12 @@ rejects stolen credentials confirmed by another same-origin native binding.
 Ordinary native builds exclude this decision, preserve generic prompt denial and
 reject experimental loopback setup. A successful contributor comparison does not
 qualify this permission path for shipping applications or arbitrary remote pages.
+
+## Opt-in shutdown diagnostics
+
+`shutdown-diagnostics` records the final lifetime of four named Bunly callback
+wrapper classes at the final UI fence and around CEF shutdown. Default builds
+allocate no audit owner and emit no audit event. These counters do not measure
+Chromium internal references or prove that thread-pool work has drained. See
+[the investigation](../../docs/cef-shutdown-investigation.md) for the maintained
+read-only capture command, unchanged historical failures and current limitations.

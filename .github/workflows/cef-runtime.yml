@@ -94,6 +94,8 @@ jobs:
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,rpc-qualification -- -D warnings
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,rpc-qualification,shutdown-diagnostics -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification,shutdown-diagnostics
           cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release > .bunly/hosted-evidence/build.log 2>&1 || { tail -180 .bunly/hosted-evidence/build.log; exit 1; }
           tail -10 .bunly/hosted-evidence/build.log
       - name: Build TypeScript application without native compilation

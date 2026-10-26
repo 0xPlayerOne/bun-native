@@ -884,7 +884,11 @@ fn operation_finished(id: u64) {
 pub(crate) fn session_initialized(id: u64, context: RequestContext) {
     // Even a synchronous CEF initialization callback is completed on a later UI
     // task, after CreateContext has returned and installed the native record.
-    let mut task = SessionReadyTask::new(id, context);
+    let mut task = SessionReadyTask::new(
+        id,
+        context,
+        crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::SessionReady),
+    );
     if post_task(ThreadId::UI, Some(&mut task)) == 0 {
         fail("Session initialization completion could not be scheduled");
     }
@@ -934,7 +938,7 @@ fn finish_session_initialization(id: u64, context: &RequestContext) {
     }
 }
 wrap_task! {
-    struct SessionReadyTask { id: u64, context: RequestContext }
+    struct SessionReadyTask { id: u64, context: RequestContext, _audit: crate::shutdown_audit::Token }
     impl Task { fn execute(&self) { finish_session_initialization(self.id, &self.context); } }
 }
 
@@ -943,7 +947,11 @@ fn begin_dispose_flush(id: u64, context: RequestContext) {
         dispose_failed(id, "Cookie store unavailable during session disposal");
         return;
     };
-    let mut callback = SessionFlushedForDispose::new(id, context);
+    let mut callback = SessionFlushedForDispose::new(
+        id,
+        context,
+        crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::FlushCallback),
+    );
     if manager.flush_store(Some(&mut callback)) == 0 {
         dispose_failed(id, "Cookie store flush could not be scheduled");
     }
@@ -963,16 +971,16 @@ fn dispose_failed(id: u64, message: &str) {
     }
 }
 wrap_completion_callback! {
-    struct SessionFlushedForDispose { id: u64, context: RequestContext }
+    struct SessionFlushedForDispose { id: u64, context: RequestContext, _audit: crate::shutdown_audit::Token }
     impl CompletionCallback { fn on_complete(&self) {
         self.context.clear_scheme_handler_factories();
-        let mut closed = ContextClosed::new(self.id);
+        let mut closed = ContextClosed::new(self.id, crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::ConnectionsClosed));
         // Keep the context and profile lock in STATE until asynchronous CEF cleanup.
         self.context.close_all_connections(Some(&mut closed));
     } }
 }
 wrap_completion_callback! {
-    struct ContextClosed { id: u64 }
+    struct ContextClosed { id: u64, _audit: crate::shutdown_audit::Token }
     impl CompletionCallback { fn on_complete(&self) {
         let record = STATE.with(|s| { let mut state=s.borrow_mut();
             if state.credential_probe==Some(self.id) {state.credential_probe=None;state.retired_credential_probe=None;state.credential_ready=false;}
@@ -1004,6 +1012,7 @@ wrap_task! { struct ShutdownIoFence; impl Task { fn execute(&self) {
     if post_task(ThreadId::UI, Some(&mut fence)) == 0 { FAILED.store(true, Ordering::SeqCst); }
 } } }
 wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
+    crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
 pub fn release() {

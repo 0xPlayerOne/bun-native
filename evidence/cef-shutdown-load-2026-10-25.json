@@ -1,0 +1,3821 @@
+{
+  "schema": 1,
+  "classification": "unresolved-native-shutdown-investigation",
+  "date": "2026-10-25",
+  "runtimeFixEstablished": false,
+  "milestoneAcceptance": false,
+  "versions": {
+    "bun": "1.4.3",
+    "cef": "156.0.7",
+    "chromium": "156.0.8078.17",
+    "os": "macOS arm64",
+    "rust": "1.91.0"
+  },
+  "components": {
+    "nativeBase": "6c01202",
+    "controlArtifactSource": "c17d20f7ffdec59de965b9d9d5b944ca65a36128",
+    "nativeBaseIdenticalToControlSource": true,
+    "workloadSource": "c23014dbb7f4d04a323ca23c935f1bc9c47c7978",
+    "nativeBuildSourceHashes": [
+      {
+        "path": "native/cef-host/build.rs",
+        "sha256": "2cc9dd98abbb6aeface2f36655745272ffc9f2a888d32ba915ed0de5fb29fc87"
+      },
+      {
+        "path": "native/cef-host/src/asset_service.rs",
+        "sha256": "4c45661d3f55a8b5a96aeef7bbe88b7094cda5a8c5171a6ffc3ad67a5502d5de"
+      },
+      {
+        "path": "native/cef-host/src/bundle.rs",
+        "sha256": "6be394e2d1086f529207081e33a42306c998fbc05f975dda2c135fb0aaba6663"
+      },
+      {
+        "path": "native/cef-host/src/capability_policy.rs",
+        "sha256": "85baeb0e82ecffdfcdbf77b54b57a1fbc2cf98e7eaead0d3a1264d1e65bc7c29"
+      },
+      {
+        "path": "native/cef-host/src/command_budget.rs",
+        "sha256": "1f48b6a5ddce733f2aca97cf9601fee79f9ecceb80a4ab00076d6c79dfada32f"
+      },
+      {
+        "path": "native/cef-host/src/cookie_completion.rs",
+        "sha256": "1bfaa46da343c41d39925bdceb87a55b782ed715d9db5950c8222df1e0231579"
+      },
+      {
+        "path": "native/cef-host/src/credential_callbacks.rs",
+        "sha256": "fd6a57af1436d2850bb02fcddfbd72ae45c01c173979297b1f5362e41eac4b5c"
+      },
+      {
+        "path": "native/cef-host/src/deadlines.rs",
+        "sha256": "e7835e4908a8612722d4060754dd41d2d030ee3c2cab672f6f405d304a3b986c"
+      },
+      {
+        "path": "native/cef-host/src/event_queue.rs",
+        "sha256": "2ff299e2e1ab4f47f8eb708684b83e1ed25446f1c19d1de763b3f928cfeee5a3"
+      },
+      {
+        "path": "native/cef-host/src/exit_notification.rs",
+        "sha256": "c895a537d3d86e78d337b59e9a3b56dca9b252bf232978e093aa246ebd7ede6e"
+      },
+      {
+        "path": "native/cef-host/src/handshake.rs",
+        "sha256": "b1a274ef4876ce0a545dd5edf1ee38a6b65975453ff8903e426593ac5de7d7c5"
+      },
+      {
+        "path": "native/cef-host/src/helper.rs",
+        "sha256": "e8479985c80e3cca0bcfb97508f95e1283c45a29f95a7e0acd70c3bd1b8b0756"
+      },
+      {
+        "path": "native/cef-host/src/host.rs",
+        "sha256": "db616cdd3e3c1e2cc62de1f656a35f2dc5713c323d86def0834cffdc213e7048"
+      },
+      {
+        "path": "native/cef-host/src/keychain.rs",
+        "sha256": "788d0c6ef18d4ce4476daac9254c5b2fcf51a8ecb90091ba44f0512b05a7cfdc"
+      },
+      {
+        "path": "native/cef-host/src/lib.rs",
+        "sha256": "6cb95beecbbb1d0530e1cd29ea45165890edc59f81aad2e1aa1b769af4f59b73"
+      },
+      {
+        "path": "native/cef-host/src/mac.rs",
+        "sha256": "16f62527ee7d763e74e67429d0e3ad99395b9eb07f7f523d86d74bb043b15053"
+      },
+      {
+        "path": "native/cef-host/src/main.rs",
+        "sha256": "3d46de9da149482aa178eb808fa8b0e6dd5b5cebff296146d91c10225b778079"
+      },
+      {
+        "path": "native/cef-host/src/navigation.rs",
+        "sha256": "b08e95a6aa7cf62a6b634d2676caa99b2e54a91c8ee412aa3407b6ce8cfc6c58"
+      },
+      {
+        "path": "native/cef-host/src/network_policy.rs",
+        "sha256": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975"
+      },
+      {
+        "path": "native/cef-host/src/policy.rs",
+        "sha256": "158cb1839d9e654f9eedc639a5f78357dc003fec1a384a1e463b292874a13d81"
+      },
+      {
+        "path": "native/cef-host/src/process.rs",
+        "sha256": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2"
+      },
+      {
+        "path": "native/cef-host/src/renderer_rpc.rs",
+        "sha256": "7f44f424e5260a4b803e41d35ccd86cfd103c5edaab887b5aff0086114ce8950"
+      },
+      {
+        "path": "native/cef-host/src/resources.rs",
+        "sha256": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5"
+      },
+      {
+        "path": "native/cef-host/src/rpc_authority.rs",
+        "sha256": "0f7df4fbe7da1883d5cb5b43005df0311d036d27eacb076d5855bd7124e7728a"
+      },
+      {
+        "path": "native/cef-host/src/rpc_context_diagnostics.rs",
+        "sha256": "1b7dea16102b2144c5d90d2673b281301ddffe2a63325210920a3cecd681abdf"
+      },
+      {
+        "path": "native/cef-host/src/rpc_protocol.rs",
+        "sha256": "71ec2fbd9d67f05e7b1bc0292f04a0b5d250c147003ed8ff21d6aab6f22fa92e"
+      },
+      {
+        "path": "native/cef-host/src/rpc_qualification.rs",
+        "sha256": "ef20d4011d6030aadebff6523a9590c8f63b9dfab537c3163678efa329f4cb89"
+      },
+      {
+        "path": "native/cef-host/src/rpc_transport_qualification.rs",
+        "sha256": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706"
+      },
+      {
+        "path": "native/cef-host/src/scheme.rs",
+        "sha256": "eb59ee31380cf346e9cd3bc87b8fbbdc3f5ef06b305455f92456d7c9df9abe41"
+      },
+      {
+        "path": "native/cef-host/src/session.rs",
+        "sha256": "04f82be41a026106341ec91a428cb34194f3f073cef99d9ca761cffd14391a14"
+      },
+      {
+        "path": "native/cef-host/src/session_credentials.rs",
+        "sha256": "46410a42863359174329d26294d152d7b699052711aa9a1ced7a80ffea4a0896"
+      },
+      {
+        "path": "native/cef-host/src/session_reset.rs",
+        "sha256": "b55736247ea205850b170aae9da54b0007abb2c12feb8bcbfaad0b299f929793"
+      },
+      {
+        "path": "native/cef-host/src/shutdown_audit.rs",
+        "sha256": "dd53c938c54b317f8e34b68b0e9aecf818ad2370998f4261752d8ce674355c56"
+      },
+      {
+        "path": "native/cef-host/Cargo.toml",
+        "sha256": "f361456bdb90e97146db50f33eb9939314f8ed0dd4f8acc3f72afa2fc2d5e195"
+      }
+    ],
+    "workloadRebundle": {
+      "bunOutputsByteIdentical": true,
+      "browserDifference": "generated xterm source-path comment only; original browser bytes retained"
+    }
+  },
+  "artifacts": {
+    "control": {
+      "inventory": {
+        "bytes": 42862,
+        "sha256": "898b514736888bfb597f253b30d47976306ac14eceb4b5cc6bdca3a2a1d12b8c"
+      },
+      "unchanged": true,
+      "hostSha256": "56745366055031acaf11355b2680d3681cde6f7cbc535b360d874470826d89b6",
+      "helperSha256": "20edeef8480c9e1b8c59f7902e23dda94a7580dec237ce431e98ccd30f87b7cf",
+      "cefSha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+      "backendSha256": "a1a8e12230eee85117e0a2d71278c6eec264826f8109b153b4ec4876a155d090",
+      "terminalChildSha256": "9f6340feaae10f49a2fd1e5ac8f9b619e793923c30413746d3835ffa25b30e40",
+      "browserSha256": "a2a5ce5d5bf5dc1feae78226e0b29030ff566ee8008f4995cb14342040f6f729"
+    },
+    "audit": {
+      "inventory": {
+        "bytes": 42862,
+        "sha256": "2dc185fae6591343c16245e8855c6c4deef595309ead8fc5a7bc5a9738763f36"
+      },
+      "unchanged": true,
+      "hostSha256": "0b8065ca7442f85a340d2d83eb72d71927ca2feab792f6a5deae9441ce6eaee9",
+      "helperSha256": "663600e562ac1597b5c89b12e8c1c5f33e3d38f0854b3d664c4ff84b0dcc400d",
+      "cefSha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+      "backendSha256": "a1a8e12230eee85117e0a2d71278c6eec264826f8109b153b4ec4876a155d090",
+      "terminalChildSha256": "9f6340feaae10f49a2fd1e5ac8f9b619e793923c30413746d3835ffa25b30e40",
+      "browserSha256": "a2a5ce5d5bf5dc1feae78226e0b29030ff566ee8008f4995cb14342040f6f729"
+    }
+  },
+  "adverseBaseline": {
+    "report": {
+      "bytes": 43670339,
+      "sha256": "9bef4b006017e12413b71b5186556ebbe5d2261e4874ec30067e61477c9a4095"
+    },
+    "accepted": 7,
+    "rejected": 5,
+    "attempts": [
+      {
+        "name": "trial--1-hidden",
+        "acceptedByOriginalProfile": false,
+        "rawProcess": {
+          "bytes": 1311870,
+          "sha256": "3cc0dfa1a0851bf33d73731093dbec6e2cc9f43dd12f5c788668d3119bd1d3bd"
+        },
+        "rawWorkload": {
+          "bytes": 342637,
+          "sha256": "1dd002b5b956d686375920470094063203b4a50ce684798a4a1f41be7ae2c74b"
+        },
+        "exitCode": 1,
+        "elapsedMs": 20763.1772919558,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "not-observed",
+        "backendExit": [
+          {
+            "code": 1,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 6,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 3217,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial--1-visible",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3025693,
+          "sha256": "9b31510e4decfd2cfc4ff5b4c1bc4f4031480dc29a3b250abf50a3a6f5180d60"
+        },
+        "rawWorkload": {
+          "bytes": 1171943,
+          "sha256": "56c649d588c4c9e7187ddde92938533915a0d6b715eba0cf61655a477e6d9004"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38846.32762498222,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 55,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-0-visible",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3173376,
+          "sha256": "e8d314b0a44774e45f1ff259d0a6ccce3e41742a54f8d384fa5a413ba61ac3d3"
+        },
+        "rawWorkload": {
+          "bytes": 1172656,
+          "sha256": "0beb8049cada9203e360d46c1ee4c8a54fe6a86e68e3eb70547a28128f0f4ae1"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38691.9252499938,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 51,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-0-hidden",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3235192,
+          "sha256": "4f0878e60f91cafeb5b9d706e17efbde1e7c5d7693a21c93995a71cf481df959"
+        },
+        "rawWorkload": {
+          "bytes": 1170738,
+          "sha256": "ee3b368c7976d8df98c341f74e86fc1899b1daa4cf3dbfd8d7dbbc86787fab47"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38701.805458869785,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 49,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-1-visible",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3237316,
+          "sha256": "489422e24c446f5bb8d7400b58189f54678e6ec1beb375829e54c15d61c56c23"
+        },
+        "rawWorkload": {
+          "bytes": 1172232,
+          "sha256": "1423e83ee4be0052e2af60d497865b57e0c5a034f147500bcd95f59dcd78f335"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38724.856292130426,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 44,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-1-hidden",
+        "acceptedByOriginalProfile": false,
+        "rawProcess": {
+          "bytes": 3087368,
+          "sha256": "2493ede867b68d43c18be4b7638b0e2b2e0892830369747e5e1573dfb0bce24d"
+        },
+        "rawWorkload": {
+          "bytes": 690602,
+          "sha256": "0b3c7202ff2cf5b500615260ca42049d91923c41cec16aa76252b191632aa05e"
+        },
+        "exitCode": 2,
+        "elapsedMs": 47952.95879198238,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 1,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": false,
+        "cloneCleanupStatus": "failed",
+        "backendExit": [
+          {
+            "code": 1,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 6,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": true
+      },
+      {
+        "name": "trial-2-visible",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3220339,
+          "sha256": "3e60e621918dec8042236ea5f09cbea696a5dcf8791fb65d812ec483f5c0189c"
+        },
+        "rawWorkload": {
+          "bytes": 1170475,
+          "sha256": "b44b39dc4bd77e26db97ef9d0491a025a60e19f031ca8cb40bc3a891196323a2"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38832.11029181257,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 57,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-2-hidden",
+        "acceptedByOriginalProfile": false,
+        "rawProcess": {
+          "bytes": 3057580,
+          "sha256": "2e6b3f1688ab74add454f085a5c7bb722f9e37b248ec537ce23b2c96d4911dd6"
+        },
+        "rawWorkload": {
+          "bytes": 578814,
+          "sha256": "8d264fcbabb0758d0f5042d1acabb3570c337ec9a10fb4fe53f0c707141747cc"
+        },
+        "exitCode": 1,
+        "elapsedMs": 40009.95670794509,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 1,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 4,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 55,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-3-visible",
+        "acceptedByOriginalProfile": false,
+        "rawProcess": {
+          "bytes": 3064458,
+          "sha256": "845aed6717e2bf011e95a8bb2adf52dead3d0549c4dc395d6817cbd845c1374d"
+        },
+        "rawWorkload": {
+          "bytes": 1172236,
+          "sha256": "5b4a056a38397e9ffaa196a368be32b93b61f991d9f1ae451c2e2ad925830c28"
+        },
+        "exitCode": 2,
+        "elapsedMs": 49390.82054188475,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 1,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": false,
+        "cloneCleanupStatus": "failed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 7,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": true
+      },
+      {
+        "name": "trial-3-hidden",
+        "acceptedByOriginalProfile": false,
+        "rawProcess": {
+          "bytes": 2436573,
+          "sha256": "d20539021a8e28e64a30b9a453edba60822d39b2a4f9ad33daaacd2b6c5e81d1"
+        },
+        "rawWorkload": {
+          "bytes": 541846,
+          "sha256": "7f6bce404966fc19228a0847e11425b3ef6b451986bfd63b6497f6edae719501"
+        },
+        "exitCode": 1,
+        "elapsedMs": 47185.97533390857,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 1,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 6,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 6773,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-4-hidden",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3356786,
+          "sha256": "375da6368cfa631a306e7390ab26dbd94d3b73143f9d9b5a963480cac7909a62"
+        },
+        "rawWorkload": {
+          "bytes": 1170637,
+          "sha256": "2f566584066e18e1c09cae537a1d05ce9409bef125f050e103748e3d009fec2b"
+        },
+        "exitCode": 0,
+        "elapsedMs": 39012.707458110526,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 88,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      },
+      {
+        "name": "trial-4-visible",
+        "acceptedByOriginalProfile": true,
+        "rawProcess": {
+          "bytes": 3488992,
+          "sha256": "ed9ae5ca6a32af2f8f19ce760751afdbd7a3d251ba51eab651af81a25c4745da"
+        },
+        "rawWorkload": {
+          "bytes": 1171819,
+          "sha256": "72ca3545b1ed23977d4cab982735974f717903e1ed2142d60aa403a6af1d9215"
+        },
+        "exitCode": 0,
+        "elapsedMs": 38793.12829184346,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0,
+        "cloneCleanupPassed": true,
+        "cloneCleanupStatus": "completed",
+        "backendExit": [
+          {
+            "code": 0,
+            "forced": false
+          }
+        ],
+        "shutdownPhases": [
+          {
+            "phase": "process-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 3,
+            "phase": "process-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "host-release",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "host-release",
+            "state": "complete"
+          },
+          {
+            "phase": "asset-service-stop",
+            "state": "start"
+          },
+          {
+            "durationMs": 0,
+            "phase": "asset-service-stop",
+            "state": "complete"
+          },
+          {
+            "phase": "cef-shutdown",
+            "state": "start"
+          },
+          {
+            "durationMs": 85,
+            "phase": "cef-shutdown",
+            "state": "complete"
+          }
+        ],
+        "audit": [],
+        "watchdogMessage": false
+      }
+    ]
+  },
+  "newAttempts": [
+    {
+      "name": "audit-early-capture-15",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 2.0,
+      "captures": [
+        {
+          "failure": "identity-refused"
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3229857,
+        "sha256": "1f3d4098fc7255d80a550476198cedc8ba00c4d5fe958a66b253a5fa048a2861"
+      },
+      "rawWorkload": {
+        "bytes": 1172788,
+        "sha256": "cc71b8e990fe59f0d811aa8bce7933183edaca750e3f038367d84f61e45a128a"
+      },
+      "rawCapture": {
+        "bytes": 172,
+        "sha256": "a285d714fbf7286259b526bec04d7431ff236624e4a52fa2c0e70d14dc338a08"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38596.15466604009,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 46,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-early-capture-16",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 8.0,
+      "captures": [
+        {
+          "failure": "identity-refused"
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3166634,
+        "sha256": "2d605cb9f3ff1546b2ec13db55ccabcb7e30dc43cea34467e208088b5a0e95bc"
+      },
+      "rawWorkload": {
+        "bytes": 1173101,
+        "sha256": "caa80f0c3870361e6bcffa40fdb71fe9f3a27980b7e3e194541cb5a9219c591a"
+      },
+      "rawCapture": {
+        "bytes": 183,
+        "sha256": "1b06912fa1e6d8b3c25ce85999a2476e26c2a63c5819019b84382955e97d8f81"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38783.02562516183,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 83,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-early-capture-17",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 8.0,
+      "captures": [
+        {
+          "index": 0,
+          "identityRevalidated": false,
+          "captureToolDidNotComplete": true
+        },
+        {
+          "failure": "sample-timeout"
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": false,
+      "commandAccepted": false,
+      "rawProcess": {
+        "bytes": 1926473,
+        "sha256": "4e61538b180dceec71203ed475c855339d1aee624786cbc0b1f96a896d802d31"
+      },
+      "rawWorkload": {
+        "bytes": 1172676,
+        "sha256": "df24322405f851890a41e312322b84202d8f61f364d34e8fb77de6b53cdf89bb"
+      },
+      "rawCapture": {
+        "bytes": 612,
+        "sha256": "7177df902bfe0b5e2d470832c8a8877bc8fc359fc4ceed8b477dab40f8ec2fe4"
+      },
+      "exitCode": 2,
+      "elapsedMs": 49684.18845790438,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 1,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": false,
+      "cloneCleanupStatus": "failed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 6,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": true
+    },
+    {
+      "name": "audit-hidden-10",
+      "mode": "hidden",
+      "artifact": "lifetime-audit",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 2504776,
+        "sha256": "bb1624ce9c3a16d1dbf2823564ed30e0a787af5c775afa8fba067c90e575085e"
+      },
+      "rawWorkload": {
+        "bytes": 1170487,
+        "sha256": "1d4ad707dc24156a2c01b71e45e14906da963a08e2dc193a8b3b9ffc3a150d09"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 42722.150000045076,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 40,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-hidden-12",
+      "mode": "hidden",
+      "artifact": "lifetime-audit",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3118060,
+        "sha256": "9117f84bb4060d2d9e7f48ce89bf0e4a7cf9f2e82b1430cb8a6028d776fa91e9"
+      },
+      "rawWorkload": {
+        "bytes": 1170796,
+        "sha256": "405b82064a1b794e1231259f7803099bda385b28ee2f2e65d10f9096532f7d35"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38747.246500104666,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 45,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-hidden-5",
+      "mode": "hidden",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3087146,
+        "sha256": "978b17d38c899d4ef98302440fad0226912e369893381a0416d0c9bcb41ac62d"
+      },
+      "rawWorkload": {
+        "bytes": 1170455,
+        "sha256": "24fcfd29a95f4e82b90886dd89b56488438da3e0c9bd5d04cbd823224ff755ec"
+      },
+      "rawCapture": {
+        "bytes": 105,
+        "sha256": "f741f2cb26412d2802e5dc5d8d712523289328da4afa0756718e630c146934fa"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38625.626042019576,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 44,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-hidden-7",
+      "mode": "hidden",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 40.0,
+      "captures": [
+        {
+          "failure": "sample-timeout"
+        }
+      ],
+      "workloadAccepted": false,
+      "shutdownAccepted": false,
+      "commandAccepted": false,
+      "rawProcess": {
+        "bytes": 1418414,
+        "sha256": "669c1434bc15898d29a6ad5da5ac6be7fa395cb956ac30f7d7d60d04aff6cd8c"
+      },
+      "rawWorkload": {
+        "bytes": 387037,
+        "sha256": "27d2435a72e9acfc667fd63fba9397febbea97a459b172aa3030ef163a7e5862"
+      },
+      "rawCapture": {
+        "bytes": 347,
+        "sha256": "57cf987e587c458c47bcfee3134ca9338f913659b220487a0e9c6e82f9b2ed93"
+      },
+      "exitCode": 2,
+      "elapsedMs": 45124.750749906525,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 1,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": false,
+      "cloneCleanupStatus": "failed",
+      "backendExit": [
+        {
+          "code": 1,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 12,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": true
+    },
+    {
+      "name": "audit-thread-state-18",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "read-only-thread-state",
+      "captureAfterSeconds": 8.0,
+      "captures": [
+        {
+          "index": 0,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 1,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 2,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 3,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 4,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 5,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 6,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 7,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 8,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 9,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3352004,
+        "sha256": "df8645a6016dd7fe1990da0a1b7755dda43dc474c4be384596f92dfad893c991"
+      },
+      "rawWorkload": {
+        "bytes": 1171107,
+        "sha256": "5ea0409064b7f855667af92859f53c6d325241a835b5f595a1f15dfc3e2aaca3"
+      },
+      "rawCapture": {
+        "bytes": 42961,
+        "sha256": "8b6ab0ac4804e71c163483cb44f3a3b929309115cb53153645cba59a176dfebb"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38721.75308386795,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 4,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 55,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-thread-state-19",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "read-only-thread-state",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3354204,
+        "sha256": "1753f8987af784ecc399738481926981ce854e587361e9115a7ae179d821caa8"
+      },
+      "rawWorkload": {
+        "bytes": 1172874,
+        "sha256": "3148eb1203305b1dac75bad3a8646ad4ca450baa730438bbe83ec07f3823866c"
+      },
+      "rawCapture": {
+        "bytes": 104,
+        "sha256": "cc3030c17d0f68c37b812441e3498c4171f4c3c14a9db431b895bdeea34f175b"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38788.285583024845,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 54,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-thread-state-20",
+      "mode": "hidden",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "read-only-thread-state",
+      "captureAfterSeconds": 38.0,
+      "captures": [
+        {
+          "index": 0,
+          "identityRevalidated": true,
+          "threadCount": 18,
+          "runStates": {
+            "3": 18
+          }
+        },
+        {
+          "index": 1,
+          "identityRevalidated": true,
+          "threadCount": 18,
+          "runStates": {
+            "3": 18
+          }
+        },
+        {
+          "failure": "target-exited-or-unavailable"
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3185439,
+        "sha256": "475b75a869a2f373d65acc2cdb61fe0f10fd9dac2d3aae1ef77bd840f5916c26"
+      },
+      "rawWorkload": {
+        "bytes": 1170511,
+        "sha256": "fcf46fd06d8b3f15ef27128635c9a5f8203cfe9dc7a6e7dc1f351c4123893e45"
+      },
+      "rawCapture": {
+        "bytes": 9175,
+        "sha256": "a1f629c04e8464d58ad61c55aca19d4e20ee6b791bd4e07eef5b09095fe30576"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38852.72108390927,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 42,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-thread-state-21",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "read-only-thread-state",
+      "captureAfterSeconds": 8.0,
+      "captures": [
+        {
+          "index": 0,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 1,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 2,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 3,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 4,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 5,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 6,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 7,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 8,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        },
+        {
+          "index": 9,
+          "identityRevalidated": true,
+          "threadCount": 17,
+          "runStates": {
+            "3": 17
+          }
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3208835,
+        "sha256": "2394d87f5dc1308f3a727a948be570882f89a17bc3dfd88b6288e714a88a6e10"
+      },
+      "rawWorkload": {
+        "bytes": 1174199,
+        "sha256": "3c227b384f19be83aba186ae481cefd5fc3f6e49d40a868d024dec660abcac18"
+      },
+      "rawCapture": {
+        "bytes": 42976,
+        "sha256": "90ed0e9b1c4e4b9c392c8a1a4b8d631d71c6d5d21d702b7807136324f770a04f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38716.217915993184,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 49,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-visible-0",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3100222,
+        "sha256": "0b8c6cc557fc1d42554bc4a7c3106f7204bff023ef0f8f3cae4b7e7b880a0d04"
+      },
+      "rawWorkload": {
+        "bytes": 1174132,
+        "sha256": "1f8e2f041a67c7d723f7d42b8ab9ad4888eeedcf8a4205942ed8f6782a323887"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38856.75545898266,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 2,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 48,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-visible-14",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "control",
+      "captureClassification": "no-stack-sampling",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3091372,
+        "sha256": "878a77114bb3353227e39aabc4e83a31983980933e6825a26a80b51b6bc28f0e"
+      },
+      "rawWorkload": {
+        "bytes": 1171092,
+        "sha256": "667aa79f5b4abe244feac47bc5779b4b9e86c6d1f60a354a224693e4329184c5"
+      },
+      "rawCapture": {
+        "bytes": 97,
+        "sha256": "5d0312db93d60f4db9cd8cc1cd2ea7fd02964b72b746891f5b33d0e7a4504d68"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38724.60458311252,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 48,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-visible-2",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 40.0,
+      "captures": [
+        {
+          "failure": "sample-timeout"
+        }
+      ],
+      "workloadAccepted": true,
+      "shutdownAccepted": false,
+      "commandAccepted": false,
+      "rawProcess": {
+        "bytes": 3077460,
+        "sha256": "942e891da776a7e32b52589568ac5210d9f9be88e5863788380675e4c85c1777"
+      },
+      "rawWorkload": {
+        "bytes": 1172467,
+        "sha256": "7433791e63885127e70337c4001df45ffe8e1273a032ec98552f5773e2b69be3"
+      },
+      "rawCapture": {
+        "bytes": 348,
+        "sha256": "57f642f75d680a790d80b6118f5533d420711aa044bcb4ce4e11a1739161b2d6"
+      },
+      "exitCode": 2,
+      "elapsedMs": 49631.886875024065,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 1,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": false,
+      "cloneCleanupStatus": "failed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 11,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": true
+    },
+    {
+      "name": "audit-visible-4",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "network",
+      "captureClassification": "perturbing-stack-sample",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3284479,
+        "sha256": "700e086ca4cddc8b1a2ccd30efe69c39866e0ca8c099091d969dc78bfb8c5b30"
+      },
+      "rawWorkload": {
+        "bytes": 1171947,
+        "sha256": "0e2c77e5e5e49efe90ce180b065856ec88fa004ef14de11a5df1eee2d57f6666"
+      },
+      "rawCapture": {
+        "bytes": 105,
+        "sha256": "f741f2cb26412d2802e5dc5d8d712523289328da4afa0756718e630c146934fa"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38744.7868748568,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 4,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 48,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "audit-visible-9",
+      "mode": "visible",
+      "artifact": "lifetime-audit",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 1284016,
+        "sha256": "fe220d09201bf9922861f9ab83ebc25e58bc2e86e7240e282c22bc7097343a35"
+      },
+      "rawWorkload": {
+        "bytes": 1168199,
+        "sha256": "99029bda19b47af703fd946c17dccf081f191726d223cc5052b76e7c47958602"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 42203.07816611603,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 8,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 2877,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "final-ui-fence"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "before-cef-shutdown"
+        },
+        {
+          "event": "bunly.host.shutdown-audit",
+          "kinds": [
+            "context-handler",
+            "session-ready",
+            "flush-callback",
+            "connections-closed"
+          ],
+          "live": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "schema": 1,
+          "stage": "after-cef-shutdown"
+        }
+      ],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-hidden-1",
+      "mode": "hidden",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3315163,
+        "sha256": "a6d35f7694474c956a02b7ae07b90dcd841968405eb649e6fe0bb22b40bc394b"
+      },
+      "rawWorkload": {
+        "bytes": 1171210,
+        "sha256": "74746e63391133512a3aeef72736813da76fa100a0b7ecf38723b56831fdea8a"
+      },
+      "rawCapture": {
+        "bytes": 104,
+        "sha256": "3c825a8f90531e196e4d610d8ef2cf9885e7e11d217f1e1c1af8b02f6dec47f0"
+      },
+      "exitCode": 0,
+      "elapsedMs": 39867.15945811011,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 5,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 78,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-hidden-13",
+      "mode": "hidden",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3220176,
+        "sha256": "2bc0bc92cbf76cdc7a25946ffba746a62f5419b1f58be3676895ae3da06452d3"
+      },
+      "rawWorkload": {
+        "bytes": 1169439,
+        "sha256": "3ffaa1191cb3f7d875bc52f5bb58a7d3539fcd69df9981542f1c5211a062b278"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38652.97162509523,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 45,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-hidden-3",
+      "mode": "hidden",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 3267725,
+        "sha256": "8fde7f0ee714a21ac43f1153fb03f335ad92ca13a50bdd61cec4701240b76195"
+      },
+      "rawWorkload": {
+        "bytes": 1169927,
+        "sha256": "551ef01f0e04803f69b3638baf8c61f7cbbed81e1357b33aa155d1ae2cdbcc73"
+      },
+      "rawCapture": {
+        "bytes": 104,
+        "sha256": "3c825a8f90531e196e4d610d8ef2cf9885e7e11d217f1e1c1af8b02f6dec47f0"
+      },
+      "exitCode": 0,
+      "elapsedMs": 46676.75854195841,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 4,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 126,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-visible-0",
+      "mode": "visible",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 2636164,
+        "sha256": "e08e182e282d5a172a851becd702afb192642c68677e07143d8a62efe866c21b"
+      },
+      "rawWorkload": {
+        "bytes": 1172105,
+        "sha256": "f22f52067131a24eabe395b7063af8388cf45a117ec67f403be6b90ac4a9e048"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 39564.10124991089,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 4,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 67,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-visible-11",
+      "mode": "visible",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 2506709,
+        "sha256": "38e4904f3f61815a79658bf389a71a382388180347be539d4b72cd664ec0e454"
+      },
+      "rawWorkload": {
+        "bytes": 1172908,
+        "sha256": "eabf36c07962cbcbb7f59a7f3ba87abe96b88e884dc1d84b4279270b9e6638b4"
+      },
+      "rawCapture": {
+        "bytes": 102,
+        "sha256": "7ffe2988f60fd83f40fe55999206261b1cdc3f56c44a33a5c7da6647d644462f"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38752.058499958366,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 55,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-visible-6",
+      "mode": "visible",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 2241974,
+        "sha256": "3380c534046cc5d090020906fd9fcf4f0e64f900beb4c8843509eff3c501a039"
+      },
+      "rawWorkload": {
+        "bytes": 1171740,
+        "sha256": "79ab40e2cfaa57fbb2f2c9472046af112e3221be1a882ecc5713197b4367a6ce"
+      },
+      "rawCapture": {
+        "bytes": 104,
+        "sha256": "3c825a8f90531e196e4d610d8ef2cf9885e7e11d217f1e1c1af8b02f6dec47f0"
+      },
+      "exitCode": 0,
+      "elapsedMs": 38684.27620804869,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 3,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 64,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    },
+    {
+      "name": "control-visible-8",
+      "mode": "visible",
+      "artifact": "control",
+      "captureMode": "control",
+      "captureClassification": "uninstrumented-control",
+      "captureAfterSeconds": 40.0,
+      "captures": [],
+      "workloadAccepted": true,
+      "shutdownAccepted": true,
+      "commandAccepted": true,
+      "rawProcess": {
+        "bytes": 646070,
+        "sha256": "975be6e830a418cd27936a6a27fc4d1477bc3647a61ba267feb6f1d21d348891"
+      },
+      "rawWorkload": {
+        "bytes": 1167206,
+        "sha256": "f0ef7175b9ab1742c4049d9cfa18f29331b5264900a7362a861b6588cc97c5cc"
+      },
+      "rawCapture": {
+        "bytes": 104,
+        "sha256": "3c825a8f90531e196e4d610d8ef2cf9885e7e11d217f1e1c1af8b02f6dec47f0"
+      },
+      "exitCode": 0,
+      "elapsedMs": 48463.438417064026,
+      "timedOut": false,
+      "cancelled": false,
+      "outputOverflow": false,
+      "observedOrphanCount": 0,
+      "cleanupSurvivorCount": 0,
+      "cloneCleanupPassed": true,
+      "cloneCleanupStatus": "completed",
+      "backendExit": [
+        {
+          "code": 0,
+          "forced": false
+        }
+      ],
+      "shutdownPhases": [
+        {
+          "phase": "process-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 11,
+          "phase": "process-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "host-release",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "host-release",
+          "state": "complete"
+        },
+        {
+          "phase": "asset-service-stop",
+          "state": "start"
+        },
+        {
+          "durationMs": 0,
+          "phase": "asset-service-stop",
+          "state": "complete"
+        },
+        {
+          "phase": "cef-shutdown",
+          "state": "start"
+        },
+        {
+          "durationMs": 8148,
+          "phase": "cef-shutdown",
+          "state": "complete"
+        }
+      ],
+      "audit": [],
+      "watchdogMessage": false
+    }
+  ],
+  "nativeFunctionalQualification": {
+    "passed": true,
+    "report": {
+      "bytes": 278468,
+      "sha256": "b15d07e693b739e2f215011dc551600508a29aec05d441e9c2bb6bed542e856a"
+    }
+  },
+  "limitations": [
+    "No causal runtime fix; no issue or milestone closure.",
+    "All three actual stack-sampler invocations timed out and preceded watchdog exits, including sampling during active workload; their runtime outcomes are confounded.",
+    "Rejected suspending sampler sources and raw attempts retained privately. Maintained capture uses non-suspending libproc reads.",
+    "Zero audit counts only describe four Bunly wrapper classes, not Chromium tasks or all CEF references.",
+    "No-stack-sampling passes and read-only captures do not erase the supplied adverse baseline.",
+    "Concurrent local build/test activity and local smoke environment preclude calibrated latency comparisons.",
+    "Raw process identities, thread handles, stack data and machine paths are private; fingerprints commit their exact bytes.",
+    "No Linux/Windows execution or personal credential-provider testing in this increment."
+  ],
+  "validation": {
+    "portable": "834 Bun passed, 1 Windows-only skip; 236 Python passed; final log retained",
+    "foundation": "145 passed",
+    "cefDefaultTests": 155,
+    "cefAuditTests": 156,
+    "cefContributorAuditTests": 161,
+    "clippy": "default and packaging,rpc-qualification,shutdown-diagnostics with -D warnings passed",
+    "nativeBuilds": "default and contributor release passed",
+    "nativeProbe": "3 tests; build, qualify:host and artifact:probe passed",
+    "workflows": "passed",
+    "doctor": "passed with existing runtime-ref-not-release-tag warning",
+    "preparationFailures": [
+      "copied CMake cache absolute path mismatch, rebuilt in private target",
+      "sandbox-restricted sccache, per-command wrapper unset",
+      "sandbox denied process inventory, tests rerun with required host access"
+    ],
+    "captureGateTests": 8
+  }
+}
