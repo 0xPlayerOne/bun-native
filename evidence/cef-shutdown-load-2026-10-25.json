@@ -16,42 +16,144 @@
     "controlArtifactSource": "c17d20f7ffdec59de965b9d9d5b944ca65a36128",
     "nativeBaseIdenticalToControlSource": true,
     "workloadSource": "c23014dbb7f4d04a323ca23c935f1bc9c47c7978",
-    "nativeBuildSourceHashes": {
-      "native/cef-host/build.rs": "2cc9dd98abbb6aeface2f36655745272ffc9f2a888d32ba915ed0de5fb29fc87",
-      "native/cef-host/src/asset_service.rs": "4c45661d3f55a8b5a96aeef7bbe88b7094cda5a8c5171a6ffc3ad67a5502d5de",
-      "native/cef-host/src/bundle.rs": "6be394e2d1086f529207081e33a42306c998fbc05f975dda2c135fb0aaba6663",
-      "native/cef-host/src/capability_policy.rs": "85baeb0e82ecffdfcdbf77b54b57a1fbc2cf98e7eaead0d3a1264d1e65bc7c29",
-      "native/cef-host/src/command_budget.rs": "1f48b6a5ddce733f2aca97cf9601fee79f9ecceb80a4ab00076d6c79dfada32f",
-      "native/cef-host/src/cookie_completion.rs": "1bfaa46da343c41d39925bdceb87a55b782ed715d9db5950c8222df1e0231579",
-      "native/cef-host/src/credential_callbacks.rs": "fd6a57af1436d2850bb02fcddfbd72ae45c01c173979297b1f5362e41eac4b5c",
-      "native/cef-host/src/deadlines.rs": "e7835e4908a8612722d4060754dd41d2d030ee3c2cab672f6f405d304a3b986c",
-      "native/cef-host/src/event_queue.rs": "2ff299e2e1ab4f47f8eb708684b83e1ed25446f1c19d1de763b3f928cfeee5a3",
-      "native/cef-host/src/exit_notification.rs": "c895a537d3d86e78d337b59e9a3b56dca9b252bf232978e093aa246ebd7ede6e",
-      "native/cef-host/src/handshake.rs": "b1a274ef4876ce0a545dd5edf1ee38a6b65975453ff8903e426593ac5de7d7c5",
-      "native/cef-host/src/helper.rs": "e8479985c80e3cca0bcfb97508f95e1283c45a29f95a7e0acd70c3bd1b8b0756",
-      "native/cef-host/src/host.rs": "db616cdd3e3c1e2cc62de1f656a35f2dc5713c323d86def0834cffdc213e7048",
-      "native/cef-host/src/keychain.rs": "788d0c6ef18d4ce4476daac9254c5b2fcf51a8ecb90091ba44f0512b05a7cfdc",
-      "native/cef-host/src/lib.rs": "6cb95beecbbb1d0530e1cd29ea45165890edc59f81aad2e1aa1b769af4f59b73",
-      "native/cef-host/src/mac.rs": "16f62527ee7d763e74e67429d0e3ad99395b9eb07f7f523d86d74bb043b15053",
-      "native/cef-host/src/main.rs": "3d46de9da149482aa178eb808fa8b0e6dd5b5cebff296146d91c10225b778079",
-      "native/cef-host/src/navigation.rs": "b08e95a6aa7cf62a6b634d2676caa99b2e54a91c8ee412aa3407b6ce8cfc6c58",
-      "native/cef-host/src/network_policy.rs": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975",
-      "native/cef-host/src/policy.rs": "158cb1839d9e654f9eedc639a5f78357dc003fec1a384a1e463b292874a13d81",
-      "native/cef-host/src/process.rs": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2",
-      "native/cef-host/src/renderer_rpc.rs": "7f44f424e5260a4b803e41d35ccd86cfd103c5edaab887b5aff0086114ce8950",
-      "native/cef-host/src/resources.rs": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5",
-      "native/cef-host/src/rpc_authority.rs": "0f7df4fbe7da1883d5cb5b43005df0311d036d27eacb076d5855bd7124e7728a",
-      "native/cef-host/src/rpc_context_diagnostics.rs": "1b7dea16102b2144c5d90d2673b281301ddffe2a63325210920a3cecd681abdf",
-      "native/cef-host/src/rpc_protocol.rs": "71ec2fbd9d67f05e7b1bc0292f04a0b5d250c147003ed8ff21d6aab6f22fa92e",
-      "native/cef-host/src/rpc_qualification.rs": "ef20d4011d6030aadebff6523a9590c8f63b9dfab537c3163678efa329f4cb89",
-      "native/cef-host/src/rpc_transport_qualification.rs": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706",
-      "native/cef-host/src/scheme.rs": "eb59ee31380cf346e9cd3bc87b8fbbdc3f5ef06b305455f92456d7c9df9abe41",
-      "native/cef-host/src/session.rs": "04f82be41a026106341ec91a428cb34194f3f073cef99d9ca761cffd14391a14",
-      "native/cef-host/src/session_credentials.rs": "46410a42863359174329d26294d152d7b699052711aa9a1ced7a80ffea4a0896",
-      "native/cef-host/src/session_reset.rs": "b55736247ea205850b170aae9da54b0007abb2c12feb8bcbfaad0b299f929793",
-      "native/cef-host/src/shutdown_audit.rs": "dd53c938c54b317f8e34b68b0e9aecf818ad2370998f4261752d8ce674355c56",
-      "native/cef-host/Cargo.toml": "f361456bdb90e97146db50f33eb9939314f8ed0dd4f8acc3f72afa2fc2d5e195"
-    },
+    "nativeBuildSourceHashes": [
+      {
+        "path": "native/cef-host/build.rs",
+        "sha256": "2cc9dd98abbb6aeface2f36655745272ffc9f2a888d32ba915ed0de5fb29fc87"
+      },
+      {
+        "path": "native/cef-host/src/asset_service.rs",
+        "sha256": "4c45661d3f55a8b5a96aeef7bbe88b7094cda5a8c5171a6ffc3ad67a5502d5de"
+      },
+      {
+        "path": "native/cef-host/src/bundle.rs",
+        "sha256": "6be394e2d1086f529207081e33a42306c998fbc05f975dda2c135fb0aaba6663"
+      },
+      {
+        "path": "native/cef-host/src/capability_policy.rs",
+        "sha256": "85baeb0e82ecffdfcdbf77b54b57a1fbc2cf98e7eaead0d3a1264d1e65bc7c29"
+      },
+      {
+        "path": "native/cef-host/src/command_budget.rs",
+        "sha256": "1f48b6a5ddce733f2aca97cf9601fee79f9ecceb80a4ab00076d6c79dfada32f"
+      },
+      {
+        "path": "native/cef-host/src/cookie_completion.rs",
+        "sha256": "1bfaa46da343c41d39925bdceb87a55b782ed715d9db5950c8222df1e0231579"
+      },
+      {
+        "path": "native/cef-host/src/credential_callbacks.rs",
+        "sha256": "fd6a57af1436d2850bb02fcddfbd72ae45c01c173979297b1f5362e41eac4b5c"
+      },
+      {
+        "path": "native/cef-host/src/deadlines.rs",
+        "sha256": "e7835e4908a8612722d4060754dd41d2d030ee3c2cab672f6f405d304a3b986c"
+      },
+      {
+        "path": "native/cef-host/src/event_queue.rs",
+        "sha256": "2ff299e2e1ab4f47f8eb708684b83e1ed25446f1c19d1de763b3f928cfeee5a3"
+      },
+      {
+        "path": "native/cef-host/src/exit_notification.rs",
+        "sha256": "c895a537d3d86e78d337b59e9a3b56dca9b252bf232978e093aa246ebd7ede6e"
+      },
+      {
+        "path": "native/cef-host/src/handshake.rs",
+        "sha256": "b1a274ef4876ce0a545dd5edf1ee38a6b65975453ff8903e426593ac5de7d7c5"
+      },
+      {
+        "path": "native/cef-host/src/helper.rs",
+        "sha256": "e8479985c80e3cca0bcfb97508f95e1283c45a29f95a7e0acd70c3bd1b8b0756"
+      },
+      {
+        "path": "native/cef-host/src/host.rs",
+        "sha256": "db616cdd3e3c1e2cc62de1f656a35f2dc5713c323d86def0834cffdc213e7048"
+      },
+      {
+        "path": "native/cef-host/src/keychain.rs",
+        "sha256": "788d0c6ef18d4ce4476daac9254c5b2fcf51a8ecb90091ba44f0512b05a7cfdc"
+      },
+      {
+        "path": "native/cef-host/src/lib.rs",
+        "sha256": "6cb95beecbbb1d0530e1cd29ea45165890edc59f81aad2e1aa1b769af4f59b73"
+      },
+      {
+        "path": "native/cef-host/src/mac.rs",
+        "sha256": "16f62527ee7d763e74e67429d0e3ad99395b9eb07f7f523d86d74bb043b15053"
+      },
+      {
+        "path": "native/cef-host/src/main.rs",
+        "sha256": "3d46de9da149482aa178eb808fa8b0e6dd5b5cebff296146d91c10225b778079"
+      },
+      {
+        "path": "native/cef-host/src/navigation.rs",
+        "sha256": "b08e95a6aa7cf62a6b634d2676caa99b2e54a91c8ee412aa3407b6ce8cfc6c58"
+      },
+      {
+        "path": "native/cef-host/src/network_policy.rs",
+        "sha256": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975"
+      },
+      {
+        "path": "native/cef-host/src/policy.rs",
+        "sha256": "158cb1839d9e654f9eedc639a5f78357dc003fec1a384a1e463b292874a13d81"
+      },
+      {
+        "path": "native/cef-host/src/process.rs",
+        "sha256": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2"
+      },
+      {
+        "path": "native/cef-host/src/renderer_rpc.rs",
+        "sha256": "7f44f424e5260a4b803e41d35ccd86cfd103c5edaab887b5aff0086114ce8950"
+      },
+      {
+        "path": "native/cef-host/src/resources.rs",
+        "sha256": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5"
+      },
+      {
+        "path": "native/cef-host/src/rpc_authority.rs",
+        "sha256": "0f7df4fbe7da1883d5cb5b43005df0311d036d27eacb076d5855bd7124e7728a"
+      },
+      {
+        "path": "native/cef-host/src/rpc_context_diagnostics.rs",
+        "sha256": "1b7dea16102b2144c5d90d2673b281301ddffe2a63325210920a3cecd681abdf"
+      },
+      {
+        "path": "native/cef-host/src/rpc_protocol.rs",
+        "sha256": "71ec2fbd9d67f05e7b1bc0292f04a0b5d250c147003ed8ff21d6aab6f22fa92e"
+      },
+      {
+        "path": "native/cef-host/src/rpc_qualification.rs",
+        "sha256": "ef20d4011d6030aadebff6523a9590c8f63b9dfab537c3163678efa329f4cb89"
+      },
+      {
+        "path": "native/cef-host/src/rpc_transport_qualification.rs",
+        "sha256": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706"
+      },
+      {
+        "path": "native/cef-host/src/scheme.rs",
+        "sha256": "eb59ee31380cf346e9cd3bc87b8fbbdc3f5ef06b305455f92456d7c9df9abe41"
+      },
+      {
+        "path": "native/cef-host/src/session.rs",
+        "sha256": "04f82be41a026106341ec91a428cb34194f3f073cef99d9ca761cffd14391a14"
+      },
+      {
+        "path": "native/cef-host/src/session_credentials.rs",
+        "sha256": "46410a42863359174329d26294d152d7b699052711aa9a1ced7a80ffea4a0896"
+      },
+      {
+        "path": "native/cef-host/src/session_reset.rs",
+        "sha256": "b55736247ea205850b170aae9da54b0007abb2c12feb8bcbfaad0b299f929793"
+      },
+      {
+        "path": "native/cef-host/src/shutdown_audit.rs",
+        "sha256": "dd53c938c54b317f8e34b68b0e9aecf818ad2370998f4261752d8ce674355c56"
+      },
+      {
+        "path": "native/cef-host/Cargo.toml",
+        "sha256": "f361456bdb90e97146db50f33eb9939314f8ed0dd4f8acc3f72afa2fc2d5e195"
+      }
+    ],
     "workloadRebundle": {
       "bunOutputsByteIdentical": true,
       "browserDifference": "generated xterm source-path comment only; original browser bytes retained"
