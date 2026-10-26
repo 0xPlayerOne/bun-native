@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { OwnerTerminalConsumer } from './fixtures/terminal-owner-consumer.ts'
+import { OwnerTerminalConsumer, ownerFixtureExitInput } from './fixtures/terminal-owner-consumer.ts'
 const receipt = { event: 'ready', server: 123, shell: 122, port: 456, emptyArgPreserved: true }
 const framed = 'BUNLYOWN|' + Buffer.from(JSON.stringify(receipt)).toString('base64') + '|END'
 test('owner fixture uses real terminal parsing across VT setup, wraps and split callbacks', async () => {
@@ -37,4 +37,10 @@ test('owner fixture output admission rejects an unbounded callback before termin
   } finally {
     terminal.dispose()
   }
+})
+
+test('owner console fixture uses CR Enter on Windows without changing raw application bytes', () => {
+  expect([...ownerFixtureExitInput('win32')]).toEqual([101, 120, 105, 116, 13])
+  expect([...ownerFixtureExitInput('darwin')]).toEqual([101, 120, 105, 116, 10])
+  expect([...ownerFixtureExitInput('linux')]).toEqual([101, 120, 105, 116, 10])
 })

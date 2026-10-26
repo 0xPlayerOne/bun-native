@@ -7,9 +7,12 @@ import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
+
+import psutil
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from qualify_terminal_owner import read_record
+from qualify_terminal_owner import injected_kill_exit, read_record, windows_listener_state
 
 
 @unittest.skipIf(sys.platform == "win32", "Unix fd framing; Windows uses its bounded pipe reader")
@@ -57,3 +60,74 @@ class FramingTests(unittest.TestCase):
             stream.seek(0)
             with self.assertRaisesRegex(AssertionError, "oversized"):
                 read_record(SimpleNamespace(stdout=stream))
+
+
+class WindowsObservationTests(unittest.TestCase):
+    owned = {"port": 12345, "server": 101}
+    control = {"port": 12346, "server": 102}
+
+    def row(self, record, pid=None, status=psutil.CONN_LISTEN):
+        return SimpleNamespace(
+            laddr=SimpleNamespace(ip="127.0.0.1", port=record["port"]),
+            status=status,
+            pid=record["server"] if pid is None else pid,
+        )
+
+    def test_owned_listener_requires_exact_identity_before_cleanup(self):
+        with patch(
+            "qualify_terminal_owner.psutil.net_connections",
+            return_value=[self.row(self.owned), self.row(self.control)],
+        ) as snapshot:
+            self.assertFalse(windows_listener_state(self.owned, self.control, True))
+            snapshot.assert_called_once_with(kind="tcp4")
+        for rows in (
+            [],
+            [self.row(self.control)],
+            [self.row(self.owned, pid=999), self.row(self.control)],
+        ):
+            with (
+                patch("qualify_terminal_owner.psutil.net_connections", return_value=rows),
+                self.assertRaises(AssertionError),
+            ):
+                windows_listener_state(self.owned, self.control, True)
+
+    def test_absence_requires_positive_unrelated_listener_and_no_reused_owned_port(self):
+        with patch(
+            "qualify_terminal_owner.psutil.net_connections", return_value=[self.row(self.control)]
+        ):
+            self.assertTrue(windows_listener_state(self.owned, self.control, False))
+        for rows in (
+            [],
+            [self.row(self.owned), self.row(self.control)],
+            [self.row(self.owned, pid=999), self.row(self.control)],
+        ):
+            with (
+                patch("qualify_terminal_owner.psutil.net_connections", return_value=rows),
+                self.assertRaises(AssertionError),
+            ):
+                windows_listener_state(self.owned, self.control, False)
+
+    def test_denied_table_and_overflow_are_not_empty_success(self):
+        with (
+            patch(
+                "qualify_terminal_owner.psutil.net_connections", side_effect=psutil.AccessDenied()
+            ),
+            self.assertRaises(psutil.AccessDenied),
+        ):
+            windows_listener_state(self.owned, self.control, False)
+        with (
+            patch(
+                "qualify_terminal_owner.psutil.net_connections",
+                return_value=[self.row(self.control)] * 65537,
+            ),
+            self.assertRaisesRegex(AssertionError, "overflow"),
+        ):
+            windows_listener_state(self.owned, self.control, False)
+
+    def test_exact_kill_status_follows_pinned_injector_not_an_arbitrary_nonzero_exit(self):
+        with patch("qualify_terminal_owner.sys.platform", "win32"):
+            self.assertEqual(injected_kill_exit(), 15)
+            self.assertEqual(injected_kill_exit(native_host=True), 15)
+        with patch("qualify_terminal_owner.sys.platform", "linux"):
+            self.assertEqual(injected_kill_exit(), 137)
+            self.assertEqual(injected_kill_exit(native_host=True), -9)

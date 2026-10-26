@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import select
+import signal
 import socket
 import subprocess
 import sys
@@ -83,6 +84,45 @@ def await_gone(owned, timeout=5):
             return True
         time.sleep(0.02)
     return False
+
+
+def windows_listener_state(owned, independent, expect_owned):
+    """Qualified Windows TCP table: require a positive independent control too.
+
+    A short connect timeout is not proof a port is open or closed on Windows.
+    The pinned psutil implementation uses the OS TCP table; failure is not empty.
+    """
+    rows = psutil.net_connections(kind="tcp4")
+    assert len(rows) <= 65536, "fixture-listener-table-overflow"
+    listeners = [row for row in rows if row.status == psutil.CONN_LISTEN and row.laddr]
+
+    def matches(record):
+        return [
+            row
+            for row in listeners
+            if row.laddr.port == record["port"] and row.laddr.ip in ("127.0.0.1", "0.0.0.0")
+        ]
+
+    control = matches(independent)
+    assert len(control) == 1 and control[0].pid == independent["server"], (
+        "independent-listener-not-observed"
+    )
+    current = matches(owned)
+    if expect_owned:
+        assert len(current) == 1 and current[0].pid == owned["server"], (
+            "owned-listener-not-observed"
+        )
+    else:
+        assert not current, "owned-server-port-remained-open"
+    return not current
+
+
+def injected_kill_exit(*, native_host=False):
+    # psutil 7.0.0 arch/windows/proc.c calls TerminateProcess(handle, SIGTERM).
+    # This is not subprocess.Popen.kill(), which uses the different code 1.
+    if sys.platform == "win32":
+        return int(signal.SIGTERM)
+    return -int(signal.SIGKILL) if native_host else 128 + int(signal.SIGKILL)
 
 
 def run_case(bun, owner, host, mode):
@@ -168,6 +208,8 @@ def run_case(bun, owner, host, mode):
         ledger.write_text(json.dumps([{"pid": p.pid, "created": p.create_time()} for p in owned]))
         with socket.create_connection(("127.0.0.1", record["port"]), timeout=2):
             pass
+        if sys.platform == "win32":
+            windows_listener_state(record, unrelated_record, True)
         report["stage"] = "owned-lifecycle"
         if mode == "kill-guardian":
             helper.kill()
@@ -215,7 +257,7 @@ def run_case(bun, owner, host, mode):
             report["backendExit"] = exit_record["code"]
             assert report["backendExit"] == {
                 "exit-backend": 23,
-                "kill-backend": 1 if sys.platform == "win32" else 137,
+                "kill-backend": injected_kill_exit(),
                 "kill-guardian": 23,
             }.get(mode, 0)
             if "unsupported" not in report:
@@ -226,16 +268,21 @@ def run_case(bun, owner, host, mode):
         backend.wait(timeout=8)
         report["hostExit"] = backend.returncode
         assert backend.returncode == (
-            (1 if sys.platform == "win32" else -9) if mode == "kill-host" else 0
+            injected_kill_exit(native_host=True) if mode == "kill-host" else 0
         )
         if "unsupported" not in report:
             assert await_gone(descendants), "Owned descendant survived owner cleanup"
         assert all(live(p) for p in independent), "Unrelated identical command was stopped"
-        try:
-            with socket.create_connection(("127.0.0.1", record["port"]), timeout=0.2):
-                report["serverPortClosed"] = False
-        except ConnectionRefusedError:
-            report["serverPortClosed"] = True
+        if sys.platform == "win32":
+            report["serverPortClosed"] = windows_listener_state(record, unrelated_record, False)
+            report["portClosureEvidence"] = "windows-tcp-table-with-positive-independent-listener"
+        else:
+            try:
+                with socket.create_connection(("127.0.0.1", record["port"]), timeout=0.2):
+                    report["serverPortClosed"] = False
+            except ConnectionRefusedError:
+                report["serverPortClosed"] = True
+            report["portClosureEvidence"] = "loopback-connection-refused"
         if "unsupported" not in report:
             assert report["serverPortClosed"], "owned-server-port-remained-open"
         report["passed"] = "unsupported" not in report

@@ -1,4 +1,4 @@
-import { OwnerTerminalConsumer } from './terminal-owner-consumer.ts'
+import { OwnerTerminalConsumer, ownerFixtureExitInput } from './terminal-owner-consumer.ts'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { BinaryStreamWriter, StreamOutcome } from '../../packages/contracts/src/streams.ts'
@@ -87,7 +87,7 @@ for await (const command of input) {
   }
   if (command === 'exit-backend') process.exit(23)
   if (command === 'natural') {
-    await service.write(handle, new TextEncoder().encode('exit\n'))
+    await service.write(handle, ownerFixtureExitInput(process.platform))
     await observation.released
     console.log(
       JSON.stringify({

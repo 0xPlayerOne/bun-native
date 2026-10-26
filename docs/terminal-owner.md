@@ -188,3 +188,21 @@ more than 128 KiB of callback output. Regression tests exercise split control
 sequences, wrapping, incomplete records and the exact trailing-output length.
 The earlier Windows native-owned-shell readiness failures remain recorded;
 current Windows execution is required before attributing recovery to this change.
+
+The next Windows checkpoint (`40271070165`) reached every normal lifecycle after
+the parser correction, preserving eight failed outcomes rather than treating
+readiness as full acceptance. It exposed additional fixture-specific assumptions:
+console-mode Python expects carriage-return Enter, pinned psutil 7.0.0 injects
+TerminateProcess with SIGTERM (15), and a 200-ms TCP connect timeout does not
+establish an open or closed Windows listener. The fixture now uses the correct
+Enter byte and exact injector-specific status. Windows port cleanup requires an
+OS TCP-table snapshot with the owned listener absent **and the independently
+owned control listener positively present**. Before cleanup that same provider
+must identify both exact server PIDs. Unavailable/malformed/overfull observations
+fail; a timeout is never relabeled successful cleanup. Ordinary process identity,
+Job/group ownership and deadlines remain unchanged.
+
+Reference semantics: Microsoft `GetConsoleMode` documents `ENABLE_LINE_INPUT`
+returning on carriage return. Pinned psutil source is
+`giampaolo/psutil@release-7.0.0`, `psutil/arch/windows/proc.c`; its kill operation
+calls `TerminateProcess(hProcess, SIGTERM)`. No upstream implementation is copied.

@@ -46,3 +46,8 @@ export class OwnerTerminalConsumer {
     this.#terminal.dispose()
   }
 }
+
+/** Console-mode Windows line input consumes Enter (CR), unlike a raw-mode Bun fixture. */
+export function ownerFixtureExitInput(platform: NodeJS.Platform): Uint8Array {
+  return new TextEncoder().encode(platform === 'win32' ? 'exit\r' : 'exit\n')
+}
