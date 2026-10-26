@@ -107,6 +107,13 @@ export interface TerminalObservation {
   readonly released: Promise<void>
 }
 
+/** A launch remains observable even when started rejects before returning a handle. */
+export interface TerminalLaunch {
+  readonly handle: TerminalHandle
+  readonly started: Promise<TerminalHandle>
+  readonly observation: TerminalObservation
+}
+
 export interface TerminalCloseResult {
   readonly processExited: boolean
   readonly terminalClosed: boolean
@@ -452,6 +459,10 @@ export class TerminalService {
     writer: BinaryStreamWriter,
     input: TerminalSpawnOptions
   ): Promise<TerminalHandle> {
+    return this.launch(owner, writer, input).started
+  }
+
+  launch(owner: object, writer: BinaryStreamWriter, input: TerminalSpawnOptions): TerminalLaunch {
     if (this.#disposed) throw new TerminalError('DISPOSED', 'Terminal service disposed')
     if (!owner || typeof owner !== 'object')
       throw new TerminalError('INVALID_ARGUMENT', 'A stable runtime owner object is required')
@@ -501,10 +512,21 @@ export class TerminalService {
     this.#entries.set(handle, resource)
     this.#live.add(resource)
     if (lifetimeSignal) this.#attachLifetimeSignal(resource, lifetimeSignal)
+    const started = this.#spawn(resource, writer, options, lifetimeSignal)
+    return Object.freeze({ handle, started, observation: this.observe(handle) })
+  }
+
+  async #spawn(
+    resource: Resource,
+    writer: BinaryStreamWriter,
+    options: ReturnType<typeof validateOptions>,
+    lifetimeSignal: AbortSignal | undefined
+  ): Promise<TerminalHandle> {
+    const { handle, owner } = resource
     try {
       resource.source = new CallbackStreamSource(writer, {
         budget: this.#sourceBudget,
-        owner,
+        owner: owner!,
         maxRetainedBytes: options.maxOutputBytes,
         maxQueuedChunks: options.maxQueuedOutputChunks,
         coalescePending: true,
@@ -512,6 +534,7 @@ export class TerminalService {
       })
       resource.outputFinished = resource.source.finished
     } catch (error) {
+      resource.outputFinished = Promise.resolve({ ok: false, code: 'CONSUMER_FAILED' })
       resource.sourceDrained = true
       this.#notSpawned(resource, 'SPAWN_FAILED')
       throw error
