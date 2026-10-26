@@ -14,6 +14,7 @@
   "bunly.native.sessions",
   "bunly.native.transport",
   "bunly.native.transport-throttle",
+  "bunly.native.graphical-terminal",
   "bunly.native.last-window",
   "bunly.native.cycle",
   "bunly.native.renderer-failure-observed",

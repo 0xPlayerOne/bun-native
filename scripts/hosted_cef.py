@@ -139,6 +139,13 @@ def commands(suite, bun, app):
                 ],
             ),
         ]
+    if suite == "full":
+        result.append(
+            (
+                "terminals",
+                [bun, str(ROOT / "scripts/qualify-cef-terminals.ts"), str(app), "--functional"],
+            )
+        )
     if suite in ("m4-acceptance", "full"):
         result.extend(commands("credentials", bun, app))
     return result
@@ -152,7 +159,9 @@ def require_stage_prerequisites(suite, name, steps):
             if stage != "credentials"
         ]
         if [row["name"] for row in steps] != expected or not all(row["passed"] for row in steps):
-            raise ValueError("Credential qualification requires every ordinary M4 stage to pass")
+            raise ValueError(
+                "Credential qualification requires every preceding native stage to pass"
+            )
 
 
 def prepare_credential_prerequisites():
@@ -187,8 +196,14 @@ def execute(name, args, timeout=600):
             return 124
 
 
+def report_directory(name):
+    return (
+        ROOT / ".bunly/m5/graphical-terminals" if name == "terminals" else ROOT / ".bunly/m3" / name
+    )
+
+
 def new_report(name, before):
-    directory = ROOT / ".bunly/m3" / name
+    directory = report_directory(name)
     candidates = set(directory.glob("run-*/report.json")) - before
     if len(candidates) != 1:
         raise ValueError("Missing or ambiguous fresh " + name + " report")
@@ -265,7 +280,7 @@ def run(suite):
             require_stage_prerequisites(suite, name, result["steps"])
             if name == "credentials":
                 prepare_credential_prerequisites()
-            before = set((ROOT / ".bunly/m3" / name).glob("run-*/report.json"))
+            before = set(report_directory(name).glob("run-*/report.json"))
             code = execute(name, args)
             row = {"name": name, "exitCode": code, "passed": False}
             result["steps"].append(row)
@@ -311,6 +326,7 @@ def collect():
         ROOT / ".bunly/m3/credentials",
         ROOT / ".bunly/m3/session-reset",
         ROOT / ".bunly/m3/faults",
+        ROOT / ".bunly/m5/graphical-terminals",
     ):
         for path in directory.glob("run-*/report.json"):
             if not path.is_symlink() and path.stat().st_size <= 128 * 1024**2:
