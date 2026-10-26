@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'bun:test'
 import { LOAD, BATCHES, loadBatch, loadRecord } from '../examples/cef-terminal-load/workload.ts'
 import { receipt } from '../examples/cef-terminal-load/contract.ts'
-import { acceptLoadRows, loadProcessPhases } from '../benchmarks/lib/terminal-load-acceptance.ts'
+import {
+  acceptLoadRows,
+  loadProcessPhases,
+  loadProcessQuarterTrends,
+} from '../benchmarks/lib/terminal-load-acceptance.ts'
 import type { ObservationSample } from '../benchmarks/lib/observation.ts'
 const hash = 'a'.repeat(64)
 function fixture() {
@@ -210,4 +214,30 @@ test('CPU uses process birth identities and RSS quarters do not declare a platea
   assert.ok(result[0]!.treeCpuPercentOfOneCore! < 10)
   assert.deepEqual(result[0]!.rssQuarterMedians, [1000, 1100, 1200, 1300])
   assert.match(result[0]!.plateau, /DESCRIPTIVE_ONLY/)
+})
+
+test('quarter trends report measured CPU and refuse to join reused process identities', () => {
+  const samples = Array.from({ length: 8 }, (_, index) => ({
+    phase: 'sustained',
+    elapsedMs: index * 100,
+    rssBytes: 1000 + index,
+    threads: 1,
+    processes: [
+      {
+        pid: 1,
+        creationTime: index === 3 ? 2 : 1,
+        cpuSeconds: index * 0.01,
+        rssBytes: 1000,
+        threads: 1,
+        contextSwitches: null,
+        descriptors: null,
+      },
+    ],
+  }))
+  const result = loadProcessQuarterTrends(samples)
+  assert.equal(result[0]!.incomplete, true)
+  const quarters = result[2]!.quarters
+  assert.ok(Math.abs(quarters[0]!.cpuPercentOfOneCore! - 10) < 0.001)
+  assert.equal(quarters[1]!.cpuPercentOfOneCore, null)
+  assert.equal(quarters[0]!.rssMedianBytes, 1000.5)
 })

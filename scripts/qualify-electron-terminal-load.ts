@@ -6,7 +6,11 @@ import { resolve, join } from 'node:path'
 import { createRequire } from 'node:module'
 import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
-import { acceptLoadRows, loadProcessPhases } from '../benchmarks/lib/terminal-load-acceptance.ts'
+import {
+  acceptLoadRows,
+  loadProcessPhases,
+  loadProcessQuarterTrends,
+} from '../benchmarks/lib/terminal-load-acceptance.ts'
 import { profileOptions } from '../benchmarks/foundation/statistics.ts'
 import { schedule } from '../benchmarks/lib/statistics.ts'
 import type { ObservationSample } from '../benchmarks/lib/observation.ts'
@@ -42,6 +46,8 @@ const sources = [
   'examples/cef-terminal/terminal-records.ts',
   'examples/cef-terminal/terminal-contract.ts',
   'packages/runtime/src/terminal.ts',
+  'packages/runtime/src/fair-scheduler.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
   'packages/runtime/src/stream-source.ts',
   'packages/contracts/src/streams.ts',
   'scripts/qualify-electron-terminal-load.ts',
@@ -146,6 +152,9 @@ try {
         .split('\n')
         .map((line) => JSON.parse(line))
       trial['failureDiagnostic'] = rows.find((row) => row.kind === 'failure') ?? null
+      trial['quarterTrends'] = loadProcessQuarterTrends(
+        observation.samples as unknown as ObservationSample[]
+      )
       trial['phases'] = acceptLoadRows(raw, mode, observation.environment['os'], 'electron')
       trial['process'] = loadProcessPhases(observation.samples as unknown as ObservationSample[])
       assertCleanCommand(observation)

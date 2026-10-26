@@ -232,6 +232,57 @@ export function loadProcessPhases(samples: readonly ObservationSample[]) {
     }
   })
 }
+/** Adjacent same-birth CPU deltas within each time quarter; boundary intervals omitted. */
+export function loadProcessQuarterTrends(samples: readonly ObservationSample[]) {
+  return LOAD.phases.map(({ name }) => {
+    const selected = samples.filter((sample) => sample.phase === name)
+    if (selected.length < 2) return { phase: name, quarters: [], incomplete: true }
+    const first = selected[0]!.elapsedMs
+    const duration = selected.at(-1)!.elapsedMs - first
+    const bucket = (sample: ObservationSample) =>
+      Math.min(3, Math.floor((4 * (sample.elapsedMs - first)) / duration))
+    return {
+      phase: name,
+      incomplete: false,
+      quarters: [0, 1, 2, 3].map((quarter) => {
+        const rows = selected.filter((sample) => bucket(sample) === quarter)
+        let cpuSeconds = 0,
+          matched = 0
+        for (let index = 1; index < rows.length; index++)
+          for (const process of rows[index]!.processes) {
+            const current = process as typeof process & { creationTime?: number }
+            const previous = rows[index - 1]!.processes.find(
+              (old) =>
+                old.pid === current.pid &&
+                (old as typeof current).creationTime === current.creationTime
+            )
+            if (
+              current.creationTime !== undefined &&
+              previous &&
+              current.cpuSeconds >= previous.cpuSeconds
+            ) {
+              cpuSeconds += current.cpuSeconds - previous.cpuSeconds
+              matched++
+            }
+          }
+        const elapsed = rows.length > 1 ? rows.at(-1)!.elapsedMs - rows[0]!.elapsedMs : 0
+        return {
+          quarter,
+          samples: rows.length,
+          matchedIntervals: matched,
+          sampledDurationMs: elapsed,
+          cpuPercentOfOneCore: matched && elapsed > 0 ? (cpuSeconds * 100000) / elapsed : null,
+          rssMedianBytes: rows.length
+            ? quantile(
+                rows.map((row) => row.rssBytes),
+                0.5
+              )
+            : null,
+        }
+      }),
+    }
+  })
+}
 export function acceptTerminalLoad(input: unknown, raw: string, selected: string) {
   const observed = validateCommandObservation(input)
   assertCleanCommand(observed)

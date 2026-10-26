@@ -16,6 +16,7 @@ import { terminalLoadBaselines } from '../benchmarks/lib/terminal-load-baselines
 import { schedule, summarize } from '../benchmarks/lib/statistics.ts'
 import {
   assessTerminalLoad,
+  loadProcessQuarterTrends,
   acceptTerminalLoad,
 } from '../benchmarks/lib/terminal-load-acceptance.ts'
 import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observation.ts'
@@ -302,6 +303,9 @@ try {
         const raw = await readFile(join(work, `trial-${index}-${mode}.jsonl`), 'utf8')
         trial['rawSha256'] = createHash('sha256').update(raw).digest('hex')
         trial['outcomes'] = assessTerminalLoad(observation, raw, mode)
+        trial['quarterTrends'] = loadProcessQuarterTrends(
+          observation.samples as unknown as ObservationSample[]
+        )
         trial['metrics'] = acceptTerminalLoad(observation, raw, mode)
         trial.passed = true
         console.log(JSON.stringify({ index, mode, passed: true }))
