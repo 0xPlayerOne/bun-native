@@ -87,6 +87,7 @@ interface Attempt {
   readonly controller: AbortController
   readonly deadline: number
   launch?: TerminalLaunch
+  outputLease?: ServiceOutput
   failed: boolean
   retry: boolean
   ending: boolean
@@ -333,6 +334,7 @@ export class ServiceSupervisor {
       let writer: BinaryStreamWriter
       try {
         const output = await this.#factory!(context)
+        attempt.outputLease = output
         unknownOutput = true
         const { writer: supplied, dispose } = output
         if (typeof dispose !== 'function') throw new TypeError('Output disposal required')
@@ -463,6 +465,7 @@ export class ServiceSupervisor {
       this.#fail(attempt, 'OUTPUT_DISPOSE_FAILED', false)
       return // Unknown consumer cleanup retains the generation; no replacement or fabricated settlement.
     }
+    delete attempt.outputLease
     this.#update({ cleanupPending: true })
     // An asynchronous observer has bounded storage and cannot overlap replacement.
     await this.#waitObserver()

@@ -77,7 +77,9 @@ process failure. Exit code, signal, wait error and observed/failure status remai
 separate from PTY status and output drain. Linux PTY last-slave status 1 remains
 ambiguous; qualification checks exact output independently. Unobserved cleanup,
 spawn uncertainty, output failure, explicit stop/revocation and overflow disable
-replacement even if resources eventually release. Readiness failure/timeout can
+replacement even if resources eventually release. Exit during an in-flight input
+write can cancel output through TerminalService; this also fails closed without
+replaying the uncertain input. Readiness failure/timeout can
 retry only after all real reservations and callbacks settle.
 
 ## Finite restart and callback bounds

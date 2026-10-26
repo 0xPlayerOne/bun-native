@@ -660,7 +660,7 @@ test('settled shared terminal service admission failure disposes output without 
   baseline(f)
 })
 
-test('late driver input settlement holds replacement admission without replaying uncertain input', async () => {
+test('late driver input settlement holds ownership then fails closed without replaying uncertain input', async () => {
   const f = fixture(),
     pending = deferred<number>()
   f.supervisor.start()
@@ -674,13 +674,17 @@ test('late driver input settlement holds replacement admission without replaying
   await flush()
   expect(f.service.diagnostics()).toMatchObject({ terminals: 1, pendingDriverWrites: 1 })
   expect(f.supervisor.snapshot.cleanupPending).toBe(true)
+  expect(f.supervisor.snapshot.output).toEqual({ ok: false, code: 'CANCELLED' })
   pending.reject(new Error('late input failure'))
-  await flush()
-  expect(f.supervisor.snapshot.state).toBe('backoff')
-  f.clock.advance(5)
-  await flush()
-  expect(f.children[1]!.inputs).toEqual([])
-  f.supervisor.stop()
   await f.supervisor.settled
+  expect(f.supervisor.snapshot).toMatchObject({
+    state: 'failed',
+    failure: 'OUTPUT_FAILED',
+    cleanupPending: false,
+  })
+  f.clock.advance(100)
+  await flush()
+  expect(f.children).toHaveLength(1)
+  expect(f.children[0]!.inputs).toEqual([new Uint8Array([8])])
   baseline(f)
 })
