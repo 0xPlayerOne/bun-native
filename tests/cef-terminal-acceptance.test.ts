@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'bun:test'
-import { acceptGraphicalTerminal } from '../benchmarks/lib/cef-terminal-acceptance.ts'
+import {
+  acceptGraphicalTerminal,
+  acceptNativeServices,
+} from '../benchmarks/lib/cef-terminal-acceptance.ts'
 import type { CommandObservation } from '../benchmarks/lib/observed-command.ts'
 
 type MutableObservation = Omit<CommandObservation, 'stderr'> & {
@@ -9,6 +12,41 @@ type MutableObservation = Omit<CommandObservation, 'stderr'> & {
 }
 
 const hash = (digit: string) => digit.repeat(64)
+
+function serviceReceipt() {
+  return {
+    profile: 'native-non-detaching',
+    generations: [1, 2, 3].map((attempt) => ({
+      attempt,
+      exitCode: 7,
+      callbackBytes: 120,
+      consumedBytes: 120,
+      sha256: hash('a'),
+      terminalStatus: 0,
+      outputDrained: true,
+      disposedBeforeReplacement: true,
+    })),
+    attemptsExhausted: true,
+    staleGenerationRejected: true,
+    unrelatedPreserved: true,
+    explicitStop: {
+      attempts: 1,
+      observed: true,
+      exitCode: null as number | null,
+      signalCode: 15 as number | null,
+      output: { ok: false, code: 'CANCELLED' },
+      restarted: false,
+    },
+    finalResources: {
+      terminals: 0,
+      sourceStreams: 0,
+      sourceReservedBytes: 0,
+      timers: 0,
+      observerCalls: 0,
+    },
+  }
+}
+
 function receipt() {
   const renderer = [0, 1].map((terminal) => {
     const records = terminal === 0 ? 37 : 38
@@ -26,7 +64,8 @@ function receipt() {
   })
   return {
     event: 'bunly.native.graphical-terminal',
-    schema: 2,
+    schema: 3,
+    nativeServices: serviceReceipt(),
     classification: 'functional',
     renderer: {
       terminals: renderer,
@@ -246,5 +285,63 @@ test('graphical acceptance cannot hide leaked output or a receipt produced after
     const failed = observation()
     failed.stderr = mutate(failed.stderr)
     assert.throws(() => acceptGraphicalTerminal(failed))
+  }
+})
+
+test('native guarded service acceptance requires three exact drained generations and preserved unrelated work', () => {
+  acceptNativeServices(serviceReceipt(), 'Darwin')
+  const windows = serviceReceipt()
+  windows.explicitStop.exitCode = 1
+  windows.explicitStop.signalCode = null
+  acceptNativeServices(windows, 'Windows')
+  for (const mutate of [
+    (r: ReturnType<typeof serviceReceipt>) => r.generations.pop(),
+    (r: ReturnType<typeof serviceReceipt>) => r.generations.push(r.generations[0]!),
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[1]!.attempt = 1),
+    (r: ReturnType<typeof serviceReceipt>) => r.generations[0]!.consumedBytes++,
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[0]!.callbackBytes = 4097),
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[0]!.sha256 = 'invalid'),
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[0]!.exitCode = 0),
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[0]!.outputDrained = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.generations[0]!.disposedBeforeReplacement = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.attemptsExhausted = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.staleGenerationRejected = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.unrelatedPreserved = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.explicitStop.restarted = true),
+    (r: ReturnType<typeof serviceReceipt>) => (r.explicitStop.attempts = 2),
+    (r: ReturnType<typeof serviceReceipt>) => (r.explicitStop.observed = false),
+    (r: ReturnType<typeof serviceReceipt>) => (r.explicitStop.exitCode = 0),
+    (r: ReturnType<typeof serviceReceipt>) => (r.finalResources.timers = 1),
+    (r: ReturnType<typeof serviceReceipt>) => (r.finalResources.terminals = 1),
+    (r: ReturnType<typeof serviceReceipt>) => (r.profile = 'standalone-direct-child'),
+  ]) {
+    const row = serviceReceipt()
+    mutate(row)
+    assert.throws(() => acceptNativeServices(row, 'Darwin'))
+  }
+  const linux = serviceReceipt()
+  linux.generations[0]!.terminalStatus = 1
+  acceptNativeServices(linux, 'Linux')
+  assert.throws(() => acceptNativeServices(linux, 'Windows'))
+})
+
+test('graphical terminal acceptance cannot omit or downgrade guarded service integration', () => {
+  for (const edit of [
+    (r: Record<string, unknown>) => {
+      delete r['nativeServices']
+    },
+    (r: Record<string, unknown>) => {
+      r['schema'] = 2
+    },
+    (r: Record<string, unknown>) => {
+      r['nativeServices'] = { passed: true }
+    },
+  ]) {
+    const changed = observation(),
+      row = receipt()
+    edit(row)
+    changed.stderr[changed.stderr.findIndex((line) => line.includes('graphical-terminal'))] =
+      JSON.stringify(row)
+    assert.throws(() => acceptGraphicalTerminal(changed))
   }
 })

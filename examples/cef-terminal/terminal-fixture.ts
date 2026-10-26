@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { qualifyNativeServices } from './native-services.ts'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import type { BinaryStreamWriter, StreamOutcome } from '../../packages/contracts/src/streams.ts'
@@ -385,6 +386,7 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
     assert.ok(stopStreamService)
     stopStreamService()
     stopStreams = undefined
+    const nativeServices = await qualifyNativeServices(backend)
     const terminalDiagnostics = service.diagnostics()
     const streamDiagnostics = backend.streamDiagnostics()
     const writers = [...views.values()].flatMap((state) => state.terminals.map((row) => row.writer))
@@ -397,7 +399,8 @@ export default async function terminalFixture(backend: CefBackend): Promise<void
     console.error(
       JSON.stringify({
         event: 'bunly.native.graphical-terminal',
-        schema: 2,
+        schema: 3,
+        nativeServices,
         classification: 'functional',
         renderer: await pageReport.promise,
         runtime: {

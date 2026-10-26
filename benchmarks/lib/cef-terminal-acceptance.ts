@@ -96,6 +96,7 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
       'classification',
       'renderer',
       'runtime',
+      'nativeServices',
       'gates',
       'budgets',
       'queuePeaks',
@@ -105,7 +106,7 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
     ],
     'Malformed graphical terminal receipt'
   )
-  assert.equal(receipt['schema'], 2)
+  assert.equal(receipt['schema'], 3)
   assert.equal(receipt['classification'], 'functional')
   const renderer = object(receipt['renderer'], 'Missing renderer observations')
   exact(
@@ -135,6 +136,7 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
     Array.isArray(terminals) && terminals.length === 2,
     'Expected exactly two renderer terminals'
   )
+  acceptNativeServices(receipt['nativeServices'], report.environment['os'])
   const runtime = object(receipt['runtime'], 'Missing runtime observations')
   const runtimeTerminals = runtime['terminals']
   assert.ok(Array.isArray(runtimeTerminals) && runtimeTerminals.length === 2)
@@ -283,5 +285,78 @@ export function acceptGraphicalTerminal(input: unknown): AcceptedGraphicalTermin
     peakTreeThreads: report.peakTreeThreads,
     queuePeakFrames: integer(queuePeaks['frames'], 'Missing queue frame peak'),
     queuePeakBytes: integer(queuePeaks['bytes'], 'Missing queue byte peak'),
+  })
+}
+
+export function acceptNativeServices(input: unknown, os: unknown): void {
+  const service = object(input, 'Missing native service receipt')
+  exact(
+    service,
+    [
+      'profile',
+      'generations',
+      'attemptsExhausted',
+      'staleGenerationRejected',
+      'unrelatedPreserved',
+      'explicitStop',
+      'finalResources',
+    ],
+    'Malformed native service receipt'
+  )
+  assert.equal(service['profile'], 'native-non-detaching')
+  for (const name of ['attemptsExhausted', 'staleGenerationRejected', 'unrelatedPreserved'])
+    assert.equal(service[name], true)
+  const rows = service['generations']
+  assert.ok(Array.isArray(rows) && rows.length === 3)
+  rows.forEach((value, index) => {
+    const row = object(value, 'Malformed service generation')
+    exact(
+      row,
+      [
+        'attempt',
+        'exitCode',
+        'callbackBytes',
+        'consumedBytes',
+        'sha256',
+        'terminalStatus',
+        'outputDrained',
+        'disposedBeforeReplacement',
+      ],
+      'Malformed service generation'
+    )
+    assert.equal(row['attempt'], index + 1)
+    assert.equal(row['exitCode'], 7)
+    const bytes = integer(row['callbackBytes'], 'Missing service callback bytes')
+    assert.ok(bytes > 0 && bytes <= 4096)
+    assert.equal(row['consumedBytes'], bytes)
+    checksum(row['sha256'], 'Missing exact service checksum')
+    assert.ok(row['terminalStatus'] === 0 || (os === 'Linux' && row['terminalStatus'] === 1))
+    assert.equal(row['outputDrained'], true)
+    assert.equal(row['disposedBeforeReplacement'], true)
+  })
+  const stop = object(service['explicitStop'], 'Missing explicit service stop')
+  exact(
+    stop,
+    ['attempts', 'observed', 'exitCode', 'signalCode', 'output', 'restarted'],
+    'Malformed service stop'
+  )
+  assert.equal(stop['attempts'], 1)
+  assert.equal(stop['observed'], true)
+  assert.equal(stop['restarted'], false)
+  assert.ok(
+    (stop['exitCode'] === null &&
+      Number.isInteger(stop['signalCode']) &&
+      Number(stop['signalCode']) > 0) ||
+      (Number.isInteger(stop['exitCode']) &&
+        Number(stop['exitCode']) > 0 &&
+        stop['signalCode'] === null)
+  )
+  assert.deepEqual(stop['output'], { ok: false, code: 'CANCELLED' })
+  assert.deepEqual(service['finalResources'], {
+    terminals: 0,
+    sourceStreams: 0,
+    sourceReservedBytes: 0,
+    timers: 0,
+    observerCalls: 0,
   })
 }
