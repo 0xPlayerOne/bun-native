@@ -27,6 +27,7 @@ def accept_fault(
     require_renderer_identity=True,
     require_renderer_message=False,
     renderer_platform=None,
+    require_renderer_handshake=False,
 ):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
@@ -160,7 +161,7 @@ def accept_fault(
             "Wrong backend failure diagnostic",
         )
         require(injections == [], "Backend case must not inject a browser fault")
-    elif mode == "renderer-exit" and require_renderer_message:
+    elif mode == "renderer-exit" and (require_renderer_message or require_renderer_handshake):
         require(injections == [], "Native document fault must not also signal a guessed OS process")
         require(
             set(ready) == {"event", "mode", "pid"},
@@ -171,8 +172,10 @@ def accept_fault(
             injection
             == {
                 "event": "bunly.native.renderer-injected",
-                "schema": 1,
-                "authority": "native-main-frame-message",
+                "schema": 2 if require_renderer_handshake else 1,
+                "authority": "native-main-frame-handshake"
+                if require_renderer_handshake
+                else "native-main-frame-message",
                 "exitCode": 86,
             }
             and type(injection.get("schema")) is int
@@ -253,7 +256,7 @@ def accept_fault(
                 < records.index(phases[0]),
                 "GPU recovery did not follow actual injection",
             )
-    if not (mode == "renderer-exit" and require_renderer_message):
+    if not (mode == "renderer-exit" and (require_renderer_message or require_renderer_handshake)):
         require(
             not matching("bunly.native.renderer-injected"),
             "Unexpected native-task injection receipt",

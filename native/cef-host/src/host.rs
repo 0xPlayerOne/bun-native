@@ -322,20 +322,25 @@ fn renderer_message(
         }
         return 1;
     }
-    if ![
-        wire::READY,
-        wire::SUBSCRIBED,
-        wire::RELEASE,
-        wire::PACKET,
-        wire::DELIVERED,
-        wire::DISCARDED,
-        wire::STREAM_SUBSCRIBED,
-        wire::STREAM_RELEASE,
-        wire::STREAM_PACKET,
-        wire::STREAM_DELIVERED,
-        wire::STREAM_DISCARDED,
-    ]
-    .contains(&name.as_str())
+    #[cfg(feature = "rpc-qualification")]
+    let fault_ack = name == wire::RENDERER_ARMED;
+    #[cfg(not(feature = "rpc-qualification"))]
+    let fault_ack = false;
+    if !fault_ack
+        && ![
+            wire::READY,
+            wire::SUBSCRIBED,
+            wire::RELEASE,
+            wire::PACKET,
+            wire::DELIVERED,
+            wire::DISCARDED,
+            wire::STREAM_SUBSCRIBED,
+            wire::STREAM_RELEASE,
+            wire::STREAM_PACKET,
+            wire::STREAM_DELIVERED,
+            wire::STREAM_DISCARDED,
+        ]
+        .contains(&name.as_str())
     {
         return 0;
     }
@@ -359,6 +364,40 @@ fn renderer_message(
         }
         return 1;
     };
+    #[cfg(feature = "rpc-qualification")]
+    if fault_ack {
+        let authorized = sequence == 0
+            && context.main
+            && context.url == "app://ui/index.html"
+            && !QUITTING.load(Ordering::SeqCst)
+            && STATE.with(|state| {
+                let state = state.borrow();
+                state.views.get(&id).is_some_and(|view| {
+                    view.close.is_none()
+                        && view.rpc.authorize(&context, identity).is_ok()
+                        && state
+                            .windows
+                            .get(&view.window)
+                            .is_some_and(|window| window.closing.is_none())
+                })
+            });
+        if authorized {
+            if let Some(request) = crate::renderer_fault::acknowledged(id, identity) {
+                if let Some(mut commit) = wire::message(wire::RENDERER_COMMIT, identity, 0, None) {
+                    eprintln!(
+                        "{}",
+                        json!({"event":"bunly.native.renderer-injected", "schema":2,
+                        "authority":"native-main-frame-handshake", "exitCode":86})
+                    );
+                    reply(request, Value::Null);
+                    frame.send_process_message(ProcessId::RENDERER, Some(&mut commit));
+                } else {
+                    error(request, "Renderer fault commit allocation failed");
+                }
+            }
+        }
+        return 1;
+    }
     if name == wire::READY {
         if sequence != 0 || identity.connection != 0 || identity.generation != 0 {
             return 1;
@@ -2184,10 +2223,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .rpc
                     .authorize(&observed(&browser, &frame), identity)
             })?;
-            // FIFO acknowledgment precedes deliberate target retirement. It is
-            // not an execution receipt: the native renderer must independently
-            // emit its fixed receipt and CEF must observe its abnormal exit.
-            reply(request, Value::Null);
+            // One bounded contributor request remains pending until the same
+            // native document acknowledges it is armed. No role/PID is adopted.
+            crate::renderer_fault::begin(id, request, identity)?;
             frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
         }
         #[cfg(feature = "rpc-qualification")]

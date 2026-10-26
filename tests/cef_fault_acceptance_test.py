@@ -528,3 +528,69 @@ class NativeRendererTaskTests(unittest.TestCase):
                         require_renderer_message=True,
                         renderer_platform=platform,
                     )
+
+
+class NativeRendererHandshakeTests(unittest.TestCase):
+    def test_native_ack_and_commit_receipt_cannot_replace_the_actual_renderer_exit(self):
+        observation = NativeRendererTaskTests.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        rows[1].update({"schema": 2, "authority": "native-main-frame-handshake"})
+        correct = {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]}
+        accept_fault(
+            "renderer-exit",
+            correct,
+            [],
+            require_renderer_handshake=True,
+            renderer_platform="darwin",
+        )
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                correct,
+                [],
+                require_renderer_message=True,
+                renderer_platform="darwin",
+            )
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                observation,
+                [],
+                require_renderer_handshake=True,
+                renderer_platform="darwin",
+            )
+        for event in (
+            "bunly.native.renderer-injected",
+            "bunly.native.renderer-failure-observed",
+            "bunly.host.failure",
+        ):
+            changed = {
+                **correct,
+                "nativeDiagnostics": [json.dumps(row) for row in rows if row["event"] != event],
+            }
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    changed,
+                    [],
+                    require_renderer_handshake=True,
+                    renderer_platform="darwin",
+                )
+        for key, value in (
+            ("schema", True),
+            ("schema", 1),
+            ("authority", "native-main-frame-message"),
+            ("exitCode", 0),
+            ("exitCode", True),
+            ("extra", 86),
+        ):
+            changed = copy.deepcopy(rows)
+            changed[1][key] = value
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**correct, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_handshake=True,
+                    renderer_platform="darwin",
+                )

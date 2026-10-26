@@ -15,6 +15,7 @@ const paths = [
   'scripts/cef_fault_acceptance.py',
   'scripts/cef_fault_control.py',
   'native/cef-host/src/renderer_rpc.rs',
+  'native/cef-host/src/renderer_fault.rs',
   'native/cef-host/src/rpc_authority.rs',
   'native/cef-host/src/rpc_protocol.rs',
   'native/cef-host/src/host.rs',

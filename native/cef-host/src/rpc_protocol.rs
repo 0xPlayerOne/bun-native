@@ -5,6 +5,10 @@ pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const READY: &str = "bunly.rpc.context-ready";
 #[cfg(feature = "rpc-qualification")]
 pub const RENDERER_CRASH: &str = "bunly.qualification.renderer-exit";
+#[cfg(feature = "rpc-qualification")]
+pub const RENDERER_ARMED: &str = "bunly.qualification.renderer-armed";
+#[cfg(feature = "rpc-qualification")]
+pub const RENDERER_COMMIT: &str = "bunly.qualification.renderer-commit";
 
 pub const GRANT: &str = "bunly.rpc.grant";
 pub const SUBSCRIBED: &str = "bunly.rpc.subscribed";

@@ -18,6 +18,8 @@ mod mac;
 mod network_policy;
 mod policy;
 mod process;
+#[cfg(feature = "rpc-qualification")]
+mod renderer_fault;
 mod renderer_rpc;
 pub mod resources;
 mod rpc_authority;

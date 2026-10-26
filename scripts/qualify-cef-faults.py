@@ -318,7 +318,11 @@ def main():
         try:
             accept_foreign_control(foreign_control, data)
             trial["acceptance"] = accept_fault(
-                mode, data, injected, require_renderer_message=True, renderer_platform=sys.platform
+                mode,
+                data,
+                injected,
+                require_renderer_handshake=True,
+                renderer_platform=sys.platform,
             )
             if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
                 "attempted": True,
@@ -363,7 +367,7 @@ def main():
         ],
     }
     result = {
-        "schema": 6,
+        "schema": 7,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

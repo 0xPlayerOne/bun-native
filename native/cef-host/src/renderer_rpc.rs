@@ -25,6 +25,8 @@ struct Context {
     frame_id: String,
     identity: Option<Identity>,
     stream_retired: bool,
+    #[cfg(feature = "rpc-qualification")]
+    fault_armed: bool,
     rpc: LaneContext,
     stream: LaneContext,
 }
@@ -410,6 +412,8 @@ fn context_created(browser: &Browser, frame: &Frame, context: &V8Context) {
         frame_id,
         identity: None,
         stream_retired: false,
+        #[cfg(feature = "rpc-qualification")]
+        fault_armed: false,
         rpc: LaneContext::default(),
         stream: LaneContext::default(),
     };
@@ -568,7 +572,7 @@ fn process_message(
     }
     let name = CefString::from(&message.name()).to_string();
     #[cfg(feature = "rpc-qualification")]
-    let is_fault = name == wire::RENDERER_CRASH;
+    let is_fault = [wire::RENDERER_CRASH, wire::RENDERER_COMMIT].contains(&name.as_str());
     #[cfg(not(feature = "rpc-qualification"))]
     let is_fault = false;
     if !is_fault
@@ -634,19 +638,27 @@ fn process_message(
     }
     #[cfg(feature = "rpc-qualification")]
     if is_fault {
-        if renderer_fault_allowed(
+        if !renderer_fault_allowed(
             sequence,
             expected.rpc.receiver.is_some(),
             expected.context.is_valid() != 0,
             &CefString::from(&frame.url()).to_string(),
         ) {
-            // A fixed abnormal exit in this exact native-bound main renderer.
-            // No OS PID escapes its namespace and no page-callable kill API exists.
-            eprintln!(
-                "{}",
-                serde_json::json!({"event":"bunly.native.renderer-injected",
-                "schema":1, "authority":"native-main-frame-message", "exitCode":86})
-            );
+            return 1;
+        }
+        if name == wire::RENDERER_CRASH {
+            if update(id, &expected, |current| {
+                fault_transition(&mut current.fault_armed, false)
+            }) == Some(true)
+            {
+                send(frame, wire::RENDERER_ARMED, identity, 0, None);
+            }
+        } else if update(id, &expected, |current| {
+            fault_transition(&mut current.fault_armed, true)
+        }) == Some(true)
+        {
+            // The browser received this document's armed acknowledgment before
+            // committing the fixed exit. No sandboxed helper stderr is assumed.
             std::process::exit(86);
         }
         return 1;
@@ -755,12 +767,30 @@ mod tests {
 }
 
 #[cfg(feature = "rpc-qualification")]
+fn fault_transition(armed: &mut bool, commit: bool) -> bool {
+    if *armed != commit {
+        return false;
+    }
+    *armed = !commit;
+    true
+}
+#[cfg(feature = "rpc-qualification")]
 fn renderer_fault_allowed(sequence: u64, subscribed: bool, live: bool, url: &str) -> bool {
     sequence == 0 && subscribed && live && url == "app://ui/index.html"
 }
 #[cfg(all(test, feature = "rpc-qualification"))]
 mod renderer_fault_tests {
     use super::*;
+    #[test]
+    fn a_fault_commit_requires_one_native_arm_in_the_same_context() {
+        let mut armed = false;
+        assert!(!fault_transition(&mut armed, true));
+        assert!(fault_transition(&mut armed, false));
+        assert!(!fault_transition(&mut armed, false));
+        assert!(fault_transition(&mut armed, true));
+        assert!(!fault_transition(&mut armed, true));
+    }
+
     #[test]
     fn fixed_fault_requires_live_subscribed_fixture_with_no_caller_parameters() {
         assert!(renderer_fault_allowed(0, true, true, "app://ui/index.html"));

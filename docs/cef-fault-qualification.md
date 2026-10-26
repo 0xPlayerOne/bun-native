@@ -231,3 +231,27 @@ waitpid status (`86 << 8`, or 22016); Windows `kill_win.cc` preserves exit code 
 checks them against the independently selected target platform. Different
 signals/statuses and unknown platforms still fail. That first failed run is
 retained, not relabeled a pass.
+
+## Captured native handshake receipt (schema 7)
+
+The schema-6 current-head Windows run actually terminated the intended renderer
+with native code 86, but the sandboxed helper's stderr was not captured by the
+parent observer. The missing receipt remained a failed qualification; the
+successful exit was not used to waive it. Linux and macOS schema-6 full suites
+passed and remain scoped to that source.
+
+Current qualification uses a two-phase native CEF message handshake. The exact
+main-frame context first acknowledges it is armed; the browser verifies current
+frame/document/generation authority and one bounded pending request, logs the
+captured schema-2 handshake receipt, then sends the commit. The renderer exits
+only after the matching commit in that same context. A premature/replayed commit,
+foreign acknowledgment or duplicate request does not qualify. One small pending
+metadata record is retained on missing acknowledgment until host exit; no timer,
+worker or unbounded map is added. Ordinary builds exclude all handshake state.
+
+The handshake receipt proves arming/commit dispatch, not completed termination.
+The actual CEF termination callback with independently platform-checked code,
+backend observation, failed-host status, strict teardown and zero balances are
+still separately required. Historical schema-6 helper-stderr receipts retain
+their previous contract. No inheritance flag, sandbox, deadline or verifier is
+relaxed to collect evidence.
