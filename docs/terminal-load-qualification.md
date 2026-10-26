@@ -1,5 +1,7 @@
 # Sustained graphical terminal load
 
+See [the executed follow-up](terminal-load-followup.md) for the corrected current-source bootstrap, combined qualifier, actual Electron addon, and retained failure diagnostics.
+
 This separate `graphical-pty-load-v1` profile advances #27. It does not close #27
 or replace the schema-2 functional workload in
 [graphical terminal qualification](cef-terminal-qualification.md). The original
@@ -103,8 +105,7 @@ and lockfiles. This is a refusal record, not an actual baseline runtime trial. E
 two-PTY workload. An unsupported same-workload request supplies no timing and
 cannot enter a ratio. Electrobun's pinned CEF sandbox profile remains unverified;
 no pin, browser security flag or packaged Bun version is silently replaced.
-A same-workload maintained baseline adapter and matched-engine/security quiet
-calibration remain necessary for comparison and measured performance budgets.
+The [maintained Electron addon](terminal-load-followup.md) now executes this producer/consumer workload with equal Bun PTYs. The legacy scenario API still refuses it. Matched-engine/security, byte-identical output and quiet calibration remain necessary for comparison and measured performance budgets.
 
 Platform execution, native OS state readback where needed, true producer clock
 correlation, physical-input acceptance, a measured plateau/regression decision,
@@ -159,15 +160,15 @@ and repeated-launch bootstrap summaries are retained in the archive, conditioned
 on those successes; the failed trials prevent a reliable responsiveness or
 performance-budget acceptance claim.
 
-Replay the published observations against the current source fingerprints:
+Replay the published observations against their recorded historical source fingerprints:
 
 ```sh
-bun scripts/verify-terminal-load-evidence.ts
+bun scripts/verify-terminal-load-evidence.ts --historical
 ```
 
 A successful replay means the export is internally consistent: it must reproduce
 **7 passes and 5 retained failures**, not turn this profile green. The replay also
-rechecks the original functional receipt and rejects modified source hashes.
+rechecks the original functional receipt and verifies the recorded source snapshot. The follow-up replay separately checks the current executed implementation.
 
 Completed local checks on the qualified implementation:
 `bun run check:portable` (840 TypeScript passes, one existing skip, 229 Python
