@@ -15,8 +15,9 @@ Each state is a frozen, strictly validated object of booleans: `visible`, `activ
 `minimized`, `maximized`, `fullscreen`. These are actual CEF Views getters on the
 UI thread. An invisible window is not necessarily minimized; an inactive window
 can be visible. Native visibility is not page visibility or evidence of physical
-presentation, focus, occlusion, or foreground interaction. On the local macOS
-checkpoint the visible window was **inactive**; this is not foreground acceptance.
+presentation, focus, occlusion, or foreground interaction. On the first local macOS
+checkpoint the visible window was **inactive**; the final committed-source run
+was active while visible. Neither establishes foreground load acceptance.
 
 `minimizeWindow` and `restoreWindow` return immediate readback after requesting the
 action. CEF's void action return is not evidence that an asynchronous OS transition
@@ -111,3 +112,16 @@ cleanup status are retained. Missing packages/readiness fail explicitly. It does
 not attach to an existing desktop, install a service, modify global settings,
 disable sandboxing, or make an ordinary Bunly app depend on Openbox. The wrapper
 itself still needs actual Linux execution; static/unit checks are not that gate.
+
+## Local committed-source checkpoint
+
+[Retained evidence](../evidence/m5-window-modes-local.json) binds implementation
+`288d34f755d82f1c6db9524c42fc3a54398e03a0` to a clean-source macOS arm64 native
+run, unchanged input/prepared inventories, built host/helper hashes and the
+unchanged retained CEF framework. All five native states and page visibility
+receipts passed, with zero pending/delivery reservations, normal backend exit,
+ordered shutdown and no surviving owned processes. Notably, Restore immediately
+returned `minimized: true`; the subsequent visibility callback and native readback
+proved `visible: true, minimized: false`. The earlier preparation failure and
+dirty-source checkpoint remain fingerprinted. This evidence does not replace
+current integration-head Linux/Windows execution or combined #27 load acceptance.

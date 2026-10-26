@@ -1,0 +1,729 @@
+{
+  "schema": 1,
+  "classification": "native-window-mode-prerequisite-functional",
+  "issue": 27,
+  "implementationCommit": "288d34f755d82f1c6db9524c42fc3a54398e03a0",
+  "target": "darwin-arm64",
+  "bun": "1.4.3",
+  "runtimeIdentity": {
+    "event": "cef-binary-identity",
+    "schema": 1,
+    "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+    "cefVersion": "156.0.7",
+    "cefCommitNumber": 3652,
+    "chromiumVersion": "156.0.8078.17",
+    "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+    "source": "exported-api",
+    "sandbox": "unverified"
+  },
+  "sourceBefore": {
+    "commit": "288d34f755d82f1c6db9524c42fc3a54398e03a0",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceAfter": {
+    "commit": "288d34f755d82f1c6db9524c42fc3a54398e03a0",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceHashes": {
+    "package.json": "3317563570cdae49d3646fb2cbfb97e53e55b12be7700741c23d70b185a9fd95",
+    "bun.lock": "099dff47e6a1637ef753b1364b7acc8023525e16a2baa8464be4b640db28284f",
+    "scripts/qualify-cef-window-modes.ts": "92645f5154d6692f76b0eba9a73affc488b3cb027f7006f52218a97efcc725f1",
+    "scripts/cef-bootstrap.ts": "3f9974a13ae8e07b1efb0feb952b651663681fdc5f4d26943fc859e9c937a3c8",
+    "examples/cef-window-state/fixture.ts": "87fa87125e927e94e58cca513c87789cb65c0a4b5341fbfb8474c588952257e8",
+    "examples/cef-window-state/client.ts": "1c7646d40e90c05798a412b379d6ec69a9871e31a6653c424953202227f93e2d",
+    "examples/cef-window-state/contract.ts": "384cf24633ee948fd67c7b27b0acaefcbe660be3d70fefbc29e7e214a3e47d6f",
+    "examples/cef-window-state/public/index.html": "1e54dc66db26d0015aaeb3be30ceba2c1ab7ee86788c19d1af841b08d8d0d2de",
+    "benchmarks/lib/cef-window-acceptance.ts": "0972be3dcc8f1528c0322109cdc46dab1a0d4a2877bfb7dfbae957c88c743067",
+    "benchmarks/lib/observed-command.ts": "55808e8163d22261d399178372c2a596116c13074591ac200c3fea43ac7913d7",
+    "benchmarks/lib/native-diagnostic-events.json": "fe911aff3cbcf3045fb03a1d87fd6e3b090823d27793bb200450a5ae081e3b73",
+    "benchmarks/foundation/native-shutdown.ts": "9ccf4b459e1daf89c7a461e1f32072ac555c7a7e4b3ac898610fb0ddb9db00e7",
+    "packages/runtime/src/cef.ts": "7ce9ffa697a4cf83148400550745fd03c1f6289376cd8c7ce0557f735cc93a63",
+    "packages/runtime/src/cef-window-state.ts": "28c037f8c24666b769cca26586db7999eade8a433259c6c9a1e82e33eb3fd2b6",
+    "native/cef-host/src/host.rs": "33517662bc82d6a631c1e86c05ff13f445fae3c6959a13e7ee9728be431069c5",
+    "native/cef-host/src/window_state.rs": "4633cb3d49a6ca34ca46e9ba3bf02fa634ea2a412f634510477f8b192623b90e",
+    "native/cef-host/src/process.rs": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2"
+  },
+  "nativeSourceHashes": [
+    {
+      "path": "native/cef-host/Cargo.lock",
+      "sha256": "bf5eccfab8d9b302cb90fc3997be55e88f6df14cd5a4b0977668fa89624b0e16"
+    },
+    {
+      "path": "native/cef-host/Cargo.toml",
+      "sha256": "41e84bbac8599d826f3a2906e98ee2a88ae5e8b20052ecfec31b439e8ce4433b"
+    },
+    {
+      "path": "native/cef-host/README.md",
+      "sha256": "7447efb61c8fdbce6ce200404fad275fff417f429dc6b57b495cd7d271fe53d4"
+    },
+    {
+      "path": "native/cef-host/build.rs",
+      "sha256": "2cc9dd98abbb6aeface2f36655745272ffc9f2a888d32ba915ed0de5fb29fc87"
+    },
+    {
+      "path": "native/cef-host/src/asset_service.rs",
+      "sha256": "4c45661d3f55a8b5a96aeef7bbe88b7094cda5a8c5171a6ffc3ad67a5502d5de"
+    },
+    {
+      "path": "native/cef-host/src/bundle.rs",
+      "sha256": "6be394e2d1086f529207081e33a42306c998fbc05f975dda2c135fb0aaba6663"
+    },
+    {
+      "path": "native/cef-host/src/capability_policy.rs",
+      "sha256": "85baeb0e82ecffdfcdbf77b54b57a1fbc2cf98e7eaead0d3a1264d1e65bc7c29"
+    },
+    {
+      "path": "native/cef-host/src/command_budget.rs",
+      "sha256": "1f48b6a5ddce733f2aca97cf9601fee79f9ecceb80a4ab00076d6c79dfada32f"
+    },
+    {
+      "path": "native/cef-host/src/cookie_completion.rs",
+      "sha256": "1bfaa46da343c41d39925bdceb87a55b782ed715d9db5950c8222df1e0231579"
+    },
+    {
+      "path": "native/cef-host/src/credential_callbacks.rs",
+      "sha256": "fd6a57af1436d2850bb02fcddfbd72ae45c01c173979297b1f5362e41eac4b5c"
+    },
+    {
+      "path": "native/cef-host/src/deadlines.rs",
+      "sha256": "e7835e4908a8612722d4060754dd41d2d030ee3c2cab672f6f405d304a3b986c"
+    },
+    {
+      "path": "native/cef-host/src/event_queue.rs",
+      "sha256": "2ff299e2e1ab4f47f8eb708684b83e1ed25446f1c19d1de763b3f928cfeee5a3"
+    },
+    {
+      "path": "native/cef-host/src/exit_notification.rs",
+      "sha256": "c895a537d3d86e78d337b59e9a3b56dca9b252bf232978e093aa246ebd7ede6e"
+    },
+    {
+      "path": "native/cef-host/src/handshake.rs",
+      "sha256": "b1a274ef4876ce0a545dd5edf1ee38a6b65975453ff8903e426593ac5de7d7c5"
+    },
+    {
+      "path": "native/cef-host/src/helper.rs",
+      "sha256": "e8479985c80e3cca0bcfb97508f95e1283c45a29f95a7e0acd70c3bd1b8b0756"
+    },
+    {
+      "path": "native/cef-host/src/host.rs",
+      "sha256": "33517662bc82d6a631c1e86c05ff13f445fae3c6959a13e7ee9728be431069c5"
+    },
+    {
+      "path": "native/cef-host/src/keychain.rs",
+      "sha256": "788d0c6ef18d4ce4476daac9254c5b2fcf51a8ecb90091ba44f0512b05a7cfdc"
+    },
+    {
+      "path": "native/cef-host/src/lib.rs",
+      "sha256": "90ec6a267f7e59aeaee34ce186893c99a2a217b35b264f2e2f6cb4c2e999353a"
+    },
+    {
+      "path": "native/cef-host/src/mac.rs",
+      "sha256": "16f62527ee7d763e74e67429d0e3ad99395b9eb07f7f523d86d74bb043b15053"
+    },
+    {
+      "path": "native/cef-host/src/main.rs",
+      "sha256": "3d46de9da149482aa178eb808fa8b0e6dd5b5cebff296146d91c10225b778079"
+    },
+    {
+      "path": "native/cef-host/src/navigation.rs",
+      "sha256": "b08e95a6aa7cf62a6b634d2676caa99b2e54a91c8ee412aa3407b6ce8cfc6c58"
+    },
+    {
+      "path": "native/cef-host/src/network_policy.rs",
+      "sha256": "ef91d1733f8222b41def535099c8fdcff06420dd1132733c6afebba74c47f975"
+    },
+    {
+      "path": "native/cef-host/src/policy.rs",
+      "sha256": "158cb1839d9e654f9eedc639a5f78357dc003fec1a384a1e463b292874a13d81"
+    },
+    {
+      "path": "native/cef-host/src/process.rs",
+      "sha256": "07224b92a7f15da9038a17fe9c99f4f5f7e865bf2af129776b2f88b02a1c90d2"
+    },
+    {
+      "path": "native/cef-host/src/renderer_rpc.rs",
+      "sha256": "7f44f424e5260a4b803e41d35ccd86cfd103c5edaab887b5aff0086114ce8950"
+    },
+    {
+      "path": "native/cef-host/src/resources.rs",
+      "sha256": "bb5f8e6c098a92d3f2d5e9aa82135fc2e65dec22b402f03b87f2afcb789725d5"
+    },
+    {
+      "path": "native/cef-host/src/rpc_authority.rs",
+      "sha256": "0f7df4fbe7da1883d5cb5b43005df0311d036d27eacb076d5855bd7124e7728a"
+    },
+    {
+      "path": "native/cef-host/src/rpc_context_diagnostics.rs",
+      "sha256": "1b7dea16102b2144c5d90d2673b281301ddffe2a63325210920a3cecd681abdf"
+    },
+    {
+      "path": "native/cef-host/src/rpc_protocol.rs",
+      "sha256": "71ec2fbd9d67f05e7b1bc0292f04a0b5d250c147003ed8ff21d6aab6f22fa92e"
+    },
+    {
+      "path": "native/cef-host/src/rpc_qualification.rs",
+      "sha256": "ef20d4011d6030aadebff6523a9590c8f63b9dfab537c3163678efa329f4cb89"
+    },
+    {
+      "path": "native/cef-host/src/rpc_transport_qualification.rs",
+      "sha256": "366ab8090feb03fd03aaa9fca0ad0911fde33e2430fbd67a65747b8b62e8e706"
+    },
+    {
+      "path": "native/cef-host/src/scheme.rs",
+      "sha256": "9c1b3773bad3838881ada86f7d2290ff568c14c5a8980a00208b6a268323b1e1"
+    },
+    {
+      "path": "native/cef-host/src/session.rs",
+      "sha256": "04f82be41a026106341ec91a428cb34194f3f073cef99d9ca761cffd14391a14"
+    },
+    {
+      "path": "native/cef-host/src/session_credentials.rs",
+      "sha256": "46410a42863359174329d26294d152d7b699052711aa9a1ced7a80ffea4a0896"
+    },
+    {
+      "path": "native/cef-host/src/session_reset.rs",
+      "sha256": "b55736247ea205850b170aae9da54b0007abb2c12feb8bcbfaad0b299f929793"
+    },
+    {
+      "path": "native/cef-host/src/window_state.rs",
+      "sha256": "4633cb3d49a6ca34ca46e9ba3bf02fa634ea2a412f634510477f8b192623b90e"
+    }
+  ],
+  "command": "bun run qualify:cef-window-modes -- CURRENT_SOURCE_PREPARED_APP",
+  "nativeBuild": {
+    "toolchain": "1.91.0",
+    "features": [
+      "packaging",
+      "rpc-qualification"
+    ],
+    "locked": true,
+    "privateTarget": true,
+    "nativeHostMatchesBuiltExecutable": true,
+    "nativeHelperMatchesBuiltExecutable": true,
+    "frameworkMatchesRetainedCEFDistribution": true,
+    "inputHostSha256": "8d65d0b97272f403a1241f3358de913a55b3762a44d40bdd9420521d2e9a3d0e",
+    "inputHelperSha256": "96c064465d7ac08e4421c6f0e2e7d3d3db1d7e620612b3f5f466dd965a800d37",
+    "inputFrameworkSha256": "a9252bf7b8f4c6dfde117f9936ae0cdefcd70fb9ede4ca9cc0679789f18bc7ae"
+  },
+  "passed": true,
+  "sourceHashesUnchanged": true,
+  "inputArtifactUnchanged": true,
+  "preparedArtifactUnchanged": true,
+  "modes": [
+    {
+      "mode": "visible",
+      "state": {
+        "visible": true,
+        "active": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false
+      },
+      "page": {
+        "sequence": 0,
+        "visibility": "visible"
+      }
+    },
+    {
+      "mode": "hidden",
+      "state": {
+        "visible": false,
+        "active": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false
+      },
+      "page": {
+        "sequence": 1,
+        "visibility": "hidden"
+      }
+    },
+    {
+      "mode": "shown",
+      "state": {
+        "visible": true,
+        "active": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false
+      },
+      "page": {
+        "sequence": 2,
+        "visibility": "visible"
+      }
+    },
+    {
+      "mode": "minimized",
+      "state": {
+        "visible": false,
+        "active": false,
+        "minimized": true,
+        "maximized": false,
+        "fullscreen": false
+      },
+      "page": {
+        "sequence": 3,
+        "visibility": "hidden"
+      }
+    },
+    {
+      "mode": "restored",
+      "state": {
+        "visible": true,
+        "active": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false
+      },
+      "page": {
+        "sequence": 4,
+        "visibility": "visible"
+      }
+    }
+  ],
+  "orderedNativeDiagnostics": [
+    {
+      "event": "bunly.runtime.profile",
+      "profile": "standard",
+      "requestTimeoutMs": 10000,
+      "startupTimeoutMs": 10000
+    },
+    {
+      "event": "bunly.credential-policy",
+      "persistentCookiesAdmitted": false,
+      "persistentCookiesDefault": false,
+      "provider": null,
+      "schema": 1,
+      "state": "disabled-by-default"
+    },
+    {
+      "event": "bunly.native.window-modes",
+      "schema": 1,
+      "passed": true,
+      "modes": [
+        {
+          "mode": "visible",
+          "state": {
+            "visible": true,
+            "active": true,
+            "minimized": false,
+            "maximized": false,
+            "fullscreen": false
+          },
+          "page": {
+            "sequence": 0,
+            "visibility": "visible"
+          },
+          "actionState": null
+        },
+        {
+          "mode": "hidden",
+          "state": {
+            "visible": false,
+            "active": false,
+            "minimized": false,
+            "maximized": false,
+            "fullscreen": false
+          },
+          "page": {
+            "sequence": 1,
+            "visibility": "hidden"
+          },
+          "actionState": null
+        },
+        {
+          "mode": "shown",
+          "state": {
+            "visible": true,
+            "active": true,
+            "minimized": false,
+            "maximized": false,
+            "fullscreen": false
+          },
+          "page": {
+            "sequence": 2,
+            "visibility": "visible"
+          },
+          "actionState": null
+        },
+        {
+          "mode": "minimized",
+          "state": {
+            "visible": false,
+            "active": false,
+            "minimized": true,
+            "maximized": false,
+            "fullscreen": false
+          },
+          "page": {
+            "sequence": 3,
+            "visibility": "hidden"
+          },
+          "actionState": {
+            "visible": false,
+            "active": false,
+            "minimized": true,
+            "maximized": false,
+            "fullscreen": false
+          }
+        },
+        {
+          "mode": "restored",
+          "state": {
+            "visible": true,
+            "active": true,
+            "minimized": false,
+            "maximized": false,
+            "fullscreen": false
+          },
+          "page": {
+            "sequence": 4,
+            "visibility": "visible"
+          },
+          "actionState": {
+            "visible": false,
+            "active": false,
+            "minimized": true,
+            "maximized": false,
+            "fullscreen": false
+          }
+        }
+      ],
+      "pages": [
+        {
+          "sequence": 0,
+          "visibility": "visible"
+        },
+        {
+          "sequence": 1,
+          "visibility": "hidden"
+        },
+        {
+          "sequence": 2,
+          "visibility": "visible"
+        },
+        {
+          "sequence": 3,
+          "visibility": "hidden"
+        },
+        {
+          "sequence": 4,
+          "visibility": "visible"
+        }
+      ],
+      "actions": [
+        {
+          "mode": "minimized",
+          "state": {
+            "visible": false,
+            "active": false,
+            "minimized": true,
+            "maximized": false,
+            "fullscreen": false
+          }
+        },
+        {
+          "mode": "restored",
+          "state": {
+            "visible": false,
+            "active": false,
+            "minimized": true,
+            "maximized": false,
+            "fullscreen": false
+          }
+        }
+      ],
+      "nativeFinal": {
+        "views": 0,
+        "sessions": 0,
+        "windows": 1,
+        "pending": 0,
+        "nativeDeliveryPackets": 0,
+        "nativeDeliveryBytes": 0,
+        "rpcIncomingBytes": 0,
+        "streamIncomingBytes": 0
+      },
+      "failure": null
+    },
+    {
+      "event": "bunly.host.shutdown-phase",
+      "phase": "process-stop",
+      "state": "start"
+    },
+    {
+      "code": 0,
+      "event": "bunly.backend.exit",
+      "forced": false,
+      "pid": 14475
+    },
+    {
+      "event": "bunly.native.output-drained",
+      "frames": 0,
+      "ordinaryFrames": 0,
+      "ordinaryWireBytes": 0,
+      "retainedWireBytes": 0,
+      "schema": 1
+    },
+    {
+      "durationMs": 2,
+      "event": "bunly.host.shutdown-phase",
+      "phase": "process-stop",
+      "state": "complete"
+    },
+    {
+      "event": "bunly.host.shutdown-phase",
+      "phase": "host-release",
+      "state": "start"
+    },
+    {
+      "durationMs": 0,
+      "event": "bunly.host.shutdown-phase",
+      "phase": "host-release",
+      "state": "complete"
+    },
+    {
+      "event": "bunly.host.shutdown-phase",
+      "phase": "asset-service-stop",
+      "state": "start"
+    },
+    {
+      "durationMs": 0,
+      "event": "bunly.host.shutdown-phase",
+      "phase": "asset-service-stop",
+      "state": "complete"
+    },
+    {
+      "event": "bunly.host.shutdown-phase",
+      "phase": "cef-shutdown",
+      "state": "start"
+    },
+    {
+      "durationMs": 46,
+      "event": "bunly.host.shutdown-phase",
+      "phase": "cef-shutdown",
+      "state": "complete"
+    },
+    {
+      "clean": true,
+      "event": "bunly.host.shutdown"
+    }
+  ],
+  "cleanup": {
+    "exitCode": 0,
+    "timedOut": false,
+    "cancelled": false,
+    "cleanupSurvivors": [],
+    "observedOrphans": [],
+    "postExitCleanup": {
+      "schema": 1,
+      "profile": "macos-verified-code-sign-clone-v1",
+      "limitMs": 3000,
+      "elapsedMs": 76.31745794788003,
+      "observedClones": 1,
+      "cloneInventory": {
+        "prelaunchEntries": 60,
+        "entryLimit": 256,
+        "scope": "new-names-after-prelaunch-snapshot"
+      },
+      "helpers": [
+        {
+          "pid": 14612,
+          "creationTime": 1792976865.257071,
+          "role": "code-sign-clone-cleanup",
+          "executableSha256": "e14e7a651dc18dc65d304001d6e02dd5ed58a92ed83f59178c0021cbef3ef605",
+          "ownership": "retained-kernel-parent-and-matching-clone-inode",
+          "kernelIdentity": {
+            "rootUniqueId": "37048205",
+            "uniqueId": "37048362",
+            "parentUniqueId": "37048205"
+          },
+          "processExited": true,
+          "cloneRemoved": true,
+          "completed": true
+        }
+      ],
+      "passed": true,
+      "qualified": true,
+      "status": "completed",
+      "verification": "sampled identity and exact clone removal, not helper exit-code attestation",
+      "recovery": {
+        "attempted": true,
+        "candidates": 784,
+        "candidateLimit": 4096,
+        "scanLimit": 1
+      },
+      "resources": {
+        "sampleCount": 3,
+        "peakRssBytes": 64421888,
+        "peakThreads": 5,
+        "sampledCpuSeconds": 0.033453248000000005,
+        "accounting": "post-exit samples; adjacent same-PID/birth CPU deltas; gaps and exits are not zero CPU"
+      }
+    }
+  },
+  "rawReport": {
+    "path": ".bunly/m5/window-modes/run-1rOOLR/report.json",
+    "sha256": "48ff70ee471b82fdd33ed8c3e08e2bfad9826135cf359944085bd0b4de608a27"
+  },
+  "rawObservation": {
+    "path": ".bunly/m5/window-modes/run-1rOOLR/trial.process.json",
+    "sha256": "221704c4bde22a53e539b3fed921ca4f06a9a2bd0779bec4bffa24e68106f325"
+  },
+  "retainedPriorObservations": [
+    {
+      "path": ".bunly/m5/window-modes/run-yg05Q4/report.json",
+      "sha256": "9b33fff425314b0b36cc80db6e68ad0edd5c92517768357c5bbc02543c6c55db",
+      "passed": false,
+      "failure": "Missing runtime.json before launch",
+      "scope": "pre-launch preparation failure"
+    },
+    {
+      "path": ".bunly/m5/window-modes/run-GJ5KpP/report.json",
+      "sha256": "44e71aa2d65174387427d72137b1f1d973709b605259f506adbdab2fd49550cb",
+      "passed": true,
+      "failure": null,
+      "scope": "earlier dirty-source checkpoint; not final acceptance"
+    }
+  ],
+  "localValidationLogs": [
+    {
+      "path": ".bunly/window-state/build-contributor.log",
+      "sha256": "317d7ce3aa750537f64aa0892fe43d6a7bd34f09da2626b6bc85988b0a80eee6"
+    },
+    {
+      "path": ".bunly/window-state/build-default.log",
+      "sha256": "f7adae5b5ef9083f68660a176786cdc59f75221c22b1ab5b77be5ad4b9c8451d"
+    },
+    {
+      "path": ".bunly/window-state/build-direct.log",
+      "sha256": "5cf5a8cfc843e04aa4d404b8f1536172e0f81251e1e3b3a8c63cb9652ac8b004"
+    },
+    {
+      "path": ".bunly/window-state/build.log",
+      "sha256": "259984aa08b608a6068122a2190257b2c0cced654b8f1b5a9186bb3ded5a688e"
+    },
+    {
+      "path": ".bunly/window-state/bundle-1.log",
+      "sha256": "a76408176949b729ba882de8bea177e6e2d6ce620f041ac6c73f143ad6bb3bd1"
+    },
+    {
+      "path": ".bunly/window-state/bundle-final.log",
+      "sha256": "ffb85fbe03a5a43587049f9f7de4fee76ec83a0086ed5dc0ca2ba882a064a7a9"
+    },
+    {
+      "path": ".bunly/window-state/clippy-contributor.log",
+      "sha256": "c6752b8b8d2bb46a267cc880de3b5b9b36dad59ddbbd1b16e853b70dccefd6c9"
+    },
+    {
+      "path": ".bunly/window-state/clippy-default.log",
+      "sha256": "ef5623a8b3ccb1bacdbbb40125877fe96161289abb81d08a3965db99ae3d2b84"
+    },
+    {
+      "path": ".bunly/window-state/commit-implementation.log",
+      "sha256": "c7507a1029021228de12644838c60d5c1162cf3a626c3f24a853d0d5aa87f89c"
+    },
+    {
+      "path": ".bunly/window-state/doctor.log",
+      "sha256": "527de0f43b97b1f13e13148619b19ad37870e02f7a9bf00ff874d448fcc274c5"
+    },
+    {
+      "path": ".bunly/window-state/foundation.log",
+      "sha256": "c48d9979bc7e7213c37d0aea0d52641a68bbea9fb8cd29f77044b3783b45ff2d"
+    },
+    {
+      "path": ".bunly/window-state/gitleaks.log",
+      "sha256": "95b497f5d19fd23147e6e35e12f6df7a94f12b9f69c041c0fac8bd7a667ce3fb"
+    },
+    {
+      "path": ".bunly/window-state/lint.log",
+      "sha256": "a89ae91ce25adbb93af898eaf0ae7a8fe95c4a4aaad52023c76a95c6ba2958b2"
+    },
+    {
+      "path": ".bunly/window-state/native-final.log",
+      "sha256": "b0d52bce551e007ef2c863ac51278546e6d0c6fbad95835e0cd0030a60920921"
+    },
+    {
+      "path": ".bunly/window-state/native-format.log",
+      "sha256": "dc22b8521e748575c0614bc778359da35f15066a3c3f813026f648ed34f2eb00"
+    },
+    {
+      "path": ".bunly/window-state/native-mode-1.log",
+      "sha256": "8ae170f9ea43a0b0110c71f9384346b119131908a96bf33896e95e06ca29aac8"
+    },
+    {
+      "path": ".bunly/window-state/native-mode-2.log",
+      "sha256": "3dca5d85e68ab126bd4fdb8b52f93bae236830208e546a6212584200c59f23f5"
+    },
+    {
+      "path": ".bunly/window-state/portable-final-formatted.log",
+      "sha256": "2c1afb9123b82fdc1372ea105b8a6f52dcc24f0a3c94b35e63bc4a0b79b8e3b8"
+    },
+    {
+      "path": ".bunly/window-state/portable-final.log",
+      "sha256": "640a07ae14c418adb0fd53cd37423d791559720c548bba3972091f9a63812062"
+    },
+    {
+      "path": ".bunly/window-state/portable-host.log",
+      "sha256": "6eacc27cec4d85c7d591a2b68f90af19b78f96ea06e03c824bfc6a5f2c2b317b"
+    },
+    {
+      "path": ".bunly/window-state/portable.log",
+      "sha256": "8e88f193b5214223c15b4a66a602afbd025bb6af78c3b3826d518931de507974"
+    },
+    {
+      "path": ".bunly/window-state/probe-build.log",
+      "sha256": "b2b171580fab652cb56a2a38d6f9aab7b27181ac067348ed6cfb7b20c8e8de9f"
+    },
+    {
+      "path": ".bunly/window-state/probe-clippy.log",
+      "sha256": "cd3c0c7ab847aab7d8d0c9391a12973dea3cc88837857bb46dd8b53dc803efad"
+    },
+    {
+      "path": ".bunly/window-state/probe-test.log",
+      "sha256": "31f075ca558598d8af20ad8ae1efd7777b989792ac06bf7cc0f30aba160b13b3"
+    },
+    {
+      "path": ".bunly/window-state/resources.log",
+      "sha256": "5790f591d82a33558a6e58fd32a787c18529a01e970f0b2290d29952c2686fb3"
+    },
+    {
+      "path": ".bunly/window-state/test-contributor.log",
+      "sha256": "5d30771966d0b4b059304b1145fcf25b0e522e76189097c06af924a3e5c2728c"
+    },
+    {
+      "path": ".bunly/window-state/test-default.log",
+      "sha256": "3a7b987c9f7e6a76183d4216f41ed398605fbb2a48e4c2bd915c3fdbab35111f"
+    },
+    {
+      "path": ".bunly/window-state/typecheck.log",
+      "sha256": "9548cbcf9bb6d91895f490bcc416a91cbac7353fd547d4ade8ce1393878e9cd2"
+    },
+    {
+      "path": ".bunly/window-state/workflows.log",
+      "sha256": "efd3c5330985269d3b3e5bb8943c175d70fa1543344549a2be03529257c5a726"
+    }
+  ],
+  "validation": {
+    "portable": "841 Bun tests passed; one Windows-only skip; 230 Python tests passed; formatting/lint/typechecks/browser boundaries/build/checker qualification passed",
+    "foundation": "145 passed",
+    "workflows": "passed",
+    "doctor": "passed with existing immutable runtime-ref warning",
+    "cefDefault": "strict all-target Clippy, 156 lib tests, release build passed",
+    "cefContributor": "strict all-target Clippy, 161 lib tests, release build passed",
+    "nativeProbe": "Rust 1.85.1 strict Clippy, 3 tests, release build passed",
+    "hooks": "configured native-aware hooks passed",
+    "gitleaks": "complete implementation diff passed; evidence commit scanned separately"
+  },
+  "limitations": [
+    "Local macOS arm64 functional prerequisite only, not combined terminal load or a performance result.",
+    "Linux/Windows and disposable Linux WM execution remain pending on the current integration head.",
+    "First checkpoint was inactive while visible; final checkpoint was active while visible. No physical input or foreground load claim.",
+    "Immediate restore receipt was still minimized; only fresh post-visibility native readback qualified restored mode.",
+    "Exported CEF identity does not attest sandbox coverage; compiled sandbox support and normal contributor launch policy were preserved.",
+    "Raw reports remain local at relative paths with hashes; this file preserves structured mode, lifecycle and cleanup receipts without machine paths.",
+    "Initial restricted-sandbox portable failures and initial incomplete bundle preparation are retained, not relabeled as passing.",
+    "#27 and M5 remain open; coordinator owns integration, platform acceptance and merge."
+  ]
+}
