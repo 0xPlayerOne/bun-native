@@ -12,6 +12,8 @@ use std::{
 };
 #[path = "navigation.rs"]
 mod navigation;
+#[path = "window_state.rs"]
+mod window_state;
 pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
 fn command_budget() -> &'static Arc<crate::command_budget::CommandBudget> {
@@ -1900,11 +1902,12 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        "window.state" | "window.minimize" | "window.restore" => {
+            window_state::dispatch(request, operation, args)?;
+        }
         "window.close" | "window.show" | "window.hide" | "window.resize" => {
             let id = number(args, "id")?;
-            let window = STATE
-                .with(|s| s.borrow().windows.get(&id).and_then(|r| r.window.clone()))
-                .ok_or("INVALID_HANDLE: window")?;
+            let window = window_state::live(id)?;
             match operation {
                 "window.close" => {
                     let revocations = STATE.with(|s| {
@@ -2346,6 +2349,7 @@ wrap_window_delegate! {
     impl ViewDelegate { fn preferred_size(&self, _view: Option<&mut View>) -> Size { Size { width: self.width, height: self.height } } }
     impl PanelDelegate {}
     impl WindowDelegate {
+        fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
         fn window_runtime_style(&self) -> RuntimeStyle { RuntimeStyle::ALLOY }
         fn on_window_created(&self, window: Option<&mut Window>) {
             let Some(window) = window else {
