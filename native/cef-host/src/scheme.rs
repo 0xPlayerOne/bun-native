@@ -46,7 +46,11 @@ pub fn attach(context: &RequestContext) {
     );
 }
 pub(crate) fn context_handler(session: u64, network: Arc<NetworkPolicy>) -> RequestContextHandler {
-    AssetContext::new(session, network)
+    AssetContext::new(
+        session,
+        network,
+        crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::ContextHandler),
+    )
 }
 pub(crate) fn local_resources(network: Arc<NetworkPolicy>) -> ResourceRequestHandler {
     LocalResources::new(Arc::new(RequestPreparation::default()), network)
@@ -341,7 +345,7 @@ impl HandlerOwner {
     }
 }
 wrap_request_context_handler! {
-    struct AssetContext { session: u64, network: Arc<NetworkPolicy> }
+    struct AssetContext { session: u64, network: Arc<NetworkPolicy>, _audit: crate::shutdown_audit::Token }
     impl RequestContextHandler {
         fn on_request_context_initialized(&self, context: Option<&mut RequestContext>) {
             if let Some(context) = context { crate::host::session_initialized(self.session, context.clone()); }

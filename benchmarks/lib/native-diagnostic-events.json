@@ -4,6 +4,7 @@
   "bunly.host.failure",
   "bunly.host.shutdown",
   "bunly.host.shutdown-phase",
+  "bunly.host.shutdown-audit",
   "bunly.foundation.ready",
   "bunly.foundation.result",
   "bunly.runtime.profile",

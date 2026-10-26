@@ -43,6 +43,8 @@ packaging = ["cef/build-util", "dep:semver"]
 rpc-qualification = []
 # Bounded native-only provenance for a separately prepared diagnostic fixture.
 rpc-context-diagnostics = ["rpc-qualification"]
+# Native-only callback lifetime receipts; never enables a browser endpoint.
+shutdown-diagnostics = []
 
 [package.metadata.cef.bundle]
 helper_name = "bunly_helper"
