@@ -120,6 +120,7 @@ def observe(
     stop_event=None,
     sandbox_reader=None,
     cleanup_observer=None,
+    phase_observer=None,
 ):
     if (
         not command
@@ -153,6 +154,9 @@ def observe(
         clone_cleanup.bind(root)
     lines, errors, samples, event_times, native_diagnostics = [], [], [], [], []
     native_diagnostic_bytes = 0
+    # Optional notifications share the admitted native receipt bounds. They are
+    # delivered on the observing thread, never while holding the pipe-reader lock.
+    phase_notifications = [] if phase_observer is not None else None
     state = {"phase": "startup", "bytes": 0, "overflow": False, "observerFailure": None}
     lock = threading.Lock()
 
@@ -185,6 +189,11 @@ def observe(
                             else:
                                 native_diagnostics.append(text)
                                 native_diagnostic_bytes += encoded_bytes
+                                if (
+                                    phase_notifications is not None
+                                    and item["event"] == "bunly.host.shutdown-phase"
+                                ):
+                                    phase_notifications.append((item, received))
                         marked = phase_marker(item, phases)
                         if marked is not None:
                             state["phase"] = marked
@@ -217,7 +226,22 @@ def observe(
     def alive(identity, proc):
         return owned_process(identity) is not None
 
+    def deliver_phase_notifications():
+        if phase_notifications is None:
+            return
+        with lock:
+            pending = phase_notifications[:]
+            phase_notifications.clear()
+        for item, received in pending:
+            if state["observerFailure"] is not None:
+                break
+            try:
+                phase_observer(item, received)
+            except Exception:
+                state["observerFailure"] = "phase-observer-failed"
+
     def snapshot(phase_override=None):
+        deliver_phase_notifications()
         try:
             current_root = owned_process(root_identity) if root_identity is not None else None
             if current_root is not None:
@@ -467,6 +491,9 @@ def observe(
     cleanup_survivors = [identity[0] for identity, proc in known.items() if alive(identity, proc)]
     for reader in readers:
         reader.join(timeout=2)
+    # Retain completion receipts from a process that exited between snapshots.
+    # Delivery here does not start another sample or grant post-exit ownership.
+    deliver_phase_notifications()
     reports = []
     for line in lines:
         try:

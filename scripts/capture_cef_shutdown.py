@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 import psutil
+from cef_shutdown_trigger import ShutdownTrigger
 from macos_clone_cleanup import executable_digest
 from macos_sandbox import presence
 
@@ -140,15 +141,33 @@ def verified_target(tracker, app, role):
 
 
 class Capture:
-    def __init__(self, app, output, role, after):
+    def __init__(self, app, output, role, after, shutdown_after=None):
         self.app, self.output, self.role, self.after = app, output, role, after
         self.started = time.monotonic()
         self.worker = None
         self.records = []
         self.stop = threading.Event()
+        self.phase_trigger = None if shutdown_after is None else ShutdownTrigger(shutdown_after)
+
+    def on_shutdown_phase(self, event, received):
+        if self.phase_trigger is not None:
+            self.phase_trigger.observe(event, received)
+
+    def trigger_report(self):
+        return (
+            {}
+            if self.phase_trigger is None
+            else {"trigger": self.phase_trigger.report(self.started)}
+        )
 
     def __call__(self, tracker):
-        if self.worker is None and time.monotonic() - self.started >= self.after:
+        now = time.monotonic()
+        due = (
+            now - self.started >= self.after
+            if self.phase_trigger is None
+            else self.phase_trigger.due(now)
+        )
+        if self.worker is None and due:
             # Read-only diagnostics must not keep the command alive after its
             # bounded join expires. No application ownership lives in this worker.
             self.worker = threading.Thread(target=self.run, args=(tracker,), daemon=True)
@@ -156,10 +175,15 @@ class Capture:
 
     def run(self, tracker):
         try:
+            if self.phase_trigger is not None:
+                self.phase_trigger.require_pending()
             target = verified_target(tracker, self.app, self.role)
             for index in range(10):
                 if self.stop.is_set():
                     raise ValueError("capture-cancelled")
+                phase_start = (
+                    self.phase_trigger.require_pending() if self.phase_trigger is not None else None
+                )
                 if verified_target(tracker, self.app, self.role) != target:
                     raise ValueError("target-replaced-before-capture")
                 record = {
@@ -171,6 +195,8 @@ class Capture:
                     "executableUuid": target[2].executable_uuid.hex(),
                     "executableSha256": target[5],
                 }
+                if phase_start is not None:
+                    record["shutdownElapsedMs"] = (time.monotonic() - phase_start) * 1000
                 self.records.append(record)
                 (self.output / "capture-ledger.json").write_text(
                     json.dumps(self.records, indent=2) + "\n"
@@ -180,6 +206,9 @@ class Capture:
                     raise ValueError("capture-cancelled")
                 if verified_target(tracker, self.app, self.role) != target:
                     raise ValueError("target-replaced-after-capture")
+                if self.phase_trigger is not None:
+                    self.phase_trigger.require_pending()
+                    record["phasePendingRevalidated"] = True
                 record["identityRevalidated"] = True
                 if index < 9:
                     self.stop.wait(0.25)
@@ -191,25 +220,46 @@ def finish_capture(capture, timeout=12):
     """Never qualify partial snapshots or read worker-owned records before join."""
     if capture is None:
         return {"schema": 1, "status": "disabled", "captureComplete": False, "records": []}
+    metadata = capture.trigger_report()
+    schema = 2 if metadata else 1
     if capture.worker is None:
-        return {"schema": 1, "status": "not-started", "captureComplete": False, "records": []}
+        phase_status = metadata.get("trigger", {}).get("status")
+        status = {
+            "phase-not-observed": "phase-not-observed",
+            "phase-completed": "phase-ended-before-capture",
+            "malformed-phase": "invalid-phase",
+        }.get(phase_status, "not-started")
+        return {
+            "schema": schema,
+            "status": status,
+            "captureComplete": False,
+            "records": [],
+            **metadata,
+        }
     capture.worker.join(timeout=timeout)
+    metadata = capture.trigger_report()
     if capture.worker.is_alive():
         capture.stop.set()
         # The pre-read ledger remains available. Do not race the worker while
         # serializing records or pretend incomplete data is a qualified capture.
         return {
-            "schema": 1,
+            "schema": schema,
+            **metadata,
             "status": "worker-did-not-settle",
             "captureComplete": False,
             "records": [],
         }
     complete = len(capture.records) == 10 and all(
-        row.get("identityRevalidated") is True and row.get("index") == index
+        row.get("identityRevalidated") is True
+        and row.get("index") == index
+        and (not metadata or row.get("phasePendingRevalidated") is True)
         for index, row in enumerate(capture.records)
     )
+    if metadata.get("trigger", {}).get("status") == "malformed-phase":
+        complete = False
     return {
-        "schema": 1,
+        "schema": schema,
+        **metadata,
         "status": "complete" if complete else "incomplete",
         "captureComplete": complete,
         "records": capture.records,
@@ -221,9 +271,23 @@ def main():
     parser.add_argument("app", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--role", choices=["control", "host", "network"], default="control")
-    parser.add_argument("--after", type=float, default=40)
+    timing = parser.add_mutually_exclusive_group()
+    timing.add_argument("--after", type=float)
+    timing.add_argument(
+        "--shutdown-after",
+        type=float,
+        help="Capture only while cef-shutdown is pending after this many seconds (0..5)",
+    )
     parser.add_argument("--mode", choices=["visible", "hidden"], default="visible")
     args = parser.parse_args()
+    args.after = 40 if args.after is None else args.after
+    if args.shutdown_after is not None:
+        if args.role == "control":
+            parser.error("Phase-triggered collection requires --role host or network")
+        try:
+            ShutdownTrigger(args.shutdown_after)
+        except ValueError as error:
+            parser.error(str(error))
     if sys.platform != "darwin" or not 0 <= args.after <= 50:
         parser.error("Requires macOS and a finite capture offset from 0 to 50 seconds")
     app = args.app.resolve(strict=True)
@@ -246,6 +310,22 @@ def main():
             {
                 "binarySha256": identities,
                 "captureSourceSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                "diagnosticSources": [
+                    {
+                        "path": name,
+                        "sha256": hashlib.sha256(
+                            Path(__file__).with_name(name).read_bytes()
+                        ).hexdigest(),
+                    }
+                    for name in (
+                        "capture_cef_shutdown.py",
+                        "cef_shutdown_trigger.py",
+                        "observe-process.py",
+                        "macos_clone_cleanup.py",
+                        "macos_process_identity.py",
+                        "macos_sandbox.py",
+                    )
+                ],
             },
             indent=2,
         )
@@ -263,9 +343,17 @@ def main():
     )
     observer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(observer)
-    capture = None if args.role == "control" else Capture(app, output, args.role, args.after)
+    capture = (
+        None
+        if args.role == "control"
+        else Capture(app, output, args.role, args.after, args.shutdown_after)
+    )
     result = observer.observe(
-        [str(executable)], timeout=90, sandbox_reader=presence, cleanup_observer=capture
+        [str(executable)],
+        timeout=90,
+        sandbox_reader=presence,
+        cleanup_observer=capture,
+        phase_observer=capture.on_shutdown_phase if args.shutdown_after is not None else None,
     )
     # Preserve the ordinary observer result even if diagnostic completion fails.
     (output / "process.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -277,7 +365,7 @@ def main():
                 if capture is None
                 else "read-only-thread-state",
                 "role": args.role,
-                "after": args.after,
+                "after": args.after if args.shutdown_after is None else None,
                 **captured,
             },
             indent=2,

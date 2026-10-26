@@ -208,7 +208,9 @@ class ShutdownCaptureTests(unittest.TestCase):
             self.assertFalse(finish_capture(capture)["captureComplete"])
 
     def test_unsettled_read_is_cancelled_without_reading_its_mutable_records(self):
-        capture = Mock()
+        capture = Capture(Path("fixture"), Path("output"), "host", 0)
+        capture.worker = Mock()
+        capture.stop = Mock()
         capture.worker.is_alive.return_value = True
         result = finish_capture(capture, timeout=0)
         self.assertEqual(result["status"], "worker-did-not-settle")

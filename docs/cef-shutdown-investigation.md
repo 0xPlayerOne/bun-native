@@ -4,9 +4,10 @@ NetworkService shutdown state and native control results after the foundation me
 
 **Current disposition (October 26, 2026):** M5 functional acceptance is complete
 through #123. This remains an independent unresolved native reliability risk;
-#92 is closed in the tracker, not evidence of a causal fix. PR #121 owns the
-reviewed diagnostic tooling. The dated sections below preserve their original
-source versions, outcomes and then-current milestone statements.
+#92 is closed in the tracker, not evidence of a causal fix. PR #121 merged the
+reviewed diagnostic tooling. [Issue #124](https://github.com/0xPlayerOne/bunly/issues/124)
+tracks the unresolved CEF 156 runtime failure. The dated sections below preserve
+their original source versions, outcomes and then-current milestone statements.
 
 **Status:** Unresolved intermittent failure; no verified native runtime fix or release qualification.
 **Tracking:** [Issue #92](https://github.com/0xPlayerOne/bunly/issues/92).
@@ -375,3 +376,59 @@ calling unavailable Unix APIs. Native tests check both the optional lifetime aud
 and the zero-sized no-owner token used in default builds. The hosted native lane
 compiles/tests the opt-in feature separately; ordinary qualification artifacts
 remain built without `shutdown-diagnostics`.
+
+## Phase-triggered capture for issue #124
+
+The original `--after` option samples relative to launch. That can collect an idle
+NetworkService while the application is still working, or miss a short teardown.
+It does not establish that those threads block shutdown. The optional phase trigger
+instead waits for the ordinary observer to receive the native stderr
+`bunly.host.shutdown-phase` / `cef-shutdown` start receipt, then samples only if that
+phase remains pending after the configured offset:
+
+```sh
+python scripts/capture_cef_shutdown.py PRIVATE_APP NEW_PRIVATE_DIRECTORY \
+  --role network --mode visible --shutdown-after 0.25
+```
+
+`--role host` selects the independently verified browser root. `--shutdown-after`
+and the legacy `--after` are mutually exclusive; the phase offset is finite and
+bounded to 0–5 seconds. It is a **diagnostic trigger, not a native timeout or a
+minimum acceptable shutdown duration**. Neither Chromium's watchdog nor the
+observer's 90-second observation, ordinary descendant grace, helper allowance,
+output/sample limits, or cleanup policy is changed. The default launch-relative
+behavior remains available and its schema-1 capture status is unchanged.
+
+The observer forwards only admitted native stderr receipts within its existing
+count/byte limits. Notifications run on the observing thread outside the pipe
+reader's lock; there is no new polling loop or idle worker. Stdout lookalikes and
+receipts rejected by the native-output budget cannot trigger sampling. Callback
+exceptions preserve the existing failure/owned-cleanup path. The trigger rejects
+malformed, duplicated or reversed target-phase receipts and retains only bounded
+state. A receipt selects timing; it never authorizes process access.
+
+The existing prelaunch executable/hash, user, live/original-parent, kernel and
+birth-identity checks still precede every read. Each of at most ten snapshots
+must revalidate both identity and the observed pending phase. If the phase ends
+while a read is in flight, that row remains unqualified and the capture is
+incomplete. Source fingerprints now include the trigger, observer and ownership
+modules, not just the CLI file.
+
+Phase-triggered captures use schema 2 and retain the observed start/completion
+times, configured offset and per-snapshot `shutdownElapsedMs`. These times use
+the observer's monotonic stderr-receipt clock; scheduling/pipe latency means they
+are not exact native phase-entry times. They do not identify Chromium task
+sources, account every native reference, or prove a deadlock.
+
+A fast successful application can produce `phase-ended-before-capture`, with no
+worker or snapshots. An absent start produces `phase-not-observed`; malformed
+receipts produce `invalid-phase`. These are diagnostic non-completion outcomes
+(exit 1), not application failures or successful hang captures. The retained
+`process.json`, workload acceptance and ordinary shutdown/cleanup validators
+independently decide the application's result. A failed application with a
+complete diagnostic capture remains a failed application.
+
+This change makes an adverse teardown observable at the relevant boundary. It
+is not a causal runtime correction and does not close #124. In particular, the
+existing successful controls and zero audited wrapper counts still cannot replace
+a current adverse run with identified blocking task sources.
