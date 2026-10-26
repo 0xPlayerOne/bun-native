@@ -1,6 +1,7 @@
 import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import type { BinaryStreamWriter, StreamOutcome } from '../../contracts/src/streams.ts'
 import { StreamError, type StreamErrorCode } from '../../contracts/src/stream-wire.ts'
+import { FairWorkScheduler, type FairWorkHandle } from './fair-scheduler.ts'
 
 // Read intrinsic typed-array slots, not producer-overridable accessors/species.
 const typedArray = Object.getPrototypeOf(Uint8Array.prototype)
@@ -9,7 +10,7 @@ const byteOffset = Object.getOwnPropertyDescriptor(typedArray, 'byteOffset')!.ge
 const backingBuffer = Object.getOwnPropertyDescriptor(typedArray, 'buffer')!.get!
 
 // A ready writer can replenish a source through a continuous microtask chain.
-// Yield a bounded drain to the event loop; never install an idle polling timer.
+// The shared scheduler bounds total work, not just each source independently.
 const DRAIN_CHUNKS_PER_TURN = 16
 
 export interface StreamSourceOptions {
@@ -24,6 +25,8 @@ export interface StreamSourceOptions {
   readonly maxQueuedChunks?: number
   /** Lossless byte streams only: append to an unsent block, never delay its delivery. */
   readonly coalescePending?: boolean
+  /** Shared bounded owner scheduler. A service passes its scheduler to share work. */
+  readonly scheduler?: FairWorkScheduler
 }
 interface SourceChunk {
   readonly bytes: Uint8Array
@@ -40,6 +43,8 @@ export class CallbackStreamSource {
   readonly #capacity: number
   readonly #frames: number
   readonly #coalesce: boolean
+  readonly #owner: object
+  readonly #scheduler: FairWorkScheduler
   readonly #releaseReservation: () => void
   readonly #stopSource: (code: StreamErrorCode) => void
   readonly #writer: BinaryStreamWriter
@@ -50,9 +55,7 @@ export class CallbackStreamSource {
   #coalescedBytes = 0
   #peak = 0
   #active = false
-  #scheduled = false
-  #drainChunks = 0
-  #yieldTask: ReturnType<typeof setImmediate> | undefined
+  #scheduled: FairWorkHandle | undefined
   #yieldCount = 0
   #ended = false
   #settled = false
@@ -71,6 +74,8 @@ export class CallbackStreamSource {
     this.#capacity = options.maxRetainedBytes ?? 256 * 1024
     this.#frames = options.maxQueuedChunks ?? 32
     this.#coalesce = options.coalescePending ?? false
+    this.#owner = options.owner
+    this.#scheduler = options.scheduler ?? new FairWorkScheduler()
     if (
       !(options.budget instanceof StreamBudget) ||
       typeof options.stopSource !== 'function' ||
@@ -191,21 +196,19 @@ export class CallbackStreamSource {
     // A later microtask can refill an empty queue without giving control work
     // a turn. Retain the quantum until our actual event-loop yield executes.
     if (!this.#queue.length && !this.#ended) return
-    this.#scheduled = true
-    if (this.#drainChunks >= DRAIN_CHUNKS_PER_TURN) {
-      this.#yieldTask = setImmediate(() => {
-        this.#yieldTask = undefined
-        this.#drainChunks = 0
-        this.#yieldCount++
-        this.#scheduled = false
+    const scheduled = this.#scheduler.schedule(
+      this.#owner,
+      () => {
+        if (this.#scheduled === scheduled) this.#scheduled = undefined
         void this.#pump()
-      })
-    } else {
-      queueMicrotask(() => {
-        this.#scheduled = false
-        void this.#pump()
-      })
+      },
+      { onYield: () => this.#yieldCount++ }
+    )
+    if (!scheduled) {
+      this.#fail('OVERLOADED')
+      return
     }
+    this.#scheduled = scheduled
   }
   async #pump(): Promise<void> {
     if (this.#active || this.#settled) return
@@ -218,7 +221,6 @@ export class CallbackStreamSource {
     this.#active = true
     try {
       if (chunk) {
-        this.#drainChunks++
         await this.#writer.write(chunk.bytes.subarray(0, length))
         this.#acknowledgedBytes += length
       } else {
@@ -248,9 +250,8 @@ export class CallbackStreamSource {
     this.#settled = true
     this.#reason = code
     this.#ended = true
-    if (this.#yieldTask !== undefined) clearImmediate(this.#yieldTask)
-    this.#yieldTask = undefined
-    this.#scheduled = false
+    this.#scheduled?.cancel()
+    this.#scheduled = undefined
     this.#removeAbort()
     for (const chunk of this.#queue) {
       this.#retained -= chunk.length
@@ -294,7 +295,9 @@ export class CallbackStreamSource {
       sourceStopFailed: this.#sourceStopFailed,
       drainQuantum: DRAIN_CHUNKS_PER_TURN,
       yieldCount: this.#yieldCount,
-      yieldPending: this.#yieldTask !== undefined,
+      yieldPending: this.#scheduled?.pending ?? false,
+      droppedBytes: 0,
+      scheduler: this.#scheduler.diagnostics(),
     })
   }
 }

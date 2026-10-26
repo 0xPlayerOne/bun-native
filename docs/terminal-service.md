@@ -41,6 +41,13 @@ shared `StreamBudget` backs `CallbackStreamSource`; its reservation is deliberat
 additional because callback snapshots can remain live while terminal cleanup is in
 progress.
 
+All terminal callback sources also share one bounded owner-round-robin scheduler.
+It admits at most 16 source handoffs per event-loop turn, retains 16 control
+slots inside its 256-item queue, and rotates the stable terminal owner before
+serving the next queued item. A held writer therefore retains its own active
+bytes without blocking another terminal's queued source work. Scheduler capacity
+denial fails the exact source as `OVERLOADED`; it never discards terminal bytes.
+
 PTY callback bytes pass unchanged into `CallbackStreamSource`, which snapshots and
 chunks them before the callback returns. `BinaryStreamWriter.write` supplies the
 existing consumer ACK boundary. There is no alternate protocol, implicit string
@@ -176,6 +183,11 @@ byte limits remain simultaneous; overflow still stops the exact owned child.
 No terminal output is discarded, replayed or decoded to text in this adapter.
 Diagnostics separate payload bytes, allocated bytes, allocation peak and appended
 bytes. This is not a whole-process memory bound or a throughput claim.
+
+Terminal diagnostics additionally expose scheduler queue depth, wait time, bounded
+turn/yield counts, rejected work, and explicit zero coalesced/dropped scheduler
+work. Pending cancellation removes queued source work; an active writer remains
+charged until its acknowledgment settles.
 
 Actual graphical integration initially hit an eight-chunk source limit during a
 32-record burst because callback boundaries were treated as separate queued

@@ -20,6 +20,7 @@ import { BinaryStreamReceiver, BinaryStreamSender } from '../../contracts/src/st
 import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import { STREAM_CHUNK_BYTES } from '../../contracts/src/stream-wire.ts'
 import type { BinaryStreamOptions, BinaryStreamSink } from '../../contracts/src/streams.ts'
+import { FairWorkScheduler, type FairWorkHandle } from './fair-scheduler.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
@@ -145,17 +146,52 @@ class CefLaneTransport implements RpcTransport {
   #message: ((packet: Uint8Array) => void) | undefined
   #closed: (() => void) | undefined
   #ended = false
+  readonly #scheduler: FairWorkScheduler | undefined
+  readonly #owner: object | undefined
+  readonly #scheduled = new Set<FairWorkHandle>()
   constructor(
     readonly native: NativeTransport,
     readonly identity: Readonly<{ connection: number; context: number; generation: number }>,
-    readonly lane: 'rpc' | 'stream'
-  ) {}
+    readonly lane: 'rpc' | 'stream',
+    scheduler?: FairWorkScheduler,
+    owner?: object
+  ) {
+    this.#scheduler = scheduler
+    this.#owner = owner
+  }
   send(packet: Uint8Array): Promise<void> {
     if (this.#ended)
       return Promise.reject(new RpcError('DISCONNECTED', 'Native RPC transport closed'))
-    return this.native
-      .call(`${this.lane}.deliver`, { ...this.identity, packet: hex(packet) })
-      .then(() => {})
+    const submit = () =>
+      this.native
+        .call(`${this.lane}.deliver`, { ...this.identity, packet: hex(packet) })
+        .then(() => {})
+    if (!this.#scheduler || !this.#owner) return submit()
+    // The wire kind is only a scheduling class. Native authority and protocol
+    // validation remain unchanged, and lifecycle ordering stays in StreamLink.
+    const priority = this.lane === 'stream' && packet[5] !== 2 ? 'control' : 'bulk'
+    return new Promise<void>((resolve, reject) => {
+      let scheduled: FairWorkHandle | undefined
+      const disconnected = () =>
+        reject(new RpcError('DISCONNECTED', 'Native stream transport closed'))
+      scheduled = this.#scheduler!.schedule(
+        this.#owner!,
+        () => {
+          this.#scheduled.delete(scheduled!)
+          if (this.#ended) {
+            disconnected()
+            return
+          }
+          void submit().then(resolve, reject)
+        },
+        { priority, onCancel: disconnected }
+      )
+      if (!scheduled) {
+        reject(new RpcError('OVERLOADED', 'Native stream scheduler capacity exceeded'))
+        return
+      }
+      this.#scheduled.add(scheduled)
+    })
   }
   subscribe(message: (packet: Uint8Array) => void, closed: () => void): () => void {
     if (this.#message) throw new TypeError('Native RPC transport permits one subscriber')
@@ -168,11 +204,25 @@ class CefLaneTransport implements RpcTransport {
   }
   receive(packet: Uint8Array, sequence: number): void {
     if (this.#ended || !this.#message) return
-    this.#message(packet)
-    if (this.#ended) return
-    void this.native
-      .call(`${this.lane}.ack`, { ...this.identity, sequence })
-      .catch(() => this.end(false))
+    let scheduled: FairWorkHandle | undefined
+    const deliver = () => {
+      this.#scheduled.delete(scheduled!)
+      if (this.#ended || !this.#message) return
+      this.#message(packet)
+      if (this.#ended) return
+      void this.native
+        .call(`${this.lane}.ack`, { ...this.identity, sequence })
+        .catch(() => this.end(false))
+    }
+    if (!this.#scheduler || !this.#owner) {
+      deliver()
+      return
+    }
+    scheduled = this.#scheduler.schedule(this.#owner, deliver, {
+      priority: 'bulk',
+    })
+    if (!scheduled) this.end(true)
+    else this.#scheduled.add(scheduled)
   }
   close(): void {
     this.end(true)
@@ -180,6 +230,8 @@ class CefLaneTransport implements RpcTransport {
   end(tellNative: boolean): void {
     if (this.#ended) return
     this.#ended = true
+    for (const scheduled of this.#scheduled) scheduled.cancel()
+    this.#scheduled.clear()
     if (tellNative)
       void this.native.call(`${this.lane}.disconnect`, { ...this.identity }).catch(() => {})
     this.#closed?.()
@@ -388,6 +440,7 @@ export class CefBackend implements BrowserBackend {
   readonly #streamRetired = new WeakSet<ViewHandle>()
   readonly #rpcConnections = new Map<number, CefRpcConnection>()
   readonly #streamConnections = new Map<number, CefStreamNativeConnection>()
+  readonly #streamScheduler = new FairWorkScheduler()
   readonly #rpcFragments = new RpcFragmentBudget()
   #nativeConfirmations = 0
   #nativeConfirmationRejections = 0
@@ -1204,6 +1257,7 @@ export class CefBackend implements BrowserBackend {
       connections: this.#streamConnections.size,
       connectionFailures: this.#streamConnectionFailures,
       budget: this.#streamBudget?.diagnostics() ?? null,
+      scheduling: this.#streamScheduler.diagnostics(),
     }
   }
   dispose(): Promise<void> {
@@ -1329,7 +1383,9 @@ export class CefBackend implements BrowserBackend {
         context: Number(data['context']),
         generation: Number(data['generation']),
       }),
-      'stream'
+      'stream',
+      this.#streamScheduler,
+      view
     )
     const controller = new AbortController()
     const nativeConnection: CefStreamNativeConnection = { view, transport, controller }

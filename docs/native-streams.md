@@ -39,7 +39,12 @@ for the separate `BLST ACK` emitted after the application consumer finishes.
 The private native-to-Bun pipe keeps its existing 8 MiB total/7 MiB ordinary FIFO
 bounds. Hex-expanded full-pool traffic remains within that envelope. `stream.ack`
 and `stream.disconnect` share the finite control reserve; bulk `stream.deliver`
-remains ordinary traffic. No process, thread, poller or deadline is introduced.
+remains ordinary traffic. The runtime CEF lane additionally uses one shared,
+owner-round-robin scheduler across authenticated views: at most 16 stream packet
+handoffs are dispatched per event-loop turn, with a bounded 256-item queue and
+16 reserved lifecycle/control items. This queue is a scheduling bound, not a
+second native capacity pool; native packet reservations and receipts remain the
+authority for ownership.
 
 ## Trusted APIs and qualification
 
