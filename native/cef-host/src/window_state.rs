@@ -1,6 +1,6 @@
 //! CEF-specific owner-thread operations. IDs only select an existing host-owned window.
 use super::{number, reply, STATE};
-use cef::{ImplPanel, ImplView, ImplWindow, Window};
+use cef::{ImplView, ImplWindow, Window};
 use serde_json::{json, Value};
 
 pub(super) fn live(id: u64) -> Result<Window, &'static str> {
@@ -38,14 +38,6 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
         _ => return Err("Unknown window state operation".into()),
     }
     // CEF calls may reenter the delegate. Revalidate ownership after the action.
-    let window = live(id)?;
-    if operation == "window.restore" {
-        // Refresh the owned child-view layout after the native widget leaves its
-        // minimized geometry. This does not force browser visibility or bypass
-        // Chromium's occlusion/throttling decisions.
-        read(&window)?;
-        window.layout();
-    }
     let window = live(id)?;
     reply(request, read(&window)?);
     Ok(())

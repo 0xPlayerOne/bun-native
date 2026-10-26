@@ -161,3 +161,12 @@ restore, revalidating the native-owned window around reentrant calls. It does
 not call windowless-only visibility APIs, forge page state, disable occlusion,
 retry restoration, reload the document or extend the fixed deadline. This is an
 investigated candidate, not an accepted Windows fix until real execution passes.
+
+The layout candidate `3e6631c` was rejected. Actual standard-user Windows run
+`40271541844` completed the adjacent native stages but reproduced the same
+missing post-restore page-visibility receipt. Native window state was restored
+and active; the renderer emitted no fifth visibility event. The runtime change
+has been removed exactly, with the tested candidate and failed report retained.
+This is not a fixed restore path or accepted foreground/minimized qualification.
+No occlusion flag, repeated restore, fake visibility event or deadline extension
+was introduced to obtain a pass.
