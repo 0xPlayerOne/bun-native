@@ -27,6 +27,11 @@ fn read(window: &Window) -> Result<Value, &'static str> {
     }))
 }
 
+#[cfg(any(windows, test))]
+fn restore_shown_minimized(was_visible: bool, was_minimized: bool) -> bool {
+    was_visible && was_minimized
+}
+
 pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<(), String> {
     let id = number(args, "id")?;
     let window = live(id)?;
@@ -34,7 +39,22 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
     match operation {
         "window.state" => (),
         "window.minimize" => window.minimize(),
-        "window.restore" => window.restore(),
+        "window.restore" => {
+            #[cfg(windows)]
+            let restore_shown =
+                restore_shown_minimized(window.is_visible() != 0, window.is_minimized() != 0);
+            window.restore();
+            #[cfg(windows)]
+            if restore_shown {
+                // Restoring the minimized native widget and showing its Views
+                // hierarchy are separate operations. Reassert Show only for a
+                // previously shown minimized window; never unhide a hidden owner.
+                // The first call may reenter closing delegates.
+                let current = live(id)?;
+                read(&current)?;
+                current.show();
+            }
+        }
         _ => return Err("Unknown window state operation".into()),
     }
     // CEF calls may reenter the delegate. Revalidate ownership after the action.
@@ -47,6 +67,14 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
 mod tests {
     use super::*;
     use crate::host::WindowRecord;
+
+    #[test]
+    fn restoring_an_explicitly_hidden_or_nonminimized_window_does_not_request_show() {
+        assert!(restore_shown_minimized(true, true));
+        for (visible, minimized) in [(false, false), (false, true), (true, false)] {
+            assert!(!restore_shown_minimized(visible, minimized));
+        }
+    }
 
     #[test]
     fn missing_unready_and_closing_windows_never_reach_cef() {

@@ -170,3 +170,16 @@ has been removed exactly, with the tested candidate and failed report retained.
 This is not a fixed restore path or accepted foreground/minimized qualification.
 No occlusion flag, repeated restore, fake visibility event or deadline extension
 was introduced to obtain a pass.
+
+## Bounded Windows restore candidate
+
+The prior `3e6631c` layout candidate failed its fifth renderer visibility receipt
+and was removed. The current candidate instead reasserts CEF Window.Show after
+Restore, only when native state before the call was both visible and minimized.
+A hidden owner is not revealed, and an already normal/maximized window does not
+receive the extra operation. Native ownership is revalidated between the calls.
+This uses actual native widget operations, not JavaScript visibility spoofing,
+windowless WasHidden, renderer reload, a layout pulse, a new deadline or a
+background/occlusion feature flag. The original five exact renderer receipts and
+native snapshots remain required. It is an unqualified candidate until actual
+Windows execution establishes the result; no current fix claim is made here.
