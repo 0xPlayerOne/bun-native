@@ -149,3 +149,22 @@ packaged owners fail the fixture. Earlier graphical receipts remain historical f
 their recorded source; they are not evidence for this new ownership path. The
 shared hosted runner executes the actual owner/descendant qualifier before the
 unchanged full eight CEF/provider stages. See [native terminal ownership](terminal-owner.md).
+
+## Guarded service-generation integration
+
+The current schema-3 functional receipt also exercises ServiceSupervisor through
+CefBackend's installed, hash-verified non-detaching native terminal driver. Three
+successive exit-7 generations require explicit readiness, fresh identities and
+consumers, fragmented input, exact callback/consumer hashes, output/PTY/process
+completion and release/disposal before replacement. A fourth independent guarded
+child must remain responsive and finish normally afterward. Stale-generation
+input is rejected with no extra launch or replay. A fifth explicitly stopped
+service records its real platform exit, never restarts, and returns all terminal,
+source, timer and observer reservations to zero.
+
+This is combined native-guardian/service execution, not a standalone driver test
+relabeled as native acceptance. The complete native terminal-parent-loss matrix
+remains separately required. It does not claim backend replacement, arbitrary
+shell job-control containment, Unix guardian hard-kill cleanup or a CEF watchdog
+fix. The graphical workload, cancellation/overload controls, exact byte/order
+checks and native shutdown gates remain unchanged.
