@@ -390,10 +390,13 @@ export default async function loadFixture(backend: CefBackend) {
       finalWindow = { loaded, restored }
       if (backgroundWindow) await backend.closeWindow(backgroundWindow)
     }
+    // The last visibility handler returning does not prove its native reply was consumed.
+    // Stop quiescent RPC before document teardown can produce another visibility request.
+    await bounded(backend.drainRpc(view), connection?.signal)
+    await stopRpc?.()
+    stopRpc = undefined
     await backend.disposeView(view)
     await backend.disposeSession(session)
-    await stopRpc()
-    stopRpc = undefined
     stopStreams()
     stopStreams = undefined
     const native = await backend.nativeDiagnostics()

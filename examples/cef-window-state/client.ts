@@ -9,6 +9,8 @@ const report = () => {
   // Capture the actual browser state in the callback, before any async handoff.
   if (sequence >= 16) throw new Error('Window fixture visibility bound exceeded')
   const receipt = { sequence: sequence++, visibility: document.visibilityState }
+  // Five states are the complete fixed workload. Teardown must not create a sixth RPC.
+  if (sequence === 5) document.removeEventListener('visibilitychange', report)
   const stage = (stage: string) =>
     console.log('BUNLY_WINDOW_STAGE:' + JSON.stringify({ ...receipt, stage }))
   stage('observed')

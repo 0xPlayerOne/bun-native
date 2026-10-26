@@ -1334,3 +1334,80 @@ describe('authority teardown reentrancy', () => {
     expect(env.authority.diagnostics().disposed).toBe(true)
   })
 })
+
+describe('notification-driven RPC quiescence', () => {
+  test('handler/client completion cannot replace the actual adapter reply receipt', async () => {
+    const f = await setup(),
+      held = deferred<void>()
+    const original = f.right.send.bind(f.right)
+    f.right.send = (packet) => {
+      original(packet)
+      return held.promise
+    }
+    const value = f.client.call('echo', 'final-reply')
+    expect(await value).toBe('final-reply')
+    expect(f.server.diagnostics().executing).toBe(0)
+    expect(f.server.diagnostics().queuedBytes).toBeGreaterThan(0)
+    const first = f.server.whenIdle(),
+      second = f.server.whenIdle()
+    expect(first).toBe(second)
+    let settled = false
+    void first.then(() => {
+      settled = true
+    })
+    await flush()
+    expect(settled).toBe(false)
+    held.resolve()
+    await first
+    expect(f.server.diagnostics().queuedBytes).toBe(0)
+    expect(f.server.diagnostics().queuedFrames).toBe(0)
+  })
+  test('unsettled handlers retain ownership after a bounded idle waiter times out', async () => {
+    const held = deferred<string>()
+    const f = await setup(
+      { work: { capability: 'work', handle: () => held.promise } },
+      { limits: { sendTimeoutMs: 10 } }
+    )
+    const call = result(f.client.call('work', 'held'))
+    await flush() // The request handoff must finish before advancing an independent idle deadline.
+    const idle = result(f.server.whenIdle())
+    f.clock.advance(10)
+    expect((await idle).code).toBe('DEADLINE_EXCEEDED')
+    expect(f.server.diagnostics().executing).toBe(1)
+    expect(f.server.diagnostics().closed).toBe(false)
+    held.resolve('done')
+    expect((await call).value).toBe('done')
+    await f.server.whenIdle()
+    expect(f.clock.timers.size).toBe(0)
+  })
+  test('revocation cannot report successful idle or leave a waiter timer alive', async () => {
+    const held = deferred<string>()
+    const f = await setup({ work: { capability: 'work', handle: () => held.promise } })
+    const call = result(f.client.call('work', 'held'))
+    const idle = result(f.server.whenIdle())
+    f.authority.revoke(f.view)
+    expect((await idle).code).toBe('REVOKED')
+    expect((await call).code).toBeDefined()
+    held.resolve('late')
+    await flush()
+    expect(f.clock.timers.size).toBe(0)
+    expect((await result(f.server.whenIdle())).code).toBe('DISCONNECTED')
+  })
+})
+
+test('a delayed idle timer cannot turn late reply completion into successful quiescence', async () => {
+  const f = await setup({}, { limits: { sendTimeoutMs: 10 } }),
+    held = deferred<void>()
+  const original = f.right.send.bind(f.right)
+  f.right.send = (packet) => {
+    original(packet)
+    return held.promise
+  }
+  expect(await f.client.call('echo', 'delayed')).toBe('delayed')
+  const idle = result(f.server.whenIdle())
+  f.clock.advance(11, false)
+  held.resolve()
+  expect((await idle).code).toBe('DEADLINE_EXCEEDED')
+  expect(f.server.diagnostics().queuedBytes).toBe(0)
+  expect(f.clock.timers.size).toBe(0)
+})

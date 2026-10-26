@@ -68,3 +68,16 @@ latency distributions require a measured interpretation; this change introduces
 no invented plateau, hard millisecond gate, release approval, or causal CEF
 shutdown fix. The original functional fixture remains required for paused
 consumers, cancellation/navigation, resize and bounded overload.
+
+## Retained first-windowed execution
+
+Source `3e4ede0` executed all four local native workloads. Foreground, hidden and
+inactive-visible trials passed. Minimized completed all 700 batches per terminal,
+exact bytes/checksums, actual restore and clean native shutdown, but its final
+in-process snapshot retained an 85-byte RPC reply. The fixed zero-byte acceptance
+correctly rejected it. Raw report/run-kAki2e remains unchanged.
+
+The follow-up uses the reviewed native-reply drain from #119 before retiring RPC
+and disposing the view; it does not add sleeps, counter polling, ignored bytes or
+looser shutdown acceptance. The actual native delivery completion drives release.
+All four modes require new combined-head execution after this correction.
