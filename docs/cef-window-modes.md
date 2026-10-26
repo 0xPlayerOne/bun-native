@@ -199,3 +199,23 @@ initial navigation committed and correctly rejected the still-loading frame.
 The fixture now awaits its existing authenticated initial visibility receipt
 before that first read. The probe's URL check and the ten-second sequence
 deadline are unchanged. This is diagnostic readiness, not a restore correction.
+
+## Zero-width restored BrowserView finding
+
+Read-only Windows run 40308274129 established that restoration returned the
+owned HWND to its original 624-by-441 client area, foreground process/thread,
+matching input desktop and uncloaked state, while the BrowserView remained zero
+pixels wide. The actual document remained hidden despite receiving focus. The
+problem was not repaired by the earlier Show or Layout calls.
+
+The existing vertical BoxLayout used zero-initialized cross-axis START alignment,
+which can preserve the browser's zero preferred width from minimization instead
+of stretching to its restored parent. The candidate explicitly uses STRETCH on
+that cross axis. Vertical ordering and each child’s existing flex weight remain
+unchanged, including multiple independent views. No hardcoded geometry, minimum
+window size, new layout loop, native visibility override or synthetic page event
+is introduced. A permanent configuration regression first failed on the old
+START setting. The real fixture additionally requires positive native view
+width/height in visible phases, along with the unchanged five authenticated
+actual-document visibility observations. Windows execution remains the required
+proof of recovery, not the configuration test alone.

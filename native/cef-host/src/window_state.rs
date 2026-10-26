@@ -1,7 +1,19 @@
 //! CEF-specific owner-thread operations. IDs only select an existing host-owned window.
 use super::{number, reply, STATE};
-use cef::{ImplView, ImplWindow, Window};
+use cef::{BoxLayoutSettings, ImplView, ImplWindow, Window};
 use serde_json::{json, Value};
+
+/// Vertical host layout; per-view main-axis flex is assigned at attachment.
+pub(super) fn browser_layout_settings() -> BoxLayoutSettings {
+    BoxLayoutSettings {
+        horizontal: 0,
+        // A vertical layout's cross axis is width. START uses the browser's
+        // preferred width, which can become zero while its Windows host is
+        // minimized. Stretch follows the real parent width after restoration.
+        cross_axis_alignment: cef::AxisAlignment::STRETCH,
+        ..Default::default()
+    }
+}
 
 pub(super) fn live(id: u64) -> Result<Window, &'static str> {
     STATE.with(|state| {
@@ -179,6 +191,16 @@ fn windows_snapshot(hwnd: windows_sys::Win32::Foundation::HWND) -> Result<Value,
 mod tests {
     use super::*;
     use crate::host::WindowRecord;
+
+    #[test]
+    fn browser_layout_stretches_cross_axis_instead_of_reusing_minimized_preferred_width() {
+        let settings = browser_layout_settings();
+        assert_eq!(settings.horizontal, 0);
+        assert_eq!(settings.cross_axis_alignment, cef::AxisAlignment::STRETCH);
+        assert_eq!(settings.default_flex, 0); // Explicit per-view flex remains authoritative.
+        assert_eq!(settings.minimum_cross_axis_size, 0);
+        assert_eq!(settings.between_child_spacing, 0);
+    }
 
     #[test]
     fn missing_unready_and_closing_windows_never_reach_cef() {

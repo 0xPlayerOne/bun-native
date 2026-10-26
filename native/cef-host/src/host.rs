@@ -1859,10 +1859,9 @@ fn dispatch(command: &Value) -> Result<(), String> {
             });
             let mut native = View::from(&view);
             window.add_child_view(Some(&mut native));
-            if let Some(layout) = window.set_to_box_layout(Some(&BoxLayoutSettings {
-                horizontal: 0,
-                ..Default::default()
-            })) {
+            if let Some(layout) =
+                window.set_to_box_layout(Some(&window_state::browser_layout_settings()))
+            {
                 let views = STATE.with(|s| {
                     s.borrow()
                         .views

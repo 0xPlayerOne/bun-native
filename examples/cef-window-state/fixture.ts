@@ -119,7 +119,19 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
       actionState: CefWindowState | null = null
     ) => {
       if (actionState) actions.push({ mode, state: actionState })
-      nativeSnapshots.push({ mode, state: await backend.qualifyWindowVisibility(window) })
+      const snapshot = await backend.qualifyWindowVisibility(window)
+      nativeSnapshots.push({ mode, state: snapshot })
+      if (visible && !minimized) {
+        assert.ok(snapshot && typeof snapshot === 'object')
+        const geometry = snapshot as Record<string, unknown>
+        assert.ok(
+          Number.isSafeInteger(geometry['viewWidth']) && Number(geometry['viewWidth']) > 0,
+          'A visible restored browser must have real positive layout width'
+        )
+        assert.ok(
+          Number.isSafeInteger(geometry['viewHeight']) && Number(geometry['viewHeight']) > 0
+        )
+      }
       const observedPage = await page(modes.length, visible && !minimized ? 'visible' : 'hidden')
       const state = await backend.windowState(window, { signal: controller.signal })
       // Retain mismatches before asserting. Minimized visibility is platform-specific.
