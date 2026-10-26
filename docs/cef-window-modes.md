@@ -125,3 +125,14 @@ returned `minimized: true`; the subsequent visibility callback and native readba
 proved `visible: true, minimized: false`. The earlier preparation failure and
 dirty-source checkpoint remain fingerprinted. This evidence does not replace
 current integration-head Linux/Windows execution or combined #27 load acceptance.
+
+## Shared acceptance gate
+
+Automatic and manual `full` acceptance includes `window-modes` before graphical
+terminals and protected credential setup. The explicit M4-only suite is unchanged.
+On Linux only, the maintained stage starts its own disposable Xvfb/Openbox session;
+macOS and Windows use the actual platform window manager. Hosted provisioning
+installs Openbox in the disposable runner, not in an application or a contributor's
+desktop. A failed or missing mode/WM-cleanup receipt blocks the full result and
+credential-provider setup. Each exported window report retains exact source,
+native artifact and independent visibility evidence.
