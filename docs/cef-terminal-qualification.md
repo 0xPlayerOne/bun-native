@@ -174,3 +174,11 @@ generations, then the fixture incorrectly wrapped synchronous stale-handle
 validation in assert.rejects. The corrected test uses assert.throws and still
 requires the exact INVALID_HANDLE code and no additional native launch. The
 failed run is retained; no supervisor or native ownership behavior changed.
+
+The subsequent fixture also incorrectly treated every observed ready-state
+snapshot as a unique transition, producing nine recorded observer assertions.
+The observer is now explicitly one-shot per opaque generation when sending its
+non-idempotent test input. It still requires three unique ready generations,
+three exact exits and outputs, zero observer failures and no replay. Repeated
+state snapshots are a documented observer contract, not new process generations;
+no supervisor callback or failure accounting was changed.

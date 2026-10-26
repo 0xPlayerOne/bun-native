@@ -130,8 +130,10 @@ export async function qualifyNativeServices(backend: CefBackend) {
     },
     readiness: () => writers.at(-1)!.ready.promise,
     async onChange(snapshot) {
-      if (snapshot.state === 'ready') {
-        assert.ok(snapshot.generation && !sent.has(snapshot.generation))
+      // Observer values are coalesced state snapshots, not one-shot transitions.
+      // Send this deliberately non-idempotent fixture input once per identity.
+      if (snapshot.state === 'ready' && snapshot.generation && !sent.has(snapshot.generation)) {
+        assert.ok(sent.size < 3)
         sent.add(snapshot.generation)
         await supervisor.write(snapshot.generation!, finish.subarray(0, 3))
         await supervisor.write(snapshot.generation!, finish.subarray(3))
