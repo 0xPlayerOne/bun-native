@@ -2,7 +2,7 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron')
 const { spawn } = require('node:child_process')
 const path = require('node:path')
-const [origin, profile, bun, controller, mode, output] = process.argv.slice(2)
+const [origin, profile, bun, controller, mode, output, childEntry] = process.argv.slice(2)
 if (process.versions.electron !== '44.9.3' || !['visible', 'hidden'].includes(mode))
   throw new Error('Unexpected pinned runtime or mode')
 const url = new URL(origin)
@@ -125,7 +125,12 @@ app
       finish(false, 'Renderer gone: ' + details.reason)
     )
     child = spawn(bun, [controller], {
-      env: { ...process.env, BUNLY_TERMINAL_LOAD_MODE: mode, BUNLY_TERMINAL_LOAD_OUTPUT: output },
+      env: {
+        ...process.env,
+        BUNLY_TERMINAL_LOAD_MODE: mode,
+        BUNLY_TERMINAL_LOAD_OUTPUT: output,
+        BUNLY_TERMINAL_LOAD_CHILD: childEntry,
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
     child.stderr.pipe(process.stderr)

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { LOAD_RAW_LIMIT } from '../../examples/cef-terminal-load/profile.ts'
 import { LOAD, BATCHES } from '../../examples/cef-terminal-load/workload.ts'
 import { receipt, object, finite } from '../../examples/cef-terminal-load/contract.ts'
 import { validateCommandObservation, assertCleanCommand } from './observed-command.ts'
@@ -27,7 +28,7 @@ export function acceptLoadRows(
   host: 'cef' | 'electron' = 'cef',
   terminalOwnership?: 'native-non-detaching'
 ) {
-  assert.ok(Buffer.byteLength(raw) <= 4 * 1024 * 1024, 'Raw instrumentation byte bound')
+  assert.ok(Buffer.byteLength(raw) <= LOAD_RAW_LIMIT, 'Raw instrumentation byte bound')
   const lines = raw.trim().split('\n')
   assert.equal(lines.length, 2 + LOAD.phases.length + BATCHES * LOAD.terminals)
   const rows = lines.map((line) => object(JSON.parse(line)))

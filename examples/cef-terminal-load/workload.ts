@@ -1,12 +1,14 @@
+import { LOAD_PROFILE } from './profile.ts'
+
 /** Identical finite workload for every maintained load adapter. No renderer work is omitted. */
 export const LOAD = Object.freeze({
-  id: 'graphical-pty-load-v1',
+  id: LOAD_PROFILE === 'soak' ? 'graphical-pty-soak-v2' : 'graphical-pty-load-v1',
   terminals: 2,
   recordsPerBatch: 32,
   phases: [
     { name: 'warmup', batches: 20, intervalMs: 100 },
     { name: 'ramp', batches: 40, intervalMs: 50 },
-    { name: 'sustained', batches: 600, intervalMs: 50 },
+    { name: 'sustained', batches: LOAD_PROFILE === 'soak' ? 2400 : 600, intervalMs: 50 },
     { name: 'recovery', batches: 40, intervalMs: 100 },
   ],
   maxBatchBytes: 32 * 1024,

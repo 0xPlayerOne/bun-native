@@ -188,9 +188,10 @@ async function run() {
           executable: process.execPath,
           cwd: process.cwd(),
           argv: [
-            fileURLToPath(
-              new URL('../../../../examples/cef-terminal-load/child.ts', import.meta.url)
-            ),
+            process.env['BUNLY_TERMINAL_LOAD_CHILD'] ??
+              fileURLToPath(
+                new URL('../../../../examples/cef-terminal-load/child.ts', import.meta.url)
+              ),
           ],
           env: { BUNLY_TERMINAL_INDEX: String(index) },
           cols: TERMINAL_COLS,

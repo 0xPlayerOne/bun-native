@@ -211,3 +211,25 @@ normal shutdown acceptance. They precede this guarded-profile integration and
 are not relabeled current-source or native-owner measurements. Earlier hidden
 stall and watchdog failures remain retained; the checkpoint does not establish a
 causal cure, minimized/foreground qualification or a long-run memory plateau.
+
+## Maintained long-horizon memory discriminator
+
+`bun run qualify:terminal-soak cef PREPARED_APP --functional` and
+`bun run qualify:terminal-soak electron --functional` select the same explicit
+`graphical-pty-soak-v2` profile: unchanged warmup/ramp/recovery and two producers,
+but a **120-second sustained phase** (2,400 batches at the existing 50-ms cadence).
+This is 2,500 batches total, not a retry or a longer deadline for an incomplete
+standard workload. Every source/controller/renderer bundle and receipt uses the
+same fixed profile. Unknown selectors reject. The full-process observer bound
+is 180 seconds for this longer workload; existing per-operation/readiness/RPC,
+consumer and native shutdown deadlines do not change. The raw instrumentation
+bound is explicitly 16 MiB; the screen still retains at most 600 records and the
+native/stream/source byte budgets are unchanged.
+
+The two pinned engines use the identical long profile but their disclosed native
+ownership/engine differences remain. Recompiled Electron controller/child paths
+are host-supplied private artifacts, not renderer-selected executable paths.
+An individual soak is functional/trend evidence, not independent confidence
+intervals, matched-engine superiority or an invented production RSS guarantee.
+The shorter cached checkpoint's visible RSS growth remains unresolved until
+actual longer traces establish whether it stabilizes; no plateau is presumed.

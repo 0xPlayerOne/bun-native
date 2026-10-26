@@ -2,6 +2,7 @@
  * Reusing main.js would execute the input artifact's CefBackend even when the
  * application bundle and source fingerprints describe a newer implementation. */
 import assert from 'node:assert/strict'
+import { LOAD_DEFINES } from '../examples/cef-terminal-load/profile.ts'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -26,6 +27,7 @@ export async function buildTerminalBackend(root: string, resources: string, load
       target: 'bun',
       format: 'esm',
       minify: false,
+      ...(load ? { define: LOAD_DEFINES } : {}),
     })
     assert.ok(built.success, built.logs.join('\n'))
     const bytes = await readFile(join(resources, 'backend', name))

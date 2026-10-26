@@ -14,6 +14,7 @@ import {
 import { profileOptions } from '../benchmarks/foundation/statistics.ts'
 import { schedule } from '../benchmarks/lib/statistics.ts'
 import type { ObservationSample } from '../benchmarks/lib/observation.ts'
+import { LOAD_DEFINES, LOAD_OBSERVER_MS } from '../examples/cef-terminal-load/profile.ts'
 import { LOAD } from '../examples/cef-terminal-load/workload.ts'
 const root = resolve(import.meta.dir, '..')
 const args = process.argv.slice(2)
@@ -41,6 +42,8 @@ const sources = [
   'examples/cef-terminal-load/diagnostics.ts',
   'examples/cef-terminal-load/probe.ts',
   'examples/cef-terminal-load/workload.ts',
+  'examples/cef-terminal-load/profile.ts',
+  'scripts/qualify-terminal-soak.ts',
   'examples/cef-terminal-load/contract.ts',
   'examples/cef-terminal-load/child.ts',
   'examples/cef-terminal/terminal-records.ts',
@@ -68,6 +71,7 @@ const hashes = async () =>
 const report: Record<string, unknown> = {
   schema: 1,
   workload: LOAD,
+  observerTimeoutMs: LOAD_OBSERVER_MS,
   sourceBefore: before,
   sourceHashes: await hashes(),
   passed: false,
@@ -102,8 +106,29 @@ const build = await Bun.build({
   naming: 'terminal-client.js',
   target: 'browser',
   format: 'esm',
+  define: LOAD_DEFINES,
 })
 assert.ok(build.success, build.logs.join('\n'))
+// Compile controller and child with the same explicit fixed workload as the page.
+// No runtime environment selector can silently disagree with renderer compilation.
+const backendRoot = join(work, 'backend')
+await mkdir(backendRoot)
+for (const [source, name] of [
+  [join(adapter, 'terminal-load/controller.ts'), 'controller.js'],
+  [join(root, 'examples/cef-terminal-load/child.ts'), 'child.js'],
+] as const) {
+  const result = await Bun.build({
+    entrypoints: [source],
+    outdir: backendRoot,
+    naming: name,
+    target: 'bun',
+    format: 'esm',
+    minify: false,
+    define: LOAD_DEFINES,
+  })
+  assert.ok(result.success, result.logs.join('\n'))
+}
+
 const server = Bun.serve({
   hostname: '127.0.0.1',
   port: 0,
@@ -130,11 +155,16 @@ try {
         `http://127.0.0.1:${server.port}`,
         profile,
         process.execPath,
-        join(adapter, 'terminal-load/controller.ts'),
+        join(backendRoot, 'controller.js'),
         mode,
         rawPath,
+        join(backendRoot, 'child.js'),
       ],
-      { cwd: root, output: join(work, `trial-${index}-${mode}.process.json`), timeoutMs: 90_000 }
+      {
+        cwd: root,
+        output: join(work, `trial-${index}-${mode}.process.json`),
+        timeoutMs: LOAD_OBSERVER_MS,
+      }
     ).result
     const trial: Record<string, unknown> = {
       index,

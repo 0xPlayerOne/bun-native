@@ -1,3 +1,5 @@
+import { LOAD } from '../examples/cef-terminal-load/workload.ts'
+import { LOAD_DEFINES, LOAD_OBSERVER_MS } from '../examples/cef-terminal-load/profile.ts'
 import { buildTerminalBackend } from './build-terminal-backend.ts'
 /** Actual prepared-CEF + Bun PTY + graphical xterm functional qualification. */
 import assert from 'node:assert/strict'
@@ -52,6 +54,8 @@ const sourcePaths = [
         'examples/cef-terminal-load/child.ts',
         'examples/cef-terminal-load/contract.ts',
         'examples/cef-terminal-load/workload.ts',
+        'examples/cef-terminal-load/profile.ts',
+        'scripts/qualify-terminal-soak.ts',
         'benchmarks/lib/terminal-load-acceptance.ts',
         'benchmarks/lib/terminal-load-baselines.ts',
         'benchmarks/lib/statistics.ts',
@@ -115,7 +119,8 @@ const fingerprints = async () =>
 const before = sourceIdentity(root)
 const report: Record<string, unknown> = {
   schema: load ? 2 : 1,
-  profile: load ? 'graphical-pty-load-v1' : 'functional-v2',
+  profile: load ? LOAD.id : 'functional-v2',
+  ...(load ? { workload: LOAD, observerTimeoutMs: LOAD_OBSERVER_MS } : {}),
   classification: functional
     ? 'graphical-native-terminal-functional-qualification'
     : 'graphical-native-terminal-descriptive-profile',
@@ -183,6 +188,7 @@ try {
     target: 'browser',
     format: 'esm',
     minify: false,
+    ...(load ? { define: LOAD_DEFINES } : {}),
   })
   assert.equal(browser.success, true, browser.logs.join('\n'))
   const assets: Record<string, { bytes: number; sha256: string }> = {}
@@ -268,7 +274,7 @@ try {
     const observation = await observedCommand([executable], {
       cwd: work,
       output: join(work, `trial-${index}-${mode}.process.json`),
-      timeoutMs: load ? 90_000 : 30_000,
+      timeoutMs: load ? LOAD_OBSERVER_MS : 30_000,
       env: {
         BUNLY_CACHE_DIR: join(work, `trial-${index}-${mode}-cache`),
         BUNLY_TERMINAL_LOAD_MODE: mode,

@@ -59,7 +59,8 @@
     "qualify:m4": "python scripts/hosted_cef.py run --suite m4-acceptance",
     "qualify:services": "bun test tests/service-supervisor.test.ts tests/service-supervisor-real.test.ts",
     "qualify:bun-pty": "bun scripts/qualify-bun-pty.ts",
-    "qualify:cef-terminals": "bun scripts/qualify-cef-terminals.ts"
+    "qualify:cef-terminals": "bun scripts/qualify-cef-terminals.ts",
+    "qualify:terminal-soak": "bun scripts/qualify-terminal-soak.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
