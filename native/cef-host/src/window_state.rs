@@ -45,6 +45,7 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
     read(&window)?;
     match operation {
         "window.state" => (),
+        "window.activate" => window.activate(),
         "window.minimize" => window.minimize(),
         "window.restore" => window.restore(),
         _ => return Err("Unknown window state operation".into()),
@@ -53,6 +54,15 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
     let window = live(id)?;
     reply(request, read(&window)?);
     Ok(())
+}
+
+/// Notification is only a hint; callers still read the exact live owned window.
+pub(super) fn activation_changed(id: u64) {
+    if let Ok(window) = live(id) {
+        if let Ok(state) = read(&window) {
+            super::event("window.state-changed", id, state);
+        }
+    }
 }
 
 /// Read-only contributor diagnostics. Never changes visibility, activation,

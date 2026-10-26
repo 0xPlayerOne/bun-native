@@ -14,6 +14,19 @@ spec.loader.exec_module(observer)
 
 
 class PhaseMarkerTests(unittest.TestCase):
+    def test_terminal_load_phases_are_diagnostics_not_authority(self):
+        for phase in ("warmup", "ramp", "sustained", "recovery"):
+            value = {"event": "bunly.terminal-load.phase", "schema": 1, "phase": phase}
+            self.assertEqual(observer.phase_marker(value, False), phase)
+            self.assertIsNone(observer.phase_marker(value, True))
+            self.assertIsNone(observer.phase_marker({**value, "pid": 1}, False))
+            self.assertIsNone(observer.phase_marker({**value, "schema": True}, False))
+        self.assertIsNone(
+            observer.phase_marker(
+                {"event": "bunly.terminal-load.phase", "schema": 1, "phase": "arbitrary"}, False
+            )
+        )
+
     def test_stderr_requires_the_exact_diagnostic_schema_and_allowlisted_phase(self):
         for phase in ("transport-idle", "transport-work", "transport-complete"):
             value = {"event": "bunly.transport.phase", "schema": 1, "phase": phase}

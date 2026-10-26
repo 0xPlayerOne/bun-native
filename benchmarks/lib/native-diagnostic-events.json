@@ -15,6 +15,7 @@
   "bunly.native.transport",
   "bunly.native.transport-throttle",
   "bunly.native.graphical-terminal",
+  "bunly.native.terminal-load",
   "bunly.native.window-modes",
   "bunly.native.last-window",
   "bunly.native.cycle",

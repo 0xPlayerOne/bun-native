@@ -5,6 +5,9 @@
     "packages/contracts/src/**/*.ts",
     "packages/client/src/**/*.ts",
     "examples/workbench/browser.ts",
+    "examples/cef-terminal/terminal-client.ts",
+    "examples/cef-terminal-load/client.ts",
+    "benchmarks/adapters/electron/terminal-load/client.ts",
     "examples/cef-window-state/client.ts",
     "examples/cef-window-state/contract.ts"
   ],

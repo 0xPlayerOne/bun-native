@@ -12,7 +12,7 @@ const state = {
   active: false,
 }
 const options = { title: 'state', bounds: { x: 0, y: 0, width: 320, height: 240 } }
-const operations = ['windowState', 'minimizeWindow', 'restoreWindow'] as const
+const operations = ['windowState', 'minimizeWindow', 'restoreWindow', 'activateWindow'] as const
 async function fixture() {
   const peer = await nativePeer()
   let id = 0
@@ -38,6 +38,7 @@ test('CEF window actions return immutable actual readback, never requested inten
         ['window.state', { id: 1 }],
         ['window.minimize', { id: 1 }],
         ['window.restore', { id: 1 }],
+        ['window.activate', { id: 1 }],
       ]
     )
   } finally {

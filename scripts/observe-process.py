@@ -57,6 +57,15 @@ def phase_marker(item, stdout):
         and item.get("phase") in ("transport-idle", "transport-work", "transport-complete")
     ):
         return item["phase"]
+    if (
+        not stdout
+        and set(item) == {"event", "schema", "phase"}
+        and item.get("event") == "bunly.terminal-load.phase"
+        and type(item.get("schema")) is int
+        and item["schema"] == 1
+        and item.get("phase") in ("warmup", "ramp", "sustained", "recovery")
+    ):
+        return item["phase"]
     return None
 
 

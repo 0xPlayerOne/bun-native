@@ -1942,7 +1942,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
         #[cfg(feature = "rpc-qualification")]
         "window.qualification.visibility" => window_state::qualification(request, args)?,
-        "window.state" | "window.minimize" | "window.restore" => {
+        "window.state" | "window.minimize" | "window.restore" | "window.activate" => {
             window_state::dispatch(request, operation, args)?;
         }
         "window.close" | "window.show" | "window.hide" | "window.resize" => {
@@ -2430,6 +2430,7 @@ wrap_window_delegate! {
     impl PanelDelegate {}
     impl WindowDelegate {
         fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn on_window_activation_changed(&self, _window: Option<&mut Window>, _active: i32) { window_state::activation_changed(self.id); }
         fn window_runtime_style(&self) -> RuntimeStyle { RuntimeStyle::ALLOY }
         fn on_window_created(&self, window: Option<&mut Window>) {
             let Some(window) = window else {

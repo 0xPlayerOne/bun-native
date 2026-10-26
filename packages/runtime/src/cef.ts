@@ -760,7 +760,7 @@ export class CefBackend implements BrowserBackend {
   }
   async #windowStateOperation(
     window: WindowHandle,
-    operation: 'window.state' | 'window.minimize' | 'window.restore',
+    operation: 'window.state' | 'window.minimize' | 'window.restore' | 'window.activate',
     options?: OperationOptions
   ): Promise<CefWindowState> {
     const resource = this.#liveWindow(window)
@@ -784,6 +784,10 @@ export class CefBackend implements BrowserBackend {
   /** Request minimization and return immediate native readback, not transition completion. */
   minimizeWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
     return this.#windowStateOperation(window, 'window.minimize', options)
+  }
+  /** Request activation; actual focus depends on the OS. Returned state is not promised intent. */
+  activateWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.activate', options)
   }
   /** CEF Restore restores minimized/maximized windows; use showWindow to unhide. */
   restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
