@@ -36,6 +36,13 @@ const sourcePaths = [
   'bun.lock',
   'scripts/qualify-cef-terminals.ts',
   'examples/cef-terminal/terminal-fixture.ts',
+  'examples/cef-terminal/native-services.ts',
+  'examples/cef-terminal/service-child.ts',
+  'packages/runtime/src/service-supervisor.ts',
+  'packages/runtime/src/terminal-owner.ts',
+  'native/cef-host/src/terminal_owner.rs',
+  'native/cef-host/src/terminal_owner_windows.rs',
+  'native/cef-host/src/terminal_runtime.rs',
   'examples/cef-terminal/terminal-client.ts',
   'examples/cef-terminal/terminal-records.ts',
   'examples/cef-terminal/terminal-child.ts',
@@ -94,7 +101,7 @@ const report: Record<string, unknown> = {
     'Functional runs establish correctness and bounded behavior, not a throughput or latency win.',
     'Foreground uses the maintained visible-window API. Background and minimized modes are NOT qualified because no maintained native visibility/minimize control exists.',
     'No baseline comparison is claimed without the identical workload on a pinned comparison runtime.',
-    'Direct owned children only; detached-descendant supervision is not claimed.',
+    'Native non-detaching terminal/service ownership is exercised. Unix guardian SIGKILL and detached groups remain unsupported; managed backend replacement is M6.',
     'Linux PTY status 1 remains an ambiguous read lifecycle result, never generic clean EOF.',
     'Ordinary runtime default cookies remain disabled. This fixture does not alter credential policy or use a personal credential store.',
   ],
@@ -136,6 +143,16 @@ try {
     minify: false,
   })
   assert.equal(child.success, true, child.logs.join('\n'))
+  const serviceChild = await Bun.build({
+    entrypoints: [join(root, 'examples/cef-terminal/service-child.ts')],
+    outdir: join(resources, 'backend'),
+    naming: 'service-child.js',
+    target: 'bun',
+    format: 'esm',
+    minify: false,
+  })
+  assert.equal(serviceChild.success, true, serviceChild.logs.join('\n'))
+
   const publicRoot = join(resources, 'public')
   await rm(publicRoot, { recursive: true, force: true })
   await mkdir(publicRoot)
