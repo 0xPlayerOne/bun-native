@@ -2,8 +2,25 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron')
 const { spawn } = require('node:child_process')
 const path = require('node:path')
-const [origin, profile, bun, controller, mode, output, childEntry] = process.argv.slice(2)
-if (process.versions.electron !== '44.9.3' || !['visible', 'hidden'].includes(mode))
+const [
+  origin,
+  profile,
+  bun,
+  controller,
+  mode,
+  output,
+  childEntry,
+  workload = 'graphical-pty-load-v1',
+] = process.argv.slice(2)
+const windowed = workload === 'graphical-pty-window-load-v3'
+const modes = windowed ? ['foreground', 'background', 'hidden', 'minimized'] : ['visible', 'hidden']
+if (
+  !['graphical-pty-load-v1', 'graphical-pty-soak-v2', 'graphical-pty-window-load-v3'].includes(
+    workload
+  )
+)
+  throw new Error('Unknown fixed workload')
+if (process.versions.electron !== '44.9.3' || !modes.includes(mode))
   throw new Error('Unexpected pinned runtime or mode')
 const url = new URL(origin)
 if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1') throw new Error('Loopback required')
@@ -16,6 +33,115 @@ let window,
   security = null,
   sequence = 0
 const pending = new Map()
+let focusWindow,
+  modeSequence = 0,
+  modePending = false
+function readWindowState() {
+  if (!window || window.isDestroyed()) throw new Error('Owned window unavailable')
+  return {
+    visible: window.isVisible(),
+    active: window.isFocused(),
+    minimized: window.isMinimized(),
+    maximized: window.isMaximized(),
+    fullscreen: window.isFullScreen(),
+  }
+}
+function matchesMode(selected, state) {
+  if (state.fullscreen || state.maximized) return false
+  if (selected === 'minimized') return state.minimized && !state.active
+  if (state.minimized) return false
+  if (selected === 'hidden') return !state.visible && !state.active
+  return (
+    state.visible &&
+    (selected === 'foreground'
+      ? state.active
+      : selected === 'background'
+        ? !state.active
+        : selected === 'visible')
+  )
+}
+function transition(selected, action) {
+  return new Promise((resolve, reject) => {
+    const events = ['show', 'hide', 'focus', 'blur', 'minimize', 'restore', 'closed']
+    let ended = false
+    const finish = (error, state) => {
+      if (ended) return
+      ended = true
+      clearTimeout(timer)
+      for (const event of events) window.removeListener(event, inspect)
+      if (error) reject(error)
+      else resolve(state)
+    }
+    const inspect = () => {
+      try {
+        const state = readWindowState()
+        if (matchesMode(selected, state)) finish(null, state)
+      } catch (error) {
+        finish(error)
+      }
+    }
+    const timer = setTimeout(() => finish(new Error('Native load window mode deadline')), 10000)
+    for (const event of events) window.on(event, inspect)
+    try {
+      action()
+      inspect()
+    } catch (error) {
+      finish(error)
+    }
+  })
+}
+async function modeRequest(request) {
+  if (
+    !windowed ||
+    !request ||
+    typeof request !== 'object' ||
+    Object.keys(request).sort().join(',') !== 'id,operation' ||
+    request.id !== modeSequence + 1 ||
+    request.id > 16 ||
+    modePending ||
+    !['admit', 'snapshot', 'restore'].includes(request.operation)
+  )
+    throw new Error('Invalid owned mode request')
+  modeSequence = request.id
+  modePending = true
+  try {
+    let state
+    if (request.operation === 'snapshot') state = readWindowState()
+    else if (request.operation === 'restore') {
+      state = await transition('foreground', () => {
+        window.restore()
+        window.show()
+        window.focus()
+      })
+      if (focusWindow) {
+        focusWindow.close()
+        focusWindow = undefined
+      }
+    } else {
+      if (mode === 'background')
+        focusWindow = new BrowserWindow({
+          x: 960,
+          y: 16,
+          width: 160,
+          height: 160,
+          show: false,
+          webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+        })
+      state = await transition(mode, () => {
+        if (mode === 'hidden') window.hide()
+        else if (mode === 'minimized') window.minimize()
+        else if (focusWindow) {
+          focusWindow.show()
+          focusWindow.focus()
+        } else window.focus()
+      })
+    }
+    return state
+  } finally {
+    modePending = false
+  }
+}
+
 function send(value) {
   const line = JSON.stringify(value) + '\n'
   if (line.length > 128 * 1024 || child.stdin.writableLength > 2 * 1024 * 1024)
@@ -40,7 +166,7 @@ function finish(passed, error = null) {
   console.log(
     JSON.stringify({
       schema: 1,
-      scenario: 'graphical-pty-load-v1',
+      scenario: workload,
       passed,
       error,
       frameworkVersion: process.versions.electron,
@@ -158,6 +284,14 @@ app
             clearTimeout(request.timer)
             if (item.error) request.reject(new Error(item.error))
             else request.resolve(item.value)
+          } else if (item.modeState) {
+            const id = item.modeState.id
+            void modeRequest(item.modeState)
+              .then(
+                (state) => send({ modeState: { id, state } }),
+                () => send({ modeState: { id, error: 'Owned window mode failed' } })
+              )
+              .catch((error) => finish(false, String(error)))
           } else if (item.show) {
             if (item.show === 'visible') window.show()
             else window.hide()

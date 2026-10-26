@@ -11,10 +11,17 @@ import {
 } from '../../packages/runtime/src/terminal.ts'
 import { TERMINAL_COLS, TERMINAL_ROWS } from '../cef-terminal/terminal-contract.ts'
 import { BATCHES, LOAD } from './workload.ts'
-import { schema, mode, type receipt, type diagnostic } from './contract.ts'
+import { schema, loadMode, type receipt, type diagnostic } from './contract.ts'
+import { LOAD_PROFILE } from './profile.ts'
+import { expectedVisibility, requireLoadMode } from './mode-state.ts'
+import { awaitWindowMode } from './window-modes.ts'
 
 export default async function loadFixture(backend: CefBackend) {
-  const selected = mode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
+  const selected = loadMode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
+  const windowed = LOAD_PROFILE === 'windowed'
+  const expectedPage = expectedVisibility(selected)
+  let observedVisibility: 'visible' | 'hidden' = 'visible'
+  let changingWindow = true
   const output = process.env['BUNLY_TERMINAL_LOAD_OUTPUT']
   assert.ok(output)
   // Native installation/profile admission must precede fixture output creation.
@@ -123,7 +130,9 @@ export default async function loadFixture(backend: CefBackend) {
           capability: 'terminal-load',
           handle(value, context) {
             owner(context.identity.viewId)
-            assert.equal(value, selected)
+            if (!windowed || !changingWindow) assert.equal(value, expectedPage)
+            observedVisibility = value
+            assert.ok(visibilityReceipts.length < 8, 'Window visibility callback bound')
             visibilityReceipts.push(value)
             visibility.resolve()
             return null
@@ -144,7 +153,7 @@ export default async function loadFixture(backend: CefBackend) {
           handle(value, context) {
             owner(context.identity.viewId)
             assert.equal(value.batch, activeBatch)
-            assert.equal(value.visibility, selected)
+            assert.equal(value.visibility, expectedPage)
             assert.ok(!received.has(value.terminal), 'Duplicate consumer receipt')
             received.add(value.terminal)
             receipts[value.terminal]!.resolve(value)
@@ -221,17 +230,49 @@ export default async function loadFixture(backend: CefBackend) {
       trust: { kind: 'application', origin: 'app://ui' },
     })
     await bounded(Promise.all([connected.promise, ready.promise]))
-    await backend.showWindow(window, selected === 'visible')
-    if (selected === 'hidden') await bounded(visibility.promise)
+    let backgroundWindow: Awaited<ReturnType<CefBackend['createWindow']>> | undefined
+    let admittedWindow: ReturnType<typeof requireLoadMode> | undefined
+    const initialWindow = windowed
+      ? requireLoadMode('visible', await backend.windowState(window), observedVisibility)
+      : undefined
+    if (windowed) {
+      if (selected === 'background') {
+        backgroundWindow = await backend.createWindow({
+          title: 'Bunly owned background-focus fixture',
+          bounds: { x: 960, y: 16, width: 160, height: 160 },
+        })
+      }
+      admittedWindow = await awaitWindowMode(
+        backend,
+        window,
+        selected,
+        () => observedVisibility,
+        async () => {
+          if (selected === 'hidden') await backend.showWindow(window, false)
+          else if (selected === 'minimized') await backend.minimizeWindow(window)
+          else if (backgroundWindow) await backend.activateWindow(backgroundWindow)
+          else await backend.activateWindow(window)
+        },
+        connection?.signal
+      )
+    } else {
+      await backend.showWindow(window, selected === 'visible')
+      if (selected === 'hidden') await bounded(visibility.promise)
+    }
+    changingWindow = false
+    const modeSnapshot = async () =>
+      requireLoadMode(selected, await backend.windowState(window), observedVisibility)
     await record({
       kind: 'start',
-      schema: 1,
+      schema: windowed ? 2 : 1,
+      ...(windowed ? { windowMode: { initial: initialWindow, admitted: admittedWindow } } : {}),
       terminalOwnership: 'native-non-detaching',
       workload: LOAD,
       mode: selected,
       visibilityReceipts,
-      visibilityAuthority:
-        'native-exact-window-show-hide + document.visibilitychange; OS focus/minimize not inferred',
+      visibilityAuthority: windowed
+        ? 'owned-native-state-readback + authenticated-renderer-visibility; activation notifications are hints only'
+        : 'native-exact-window-show-hide + document.visibilitychange; OS focus/minimize not inferred',
     })
     const encoder = new TextEncoder()
     for (const definition of LOAD.phases) {
@@ -294,6 +335,7 @@ export default async function loadFixture(backend: CefBackend) {
         kind: 'phase',
         phase,
         batches: activeBatch + 1 - started,
+        ...(windowed ? { windowMode: await modeSnapshot() } : {}),
         elapsedMs: performance.now() - phaseStart,
       })
     }
@@ -327,6 +369,27 @@ export default async function loadFixture(backend: CefBackend) {
         })
       )
     )
+    let finalWindow:
+      | { loaded: ReturnType<typeof requireLoadMode>; restored: ReturnType<typeof requireLoadMode> }
+      | undefined
+    if (windowed) {
+      const loaded = await modeSnapshot()
+      changingWindow = true
+      const restored = await awaitWindowMode(
+        backend,
+        window,
+        'foreground',
+        () => observedVisibility,
+        async () => {
+          await backend.restoreWindow(window)
+          await backend.showWindow(window, true)
+          await backend.activateWindow(window)
+        },
+        connection?.signal
+      )
+      finalWindow = { loaded, restored }
+      if (backgroundWindow) await backend.closeWindow(backgroundWindow)
+    }
     await backend.disposeView(view)
     await backend.disposeSession(session)
     await stopRpc()
@@ -336,6 +399,7 @@ export default async function loadFixture(backend: CefBackend) {
     const native = await backend.nativeDiagnostics()
     await record({
       kind: 'complete',
+      ...(windowed ? { windowMode: finalWindow } : {}),
       batches: BATCHES,
       terminalOwnership: 'native-non-detaching',
       exits,
@@ -348,7 +412,7 @@ export default async function loadFixture(backend: CefBackend) {
     console.error(
       JSON.stringify({
         event: 'bunly.native.terminal-load',
-        schema: 2,
+        schema: windowed ? 3 : 2,
         terminalOwnership: 'native-non-detaching',
         mode: selected,
         batches: BATCHES,

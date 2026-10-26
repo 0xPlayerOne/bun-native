@@ -61,7 +61,8 @@
     "qualify:bun-pty": "bun scripts/qualify-bun-pty.ts",
     "qualify:cef-terminals": "bun scripts/qualify-cef-terminals.ts",
     "qualify:terminal-soak": "bun scripts/qualify-terminal-soak.ts",
-    "qualify:cef-window-modes": "bun scripts/qualify-cef-window-modes.ts"
+    "qualify:cef-window-modes": "bun scripts/qualify-cef-window-modes.ts",
+    "qualify:terminal-window-load": "bun scripts/qualify-terminal-window-load.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

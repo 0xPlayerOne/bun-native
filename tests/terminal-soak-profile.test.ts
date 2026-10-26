@@ -78,3 +78,18 @@ test('browser and Bun compilation use the same explicit soak selector without ho
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('windowed profile changes mode evidence, not per-terminal output or pacing', async () => {
+  const standard = JSON.parse((await profile('standard')).out)
+  const windowed = await profile('windowed')
+  expect(windowed.exit).toBe(0)
+  const current = JSON.parse(windowed.out)
+  expect(current.LOAD).toEqual({
+    ...standard.LOAD,
+    id: 'graphical-pty-window-load-v3',
+    modes: ['foreground', 'background', 'hidden', 'minimized'],
+  })
+  expect(current.BATCHES).toBe(700)
+  expect(current.observer).toBe(90000)
+  expect(current.define).toEqual({ 'globalThis.__bunlyTerminalLoadProfile': '"windowed"' })
+})

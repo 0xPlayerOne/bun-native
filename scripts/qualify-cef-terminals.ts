@@ -55,6 +55,9 @@ const sourcePaths = [
         'examples/cef-terminal-load/contract.ts',
         'examples/cef-terminal-load/workload.ts',
         'examples/cef-terminal-load/profile.ts',
+        'examples/cef-terminal-load/mode-state.ts',
+        'examples/cef-terminal-load/window-modes.ts',
+        'scripts/qualify-terminal-window-load.ts',
         'scripts/qualify-terminal-soak.ts',
         'benchmarks/lib/terminal-load-acceptance.ts',
         'benchmarks/lib/terminal-load-baselines.ts',
@@ -98,6 +101,8 @@ const sourcePaths = [
   'packages/client/src/cef-streams.ts',
   'packages/contracts/src/streams.ts',
   'native/cef-host/src/host.rs',
+  'native/cef-host/src/window_state.rs',
+  'scripts/qualify-cef-window-modes-linux.py',
   'native/cef-host/src/renderer_rpc.rs',
   'native/cef-host/src/rpc_authority.rs',
   'native/cef-host/src/rpc_protocol.rs',
@@ -143,7 +148,7 @@ const report: Record<string, unknown> = {
   trials: [],
   limitations: [
     'Functional runs establish correctness and bounded behavior, not a throughput or latency win.',
-    'Native show/hide is available. Load mode requires document visibility receipts; OS foreground focus, occlusion and minimization are not inferred.',
+    'The explicit windowed profile requires actual native active/visible/minimized readback and renderer visibility; legacy profiles remain visible/hidden only. This is not physical input or continuous OS-focus attestation.',
     'No baseline comparison is claimed without the identical workload on a pinned comparison runtime.',
     'Native non-detaching terminal/service ownership is exercised. Unix guardian SIGKILL and detached groups remain unsupported; managed backend replacement is M6.',
     'Linux PTY status 1 remains an ambiguous read lifecycle result, never generic clean EOF.',
@@ -268,7 +273,7 @@ try {
   const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(source))
   const accepted: ReturnType<typeof acceptGraphicalTerminal>[] = []
   const order = load
-    ? schedule(['visible', 'hidden'], options.samples + options.warmups, 2709).map((entry) => ({
+    ? schedule([...LOAD.modes], options.samples + options.warmups, 2709).map((entry) => ({
         index: entry.trial - options.warmups,
         mode: entry.variant,
       }))
@@ -301,6 +306,14 @@ try {
       if (load) {
         const raw = await readFile(join(work, `trial-${index}-${mode}.jsonl`), 'utf8')
         trial['rawSha256'] = createHash('sha256').update(raw).digest('hex')
+        // Fixed nonsecret instrumentation is replayable from hosted exports too.
+        if (LOAD.id === 'graphical-pty-window-load-v3') {
+          assert.ok(Buffer.byteLength(raw) <= 4 * 1024 * 1024)
+          trial['workloadRows'] = raw
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line))
+        }
         trial['outcomes'] = assessTerminalLoad(observation, raw, mode, 'native-non-detaching')
         trial['quarterTrends'] = loadProcessQuarterTrends(
           observation.samples as unknown as ObservationSample[]
@@ -324,7 +337,7 @@ try {
     }
   }
   if (load) {
-    report['launchDistributions'] = ['visible', 'hidden'].map((mode) => {
+    report['launchDistributions'] = [...LOAD.modes].map((mode) => {
       const selected = trials.filter(
         (row) => row['mode'] === mode && row['warmup'] === false && row.passed === true
       )

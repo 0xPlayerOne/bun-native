@@ -1,4 +1,5 @@
 import { defineRpc, procedure } from '../../packages/contracts/src/rpc.ts'
+import type { LoadMode } from './mode-state.ts'
 import type { ConsumerDiagnostic } from './diagnostics.ts'
 import { BATCHES, LOAD, loadBatch } from './workload.ts'
 export function check(value: unknown, message = 'Invalid load receipt'): asserts value {
@@ -23,6 +24,13 @@ export const none = (value: unknown): null => {
 export const mode = (value: unknown): 'visible' | 'hidden' => {
   check(value === 'visible' || value === 'hidden')
   return value
+}
+export const loadMode = (value: unknown): LoadMode => {
+  check(
+    typeof value === 'string' && (LOAD.modes as readonly string[]).includes(value),
+    'Unknown fixed load mode'
+  )
+  return value as LoadMode
 }
 export function receipt(value: unknown) {
   const row = object(value)

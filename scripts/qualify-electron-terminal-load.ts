@@ -43,6 +43,8 @@ const sources = [
   'examples/cef-terminal-load/probe.ts',
   'examples/cef-terminal-load/workload.ts',
   'examples/cef-terminal-load/profile.ts',
+  'examples/cef-terminal-load/mode-state.ts',
+  'scripts/qualify-terminal-window-load.ts',
   'scripts/qualify-terminal-soak.ts',
   'examples/cef-terminal-load/contract.ts',
   'examples/cef-terminal-load/child.ts',
@@ -140,7 +142,7 @@ const server = Bun.serve({
   },
 })
 try {
-  const order = schedule(['visible', 'hidden'], options.samples + options.warmups, 2709)
+  const order = schedule([...LOAD.modes], options.samples + options.warmups, 2709)
   report['trialOrder'] = order
   for (const item of order) {
     const index = item.trial - options.warmups,
@@ -159,6 +161,7 @@ try {
         mode,
         rawPath,
         join(backendRoot, 'child.js'),
+        LOAD.id,
       ],
       {
         cwd: root,

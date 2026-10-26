@@ -1,5 +1,9 @@
 # Sustained graphical terminal load
 
+The separate [native window-state profile](terminal-window-load.md) adds explicit
+foreground/background/hidden/minimized readback without relabeling the historical
+visible/hidden results below. Its current-head platform acceptance remains separate.
+
 See [the executed follow-up](terminal-load-followup.md) for the corrected current-source bootstrap, combined qualifier, actual Electron addon, and retained failure diagnostics.
 
 This separate `graphical-pty-load-v1` profile advances #27. It does not close #27

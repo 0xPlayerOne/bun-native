@@ -4,9 +4,15 @@ const selected = (
     __bunlyTerminalLoadProfile?: unknown
   }
 ).__bunlyTerminalLoadProfile
-if (selected !== undefined && selected !== 'standard' && selected !== 'soak')
+if (
+  selected !== undefined &&
+  selected !== 'standard' &&
+  selected !== 'soak' &&
+  selected !== 'windowed'
+)
   throw new Error('Unknown fixed terminal load profile')
-export const LOAD_PROFILE = selected === 'soak' ? 'soak' : 'standard'
+export const LOAD_PROFILE =
+  selected === 'soak' ? 'soak' : selected === 'windowed' ? 'windowed' : 'standard'
 export const LOAD_DEFINES = Object.freeze({
   'globalThis.__bunlyTerminalLoadProfile': JSON.stringify(LOAD_PROFILE),
 })

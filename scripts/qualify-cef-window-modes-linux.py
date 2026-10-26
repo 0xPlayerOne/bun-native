@@ -44,6 +44,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--disposable-runner", action="store_true", required=True)
     parser.add_argument("--bun", type=Path, required=True)
+    parser.add_argument("--terminal-load", action="store_true")
     parser.add_argument("app", type=Path)
     args = parser.parse_args()
     if sys.platform != "linux" or os.geteuid() == 0:
@@ -113,8 +114,19 @@ def main() -> int:
         result = subprocess.run(
             [
                 str(args.bun.resolve(strict=True)),
-                str(ROOT / "scripts/qualify-cef-window-modes.ts"),
-                str(args.app.resolve(strict=True)),
+                *(
+                    [
+                        str(ROOT / "scripts/qualify-terminal-window-load.ts"),
+                        "cef",
+                        str(args.app.resolve(strict=True)),
+                        "--functional",
+                    ]
+                    if args.terminal_load
+                    else [
+                        str(ROOT / "scripts/qualify-cef-window-modes.ts"),
+                        str(args.app.resolve(strict=True)),
+                    ]
+                ),
             ],
             env=env,
             cwd=ROOT,

@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict'
-import { LOAD_RAW_LIMIT } from '../../examples/cef-terminal-load/profile.ts'
+import {
+  expectedVisibility,
+  requireLoadMode,
+  type LoadMode,
+} from '../../examples/cef-terminal-load/mode-state.ts'
+import { LOAD_PROFILE, LOAD_RAW_LIMIT } from '../../examples/cef-terminal-load/profile.ts'
 import { LOAD, BATCHES } from '../../examples/cef-terminal-load/workload.ts'
 import { receipt, object, finite } from '../../examples/cef-terminal-load/contract.ts'
 import { validateCommandObservation, assertCleanCommand } from './observed-command.ts'
@@ -34,15 +39,33 @@ export function acceptLoadRows(
   const rows = lines.map((line) => object(JSON.parse(line)))
   const start = rows.shift()!
   assert.equal(start['kind'], 'start')
-  assert.equal(start['schema'], 1)
+  const windowed = LOAD_PROFILE === 'windowed'
+  assert.ok((LOAD.modes as readonly string[]).includes(selected))
+  const expectedPage = expectedVisibility(selected as LoadMode)
+  assert.equal(start['schema'], windowed ? 2 : 1)
   assert.deepEqual(start['workload'], LOAD)
   assert.equal(start['mode'], selected)
   assert.deepEqual(
     start['visibilityReceipts'],
-    selected === 'visible' ? ['initial-visible'] : ['initial-visible', 'hidden']
+    expectedPage === 'visible' ? ['initial-visible'] : ['initial-visible', 'hidden']
   )
   const final = rows.pop()!
   assert.equal(final['kind'], 'complete')
+  const observedMode = (value: unknown, mode: LoadMode) => {
+    const observation = object(value)
+    assert.deepEqual(Object.keys(observation).sort(), ['mode', 'nativeState', 'visibility'])
+    assert.equal(observation['mode'], mode)
+    return requireLoadMode(mode, observation['nativeState'], observation['visibility'])
+  }
+  if (windowed) {
+    const startMode = object(start['windowMode']),
+      finalMode = object(final['windowMode'])
+    observedMode(startMode['initial'], 'visible')
+    observedMode(startMode['admitted'], selected as LoadMode)
+    observedMode(finalMode['loaded'], selected as LoadMode)
+    observedMode(finalMode['restored'], 'foreground')
+  }
+
   if (terminalOwnership !== undefined) {
     assert.equal(host, 'cef')
     assert.equal(start['terminalOwnership'], terminalOwnership)
@@ -115,9 +138,11 @@ export function acceptLoadRows(
     const electron = object(final['electron'])
     assert.equal(electron['controllerBun'], '1.4.3')
     const state = object(electron['nativeState'])
-    assert.equal(state['visible'], selected === 'visible')
-    assert.equal(state['minimized'], false)
-    assert.equal(typeof state['focused'], 'boolean')
+    if (!windowed) {
+      assert.equal(state['visible'], selected === 'visible')
+      assert.equal(state['minimized'], false)
+    }
+    assert.equal(typeof state[windowed ? 'active' : 'focused'], 'boolean')
     const stream = object(electron['stream'])
     for (const field of ['streams', 'queuedBytes', 'queuedFrames']) assert.equal(stream[field], 0)
     assert.deepEqual(start['nativeState'], state)
@@ -164,7 +189,7 @@ export function acceptLoadRows(
         )
         assert.equal(r.batch, batch)
         assert.equal(r.terminal, terminal)
-        assert.equal(r.visibility, selected)
+        assert.equal(r.visibility, expectedPage)
         assert.ok(r.bytes > 0 && r.callbacks > 0)
         assert.equal(row['runtimeBytes'], r.bytes)
         assert.equal(row['acknowledgedBytes'], r.bytes)
@@ -193,6 +218,7 @@ export function acceptLoadRows(
     assert.equal(timing['kind'], 'phase')
     assert.equal(timing['phase'], phase.name)
     assert.equal(timing['batches'], phase.batches)
+    if (windowed) observedMode(timing['windowMode'], selected as LoadMode)
     const elapsedMs = finite(timing['elapsedMs'])
     assert.ok(elapsedMs >= phase.batches * phase.intervalMs - 5, 'Sustained phase shortened')
     const bytes = accepted.reduce((sum, row) => sum + row.bytes, 0)
@@ -324,7 +350,7 @@ export function acceptTerminalLoad(
   assert.deepEqual(receipts, [
     {
       event: 'bunly.native.terminal-load',
-      schema: terminalOwnership === undefined ? 1 : 2,
+      schema: LOAD_PROFILE === 'windowed' ? 3 : terminalOwnership === undefined ? 1 : 2,
       ...(terminalOwnership === undefined ? {} : { terminalOwnership }),
       mode: selected,
       batches: BATCHES,
@@ -364,8 +390,14 @@ export function acceptTerminalLoad(
     phases,
     process: loadProcessPhases(observed.samples as unknown as readonly ObservationSample[]),
     status: 'descriptive-not-comparative',
-    minimized: 'NOT_QUALIFIED',
-    foregroundFocus: 'NOT_QUALIFIED-visible-is-not-proof-of-OS-focus',
+    minimized:
+      LOAD_PROFILE === 'windowed' && selected === 'minimized'
+        ? 'NATIVE_STATE_AND_PAGE_VISIBILITY_OBSERVED'
+        : 'NOT_QUALIFIED',
+    foregroundFocus:
+      LOAD_PROFILE === 'windowed' && selected === 'foreground'
+        ? 'NATIVE_ACTIVE_AT_ADMISSION_AND_PHASE_CHECKPOINTS'
+        : 'NOT_QUALIFIED-visible-is-not-proof-of-OS-focus',
   }
 }
 /** Preserve independent workload and teardown outcomes, including overlap. */

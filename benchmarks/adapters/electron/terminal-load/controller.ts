@@ -16,16 +16,26 @@ import {
   TERMINAL_COLS,
   TERMINAL_ROWS,
 } from '../../../../examples/cef-terminal/terminal-contract.ts'
+import { LOAD_PROFILE } from '../../../../examples/cef-terminal-load/profile.ts'
+import {
+  expectedVisibility,
+  requireLoadMode,
+} from '../../../../examples/cef-terminal-load/mode-state.ts'
 import { BATCHES, LOAD } from '../../../../examples/cef-terminal-load/workload.ts'
 import {
   schema,
-  mode,
+  loadMode,
   type receipt,
   type diagnostic,
 } from '../../../../examples/cef-terminal-load/contract.ts'
 
 async function run() {
-  const selected = mode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
+  const selected = loadMode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
+  const windowed = LOAD_PROFILE === 'windowed'
+  const expectedPage = expectedVisibility(selected)
+  let pageVisibility: 'visible' | 'hidden' = 'visible'
+  let changingWindow = true
+  let changed: (() => void) | undefined
   const output = process.env['BUNLY_TERMINAL_LOAD_OUTPUT']
   assert.ok(output)
   const raw = await open(output, 'wx', 0o600)
@@ -92,6 +102,33 @@ async function run() {
     close: () => closed?.(),
   }
   let nativeState: unknown
+  let modeId = 0
+  let pendingMode: { id: number; receipt: ReturnType<typeof deferred<unknown>> } | undefined
+  const requestMode = async (operation: 'admit' | 'snapshot' | 'restore') => {
+    assert.equal(pendingMode, undefined)
+    const receipt = deferred<unknown>(),
+      id = ++modeId
+    pendingMode = { id, receipt }
+    try {
+      await send({ modeState: { id, operation } })
+      return await bounded(receipt.promise)
+    } finally {
+      pendingMode = undefined
+    }
+  }
+  const awaitVisibility = async (expected: 'visible' | 'hidden') => {
+    if (pageVisibility === expected) return
+    const receipt = deferred<void>()
+    changed = () => {
+      if (pageVisibility === expected) receipt.resolve()
+    }
+    try {
+      await bounded(receipt.promise)
+    } finally {
+      changed = undefined
+    }
+  }
+
   try {
     const handlers = {
       diagnostic(value: ReturnType<typeof diagnostic>) {
@@ -106,8 +143,12 @@ async function run() {
         return null
       },
       visibility(value: unknown) {
-        assert.equal(value, selected)
+        assert.ok(value === 'visible' || value === 'hidden')
+        if (!windowed || !changingWindow) assert.equal(value, expectedPage)
+        pageVisibility = value
+        assert.ok(visibilityReceipts.length < 8)
         visibilityReceipts.push(String(value))
+        changed?.()
         visibility.resolve()
         return null
       },
@@ -119,7 +160,7 @@ async function run() {
       },
       consumed(value: ReturnType<typeof receipt>) {
         assert.equal(value.batch, activeBatch)
-        assert.equal(value.visibility, selected)
+        assert.equal(value.visibility, expectedPage)
         assert.ok(!received.has(value.terminal))
         received.add(value.terminal)
         receipts[value.terminal]!.resolve(value)
@@ -146,7 +187,12 @@ async function run() {
           const input = JSON.parse(line)
           if (input.stream) message?.(Buffer.from(input.stream, 'base64'))
           else if (input.state) state.resolve(input.state)
-          else {
+          else if (input.modeState) {
+            assert.ok(pendingMode && input.modeState.id === pendingMode.id)
+            if (input.modeState.error)
+              pendingMode.receipt.reject(new Error('Owned window mode failed'))
+            else pendingMode.receipt.resolve(input.modeState.state)
+          } else {
             try {
               assert.ok(Object.hasOwn(schema, input.method))
               const key = input.method as keyof typeof schema
@@ -202,12 +248,25 @@ async function run() {
       )
     }
     connected.resolve()
-    await send({ show: selected })
-    nativeState = await bounded(state.promise)
-    if (selected === 'hidden') await bounded(visibility.promise)
+    let initialWindow: ReturnType<typeof requireLoadMode> | undefined
+    let admittedWindow: ReturnType<typeof requireLoadMode> | undefined
+    if (windowed) {
+      initialWindow = requireLoadMode('visible', await requestMode('snapshot'), pageVisibility)
+      nativeState = await requestMode('admit')
+      await awaitVisibility(expectedPage)
+      admittedWindow = requireLoadMode(selected, nativeState, pageVisibility)
+    } else {
+      await send({ show: selected })
+      nativeState = await bounded(state.promise)
+      if (selected === 'hidden') await bounded(visibility.promise)
+    }
+    changingWindow = false
+    const modeSnapshot = async () =>
+      requireLoadMode(selected, await requestMode('snapshot'), pageVisibility)
     await record({
       kind: 'start',
-      schema: 1,
+      schema: windowed ? 2 : 1,
+      ...(windowed ? { windowMode: { initial: initialWindow, admitted: admittedWindow } } : {}),
       workload: LOAD,
       mode: selected,
       visibilityReceipts,
@@ -273,6 +332,7 @@ async function run() {
         kind: 'phase',
         phase,
         batches: activeBatch + 1 - started,
+        ...(windowed ? { windowMode: await modeSnapshot() } : {}),
         elapsedMs: performance.now() - phaseStart,
       })
     }
@@ -303,9 +363,23 @@ async function run() {
         })
       )
     )
+    let finalWindow:
+      | { loaded: ReturnType<typeof requireLoadMode>; restored: ReturnType<typeof requireLoadMode> }
+      | undefined
+    if (windowed) {
+      const loaded = await modeSnapshot()
+      changingWindow = true
+      const restoredState = await requestMode('restore')
+      await awaitVisibility('visible')
+      finalWindow = {
+        loaded,
+        restored: requireLoadMode('foreground', restoredState, pageVisibility),
+      }
+    }
     sender!.close()
     await record({
       kind: 'complete',
+      ...(windowed ? { windowMode: finalWindow } : {}),
       batches: BATCHES,
       exits,
       terminalBudget: service.diagnostics(),

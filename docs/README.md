@@ -102,3 +102,6 @@ pipe ownership, reserved control capacity and active-writer accounting.
 backend shutdown handoff and its unchanged identity and deadline boundaries.
 
 - [Sustained graphical terminal load](terminal-load-qualification.md): visible/hidden real PTY phases, bounded measurements, retained failed trials and remaining #27 acceptance gates.
+
+[Native window-state terminal load](terminal-window-load.md) defines distinct foreground,
+inactive-visible, hidden and minimized execution with actual native and page receipts.
