@@ -728,7 +728,6 @@ test('validation, rapid resize, signals, stale handles and throwing stops fail c
   for (const options of [
     valid({ executable: 'relative' }),
     valid({ cwd: 'relative' }),
-    valid({ argv: [''] }),
     valid({ argv: ['a'.repeat(65 * 1024)] }),
     valid({ env: { 'bad-key': 'x' } }),
     valid({ env: { SAFE: 'x\0y' } }),
@@ -891,4 +890,15 @@ test('native supervision denial is not process exit and cannot release capacity'
     clock.advance(5000)
     expect((await disposal)[0]).toMatchObject({ processExited: false, released: false })
   }
+})
+
+test('empty arguments are preserved while an empty executable is rejected', async () => {
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver })
+  await expect(service.create({}, new Writer(), valid({ executable: '' }))).rejects.toMatchObject({
+    code: 'INVALID_ARGUMENT',
+  })
+  const handle = await service.create({}, new Writer(), valid({ argv: ['', 'x', ''] }))
+  expect(driver.options[0]!.argv).toEqual(['', 'x', ''])
+  await service.cancel(handle)
 })

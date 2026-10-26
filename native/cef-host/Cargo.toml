@@ -26,6 +26,11 @@ name = "bunly-terminal-owner"
 path = "src/terminal_owner.rs"
 
 [[bin]]
+name = "bunly-terminal-fixture-host"
+path = "src/terminal_fixture_host.rs"
+required-features = ["rpc-qualification"]
+
+[[bin]]
 name = "bunly-bundle"
 path = "src/bundle.rs"
 required-features = ["packaging"]
@@ -78,6 +83,7 @@ windows-sys = { version = "=0.61.2", features = [
   "Win32_Security",
   "Win32_Storage_FileSystem",
   "Win32_System_IO",
+  "Win32_System_Console",
 ] }
 
 [profile.release]

@@ -120,6 +120,9 @@ export interface TerminalCloseResult {
 }
 
 export interface TerminalDriverSpawnOptions {
+  /** Backend lifetime for bounded native admission, never renderer authority. */
+  readonly signal?: AbortSignal
+  readonly spawnTimeoutMs?: number
   readonly executable: string
   readonly cwd: string
   readonly argv: readonly string[]
@@ -130,6 +133,8 @@ export interface TerminalDriverSpawnOptions {
 }
 
 export interface TerminalDriverObserver {
+  /** Attested failure before any command was created. */
+  processNotStarted?(): void
   /** Unknown command/group ownership: settle failure without releasing reservations. */
   processFailed?(failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED'): void
   output(bytes: Uint8Array): void
@@ -303,7 +308,7 @@ function validateOptions(
   let argumentBytes = 0
   for (let index = 0; index < argumentCount; index++) {
     const value = argv[index]
-    boundedString(value, 'Argument')
+    if (value !== '') boundedString(value, 'Argument')
     argumentBytes += Buffer.byteLength(value)
     argumentsSnapshot.push(value)
   }
@@ -540,6 +545,11 @@ export class TerminalService {
       )
     }
     const observer: TerminalDriverObserver = Object.freeze({
+      processNotStarted: () => {
+        resource.processReleased = true
+        this.#settleProcessFailure(resource, 'SPAWN_FAILED')
+        this.#collect(resource)
+      },
       output: (bytes: Uint8Array) => {
         resource.source?.push(bytes)
       },
@@ -555,7 +565,10 @@ export class TerminalService {
     let spawned: TerminalDriverProcess | Promise<TerminalDriverProcess>
     resource.spawnInvoked = true
     try {
-      spawned = this.#driver.spawn(options, observer)
+      spawned = this.#driver.spawn(
+        { ...options, signal: resource.spawnController.signal },
+        observer
+      )
     } catch {
       this.#spawnRejected(resource)
       throw new TerminalError('SPAWN_FAILED')

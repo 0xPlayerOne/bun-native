@@ -1,4 +1,6 @@
-//! Contributor-only assembly. This binary is never included in an application.
+#[allow(dead_code)]
+mod terminal_runtime;
+// Contributor-only assembly. This binary is never included in an application.
 use std::path::PathBuf;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -30,6 +32,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = cef::build_util::linux::bundle(&output, &target, "bunly_host")?;
     #[cfg(target_os = "windows")]
     let path = cef::build_util::win::bundle(&output, &target, "bunly_host")?;
+    #[cfg(target_os = "macos")]
+    let executables = path.join("Contents/MacOS");
+    #[cfg(not(target_os = "macos"))]
+    let executables = path
+        .parent()
+        .ok_or("Missing executable parent")?
+        .to_path_buf();
+    let owner = executables.join(terminal_runtime::name());
+    std::fs::copy(target.join(terminal_runtime::name()), &owner)?;
+    #[cfg(target_os = "macos")]
+    if !std::process::Command::new("/usr/bin/codesign")
+        .args(["--force", "--sign", "-"])
+        .arg(&owner)
+        .status()?
+        .success()
+    {
+        return Err("Terminal owner contributor signing failed".into());
+    }
+    let manifest = terminal_runtime::fingerprint(&owner)?;
+    std::fs::write(
+        executables.join("terminal-owner.json"),
+        serde_json::to_vec(&manifest)?,
+    )?;
     independent_files(if path.is_dir() {
         &path
     } else {

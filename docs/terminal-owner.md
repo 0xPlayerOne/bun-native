@@ -1,134 +1,155 @@
-# Unix terminal group ownership prerequisite
+# Native desktop terminal ownership
 
-Issue #25, based on `a89949f` (#113/#114). This is an opt-in native implementation
-for **non-detached command groups**, not completion of M5 process supervision.
-The default `BunTerminalDriver` retains its documented direct-child behavior.
+Issue #25; draft #117. This implements the desktop owner path and its declared
+non-detaching profile. M5 completion still requires current-source acceptance on
+all three platforms and the separate restart/backoff and CEF shutdown work.
+Historical Mac/Linux runs at `5ee4ff8` qualify only the previous opt-in protocol.
 
-## Decision and supported boundary
+## Desktop integration and artifact identity
 
-The pinned Bun 1.4.3 PTY creates a different process group from its backend. The
-retained macOS discriminator proved that both a SIGHUP-ignoring PTY child and its
-server grandchild survive normal and SIGKILL backend loss. Backend-group cleanup
-and closing the PTY therefore cannot establish descendant cleanup.
-
-Bun owns PTY creation and reaping of the process passed to `Bun.spawn`. Its pinned
-`Terminal` interface has no API for adopting a native-created PTY slave/master or
-transferring the child wait identity to another owner. Registering a numeric PID
-with the host after spawn would race Bun's reaping. Linux pidfds do not provide a
-portable macOS process-group handle; Windows Jobs need a separate implementation.
-
-The selected prerequisite puts a small prebuilt native owner in the real Bun PTY.
-It launches the requested executable directly, without shell interpolation, in its
-own foreground group. The owner stays outside that group, owns its direct child's
-wait identity, and watches a dedicated socketpair lease from Bun. One blocking
-`waitid(WNOWAIT)` thread notifies the owner's `poll` loop. Idle operation has no
-polling timer. Runtime admission allows at most **64 owners per runtime JS isolate**,
-shared across driver/service instances, in addition to TerminalService's global,
-per-owner and byte reservations. Each admitted PTY adds one process and one exit
-watcher thread; no owner is created per callback or application service.
-
-This exception to the preferred shared-owner design is necessary to keep Bun's
-real PTY API and an actual Unix parent/wait identity together without a Bun fork.
-It is not a process-count or performance win. A shared native PTY broker would
-require a different PTY-handle transfer API and packaging/lifecycle design.
-
-Explicit use with the matching prebuilt binary:
+Trusted Bun application code uses:
 
 ```ts
-const terminals = new TerminalService({
-  driver: new NativeTerminalDriver(absoluteInstalledOwnerPath),
-})
+const terminals = await backend.createTerminalService({ profile: 'non-detaching' })
 ```
 
-The application never compiles or downloads the owner. Shipping bundle discovery,
-artifact provenance/signing and automatic native-host wiring are still prerequisites
-for making this the default. Windows rejects this driver explicitly; the existing
-native backend Job Object is unchanged and is not evidence for this terminal API.
+`CefBackend.createTerminalDriver({ profile: 'non-detaching' })` supports runtime
+instrumentation such as the real graphical terminal fixture. Both factories take
+configuration from the native host's private readiness pipe. No renderer request
+chooses an owner executable, descriptor, process identity or Job. The browser-only
+package boundaries remain enforced. The generic `BunTerminalDriver` and generic
+`TerminalService` default remain direct-child tools, explicitly **not** desktop
+descendant supervision. `NativeTerminalDriver` is a low-level trusted-backend API;
+its configuration is not a renderer authorization token.
 
-## Identity, events and failure
+The contributor native build produces `bunly-terminal-owner` (`.exe` on Windows).
+`bunly-bundle` copies the matching prebuilt binary beside the native host, with
+`terminal-owner.json`: native package version, protocol 2, OS, CPU, byte length and SHA-256. The native
+host verifies discovery and identity before startup and again before starting Bun.
+The driver verifies the captured digest before each spawn. macOS contributor
+assembly signs this executable ad hoc before hashing it. Existing authenticated
+whole-runtime artifact inventories cover both files; the adjacent digest is an
+integrity check, not a replacement signature trust root. The cache/private-user
+same-user mutation threat boundary is unchanged.
 
-A fresh private socketpair is the owner/generation identity. Its protocol accepts
-only admission and bounded signal bytes, never a PID, group ID, renderer identifier
-or executable name. A stale terminal handle cannot obtain a replacement descriptor.
-The descriptor is close-on-exec before the application starts, so shell/server
-children cannot keep the backend lease alive. The owner ignores terminal hangup;
-EOF on the lease, including abrupt Bun death, invokes owned group cleanup.
+Missing, wrong-platform, wrong-protocol or modified owner artifacts fail closed.
+Neither the application build nor runtime compiles or downloads a fallback.
+The graphical terminal fixture now exercises this native driver.
 
-The actual child remains unreaped through every group signal. Each signal first
-checks the still-owned child with `waitid(WNOWAIT)`. Once reaped, `ECHILD` prevents
-any further group signal. PID reuse cannot authorize a replacement. On Darwin,
-`kill(-pgid, ...)` can return `EPERM` for a group containing only its zombie leader.
-Only a bounded two-slot `proc_listpgrppids` query proving that the retained, exited
-child is the **sole** member permits that special empty-live-group outcome. The
-query never supplies a signal target. Any other denial remains a failure.
+## Unix ownership and host loss
 
-The private response distinguishes native launch readiness, command exit status,
-and failure. Readiness means the native command was successfully spawned, not that
-an application-specific server is ready. `SIGTERM` arms one absolute two-second
-native grace interval; repeated requests do not extend it. `SIGKILL`, lease loss,
-protocol failure and natural command exit use immediate group cleanup. Only after
-that cleanup and direct-child wait does the owner report the command's exit code
-or signal. A successful group signal proves signal delivery, **not independent exit
-observation for every descendant**. The maintained fixture separately observes the
-shell and server identities and the server's listening port.
+Pinned Bun 1.4.3 owns PTY creation and reaping of the executable passed to
+`Bun.spawn`. Its API cannot adopt a native-created PTY or transfer the child's wait
+identity. Registering a numeric PID afterward races reaping, especially on macOS.
+Therefore one bounded native guard per admitted PTY retains the real command's
+parent/wait identity. It starts that command in a separate foreground group and
+stays outside it. The runtime admits at most 64 guards per JS isolate across
+services, in addition to TerminalService reservations. Each Unix guard uses one
+blocking exit watcher; Windows uses overlapped I/O and process/event handles.
+This is a documented process-cost exception, not a performance claim.
 
-Native denial becomes `TERMINATION_DENIED`; missing/malformed responses or owner
-failure become `SUPERVISION_FAILED`. Both settle an unobserved process failure,
-retain terminal and native-owner capacity, and do not fabricate process exit or
-release. There is no retry loop and no automatic restart: the restart budget is zero.
-No input or non-idempotent request is replayed. Explicit replacement creates a new
-handle/lease; cross-generation adoption and managed backend replacement remain M6.
+The GUI creates a fresh socketpair generation before spawning Bun. Only the GUI
+retains the writer peer, which is CLOEXEC; only the reader peer is inherited into
+Bun and then explicitly mapped into guard fd 4. Guard fd 3 is a separate private
+Bun-owned per-terminal lease. Both are CLOEXEC before application commands start.
+EOF on **either** lifetime stops the exact retained command group. Normal native
+quit revokes the GUI peer before existing backend stop; hard GUI death closes it
+in the kernel even while Bun remains alive or synchronously hung. There is no
+registration gap after Bun reaping and no PID-bearing cleanup message.
 
-Bun still owns terminal input, resize and byte callbacks. The control channel never
-carries terminal output. Actual process observation, actual PTY closure and ACKed
-output drain remain independent; natural process exit does not discard trailing
-output. Native launch failure may conservatively retain admission when actual
-command ownership cannot be established.
+Before every group signal, `waitid(WNOWAIT)` proves the leader remains an unreaped
+child. Final SIGKILL precedes reaping, keeping the group identity reserved. Darwin's
+zombie-only EPERM exception requires a bounded kernel query proving the only
+member is the retained zombie; other denials stay failures. TERM has the existing
+absolute two-second grace period. Lease loss and KILL clean immediately. Signal
+validation is identical to TerminalService's Unix allowlist before any wire write.
 
-## Remaining unsupported cases
+## Windows Jobs and ConPTY
 
-- Descendants that leave the command group with `setpgid`/`setsid`, including
-  interactive-shell job-control groups, are not contained. This driver is currently
-  for non-detaching command groups, not unrestricted interactive shells.
-- SIGKILL/crash of the native terminal owner itself can orphan its group. The owner
-  cannot run cleanup after its own death; this is not an OS kill-on-close container.
-- Native GUI-host crash while Bun survives does not close the Bun-owned lease.
-  Full host-crash supervision and a host-owned shared lease remain open in #25.
-- Changed credentials/OS termination denial and uninterruptible kernel operations
-  can prevent cleanup. Failure remains explicit; retaining admission is not proof
-  that the OS terminated the group. A denied owner may exit with descendants still
-  alive. No privileged escalation or global cleanup is attempted.
-- Windows terminal job assignment, detached-session containment, full CEF fault
-  acceptance, positive restart/backoff policy, and packaging are not implemented.
+The existing GUI-owned kill-on-close Job is assigned to Bun before application
+code. That outer Job is unchanged. The guard requires Job membership, then uses
+`CreateProcessW(CREATE_SUSPENDED)`, assigns the returned **owned process handle**
+to a new private kill-on-close terminal Job, and resumes its initial thread only
+after assignment succeeds. Failure before assignment terminates the still-suspended
+owned process; no user code runs in that gap. The guard is outside the terminal
+Job but inside the GUI's outer Job. Closing one terminal targets its Job, not the
+Bun process or an arbitrary numeric PID. Natural command exit also terminates
+remaining members before reporting exit. Guard loss closes its terminal Job;
+GUI loss closes the outer Job, including Bun and all nested terminal work.
 
-## Validation
+Bun documents `socket-fd` caller ownership as POSIX-only; on Windows it behaves
+like `pipe`, whose descriptor lifetime Bun owns. The Windows driver therefore
+uses a fresh private per-terminal named-pipe connection instead of wrapping and
+closing a Bun-owned CRT descriptor. Its random endpoint is backend-generated,
+never renderer-supplied or logged, and removed from the command environment. It
+is a lifetime/control channel, never process-identity registration. Native
+non-inheritable pipe/Job handles prevent commands retaining either lease. Buffered
+control writes are capped at 4 KiB. Windows TERM/KILL request immediate terminal
+Job termination; arbitrary POSIX signals and a claim of graceful POSIX TERM
+semantics are unsupported. Actual Windows standard-user execution is required;
+cross-target checks do not establish ConPTY inheritance or cleanup.
 
-The native binary's unit regression retains a real exited shell, cleans its group,
-reaps it, and proves stale signalling fails with `ECHILD`. TerminalService tests
-prove denial/unknown ownership retains reservations even after actual PTY closure.
-The real Python/Bun fixture covers natural exit with an 8 KiB trailing output record,
-graceful close of TERM-ignoring descendants with escalation, cancellation, normal
-Bun exit and SIGKILL Bun loss. Every case records exact creation identities and
-ancestry before signals, verifies the fixed server port closes, and leaves a
-concurrently running identical shell/server untouched. Fixture alarms and finally
-cleanup are separate from supervision success. Harness cleanup of supervised
-children makes a case fail; cleanup of the unrelated control is expected.
+## Protocol and failure accounting
 
-Contributor commands (no CEF browser is linked into this standalone binary):
+Protocol 2 begins with `BTO` and byte 2. Only after matching it does Bun send
+admission byte zero. The guard validates bounded argv (including valid empty
+arguments), observes a live host lifetime, and launches. Ready is `[1]`; exit is
+`[2, kind, u32le]`; owned failure is `[3, reason]`; attested failure before any
+command was created is `[4, reason]`. Reason 1 is denial, 2 is supervision failure.
+No command path, PID or endpoint arrives from renderer IPC.
 
-```sh
-CARGO_TARGET_DIR=.bunly/terminal-native cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner --features cef/dox -- -D warnings
-CARGO_TARGET_DIR=.bunly/terminal-native cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner --features cef/dox
-CARGO_TARGET_DIR=.bunly/terminal-native cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner --features cef/dox
-python scripts/qualify_terminal_owner.py --bun /absolute/pinned/bun --owner .bunly/terminal-native/debug/bunly-terminal-owner --output .bunly/terminal-owner-evidence/qualification.json
-```
+Admission/readiness has an absolute five-second maximum, bounded further by the
+service's spawn timeout and abort lifetime. Before admission, failure may kill
+only the owned guard because it cannot have launched user work. After admission,
+failure closes the lease and retains unknown ownership; it never kills a Unix
+guard as a substitute for cleanup. Malformed, late, excessive or incomplete
+receipts fail closed. Exact no-command receipts plus observed guard exit release
+owner capacity. Unknown ownership retains both native and service reservations.
+I/O errors and throwing observers produce fixed failures without an unhandled
+promise rejection. PTY closure, command exit and acknowledged output drain remain
+separate. No retries, restart policy or input replay are added here.
 
-The maintained `cef-runtime.yml` manual native hook executes the actual owner and pinned Bun
-on macOS and Linux, through non-portable manual dispatch while the PR stays draft. Windows is
-unsupported rather than a no-op passing platform. Exact commit/run receipts belong
-in the PR; a cross-compile does not count as execution.
+## Unsupported boundaries
 
-Design references, no source copied: pinned `bun-types@1.4.3` `SpawnOptions.stdio`
-(`socket-fd`) and `Terminal`; [Bun process API](https://bun.sh/docs/runtime/child-process);
-[Apple group-signal implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c)
-(`killpg1` zombie filter); the macOS SDK `libproc.h` group enumeration API.
+- Unix descendants that leave the retained group through `setsid`/`setpgid`,
+  including interactive-shell job-control groups, are not contained. Selecting
+  `non-detaching` is mandatory; it does not advertise unrestricted shell containment.
+- Unix guardian SIGKILL/crash cannot guarantee cleanup. The real qualifier records
+  its observed outcome separately as unsupported, including any harness cleanup;
+  an individual hangup-sensitive success does not establish universal containment.
+- OS-denied termination, changed credentials and uninterruptible kernel work can
+  prevent cleanup. Failure is not fabricated process exit. No privilege escalation,
+  foreign-group signal, process-name scan or fallback cleanup is attempted.
+- Managed replacement/adoption is M6; positive restart/backoff belongs to the
+  separate service-supervisor work. This patch does not change CEF shutdown deadlines
+  or claim a causal fix for CEF teardown intermittency.
+
+## Qualification and provenance
+
+The contributor-only `bunly-terminal-fixture-host` uses the same Unix lifetime
+constructor as the GUI and the same Windows pre-application Job assignment pattern.
+It runs the pinned Bun with a real shell and loopback server grandchild, while an
+independent identical shell/server stays alive. Cases cover natural nonzero exit
+and 8 KiB trailing output, close, cancellation, normal/SIGKILL Bun loss,
+normal/hard native-host loss with Bun hung, and guardian loss. Empty argv and
+private descriptor non-inheritance are checked. Exact process creation identities
+are captured before signals in a private ignored ledger; public reports contain
+no PIDs, ports, private paths or pipe names. Cleanup failures are failed results.
+
+Receipt reads use bounded exact-byte framing and an absolute monotonic deadline;
+partial data and stderr cannot block indefinitely. Reports include clean source
+state before/after, tracked-source fingerprints and input owner/fixture binary
+hashes before/after. Dirty or changed source cannot produce acceptance.
+
+`hosted_cef.py run` executes the actual packaged owner before the unchanged eight
+full CEF/provider stages. Automatic and manual paths share it, including the
+Windows disposable standard-user gate. No personal credential-provider test is
+part of the standalone fixture. Current-head hosted receipts remain a merge gate.
+
+Design references, no source copied:
+[Bun stdio ownership](https://bun.sh/reference/bun/Spawn/BaseOptions/stdio),
+[Bun Terminal](https://bun.sh/reference/bun/Terminal),
+[Microsoft Job Objects](https://learn.microsoft.com/windows/win32/procthread/job-objects).
+The local pinned `net.Socket({fd})` discriminator returned `ERR_SOCKET_CLOSED` on
+write; the Unix driver retains the proven Bun fd-stream path. Failed fixture and
+API trials are preserved in ignored `.bunly/supervision-evidence/`.

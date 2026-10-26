@@ -100,7 +100,8 @@ mod unix {
         if args.is_empty()
             || args.len() > 257
             || !Path::new(&args[0]).is_absolute()
-            || args.iter().any(|a| a.is_empty() || a.len() > 16384)
+            || args[0].is_empty()
+            || args.iter().any(|a| a.len() > 16384)
             || args.iter().map(|a| a.len()).sum::<usize>() > 81920
         {
             return Err(io::ErrorKind::InvalidInput.into());
@@ -130,17 +131,35 @@ mod unix {
         Ok(command)
     }
 
-    fn supervise(control: &mut UnixStream) -> io::Result<()> {
+    fn supervise(
+        control: &mut UnixStream,
+        host: &UnixStream,
+        started: &mut bool,
+    ) -> io::Result<()> {
         let mut command = command()?;
         let (mut wake, mut notify) = UnixStream::pair()?;
         // The only spawning path is gated on a live, private backend lease.
         // If Bun dies before admission, no application process is created.
+        control.set_read_timeout(Some(Duration::from_secs(5)))?;
+        control.write_all(&[66, 84, 79, 2])?;
         let mut admit = [0];
         control.read_exact(&mut admit)?;
+        control.set_read_timeout(None)?;
         if admit != [0] {
             return Err(io::ErrorKind::InvalidData.into());
         }
+        // Reject host loss before launch as well as after it. A live read endpoint
+        // never authorizes a PID supplied by another process.
+        let mut host_poll = libc::pollfd {
+            fd: host.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        if unsafe { libc::poll(&mut host_poll, 1, 0) } != 0 {
+            return Err(io::ErrorKind::BrokenPipe.into());
+        }
         let mut group = Group(command.spawn()?);
+        *started = true;
         let pid = group.0.id();
         let watcher = thread::Builder::new()
             .name("terminal-exit".into())
@@ -164,6 +183,11 @@ mod unix {
                         events: libc::POLLIN,
                         revents: 0,
                     },
+                    libc::pollfd {
+                        fd: host.as_raw_fd(),
+                        events: libc::POLLIN,
+                        revents: 0,
+                    },
                 ];
                 let timeout = match deadline {
                     None => -1,
@@ -175,12 +199,15 @@ mod unix {
                         remaining.as_millis().clamp(1, i32::MAX as u128) as i32
                     }
                 };
-                if unsafe { libc::poll(fds.as_mut_ptr(), 2, timeout) } < 0 {
+                if unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as _, timeout) } < 0 {
                     let error = io::Error::last_os_error();
                     if error.kind() == io::ErrorKind::Interrupted {
                         continue;
                     }
                     return Err(error);
+                }
+                if fds[2].revents != 0 {
+                    break;
                 }
                 if fds[1].revents != 0 {
                     let mut observed = [0];
@@ -214,7 +241,9 @@ mod unix {
             };
             // This confirms group signalling and direct-command wait, never a
             // fabricated observation that every possible descendant has exited.
-            control.write_all(&[2, kind, value as u8])
+            let mut receipt = vec![2, kind];
+            receipt.extend_from_slice(&(value as u32).to_le_bytes());
+            control.write_all(&receipt)
         })();
         // Any protocol, notification, or write failure must still attempt exact
         // owned cleanup. After a successful wait ECHILD forbids another signal.
@@ -226,10 +255,13 @@ mod unix {
 
     pub fn run() -> io::Result<()> {
         // fd 3 is supplied by Bun, never discovered by path, process name or PID.
-        if unsafe { libc::fcntl(3, libc::F_SETFD, libc::FD_CLOEXEC) } != 0 {
+        if unsafe { libc::fcntl(3, libc::F_SETFD, libc::FD_CLOEXEC) } != 0
+            || unsafe { libc::fcntl(4, libc::F_SETFD, libc::FD_CLOEXEC) } != 0
+        {
             return Err(io::Error::last_os_error());
         }
         let mut control = unsafe { UnixStream::from_raw_fd(3) };
+        let host = unsafe { UnixStream::from_raw_fd(4) };
         control.set_nonblocking(false)?;
         // The backend's death can hang up the controlling terminal. Only the
         // command group receives user signals; EOF, not SIGHUP, owns this helper.
@@ -240,11 +272,12 @@ mod unix {
             libc::signal(libc::SIGPIPE, libc::SIG_IGN);
             libc::signal(libc::SIGTTOU, libc::SIG_IGN);
         }
-        let result = supervise(&mut control);
+        let mut started = false;
+        let result = supervise(&mut control, &host, &mut started);
         if let Err(error) = &result {
             let denied = error.raw_os_error() == Some(libc::EPERM)
                 || error.raw_os_error() == Some(libc::EACCES);
-            let _ = control.write_all(&[3, if denied { 1 } else { 2 }]);
+            let _ = control.write_all(&[if started { 3 } else { 4 }, if denied { 1 } else { 2 }]);
         }
         result
     }
@@ -273,11 +306,14 @@ mod unix {
     }
 }
 
+#[cfg(windows)]
+mod terminal_owner_windows;
+
 fn main() {
     #[cfg(unix)]
     let success = unix::run().is_ok();
-    #[cfg(not(unix))]
-    let success = false;
+    #[cfg(windows)]
+    let success = terminal_owner_windows::run().is_ok();
     if !success {
         std::process::exit(125);
     }

@@ -63,6 +63,8 @@ fault and ordinary acceptance suites are required before merging this change.
 Implementation reference (no source copied):
 https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.wait_timeout_while
 
-The separate [Unix terminal owner prerequisite](terminal-owner.md) now owns a PTY
-command group independently of Bun, with explicit limits for job-control groups,
-owner failure and GUI-host loss. It does not change this backend shutdown path.
+The separate [native terminal owner](terminal-owner.md) owns PTY command groups
+or Jobs independently of Bun. Normal GUI shutdown revokes its dedicated lifetime
+before this existing backend stop sequence; hard GUI loss closes it in the kernel.
+Its unsupported Unix guardian/detached-group cases and platform acceptance remain
+explicit. Backend group permissions and shutdown deadlines are unchanged.

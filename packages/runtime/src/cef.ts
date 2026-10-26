@@ -1,3 +1,5 @@
+import { NativeTerminalDriver, type NativeTerminalConfiguration } from './terminal-owner.ts'
+import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
@@ -404,6 +406,28 @@ export class CefBackend implements BrowserBackend {
   #rpcConfigured = false
   #disposed = false
   #listenerErrors = 0
+  /** Native-owned discovery; caller explicitly accepts the non-detaching profile. */
+  async createTerminalDriver(options: {
+    readonly profile: 'non-detaching'
+  }): Promise<NativeTerminalDriver> {
+    if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+    const ready = await this.#transport.ready
+    if (this.#disposed || !ready.data?.['terminalOwner'])
+      throw new Error('Native terminal owner unavailable')
+    return new NativeTerminalDriver(
+      ready.data['terminalOwner'] as NativeTerminalConfiguration,
+      options.profile
+    )
+  }
+  async createTerminalService(
+    options: Omit<TerminalServiceOptions, 'driver'> & { readonly profile: 'non-detaching' }
+  ): Promise<TerminalService> {
+    return new TerminalService({
+      ...(options.limits ? { limits: options.limits } : {}),
+      ...(options.scheduler ? { scheduler: options.scheduler } : {}),
+      driver: await this.createTerminalDriver(options),
+    })
+  }
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
