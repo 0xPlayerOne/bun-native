@@ -108,7 +108,7 @@ def run_case(bun, owner, host, mode):
                 "/d",
                 "/s",
                 "/c",
-                f'""{sys.executable}" "{ROOT / "tests/fixtures/terminal-owner-server.py"}" """',
+                str(ROOT / "tests/fixtures/terminal-owner-shell.cmd"),
             ]
         unrelated = subprocess.Popen(
             argv,
@@ -116,9 +116,11 @@ def run_case(bun, owner, host, mode):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=True,
+            env={**os.environ, "BUNLY_OWNER_FIXTURE_PYTHON": sys.executable},
         )
         unrelated_identity = psutil.Process(unrelated.pid)
         owned.append(unrelated_identity)
+        report["stage"] = "independent-shell-readiness"
         unrelated_record = read_record(unrelated)
         independent = [unrelated_identity, psutil.Process(unrelated_record["server"])]
         owned.append(independent[1])
@@ -137,6 +139,7 @@ def run_case(bun, owner, host, mode):
         )
         native_host = psutil.Process(backend.pid)
         owned.append(native_host)
+        report["stage"] = "native-owned-shell-readiness"
         record = read_record(backend)
         backend_identity = psutil.Process(record["backend"])
         owned.append(backend_identity)
@@ -165,6 +168,7 @@ def run_case(bun, owner, host, mode):
         ledger.write_text(json.dumps([{"pid": p.pid, "created": p.create_time()} for p in owned]))
         with socket.create_connection(("127.0.0.1", record["port"]), timeout=2):
             pass
+        report["stage"] = "owned-lifecycle"
         if mode == "kill-guardian":
             helper.kill()
             if sys.platform == "win32":
@@ -240,8 +244,8 @@ def run_case(bun, owner, host, mode):
         report["failure"] = type(error).__name__
         report["failureCode"] = str(error) if isinstance(error, AssertionError) else "fixture-error"
         if backend is not None and backend.stderr is not None and sys.platform != "win32":
-            os.set_blocking(backend.stderr.fileno(), False)
             try:
+                os.set_blocking(backend.stderr.fileno(), False)
                 diagnostic = os.read(backend.stderr.fileno(), 16384)
                 destination = (
                     ROOT
@@ -271,6 +275,7 @@ def run_case(bun, owner, host, mode):
                     report["harnessCleanup"].append(index)
                     if index not in permitted_cleanup:
                         report["passed"] = False
+                        report["unexpectedCleanup"] = True
                     process.kill()
             except Exception as error:
                 report["passed"] = False
@@ -417,6 +422,7 @@ def main():
             row.get("boundaryObserved")
             and not row.get("cleanupFailure")
             and not row.get("cleanupFailures")
+            and not row.get("unexpectedCleanup")
             for row in boundaries
         )
     )

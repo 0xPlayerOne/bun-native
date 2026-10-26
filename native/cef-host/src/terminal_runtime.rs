@@ -76,9 +76,16 @@ pub fn fingerprint(path: &Path) -> Result<Manifest, String> {
         sha256: format!("{:x}", hash.finalize()),
     })
 }
+// macOS code directories may contain executable code, not unsigned JSON data.
+// Keep metadata in bundle Resources while leaving the installed binary path unchanged.
+pub fn manifest_path(directory: &Path) -> PathBuf {
+    #[cfg(target_os = "macos")]
+    let directory = directory.with_file_name("Resources");
+    directory.join("terminal-owner.json")
+}
 pub fn discover(directory: &Path) -> Result<(PathBuf, Manifest), String> {
     let path = directory.join(name());
-    let raw = std::fs::read(directory.join("terminal-owner.json"))
+    let raw = std::fs::read(manifest_path(directory))
         .map_err(|_| "Terminal owner manifest missing; no fallback")?;
     if raw.len() > 4096 {
         return Err("Terminal owner manifest too large".into());
@@ -159,28 +166,42 @@ mod tests {
         }
         let _cleanup = Cleanup(root.clone());
         assert!(discover(&root).is_err());
-        let path = root.join(name());
+        #[cfg(target_os = "macos")]
+        let executables = root.join("Contents/MacOS");
+        #[cfg(not(target_os = "macos"))]
+        let executables = root.join("bin");
+        std::fs::create_dir_all(&executables).unwrap();
+        std::fs::create_dir_all(manifest_path(&executables).parent().unwrap()).unwrap();
+        let path = executables.join(name());
         std::fs::write(&path, b"fixed binary fixture").unwrap();
         let mut manifest = fingerprint(&path).unwrap();
         let write = |manifest: &Manifest| {
             std::fs::write(
-                root.join("terminal-owner.json"),
+                manifest_path(&executables),
                 serde_json::to_vec(manifest).unwrap(),
             )
             .unwrap()
         };
         write(&manifest);
-        assert!(discover(&root).is_ok());
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(
+                manifest_path(&executables),
+                root.join("Contents/Resources/terminal-owner.json")
+            );
+            assert!(!executables.join("terminal-owner.json").exists());
+        }
+        assert!(discover(&executables).is_ok());
         manifest.protocol = 1;
         write(&manifest);
-        assert!(discover(&root).is_err());
+        assert!(discover(&executables).is_err());
         manifest.protocol = PROTOCOL;
         manifest.platform = "other".into();
         write(&manifest);
-        assert!(discover(&root).is_err());
+        assert!(discover(&executables).is_err());
         manifest.platform = platform().into();
         write(&manifest);
         std::fs::write(path, b"changed binary data!").unwrap();
-        assert!(discover(&root).is_err());
+        assert!(discover(&executables).is_err());
     }
 }

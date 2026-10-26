@@ -23,8 +23,10 @@ descendant supervision. `NativeTerminalDriver` is a low-level trusted-backend AP
 its configuration is not a renderer authorization token.
 
 The contributor native build produces `bunly-terminal-owner` (`.exe` on Windows).
-`bunly-bundle` copies the matching prebuilt binary beside the native host, with
-`terminal-owner.json`: native package version, protocol 2, OS, CPU, byte length and SHA-256. The native
+`bunly-bundle` copies the matching prebuilt binary beside the native host. Its
+`terminal-owner.json` records native package version, protocol 2, OS, CPU, byte
+length and SHA-256. On macOS the metadata lives in `Contents/Resources`, not the
+`Contents/MacOS` code directory; Linux/Windows keep it beside the executable. The native
 host verifies discovery and identity before startup and again before starting Bun.
 The driver verifies the captured digest before each spawn. macOS contributor
 assembly signs this executable ad hoc before hashing it. Existing authenticated
@@ -153,3 +155,19 @@ Design references, no source copied:
 The local pinned `net.Socket({fd})` discriminator returned `ERR_SOCKET_CLOSED` on
 write; the Unix driver retains the proven Bun fd-stream path. Failed fixture and
 API trials are preserved in ignored `.bunly/supervision-evidence/`.
+
+## Retained platform acceptance corrections
+
+The protocol-2 hosted Mac build failed signing because an unsigned JSON manifest
+was placed in the bundle executable directory. A fresh private copy reproduced
+codesign rejecting `terminal-owner.json` as an unsigned code subcomponent. The
+manifest now belongs to Resources on macOS; binary identity checks are unchanged.
+
+The first Windows owner qualifier failed before any process ancestry receipt,
+including its independent control shell. Its command combined Python CRT argument
+quoting with cmd.exe command-string quoting. A fixed repository batch fixture now
+launches the same Python descendant and preserves the empty argument and exit
+status; a private explicit environment selects the existing Python executable.
+Readiness diagnostics distinguish independent shell, native-owned shell and
+lifecycle stages. This correction still requires actual Windows execution; a
+startup failure is not a descendant-cleanup pass.

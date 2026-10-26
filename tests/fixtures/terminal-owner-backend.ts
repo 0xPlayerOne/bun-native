@@ -66,12 +66,7 @@ const handle = await service.create({}, writer, {
   executable: process.platform === 'win32' ? process.env['ComSpec']! : '/bin/sh',
   argv:
     process.platform === 'win32'
-      ? [
-          '/d',
-          '/s',
-          '/c',
-          `""${python}" "${resolve('tests/fixtures/terminal-owner-server.py')}" """`,
-        ]
+      ? ['/d', '/s', '/c', resolve('tests/fixtures/terminal-owner-shell.cmd')]
       : [
           '-c',
           'trap "" HUP TERM; exec 9<&0; "$1" "$2" "$3" <&9 & wait $!',
@@ -81,7 +76,10 @@ const handle = await service.create({}, writer, {
           '',
         ],
   cwd: process.cwd(),
-  env: { BUNLY_FIXTURE_SOURCE_FD: String(configuration.hostFd) },
+  env: {
+    BUNLY_FIXTURE_SOURCE_FD: String(configuration.hostFd),
+    BUNLY_OWNER_FIXTURE_PYTHON: python,
+  },
 })
 const observation = service.observe(handle)
 for await (const command of input) {

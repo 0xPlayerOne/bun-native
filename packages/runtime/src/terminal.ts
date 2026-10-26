@@ -134,7 +134,7 @@ export interface TerminalDriverSpawnOptions {
 
 export interface TerminalDriverObserver {
   /** Attested failure before any command was created. */
-  processNotStarted?(): void
+  processNotStarted?(terminalCreated: boolean): void
   /** Unknown command/group ownership: settle failure without releasing reservations. */
   processFailed?(failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED'): void
   output(bytes: Uint8Array): void
@@ -545,8 +545,9 @@ export class TerminalService {
       )
     }
     const observer: TerminalDriverObserver = Object.freeze({
-      processNotStarted: () => {
+      processNotStarted: (terminalCreated: boolean) => {
         resource.processReleased = true
+        if (!terminalCreated) resource.terminalReleased = true
         this.#settleProcessFailure(resource, 'SPAWN_FAILED')
         this.#collect(resource)
       },

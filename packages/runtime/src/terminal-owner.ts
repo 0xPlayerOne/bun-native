@@ -78,9 +78,18 @@ export class NativeTerminalDriver implements TerminalDriver {
     options: TerminalDriverSpawnOptions,
     observer: TerminalDriverObserver
   ): Promise<TerminalDriverProcess> {
-    this.#verify()
-    if (options.signal?.aborted) throw new TerminalError('CANCELLED')
-    if (owners >= MAX_OWNERS) throw new TerminalError('OVERLOADED')
+    try {
+      this.#verify()
+      if (options.signal?.aborted) throw new TerminalError('CANCELLED')
+      if (owners >= MAX_OWNERS) throw new TerminalError('OVERLOADED')
+    } catch (error) {
+      try {
+        observer.processNotStarted?.(false)
+      } catch {
+        /* no native resources exist */
+      }
+      throw error
+    }
     owners++
     const windows = process.platform === 'win32'
     const endpoint = windows ? `\\\\.\\pipe\\bunly-terminal-${crypto.randomUUID()}` : undefined
@@ -143,7 +152,11 @@ export class NativeTerminalDriver implements TerminalDriver {
       server?.close()
       socket?.destroy()
       owners--
-      observer.processNotStarted?.()
+      try {
+        observer.processNotStarted?.(false)
+      } catch {
+        /* no native resources exist */
+      }
       throw new TerminalError('SPAWN_FAILED')
     }
     const terminal = subprocess.terminal!
@@ -260,7 +273,7 @@ export class NativeTerminalDriver implements TerminalDriver {
     })()
     const notify = () => {
       try {
-        if (!admitted || noCommand) observer.processNotStarted?.()
+        if (!admitted || noCommand) observer.processNotStarted?.(true)
         else observer.processFailed?.(failure)
       } catch {
         /* Observers cannot reject the ownership settlement task. */

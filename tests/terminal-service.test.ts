@@ -902,3 +902,21 @@ test('empty arguments are preserved while an empty executable is rejected', asyn
   expect(driver.options[0]!.argv).toEqual(['', 'x', ''])
   await service.cancel(handle)
 })
+
+test('attested failure before a PTY exists releases reservations without invented closure', async () => {
+  const service = new TerminalService({
+    driver: {
+      spawn(_options, observer) {
+        observer.processNotStarted?.(false)
+        throw new Error('No process or PTY created')
+      },
+    },
+  })
+  for (let index = 0; index < 66; index++) {
+    await expect(service.create({}, new Writer(), valid())).rejects.toMatchObject({
+      code: 'SPAWN_FAILED',
+    })
+    await flush()
+    expect(service.diagnostics().terminals).toBe(0)
+  }
+})

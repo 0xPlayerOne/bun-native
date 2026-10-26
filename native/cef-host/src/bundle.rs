@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let manifest = terminal_runtime::fingerprint(&owner)?;
     std::fs::write(
-        executables.join("terminal-owner.json"),
+        terminal_runtime::manifest_path(&executables),
         serde_json::to_vec(&manifest)?,
     )?;
     independent_files(if path.is_dir() {
