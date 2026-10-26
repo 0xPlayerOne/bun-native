@@ -640,6 +640,30 @@ export class CefBackend implements BrowserBackend {
       scope: captured.nativeScope,
     })
   }
+  /** @internal Compiled-renderer proof for the exact native-bound fault document.
+   * Ordinary native builds reject it; this is not a page-supplied PID or kill API.
+   */
+  async qualifyRendererProcess(scope: PolicyScope): Promise<number> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const result = record(
+      await this.#transport.call('rpc.qualification.renderer', {
+        id: captured.resource.native,
+        scope: captured.nativeScope,
+      })
+    )
+    this.#capturedPolicyScope(scope)
+    const pid = result['pid']
+    if (
+      Object.keys(result).length !== 1 ||
+      typeof pid !== 'number' ||
+      !Number.isSafeInteger(pid) ||
+      pid < 1 ||
+      pid >= 2 ** 31
+    )
+      throw new Error('Invalid native renderer process proof')
+    return pid
+  }
   /** @internal Fixed contributor-only real Chromium throttle probe. */
   async qualifyTransportThrottle(scope: PolicyScope, rate: 1 | 4): Promise<void> {
     this.#active()

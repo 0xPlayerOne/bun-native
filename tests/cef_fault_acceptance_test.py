@@ -13,6 +13,8 @@ from cef_fault_acceptance import MODES, PHASES, accept_fault
 def fixture(mode):
     records = [{"event": "bunly.fault.ready", "mode": mode, "pid": 101}]
     injections = []
+    if mode == "renderer-exit":
+        records[0]["rendererPid"] = 104
     if mode == "backend-hang":
         records = [
             {"event": "bunly.runtime.profile", "profile": "standard"},
@@ -67,6 +69,8 @@ def fixture(mode):
     if not mode.startswith("backend-"):
         role = "renderer" if mode == "renderer-exit" else "gpu-process"
         injections = [{"pid": 104, "creationTime": 1, "role": role, "roleEvidence": {"role": role}}]
+        if mode == "renderer-exit":
+            injections[0]["targetAuthority"] = "native-main-frame"
     for phase in PHASES:
         records.append({"event": "bunly.host.shutdown-phase", "phase": phase, "state": "start"})
         if phase == "process-stop":
@@ -326,3 +330,29 @@ class ExtendedSupervisionTests(unittest.TestCase):
                 {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
                 injections,
             )
+
+
+class RendererTargetAcceptanceTests(unittest.TestCase):
+    def test_role_only_or_foreign_renderer_cannot_qualify_current_faults(self):
+        observation, injections = fixture("renderer-exit")
+        for pid in (105, 101, True, 0, 2**31):
+            changed = copy.deepcopy(observation)
+            rows = [json.loads(line) for line in changed["nativeDiagnostics"]]
+            rows[0]["rendererPid"] = pid
+            changed["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+            with self.subTest(pid=pid), self.assertRaises(ValueError):
+                accept_fault("renderer-exit", changed, injections)
+        for authority in (None, "renderer-role", True):
+            changed = [{**injections[0], "targetAuthority": authority}]
+            with self.assertRaises(ValueError):
+                accept_fault("renderer-exit", observation, changed)
+
+    def test_historical_renderer_role_claim_requires_explicit_legacy_selection(self):
+        observation, injections = fixture("renderer-exit")
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        del rows[0]["rendererPid"]
+        observation["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+        del injections[0]["targetAuthority"]
+        with self.assertRaises(ValueError):
+            accept_fault("renderer-exit", observation, injections)
+        accept_fault("renderer-exit", observation, injections, require_renderer_identity=False)

@@ -468,3 +468,62 @@ test('policy scope must use the same native document identity as the view', asyn
     await f.backend.dispose()
   }
 })
+
+test('native renderer proof requires exact captured scope and bounded native-only PID reply', async () => {
+  const f = await fixture()
+  try {
+    const scope = await f.backend.capturePolicyScope(f.view)
+    let response: unknown = { pid: 123 }
+    f.handle((command) => {
+      f.reply(command, command.op === 'rpc.qualification.renderer' ? response : null)
+      if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+    })
+    assert.equal(await f.backend.qualifyRendererProcess(scope), 123)
+    assert.deepEqual(f.commands.at(-1)?.args, { id: 3, scope: nativePolicyScope() })
+    const before = f.commands.length
+    await assert.rejects(f.backend.qualifyRendererProcess({ ...scope } as PolicyScope), /foreign/)
+    assert.equal(f.commands.length, before)
+    for (const invalid of [
+      {},
+      { pid: true },
+      { pid: '123' },
+      { pid: 0 },
+      { pid: 2 ** 31 },
+      { pid: 1.5 },
+      { pid: 123, extra: true },
+    ]) {
+      response = invalid
+      await assert.rejects(f.backend.qualifyRendererProcess(scope), /renderer process proof/)
+    }
+  } finally {
+    await f.backend.dispose()
+  }
+})
+test('a native renderer process reply cannot survive navigation of its captured document', async () => {
+  const f = await fixture()
+  try {
+    const scope = await f.backend.capturePolicyScope(f.view)
+    let pending: Command | undefined
+    f.handle((command) => {
+      if (command.op === 'rpc.qualification.renderer') pending = command
+      else {
+        f.reply(command)
+        if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+      }
+    })
+    const proof = f.backend.qualifyRendererProcess(scope)
+    void proof.catch(() => {})
+    await turn()
+    f.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'https://example.test/', documentId: 'native-3-2' },
+    })
+    await turn()
+    f.reply(pending!, { pid: 123 })
+    await assert.rejects(proof, /stale|changed|ready|document/)
+  } finally {
+    await f.backend.dispose()
+  }
+})

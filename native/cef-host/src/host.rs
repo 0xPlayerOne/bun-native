@@ -298,6 +298,18 @@ fn renderer_message(
         return 1;
     }
     #[cfg(feature = "rpc-qualification")]
+    if name == wire::RENDERER_PROOF {
+        if let Some((identity, pid)) = wire::read(message, false) {
+            let context = observed(browser, frame);
+            STATE.with(|state| {
+                if let Some(view) = state.borrow_mut().views.get_mut(&id) {
+                    let _ = view.rpc.record_renderer_process(&context, identity, pid);
+                }
+            });
+        }
+        return 1;
+    }
+    #[cfg(feature = "rpc-qualification")]
     if name == "bunly.rpc.qualification" {
         if let Some((identity, sequence)) = wire::read(message, false) {
             let context = observed(browser, frame);
@@ -2148,6 +2160,41 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 revoke_stream_lane(id, binding, true);
             }
             reply(request, Value::Null);
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "rpc.qualification.renderer" => {
+            let id = number(args, "id")?;
+            let scope = policy_scope(args)?;
+            let browser = STATE.with(|s| {
+                let state = s.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                if scope.origin != "app://ui" {
+                    return Err("Renderer proof requires the packaged fault fixture");
+                }
+                state
+                    .views
+                    .get(&id)
+                    .and_then(|view| view.browser.clone())
+                    .ok_or("Fault fixture browser unavailable")
+            })?;
+            let frame = browser
+                .main_frame()
+                .ok_or("Fault fixture main frame unavailable")?;
+            if CefString::from(&frame.url()).to_string() != "app://ui/index.html" {
+                return Err("Renderer proof requires the exact packaged fault page".into());
+            }
+            let context = observed(&browser, &frame);
+            let pid = STATE.with(|s| {
+                let state = s.borrow();
+                captured_ready_scope(&state, id, &scope)?;
+                let record = state.views.get(&id).ok_or("Fault fixture closed")?;
+                let binding = record
+                    .rpc
+                    .binding()
+                    .ok_or("Fault fixture binding unavailable")?;
+                record.rpc.renderer_process(&context, binding.identity())
+            })?;
+            reply(request, json!({"pid":pid}));
         }
         #[cfg(feature = "rpc-qualification")]
         "rpc.qualification.throttle" => {

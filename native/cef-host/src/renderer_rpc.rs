@@ -229,6 +229,18 @@ fn execute(
         }
         #[cfg(feature = "rpc-qualification")]
         if lane == Lane::Rpc {
+            // This PID comes from this compiled helper, not the page. The browser
+            // binds the proof to the same native main frame and document identity.
+            if !send(
+                &current.frame,
+                wire::RENDERER_PROOF,
+                identity,
+                u64::from(std::process::id()),
+                None,
+            ) {
+                revoke(browser, &current, true);
+                return Err("Renderer proof allocation failed");
+            }
             crate::rpc_qualification::subscribed(&current.frame, identity);
         }
         return Ok(());

@@ -206,3 +206,12 @@ Reference semantics: Microsoft `GetConsoleMode` documents `ENABLE_LINE_INPUT`
 returning on carriage return. Pinned psutil source is
 `giampaolo/psutil@release-7.0.0`, `psutil/arch/windows/proc.c`; its kill operation
 calls `TerminateProcess(hProcess, SIGTERM)`. No upstream implementation is copied.
+
+Windows checkpoint `40272832729` passed all nine native ownership cases after the
+terminal-consumption, console-input, exact-exit-status and TCP-table corrections.
+The full run remained failed because its separate renderer-fault stage did not
+observe the intended view's termination; provider setup correctly did not run.
+A Windows-only synthetic Python test also required an explicit counterfactual
+SIGKILL constant when simulating Unix. Both failures are retained. The current
+fault-target binding is documented in [fault qualification](cef-fault-qualification.md);
+current integrated-head platform acceptance is still required before merge.

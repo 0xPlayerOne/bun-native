@@ -3,6 +3,8 @@ use cef::*;
 
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const READY: &str = "bunly.rpc.context-ready";
+#[cfg(feature = "rpc-qualification")]
+pub const RENDERER_PROOF: &str = "bunly.rpc.renderer-proof";
 pub const GRANT: &str = "bunly.rpc.grant";
 pub const SUBSCRIBED: &str = "bunly.rpc.subscribed";
 pub const RELEASE: &str = "bunly.rpc.release";

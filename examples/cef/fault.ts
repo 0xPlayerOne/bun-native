@@ -45,15 +45,20 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
   })
   void page.catch(() => {})
   let rendererExitSeen = false
+  let pageReady = false
+  let documentReady = false
   const off = backend.observe((event) => {
     if (event.event === 'view.renderer-exit') rendererExitSeen = true
     const text = String(event.data?.['message'] ?? '')
-    if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') finish()
+    if (event.event === 'view.console' && text === 'BUNLY_ASSET_TEST_OK') pageReady = true
+    if (event.event === 'view.loaded' && event.data?.['url'] === 'app://ui/index.html')
+      documentReady = true
+    if (pageReady && (mode !== 'renderer-exit' || documentReady)) finish()
     if (text.startsWith('BUNLY_ASSET_TEST_FAILED')) reject(new Error(text))
   })
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    await backend.createView({
+    const view = await backend.createView({
       window,
       session,
       url: 'app://ui/index.html',
@@ -61,7 +66,16 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
     })
     timer = setTimeout(() => reject(new Error('Fault fixture page deadline')), faultDeadlineMs)
     await page
-    console.error(JSON.stringify({ event: 'bunly.fault.ready', mode, pid: process.pid }))
+    const rendererPid =
+      mode === 'renderer-exit'
+        ? await backend.qualifyRendererProcess(await backend.capturePolicyScope(view))
+        : undefined
+    const readiness = {
+      mode,
+      pid: process.pid,
+      ...(rendererPid === undefined ? {} : { rendererPid }),
+    }
+    console.error(JSON.stringify({ event: 'bunly.fault.ready', ...readiness }))
     const ready = process.env['BUNLY_CEF_FAULT_READY']
     if (ready !== undefined) {
       const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
@@ -69,7 +83,7 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
         isAbsolute(ready) && /^[a-f0-9]{48}$/.test(nonce),
         'Invalid private fault readiness configuration'
       )
-      await writeFile(ready, JSON.stringify({ mode, nonce, pid: process.pid }), {
+      await writeFile(ready, JSON.stringify({ ...readiness, nonce }), {
         flag: 'wx',
         mode: 0o600,
       })

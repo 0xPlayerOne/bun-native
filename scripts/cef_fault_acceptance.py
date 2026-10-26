@@ -18,7 +18,9 @@ def finite_nonnegative(value):
     return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
 
-def accept_fault(mode, observation, injections, *, require_output=True):
+def accept_fault(
+    mode, observation, injections, *, require_output=True, require_renderer_identity=True
+):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
     clean_process(observation, 0 if mode == "gpu-exit" else 1)
@@ -168,6 +170,14 @@ def accept_fault(mode, observation, injections, *, require_output=True):
             "Wrong or unidentified helper injection",
         )
         if mode == "renderer-exit":
+            if require_renderer_identity or "rendererPid" in ready:
+                require(
+                    positive_integer(ready.get("rendererPid"))
+                    and ready["rendererPid"] != ready["pid"]
+                    and injection["pid"] == ready["rendererPid"]
+                    and injection.get("targetAuthority") == "native-main-frame",
+                    "Renderer injection did not target the exact native main-frame process",
+                )
             require(
                 failures == ["Renderer process terminated before native shutdown"],
                 "Wrong renderer failure",
@@ -191,6 +201,8 @@ def accept_fault(mode, observation, injections, *, require_output=True):
                 < records.index(phases[0]),
                 "GPU recovery did not follow actual injection",
             )
+    if mode != "renderer-exit":
+        require("rendererPid" not in ready, "Unexpected renderer proof in another fault mode")
     descendants = matching("bunly.fault.descendant")
     if mode == "backend-shell-tree-exit":
         require(len(descendants) == 2, "Missing shell/server descendant pair")

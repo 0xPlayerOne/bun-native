@@ -161,3 +161,37 @@ parentage, PID and creation time. It reuses the shell-tree notification contract
 with an explicit one-child mode. The original observation assertion, native
 shutdown deadlines and failed-exit classification remain unchanged. No retry,
 longer sleep or invented sampling success is used.
+
+## Native main-frame renderer targeting (schema 5)
+
+Renderer fault selection no longer chooses the first process with a renderer
+command-line role. Chromium may also own spare renderers. The prior Windows
+checkpoint `40272832729` killed an owned renderer but produced no native test-view
+termination callback; the application then failed its unchanged readiness/exit
+deadline. That report does not identify which process hosted the test page, so
+attribution to a spare renderer remains unproven. It exposed a real missing
+qualification binding regardless of that particular outcome.
+
+Only contributor `rpc-qualification` helpers emit their own OS PID, directly from
+compiled native code, after subscribing the current main-frame bridge. The
+browser verifies the complete native frame/context/connection/generation and
+origin before retaining one immutable proof per live document. Navigation and
+revocation erase it; conflicting, child-frame, stale and invalid identities are
+rejected. An ordinary build has neither this message handler nor the proof query.
+The query is restricted to the exact packaged fault page and an opaque captured
+native policy scope, revalidated before and after reentrant browser operations.
+No JavaScript field supplies a target PID and no runtime kill API is introduced.
+
+The fault fixture waits for both its original page assertions and native document
+readiness before querying this proof. The private bounded readiness marker names
+that exact renderer. The independent observer still requires executable placement,
+renderer role, current native-host ancestry and unchanged process creation time
+before signalling its owned process object; another same-role candidate is ignored.
+These are fixture-scoped provenance checks, not general-purpose process authority.
+
+Schema 5 additionally requires the injected renderer PID to equal the native-frame
+proof. Earlier schemas retain their explicitly selected historical guarantees;
+role-only evidence cannot qualify the new schema. Missing, malformed, duplicate
+or foreign target receipts fail. Existing exact expected backend exits, six fault
+modes, unchanged deadlines, independent-process controls, output-drain receipts and
+all post-exit cleanup assertions remain required.

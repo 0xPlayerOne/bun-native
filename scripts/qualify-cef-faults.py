@@ -14,7 +14,13 @@ from pathlib import Path
 
 import psutil
 from cef_fault_acceptance import MODES, accept_fault
-from cef_fault_control import ForeignControl, accept_foreign_control, notify_tree_observation
+from cef_fault_control import (
+    ForeignControl,
+    accept_foreign_control,
+    fault_readiness,
+    fault_target_matches,
+    notify_tree_observation,
+)
 from cef_process_role import capture as helper_role
 from qualify_adhoc_signing import targets
 
@@ -41,23 +47,6 @@ def signed(app):
         capture_output=True,
         timeout=20,
     )
-
-
-def readiness(path, nonce, mode):
-    """A fresh private marker follows real page readiness, not a guessed startup delay."""
-    try:
-        if path.is_symlink() or path.stat().st_size > 4096:
-            return False
-        value = json.loads(path.read_text())
-        return (
-            set(value) == {"mode", "nonce", "pid"}
-            and value["nonce"] == nonce
-            and value["mode"] == mode
-            and type(value["pid"]) is int
-            and value["pid"] > 0
-        )
-    except (OSError, ValueError, TypeError):
-        return False
 
 
 def snapshot(bun, artifact):
@@ -246,7 +235,7 @@ def main():
                     mode in ("renderer-exit", "gpu-exit")
                     and not injected
                     and root_identity
-                    and readiness(ready_path, nonce, mode)
+                    and fault_target_matches(fault_readiness(ready_path, nonce, mode), mode, pid)
                 ):
                     expected = "renderer" if mode == "renderer-exit" else "gpu-process"
                     executable = Path(process.exe()).resolve()
@@ -268,6 +257,11 @@ def main():
                                         "creationTime": identity,
                                         "role": expected,
                                         "roleEvidence": evidence,
+                                        **(
+                                            {"targetAuthority": "native-main-frame"}
+                                            if mode == "renderer-exit"
+                                            else {}
+                                        ),
                                     }
                                 )
                                 process.kill()
@@ -367,7 +361,7 @@ def main():
         ],
     }
     result = {
-        "schema": 4,
+        "schema": 5,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

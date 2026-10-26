@@ -128,6 +128,9 @@ class WindowsObservationTests(unittest.TestCase):
         with patch("qualify_terminal_owner.sys.platform", "win32"):
             self.assertEqual(injected_kill_exit(), 15)
             self.assertEqual(injected_kill_exit(native_host=True), 15)
-        with patch("qualify_terminal_owner.sys.platform", "linux"):
+        with (
+            patch("qualify_terminal_owner.sys.platform", "linux"),
+            patch("qualify_terminal_owner.signal.SIGKILL", 9, create=True),
+        ):
             self.assertEqual(injected_kill_exit(), 137)
             self.assertEqual(injected_kill_exit(native_host=True), -9)
