@@ -9,7 +9,20 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
   const nativeEvents: { event: string; sequence: number | null }[] = []
   const stopDiagnostics = backend.observe((event) => {
     if (event.event === 'view.console') {
-      const stage = parseVisibilityStage(event.data?.['message'])
+      const message = event.data?.['message']
+      if (
+        typeof message === 'string' &&
+        message.startsWith('BUNLY_WINDOW_SNAPSHOT:') &&
+        message.length < 512 &&
+        rendererSnapshots.length < 8
+      ) {
+        try {
+          rendererSnapshots.push(JSON.parse(message.slice('BUNLY_WINDOW_SNAPSHOT:'.length)))
+        } catch {
+          /* Diagnostic only. */
+        }
+      }
+      const stage = parseVisibilityStage(message)
       if (stage && rendererStages.length < 64) rendererStages.push(stage)
     } else if (
       ['rpc.packet', 'rpc.revoked', 'stream.revoked', 'view.renderer-exit'].includes(event.event)
@@ -22,6 +35,8 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
       })
     }
   })
+  const nativeSnapshots: { mode: string; state: unknown }[] = []
+  const rendererSnapshots: unknown[] = []
   const actions: { mode: string; state: CefWindowState }[] = []
   let nativeFinal: Record<string, number> | null = null
   const modes: {
@@ -104,6 +119,7 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
       actionState: CefWindowState | null = null
     ) => {
       if (actionState) actions.push({ mode, state: actionState })
+      nativeSnapshots.push({ mode, state: await backend.qualifyWindowVisibility(window) })
       const observedPage = await page(modes.length, visible && !minimized ? 'visible' : 'hidden')
       const state = await backend.windowState(window, { signal: controller.signal })
       // Retain mismatches before asserting. Minimized visibility is platform-specific.
@@ -164,6 +180,8 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
         pages,
         actions,
         nativeFinal,
+        nativeSnapshots,
+        rendererSnapshots,
         rendererStages,
         nativeEvents,
         failure,

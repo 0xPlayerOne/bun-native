@@ -183,3 +183,13 @@ windowless WasHidden, renderer reload, a layout pulse, a new deadline or a
 background/occlusion feature flag. The original five exact renderer receipts and
 native snapshots remain required. It is an unqualified candidate until actual
 Windows execution establishes the result; no current fix claim is made here.
+
+The `cdb66e8` show-after-restore candidate also failed the same fifth visibility
+receipt on Windows run 40304513917. Its native action and candidate-specific
+unit test were removed together; the original five phase assertions remain.
+The next diagnostic records read-only CEF view/window visibility and drawing,
+geometry/focus, plus Windows foreground-owner, input-desktop and DWM-cloaking
+observations. It also requests a fixed read-only page-state console snapshot.
+No identifiers, window titles or private desktop names are emitted. No window
+operation, event synthesis, reload, scheduling flag or acceptance deadline is
+changed by the diagnostic. It is not a restore fix or a passing receipt.

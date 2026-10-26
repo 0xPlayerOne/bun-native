@@ -39,6 +39,7 @@ const sourcePaths = [
   'packages/runtime/src/cef-window-state.ts',
   'native/cef-host/src/host.rs',
   'native/cef-host/src/window_state.rs',
+  'native/cef-host/Cargo.toml',
   'native/cef-host/src/process.rs',
 ]
 const fingerprints = async () =>

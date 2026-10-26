@@ -127,3 +127,25 @@ test('late state cannot resurrect a window closed or disposed during native read
     await assert.rejects(f.backend[method](f.window), /disposed/)
   }
 })
+
+test('read-only visibility qualification refuses foreign and closed window handles before native dispatch', async () => {
+  const f = await fixture(),
+    other = await fixture()
+  try {
+    const before = f.commands.length
+    for (const handle of [{ ...f.window }, other.window, null])
+      await assert.rejects(f.backend.qualifyWindowVisibility(handle as WindowHandle))
+    assert.equal(f.commands.length, before)
+    await f.backend.qualifyWindowVisibility(f.window)
+    assert.equal(f.commands.at(-1)?.op, 'window.qualification.visibility')
+    f.handle(() => {})
+    const close = f.backend.closeWindow(f.window)
+    await assert.rejects(f.backend.qualifyWindowVisibility(f.window), /closing/)
+    f.reply(f.commands.at(-1)!)
+    await close
+    await assert.rejects(f.backend.qualifyWindowVisibility(f.window), /disposed/)
+  } finally {
+    await f.stop()
+    await other.stop()
+  }
+})

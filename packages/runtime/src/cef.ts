@@ -729,6 +729,15 @@ export class CefBackend implements BrowserBackend {
     this.#liveWindow(window)
     return parseCefWindowState(result)
   }
+  /** @internal Read-only contributor fixture; ordinary builds reject it. */
+  async qualifyWindowVisibility(window: WindowHandle): Promise<unknown> {
+    const resource = this.#liveWindow(window)
+    const value = await this.#transport.call('window.qualification.visibility', {
+      id: resource.native,
+    })
+    this.#liveWindow(window)
+    return value
+  }
   /** Snapshot of the actual owned CEF window on its UI thread; never cached intent. */
   windowState(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
     return this.#windowStateOperation(window, 'window.state', options)

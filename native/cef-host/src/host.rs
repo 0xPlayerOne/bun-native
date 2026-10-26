@@ -1902,6 +1902,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        #[cfg(feature = "rpc-qualification")]
+        "window.qualification.visibility" => window_state::qualification(request, args)?,
         "window.state" | "window.minimize" | "window.restore" => {
             window_state::dispatch(request, operation, args)?;
         }
