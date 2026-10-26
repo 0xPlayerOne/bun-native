@@ -10,7 +10,8 @@ const byteOffset = Object.getOwnPropertyDescriptor(typedArray, 'byteOffset')!.ge
 const backingBuffer = Object.getOwnPropertyDescriptor(typedArray, 'buffer')!.get!
 
 // A ready writer can replenish a source through a continuous microtask chain.
-// The shared scheduler bounds total work, not just each source independently.
+// A supplied shared scheduler bounds total work across its sources; standalone
+// sources each use an independent scheduler.
 const DRAIN_CHUNKS_PER_TURN = 16
 
 export interface StreamSourceOptions {

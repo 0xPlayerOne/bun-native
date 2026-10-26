@@ -15,8 +15,8 @@ interface WorkItem {
   readonly owner: object
   readonly priority: FairWorkPriority
   readonly run: () => void
-  readonly onCancel: (() => void) | undefined
-  readonly onYield: (() => void) | undefined
+  onCancel: (() => void) | undefined
+  onYield: (() => void) | undefined
   readonly enqueuedAt: number
   queue: OwnerQueue | undefined
   cancelled: boolean
@@ -64,9 +64,9 @@ export class FairWorkScheduler {
   #maxWaitMs = 0
   #lastWaitMs = 0
   #workThisTurn = 0
-  #scheduled = false
+  #continuation: object | undefined
+  #running = false
   #yieldTask: ReturnType<typeof setImmediate> | undefined
-  readonly #waitingForYield = new Set<WorkItem>()
 
   constructor(options: FairWorkSchedulerOptions = {}) {
     for (const key of Object.keys(options))
@@ -103,6 +103,10 @@ export class FairWorkScheduler {
   ): FairWorkHandle | undefined {
     if (!owner || typeof owner !== 'object' || typeof run !== 'function')
       throw new TypeError('Fair work requires an object owner and callback')
+    const { onCancel, onYield } = options
+    for (const hook of [onCancel, onYield])
+      if (hook !== undefined && typeof hook !== 'function')
+        throw new TypeError('Fair work hooks must be functions')
     const priority = options.priority ?? 'bulk'
     if (priority !== 'bulk' && priority !== 'control')
       throw new TypeError('Invalid fair work priority')
@@ -122,8 +126,8 @@ export class FairWorkScheduler {
       owner,
       priority,
       run,
-      onCancel: options.onCancel,
-      onYield: options.onYield,
+      onCancel,
+      onYield,
       enqueuedAt: now(),
       queue,
       cancelled: false,
@@ -140,7 +144,6 @@ export class FairWorkScheduler {
     else this.#controlQueued++
     this.#maxQueueDepth = Math.max(this.#maxQueueDepth, this.#queued)
     this.#enqueued++
-    if (this.#workThisTurn >= this.#maxWorkPerTurn && item.onYield) this.#waitingForYield.add(item)
     this.#ensureScheduled()
     return {
       get pending() {
@@ -155,7 +158,7 @@ export class FairWorkScheduler {
     item.cancelled = true
     this.#account(item)
     this.#cancelled++
-    this.#waitingForYield.delete(item)
+    item.onYield = undefined
     const queue = item.queue
     if (queue) {
       const index = queue.items.indexOf(item)
@@ -167,15 +170,18 @@ export class FairWorkScheduler {
         if (readyIndex >= 0) this.#ready.splice(readyIndex, 1)
       }
     }
+    item.queue = undefined
+    const onCancel = item.onCancel
+    item.onCancel = undefined
     try {
-      item.onCancel?.()
+      onCancel?.()
     } catch {
       // Cancellation must still release scheduler ownership.
     }
     if (!this.#queued) {
       if (this.#yieldTask !== undefined) clearImmediate(this.#yieldTask)
       this.#yieldTask = undefined
-      this.#scheduled = false
+      this.#continuation = undefined
     }
     return true
   }
@@ -189,24 +195,41 @@ export class FairWorkScheduler {
   }
 
   #ensureScheduled(): void {
-    if (this.#scheduled || !this.#queued) return
-    this.#scheduled = true
-    if (this.#workThisTurn >= this.#maxWorkPerTurn) {
-      this.#yieldTask = setImmediate(() => {
-        this.#yieldTask = undefined
-        this.#yieldCount++
-        for (const item of this.#waitingForYield) item.onYield?.()
-        this.#waitingForYield.clear()
-        this.#workThisTurn = 0
-        this.#scheduled = false
+    if (this.#running || this.#continuation || !this.#queued) return
+    const token = {}
+    this.#continuation = token
+    const yielding = this.#workThisTurn >= this.#maxWorkPerTurn
+    const resume = () => {
+      // Cancellation can retire a microtask but cannot remove it from the host
+      // queue. Only the current continuation may dispatch or reset the quantum.
+      if (this.#continuation !== token) return
+      this.#continuation = undefined
+      this.#yieldTask = undefined
+      this.#running = true
+      try {
+        if (yielding) {
+          this.#workThisTurn = 0
+          this.#yieldCount++
+          // Include work admitted before saturation. Snapshot membership so a
+          // hook can cancel/refill without extending this notification pass.
+          const waiting = this.#ready.flatMap((queue) => queue.items)
+          for (const item of waiting) {
+            if (item.cancelled || item.started) continue
+            try {
+              item.onYield?.()
+            } catch {
+              // Observers cannot pause dispatch or interfere with peer hooks.
+            }
+          }
+        }
         this.#pump()
-      })
-    } else {
-      queueMicrotask(() => {
-        this.#scheduled = false
-        this.#pump()
-      })
+      } finally {
+        this.#running = false
+        this.#ensureScheduled()
+      }
     }
+    if (yielding) this.#yieldTask = setImmediate(resume)
+    else queueMicrotask(resume)
   }
 
   #next(): WorkItem | undefined {
@@ -235,18 +258,20 @@ export class FairWorkScheduler {
       const item = this.#next()
       if (!item) break
       item.started = true
+      item.queue = undefined
+      item.onYield = undefined
+      item.onCancel = undefined
       this.#account(item)
       this.#dispatched++
       this.#lastWaitMs = Math.max(0, now() - item.enqueuedAt)
       this.#maxWaitMs = Math.max(this.#maxWaitMs, this.#lastWaitMs)
+      this.#workThisTurn++
       try {
         item.run()
       } catch {
         // The owner callback owns its failure path; a bad item cannot stop peers.
       }
-      this.#workThisTurn++
     }
-    this.#ensureScheduled()
   }
 
   diagnostics() {
