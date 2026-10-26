@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict'
-const mode = 'backend-shell-tree-exit'
+export type TreeFaultMode = 'backend-tree-exit' | 'backend-shell-tree-exit'
 export function validateTreeObservation(
   value: unknown,
   nonce: string,
-  pids: readonly number[]
+  pids: readonly number[],
+  mode: TreeFaultMode = 'backend-shell-tree-exit'
 ): void {
   assert.match(nonce, /^[a-f0-9]{48}$/)
-  assert.equal(pids.length, 2)
-  assert.equal(new Set(pids).size, 2)
+  assert.ok(mode === 'backend-tree-exit' || mode === 'backend-shell-tree-exit')
+  const count = mode === 'backend-tree-exit' ? 1 : 2
+  assert.equal(pids.length, count)
+  assert.equal(new Set(pids).size, count)
   assert.ok(pids.every((pid) => Number.isSafeInteger(pid) && pid > 0 && pid < 2 ** 31))
   assert.ok(value && typeof value === 'object' && !Array.isArray(value))
   const row = value as Record<string, unknown>
@@ -18,8 +21,12 @@ export function validateTreeObservation(
 }
 
 /** One retained notification on the already-owned descendant server. */
-export function treeObservationGate(nonce: string, pids: readonly number[]) {
-  validateTreeObservation({ mode, nonce, pids }, nonce, pids)
+export function treeObservationGate(
+  nonce: string,
+  pids: readonly number[],
+  mode: TreeFaultMode = 'backend-shell-tree-exit'
+) {
+  validateTreeObservation({ mode, nonce, pids }, nonce, pids, mode)
   const expected = [...pids]
   let complete!: () => void
   const observed = new Promise<void>((resolve) => {
@@ -62,7 +69,8 @@ export function treeObservationGate(nonce: string, pids: readonly number[]) {
       validateTreeObservation(
         JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length))),
         nonce,
-        expected
+        expected,
+        mode
       )
       admitted = true
       complete()

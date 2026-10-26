@@ -63,3 +63,22 @@ test('runtime terminal service executes before PTY qualification and under the W
     "if ($LASTEXITCODE -ne 0) { throw 'Standard-user terminal service regression failed' }"
   )
 })
+
+test('service supervisor qualification executes actual platform tests including standard-user Windows', async () => {
+  const workflow = await readFile(join(root, '.github/workflows/bun-pty.yml'), 'utf8')
+  const runner = await readFile(join(root, 'scripts/hosted-windows.ps1'), 'utf8')
+  const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  expect(manifest.scripts['qualify:services']).toBe(
+    'bun test tests/service-supervisor.test.ts tests/service-supervisor-real.test.ts'
+  )
+  expect(workflow).toContain('bun run qualify:services')
+  const pty = runner.slice(
+    runner.indexOf("if ($Suite -eq 'pty')"),
+    runner.indexOf('exit $LASTEXITCODE')
+  )
+  expect(pty).toContain('& $Bun run qualify:services')
+  expect(pty).toContain(
+    "if ($LASTEXITCODE -ne 0) { throw 'Standard-user service supervisor qualification failed' }"
+  )
+  expect(pty.indexOf('qualify:services')).toBeLessThan(pty.indexOf('qualify-bun-pty.ts'))
+})

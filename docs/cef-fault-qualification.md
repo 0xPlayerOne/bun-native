@@ -149,3 +149,15 @@ application authority API or a same-user adversary boundary.
 Upstream inspected: Bun commit `c6da4a4d3010e5553438c60f6bd76d981976867c`,
 `src/runtime/node/fs_events.rs` (`register_watcher`, deferred `schedule`, and
 `FSEventStreamCreate` with the current-event cursor). No Bun source was modified.
+
+## Direct-child observation handshake
+
+The original `backend-tree-exit` fixture waited 150 ms after spawn, which was not
+proof that the independent process observer had sampled the child. A retained
+hosted Mac run terminated normally but failed its unchanged actual-observation
+criterion. This fixture now keeps the same inherited-output child alive until a
+single authenticated numeric-loopback notification follows independently checked
+parentage, PID and creation time. It reuses the shell-tree notification contract
+with an explicit one-child mode. The original observation assertion, native
+shutdown deadlines and failed-exit classification remain unchanged. No retry,
+longer sleep or invented sampling success is used.
