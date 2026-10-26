@@ -191,3 +191,23 @@ This is a shared measurement implementation change, so new profiles must identif
 it and cannot be relabeled as the older harness. It has not yet established a
 causal fix for the retained hidden-renderer stalls or native shutdown watchdog,
 a final memory plateau, or a comparative performance advantage.
+
+## Guarded native load profile
+
+Merged #117 is integrated and the CEF load fixture now selects the installed,
+hash-verified native non-detaching driver through CefBackend. The byte-count and
+hash observer still wraps the real driver callback; every stream, producer,
+consumer, pacing, cancellation and shutdown assertion remains intact. Start,
+final and native receipts explicitly bind this ownership profile, and the
+maintained current qualifier requires it. Older direct-child reports can only
+retain their historical receipt contract; they cannot pass as guarded results.
+The extra native guardians are included in full-process-tree measurements.
+Electron remains a disclosed Bun-controller/direct-child baseline, so different
+ownership topology must be reported rather than hidden in a speed ratio.
+
+The shared screen-cache checkpoint at 86986c3 completed ten CEF launches and ten
+Electron launches (five visible/five hidden per engine), with exact output and
+normal shutdown acceptance. They precede this guarded-profile integration and
+are not relabeled current-source or native-owner measurements. Earlier hidden
+stall and watchdog failures remain retained; the checkpoint does not establish a
+causal cure, minimized/foreground qualification or a long-run memory plateau.

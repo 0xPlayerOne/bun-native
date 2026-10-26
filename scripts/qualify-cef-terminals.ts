@@ -79,6 +79,10 @@ const sourcePaths = [
   'packages/runtime/src/cef-lane-transport.ts',
   'packages/runtime/src/fair-scheduler.ts',
   'packages/runtime/src/terminal.ts',
+  'packages/runtime/src/terminal-owner.ts',
+  'native/cef-host/src/terminal_runtime.rs',
+  'native/cef-host/src/terminal_owner.rs',
+  'native/cef-host/src/terminal_owner_windows.rs',
   'packages/runtime/src/stream-source.ts',
   'packages/client/src/cef-streams.ts',
   'packages/contracts/src/streams.ts',
@@ -118,6 +122,7 @@ const report: Record<string, unknown> = {
   passed: false,
   target: `${process.platform}-${process.arch}`,
   bun: Bun.version,
+  ...(load ? { terminalOwnership: 'native-non-detaching' } : {}),
   sourceBefore: before,
   sourceHashes: await fingerprints(),
   inputArtifact: inputInventory,
@@ -128,7 +133,7 @@ const report: Record<string, unknown> = {
     'Functional runs establish correctness and bounded behavior, not a throughput or latency win.',
     'Native show/hide is available. Load mode requires document visibility receipts; OS foreground focus, occlusion and minimization are not inferred.',
     'No baseline comparison is claimed without the identical workload on a pinned comparison runtime.',
-    'Direct owned children only; detached-descendant supervision is not claimed.',
+    'Explicit native non-detaching ownership. Unix guardian SIGKILL, arbitrary detached groups and M6 backend replacement remain unsupported.',
     'Linux PTY status 1 remains an ambiguous read lifecycle result, never generic clean EOF.',
     'Ordinary runtime default cookies remain disabled. This fixture does not alter credential policy or use a personal credential store.',
   ],
@@ -283,11 +288,11 @@ try {
       if (load) {
         const raw = await readFile(join(work, `trial-${index}-${mode}.jsonl`), 'utf8')
         trial['rawSha256'] = createHash('sha256').update(raw).digest('hex')
-        trial['outcomes'] = assessTerminalLoad(observation, raw, mode)
+        trial['outcomes'] = assessTerminalLoad(observation, raw, mode, 'native-non-detaching')
         trial['quarterTrends'] = loadProcessQuarterTrends(
           observation.samples as unknown as ObservationSample[]
         )
-        trial['metrics'] = acceptTerminalLoad(observation, raw, mode)
+        trial['metrics'] = acceptTerminalLoad(observation, raw, mode, 'native-non-detaching')
         trial.passed = true
         console.log(JSON.stringify({ index, mode, passed: true }))
         continue

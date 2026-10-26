@@ -225,6 +225,7 @@ export default async function loadFixture(backend: CefBackend) {
     await record({
       kind: 'start',
       schema: 1,
+      terminalOwnership: 'native-non-detaching',
       workload: LOAD,
       mode: selected,
       visibilityReceipts,
@@ -335,6 +336,7 @@ export default async function loadFixture(backend: CefBackend) {
     await record({
       kind: 'complete',
       batches: BATCHES,
+      terminalOwnership: 'native-non-detaching',
       exits,
       terminalBudget: service.diagnostics(),
       streamBudget: backend.streamDiagnostics(),
@@ -345,7 +347,8 @@ export default async function loadFixture(backend: CefBackend) {
     console.error(
       JSON.stringify({
         event: 'bunly.native.terminal-load',
-        schema: 1,
+        schema: 2,
+        terminalOwnership: 'native-non-detaching',
         mode: selected,
         batches: BATCHES,
         complete: true,

@@ -241,3 +241,21 @@ test('quarter trends report measured CPU and refuse to join reused process ident
   assert.equal(quarters[1]!.cpuPercentOfOneCore, null)
   assert.equal(quarters[0]!.rssMedianBytes, 1000.5)
 })
+
+test('native-owned load acceptance cannot relabel an old direct-child profile or omit final ownership', () => {
+  const rows = fixture()
+  assert.throws(() => acceptLoadRows(raw(rows), 'hidden', 'Darwin', 'cef', 'native-non-detaching'))
+  rows[0]!['terminalOwnership'] = 'native-non-detaching'
+  assert.throws(() => acceptLoadRows(raw(rows), 'hidden', 'Darwin', 'cef', 'native-non-detaching'))
+  rows.at(-1)!['terminalOwnership'] = 'native-non-detaching'
+  acceptLoadRows(raw(rows), 'hidden', 'Darwin', 'cef', 'native-non-detaching')
+  assert.throws(() =>
+    acceptLoadRows(raw(rows), 'hidden', 'Darwin', 'electron', 'native-non-detaching')
+  )
+  for (const value of [undefined, 'direct-child', 'fallback', true, {}]) {
+    rows.at(-1)!['terminalOwnership'] = value
+    assert.throws(() =>
+      acceptLoadRows(raw(rows), 'hidden', 'Darwin', 'cef', 'native-non-detaching')
+    )
+  }
+})

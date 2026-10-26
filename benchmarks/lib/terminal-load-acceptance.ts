@@ -24,7 +24,8 @@ export function acceptLoadRows(
   raw: string,
   selected: string,
   os: unknown,
-  host: 'cef' | 'electron' = 'cef'
+  host: 'cef' | 'electron' = 'cef',
+  terminalOwnership?: 'native-non-detaching'
 ) {
   assert.ok(Buffer.byteLength(raw) <= 4 * 1024 * 1024, 'Raw instrumentation byte bound')
   const lines = raw.trim().split('\n')
@@ -41,6 +42,12 @@ export function acceptLoadRows(
   )
   const final = rows.pop()!
   assert.equal(final['kind'], 'complete')
+  if (terminalOwnership !== undefined) {
+    assert.equal(host, 'cef')
+    assert.equal(start['terminalOwnership'], terminalOwnership)
+    assert.equal(final['terminalOwnership'], terminalOwnership)
+  }
+
   assert.equal(final['batches'], BATCHES)
   const exits = final['exits']
   assert.ok(Array.isArray(exits) && exits.length === LOAD.terminals)
@@ -302,7 +309,12 @@ export function loadProcessQuarterTrends(samples: readonly ObservationSample[]) 
     }
   })
 }
-export function acceptTerminalLoad(input: unknown, raw: string, selected: string) {
+export function acceptTerminalLoad(
+  input: unknown,
+  raw: string,
+  selected: string,
+  terminalOwnership?: 'native-non-detaching'
+) {
   const observed = validateCommandObservation(input)
   assertCleanCommand(observed)
   requireNativeShutdown(observeNativeShutdown(observed))
@@ -311,7 +323,8 @@ export function acceptTerminalLoad(input: unknown, raw: string, selected: string
   assert.deepEqual(receipts, [
     {
       event: 'bunly.native.terminal-load',
-      schema: 1,
+      schema: terminalOwnership === undefined ? 1 : 2,
+      ...(terminalOwnership === undefined ? {} : { terminalOwnership }),
       mode: selected,
       batches: BATCHES,
       complete: true,
@@ -345,7 +358,7 @@ export function acceptTerminalLoad(input: unknown, raw: string, selected: string
           event['state'] === 'complete'
       )
   )
-  const phases = acceptLoadRows(raw, selected, observed.environment['os'])
+  const phases = acceptLoadRows(raw, selected, observed.environment['os'], 'cef', terminalOwnership)
   return {
     phases,
     process: loadProcessPhases(observed.samples as unknown as readonly ObservationSample[]),
@@ -355,7 +368,12 @@ export function acceptTerminalLoad(input: unknown, raw: string, selected: string
   }
 }
 /** Preserve independent workload and teardown outcomes, including overlap. */
-export function assessTerminalLoad(input: unknown, raw: string, selected: string) {
+export function assessTerminalLoad(
+  input: unknown,
+  raw: string,
+  selected: string,
+  terminalOwnership?: 'native-non-detaching'
+) {
   const observed = validateCommandObservation(input)
   const attempt = (run: () => unknown) => {
     try {
@@ -378,7 +396,9 @@ export function assessTerminalLoad(input: unknown, raw: string, selected: string
         Object.values(shutdown.durationsMs).every((duration) => duration !== null),
       observation: shutdown,
     },
-    workload: attempt(() => acceptLoadRows(raw, selected, observed.environment['os'])),
+    workload: attempt(() =>
+      acceptLoadRows(raw, selected, observed.environment['os'], 'cef', terminalOwnership)
+    ),
     command: attempt(() => assertCleanCommand(observed)),
     teardown: attempt(() => requireNativeShutdown(observeNativeShutdown(observed))),
     lastBatch: [...rows].reverse().find((row) => row['kind'] === 'batch')?.['batch'] ?? null,
