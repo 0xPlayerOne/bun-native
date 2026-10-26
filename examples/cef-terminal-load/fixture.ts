@@ -65,6 +65,30 @@ export default async function loadFixture(backend: CefBackend) {
   let queueBytes = 0
   let queueFrames = 0
   const visibilityReceipts: string[] = []
+  const nativeEvents: object[] = []
+  const stopObserver = backend.observe((event) => {
+    if (
+      ![
+        'rpc.packet',
+        'stream.packet',
+        'rpc.revoked',
+        'stream.revoked',
+        'view.navigating',
+        'view.loaded',
+        'view.closed',
+      ].includes(event.event)
+    )
+      return
+    nativeEvents.push({
+      event: event.event,
+      phase,
+      batch: activeBatch,
+      atMs: performance.now(),
+      sequence: event.data?.['sequence'] ?? null,
+      copiedBytes: event.data?.['copiedBytes'] ?? null,
+    })
+    if (nativeEvents.length > 16) nativeEvents.shift()
+  })
   let stopRpc: (() => void | Promise<void>) | undefined
   let stopStreams: (() => void) | undefined
   try {
@@ -349,6 +373,14 @@ export default async function loadFixture(backend: CefBackend) {
       terminalBudget: service.diagnostics(),
       streamBudget: backend.streamDiagnostics(),
       sender: streamState?.(),
+      rpc: backend.rpcDiagnostics(),
+      nativeEvents,
+      connectionAborted: connection?.signal.aborted ?? null,
+      connectionReason: connection?.signal.aborted
+        ? String(connection.signal.reason).slice(0, 240)
+        : null,
+      snapshotTiming:
+        'after workload error, before fixture cleanup; protocol revocation may already have drained queues',
       transport: backend.nativeTransportDiagnostics(),
       native: await backend
         .nativeDiagnostics()
@@ -356,6 +388,7 @@ export default async function loadFixture(backend: CefBackend) {
     })
     throw error
   } finally {
+    stopObserver()
     await stopRpc?.()
     stopStreams?.()
     await service.dispose()

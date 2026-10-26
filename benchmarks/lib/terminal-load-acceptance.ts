@@ -79,11 +79,30 @@ export function acceptLoadRows(
     'driverFailures',
   ])
     assert.equal(budget[name], 0)
-  assert.deepEqual(final['streamBudget'], {
-    connectionFailures: 0,
-    connections: 0,
-    budget: { reservedBytes: 0, streams: 0, views: 0 },
-  })
+  const streamBudget = object(final['streamBudget'])
+  assert.equal(streamBudget['connectionFailures'], 0)
+  assert.equal(streamBudget['connections'], 0)
+  assert.deepEqual(streamBudget['budget'], { reservedBytes: 0, streams: 0, views: 0 })
+  for (const ownerBudget of [budget, streamBudget]) {
+    if (ownerBudget['scheduling'] !== undefined) {
+      const scheduling = object(ownerBudget['scheduling'])
+      for (const field of [
+        'queueDepth',
+        'bulkQueued',
+        'controlQueued',
+        'owners',
+        'rejected',
+        'coalesced',
+        'dropped',
+      ])
+        assert.equal(scheduling[field], 0)
+      assert.equal(scheduling['yieldPending'], false)
+      assert.equal(
+        scheduling['enqueued'],
+        Number(scheduling['dispatched']) + Number(scheduling['cancelled'])
+      )
+    }
+  }
   if (host === 'electron') {
     const electron = object(final['electron'])
     assert.equal(electron['controllerBun'], '1.4.3')
@@ -350,7 +369,15 @@ export function assessTerminalLoad(input: unknown, raw: string, selected: string
     .split('\n')
     .filter(Boolean)
     .map((line) => object(JSON.parse(line)))
+  const shutdown = observeNativeShutdown(observed)
   return {
+    shutdownPhases: {
+      complete:
+        !shutdown.malformed &&
+        shutdown.pendingPhase === null &&
+        Object.values(shutdown.durationsMs).every((duration) => duration !== null),
+      observation: shutdown,
+    },
     workload: attempt(() => acceptLoadRows(raw, selected, observed.environment['os'])),
     command: attempt(() => assertCleanCommand(observed)),
     teardown: attempt(() => requireNativeShutdown(observeNativeShutdown(observed))),

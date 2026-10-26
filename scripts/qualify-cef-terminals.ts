@@ -1,3 +1,4 @@
+import { buildTerminalBackend } from './build-terminal-backend.ts'
 /** Actual prepared-CEF + Bun PTY + graphical xterm functional qualification. */
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
@@ -60,6 +61,8 @@ const sourcePaths = [
   'package.json',
   'bun.lock',
   'scripts/qualify-cef-terminals.ts',
+  'scripts/build-terminal-backend.ts',
+  'scripts/cef-bootstrap.ts',
   'examples/cef-terminal/terminal-fixture.ts',
   'examples/cef-terminal/terminal-client.ts',
   'examples/cef-terminal/terminal-records.ts',
@@ -89,6 +92,11 @@ const sourcePaths = [
   'scripts/observe-process.py',
   'scripts/probe_cef_identity.py',
 ]
+// Bind every bootstrap/runtime/client contract source, not only the entrypoint.
+for (const directory of ['packages/runtime/src', 'packages/client/src', 'packages/contracts/src'])
+  for (const path of await readdir(join(root, directory), { recursive: true }))
+    if (path.endsWith('.ts') && !sourcePaths.includes(`${directory}/${path}`))
+      sourcePaths.push(`${directory}/${path}`)
 const fingerprints = async () =>
   Object.fromEntries(
     await Promise.all(
@@ -145,34 +153,7 @@ try {
   assert.equal(runtime['bun_version'], '1.4.3')
   assert.equal(runtime['cef_version'], '156.0.7')
 
-  const backend = await Bun.build({
-    entrypoints: [
-      join(
-        root,
-        load ? 'examples/cef-terminal-load/fixture.ts' : 'examples/cef-terminal/terminal-fixture.ts'
-      ),
-    ],
-    outdir: join(resources, 'backend'),
-    naming: 'application.js',
-    target: 'bun',
-    format: 'esm',
-    minify: false,
-  })
-  assert.equal(backend.success, true, backend.logs.join('\n'))
-  const child = await Bun.build({
-    entrypoints: [
-      join(
-        root,
-        load ? 'examples/cef-terminal-load/child.ts' : 'examples/cef-terminal/terminal-child.ts'
-      ),
-    ],
-    outdir: join(resources, 'backend'),
-    naming: 'terminal-child.js',
-    target: 'bun',
-    format: 'esm',
-    minify: false,
-  })
-  assert.equal(child.success, true, child.logs.join('\n'))
+  report['backendBuild'] = await buildTerminalBackend(root, resources, load)
   const publicRoot = join(resources, 'public')
   await rm(publicRoot, { recursive: true, force: true })
   await mkdir(publicRoot)
