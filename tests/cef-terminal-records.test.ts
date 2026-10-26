@@ -35,3 +35,20 @@ test('terminal screen parsing rejects duplicates, changed prior rows, gaps and o
   assert.throws(() => reader.update(screen(Array.from({ length: 601 }, () => ({ text: '' })))))
   assert.throws(() => reader.update(screen([{ text: 'x'.repeat(1001) }])))
 })
+
+test('sustained screen observations keep a bounded rolling history without resetting xterm', () => {
+  const reader = new TerminalRecords({ maxRecords: 10000, retainedRecords: 600 })
+  for (let batch = 0; batch < 300; batch++) {
+    const start = batch * 32
+    const rows = Array.from({ length: Math.min(start + 32, 200) }, (_, i) => ({
+      text: marker(Math.max(0, start + 32 - 200) + i, 'record'),
+    }))
+    assert.equal(reader.update(screen(rows)).length, 32)
+    assert.equal(reader.count, start + 32)
+    assert.ok(reader.records.length <= 600)
+  }
+  assert.equal(reader.count, 9600)
+  assert.equal(reader.records.length, 600)
+  assert.throws(() => reader.update(screen([{ text: marker(9601) }])), /missing or reordered/)
+  assert.throws(() => reader.update(screen([{ text: marker(9599, 'changed') }])), /changed/)
+})

@@ -12,6 +12,9 @@ import {
 } from '../benchmarks/lib/observed-command.ts'
 import { distribution, profileOptions } from '../benchmarks/foundation/statistics.ts'
 import { acceptGraphicalTerminal } from '../benchmarks/lib/cef-terminal-acceptance.ts'
+import { terminalLoadBaselines } from '../benchmarks/lib/terminal-load-baselines.ts'
+import { schedule, summarize } from '../benchmarks/lib/statistics.ts'
+import { acceptTerminalLoad } from '../benchmarks/lib/terminal-load-acceptance.ts'
 import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observation.ts'
 
 const root = resolve(import.meta.dir, '..')
@@ -19,8 +22,10 @@ const args = process.argv.slice(2)
 const input = args.shift()
 if (!input || Bun.version !== '1.4.3')
   throw new Error(
-    'Use Bun 1.4.3: qualify-cef-terminals PREPARED_APP [--functional | --samples 5..100 --warmups 0..10]'
+    'Use Bun 1.4.3: qualify-cef-terminals PREPARED_APP [--load] [--functional | --samples 5..100 --warmups 0..10]'
   )
+const load = args[0] === '--load'
+if (load) args.shift()
 const functional = args.length === 1 && args[0] === '--functional'
 const options = functional ? { samples: 1, warmups: 0, output: '' } : profileOptions(args, '')
 if (!functional && options.output) throw new Error('The qualifier owns its immutable run directory')
@@ -28,10 +33,23 @@ const mac = process.platform === 'darwin'
 const source = resolve(input)
 const inputRoot = mac ? source : dirname(source)
 const inputInventory = await inventory(inputRoot)
-const parent = join(root, '.bunly/m5/graphical-terminals')
+const parent = join(root, load ? '.bunly/m5/terminal-load' : '.bunly/m5/graphical-terminals')
 await mkdir(parent, { recursive: true, mode: 0o700 })
 const work = await mkdtemp(join(parent, 'run-'))
 const sourcePaths = [
+  ...(load
+    ? [
+        'examples/cef-terminal-load/fixture.ts',
+        'examples/cef-terminal-load/client.ts',
+        'examples/cef-terminal-load/child.ts',
+        'examples/cef-terminal-load/contract.ts',
+        'examples/cef-terminal-load/workload.ts',
+        'benchmarks/lib/terminal-load-acceptance.ts',
+        'benchmarks/lib/terminal-load-baselines.ts',
+        'benchmarks/lib/statistics.ts',
+        'tsconfig.browser.json',
+      ]
+    : []),
   'package.json',
   'bun.lock',
   'scripts/qualify-cef-terminals.ts',
@@ -75,7 +93,8 @@ const fingerprints = async () =>
   )
 const before = sourceIdentity(root)
 const report: Record<string, unknown> = {
-  schema: 1,
+  schema: load ? 2 : 1,
+  profile: load ? 'graphical-pty-load-v1' : 'functional-v2',
   classification: functional
     ? 'graphical-native-terminal-functional-qualification'
     : 'graphical-native-terminal-descriptive-profile',
@@ -90,7 +109,7 @@ const report: Record<string, unknown> = {
   trials: [],
   limitations: [
     'Functional runs establish correctness and bounded behavior, not a throughput or latency win.',
-    'Foreground uses the maintained visible-window API. Background and minimized modes are NOT qualified because no maintained native visibility/minimize control exists.',
+    'Native show/hide is available. Load mode requires document visibility receipts; OS foreground focus, occlusion and minimization are not inferred.',
     'No baseline comparison is claimed without the identical workload on a pinned comparison runtime.',
     'Direct owned children only; detached-descendant supervision is not claimed.',
     'Linux PTY status 1 remains an ambiguous read lifecycle result, never generic clean EOF.',
@@ -100,6 +119,7 @@ const report: Record<string, unknown> = {
 const trials = report['trials'] as Record<string, unknown>[]
 const python = process.env['PYTHON'] ?? 'python3'
 try {
+  if (load) report['baselineEligibility'] = await terminalLoadBaselines()
   if (!functional) assert.equal(before.clean, true, 'Profiling requires clean committed source')
   const app = join(work, mac ? 'Graphical Terminals.app' : 'Graphical Terminals Unicode é Ω')
   await cp(inputRoot, app, { recursive: true, dereference: false })
@@ -117,7 +137,12 @@ try {
   assert.equal(runtime['cef_version'], '156.0.7')
 
   const backend = await Bun.build({
-    entrypoints: [join(root, 'examples/cef-terminal/terminal-fixture.ts')],
+    entrypoints: [
+      join(
+        root,
+        load ? 'examples/cef-terminal-load/fixture.ts' : 'examples/cef-terminal/terminal-fixture.ts'
+      ),
+    ],
     outdir: join(resources, 'backend'),
     naming: 'application.js',
     target: 'bun',
@@ -126,7 +151,12 @@ try {
   })
   assert.equal(backend.success, true, backend.logs.join('\n'))
   const child = await Bun.build({
-    entrypoints: [join(root, 'examples/cef-terminal/terminal-child.ts')],
+    entrypoints: [
+      join(
+        root,
+        load ? 'examples/cef-terminal-load/child.ts' : 'examples/cef-terminal/terminal-child.ts'
+      ),
+    ],
     outdir: join(resources, 'backend'),
     naming: 'terminal-child.js',
     target: 'bun',
@@ -147,7 +177,12 @@ try {
   await cp(join(xtermPackage, 'css/xterm.css'), join(publicRoot, 'xterm.css'))
   await cp(join(xtermPackage, 'LICENSE'), join(publicRoot, 'xterm-LICENSE.txt'))
   const browser = await Bun.build({
-    entrypoints: [join(root, 'examples/cef-terminal/terminal-client.ts')],
+    entrypoints: [
+      join(
+        root,
+        load ? 'examples/cef-terminal-load/client.ts' : 'examples/cef-terminal/terminal-client.ts'
+      ),
+    ],
     outdir: publicRoot,
     naming: 'terminal-client.js',
     target: 'browser',
@@ -224,43 +259,111 @@ try {
   report['runtimeIdentity'] = JSON.parse(identityLine)
   const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(source))
   const accepted: ReturnType<typeof acceptGraphicalTerminal>[] = []
-  for (let index = -options.warmups; index < options.samples; index++) {
+  const order = load
+    ? schedule(['visible', 'hidden'], options.samples + options.warmups, 2709).map((entry) => ({
+        index: entry.trial - options.warmups,
+        mode: entry.variant,
+      }))
+    : Array.from({ length: options.samples + options.warmups }, (_, trial) => ({
+        index: trial - options.warmups,
+        mode: 'visible',
+      }))
+  report['trialOrder'] = { seed: load ? 2709 : null, order }
+  for (const { index, mode } of order) {
     const observation = await observedCommand([executable], {
       cwd: work,
-      output: join(work, `trial-${index}.process.json`),
-      timeoutMs: 30_000,
+      output: join(work, `trial-${index}-${mode}.process.json`),
+      timeoutMs: load ? 90_000 : 30_000,
       env: {
-        BUNLY_CACHE_DIR: join(work, `trial-${index}-cache`),
+        BUNLY_CACHE_DIR: join(work, `trial-${index}-${mode}-cache`),
+        BUNLY_TERMINAL_LOAD_MODE: mode,
+        BUNLY_TERMINAL_LOAD_OUTPUT: join(work, `trial-${index}-${mode}.jsonl`),
         BUNLY_BENCH_SANDBOX: '1',
       },
     }).result
-    const trial: Record<string, unknown> = { index, warmup: index < 0, passed: false, observation }
+    const trial: Record<string, unknown> = {
+      index,
+      mode,
+      warmup: index < 0,
+      passed: false,
+      observation,
+    }
     trials.push(trial)
-    const metrics = acceptGraphicalTerminal(observation)
-    trial['metrics'] = metrics
-    trial['processPhases'] = phaseSummary(
-      observation.samples as unknown as readonly ObservationSample[]
-    )
-    trial.passed = true
-    if (index >= 0) accepted.push(metrics)
-    console.log(JSON.stringify({ index, warmup: index < 0, passed: true }))
+    try {
+      if (load) {
+        const raw = await readFile(join(work, `trial-${index}-${mode}.jsonl`), 'utf8')
+        trial['rawSha256'] = createHash('sha256').update(raw).digest('hex')
+        trial['metrics'] = acceptTerminalLoad(observation, raw, mode)
+        trial.passed = true
+        console.log(JSON.stringify({ index, mode, passed: true }))
+        continue
+      }
+      const metrics = acceptGraphicalTerminal(observation)
+      trial['metrics'] = metrics
+      trial['processPhases'] = phaseSummary(
+        observation.samples as unknown as readonly ObservationSample[]
+      )
+      trial.passed = true
+      if (index >= 0) accepted.push(metrics)
+      console.log(JSON.stringify({ index, warmup: index < 0, passed: true }))
+    } catch (error) {
+      trial['failure'] = error instanceof Error ? error.message : String(error)
+      console.log(JSON.stringify({ index, mode, passed: false, failure: trial['failure'] }))
+    }
   }
-  report['distributions'] = {
-    elapsedMs: distribution(accepted.map((entry) => entry.elapsedMs)),
-    workloadElapsedMs: distribution(accepted.map((entry) => entry.workloadElapsedMs)),
-    totalBytes: distribution(accepted.map((entry) => entry.bytes)),
-    controlRoundtripMs: distribution(accepted.flatMap((entry) => entry.controlRoundtripsMs)),
-    consumerCallbackMs: distribution(
-      accepted.flatMap((entry) => entry.consumerCallbackDurationsMs)
-    ),
-    peakTreeRssBytes: distribution(accepted.map((entry) => entry.peakTreeRssBytes)),
-    peakTreeThreads: distribution(accepted.map((entry) => entry.peakTreeThreads)),
-    queuePeakFrames: distribution(accepted.map((entry) => entry.queuePeakFrames)),
-    queuePeakBytes: distribution(accepted.map((entry) => entry.queuePeakBytes)),
-    processPhases: (trials as { observation: CommandObservation }[]).map((trial) =>
-      phaseSummary(trial.observation.samples as unknown as readonly ObservationSample[])
-    ),
+  if (load) {
+    report['launchDistributions'] = ['visible', 'hidden'].map((mode) => {
+      const selected = trials.filter(
+        (row) => row['mode'] === mode && row['warmup'] === false && row.passed === true
+      )
+      const metrics = selected.map((row) => row['metrics'] as ReturnType<typeof acceptTerminalLoad>)
+      return {
+        mode,
+        acceptedLaunches: selected.length,
+        attemptedLaunches: trials.filter((row) => row['mode'] === mode && row['warmup'] === false)
+          .length,
+        allWarmupsAndTrialsPassed: trials
+          .filter((row) => row['mode'] === mode)
+          .every((row) => row.passed === true),
+        phases: ['warmup', 'ramp', 'sustained', 'recovery'].map((phase) => {
+          const rows = metrics.flatMap((metric) =>
+            metric.phases.filter((row) => row.phase === phase)
+          )
+          return {
+            phase,
+            controlP95AcrossLaunches: rows.length
+              ? summarize(rows.map((row) => row.controlMs.p95))
+              : null,
+            controlP99AcrossLaunches: rows.length
+              ? summarize(rows.map((row) => row.controlMs.p99))
+              : null,
+            throughputAcrossLaunches: rows.length
+              ? summarize(rows.map((row) => row.bytesPerSecond))
+              : null,
+          }
+        }),
+        uncertainty:
+          'Bootstrap intervals describe the mean of per-launch observations, not population p95/p99 bounds; small samples, machine noise, failed trials and unmatched baselines preclude calibrated budgets.',
+      }
+    })
   }
+  if (!load && accepted.length)
+    report['distributions'] = {
+      elapsedMs: distribution(accepted.map((entry) => entry.elapsedMs)),
+      workloadElapsedMs: distribution(accepted.map((entry) => entry.workloadElapsedMs)),
+      totalBytes: distribution(accepted.map((entry) => entry.bytes)),
+      controlRoundtripMs: distribution(accepted.flatMap((entry) => entry.controlRoundtripsMs)),
+      consumerCallbackMs: distribution(
+        accepted.flatMap((entry) => entry.consumerCallbackDurationsMs)
+      ),
+      peakTreeRssBytes: distribution(accepted.map((entry) => entry.peakTreeRssBytes)),
+      peakTreeThreads: distribution(accepted.map((entry) => entry.peakTreeThreads)),
+      queuePeakFrames: distribution(accepted.map((entry) => entry.queuePeakFrames)),
+      queuePeakBytes: distribution(accepted.map((entry) => entry.queuePeakBytes)),
+      processPhases: (trials as { observation: CommandObservation }[]).map((trial) =>
+        phaseSummary(trial.observation.samples as unknown as readonly ObservationSample[])
+      ),
+    }
   assert.deepEqual(await inventory(app), prepared, 'Prepared artifact changed during qualification')
   assert.deepEqual(
     await inventory(inputRoot),
@@ -269,7 +372,7 @@ try {
   )
   report['preparedArtifactUnchanged'] = true
   report['inputArtifactUnchanged'] = true
-  report.passed = true
+  report.passed = trials.length > 0 && trials.every((trial) => trial.passed === true)
 } catch (error) {
   report['failure'] = error instanceof Error ? error.message : String(error)
 } finally {

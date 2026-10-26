@@ -78,11 +78,13 @@ and any nonzero terminal, stream or native final reservation.
 
 ## Unsupported modes and remaining gates
 
-The current maintained native API can create and close a visible window but has
-no qualified background-visibility or minimize control. The report therefore
-records foreground as the actually exercised visible window and both background
-and minimized as `NOT_QUALIFIED`; it does not invent those modes or disable
-Chromium throttling.
+The maintained API includes `CefBackend.showWindow(window, boolean)` and native
+show/hide. The original functional schema does not exercise those operations;
+its historical visibility labels are retained for evidence compatibility, not as
+a current API inventory. The separate [sustained load profile](terminal-load-qualification.md)
+requires actual document visibility callbacks after exact-handle show/hide.
+Native OS foreground focus, occlusion and minimization remain unqualified.
+Neither profile disables Chromium throttling.
 
 The fixture covers direct owned children only. Detached descendants, generalized
 scrollback/reconnect policy, release qualification, identical-workload competitor

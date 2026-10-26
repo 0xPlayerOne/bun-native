@@ -1,0 +1,24 @@
+/** Identical finite workload for every maintained load adapter. No renderer work is omitted. */
+export const LOAD = Object.freeze({
+  id: 'graphical-pty-load-v1',
+  terminals: 2,
+  recordsPerBatch: 32,
+  phases: [
+    { name: 'warmup', batches: 20, intervalMs: 100 },
+    { name: 'ramp', batches: 40, intervalMs: 50 },
+    { name: 'sustained', batches: 600, intervalMs: 50 },
+    { name: 'recovery', batches: 40, intervalMs: 100 },
+  ],
+  maxBatchBytes: 32 * 1024,
+  maxCallbacksPerBatch: 256,
+  modes: ['visible', 'hidden'],
+} as const)
+export const BATCHES = LOAD.phases.reduce((sum, phase) => sum + phase.batches, 0)
+export function loadBatch(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) >= BATCHES)
+    throw new Error('Invalid load batch')
+  return Number(value)
+}
+export function loadRecord(batch: number, index: number) {
+  return { type: 'record', index, text: `fixed-${index}-café-🐙`, batch }
+}
