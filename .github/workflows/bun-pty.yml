@@ -34,6 +34,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           bun test tests/terminal-service.test.ts tests/terminal-service-real.test.ts
+          bun run qualify:services
           bun scripts/qualify-bun-pty.ts
       - name: Qualify actual Bun PTYs as a Windows standard user
         if: runner.os == 'Windows'

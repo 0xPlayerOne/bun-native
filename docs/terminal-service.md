@@ -205,3 +205,13 @@ frames. Pending-byte coalescing addresses that fragmentation without increasing
 the fixed 32-KiB source budget, the eight-chunk limit or the renderer workload.
 The original failed graphical runs and unchanged-source failing coalescing tests
 are retained. Byte-exact output and explicit overload still require qualification.
+
+## Opted-in service supervision
+
+[ServiceSupervisor](service-supervisor.md) adds explicit readiness and finite
+application-child restart around this service. `launch()` returns an admitted
+handle, a spawn promise and lifecycle observations together, so supervisors retain
+ownership even when spawning fails or times out. `create()` remains the convenience
+API for callers that only need successful creation. TerminalService itself never
+restarts children or replays input; M6 backend reload and native descendant
+containment remain separate.

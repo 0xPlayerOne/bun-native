@@ -4,7 +4,11 @@ import { isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { lstat, open, writeFile } from 'node:fs/promises'
 
-import { validateTreeObservation } from './fault-tree-notification.ts'
+import {
+  treeObservationGate,
+  validateTreeObservation,
+  type TreeFaultMode,
+} from './fault-tree-notification.ts'
 export { validateTreeObservation } from './fault-tree-notification.ts'
 
 const mode = 'backend-shell-tree-exit'
@@ -17,12 +21,13 @@ export async function waitForTreeObservation(
   nonce: string,
   pids: readonly number[],
   timeoutMs: number,
-  notification: (signal: AbortSignal) => Promise<void>
+  notification: (signal: AbortSignal) => Promise<void>,
+  observedMode: TreeFaultMode = mode
 ): Promise<void> {
   assert.ok(
     isAbsolute(path) && Number.isSafeInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000
   )
-  validateTreeObservation({ mode, nonce, pids }, nonce, pids)
+  validateTreeObservation({ mode: observedMode, nonce, pids }, nonce, pids, observedMode)
   const expected = [...pids]
   const deadline = performance.now() + timeoutMs
   const controller = new AbortController()
@@ -48,7 +53,12 @@ export async function waitForTreeObservation(
       const bytes = Buffer.alloc(1025)
       const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
       if (bytesRead > 1024) throw new Error('Tree observation exceeds bound')
-      validateTreeObservation(JSON.parse(bytes.subarray(0, bytesRead).toString()), nonce, expected)
+      validateTreeObservation(
+        JSON.parse(bytes.subarray(0, bytesRead).toString()),
+        nonce,
+        expected,
+        observedMode
+      )
       if (performance.now() >= deadline) throw new Error('Late tree observation')
     } finally {
       await file.close()
@@ -182,5 +192,56 @@ export async function startObservedShellTree(timeoutMs: number): Promise<void> {
     reader.releaseLock()
     if (shell.exitCode === null) shell.kill('SIGKILL')
     // The native host still owns this fixture's entire non-detached group/job.
+  }
+}
+
+/** Keep the original inherited-output direct child alive until the independent
+ * observer has captured its exact ancestry, rather than guessing with a sleep. */
+export async function startObservedDirectChild(timeoutMs: number): Promise<void> {
+  const selected = 'backend-tree-exit'
+  const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
+  const tree = process.env['BUNLY_CEF_FAULT_TREE'] ?? ''
+  const observed = process.env['BUNLY_CEF_FAULT_INJECTED'] ?? ''
+  assert.ok(isAbsolute(tree) && isAbsolute(observed) && /^[a-f0-9]{48}$/.test(nonce))
+  const child = Bun.spawn([process.execPath, '-e', 'setInterval(() => {}, 1000)'], {
+    stdin: 'ignore',
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  let server: ReturnType<typeof Bun.serve> | undefined
+  try {
+    const pids = [child.pid]
+    server = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      maxRequestBodySize: 1024,
+      fetch: treeObservationGate(nonce, pids, selected),
+    })
+    console.error(JSON.stringify({ event: 'bunly.fault.descendant', pid: child.pid }))
+    await writeFile(
+      tree,
+      JSON.stringify({ mode: selected, nonce, backend: process.pid, pids, port: server.port }),
+      { flag: 'wx', mode: 0o600 }
+    )
+    await waitForTreeObservation(
+      observed,
+      nonce,
+      pids,
+      timeoutMs,
+      async (signal) => {
+        const response = await fetch(new URL('/observation', server!.url), {
+          headers: { 'x-bunly-observation': nonce },
+          signal,
+          redirect: 'error',
+        })
+        assert.equal(response.status, 204, 'Missing independent direct-child observation')
+      },
+      selected
+    )
+    process.exit(23)
+  } finally {
+    server?.stop(true)
+    if (child.exitCode === null) child.kill('SIGKILL')
+    await child.exited
   }
 }

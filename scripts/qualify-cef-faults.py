@@ -180,7 +180,7 @@ def main():
                 ):
                     root_identity.append((pid, process.create_time()))
                 if (
-                    mode == "backend-shell-tree-exit"
+                    mode in ("backend-tree-exit", "backend-shell-tree-exit")
                     and root_identity
                     and not tree_confirmed
                     and tree_path.is_file()
@@ -196,8 +196,8 @@ def main():
                         and tree["mode"] == mode
                         and tree["nonce"] == nonce
                         and isinstance(pids, list)
-                        and len(pids) == 2
-                        and len(set(pids)) == 2
+                        and len(pids) == (1 if mode == "backend-tree-exit" else 2)
+                        and len(set(pids)) == len(pids)
                         and all(type(item) is int and 0 < item < 2**31 for item in pids)
                     ):
                         owner = psutil.Process(root_identity[0][0])
@@ -208,10 +208,10 @@ def main():
                             if tree["backend"] in descendants and all(
                                 item in descendants for item in pids
                             ):
-                                shell, server = [descendants[item] for item in pids]
+                                first = descendants[pids[0]]
                                 if (
-                                    shell.ppid() == tree["backend"]
-                                    and server.ppid() == shell.pid
+                                    first.ppid() == tree["backend"]
+                                    and (len(pids) == 1 or descendants[pids[1]].ppid() == first.pid)
                                     and pid in pids
                                 ):
                                     tree_seen[pid] = {
@@ -238,7 +238,9 @@ def main():
                                         # filesystem-watcher startup races without polling.
                                         tree_confirmed.append(True)
                                         tree_notification["attempted"] = True
-                                        notify_tree_observation(tree["port"], nonce, pids)
+                                        notify_tree_observation(
+                                            tree["port"], nonce, pids, mode=mode
+                                        )
                                         tree_notification["acknowledged"] = True
                 if (
                     mode in ("renderer-exit", "gpu-exit")
@@ -304,19 +306,25 @@ def main():
             foreign_control = control.finish()
         # Preserve independently sampled ancestry separately from the resource
         # rows, whose existing schema does not contain parent PID information.
-        data["descendantIdentities"] = list(tree_seen.values())
+        data["descendantIdentities"] = (
+            list(tree_seen.values()) if mode == "backend-shell-tree-exit" else []
+        )
         trial = {
             "mode": mode,
             "passed": False,
             "injected": injected,
             "observation": data,
             "foreignControl": foreign_control,
-            "treeNotification": tree_notification if mode == "backend-shell-tree-exit" else None,
+            "treeNotification": (
+                tree_notification
+                if mode in ("backend-tree-exit", "backend-shell-tree-exit")
+                else None
+            ),
         }
         try:
             accept_foreign_control(foreign_control, data)
             trial["acceptance"] = accept_fault(mode, data, injected)
-            if mode == "backend-shell-tree-exit" and tree_notification != {
+            if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
                 "attempted": True,
                 "acknowledged": True,
             }:
