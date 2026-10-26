@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "classification": "current-native-and-pinned-baseline-descriptive-acceptance-with-retained-failures",
+  "runs": [
+    {
+      "id": "native-functional",
+      "adapter": "cef",
+      "profile": "windowed",
+      "archive": "native-functional.json.gz",
+      "archiveSha256": "4ee09e78783a234247448b7363e69cc191bb99d6658bbfdade2085a74d931f36",
+      "archiveBytes": 745992,
+      "expandedSha256": "009d629a3ef076209af3b7ee5b633568b5c374d7b9b18248b250d539aeb02ad2",
+      "expandedBytes": 15908266,
+      "source": "00a61e88d92bc17ac006b126a6f06d6d41230123",
+      "reportOriginal": {
+        "sha256": "f2acb5fbb135a3b626a8dfb910ff9e9f799c1bb88d0906a88df336c1725646aa",
+        "bytes": 30465307
+      },
+      "passed": true,
+      "accepted": 4,
+      "failed": 0
+    },
+    {
+      "id": "native-repeated",
+      "adapter": "cef",
+      "profile": "windowed",
+      "archive": "native-repeated.json.gz",
+      "archiveSha256": "fc62dd42efc60d2f27c332acb769f4b70dc5fa7ca7491ceba636c8ff2d27f395",
+      "archiveBytes": 3616837,
+      "expandedSha256": "95b2d031576f8c654e4ade3ada96b198fce8c7b30804eebaf8ed54ce753e3a21",
+      "expandedBytes": 78305736,
+      "source": "00a61e88d92bc17ac006b126a6f06d6d41230123",
+      "reportOriginal": {
+        "sha256": "7badf7c20215e9b76709f2ea61dbe287d381ad2b65ab31de4210a6fb835e0a0a",
+        "bytes": 150089287
+      },
+      "passed": true,
+      "accepted": 20,
+      "failed": 0
+    },
+    {
+      "id": "native-soak",
+      "adapter": "cef",
+      "profile": "soak",
+      "archive": "native-soak.json.gz",
+      "archiveSha256": "34b21f383375677200f648f0b0519f9663eb6dadecb9b8e043cc770814754017",
+      "archiveBytes": 1185791,
+      "expandedSha256": "add78b98478c7bf096bfabf9b27dc68f12252bd71de8008226dc9cdba3ee5b71",
+      "expandedBytes": 26662746,
+      "source": "353a843ad21a4a9ffef5331b9d419139fb9903a4",
+      "reportOriginal": {
+        "sha256": "333de9eb365d14b95fdf55b8828f182b38150473d89645b8d61f16b1ffcaf393",
+        "bytes": 31400892
+      },
+      "passed": true,
+      "accepted": 2,
+      "failed": 0
+    },
+    {
+      "id": "electron-functional",
+      "adapter": "electron",
+      "profile": "windowed",
+      "archive": "electron-functional.json.gz",
+      "archiveSha256": "624ba5c976c023a46a36d943ee763146dee8d81d026f8bd0522242b8dd31e930",
+      "archiveBytes": 661969,
+      "expandedSha256": "e44cc6cc48b6eec77aeb74439f8bb5e76e8f3620f7f273911ee3140255b5309b",
+      "expandedBytes": 10303768,
+      "source": "00a61e88d92bc17ac006b126a6f06d6d41230123",
+      "reportOriginal": {
+        "sha256": "edaf1c5d707790b7fc21e06327b77f0fda77491370ff0869110b815bdfd48650",
+        "bytes": 7738286
+      },
+      "passed": true,
+      "accepted": 4,
+      "failed": 0
+    },
+    {
+      "id": "electron-repeated",
+      "adapter": "electron",
+      "profile": "windowed",
+      "archive": "electron-repeated.json.gz",
+      "archiveSha256": "59239d4950af273574332b80720ad4743ad8d6992c31db8b87d05a039fc999f2",
+      "archiveBytes": 3284557,
+      "expandedSha256": "caf8715f6567d0c4b00f8835f4bb00e6712db107a198b1fed921a984f13a2311",
+      "expandedBytes": 51583659,
+      "source": "353a843ad21a4a9ffef5331b9d419139fb9903a4",
+      "reportOriginal": {
+        "sha256": "cc34720e6b48205a10c93559e68ca615b1bec915f0292890f8da75d27e283802",
+        "bytes": 38765644
+      },
+      "passed": true,
+      "accepted": 20,
+      "failed": 0
+    },
+    {
+      "id": "retained-native-drain-failure",
+      "adapter": "cef",
+      "profile": "windowed",
+      "archive": "retained-native-drain-failure.json.gz",
+      "archiveSha256": "aeaa76ce62ca8b71338994f15613cd043c8f021bb46e90ed9b70f6fcdb728d97",
+      "archiveBytes": 753351,
+      "expandedSha256": "050a5dbd4202a92ba35bc07bd95c8d4d3c56305dfaa3126692c476d75cf3d29b",
+      "expandedBytes": 16229274,
+      "source": "3e4ede0577f30e4ff55f3482e53110626d8fc4c2",
+      "reportOriginal": {
+        "sha256": "739d201e270e247de10644f391f311474b6dd692cd1117a3de64147db28ce11d",
+        "bytes": 31132638
+      },
+      "passed": false,
+      "accepted": 3,
+      "failed": 1
+    },
+    {
+      "id": "retained-stale-electron-preflight",
+      "adapter": "electron",
+      "profile": "windowed",
+      "archive": "retained-stale-electron-preflight.json.gz",
+      "archiveSha256": "5c0b521fe2495f2d69791af8a27988646cd765f07dd9c6ca95e3d3a4c4f0ac1a",
+      "archiveBytes": 89395,
+      "expandedSha256": "8ab3c9d4f66e498aba8dd454d1e3e503456c7d5ac94f31454f36c6dccdc00f17",
+      "expandedBytes": 1716378,
+      "source": "00a61e88d92bc17ac006b126a6f06d6d41230123",
+      "reportOriginal": {
+        "sha256": "40add1ef7cbc0ced1262cda772b8217674a01b4e3cc42e8b03fb2c886ff81e98",
+        "bytes": 3576695
+      },
+      "passed": false,
+      "accepted": 0,
+      "failed": 4
+    }
+  ],
+  "historicalArchives": {
+    "evidence/m5-terminal-load/raw-evidence.json.gz": "02d83fd450111c5fc7dbb75e382e4e746e60f85574f363a977bff7e17356c15e",
+    "evidence/m5-terminal-load-followup/raw-evidence.json.gz": "ba717295b8525e98f421abff47a33de747d2e016b1a61a7ecd7b6abaafbc807a"
+  },
+  "redactions": [
+    "fixture-nonces",
+    "local-paths",
+    "consistent-positive-process-pseudonyms"
+  ],
+  "performanceRatios": null,
+  "releaseApproved": false,
+  "limits": [
+    "Independent launches are resampling units; batch rows are correlated within each launch.",
+    "Local adapter blocks are not randomized across engines or certified quiet-machine trials.",
+    "CEF156 and Electron44.9.3/Chromium152 have different engines, transports and process topologies.",
+    "Long-soak evidence is finite sampled stabilization, not a proof of absence of arbitrary future leaks.",
+    "Raw process-tree RSS may double-count shared pages; physical input/paint and unmatched wakeup counters are not inferred.",
+    "Historical watchdogs, failed trials and unsupported guardian SIGKILL remain explicitly retained."
+  ]
+}

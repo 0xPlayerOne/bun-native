@@ -1,5 +1,10 @@
 # M5 — streams, terminals and responsiveness
 
+**Current acceptance:** See [M5 completion](m5-completion.md) for the integrated
+functional scope, evidence replay, measured review and remaining release risks.
+The increment records below preserve their original scope and limitations; earlier
+statements that later M5 increments are pending are historical checkpoints.
+
 ## Existing portable stream foundation
 
 The earlier #23 increment already provides independent binary framing,
