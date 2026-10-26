@@ -168,3 +168,9 @@ remains separately required. It does not claim backend replacement, arbitrary
 shell job-control containment, Unix guardian hard-kill cleanup or a CEF watchdog
 fix. The graphical workload, cancellation/overload controls, exact byte/order
 checks and native shutdown gates remain unchanged.
+
+The initial combined run at b5f3004 completed its three native-guarded restart
+generations, then the fixture incorrectly wrapped synchronous stale-handle
+validation in assert.rejects. The corrected test uses assert.throws and still
+requires the exact INVALID_HANDLE code and no additional native launch. The
+failed run is retained; no supervisor or native ownership behavior changed.

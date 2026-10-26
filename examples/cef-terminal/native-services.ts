@@ -177,7 +177,7 @@ export async function qualifyNativeServices(backend: CefBackend) {
     })
     assert.equal(service.diagnostics().terminals, 1)
     const stale = identities[0]!
-    await assert.rejects(supervisor.write(stale, finish))
+    assert.throws(() => supervisor.write(stale, finish), { code: 'INVALID_HANDLE' })
     assert.equal(captures.length, 4, 'Stale request must not launch or replay work')
     await service.write(unrelated, finish)
     assert.equal((await unrelatedObservation.processExited).exitCode, 0)
