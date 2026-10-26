@@ -219,3 +219,23 @@ START setting. The real fixture additionally requires positive native view
 width/height in visible phases, along with the unchanged five authenticated
 actual-document visibility observations. Windows execution remains the required
 proof of recovery, not the configuration test alone.
+
+## Final response delivery and teardown
+
+Corrected-head Linux execution completed all five native/page state checks but
+then exposed one retained RPC delivery during immediate view disposal. The page
+had entered its fifth visibility handler; that is not proof that the handler's
+response completed native delivery. Additional teardown visibility events could
+also enqueue a sixth request while the document was closing. The failed run
+40326337969 remains recorded; resource-zero checks are unchanged.
+
+The fixed five-state reporter now retires its DOM visibility listener after
+capturing its fifth actual event. Every expected native/page observation remains
+required. Before disposal, the runtime awaits admitted handlers and actual
+adapter-completed RPC replies. `RpcServer.whenIdle()` coalesces one bounded
+waiter under the existing send deadline; disconnect/revocation/late completion
+reject without releasing execution or native reservations. `CefBackend.drainRpc`
+uses the exact opaque view and checks the same document/connection after waiting.
+This operation requires quiescent producers and is not called from an RPC
+handler. It does not freeze future requests, poll counters, sleep, extend a
+deadline, discard a reply, or allow retained bytes to pass final acceptance.

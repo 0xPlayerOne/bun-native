@@ -161,6 +161,8 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
       false,
       await backend.restoreWindow(window, { signal: controller.signal })
     )
+    // Handler entry is not the native delivery receipt for its final response.
+    await backend.drainRpc(view)
     await backend.disposeView(view)
     await backend.disposeSession(session)
     await stop()

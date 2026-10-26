@@ -1207,6 +1207,25 @@ export class CefBackend implements BrowserBackend {
     this.#streamConnections.clear()
   }
 
+  /** Await admitted RPC work and actual native reply receipts before controlled
+   * teardown. Producers must be quiescent; this never grants or restores authority. */
+  async drainRpc(view: ViewHandle): Promise<void> {
+    this.#active()
+    const resource = this.#liveView(view)
+    const document = resource.state.documentId
+    const current = [...this.#rpcConnections.entries()].find(([, value]) => value.view === view)
+    if (!current?.[1].server) throw new RpcError('REVOKED', 'Native RPC document unavailable')
+    const [id, connection] = current
+    await connection.server!.whenIdle()
+    this.#active()
+    if (
+      this.#liveView(view) !== resource ||
+      resource.state.documentId !== document ||
+      this.#rpcConnections.get(id) !== connection
+    )
+      throw new RpcError('REVOKED', 'Native RPC document changed during drain')
+  }
+
   rpcDiagnostics() {
     return {
       connections: this.#rpcConnections.size,
