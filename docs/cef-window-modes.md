@@ -147,3 +147,17 @@ visibility callback, queued RPC, acknowledgment and failure stages independently
 only the original authenticated receipts can pass acceptance. These diagnostics
 do not disable occlusion/background scheduling, retry restoration or extend any
 deadline. The failed source and report remain preserved.
+
+## Restore-layout candidate
+
+The retained Windows run `40262829398` reported a restored native widget, but
+its document never emitted the final visibility change. All four earlier page
+receipts reached the backend and were acknowledged; there was no fifth renderer
+callback in the retained diagnostic stream. That does not establish a blocked
+RPC transport or an upstream Chromium root cause.
+
+The current candidate requests the supported CEF panel layout operation after
+restore, revalidating the native-owned window around reentrant calls. It does
+not call windowless-only visibility APIs, forge page state, disable occlusion,
+retry restoration, reload the document or extend the fixed deadline. This is an
+investigated candidate, not an accepted Windows fix until real execution passes.
