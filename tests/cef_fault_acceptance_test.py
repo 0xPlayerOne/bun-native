@@ -356,3 +356,95 @@ class RendererTargetAcceptanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             accept_fault("renderer-exit", observation, injections)
         accept_fault("renderer-exit", observation, injections, require_renderer_identity=False)
+
+
+class NativeRendererTaskTests(unittest.TestCase):
+    @staticmethod
+    def task_fixture():
+        observation, _ = fixture("renderer-exit")
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        del rows[0]["rendererPid"]
+        rows.insert(
+            1,
+            {
+                "event": "bunly.native.renderer-injected",
+                "schema": 1,
+                "authority": "native-main-frame-task",
+                "accepted": True,
+            },
+        )
+        observation["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+        return observation
+
+    def test_native_task_injection_requires_actual_failure_and_no_external_pid_signal(self):
+        observation = self.task_fixture()
+        result = accept_fault("renderer-exit", observation, [], require_renderer_task=True)
+        self.assertTrue(result["expectedApplicationFailure"])
+        with self.assertRaises(ValueError):
+            accept_fault("renderer-exit", observation, [])
+        for injected in ([{"pid": 1}], [{"role": "renderer"}]):
+            with self.assertRaises(ValueError):
+                accept_fault("renderer-exit", observation, injected, require_renderer_task=True)
+        old, injected = fixture("renderer-exit")
+        with self.assertRaises(ValueError):
+            accept_fault("renderer-exit", old, injected, require_renderer_task=True)
+
+    def test_missing_duplicate_wrong_or_reordered_native_injection_never_passes(self):
+        observation = self.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        for key, value in (
+            ("schema", 2),
+            ("schema", True),
+            ("accepted", False),
+            ("accepted", 1),
+            ("authority", "renderer-role"),
+            ("pid", 1),
+        ):
+            changed = copy.deepcopy(rows)
+            changed[1][key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_task=True,
+                )
+        for changed in (
+            rows[:1] + rows[2:],
+            rows + [rows[1]],
+            [rows[1], rows[0], *rows[2:]],
+            [rows[0], *rows[2:], rows[1]],
+        ):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_task=True,
+                )
+
+    def test_namespace_pid_is_not_reinterpreted_as_host_identity(self):
+        observation = self.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        rows[0]["rendererPid"] = 1
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
+                [],
+                require_renderer_task=True,
+            )
+
+    def test_missing_actual_renderer_failure_cannot_pass_a_successful_request_receipt(self):
+        observation = self.task_fixture()
+        for event in ("bunly.host.failure", "bunly.native.renderer-failure-observed"):
+            altered = {
+                **observation,
+                "nativeDiagnostics": [
+                    line
+                    for line in observation["nativeDiagnostics"]
+                    if json.loads(line)["event"] != event
+                ],
+            }
+            with self.assertRaises(ValueError):
+                accept_fault("renderer-exit", altered, [], require_renderer_task=True)

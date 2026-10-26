@@ -664,6 +664,21 @@ export class CefBackend implements BrowserBackend {
       throw new Error('Invalid native renderer process proof')
     return pid
   }
+  /** @internal Fixed, native-bound contributor fault. Ordinary builds reject it.
+   * No page-supplied task or PID. Success means CEF accepted the request, not that
+   * the renderer exited; the qualifier separately requires the actual exit.
+   */
+  async qualifyRendererCrash(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const result = await this.#transport.call('rpc.qualification.renderer.crash', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+    })
+    if (result !== null) throw new Error('Invalid native renderer injection receipt')
+    // The intended side effect revokes this document. Do not require it to stay
+    // live after the native action, or turn a real termination into stale-scope failure.
+  }
   /** @internal Fixed contributor-only real Chromium throttle probe. */
   async qualifyTransportThrottle(scope: PolicyScope, rate: 1 | 4): Promise<void> {
     this.#active()

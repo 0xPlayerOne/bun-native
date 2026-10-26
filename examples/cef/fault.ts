@@ -66,15 +66,9 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
     })
     timer = setTimeout(() => reject(new Error('Fault fixture page deadline')), faultDeadlineMs)
     await page
-    const rendererPid =
-      mode === 'renderer-exit'
-        ? await backend.qualifyRendererProcess(await backend.capturePolicyScope(view))
-        : undefined
-    const readiness = {
-      mode,
-      pid: process.pid,
-      ...(rendererPid === undefined ? {} : { rendererPid }),
-    }
+    const rendererScope =
+      mode === 'renderer-exit' ? await backend.capturePolicyScope(view) : undefined
+    const readiness = { mode, pid: process.pid }
     console.error(JSON.stringify({ event: 'bunly.fault.ready', ...readiness }))
     const ready = process.env['BUNLY_CEF_FAULT_READY']
     if (ready !== undefined) {
@@ -107,6 +101,8 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
     if (mode === 'backend-tree-exit') await startObservedDirectChild(faultDeadlineMs)
     if (mode === 'backend-exit') process.exit(23)
     if (mode === 'renderer-exit') {
+      assert.ok(rendererScope)
+      await backend.qualifyRendererCrash(rendererScope)
       let deadline: ReturnType<typeof setTimeout> | undefined
       try {
         await Promise.race([

@@ -195,3 +195,34 @@ role-only evidence cannot qualify the new schema. Missing, malformed, duplicate
 or foreign target receipts fail. Existing exact expected backend exits, six fault
 modes, unchanged deadlines, independent-process controls, output-drain receipts and
 all post-exit cleanup assertions remain required.
+
+## Native main-frame task injection (schema 6)
+
+The `c449f68` Linux hosted renderer case reported PID 1 from inside its
+sandbox PID namespace. No process was injected, and the fixture timed out.
+The complete failed report remains retained. The same native-only proof is
+not a host PID on every platform; numeric translation or selecting another
+process with the same renderer role is not an acceptable replacement.
+
+Current renderer fault qualification uses CEF's supported TaskManager API,
+resolving the main task from the exact native browser identifier on the UI
+thread. The captured document/session/origin scope and main-frame RPC authority
+are rechecked immediately before injection. Only the exact packaged fault page
+and a matching, killable RENDERER task are eligible. There is no page-supplied
+PID, task ID, generic kill API, public debugging endpoint or sandbox change.
+Ordinary builds exclude the operation. The manager reference exists only for
+the injection call; its sampling machinery is not installed in normal use.
+
+The native receipt proves only that CEF accepted KillTask. Acceptance separately
+requires the real renderer-termination callback, the backend's observed-failure
+receipt, expected failed-host exit, ordered teardown and zero output balances.
+Schema 6 requires that exact injection receipt and forbids a simultaneous
+external PID injection; old schema 5 reports retain their original PID-identity
+checks when explicitly replayed. GPU injection still uses independently
+verified executable, ancestry, birth identity and role. No timeout or failure
+criterion was relaxed.
+
+API provenance: pinned CEF `47dbc1d`, `include/cef_task_manager.h` and
+`libcef/browser/task_manager_impl.cc`: GetTaskIdForBrowserId resolves the
+browser's WebContents through the browser-process task manager. No upstream
+implementation was copied into Bunly.

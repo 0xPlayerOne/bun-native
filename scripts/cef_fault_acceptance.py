@@ -19,7 +19,13 @@ def finite_nonnegative(value):
 
 
 def accept_fault(
-    mode, observation, injections, *, require_output=True, require_renderer_identity=True
+    mode,
+    observation,
+    injections,
+    *,
+    require_output=True,
+    require_renderer_identity=True,
+    require_renderer_task=False,
 ):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
@@ -153,6 +159,38 @@ def accept_fault(
             "Wrong backend failure diagnostic",
         )
         require(injections == [], "Backend case must not inject a browser fault")
+    elif mode == "renderer-exit" and require_renderer_task:
+        require(injections == [], "Native task fault must not also signal a guessed OS process")
+        require(
+            set(ready) == {"event", "mode", "pid"},
+            "Unexpected namespace PID in native-task readiness",
+        )
+        injection = exactly("bunly.native.renderer-injected")
+        require(
+            injection
+            == {
+                "event": "bunly.native.renderer-injected",
+                "schema": 1,
+                "authority": "native-main-frame-task",
+                "accepted": True,
+            }
+            and type(injection.get("schema")) is int
+            and injection.get("accepted") is True,
+            "Missing exact native main-frame task injection",
+        )
+        require(
+            failures == ["Renderer process terminated before native shutdown"],
+            "Wrong renderer failure",
+        )
+        observed = exactly("bunly.native.renderer-failure-observed")
+        require(
+            observed.get("passed") is True
+            and records.index(ready)
+            < records.index(injection)
+            < records.index(observed)
+            < records.index(backend),
+            "Actual renderer failure did not follow the native task injection",
+        )
     else:
         require(
             isinstance(injections, list) and len(injections) == 1, "Missing exact helper injection"
@@ -201,6 +239,11 @@ def accept_fault(
                 < records.index(phases[0]),
                 "GPU recovery did not follow actual injection",
             )
+    if not (mode == "renderer-exit" and require_renderer_task):
+        require(
+            not matching("bunly.native.renderer-injected"),
+            "Unexpected native-task injection receipt",
+        )
     if mode != "renderer-exit":
         require("rendererPid" not in ready, "Unexpected renderer proof in another fault mode")
     descendants = matching("bunly.fault.descendant")

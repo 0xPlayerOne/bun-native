@@ -232,7 +232,7 @@ def main():
                                         )
                                         tree_notification["acknowledged"] = True
                 if (
-                    mode in ("renderer-exit", "gpu-exit")
+                    mode == "gpu-exit"
                     and not injected
                     and root_identity
                     and fault_target_matches(fault_readiness(ready_path, nonce, mode), mode, pid)
@@ -317,7 +317,7 @@ def main():
         }
         try:
             accept_foreign_control(foreign_control, data)
-            trial["acceptance"] = accept_fault(mode, data, injected)
+            trial["acceptance"] = accept_fault(mode, data, injected, require_renderer_task=True)
             if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
                 "attempted": True,
                 "acknowledged": True,
@@ -361,7 +361,7 @@ def main():
         ],
     }
     result = {
-        "schema": 5,
+        "schema": 6,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],
