@@ -251,6 +251,11 @@ jobs:
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib 2>&1 | tee .bunly/hosted-evidence/native-tests.log
           cargo +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release --bin bunly-bundle -- "$GITHUB_WORKSPACE/.bunly/cef-bundle"
           python scripts/hosted_cef.py prepare
+      - name: Execute Unix terminal group ownership qualification
+        if: inputs.suite != 'portable' && runner.os != 'Windows'
+        run: |
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner
+          python scripts/qualify_terminal_owner.py --bun "$(command -v bun)" --owner native/cef-host/target/release/bunly-terminal-owner --output .bunly/hosted-evidence/terminal-owner.json
       - name: Execute unprivileged Linux or macOS qualification
         if: inputs.suite != 'portable' && runner.os != 'Windows'
         timeout-minutes: 20

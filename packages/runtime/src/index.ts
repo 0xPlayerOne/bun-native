@@ -92,6 +92,7 @@ export { CallbackStreamSource } from './stream-source.ts'
 export type { StreamSourceOptions } from './stream-source.ts'
 
 export { BunTerminalDriver, TerminalError, TerminalService } from './terminal.ts'
+export { NativeTerminalDriver } from './terminal-owner.ts'
 export type {
   TerminalCloseResult,
   TerminalClosure,

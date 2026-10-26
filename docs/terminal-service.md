@@ -183,3 +183,10 @@ frames. Pending-byte coalescing addresses that fragmentation without increasing
 the fixed 32-KiB source budget, the eight-chunk limit or the renderer workload.
 The original failed graphical runs and unchanged-source failing coalescing tests
 are retained. Byte-exact output and explicit overload still require qualification.
+
+## Opt-in native group owner
+
+`NativeTerminalDriver` now provides the concrete Unix group-ownership prerequisite
+for non-detaching commands. It retains native wait identity and handles Bun lease
+loss independently of the PTY. It is not yet the default or unrestricted interactive
+shell supervision. See [ownership boundaries, failures and qualification](terminal-owner.md).

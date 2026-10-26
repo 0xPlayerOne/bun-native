@@ -861,3 +861,34 @@ test('a driver aborting synchronously cannot leave its later write rejection uno
   expect(service.diagnostics().terminals).toBe(0)
   await service.dispose()
 })
+
+test('native supervision denial is not process exit and cannot release capacity', async () => {
+  for (const failure of ['TERMINATION_DENIED', 'SUPERVISION_FAILED'] as const) {
+    const clock = new Clock()
+    const driver = new FakeDriver()
+    driver.beforeReturn = (_observer, process) => {
+      process.autoStop = false
+    }
+    const service = new TerminalService({
+      driver,
+      scheduler: clock,
+      limits: { maxTerminals: 1, maxTerminalsPerOwner: 1 },
+    })
+    const handle = await service.create({}, new Writer(), valid())
+    const process = driver.processes[0]!
+    process.observer.processFailed!(failure)
+    process.observer.terminalClosed(0)
+    expect(await service.observe(handle).processExited).toMatchObject({
+      observed: false,
+      waitError: true,
+      failure,
+    })
+    expect(service.diagnostics()).toMatchObject({ terminals: 1, driverFailures: 1 })
+    await expect(service.create({}, new Writer(), valid())).rejects.toMatchObject({
+      code: 'OVERLOADED',
+    })
+    const disposal = service.dispose()
+    clock.advance(5000)
+    expect((await disposal)[0]).toMatchObject({ processExited: false, released: false })
+  }
+})

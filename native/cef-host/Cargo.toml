@@ -22,6 +22,10 @@ name = "bunly_helper"
 path = "src/helper.rs"
 
 [[bin]]
+name = "bunly-terminal-owner"
+path = "src/terminal_owner.rs"
+
+[[bin]]
 name = "bunly-bundle"
 path = "src/bundle.rs"
 required-features = ["packaging"]

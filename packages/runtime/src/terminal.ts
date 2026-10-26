@@ -88,7 +88,12 @@ export interface TerminalProcessExit {
   readonly exitCode: number | null
   readonly signalCode: NodeJS.Signals | number | null
   readonly waitError: boolean
-  readonly failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED' | null
+  readonly failure:
+    | 'SPAWN_FAILED'
+    | 'DEADLINE_EXCEEDED'
+    | 'TERMINATION_DENIED'
+    | 'SUPERVISION_FAILED'
+    | null
 }
 
 export interface TerminalClosure {
@@ -125,6 +130,8 @@ export interface TerminalDriverSpawnOptions {
 }
 
 export interface TerminalDriverObserver {
+  /** Unknown command/group ownership: settle failure without releasing reservations. */
+  processFailed?(failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED'): void
   output(bytes: Uint8Array): void
   terminalClosed(status: number): void
   processExited(exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>): void
@@ -537,6 +544,11 @@ export class TerminalService {
         resource.source?.push(bytes)
       },
       terminalClosed: (status: number) => this.#terminalClosed(resource, status),
+      processFailed: (failure: 'TERMINATION_DENIED' | 'SUPERVISION_FAILED') => {
+        resource.driverFailure = true
+        this.#settleProcessFailure(resource, failure)
+        this.#cancelResource(resource, 'SIGKILL')
+      },
       processExited: (exit: Pick<TerminalProcessExit, 'exitCode' | 'signalCode' | 'waitError'>) =>
         this.#processExited(resource, exit),
     })
@@ -870,7 +882,10 @@ export class TerminalService {
     this.#collect(resource)
   }
 
-  #settleProcessFailure(resource: Resource, failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED'): void {
+  #settleProcessFailure(
+    resource: Resource,
+    failure: NonNullable<TerminalProcessExit['failure']>
+  ): void {
     if (resource.processSettled) return
     resource.processSettled = true
     resource.processExit.resolve(
