@@ -25,7 +25,8 @@ def accept_fault(
     *,
     require_output=True,
     require_renderer_identity=True,
-    require_renderer_task=False,
+    require_renderer_message=False,
+    renderer_platform=None,
 ):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
@@ -159,7 +160,7 @@ def accept_fault(
             "Wrong backend failure diagnostic",
         )
         require(injections == [], "Backend case must not inject a browser fault")
-    elif mode == "renderer-exit" and require_renderer_task:
+    elif mode == "renderer-exit" and require_renderer_message:
         require(injections == [], "Native document fault must not also signal a guessed OS process")
         require(
             set(ready) == {"event", "mode", "pid"},
@@ -182,11 +183,22 @@ def accept_fault(
             failures == ["Renderer process terminated before native shutdown"],
             "Wrong renderer failure",
         )
+        require(
+            renderer_platform in ("darwin", "linux", "win32"), "Missing expected renderer platform"
+        )
         observed = exactly("bunly.native.renderer-failure-observed")
         require(
             observed
-            == {"event": "bunly.native.renderer-failure-observed", "passed": True, "exitCode": 86}
+            == {
+                "event": "bunly.native.renderer-failure-observed",
+                "passed": True,
+                "exitCode": 86,
+                "nativeErrorCode": 86 if renderer_platform == "win32" else 86 << 8,
+                "platform": renderer_platform,
+            }
             and type(observed.get("exitCode")) is int
+            and type(observed.get("nativeErrorCode")) is int
+            and observed.get("passed") is True
             and records.index(ready)
             < records.index(injection)
             < records.index(observed)
@@ -241,7 +253,7 @@ def accept_fault(
                 < records.index(phases[0]),
                 "GPU recovery did not follow actual injection",
             )
-    if not (mode == "renderer-exit" and require_renderer_task):
+    if not (mode == "renderer-exit" and require_renderer_message):
         require(
             not matching("bunly.native.renderer-injected"),
             "Unexpected native-task injection receipt",

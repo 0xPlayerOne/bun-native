@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { rendererFaultExit } from './fault-exit.ts'
 import { pageTimeout } from './page-readiness.ts'
 import { waitForGpuInjection } from './fault-ack.ts'
 import { startObservedDirectChild, startObservedShellTree } from './fault-supervision.ts'
@@ -119,14 +120,8 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
           }),
         ])
         assert.ok(rendererExitSeen, 'Missing native renderer exit event')
-        assert.equal(rendererExitCode, 86, 'Wrong native renderer exit code')
-        console.error(
-          JSON.stringify({
-            event: 'bunly.native.renderer-failure-observed',
-            passed: true,
-            exitCode: 86,
-          })
-        )
+
+        console.error(JSON.stringify(rendererFaultExit(rendererExitCode, process.platform)))
         return
       } finally {
         if (deadline) clearTimeout(deadline)

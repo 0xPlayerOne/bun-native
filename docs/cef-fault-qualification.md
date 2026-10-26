@@ -223,3 +223,11 @@ classification, ordered teardown and zero output balances. It forbids any
 simultaneous external PID injection. Historical schema 5 keeps its original
 PID-identity checks when explicitly replayed. GPU injection still uses the
 independently verified executable, ancestry, birth identity and process role.
+
+The first document-message run (`df90561`) reached and terminated the intended
+renderer, but its receipt incorrectly compared the POSIX raw wait status with
+the decoded exit value. Pinned Chromium `base/process/kill_posix.cc` preserves
+waitpid status (`86 << 8`, or 22016); Windows `kill_win.cc` preserves exit code 86. Current acceptance keeps both the raw code and fixed decoded value and
+checks them against the independently selected target platform. Different
+signals/statuses and unknown platforms still fail. That first failed run is
+retained, not relabeled a pass.

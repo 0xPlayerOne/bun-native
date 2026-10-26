@@ -29,6 +29,7 @@ const paths = [
   'benchmarks/lib/inventory.ts',
   'benchmarks/lib/source-identity.ts',
   'examples/cef/fault.ts',
+  'examples/cef/fault-exit.ts',
   'examples/cef/fault-supervision.ts',
   'examples/cef/fault-tree-child.ts',
   'examples/cef/fault-tree-notification.ts',

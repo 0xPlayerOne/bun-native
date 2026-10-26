@@ -366,7 +366,7 @@ class NativeRendererTaskTests(unittest.TestCase):
         del rows[0]["rendererPid"]
         for row in rows:
             if row["event"] == "bunly.native.renderer-failure-observed":
-                row["exitCode"] = 86
+                row.update({"exitCode": 86, "nativeErrorCode": 86 << 8, "platform": "darwin"})
         rows.insert(
             1,
             {
@@ -381,16 +381,34 @@ class NativeRendererTaskTests(unittest.TestCase):
 
     def test_native_task_injection_requires_actual_failure_and_no_external_pid_signal(self):
         observation = self.task_fixture()
-        result = accept_fault("renderer-exit", observation, [], require_renderer_task=True)
+        result = accept_fault(
+            "renderer-exit",
+            observation,
+            [],
+            require_renderer_message=True,
+            renderer_platform="darwin",
+        )
         self.assertTrue(result["expectedApplicationFailure"])
         with self.assertRaises(ValueError):
             accept_fault("renderer-exit", observation, [])
         for injected in ([{"pid": 1}], [{"role": "renderer"}]):
             with self.assertRaises(ValueError):
-                accept_fault("renderer-exit", observation, injected, require_renderer_task=True)
+                accept_fault(
+                    "renderer-exit",
+                    observation,
+                    injected,
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
         old, injected = fixture("renderer-exit")
         with self.assertRaises(ValueError):
-            accept_fault("renderer-exit", old, injected, require_renderer_task=True)
+            accept_fault(
+                "renderer-exit",
+                old,
+                injected,
+                require_renderer_message=True,
+                renderer_platform="darwin",
+            )
 
     def test_missing_duplicate_wrong_or_reordered_native_injection_never_passes(self):
         observation = self.task_fixture()
@@ -410,7 +428,8 @@ class NativeRendererTaskTests(unittest.TestCase):
                     "renderer-exit",
                     {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
                     [],
-                    require_renderer_task=True,
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
                 )
         for changed in (
             rows[:1] + rows[2:],
@@ -423,7 +442,8 @@ class NativeRendererTaskTests(unittest.TestCase):
                     "renderer-exit",
                     {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
                     [],
-                    require_renderer_task=True,
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
                 )
 
     def test_namespace_pid_is_not_reinterpreted_as_host_identity(self):
@@ -435,7 +455,8 @@ class NativeRendererTaskTests(unittest.TestCase):
                 "renderer-exit",
                 {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
                 [],
-                require_renderer_task=True,
+                require_renderer_message=True,
+                renderer_platform="darwin",
             )
 
     def test_missing_actual_renderer_failure_cannot_pass_a_successful_request_receipt(self):
@@ -450,4 +471,60 @@ class NativeRendererTaskTests(unittest.TestCase):
                 ],
             }
             with self.assertRaises(ValueError):
-                accept_fault("renderer-exit", altered, [], require_renderer_task=True)
+                accept_fault(
+                    "renderer-exit",
+                    altered,
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
+
+    def test_raw_native_status_must_match_independently_selected_platform(self):
+        observation = self.task_fixture()
+        accept_fault(
+            "renderer-exit",
+            observation,
+            [],
+            require_renderer_message=True,
+            renderer_platform="darwin",
+        )
+        for platform in (None, "unknown", "win32", "linux"):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    observation,
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform=platform,
+                )
+        for platform in ("linux", "win32"):
+            rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+            for row in rows:
+                if row["event"] == "bunly.native.renderer-failure-observed":
+                    row.update(
+                        {
+                            "platform": platform,
+                            "nativeErrorCode": 86 if platform == "win32" else 22016,
+                        }
+                    )
+            changed = {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]}
+            accept_fault(
+                "renderer-exit",
+                changed,
+                [],
+                require_renderer_message=True,
+                renderer_platform=platform,
+            )
+            for bad in (0, True, -1, 9, 11, "22016", 85 << 8, 87 << 8):
+                altered = copy.deepcopy(rows)
+                for row in altered:
+                    if row["event"] == "bunly.native.renderer-failure-observed":
+                        row["nativeErrorCode"] = bad
+                with self.assertRaises(ValueError):
+                    accept_fault(
+                        "renderer-exit",
+                        {**observation, "nativeDiagnostics": [json.dumps(row) for row in altered]},
+                        [],
+                        require_renderer_message=True,
+                        renderer_platform=platform,
+                    )

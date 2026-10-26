@@ -181,7 +181,8 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
                 trial["injected"],
                 require_output=faults.get("schema") in (3, 4, 5, 6),
                 require_renderer_identity=faults.get("schema") == 5,
-                require_renderer_task=faults.get("schema") == 6,
+                require_renderer_message=faults.get("schema") == 6,
+                renderer_platform=target.split("-")[0],
             )
         if faults.get("schema") in (4, 5, 6):
             from cef_fault_control import accept_foreign_control
