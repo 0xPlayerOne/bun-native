@@ -203,3 +203,131 @@ The updated code passed `check:portable` (**626 Bun tests, 199 Python tests**),
 focused profile/reporter suite (**28 tests**, also overlapping). Missing or partial
 shutdown phases are rejected; replaying the retained watchdog report identifies
 `cef-shutdown` as pending and leaves its duration unknown rather than zero.
+
+## CEF 156 sustained PTY investigation (October 25)
+
+**The watchdog is not fixed.** This increment adds a native ownership discriminator
+and a maintained, identity-checked, non-suspending thread-state capture command. It does not establish a causal
+runtime cure or complete #25, #27, #92, or M5. The coordinator owns review and merge.
+See [the attempt ledger](../evidence/cef-shutdown-load-2026-10-25.json).
+
+The supplied adverse baseline is the complete `run-LpSEdA` profile: twelve launches,
+seven accepted and five rejected. Visible trial 3 completed all 700 batches and
+normal Bun exit before watchdog exit 2. Hidden trial 1 combined a workload deadline,
+Bun exit 1, and watchdog exit 2. Both retained one observed utility orphan and failed
+post-exit cleanup. The other hidden failures returned normally from CEF. Those
+workload failures belong to the separate load investigation; none were reset or
+reclassified here.
+
+### What was tested
+
+The specific hypothesis was that Bunly's session initialization/disposal callbacks
+or request-context handlers remained retained after the final IO/UI fence, delaying
+CEF shutdown. The `shutdown-diagnostics` Cargo feature counts **wrapper lifetimes**
+for context handlers, session-ready tasks, flush callbacks, and connection-close
+callbacks. Cloned tokens decrement only when their last owner drops. Receipts are
+emitted at the final UI fence, before `CefShutdown`, and after its return. These are
+not CEF internal reference counts, thread-pool task counts, or a drain barrier.
+The default build emits no audit receipt and allocates no audit owner.
+
+A fresh release host and all helper executables were built from this branch with
+`packaging,rpc-qualification,shutdown-diagnostics`, placed in a separate private app,
+and ad-hoc signed independently. The CEF binary was unchanged:
+`d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902`.
+Its exported identity is CEF 156.0.7 / Chromium 156.0.8078.17. Packaged and developer
+Bun are 1.4.3. The source base is `6c01202`; its native source tree is identical to
+qualified artifact source `c17d20f7ffdec59de965b9d9d5b944ca65a36128` before the audit
+patch. The evidence records exact native source and artifact hashes.
+
+The workload component is independently pinned at
+`c23014dbb7f4d04a323ca23c935f1bc9c47c7978`, from #118. Its source was exported privately
+without changing the load agent's worktree. Rebundling reproduced both Bun outputs
+byte-for-byte; the browser bundle differed only in a generated xterm source-path
+comment. Runs retained the original browser bundle bytes. This dual-component
+identity must not be described as an all-current-source M5 benchmark. No #118
+performance measurement or claimed regression budget was adopted.
+
+The initial stack-sampling experiments produced both a completed visible workload
+followed by watchdog exit 2 and a hidden workload deadline followed by watchdog exit 2. **All four audited classes were zero before shutdown in those failures.** A third
+stack-sampler invocation, only eight seconds into active workload, also timed out
+and preceded a watchdog. All three actual sampler invocations timed out and their
+launches ended at the watchdog. They cannot characterize the original uninstrumented
+failure: terminating a timed-out suspending sampler is a material confounder. That
+sampler implementation was rejected and is retained privately, not shipped. The unchanged
+control and later diagnostic runs without stack sampling also returned normally.
+One unchanged control spent 8,148 ms in CEF shutdown. Passing runs, rebuilding,
+zero counts, or a long successful return do not establish a fix.
+
+### Maintained capture command and limits
+
+```sh
+python scripts/capture_cef_shutdown.py PRIVATE_APP NEW_PRIVATE_DIRECTORY --role control --mode visible
+python scripts/capture_cef_shutdown.py PRIVATE_APP NEW_PRIVATE_DIRECTORY --role network --mode visible --after 40
+```
+
+The caller must supply an independently signed private app already containing the
+pinned workload. The command never compiles or changes that app. It uses the existing
+90-second load observer, its ordinary orphan/clone rules, and unchanged native
+watchdogs. `control` means no stack sampling; the app may still contain the optional
+lifetime audit. `host` and `network` collect at most ten read-only libproc thread-state snapshots
+250 ms apart (at most 256 threads each). They do not suspend the target or invoke
+`sample`, LLDB, signals, or task memory reads. Reports are collection output, not workload or
+performance acceptance; inspect command outcomes and replay workload/shutdown gates.
+
+Only the observer's owned root or its unique NetworkService child can be sampled.
+The gate requires same-user identity, root birth and kernel identity, live child
+ancestry, original-parent kernel identity, and the exact private helper executable.
+Identity and executable content are rechecked before and after each snapshot.
+Chromium's host signing clone is accepted only when its inode and hash match the
+already owned private host. Identical bytes at another inode do not qualify. This
+capture-only rule does not change the existing helper cleanup policy. Raw identities
+and kernel thread records stay private; the ledger is written before invoking the sampler.
+
+Early attempts exposed an overly strict root pathname check during signing-clone
+execution. Those refused captures are retained, and deterministic regressions cover
+the corrected same-inode/hash qualification. Refused identities and processes that exit before revalidation never qualify a
+snapshot. Run states, bounded thread names, CPU time and sleep time do not identify
+queued task sources or establish a deadlock. Short per-thread reads remain explicitly
+unavailable. The ABI comes from the installed XNU `sys/proc_info.h`: flavors 6 and 5,
+112-byte `proc_threadinfo`; list entries are thread handles, not flavor-15 thread IDs.
+No current stack capture is used to claim a Chromium or kernel deadlock.
+
+The remaining discriminator is a bounded capture of the actual Chromium shutdown
+work and its blocking task sources on a current adverse run, with uninstrumented
+controls. The audited Bunly callback classes do not explain the sampled failures.
+There is no evidence here supporting an activity assertion, different watchdog,
+forced normal CEF termination, sandbox change, or different CEF binary.
+
+Version-pinned primary source inspected:
+[Chromium browser shutdown ordering](https://github.com/chromium/chromium/blob/156.0.8078.17/content/browser/browser_main_loop.cc)
+and [NetworkService remote teardown](https://github.com/chromium/chromium/blob/156.0.8078.17/content/browser/network_service_instance_impl.cc).
+They locate the teardown boundaries; they do not identify this run's blocking task.
+
+### Validation and scope
+
+Default CEF tests: 155 passed. Contributor tests with the lifetime audit: 161 passed.
+Default and contributor Clippy passed with `-D warnings`; default and contributor
+release builds passed. The ordinary maintained graphical terminal functional
+qualification passed on the new private artifact. These results qualify the
+instrumentation/functional scope, not watchdog reliability.
+
+The final ledger retains 23 new launches: 20 passed workload, ordered shutdown and
+command gates; three watchdog failures are sampler-confounded. The seven unchanged
+control launches all returned normally. Two active-load libproc captures each
+completed ten identity-verified snapshots; one late capture found no live target
+before process exit, and another retained partial snapshots plus the exit race.
+These are diagnostic outcomes, not calibrated measurements or reliability acceptance.
+
+Portable validation passed with 834 Bun tests (one existing Windows-only skip) and
+236 Python tests. The attempt ledger records foundation, workflow, doctor, native probe,
+host qualification, artifact probe, formatting, hooks and secret checks. Initial
+build failures from relocated CMake cache paths and restricted `sccache`, and the
+initial sandbox-denied process-observer tests, were retained and subsequently
+rerun successfully. No check was weakened. Local native execution is macOS arm64;
+Linux/Windows execution, personal credential-provider tests, controlled comparison
+benchmarks, and M5 acceptance are not claimed.
+
+Native edits are limited to callback token construction in `host.rs`, the context
+handler in `scheme.rs`, the new audit module/feature, and two checkpoints plus its
+module declaration in `lib.rs`. No process-spawn/terminal-owner section, window
+method, or `window_state.rs` was edited.
