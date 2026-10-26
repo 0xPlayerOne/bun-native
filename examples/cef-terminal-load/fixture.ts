@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 import type { BinaryStreamWriter } from '../../packages/contracts/src/streams.ts'
 import type { CefBackend, CefStreamConnection } from '../../packages/runtime/src/cef.ts'
 import {
-  BunTerminalDriver,
   TerminalService,
   type TerminalDriver,
   type TerminalHandle,
@@ -18,11 +17,13 @@ export default async function loadFixture(backend: CefBackend) {
   const selected = mode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
   const output = process.env['BUNLY_TERMINAL_LOAD_OUTPUT']
   assert.ok(output)
+  // Native installation/profile admission must precede fixture output creation.
+  // There is no standalone fallback when guardian selection or verification fails.
+  const delegate = await backend.createTerminalDriver({ profile: 'non-detaching' })
   const raw = await open(output, 'wx', 0o600)
   const record = async (value: object) => {
     await raw.write(JSON.stringify(value) + '\n')
   }
-  const delegate = new BunTerminalDriver()
   const probes = [new Probe(), new Probe()]
   const driver: TerminalDriver = {
     spawn(options, observer) {

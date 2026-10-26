@@ -233,3 +233,25 @@ An individual soak is functional/trend evidence, not independent confidence
 intervals, matched-engine superiority or an invented production RSS guarantee.
 The shorter cached checkpoint's visible RSS growth remains unresolved until
 actual longer traces establish whether it stabilizes; no plateau is presumed.
+
+## Rejected ownership-label checkpoints and corrected selection
+
+Review caught an implementation error in the guarded-profile preparation:
+84f2015 added native-non-detaching receipt assertions but an unmatched edit left
+`new BunTerminalDriver()` in the actual load entrypoint. Consequently its two
+standard functional trials and the subsequent 1f2ba71 two-trial soak are **not
+accepted as guarded native-owner evidence**, despite their raw passed flags.
+The raw reports remain immutable and their source/fingerprint disposition is
+retained privately; neither is relabeled as a successful current guarded run.
+The earlier 86986c3 twenty-launch checkpoint was correctly described as direct
+child and retains that historical scope.
+
+The corrected entrypoint now explicitly awaits
+`backend.createTerminalDriver({profile: 'non-detaching'})` before creating its
+instrumentation file. Admission failure propagates with no standalone fallback
+or partially created success log. A new isolated test calls the actual load
+entrypoint with native admission deliberately unavailable: it failed on the old
+source, and now requires exactly one native-profile request, the original
+failure and no output file. This protects actual driver selection in addition
+to the existing receipt/provenance checks. Fresh execution is required before
+any guarded load or soak claim; no previous observation repairs this mistake.
