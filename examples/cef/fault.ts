@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { pageTimeout } from './page-readiness.ts'
 import { waitForGpuInjection } from './fault-ack.ts'
-import { startObservedShellTree } from './fault-supervision.ts'
+import { startObservedDirectChild, startObservedShellTree } from './fault-supervision.ts'
 import { writeFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
@@ -90,16 +90,7 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0)
       throw new Error('Deliberately blocked backend unexpectedly resumed')
     }
-    if (mode === 'backend-tree-exit') {
-      const descendant = Bun.spawn([process.execPath, '-e', 'setInterval(() => {}, 1000)'], {
-        stdin: 'ignore',
-        stdout: 'inherit',
-        stderr: 'inherit',
-      })
-      console.error(JSON.stringify({ event: 'bunly.fault.descendant', pid: descendant.pid }))
-      await Bun.sleep(150)
-      process.exit(23)
-    }
+    if (mode === 'backend-tree-exit') await startObservedDirectChild(faultDeadlineMs)
     if (mode === 'backend-exit') process.exit(23)
     if (mode === 'renderer-exit') {
       let deadline: ReturnType<typeof setTimeout> | undefined
