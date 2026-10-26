@@ -137,3 +137,58 @@ def notify_tree_observation(port, nonce, pids, *, mode="backend-shell-tree-exit"
             raise ValueError("Invalid tree notification acknowledgment")
     finally:
         connection.close()
+
+
+def fault_readiness(path, nonce, mode):
+    """Read one bounded private marker; renderer injection requires native frame proof."""
+    try:
+        if (
+            mode not in ("renderer-exit", "gpu-exit")
+            or path.is_symlink()
+            or path.stat().st_size > 4096
+        ):
+            return None
+
+        def exact_object(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("Duplicate fault readiness field")
+                value[key] = item
+            return value
+
+        with path.open("rb") as source:
+            encoded = source.read(4097)
+        if len(encoded) > 4096:
+            return None
+        value = json.loads(encoded, object_pairs_hook=exact_object)
+        fields = {"mode", "nonce", "pid"}
+        if mode == "renderer-exit":
+            fields.add("rendererPid")
+        if (
+            not isinstance(value, dict)
+            or set(value) != fields
+            or value["nonce"] != nonce
+            or value["mode"] != mode
+        ):
+            return None
+        if type(value["pid"]) is not int or not 0 < value["pid"] < 2**31:
+            return None
+        if mode == "renderer-exit" and (
+            type(value["rendererPid"]) is not int
+            or not 0 < value["rendererPid"] < 2**31
+            or value["rendererPid"] == value["pid"]
+        ):
+            return None
+        return value
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def fault_target_matches(readiness, mode, pid):
+    """A role match alone cannot select a renderer that is not the fault page's host."""
+    return (
+        isinstance(readiness, dict)
+        and bool(readiness)
+        and (mode == "gpu-exit" or mode == "renderer-exit" and readiness["rendererPid"] == pid)
+    )

@@ -162,7 +162,7 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
     )
     from cef_fault_acceptance import MODES
 
-    fault_modes = set(MODES) if faults.get("schema") == 4 else FAULTS
+    fault_modes = set(MODES) if faults.get("schema") in (4, 5, 6, 7) else FAULTS
     require(
         faults.get("passed") is True and len(faults["trials"]) == len(fault_modes),
         "Incomplete native faults",
@@ -172,13 +172,20 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
     )
     for trial in faults["trials"]:
         mode, observation = trial["mode"], trial["observation"]
-        if faults.get("schema") in (2, 3, 4):
+        if faults.get("schema") in (2, 3, 4, 5, 6, 7):
             from cef_fault_acceptance import accept_fault
 
             accept_fault(
-                mode, observation, trial["injected"], require_output=faults.get("schema") in (3, 4)
+                mode,
+                observation,
+                trial["injected"],
+                require_output=faults.get("schema") in (3, 4, 5, 6, 7),
+                require_renderer_identity=faults.get("schema") == 5,
+                require_renderer_message=faults.get("schema") == 6,
+                require_renderer_handshake=faults.get("schema") == 7,
+                renderer_platform=target.split("-")[0],
             )
-        if faults.get("schema") == 4:
+        if faults.get("schema") in (4, 5, 6, 7):
             from cef_fault_control import accept_foreign_control
 
             accept_foreign_control(trial.get("foreignControl"), observation)
@@ -206,7 +213,9 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
                 ),
                 "Backend failure not observed",
             )
-        elif mode != "backend-hang":
+        elif mode != "backend-hang" and not (
+            mode == "renderer-exit" and faults.get("schema") in (6, 7)
+        ):
             require(len(trial["injected"]) == 1, "Missing actual native helper fault")
             injection = trial["injected"][0]
             require(

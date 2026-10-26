@@ -160,8 +160,8 @@ exercises a real PTY, explicit environment, Unicode input, resize, split/invalid
 output, nonzero exit, PTY closure, acknowledged byte hashes and explicit close
 through the headless xterm consumer.
 
-The service owns and signals only Bun's direct `Subprocess`. It is not a process-tree
-supervisor, does not manage detached descendants or Windows jobs, and makes no
+The generic default `BunTerminalDriver` owns and signals only Bun's direct
+`Subprocess`. It does not manage detached descendants or Windows jobs and makes no
 universal descendant-ownership claim. Native renderer authorization, graphical
 xterm behavior, representative latency/RSS qualification, managed backend
 replacement and cross-generation terminal adoption remain separate work.
@@ -205,6 +205,16 @@ frames. Pending-byte coalescing addresses that fragmentation without increasing
 the fixed 32-KiB source budget, the eight-chunk limit or the renderer workload.
 The original failed graphical runs and unchanged-source failing coalescing tests
 are retained. Byte-exact output and explicit overload still require qualification.
+
+## Opt-in native group owner
+
+The desktop path uses `await backend.createTerminalService({ profile: 'non-detaching' })`.
+Its native-owned configuration discovers the verified packaged owner and binds the
+host lifetime before admission. Unix retained groups and Windows per-terminal Jobs
+supply descendant ownership within the declared profile. The graphical fixture uses
+this driver; generic direct Bun use remains explicit and separately documented.
+See [native terminal ownership](terminal-owner.md) for protocol, failure accounting,
+platform acceptance and unsupported guardian/detached-group boundaries.
 
 ## Opted-in service supervision
 

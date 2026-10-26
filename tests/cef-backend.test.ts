@@ -468,3 +468,44 @@ test('policy scope must use the same native document identity as the view', asyn
     await f.backend.dispose()
   }
 })
+
+test('renderer fault injection has a fixed native operation and cannot accept a forged scope', async () => {
+  const f = await fixture()
+  try {
+    const scope = await f.backend.capturePolicyScope(f.view)
+    let result: unknown = null
+    f.handle((command) => {
+      f.reply(command, command.op === 'rpc.qualification.renderer.crash' ? result : null)
+      if (command.op === 'quit') f.send({ v: 1, event: 'shutdown' })
+    })
+    await f.backend.qualifyRendererCrash(scope)
+    assert.equal(f.commands.at(-1)?.op, 'rpc.qualification.renderer.crash')
+    assert.deepEqual(f.commands.at(-1)?.args, { id: 3, scope: nativePolicyScope() })
+    const before = f.commands.length
+    await assert.rejects(f.backend.qualifyRendererCrash({ ...scope } as PolicyScope), /foreign/)
+    assert.equal(f.commands.length, before)
+    for (result of [true, 1, {}, { pid: 1 }, { accepted: true }])
+      await assert.rejects(f.backend.qualifyRendererCrash(scope), /injection receipt/)
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('renderer fault injection rejects a scope retired before dispatch without issuing a native command', async () => {
+  const f = await fixture()
+  try {
+    const scope = await f.backend.capturePolicyScope(f.view)
+    f.send({
+      v: 1,
+      event: 'view.navigating',
+      target: 3,
+      data: { url: 'https://example.test/', documentId: 'native-3-2' },
+    })
+    await turn()
+    const before = f.commands.length
+    await assert.rejects(f.backend.qualifyRendererCrash(scope), /stale|changed|ready|document/)
+    assert.equal(f.commands.length, before)
+  } finally {
+    await f.backend.dispose()
+  }
+})

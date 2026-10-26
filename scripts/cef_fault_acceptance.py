@@ -18,7 +18,17 @@ def finite_nonnegative(value):
     return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
 
-def accept_fault(mode, observation, injections, *, require_output=True):
+def accept_fault(
+    mode,
+    observation,
+    injections,
+    *,
+    require_output=True,
+    require_renderer_identity=True,
+    require_renderer_message=False,
+    renderer_platform=None,
+    require_renderer_handshake=False,
+):
     require(mode in MODES, "Unknown fault mode")
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
     clean_process(observation, 0 if mode == "gpu-exit" else 1)
@@ -151,6 +161,53 @@ def accept_fault(mode, observation, injections, *, require_output=True):
             "Wrong backend failure diagnostic",
         )
         require(injections == [], "Backend case must not inject a browser fault")
+    elif mode == "renderer-exit" and (require_renderer_message or require_renderer_handshake):
+        require(injections == [], "Native document fault must not also signal a guessed OS process")
+        require(
+            set(ready) == {"event", "mode", "pid"},
+            "Unexpected namespace PID in native-task readiness",
+        )
+        injection = exactly("bunly.native.renderer-injected")
+        require(
+            injection
+            == {
+                "event": "bunly.native.renderer-injected",
+                "schema": 2 if require_renderer_handshake else 1,
+                "authority": "native-main-frame-handshake"
+                if require_renderer_handshake
+                else "native-main-frame-message",
+                "exitCode": 86,
+            }
+            and type(injection.get("schema")) is int
+            and type(injection.get("exitCode")) is int,
+            "Missing exact native main-frame task injection",
+        )
+        require(
+            failures == ["Renderer process terminated before native shutdown"],
+            "Wrong renderer failure",
+        )
+        require(
+            renderer_platform in ("darwin", "linux", "win32"), "Missing expected renderer platform"
+        )
+        observed = exactly("bunly.native.renderer-failure-observed")
+        require(
+            observed
+            == {
+                "event": "bunly.native.renderer-failure-observed",
+                "passed": True,
+                "exitCode": 86,
+                "nativeErrorCode": 86 if renderer_platform == "win32" else 86 << 8,
+                "platform": renderer_platform,
+            }
+            and type(observed.get("exitCode")) is int
+            and type(observed.get("nativeErrorCode")) is int
+            and observed.get("passed") is True
+            and records.index(ready)
+            < records.index(injection)
+            < records.index(observed)
+            < records.index(backend),
+            "Actual renderer failure did not follow the native document injection",
+        )
     else:
         require(
             isinstance(injections, list) and len(injections) == 1, "Missing exact helper injection"
@@ -168,6 +225,14 @@ def accept_fault(mode, observation, injections, *, require_output=True):
             "Wrong or unidentified helper injection",
         )
         if mode == "renderer-exit":
+            if require_renderer_identity or "rendererPid" in ready:
+                require(
+                    positive_integer(ready.get("rendererPid"))
+                    and ready["rendererPid"] != ready["pid"]
+                    and injection["pid"] == ready["rendererPid"]
+                    and injection.get("targetAuthority") == "native-main-frame",
+                    "Renderer injection did not target the exact native main-frame process",
+                )
             require(
                 failures == ["Renderer process terminated before native shutdown"],
                 "Wrong renderer failure",
@@ -191,6 +256,13 @@ def accept_fault(mode, observation, injections, *, require_output=True):
                 < records.index(phases[0]),
                 "GPU recovery did not follow actual injection",
             )
+    if not (mode == "renderer-exit" and (require_renderer_message or require_renderer_handshake)):
+        require(
+            not matching("bunly.native.renderer-injected"),
+            "Unexpected native-task injection receipt",
+        )
+    if mode != "renderer-exit":
+        require("rendererPid" not in ready, "Unexpected renderer proof in another fault mode")
     descendants = matching("bunly.fault.descendant")
     if mode == "backend-shell-tree-exit":
         require(len(descendants) == 2, "Missing shell/server descendant pair")

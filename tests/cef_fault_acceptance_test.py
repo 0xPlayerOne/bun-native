@@ -13,6 +13,8 @@ from cef_fault_acceptance import MODES, PHASES, accept_fault
 def fixture(mode):
     records = [{"event": "bunly.fault.ready", "mode": mode, "pid": 101}]
     injections = []
+    if mode == "renderer-exit":
+        records[0]["rendererPid"] = 104
     if mode == "backend-hang":
         records = [
             {"event": "bunly.runtime.profile", "profile": "standard"},
@@ -67,6 +69,8 @@ def fixture(mode):
     if not mode.startswith("backend-"):
         role = "renderer" if mode == "renderer-exit" else "gpu-process"
         injections = [{"pid": 104, "creationTime": 1, "role": role, "roleEvidence": {"role": role}}]
+        if mode == "renderer-exit":
+            injections[0]["targetAuthority"] = "native-main-frame"
     for phase in PHASES:
         records.append({"event": "bunly.host.shutdown-phase", "phase": phase, "state": "start"})
         if phase == "process-stop":
@@ -326,3 +330,267 @@ class ExtendedSupervisionTests(unittest.TestCase):
                 {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
                 injections,
             )
+
+
+class RendererTargetAcceptanceTests(unittest.TestCase):
+    def test_role_only_or_foreign_renderer_cannot_qualify_current_faults(self):
+        observation, injections = fixture("renderer-exit")
+        for pid in (105, 101, True, 0, 2**31):
+            changed = copy.deepcopy(observation)
+            rows = [json.loads(line) for line in changed["nativeDiagnostics"]]
+            rows[0]["rendererPid"] = pid
+            changed["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+            with self.subTest(pid=pid), self.assertRaises(ValueError):
+                accept_fault("renderer-exit", changed, injections)
+        for authority in (None, "renderer-role", True):
+            changed = [{**injections[0], "targetAuthority": authority}]
+            with self.assertRaises(ValueError):
+                accept_fault("renderer-exit", observation, changed)
+
+    def test_historical_renderer_role_claim_requires_explicit_legacy_selection(self):
+        observation, injections = fixture("renderer-exit")
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        del rows[0]["rendererPid"]
+        observation["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+        del injections[0]["targetAuthority"]
+        with self.assertRaises(ValueError):
+            accept_fault("renderer-exit", observation, injections)
+        accept_fault("renderer-exit", observation, injections, require_renderer_identity=False)
+
+
+class NativeRendererTaskTests(unittest.TestCase):
+    @staticmethod
+    def task_fixture():
+        observation, _ = fixture("renderer-exit")
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        del rows[0]["rendererPid"]
+        for row in rows:
+            if row["event"] == "bunly.native.renderer-failure-observed":
+                row.update({"exitCode": 86, "nativeErrorCode": 86 << 8, "platform": "darwin"})
+        rows.insert(
+            1,
+            {
+                "event": "bunly.native.renderer-injected",
+                "schema": 1,
+                "authority": "native-main-frame-message",
+                "exitCode": 86,
+            },
+        )
+        observation["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+        return observation
+
+    def test_native_task_injection_requires_actual_failure_and_no_external_pid_signal(self):
+        observation = self.task_fixture()
+        result = accept_fault(
+            "renderer-exit",
+            observation,
+            [],
+            require_renderer_message=True,
+            renderer_platform="darwin",
+        )
+        self.assertTrue(result["expectedApplicationFailure"])
+        with self.assertRaises(ValueError):
+            accept_fault("renderer-exit", observation, [])
+        for injected in ([{"pid": 1}], [{"role": "renderer"}]):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    observation,
+                    injected,
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
+        old, injected = fixture("renderer-exit")
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                old,
+                injected,
+                require_renderer_message=True,
+                renderer_platform="darwin",
+            )
+
+    def test_missing_duplicate_wrong_or_reordered_native_injection_never_passes(self):
+        observation = self.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        for key, value in (
+            ("schema", 2),
+            ("schema", True),
+            ("exitCode", 0),
+            ("exitCode", True),
+            ("authority", "renderer-role"),
+            ("pid", 1),
+        ):
+            changed = copy.deepcopy(rows)
+            changed[1][key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
+        for changed in (
+            rows[:1] + rows[2:],
+            rows + [rows[1]],
+            [rows[1], rows[0], *rows[2:]],
+            [rows[0], *rows[2:], rows[1]],
+        ):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**observation, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
+
+    def test_namespace_pid_is_not_reinterpreted_as_host_identity(self):
+        observation = self.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        rows[0]["rendererPid"] = 1
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]},
+                [],
+                require_renderer_message=True,
+                renderer_platform="darwin",
+            )
+
+    def test_missing_actual_renderer_failure_cannot_pass_a_successful_request_receipt(self):
+        observation = self.task_fixture()
+        for event in ("bunly.host.failure", "bunly.native.renderer-failure-observed"):
+            altered = {
+                **observation,
+                "nativeDiagnostics": [
+                    line
+                    for line in observation["nativeDiagnostics"]
+                    if json.loads(line)["event"] != event
+                ],
+            }
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    altered,
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform="darwin",
+                )
+
+    def test_raw_native_status_must_match_independently_selected_platform(self):
+        observation = self.task_fixture()
+        accept_fault(
+            "renderer-exit",
+            observation,
+            [],
+            require_renderer_message=True,
+            renderer_platform="darwin",
+        )
+        for platform in (None, "unknown", "win32", "linux"):
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    observation,
+                    [],
+                    require_renderer_message=True,
+                    renderer_platform=platform,
+                )
+        for platform in ("linux", "win32"):
+            rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+            for row in rows:
+                if row["event"] == "bunly.native.renderer-failure-observed":
+                    row.update(
+                        {
+                            "platform": platform,
+                            "nativeErrorCode": 86 if platform == "win32" else 22016,
+                        }
+                    )
+            changed = {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]}
+            accept_fault(
+                "renderer-exit",
+                changed,
+                [],
+                require_renderer_message=True,
+                renderer_platform=platform,
+            )
+            for bad in (0, True, -1, 9, 11, "22016", 85 << 8, 87 << 8):
+                altered = copy.deepcopy(rows)
+                for row in altered:
+                    if row["event"] == "bunly.native.renderer-failure-observed":
+                        row["nativeErrorCode"] = bad
+                with self.assertRaises(ValueError):
+                    accept_fault(
+                        "renderer-exit",
+                        {**observation, "nativeDiagnostics": [json.dumps(row) for row in altered]},
+                        [],
+                        require_renderer_message=True,
+                        renderer_platform=platform,
+                    )
+
+
+class NativeRendererHandshakeTests(unittest.TestCase):
+    def test_native_ack_and_commit_receipt_cannot_replace_the_actual_renderer_exit(self):
+        observation = NativeRendererTaskTests.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        rows[1].update({"schema": 2, "authority": "native-main-frame-handshake"})
+        correct = {**observation, "nativeDiagnostics": [json.dumps(row) for row in rows]}
+        accept_fault(
+            "renderer-exit",
+            correct,
+            [],
+            require_renderer_handshake=True,
+            renderer_platform="darwin",
+        )
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                correct,
+                [],
+                require_renderer_message=True,
+                renderer_platform="darwin",
+            )
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                observation,
+                [],
+                require_renderer_handshake=True,
+                renderer_platform="darwin",
+            )
+        for event in (
+            "bunly.native.renderer-injected",
+            "bunly.native.renderer-failure-observed",
+            "bunly.host.failure",
+        ):
+            changed = {
+                **correct,
+                "nativeDiagnostics": [json.dumps(row) for row in rows if row["event"] != event],
+            }
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    changed,
+                    [],
+                    require_renderer_handshake=True,
+                    renderer_platform="darwin",
+                )
+        for key, value in (
+            ("schema", True),
+            ("schema", 1),
+            ("authority", "native-main-frame-message"),
+            ("exitCode", 0),
+            ("exitCode", True),
+            ("extra", 86),
+        ):
+            changed = copy.deepcopy(rows)
+            changed[1][key] = value
+            with self.assertRaises(ValueError):
+                accept_fault(
+                    "renderer-exit",
+                    {**correct, "nativeDiagnostics": [json.dumps(row) for row in changed]},
+                    [],
+                    require_renderer_handshake=True,
+                    renderer_platform="darwin",
+                )

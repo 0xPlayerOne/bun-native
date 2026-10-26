@@ -18,6 +18,8 @@ mod mac;
 mod network_policy;
 mod policy;
 mod process;
+#[cfg(feature = "rpc-qualification")]
+mod renderer_fault;
 mod renderer_rpc;
 pub mod resources;
 mod rpc_authority;
@@ -28,6 +30,7 @@ mod rpc_qualification;
 mod rpc_transport_qualification;
 mod scheme;
 mod session;
+mod terminal_runtime;
 #[cfg(not(feature = "sandbox"))]
 compile_error!("Bunly requires compiled sandbox support");
 #[derive(Clone)]
@@ -37,6 +40,7 @@ pub struct Paths {
     pub profile_root: Option<session::ProfileRoot>,
     pub bun: PathBuf,
     pub entry: PathBuf,
+    pub terminal_owner: PathBuf,
     pub dev_origin: Option<String>,
     pub(crate) deadlines: deadlines::DeadlineProfile,
     pub(crate) credential_policy: Option<session::credentials::Policy>,
@@ -246,6 +250,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .unwrap_or_else(|| cache.clone());
     let bun = resources.join(if cfg!(windows) { "bun.exe" } else { "bun" });
     let entry = resources.join("backend/main.js");
+    let (terminal_owner, _) = terminal_runtime::discover(directory)?;
     if !bun.is_file() || !entry.is_file() {
         return Err("Installed Bun or backend missing; runtime never downloads or compiles".into());
     }
@@ -256,6 +261,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
             profile_root: profile_root.clone(),
             bun,
             entry,
+            terminal_owner,
             dev_origin,
             deadlines: config.qualification_profile,
             credential_policy: config.credential_policy.clone(),
@@ -294,6 +300,8 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         return Err("CEF initialization failed (the configured profile root may already be locked by another application instance)".into());
     }
     run_message_loop();
+    #[cfg(unix)]
+    terminal_runtime::lifetime::revoke();
     shutdown_phase("process-stop", process::stop);
     shutdown_phase("host-release", host::release);
     // Stop work and fence continuations before the CEF runtime is disposed.

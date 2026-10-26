@@ -6,7 +6,6 @@ import type { ViewHandle } from '../../packages/contracts/src/index.ts'
 import type { CefBackend, CefStreamConnection } from '../../packages/runtime/src/cef.ts'
 import type { RpcContext, RpcHandlers } from '../../packages/runtime/src/rpc.ts'
 import {
-  BunTerminalDriver,
   TerminalService,
   type TerminalClosure,
   type TerminalDriver,
@@ -87,7 +86,7 @@ class PtyCallbackProbe {
 }
 
 class CapturingTerminalDriver implements TerminalDriver {
-  readonly delegate = new BunTerminalDriver()
+  constructor(readonly delegate: TerminalDriver) {}
   readonly probes = new Map<string, PtyCallbackProbe>()
   spawn(options: TerminalDriverSpawnOptions, observer: TerminalDriverObserver) {
     const token = options.env['BUNLY_TERMINAL_FIXTURE']
@@ -124,7 +123,9 @@ const line = (value: string) => new TextEncoder().encode(value + '\n')
 
 export default async function terminalFixture(backend: CefBackend): Promise<void> {
   Error.stackTraceLimit = 4
-  const driver = new CapturingTerminalDriver()
+  const driver = new CapturingTerminalDriver(
+    await backend.createTerminalDriver({ profile: 'non-detaching' })
+  )
   const service = new TerminalService({
     driver,
     limits: {

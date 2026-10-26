@@ -91,6 +91,7 @@ jobs:
           cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --bin bunly-terminal-owner
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,rpc-qualification -- -D warnings
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
           cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --features packaging,rpc-qualification --release > .bunly/hosted-evidence/build.log 2>&1 || { tail -180 .bunly/hosted-evidence/build.log; exit 1; }
@@ -122,8 +123,8 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite full
-      # full adds fault supervision before provider setup; automatic and manual
-      # runs share the same seven-stage map and unchanged native deadlines.
+      # Native owner execution precedes the unchanged eight CEF/provider stages.
+      # Both automatic/manual runs use the standard-user runner and deadlines.
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}
         shell: bash

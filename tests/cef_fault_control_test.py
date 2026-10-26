@@ -2,12 +2,18 @@
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from cef_fault_control import accept_foreign_control, notify_tree_observation
+from cef_fault_control import (
+    accept_foreign_control,
+    fault_readiness,
+    fault_target_matches,
+    notify_tree_observation,
+)
 
 
 class ForeignControlAcceptanceTests(unittest.TestCase):
@@ -106,3 +112,45 @@ class TreeNotificationTests(unittest.TestCase):
             notify_tree_observation(123, "a" * 48, [101, 102])
         connection.request.assert_called_once()
         connection.close.assert_called_once()
+
+
+class FaultRendererReadinessTests(unittest.TestCase):
+    def test_exact_native_pid_selects_one_renderer_not_another_same_role_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ready.json"
+            record = {"mode": "renderer-exit", "nonce": "a" * 48, "pid": 101, "rendererPid": 202}
+            path.write_text(json.dumps(record))
+            ready = fault_readiness(path, "a" * 48, "renderer-exit")
+            self.assertEqual(ready, record)
+            self.assertTrue(fault_target_matches(ready, "renderer-exit", 202))
+            self.assertFalse(fault_target_matches(ready, "renderer-exit", 203))
+            self.assertFalse(fault_target_matches(ready, "renderer-exit", 101))
+            self.assertFalse(fault_target_matches(None, "renderer-exit", 202))
+
+    def test_malformed_missing_or_duplicate_process_proof_is_not_readiness(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ready.json"
+            record = {"mode": "renderer-exit", "nonce": "a" * 48, "pid": 101, "rendererPid": 202}
+            for changed in [
+                {key: value for key, value in record.items() if key != "rendererPid"},
+                *[{**record, "rendererPid": value} for value in (True, "202", 0, 101, 2**31)],
+                {**record, "nonce": "b" * 48},
+                {**record, "extra": True},
+                {**record, "mode": "gpu-exit"},
+            ]:
+                path.write_text(json.dumps(changed))
+                self.assertIsNone(fault_readiness(path, "a" * 48, "renderer-exit"))
+            path.write_text(json.dumps(record)[:-1] + ', "rendererPid":202}')
+            self.assertIsNone(fault_readiness(path, "a" * 48, "renderer-exit"))
+            path.write_text("x" * 4097)
+            self.assertIsNone(fault_readiness(path, "a" * 48, "renderer-exit"))
+
+    def test_gpu_mode_retains_its_separate_owned_role_selection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ready.json"
+            record = {"mode": "gpu-exit", "nonce": "a" * 48, "pid": 101}
+            path.write_text(json.dumps(record))
+            ready = fault_readiness(path, "a" * 48, "gpu-exit")
+            self.assertEqual(ready, record)
+            self.assertTrue(fault_target_matches(ready, "gpu-exit", 303))
+            self.assertFalse(fault_target_matches(ready, "backend-exit", 303))

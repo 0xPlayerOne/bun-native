@@ -29,5 +29,6 @@
   "bunly.native.output-drained",
   "bunly.network.https-observation",
   "bunly.fault.blocked",
-  "bunly.fault.tree-observed"
+  "bunly.fault.tree-observed",
+  "bunly.native.renderer-injected"
 ]

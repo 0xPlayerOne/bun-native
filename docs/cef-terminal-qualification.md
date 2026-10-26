@@ -140,3 +140,12 @@ This is a small local functional/descriptive checkpoint. It supplies no identica
 competitor baseline, physical-input latency, sustained-memory plateau, measured
 release threshold or background/minimized qualification. Current-head hosted
 platform acceptance remains necessary before this increment merges.
+
+## Native ownership integration in draft #117
+
+The current fixture obtains `backend.createTerminalDriver({ profile: 'non-detaching' })`
+and retains its callback probe around that native driver. Missing or mismatched
+packaged owners fail the fixture. Earlier graphical receipts remain historical for
+their recorded source; they are not evidence for this new ownership path. The
+shared hosted runner executes the actual owner/descendant qualifier before the
+unchanged full eight CEF/provider stages. See [native terminal ownership](terminal-owner.md).
