@@ -104,7 +104,11 @@ test('pinned real PTYs restart failing generations only after exact output and r
     },
     readiness: () => writers.at(-1)!.ready.promise,
     async onChange(snapshot) {
-      if (snapshot.state === 'ready') await supervisor.write(snapshot.generation!, finish)
+      if (snapshot.state === 'ready') {
+        // Split the input deliberately: readiness cannot depend on callback framing.
+        await supervisor.write(snapshot.generation!, finish.subarray(0, 3))
+        await supervisor.write(snapshot.generation!, finish.subarray(3))
+      }
       if (snapshot.state === 'backoff' || snapshot.failure === 'ATTEMPTS_EXHAUSTED')
         failures.push(snapshot)
     },
@@ -202,11 +206,10 @@ test('real explicit service stop reports platform true exit and never restarts',
     const exit = supervisor.snapshot.exit!
     expect(exit.observed).toBe(true)
     expect(exit.waitError).toBe(false)
-    // Unix delivers SIGTERM; Windows TerminateProcess uses an exit code, not POSIX signals.
-    if (process.platform === 'win32') {
-      expect(exit.exitCode).not.toBe(0)
-      expect(exit.signalCode).toBeNull()
-    } else expect(exit.signalCode).toBe('SIGTERM')
+    // Preserve the pinned Bun callback, including its Windows SIGTERM label.
+    // That label is not a claim that Windows delivered a POSIX signal.
+    expect(exit.exitCode).not.toBe(0)
+    expect(exit.signalCode).toBe('SIGTERM')
     expect(service.diagnostics()).toMatchObject({ terminals: 0, sourceStreams: 0 })
   } finally {
     supervisor.dispose()

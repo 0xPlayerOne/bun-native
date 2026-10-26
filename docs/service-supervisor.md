@@ -129,8 +129,8 @@ output and explicit fixture input. Three successive nonzero generations verify
 fresh identities, disposal before replacement, exact output hashes from driver
 callbacks through consumer acknowledgments, and clean held ownership. An
 independent unrelated child remains responsive and exits naturally afterward.
-An explicit-stop case asserts Unix signal semantics separately from Windows exit
-semantics. There are no POSIX-only skips masquerading as Windows execution.
+An explicit-stop case retains the pinned Bun exit callback, including its
+`SIGTERM` label on Windows; that is not a claim of POSIX signal delivery by Windows. There are no POSIX-only skips masquerading as Windows execution.
 
 The existing `.github/workflows/bun-pty.yml` runs this optional qualification command
 on its macOS/Linux lane and inside `hosted-windows.ps1 -Suite pty`'s actual standard
@@ -138,3 +138,18 @@ user. Local macOS execution does not establish Windows/Linux acceptance; those
 platform runs remain required before merge. No workflow settings or billing flags
 are changed by this increment. Native descendant ownership and full M5 acceptance
 remain independent gates.
+
+## Retained Windows qualification correction
+
+The first integrated Windows runs failed both real-service scenarios. The restart
+fixture reached readiness but never completed its cooked-console input, then the
+test runner stopped it at the unchanged 20-second test deadline. The child now uses
+the same raw-mode `process.stdin` callback surface already qualified by the terminal
+service, accumulates bounded complete lines, and flushes its final output before
+exit. Every supervised generation is deliberately sent fragmented `finish` input.
+No supervisor restart/deadline or output-release criterion was relaxed.
+
+The explicit-stop fixture also incorrectly assumed Windows would report no signal
+label. The actual pinned Bun `onExit` callback reports `SIGTERM`; the assertion now
+preserves that runtime observation rather than replacing it with assumed OS
+semantics. Both original failed hosted runs remain retained.
