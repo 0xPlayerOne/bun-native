@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'bun:test'
 import type { NativeEvent } from '../packages/runtime/src/native-transport.ts'
@@ -194,7 +195,7 @@ test('windowed full-load evidence requires admission, every phase, and actual re
   const child = Bun.spawn(
     [
       process.execPath,
-      new URL('./fixtures/terminal-window-load-acceptance.ts', import.meta.url).pathname,
+      fileURLToPath(new URL('./fixtures/terminal-window-load-acceptance.ts', import.meta.url)),
     ],
     { stdout: 'pipe', stderr: 'pipe' }
   )
