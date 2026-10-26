@@ -20,7 +20,12 @@ export function descriptive(values: readonly number[]) {
   }
 }
 /** Fixed resource/correctness gate, never an invented RSS/latency threshold. */
-export function acceptLoadRows(raw: string, selected: string, os: unknown) {
+export function acceptLoadRows(
+  raw: string,
+  selected: string,
+  os: unknown,
+  host: 'cef' | 'electron' = 'cef'
+) {
   assert.ok(Buffer.byteLength(raw) <= 4 * 1024 * 1024, 'Raw instrumentation byte bound')
   const lines = raw.trim().split('\n')
   assert.equal(lines.length, 2 + LOAD.phases.length + BATCHES * LOAD.terminals)
@@ -79,21 +84,33 @@ export function acceptLoadRows(raw: string, selected: string, os: unknown) {
     connections: 0,
     budget: { reservedBytes: 0, streams: 0, views: 0 },
   })
-  const native = object(final['native'])
-  for (const field of [
-    'views',
-    'sessions',
-    'streamIncomingBytes',
-    'streamDeliveryBytes',
-    'streamDeliveryPackets',
-    'rpcIncomingBytes',
-    'rpcDeliveryBytes',
-    'rpcDeliveryPackets',
-    'nativeDeliveryBytes',
-    'nativeDeliveryPackets',
-  ])
-    assert.equal(native[field], 0)
-  assert.equal(native['windows'], 1)
+  if (host === 'electron') {
+    const electron = object(final['electron'])
+    assert.equal(electron['controllerBun'], '1.4.3')
+    const state = object(electron['nativeState'])
+    assert.equal(state['visible'], selected === 'visible')
+    assert.equal(state['minimized'], false)
+    assert.equal(typeof state['focused'], 'boolean')
+    const stream = object(electron['stream'])
+    for (const field of ['streams', 'queuedBytes', 'queuedFrames']) assert.equal(stream[field], 0)
+    assert.deepEqual(start['nativeState'], state)
+  } else {
+    const native = object(final['native'])
+    for (const field of [
+      'views',
+      'sessions',
+      'streamIncomingBytes',
+      'streamDeliveryBytes',
+      'streamDeliveryPackets',
+      'rpcIncomingBytes',
+      'rpcDeliveryBytes',
+      'rpcDeliveryPackets',
+      'nativeDeliveryBytes',
+      'nativeDeliveryPackets',
+    ])
+      assert.equal(native[field], 0)
+    assert.equal(native['windows'], 1)
+  }
   let batch = 0
   const phases = []
   for (const phase of LOAD.phases) {
@@ -265,5 +282,29 @@ export function acceptTerminalLoad(input: unknown, raw: string, selected: string
     status: 'descriptive-not-comparative',
     minimized: 'NOT_QUALIFIED',
     foregroundFocus: 'NOT_QUALIFIED-visible-is-not-proof-of-OS-focus',
+  }
+}
+/** Preserve independent workload and teardown outcomes, including overlap. */
+export function assessTerminalLoad(input: unknown, raw: string, selected: string) {
+  const observed = validateCommandObservation(input)
+  const attempt = (run: () => unknown) => {
+    try {
+      return { passed: true, result: run() }
+    } catch (error) {
+      return { passed: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  }
+  const rows = raw
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => object(JSON.parse(line)))
+  return {
+    workload: attempt(() => acceptLoadRows(raw, selected, observed.environment['os'])),
+    command: attempt(() => assertCleanCommand(observed)),
+    teardown: attempt(() => requireNativeShutdown(observeNativeShutdown(observed))),
+    lastBatch: [...rows].reverse().find((row) => row['kind'] === 'batch')?.['batch'] ?? null,
+    failure: rows.find((row) => row['kind'] === 'failure') ?? null,
+    watchdog: observed.stderr.some((line) => line.includes('Teardown watchdog expired')),
   }
 }

@@ -1,4 +1,5 @@
 import { defineRpc, procedure } from '../../packages/contracts/src/rpc.ts'
+import type { ConsumerDiagnostic } from './diagnostics.ts'
 import { BATCHES, LOAD, loadBatch } from './workload.ts'
 export function check(value: unknown, message = 'Invalid load receipt'): asserts value {
   if (!value) throw new Error(message)
@@ -43,7 +44,40 @@ export function receipt(value: unknown) {
     visibility: mode(row['visibility']),
   }
 }
+export function diagnostic(value: unknown): ConsumerDiagnostic {
+  const row = object(value)
+  check(
+    Object.keys(row).sort().join(',') ===
+      'batch,bytes,callbacks,control,error,records,stage,terminal,visibility'
+  )
+  check(
+    [
+      'xterm-write',
+      'screen-parse',
+      'control-rpc',
+      'digest',
+      'consumed-rpc',
+      'ack-pending',
+      'consume-return',
+      'error',
+    ].includes(String(row['stage']))
+  )
+  check(['idle', 'pending', 'resolved', 'failed'].includes(String(row['control'])))
+  check(row['error'] === null || (typeof row['error'] === 'string' && row['error'].length <= 240))
+  return {
+    terminal: integer(row['terminal'], 1),
+    batch: integer(row['batch'], BATCHES),
+    bytes: integer(row['bytes'], LOAD.maxBatchBytes),
+    callbacks: integer(row['callbacks'], LOAD.maxCallbacksPerBatch),
+    records: integer(row['records'], BATCHES * (LOAD.recordsPerBatch + 1) + 1),
+    visibility: mode(row['visibility']),
+    stage: String(row['stage']),
+    control: String(row['control']),
+    error: row['error'] as string | null,
+  }
+}
 export const schema = defineRpc({
+  diagnostic: procedure(diagnostic, none),
   ready: procedure(mode, none),
   consumed: procedure(receipt, none),
   progress: procedure(

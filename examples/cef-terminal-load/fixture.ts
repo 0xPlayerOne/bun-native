@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
+import { Probe, deferred, bounded } from './probe.ts'
 import { open } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import type { BinaryStreamWriter } from '../../packages/contracts/src/streams.ts'
@@ -12,61 +12,8 @@ import {
 } from '../../packages/runtime/src/terminal.ts'
 import { TERMINAL_COLS, TERMINAL_ROWS } from '../cef-terminal/terminal-contract.ts'
 import { BATCHES, LOAD } from './workload.ts'
-import { schema, mode, type receipt } from './contract.ts'
+import { schema, mode, type receipt, type diagnostic } from './contract.ts'
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (error: Error) => void
-  const promise = new Promise<T>((yes, no) => {
-    resolve = yes
-    reject = no
-  })
-  void promise.catch(() => {})
-  return { promise, resolve, reject }
-}
-async function bounded<T>(promise: Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('Load operation deadline')), 15_000)
-      }),
-    ])
-  } finally {
-    clearTimeout(timer)
-  }
-}
-class Probe {
-  hash = createHash('sha256')
-  bytes = 0
-  callbacks = 0
-  firstCallbackMs = 0
-  pendingBytePeak = 0
-  written = 0
-  acknowledged = 0
-  streamCallbacks = 0
-  pending: Promise<void> = Promise.resolve()
-  reset() {
-    this.hash = createHash('sha256')
-    this.bytes = 0
-    this.callbacks = 0
-    this.firstCallbackMs = 0
-    this.pendingBytePeak = 0
-    this.written = 0
-    this.acknowledged = 0
-    this.streamCallbacks = 0
-    this.pending = Promise.resolve()
-  }
-  add(chunk: Uint8Array) {
-    if (this.callbacks === 0) this.firstCallbackMs = performance.now()
-    this.bytes += chunk.length
-    this.pendingBytePeak = Math.max(this.pendingBytePeak, this.bytes - this.acknowledged)
-    this.callbacks++
-    assert.ok(this.bytes <= LOAD.maxBatchBytes && this.callbacks <= LOAD.maxCallbacksPerBatch)
-    this.hash.update(chunk)
-  }
-}
 export default async function loadFixture(backend: CefBackend) {
   const selected = mode(process.env['BUNLY_TERMINAL_LOAD_MODE'])
   const output = process.env['BUNLY_TERMINAL_LOAD_OUTPUT']
@@ -108,6 +55,11 @@ export default async function loadFixture(backend: CefBackend) {
   let receipts = [deferred<ReturnType<typeof receipt>>(), deferred<ReturnType<typeof receipt>>()]
   let connection: CefStreamConnection | undefined
   let phase = 'startup'
+  let operation = 'startup'
+  const consumers: (ReturnType<typeof diagnostic> | null)[] = [null, null]
+  const progress = [-1, -1]
+  let diagnosticCount = 0
+  let streamState: (() => unknown) | undefined
   let activeBatch = -1
   const handles: TerminalHandle[] = []
   let queueBytes = 0
@@ -123,6 +75,15 @@ export default async function loadFixture(backend: CefBackend) {
     stopRpc = backend.serveRpc(
       schema,
       {
+        diagnostic: {
+          capability: 'terminal-load',
+          handle(value, context) {
+            owner(context.identity.viewId)
+            assert.ok(++diagnosticCount <= 2 * (BATCHES + 1) * (LOAD.maxCallbacksPerBatch * 3 + 10))
+            consumers[value.terminal] = value
+            return null
+          },
+        },
         ready: {
           capability: 'terminal-load',
           handle(value, context) {
@@ -148,6 +109,8 @@ export default async function loadFixture(backend: CefBackend) {
           handle(value, context) {
             owner(context.identity.viewId)
             assert.equal(value, activeBatch)
+            progress[0] = value
+            progress[1] = progress[1]! + 1
             return value
           },
         },
@@ -181,6 +144,7 @@ export default async function loadFixture(backend: CefBackend) {
       connection = current
       void (async () => {
         const sender = current.sender({ timeoutMs: 15_000 })
+        streamState = () => sender.diagnostics()
         for (let index = 0; index < LOAD.terminals; index++) {
           const writer = await sender.open(`load-${index}`, { signal: current.signal })
           const probe = probes[index]!
@@ -262,7 +226,9 @@ export default async function loadFixture(backend: CefBackend) {
         await Promise.all(
           handles.map((handle) => service.write(handle, encoder.encode(`batch:${activeBatch}\n`)))
         )
+        operation = 'consumer-receipts'
         const accepted = await bounded(Promise.all(receipts.map((entry) => entry.promise)))
+        operation = 'stream-ack'
         await bounded(Promise.all(probes.map((probe) => probe.pending)))
         const acknowledgedAt = performance.now()
         const triggerToConsumptionAckMs = acknowledgedAt - begin
@@ -305,7 +271,9 @@ export default async function loadFixture(backend: CefBackend) {
     assert.equal(activeBatch + 1, BATCHES)
     for (const probe of probes) probe.reset()
     await Promise.all(handles.map((handle) => service.write(handle, encoder.encode('exit\n'))))
+    operation = 'final-records'
     const final = await bounded(Promise.all(finished.map((entry) => entry.promise)))
+    operation = 'exit-output-release'
     const exits = await bounded(
       Promise.all(
         handles.map(async (handle, index) => {
@@ -358,7 +326,33 @@ export default async function loadFixture(backend: CefBackend) {
       kind: 'failure',
       phase,
       batch: activeBatch,
+      operation,
+      classification:
+        error instanceof Error && 'code' in error
+          ? String(error.code)
+          : error instanceof Error && error.message === 'Load operation deadline'
+            ? 'WORKLOAD_DEADLINE'
+            : 'WORKLOAD_FAILURE',
       error: error instanceof Error ? error.message : String(error),
+      pendingConsumers: [0, 1].filter((index) => !received.has(index)),
+      consumers,
+      progress,
+      diagnosticCount,
+      visibilityReceipts,
+      ack: probes.map((probe) => ({
+        bytes: probe.bytes,
+        written: probe.written,
+        acknowledged: probe.acknowledged,
+        callbacks: probe.callbacks,
+        streamCallbacks: probe.streamCallbacks,
+      })),
+      terminalBudget: service.diagnostics(),
+      streamBudget: backend.streamDiagnostics(),
+      sender: streamState?.(),
+      transport: backend.nativeTransportDiagnostics(),
+      native: await backend
+        .nativeDiagnostics()
+        .catch((failure: unknown) => ({ unavailable: String(failure).slice(0, 240) })),
     })
     throw error
   } finally {

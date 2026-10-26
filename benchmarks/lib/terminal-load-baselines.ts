@@ -60,7 +60,7 @@ export async function terminalLoadBaselines() {
       reason:
         identity.id === 'electrobun'
           ? 'Existing adapter has no true PTY load; exact Chromium binary and CEF sandbox remain unverified. Packaged Bun is not replaced.'
-          : 'Existing adapter has no true PTY load. Its sandboxed synthetic ANSI renderer fixture cannot substitute for this workload.',
+          : 'Legacy scenario API refuses PTY load. Execute scripts/qualify-electron-terminal-load.ts separately: maintained Electron IPC plus equal Bun PTY producers, not an ordinary Electron Node backend. No automatic comparison admission.',
     })
   }
   return {

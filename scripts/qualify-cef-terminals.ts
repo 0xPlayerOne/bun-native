@@ -14,7 +14,10 @@ import { distribution, profileOptions } from '../benchmarks/foundation/statistic
 import { acceptGraphicalTerminal } from '../benchmarks/lib/cef-terminal-acceptance.ts'
 import { terminalLoadBaselines } from '../benchmarks/lib/terminal-load-baselines.ts'
 import { schedule, summarize } from '../benchmarks/lib/statistics.ts'
-import { acceptTerminalLoad } from '../benchmarks/lib/terminal-load-acceptance.ts'
+import {
+  assessTerminalLoad,
+  acceptTerminalLoad,
+} from '../benchmarks/lib/terminal-load-acceptance.ts'
 import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observation.ts'
 
 const root = resolve(import.meta.dir, '..')
@@ -41,6 +44,9 @@ const sourcePaths = [
     ? [
         'examples/cef-terminal-load/fixture.ts',
         'examples/cef-terminal-load/client.ts',
+        'examples/cef-terminal-load/consumer.ts',
+        'examples/cef-terminal-load/diagnostics.ts',
+        'examples/cef-terminal-load/probe.ts',
         'examples/cef-terminal-load/child.ts',
         'examples/cef-terminal-load/contract.ts',
         'examples/cef-terminal-load/workload.ts',
@@ -293,6 +299,7 @@ try {
       if (load) {
         const raw = await readFile(join(work, `trial-${index}-${mode}.jsonl`), 'utf8')
         trial['rawSha256'] = createHash('sha256').update(raw).digest('hex')
+        trial['outcomes'] = assessTerminalLoad(observation, raw, mode)
         trial['metrics'] = acceptTerminalLoad(observation, raw, mode)
         trial.passed = true
         console.log(JSON.stringify({ index, mode, passed: true }))
