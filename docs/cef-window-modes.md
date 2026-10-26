@@ -136,3 +136,14 @@ installs Openbox in the disposable runner, not in an application or a contributo
 desktop. A failed or missing mode/WM-cleanup receipt blocks the full result and
 credential-provider setup. Each exported window report retains exact source,
 native artifact and independent visibility evidence.
+
+## Retained Windows restoration failure
+
+The first integrated Windows matrix reached all four initial native/page states.
+Restore returned visible/active/not-minimized, but the fifth authenticated page
+visibility receipt never arrived before the unchanged sequence deadline. This is
+not a successful restoration qualification. Bounded renderer diagnostics now record
+visibility callback, queued RPC, acknowledgment and failure stages independently;
+only the original authenticated receipts can pass acceptance. These diagnostics
+do not disable occlusion/background scheduling, retry restoration or extend any
+deadline. The failed source and report remain preserved.

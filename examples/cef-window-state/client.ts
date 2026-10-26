@@ -7,9 +7,20 @@ let sequence = 0
 let chain = Promise.resolve()
 const report = () => {
   // Capture the actual browser state in the callback, before any async handoff.
+  if (sequence >= 16) throw new Error('Window fixture visibility bound exceeded')
   const receipt = { sequence: sequence++, visibility: document.visibilityState }
+  const stage = (stage: string) =>
+    console.log('BUNLY_WINDOW_STAGE:' + JSON.stringify({ ...receipt, stage }))
+  stage('observed')
   chain = chain.then(async () => {
-    await client.call('visibility', receipt)
+    stage('sending')
+    try {
+      await client.call('visibility', receipt)
+      stage('acknowledged')
+    } catch (error) {
+      stage('failed')
+      throw error
+    }
   })
   void chain.catch((error: unknown) => console.error('Window visibility receipt failed', error))
 }

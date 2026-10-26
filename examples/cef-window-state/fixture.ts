@@ -1,10 +1,27 @@
 import assert from 'node:assert/strict'
 import type { CefBackend, CefWindowState } from '../../packages/runtime/src/cef.ts'
 import type { ViewHandle } from '../../packages/contracts/src/index.ts'
-import { visibilitySchema, type PageVisibility } from './contract.ts'
+import { parseVisibilityStage, visibilitySchema, type PageVisibility } from './contract.ts'
 
 export default async function qualifyWindowState(backend: CefBackend): Promise<void> {
   const pages: PageVisibility[] = []
+  const rendererStages: Record<string, unknown>[] = []
+  const nativeEvents: { event: string; sequence: number | null }[] = []
+  const stopDiagnostics = backend.observe((event) => {
+    if (event.event === 'view.console') {
+      const stage = parseVisibilityStage(event.data?.['message'])
+      if (stage && rendererStages.length < 64) rendererStages.push(stage)
+    } else if (
+      ['rpc.packet', 'rpc.revoked', 'stream.revoked', 'view.renderer-exit'].includes(event.event)
+    ) {
+      if (nativeEvents.length === 16) nativeEvents.shift()
+      const sequence = event.data?.['sequence']
+      nativeEvents.push({
+        event: event.event,
+        sequence: typeof sequence === 'number' && Number.isSafeInteger(sequence) ? sequence : null,
+      })
+    }
+  })
   const actions: { mode: string; state: CefWindowState }[] = []
   let nativeFinal: Record<string, number> | null = null
   const modes: {
@@ -137,6 +154,7 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
     throw error
   } finally {
     clearTimeout(deadline)
+    stopDiagnostics()
     console.error(
       JSON.stringify({
         event: 'bunly.native.window-modes',
@@ -146,6 +164,8 @@ export default async function qualifyWindowState(backend: CefBackend): Promise<v
         pages,
         actions,
         nativeFinal,
+        rendererStages,
+        nativeEvents,
         failure,
       })
     )
