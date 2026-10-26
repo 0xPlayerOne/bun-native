@@ -72,6 +72,8 @@ const sourcePaths = [
   'benchmarks/lib/native-diagnostic-events.json',
   'benchmarks/foundation/native-shutdown.ts',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
+  'packages/runtime/src/fair-scheduler.ts',
   'packages/runtime/src/terminal.ts',
   'packages/runtime/src/stream-source.ts',
   'packages/client/src/cef-streams.ts',
