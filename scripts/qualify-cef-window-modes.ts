@@ -34,6 +34,8 @@ const sourcePaths = [
   'benchmarks/lib/native-diagnostic-events.json',
   'benchmarks/foundation/native-shutdown.ts',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
+  'packages/runtime/src/fair-scheduler.ts',
   'packages/runtime/src/cef-window-state.ts',
   'native/cef-host/src/host.rs',
   'native/cef-host/src/window_state.rs',

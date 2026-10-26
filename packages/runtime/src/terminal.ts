@@ -3,6 +3,7 @@ import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import type { RpcScheduler } from '../../contracts/src/rpc.ts'
 import { rpcScheduler } from '../../contracts/src/rpc.ts'
 import type { BinaryStreamWriter, StreamOutcome } from '../../contracts/src/streams.ts'
+import { FairWorkScheduler } from './fair-scheduler.ts'
 import { CallbackStreamSource } from './stream-source.ts'
 
 const terminalBrand: unique symbol = Symbol('bunly.terminal')
@@ -403,6 +404,7 @@ export interface TerminalServiceOptions {
   readonly driver?: TerminalDriver
   readonly limits?: Partial<TerminalServiceLimits>
   readonly scheduler?: RpcScheduler
+  readonly fairScheduler?: FairWorkScheduler
 }
 
 /** Persistent runtime owner for Bun PTYs; application callbacks never own the subprocess. */
@@ -412,6 +414,7 @@ export class TerminalService {
   readonly #clock: RpcScheduler
   readonly #capacity: TerminalCapacity
   readonly #sourceBudget: StreamBudget
+  readonly #fairScheduler: FairWorkScheduler
   readonly #entries = new WeakMap<TerminalHandle, Resource>()
   readonly #live = new Set<Resource>()
   #sequence = 0
@@ -445,6 +448,7 @@ export class TerminalService {
       maxStreams: limits.maxTerminals,
       maxStreamsPerView: limits.maxTerminalsPerOwner,
     })
+    this.#fairScheduler = options.fairScheduler ?? new FairWorkScheduler()
   }
 
   async create(
@@ -508,6 +512,7 @@ export class TerminalService {
         maxRetainedBytes: options.maxOutputBytes,
         maxQueuedChunks: options.maxQueuedOutputChunks,
         coalescePending: true,
+        scheduler: this.#fairScheduler,
         stopSource: () => this.#stopExact(resource, resource.requestedSignal ?? 'SIGKILL'),
       })
       resource.outputFinished = resource.source.finished
@@ -715,6 +720,7 @@ export class TerminalService {
       closing: resources.filter((resource) => resource.state === 'closing').length,
       pendingDriverWrites: resources.reduce((sum, resource) => sum + resource.driverWrites, 0),
       driverFailures: resources.filter((resource) => resource.driverFailure).length,
+      scheduling: this.#fairScheduler.diagnostics(),
       disposed: this.#disposed,
     })
   }

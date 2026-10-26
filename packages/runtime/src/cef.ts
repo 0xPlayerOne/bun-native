@@ -17,11 +17,13 @@ import {
   decodeNativeLoopbackConfirmation,
 } from '../../contracts/src/rpc-native-handoff.ts'
 import { RpcError, rpcLimits } from '../../contracts/src/rpc.ts'
-import type { RpcSchema, RpcTransport } from '../../contracts/src/rpc.ts'
+import type { RpcSchema } from '../../contracts/src/rpc.ts'
 import { BinaryStreamReceiver, BinaryStreamSender } from '../../contracts/src/streams.ts'
 import { StreamBudget } from '../../contracts/src/stream-budget.ts'
 import { STREAM_CHUNK_BYTES } from '../../contracts/src/stream-wire.ts'
 import type { BinaryStreamOptions, BinaryStreamSink } from '../../contracts/src/streams.ts'
+import { FairWorkScheduler } from './fair-scheduler.ts'
+import { CefLaneTransport } from './cef-lane-transport.ts'
 import type { RpcHandlers, RpcServerOptions } from './rpc.ts'
 import {
   CONTRACT_VERSION,
@@ -118,17 +120,6 @@ interface ViewResource extends NativeResource {
   state: ViewState
 }
 const MAX_NATIVE_RPC_PACKET = 24 * 1024
-function hex(packet: Uint8Array): string {
-  if (
-    !(packet instanceof Uint8Array) ||
-    packet.byteLength < 1 ||
-    packet.byteLength > MAX_NATIVE_RPC_PACKET
-  )
-    throw new RpcError('PROTOCOL_ERROR', 'Native RPC packet size denied')
-  let result = ''
-  for (const byte of packet) result += byte.toString(16).padStart(2, '0')
-  return result
-}
 function unhex(value: unknown): Uint8Array {
   if (
     typeof value !== 'string' ||
@@ -142,52 +133,6 @@ function unhex(value: unknown): Uint8Array {
   for (let index = 0; index < packet.length; index++)
     packet[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
   return packet
-}
-class CefLaneTransport implements RpcTransport {
-  #message: ((packet: Uint8Array) => void) | undefined
-  #closed: (() => void) | undefined
-  #ended = false
-  constructor(
-    readonly native: NativeTransport,
-    readonly identity: Readonly<{ connection: number; context: number; generation: number }>,
-    readonly lane: 'rpc' | 'stream'
-  ) {}
-  send(packet: Uint8Array): Promise<void> {
-    if (this.#ended)
-      return Promise.reject(new RpcError('DISCONNECTED', 'Native RPC transport closed'))
-    return this.native
-      .call(`${this.lane}.deliver`, { ...this.identity, packet: hex(packet) })
-      .then(() => {})
-  }
-  subscribe(message: (packet: Uint8Array) => void, closed: () => void): () => void {
-    if (this.#message) throw new TypeError('Native RPC transport permits one subscriber')
-    this.#message = message
-    this.#closed = closed
-    return () => {
-      this.#message = undefined
-      this.#closed = undefined
-    }
-  }
-  receive(packet: Uint8Array, sequence: number): void {
-    if (this.#ended || !this.#message) return
-    this.#message(packet)
-    if (this.#ended) return
-    void this.native
-      .call(`${this.lane}.ack`, { ...this.identity, sequence })
-      .catch(() => this.end(false))
-  }
-  close(): void {
-    this.end(true)
-  }
-  end(tellNative: boolean): void {
-    if (this.#ended) return
-    this.#ended = true
-    if (tellNative)
-      void this.native.call(`${this.lane}.disconnect`, { ...this.identity }).catch(() => {})
-    this.#closed?.()
-    this.#message = undefined
-    this.#closed = undefined
-  }
 }
 class CefRpcTransport extends CefLaneTransport {
   constructor(
@@ -390,6 +335,7 @@ export class CefBackend implements BrowserBackend {
   readonly #streamRetired = new WeakSet<ViewHandle>()
   readonly #rpcConnections = new Map<number, CefRpcConnection>()
   readonly #streamConnections = new Map<number, CefStreamNativeConnection>()
+  readonly #streamScheduler = new FairWorkScheduler()
   readonly #rpcFragments = new RpcFragmentBudget()
   #nativeConfirmations = 0
   #nativeConfirmationRejections = 0
@@ -1234,6 +1180,7 @@ export class CefBackend implements BrowserBackend {
       connections: this.#streamConnections.size,
       connectionFailures: this.#streamConnectionFailures,
       budget: this.#streamBudget?.diagnostics() ?? null,
+      scheduling: this.#streamScheduler.diagnostics(),
     }
   }
   dispose(): Promise<void> {
@@ -1359,7 +1306,9 @@ export class CefBackend implements BrowserBackend {
         context: Number(data['context']),
         generation: Number(data['generation']),
       }),
-      'stream'
+      'stream',
+      this.#streamScheduler,
+      view
     )
     const controller = new AbortController()
     const nativeConnection: CefStreamNativeConnection = { view, transport, controller }

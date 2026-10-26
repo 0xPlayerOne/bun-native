@@ -455,8 +455,7 @@
     {
       "code": 0,
       "event": "bunly.backend.exit",
-      "forced": false,
-      "pid": 14475
+      "forced": false
     },
     {
       "event": "bunly.native.output-drained",
@@ -529,16 +528,9 @@
       },
       "helpers": [
         {
-          "pid": 14612,
-          "creationTime": 1792976865.257071,
           "role": "code-sign-clone-cleanup",
           "executableSha256": "e14e7a651dc18dc65d304001d6e02dd5ed58a92ed83f59178c0021cbef3ef605",
           "ownership": "retained-kernel-parent-and-matching-clone-inode",
-          "kernelIdentity": {
-            "rootUniqueId": "37048205",
-            "uniqueId": "37048362",
-            "parentUniqueId": "37048205"
-          },
           "processExited": true,
           "cloneRemoved": true,
           "completed": true
@@ -725,5 +717,14 @@
     "Raw reports remain local at relative paths with hashes; this file preserves structured mode, lifecycle and cleanup receipts without machine paths.",
     "Initial restricted-sandbox portable failures and initial incomplete bundle preparation are retained, not relabeled as passing.",
     "#27 and M5 remain open; coordinator owns integration, platform acceptance and merge."
-  ]
+  ],
+  "redactions": {
+    "schema": 1,
+    "omitted": [
+      "pid",
+      "creationTime",
+      "kernelIdentity"
+    ],
+    "scope": "committed summary only; original local report digests and native execution outcomes unchanged"
+  }
 }
