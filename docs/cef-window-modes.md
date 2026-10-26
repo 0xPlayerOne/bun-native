@@ -1,0 +1,241 @@
+# Native CEF window-mode prerequisite
+
+This extension advances #27. It does not close #27/M5 or qualify terminal load.
+It is deliberately on `CefBackend`, with no new `BrowserBackend` capability.
+
+```ts
+const before = await backend.windowState(window)
+const immediate = await backend.minimizeWindow(window, { signal })
+const restored = await backend.restoreWindow(window, { signal })
+await backend.showWindow(window, false) // existing hide operation
+await backend.showWindow(window, true)  // existing show operation
+```
+
+Each state is a frozen, strictly validated object of booleans: `visible`, `active`,
+`minimized`, `maximized`, `fullscreen`. These are actual CEF Views getters on the
+UI thread. An invisible window is not necessarily minimized; an inactive window
+can be visible. Native visibility is not page visibility or evidence of physical
+presentation, focus, occlusion, or foreground interaction. On the first local macOS
+checkpoint the visible window was **inactive**; the final committed-source run
+was active while visible. Neither establishes foreground load acceptance.
+
+`minimizeWindow` and `restoreWindow` return immediate readback after requesting the
+action. CEF's void action return is not evidence that an asynchronous OS transition
+completed. `restoreWindow` invokes CEF Restore (minimized/maximized state); it is
+not a substitute for `showWindow(true)` after hide. A subsequent `windowState`
+reads current state without caching intent. The caller must independently await
+its required transition within a finite deadline. No runtime polling is added.
+
+Handles must be the exact live opaque object from this backend. Forged, foreign,
+wrong-kind, closing and disposed handles fail, including a close racing readback.
+The private inherited-pipe request carries only a native registry lookup ID. The
+UI owner revalidates its live window before and after an action. No page PID,
+platform handle, script expression, or portable capability is introduced. These
+operations use existing ordinary-request quotas and transport deadlines.
+Cancellation rejects the wait, does not promise to undo an already dispatched
+native action, and retains the request reservation until native acknowledgment
+or the original deadline. Native shutdown deadlines are unchanged.
+
+## Native API provenance
+
+The pinned cef-rs `a46b48c6221f99414a5c6b37ff86491772f9b0a2` generated bindings
+were checked for macOS arm64/x64, Linux arm64/x64, and Windows arm64/x64:
+`minimize(&self)` / `restore(&self)` return unit; `is_visible`, `is_active`,
+`is_minimized`, `is_maximized`, `is_fullscreen`, `is_closed`, `is_valid` return
+`c_int`. The inherited view getter and window getters are used directly.
+`can_minimize(&self, Option<&mut Window>) -> c_int` is explicitly enabled;
+the generated Rust default returns zero.
+
+CEF 156.0.7's installed `include/views/cef_window{,_delegate}.h` documents
+activation, bounds, closing and fullscreen callbacks, but no general minimized
+completion callback. The qualifier therefore waits on the separate renderer
+visibility event and then reads the native state once. It never infers minimized
+from an activation or bounds callback. See the
+[CEF window delegate contract](https://cef-builds.spotifycdn.com/docs/154.0/classCefWindowDelegate.html)
+for callback semantics; the local pinned headers/bindings, not the online version,
+are the build authority. No upstream implementation was copied.
+
+## Functional qualifier and integration
+
+```sh
+bun run qualify:cef-window-modes -- /absolute/path/to/current-source-prepared-app
+```
+
+The caller builds the current native host/helper separately. This command never
+compiles native code. It copies the prepared artifact into a unique private run,
+bundles the fixed fixture and its current bootstrap/runtime code, writes asset
+hashes, and ad-hoc signs only its private macOS copy using the existing helper.
+Input and prepared inventories plus before/after source fingerprints and exported
+CEF version evidence are retained. Do not supply an old executable and use current
+TypeScript hashes to claim a new native implementation was tested.
+
+One sequence exercises visible → hidden → shown → minimized → restored. The
+fixed packaged page reports initial `document.visibilityState` and subsequent
+`visibilitychange` callbacks through the existing native-authorized RPC binding.
+The backend verifies exact view ownership and sequence, then reads native state.
+There is one 10-second sequence deadline, no polling/sleeps, no retry-to-green,
+no disabled background throttling and no Chromium flag changes. Unsupported or
+missing state/visibility events fail qualification; they never become a pass.
+The action receipts are retained separately from the fresh state observations.
+The acceptance parser requires all five states, independent page correlation,
+normal backend exit, empty output reservations, ordered native shutdown and
+observed process cleanup. Every failed run remains in `.bunly/m5/window-modes`.
+
+The load integration can use these exact runtime methods on its already-owned
+window, retain the immediate action receipt, await its own page-visibility gate,
+and call `windowState` before accepting load in that mode. Keep hidden and
+minimized separate. Do not label the inactive visible checkpoint foreground.
+This fixture has no terminal workload and does not alter #115's 32-KiB/eight-chunk
+budgets, scheduler, observer, or the parallel load fixture.
+
+## Disposable Linux window manager
+
+Xvfb supplies an X server, not a window manager. CEF delegates minimize/restore
+to Chromium's native widget. Bare Xvfb is insufficient evidence that a real
+managed desktop cannot minimize. The existing hosted full suite uses bare Xvfb;
+it has not executed this new prerequisite. Linux remains **not executed**, not
+an unsupported platform claim.
+
+For this qualifier only, provision `xvfb` and `openbox` in the disposable runner
+image (for example `sudo apt-get install -y xvfb openbox` during runner setup),
+then run as the ordinary non-root test user:
+
+```sh
+python scripts/qualify-cef-window-modes-linux.py --disposable-runner \
+  --bun /absolute/pinned/bun /absolute/current-source/bunly_host
+```
+
+The wrapper owns a fresh Xvfb display and Openbox process, uses `-displayfd` and
+Openbox's startup hook for finite readiness rather than sleeps, creates a private
+minimal WM config, and tears down only its recorded process groups. Logs and
+cleanup status are retained. Missing packages/readiness fail explicitly. It does
+not attach to an existing desktop, install a service, modify global settings,
+disable sandboxing, or make an ordinary Bunly app depend on Openbox. The wrapper
+itself still needs actual Linux execution; static/unit checks are not that gate.
+
+## Local committed-source checkpoint
+
+[Retained evidence](../evidence/m5-window-modes-local.json) binds implementation
+`288d34f755d82f1c6db9524c42fc3a54398e03a0` to a clean-source macOS arm64 native
+run, unchanged input/prepared inventories, built host/helper hashes and the
+unchanged retained CEF framework. All five native states and page visibility
+receipts passed, with zero pending/delivery reservations, normal backend exit,
+ordered shutdown and no surviving owned processes. Notably, Restore immediately
+returned `minimized: true`; the subsequent visibility callback and native readback
+proved `visible: true, minimized: false`. The earlier preparation failure and
+dirty-source checkpoint remain fingerprinted. This evidence does not replace
+current integration-head Linux/Windows execution or combined #27 load acceptance.
+
+## Shared acceptance gate
+
+Automatic and manual `full` acceptance includes `window-modes` before graphical
+terminals and protected credential setup. The explicit M4-only suite is unchanged.
+On Linux only, the maintained stage starts its own disposable Xvfb/Openbox session;
+macOS and Windows use the actual platform window manager. Hosted provisioning
+installs Openbox in the disposable runner, not in an application or a contributor's
+desktop. A failed or missing mode/WM-cleanup receipt blocks the full result and
+credential-provider setup. Each exported window report retains exact source,
+native artifact and independent visibility evidence.
+
+## Retained Windows restoration failure
+
+The first integrated Windows matrix reached all four initial native/page states.
+Restore returned visible/active/not-minimized, but the fifth authenticated page
+visibility receipt never arrived before the unchanged sequence deadline. This is
+not a successful restoration qualification. Bounded renderer diagnostics now record
+visibility callback, queued RPC, acknowledgment and failure stages independently;
+only the original authenticated receipts can pass acceptance. These diagnostics
+do not disable occlusion/background scheduling, retry restoration or extend any
+deadline. The failed source and report remain preserved.
+
+## Restore-layout candidate
+
+The retained Windows run `40262829398` reported a restored native widget, but
+its document never emitted the final visibility change. All four earlier page
+receipts reached the backend and were acknowledged; there was no fifth renderer
+callback in the retained diagnostic stream. That does not establish a blocked
+RPC transport or an upstream Chromium root cause.
+
+The current candidate requests the supported CEF panel layout operation after
+restore, revalidating the native-owned window around reentrant calls. It does
+not call windowless-only visibility APIs, forge page state, disable occlusion,
+retry restoration, reload the document or extend the fixed deadline. This is an
+investigated candidate, not an accepted Windows fix until real execution passes.
+
+The layout candidate `3e6631c` was rejected. Actual standard-user Windows run
+`40271541844` completed the adjacent native stages but reproduced the same
+missing post-restore page-visibility receipt. Native window state was restored
+and active; the renderer emitted no fifth visibility event. The runtime change
+has been removed exactly, with the tested candidate and failed report retained.
+This is not a fixed restore path or accepted foreground/minimized qualification.
+No occlusion flag, repeated restore, fake visibility event or deadline extension
+was introduced to obtain a pass.
+
+## Bounded Windows restore candidate
+
+The prior `3e6631c` layout candidate failed its fifth renderer visibility receipt
+and was removed. The current candidate instead reasserts CEF Window.Show after
+Restore, only when native state before the call was both visible and minimized.
+A hidden owner is not revealed, and an already normal/maximized window does not
+receive the extra operation. Native ownership is revalidated between the calls.
+This uses actual native widget operations, not JavaScript visibility spoofing,
+windowless WasHidden, renderer reload, a layout pulse, a new deadline or a
+background/occlusion feature flag. The original five exact renderer receipts and
+native snapshots remain required. It is an unqualified candidate until actual
+Windows execution establishes the result; no current fix claim is made here.
+
+The `cdb66e8` show-after-restore candidate also failed the same fifth visibility
+receipt on Windows run 40304513917. Its native action and candidate-specific
+unit test were removed together; the original five phase assertions remain.
+The next diagnostic records read-only CEF view/window visibility and drawing,
+geometry/focus, plus Windows foreground-owner, input-desktop and DWM-cloaking
+observations. It also requests a fixed read-only page-state console snapshot.
+No identifiers, window titles or private desktop names are emitted. No window
+operation, event synthesis, reload, scheduling flag or acceptance deadline is
+changed by the diagnostic. It is not a restore fix or a passing receipt.
+
+The first local diagnostic run (`582daa3`) called its exact-page probe before
+initial navigation committed and correctly rejected the still-loading frame.
+The fixture now awaits its existing authenticated initial visibility receipt
+before that first read. The probe's URL check and the ten-second sequence
+deadline are unchanged. This is diagnostic readiness, not a restore correction.
+
+## Zero-width restored BrowserView finding
+
+Read-only Windows run 40308274129 established that restoration returned the
+owned HWND to its original 624-by-441 client area, foreground process/thread,
+matching input desktop and uncloaked state, while the BrowserView remained zero
+pixels wide. The actual document remained hidden despite receiving focus. The
+problem was not repaired by the earlier Show or Layout calls.
+
+The existing vertical BoxLayout used zero-initialized cross-axis START alignment,
+which can preserve the browser's zero preferred width from minimization instead
+of stretching to its restored parent. The candidate explicitly uses STRETCH on
+that cross axis. Vertical ordering and each child’s existing flex weight remain
+unchanged, including multiple independent views. No hardcoded geometry, minimum
+window size, new layout loop, native visibility override or synthetic page event
+is introduced. A permanent configuration regression first failed on the old
+START setting. The real fixture additionally requires positive native view
+width/height in visible phases, along with the unchanged five authenticated
+actual-document visibility observations. Windows execution remains the required
+proof of recovery, not the configuration test alone.
+
+## Final response delivery and teardown
+
+Corrected-head Linux execution completed all five native/page state checks but
+then exposed one retained RPC delivery during immediate view disposal. The page
+had entered its fifth visibility handler; that is not proof that the handler's
+response completed native delivery. Additional teardown visibility events could
+also enqueue a sixth request while the document was closing. The failed run
+40326337969 remains recorded; resource-zero checks are unchanged.
+
+The fixed five-state reporter now retires its DOM visibility listener after
+capturing its fifth actual event. Every expected native/page observation remains
+required. Before disposal, the runtime awaits admitted handlers and actual
+adapter-completed RPC replies. `RpcServer.whenIdle()` coalesces one bounded
+waiter under the existing send deadline; disconnect/revocation/late completion
+reject without releasing execution or native reservations. `CefBackend.drainRpc`
+uses the exact opaque view and checks the same document/connection after waiting.
+This operation requires quiescent producers and is not called from an RPC
+handler. It does not freeze future requests, poll counters, sleep, extend a
+deadline, discard a reply, or allow retained bytes to pass final acceptance.

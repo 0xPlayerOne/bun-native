@@ -347,3 +347,63 @@ test('a delayed handshake during host shutdown cannot fail or resurrect the serv
     await closing
   }
 })
+
+test('native RPC drain waits for delivery acknowledgment and cannot revive a retired view', async () => {
+  for (const revoke of [false, true]) {
+    const f = await fixture()
+    try {
+      f.handle((command) => {
+        if (command.op !== 'rpc.deliver') f.reply(command)
+      })
+      f.send(
+        packetEvent(
+          encodeRpc(
+            { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'held' },
+            limits
+          ),
+          1
+        )
+      )
+      await turn()
+      await turn()
+      const delivery = delivered(f.commands)
+      let settled = false
+      const drain = f.backend.drainRpc(f.view)
+      void drain.then(
+        () => {
+          settled = true
+        },
+        () => {}
+      )
+      await turn()
+      assert.equal(settled, false)
+      if (revoke) {
+        const rejected = assert.rejects(drain, /revoked|changed|closed|unavailable/i)
+        f.send({
+          v: 1,
+          event: 'view.navigating',
+          target: 3,
+          data: { url: 'app://ui/next.html', documentId: 'native-3-2' },
+        })
+        await rejected
+        f.reply(delivery)
+      } else {
+        f.reply(delivery)
+        await drain
+      }
+    } finally {
+      await f.stop()
+    }
+  }
+})
+test('native RPC drain rejects forged and unbound handles without sending commands', async () => {
+  const f = await fixture(undefined, false)
+  try {
+    const count = f.commands.length
+    await assert.rejects(f.backend.drainRpc({ ...f.view }), /handle|foreign|unknown/i)
+    await assert.rejects(f.backend.drainRpc(f.view), /unavailable/i)
+    assert.equal(f.commands.length, count)
+  } finally {
+    await f.stop()
+  }
+})

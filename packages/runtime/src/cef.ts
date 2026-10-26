@@ -4,6 +4,8 @@ import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
 import { NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
+import { parseCefWindowState, type CefWindowState } from './cef-window-state.ts'
+export type { CefWindowState } from './cef-window-state.ts'
 import { RpcServer } from './rpc.ts'
 import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
 import { RpcLoopbackServer } from './rpc-loopback.ts'
@@ -750,6 +752,43 @@ export class CefBackend implements BrowserBackend {
       throw new BunlyError('DISPOSED', 'View is closing')
     return resource
   }
+  #liveWindow(window: WindowHandle): NativeResource {
+    this.#active()
+    const resource = this.#registry.get<'window', NativeResource>(window, 'window')
+    if (this.#closing.has(window)) throw new BunlyError('DISPOSED', 'Window is closing')
+    return resource
+  }
+  async #windowStateOperation(
+    window: WindowHandle,
+    operation: 'window.state' | 'window.minimize' | 'window.restore',
+    options?: OperationOptions
+  ): Promise<CefWindowState> {
+    const resource = this.#liveWindow(window)
+    const result = await this.#transport.call(operation, { id: resource.native }, options?.signal)
+    this.#liveWindow(window)
+    return parseCefWindowState(result)
+  }
+  /** @internal Read-only contributor fixture; ordinary builds reject it. */
+  async qualifyWindowVisibility(window: WindowHandle): Promise<unknown> {
+    const resource = this.#liveWindow(window)
+    const value = await this.#transport.call('window.qualification.visibility', {
+      id: resource.native,
+    })
+    this.#liveWindow(window)
+    return value
+  }
+  /** Snapshot of the actual owned CEF window on its UI thread; never cached intent. */
+  windowState(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.state', options)
+  }
+  /** Request minimization and return immediate native readback, not transition completion. */
+  minimizeWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.minimize', options)
+  }
+  /** CEF Restore restores minimized/maximized windows; use showWindow to unhide. */
+  restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
+    return this.#windowStateOperation(window, 'window.restore', options)
+  }
   async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
     this.#active()
     if (typeof visible !== 'boolean') throw new BunlyError('INVALID_ARGUMENT', 'Invalid visibility')
@@ -1166,6 +1205,25 @@ export class CefBackend implements BrowserBackend {
       connection.transport.end(tellNative)
     }
     this.#streamConnections.clear()
+  }
+
+  /** Await admitted RPC work and actual native reply receipts before controlled
+   * teardown. Producers must be quiescent; this never grants or restores authority. */
+  async drainRpc(view: ViewHandle): Promise<void> {
+    this.#active()
+    const resource = this.#liveView(view)
+    const document = resource.state.documentId
+    const current = [...this.#rpcConnections.entries()].find(([, value]) => value.view === view)
+    if (!current?.[1].server) throw new RpcError('REVOKED', 'Native RPC document unavailable')
+    const [id, connection] = current
+    await connection.server!.whenIdle()
+    this.#active()
+    if (
+      this.#liveView(view) !== resource ||
+      resource.state.documentId !== document ||
+      this.#rpcConnections.get(id) !== connection
+    )
+      throw new RpcError('REVOKED', 'Native RPC document changed during drain')
   }
 
   rpcDiagnostics() {
