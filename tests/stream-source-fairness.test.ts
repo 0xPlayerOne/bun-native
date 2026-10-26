@@ -94,7 +94,7 @@ test('event-loop cancellation interrupts a continuously ready source without dro
   }
 })
 
-test('independent ready sources each leave a bounded turn for unrelated control', async () => {
+test('separate default schedulers each bound their own source, not their aggregate work', async () => {
   const sources = [flowing(512), flowing(512), flowing(512)]
   const control = deferred<number[]>()
   const task = setImmediate(() => control.resolve(sources.map((f) => f.received.length)))

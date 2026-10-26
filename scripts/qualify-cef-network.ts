@@ -61,6 +61,8 @@ const sources = [
   'native/cef-host/src/scheme.rs',
   'native/cef-host/src/host.rs',
   'packages/runtime/src/cef.ts',
+  'packages/runtime/src/cef-lane-transport.ts',
+  'packages/runtime/src/fair-scheduler.ts',
   'packages/contracts/src/network-policy.ts',
   'benchmarks/lib/cef-network-acceptance.ts',
   'scripts/observe-process.py',

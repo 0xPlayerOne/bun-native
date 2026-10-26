@@ -38,7 +38,7 @@ test('source scheduling regressions execute before real PTY qualification on eve
   expect(install).toBeGreaterThanOrEqual(0)
   expect(regression).toBeGreaterThan(install)
   expect(steps[regression]?.['run']).toBe(
-    'bun test tests/stream-source.test.ts tests/stream-source-fairness.test.ts'
+    'bun test tests/fair-scheduler.test.ts tests/stream-source.test.ts tests/stream-source-fairness.test.ts'
   )
   expect(steps[regression]?.['if']).toBeUndefined()
   for (const name of [
