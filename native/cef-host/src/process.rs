@@ -77,6 +77,12 @@ pub fn output_diagnostics() -> crate::event_queue::Snapshot {
 }
 pub fn start() -> Result<(), String> {
     let paths = crate::PATHS.get().ok_or("missing runtime paths")?;
+    let (_, terminal_manifest) = crate::terminal_runtime::discover(
+        paths
+            .terminal_owner
+            .parent()
+            .ok_or("Missing terminal owner directory")?,
+    )?;
     // Install the latch before either reader or child can deliver readiness.
     HANDSHAKE
         .set((Mutex::new(false), Condvar::new()))
@@ -94,7 +100,17 @@ pub fn start() -> Result<(), String> {
         use std::os::unix::process::CommandExt;
         command.process_group(0);
     }
+    #[cfg(unix)]
+    let terminal_lifetime =
+        crate::terminal_runtime::lifetime::attach(&mut command).map_err(|e| e.to_string())?;
     let mut child = command.spawn().map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    let terminal_fd = {
+        use std::os::fd::AsRawFd;
+        terminal_lifetime.as_raw_fd()
+    };
+    #[cfg(unix)]
+    drop(terminal_lifetime);
     #[cfg(windows)]
     {
         use std::os::windows::io::AsRawHandle;
@@ -247,8 +263,12 @@ pub fn start() -> Result<(), String> {
     THREADS
         .set(Mutex::new(vec![writer, reader, startup, supervisor]))
         .map_err(|_| "thread owners already initialized")?;
+    #[cfg(unix)]
+    let terminal_configuration = json!({"version":terminal_manifest.version,"protocol":terminal_manifest.protocol,"executable":paths.terminal_owner,"sha256":terminal_manifest.sha256,"bytes":terminal_manifest.bytes,"platform":terminal_manifest.platform,"arch":terminal_manifest.arch,"hostFd":terminal_fd});
+    #[cfg(windows)]
+    let terminal_configuration = json!({"version":terminal_manifest.version,"protocol":terminal_manifest.protocol,"executable":paths.terminal_owner,"sha256":terminal_manifest.sha256,"bytes":terminal_manifest.bytes,"platform":terminal_manifest.platform,"arch":terminal_manifest.arch,"hostFd":-1});
     emit(
-        json!({"v":1,"event":"ready","abi":1,"cef":"156.0.7","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms()}}),
+        json!({"v":1,"event":"ready","abi":1,"cef":"156.0.7","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms(),"terminalOwner":terminal_configuration}}),
     );
     Ok(())
 }
