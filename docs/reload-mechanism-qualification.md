@@ -82,6 +82,62 @@ cross-generation communication, prepare/commit retirement, native reauthorizatio
 and resource reconnection in #30/#31; it cannot pass live in-process identity objects
 across an isolate/process boundary as though those objects were authorization.
 
+## Local result and proposed M6 mechanism
+
+The committed [macOS arm64 matrix](../evidence/m6-reload-local.json) was executed
+on clean `6e4fd3b713a97dc9a5facf66ca95ba3fc7e309ff`, Bun 1.4.3, on October 27, 2026. Its report is 115,783 bytes, SHA-256
+`7dc2131c66de06262c1a8cb2ae99c460b2d6c5d043e61ff88de79a0543f0e78e`.
+It contains 80 repeated generation observations and four distinct loop controls,
+not 80 native backend replacements or independent performance launches.
+
+| Mechanism        | Fresh dependency and module state              | Synchronous-loop outcome                            | Local median load / disposal request, ms |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------- | ---------------------------------------- |
+| Same-path import | 1/20; subsequent generations reuse stale state | Owner unresponsive; outer observer terminates it    | 0.148 / 0.025 (not viable reload)        |
+| ModuleGraph      | 20/20                                          | Owner unresponsive; outer observer terminates it    | 0.563 / 0.028                            |
+| Worker           | 20/20                                          | Generation exits, listener released, owner survives | 8.039 / 2.126                            |
+| Subprocess       | 20/20                                          | Child reaped, listener released, owner survives     | 11.830 / 1.007                           |
+
+The disposal column includes the exit wait for isolated candidates but only the
+initial disposal call for in-process candidates; listener rebinding is verified
+separately. These numbers are not equivalent-cost performance ratios. Peak sampled
+process-tree RSS was approximately 26.0 / 26.3 / 45.1 / 42.3 MiB respectively.
+Heap after final full GC exceeded its initial reading for every candidate, notably
+about 0.74 to 8.79 MiB in the subprocess controller. The retained data does not
+attribute that growth or demonstrate a long-run plateau. Do not claim the process
+fallback is a memory optimization; longer integrated attribution remains #33.
+
+ModuleGraph shared-global counters increased across generations. Its external
+listener, queued microtask and raw descriptor survived graph disposal; its scoped
+sleep promise did not settle during the 30-ms observation. Explicit framework
+cleanup and cancellation remain necessary. Those observations are boundary results,
+not successful automatic cleanup of those resources.
+
+**Proposed default for #30:** one replaceable Bun Worker per application generation,
+with the existing supervised Bun host retaining native owners and leases. At most
+one candidate and one serving generation should run during preparation/cutover;
+unsettled retired work remains charged under the #28 contract. Workers are not
+per-service processes and are not a security sandbox or native-crash isolation.
+
+**Supported-fallback candidate:** one supervised application-generation subprocess,
+selected before execution for a profile that cannot use Workers. The stable owner
+must stay alive, must not replay uncertain mutations, and must observe the child's
+exit and channel/resource drain. Killing/replacing the desktop-owner Bun process
+is a controlled full restart and explicitly loses resource persistence. A failed
+Worker cleanup cannot silently become a seamless process fallback or free its
+unknown resource reservations.
+
+Do not adopt ModuleGraph as the default merely for its lower measured load cost:
+its synchronous loop blocks the very owner whose windows, sessions and terminals
+must survive. Ordinary same-path import is rejected as a reload strategy. ModuleGraph
+remains a qualified cooperative experiment, not an automatically exposed fast mode.
+
+This choice is provisional until the same fixed matrix passes on the declared
+Linux and Windows targets and is reviewed together with #28. It selects a mechanism
+for subsequent implementation, not a shipping loader. #30 must carry opaque host
+identities through a bounded host-controlled channel mapping; JS identity objects
+cannot be serialized to obtain equivalent authority. #31 must revalidate native
+view/session/document permissions at attachment and every managed operation.
+
 ## Primary API references
 
 The current upstream documentation describes experimental APIs and may be newer than

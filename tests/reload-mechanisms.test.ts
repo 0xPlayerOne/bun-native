@@ -394,3 +394,17 @@ for (const mode of ['worker', 'process'] as const)
       await rm(work, { recursive: true, maxRetries: 5, retryDelay: 25 })
     }
   }, 20000)
+
+test('retained local matrix remains byte-bound with failed mechanisms preserved', async () => {
+  const bytes = await readFile(resolve('evidence/m6-reload-local.json'))
+  expect(bytes.length).toBe(115783)
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(
+    '7dc2131c66de06262c1a8cb2ae99c460b2d6c5d043e61ff88de79a0543f0e78e'
+  )
+  const report = JSON.parse(bytes.toString())
+  expect(report.sourceBefore.commit).toBe('6e4fd3b713a97dc9a5facf66ca95ba3fc7e309ff')
+  const outcomes = acceptReloadMatrix(report)
+  expect(outcomes[0]!.outcome).toBe('rejected-stale-module-or-dependency')
+  expect(outcomes[4]!.outcome).toBe('owner-process-unresponsive-forced-restart-required')
+  expect(outcomes[5]!.outcome).toBe('owner-process-unresponsive-forced-restart-required')
+})
