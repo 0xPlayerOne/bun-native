@@ -566,6 +566,9 @@ export class DevelopmentSession {
       this.#retainedDirectories.add(directory)
       const bundleStarted = performance.now()
       let built: Bun.BuildOutput
+      const dependencies = new Set<string>()
+      const maxDependencies = this.#maxDependencies
+      let inputFailure: DevelopmentError | undefined
       try {
         this.#builds++
         built = await Bun.build({
@@ -577,10 +580,42 @@ export class DevelopmentSession {
           sourcemap: 'linked',
           packages: 'bundle',
           metafile: true,
+          plugins: [
+            {
+              name: 'bunly-development-inputs',
+              setup(build) {
+                build.onLoad({ filter: /.*/, namespace: 'file' }, ({ path }) => {
+                  if (inputFailure) throw inputFailure
+                  if (!isAbsolute(path)) {
+                    inputFailure = new DevelopmentError(
+                      'BUILD_FAILED',
+                      'Bun returned a non-absolute filesystem input'
+                    )
+                    throw inputFailure
+                  }
+                  if (!dependencies.has(path)) {
+                    if (dependencies.size >= maxDependencies) {
+                      inputFailure = new DevelopmentError(
+                        'CAPACITY',
+                        'Backend dependency graph exceeds the configured bound'
+                      )
+                      throw inputFailure
+                    }
+                    dependencies.add(path)
+                  }
+                  // Observe resolved files only; Bun still performs its normal load.
+                  return undefined
+                })
+              },
+            },
+          ],
           allowUnresolved: [],
           minify: false,
           throw: false,
         })
+        // Bun converts callback exceptions to BuildMessages under throw:false.
+        // Preserve the original structured host error after the build settles.
+        if (inputFailure) throw inputFailure
         if (!built.success || !built.metafile) {
           for (const message of built.logs.slice(0, 32)) {
             const position = message.position
@@ -601,14 +636,17 @@ export class DevelopmentSession {
           }
           throw new DevelopmentError('BUILD_FAILED', 'Application bundling failed')
         }
-        const dependencies = Object.keys(built.metafile.inputs).map((path) => resolve(path))
-        await this.#trackDependencies(dependencies)
+        if (dependencies.size === 0)
+          throw new DevelopmentError('BUILD_FAILED', 'Bun did not report filesystem inputs')
+        // Metafile keys are display paths. Bun 1.4.3 can emit non-resolvable
+        // cross-drive keys on Windows; only actual file loads define watchers.
+        await this.#trackDependencies([...dependencies])
         this.#diagnostic(
           'build',
           'bundle',
           performance.now() - bundleStarted,
           'BUILT',
-          `Bundled ${dependencies.length} dependencies with linked source maps`
+          `Bundled ${dependencies.size} dependencies with linked source maps`
         )
       } catch (error) {
         this.#diagnostic(

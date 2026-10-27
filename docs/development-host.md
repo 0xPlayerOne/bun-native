@@ -73,9 +73,12 @@ revalidate and supply concrete resource attachments before calling the broker.
 Each backend edit uses `Bun.build` with the native Bun resolver, a fresh immutable
 generation directory, bundled dependencies, and linked source maps. Unresolved
 dynamic imports are rejected rather than accidentally loading stale paths later.
-Bun's actual build metafile supplies the dependency graph; imported files outside
-declared source roots receive filesystem observation too. Declared roots are
-watched recursively for new/deleted/shared/generated files. Sources and the cache
+An observational Bun `onLoad` hook records the exact filesystem inputs selected
+by Bun's resolver and leaves its loader unchanged. Those paths supply the watched
+dependency graph; display paths in build metadata are not filesystem identities,
+particularly when a Windows checkout and its sources occupy different drives.
+Imported files outside declared source roots receive filesystem observation too.
+Declared roots are watched recursively for new/deleted/shared/generated files. Sources and the cache
 must occupy separate roots so generated bundles cannot trigger a rebuild loop.
 
 | Changed input                                                                                                    | Behavior                                                                                       |

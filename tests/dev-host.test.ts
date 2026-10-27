@@ -1,9 +1,9 @@
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import { createHash } from 'node:crypto'
 import { Worker } from 'node:worker_threads'
 import { lstat, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import {
   DevelopmentError,
   developmentHostKey,
@@ -289,6 +289,50 @@ test('actual fresh Worker bundles replace changed dependencies independently fro
 async function lstatDirectory(path: string): Promise<readonly string[]> {
   return readdir(path)
 }
+test('an over-limit dependency candidate preserves the serving generation and complete graph', async () => {
+  const root = await temporary()
+  let session: DevelopmentSession | undefined
+  try {
+    await fixture(root)
+    const entry = join(root, 'backend/main.ts'),
+      original = await readFile(entry, 'utf8'),
+      adapter = workerAdapter(),
+      diagnostics: DevelopmentDiagnostic[] = []
+    session = await DevelopmentSession.start(
+      options(root, adapter, {
+        maxDependencies: 3,
+        onDiagnostic: (event) => diagnostics.push(event),
+      })
+    )
+    expect(adapter.value()).toBe(11)
+    expect(session.diagnostics().dependencies).toBe(3)
+    await writeFile(join(root, 'backend/extra.ts'), 'export const extra = 100')
+    await writeFile(
+      entry,
+      "import { extra } from './extra.ts'\n" +
+        original.replace('postMessage(value + generated)', 'postMessage(value + generated + extra)')
+    )
+    expect((await session.invalidate(['backend/main.ts'])).action).toBe('failed')
+    expect(adapter.value()).toBe(11)
+    expect(adapter.replacements()).toBe(1)
+    expect(session.diagnostics().dependencies).toBe(3)
+    expect(session.diagnostics().retainedBundles).toBe(1)
+    expect(session.diagnostics().restartRequired).toBe(false)
+    expect(
+      diagnostics
+        .filter((event) => event.event === 'error')
+        .map(({ stage, code }) => ({ stage, code }))
+    ).toEqual([{ stage: 'bundle', code: 'CAPACITY' }])
+    await writeFile(entry, original)
+    await writeFile(join(root, 'shared/value.ts'), 'export const value = 2')
+    expect((await session.invalidate(['backend/main.ts'])).action).toBe('reloaded')
+    expect(adapter.value()).toBe(12)
+    expect(adapter.replacements()).toBe(2)
+  } finally {
+    await session?.close()
+    await rm(root, { recursive: true, force: true })
+  }
+})
 test('frontend edits without an integration callback do not claim a notification', async () => {
   const root = await temporary()
   let session: DevelopmentSession | undefined
@@ -485,90 +529,125 @@ test('coalesced edits settle all callers with one replacement and unknown cleanu
     await rm(root, { recursive: true, force: true })
   }
 })
-test('filesystem events observe transitive dependencies outside the declared source roots', async () => {
-  const parent = await temporary(),
-    root = join(parent, 'app')
-  let session: DevelopmentSession | undefined
-  try {
-    await mkdir(root)
-    await fixture(root)
-    await writeFile(join(parent, 'external.ts'), 'export const external = 20')
-    await writeFile(
-      join(root, 'backend/main.ts'),
-      [
-        "import { parentPort } from 'node:worker_threads'",
-        "import { external } from '../../external.ts'",
-        'parentPort!.on("message", () => {})',
-        'parentPort!.postMessage(external)',
-      ].join('\n')
-    )
-    const adapter = workerAdapter(),
-      diagnostics: DevelopmentDiagnostic[] = []
+test.each(['native', 'malformed-cross-drive'] as const)(
+  'filesystem events observe transitive dependencies outside the declared source roots (%s metafile)',
+  async (metadata) => {
+    const parent = await temporary(),
+      root = join(parent, 'app')
+    let session: DevelopmentSession | undefined
+    let restoreBuild: (() => void) | undefined
+    let metadataInputs: string[] = []
     try {
-      session = await DevelopmentSession.start(
-        options(root, adapter, {
-          watch: true,
-          debounceMs: 10,
-          onDiagnostic: (event) => diagnostics.push(event),
+      await mkdir(root)
+      await fixture(root)
+      await writeFile(join(parent, 'external.ts'), 'export const external = 20')
+      await writeFile(
+        join(root, 'backend/main.ts'),
+        [
+          "import { parentPort } from 'node:worker_threads'",
+          "import { external } from '../../external.ts'",
+          'parentPort!.on("message", () => {})',
+          'parentPort!.postMessage(external)',
+        ].join('\n')
+      )
+      if (metadata === 'malformed-cross-drive') {
+        const build = Bun.build.bind(Bun)
+        const mock = spyOn(Bun, 'build').mockImplementation(async (config) => {
+          const built = await build(config)
+          if (!built.metafile) return built
+          // Reproduce the observed Bun 1.4.3 C:-temp/D:-checkout display paths.
+          // Actual resolver/loader execution and generated code remain real.
+          const inputs = Object.fromEntries(
+            Object.entries(built.metafile.inputs).map(([path, input]) => [
+              `../../../../C:/bunly-metafile-display-only/${basename(parent)}/${basename(path)}`,
+              input,
+            ])
+          )
+          metadataInputs = Object.keys(inputs)
+          return { ...built, metafile: { ...built.metafile, inputs } }
         })
-      )
-    } catch (cause) {
-      // Keep the exact startup failure and expose the paths Bun actually loaded.
-      // Hosted Windows uses a different drive for its checkout and temp directory;
-      // without this receipt BUILD_FAILED alone hides build versus watcher failures.
-      const loaded: string[] = []
-      const probe = await Bun.build({
-        entrypoints: [join(root, 'backend/main.ts')],
-        target: 'bun',
-        format: 'esm',
-        metafile: true,
-        throw: false,
-        plugins: [
-          {
-            name: 'observe-fixture-input-paths',
-            setup(build) {
-              build.onLoad({ filter: /./ }, ({ path }) => {
-                loaded.push(path)
-              })
+        restoreBuild = () => mock.mockRestore()
+      }
+      const adapter = workerAdapter(),
+        diagnostics: DevelopmentDiagnostic[] = []
+      try {
+        session = await DevelopmentSession.start(
+          options(root, adapter, {
+            watch: true,
+            debounceMs: 10,
+            onDiagnostic: (event) => diagnostics.push(event),
+          })
+        )
+      } catch (cause) {
+        // Keep the exact startup failure and expose the paths Bun actually loaded.
+        // Hosted Windows uses a different drive for its checkout and temp directory;
+        // without this receipt BUILD_FAILED alone hides build versus watcher failures.
+        const loaded: string[] = []
+        const probe = await Bun.build({
+          entrypoints: [join(root, 'backend/main.ts')],
+          target: 'bun',
+          format: 'esm',
+          metafile: true,
+          throw: false,
+          plugins: [
+            {
+              name: 'observe-fixture-input-paths',
+              setup(build) {
+                build.onLoad({ filter: /./ }, ({ path }) => {
+                  loaded.push(path)
+                })
+              },
             },
-          },
-        ],
-      })
-      const inputs = await Promise.all(
-        Object.keys(probe.metafile?.inputs ?? {}).map(async (path) => ({
-          path,
-          resolved: resolve(path),
-          exists: await lstat(resolve(path)).then(
-            (stat) => stat.isFile(),
-            () => false
-          ),
-        }))
-      )
-      throw new Error(
-        `Watcher startup failed: ${JSON.stringify({
-          diagnostics,
-          cwd: process.cwd(),
-          root,
-          loaded,
-          inputs,
-          buildSuccess: probe.success,
-          buildMessages: probe.logs.map((message) => message.message),
-        })}`,
-        { cause }
-      )
+          ],
+        })
+        const inputs = await Promise.all(
+          Object.keys(probe.metafile?.inputs ?? {}).map(async (path) => ({
+            path,
+            resolved: resolve(path),
+            exists: await lstat(resolve(path)).then(
+              (stat) => stat.isFile(),
+              () => false
+            ),
+          }))
+        )
+        throw new Error(
+          `Watcher startup failed: ${JSON.stringify({
+            diagnostics,
+            cwd: process.cwd(),
+            root,
+            loaded,
+            inputs,
+            buildSuccess: probe.success,
+            buildMessages: probe.logs.map((message) => message.message),
+          })}`,
+          { cause }
+        )
+      }
+      expect(adapter.value()).toBe(20)
+      if (metadata === 'malformed-cross-drive') {
+        expect(metadataInputs).toHaveLength(2)
+        for (const path of metadataInputs)
+          expect(
+            await lstat(resolve(path)).then(
+              () => true,
+              () => false
+            )
+          ).toBe(false)
+      }
+      await writeFile(join(parent, 'external.ts'), 'export const external = 21')
+      const deadline = performance.now() + 5000
+      while (adapter.value() !== 21 && performance.now() < deadline) await Bun.sleep(10)
+      expect(adapter.value()).toBe(21)
+      await session.close()
+      expect(session.diagnostics().watchedDirectories).toBe(0)
+    } finally {
+      restoreBuild?.()
+      await session?.close()
+      await rm(parent, { recursive: true, force: true })
     }
-    expect(adapter.value()).toBe(20)
-    await writeFile(join(parent, 'external.ts'), 'export const external = 21')
-    const deadline = performance.now() + 5000
-    while (adapter.value() !== 21 && performance.now() < deadline) await Bun.sleep(10)
-    expect(adapter.value()).toBe(21)
-    await session.close()
-    expect(session.diagnostics().watchedDirectories).toBe(0)
-  } finally {
-    await session?.close()
-    await rm(parent, { recursive: true, force: true })
-  }
-}, 10000)
+  },
+  10000
+)
 test('shutdown cancels queued changes and waits for owned runtime completion', async () => {
   const root = await temporary()
   let session: DevelopmentSession | undefined
