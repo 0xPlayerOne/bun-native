@@ -95,6 +95,15 @@ acknowledgments, and continuing autonomous producer ticks. A newly spawned child
 or reconstructed transcript cannot satisfy this fixture's retained identity and
 single-launch requirements.
 
+The terminal consumer reads numbered records from xterm's screen after each
+parser-completion callback. This admits ConPTY cursor, erase and repaint output
+without treating VT control bytes as record text. All original delivered bytes
+still contribute to the byte count and checksum; repeated displayed rows must
+match the bounded retained history. Sequence gaps, changed repaints, incorrect
+acknowledgments, incomplete UTF-8 and missing final output reject qualification.
+Portable tests exercise real xterm parsing of control operations and split Unicode;
+actual Windows qualification remains a separate native gate.
+
 Generation-owned timers and listeners assert disposal before normal retirement.
 Accepted requests must settle, and ownership reservations stay charged until the
 underlying work actually settles. Checkpoints every 25 replacements require one
@@ -128,6 +137,12 @@ Typed stage/code and restart disposition accompany a bounded first-line cause;
 local paths, stack frames and credential-like values are omitted with explicit
 redaction/truncation flags. Successful stage events are not retained. These fields
 explain rejected runs and do not supply native acceptance or change their outcome.
+Renderer terminal errors have a separate diagnostic source. Fixture binding
+validation identifies the fixed resource name while retaining the original
+rejection, and terminal exit/closure receipts are retained even after failed
+startup. The earlier hosted Windows `DENIED` report does not contain the original
+terminal bytes or renderer error, so a terminal-consumer cancellation remains an
+inference until native validation confirms the corrected path.
 
 ## Separate controlled relaunch
 
@@ -162,6 +177,16 @@ same key and executable without another copy or native compilation. Each native
 launch has an empty `PATH`. Complete runtime bytes, link targets, device/inode,
 size, modification time, permissions, ownership and final hard-link counts must
 remain unchanged across edits and relaunch.
+
+Linux cold assembly includes the empty `extensions` directory that the pinned
+Chromium runtime otherwise creates beside its library on first use. It is
+validated and included before the complete cache receipt is published; an
+unexpected existing file, symlink or extension entry rejects assembly. No path is
+excluded from warm verification and no post-launch repair is performed. The
+[prepared host contract](development-host.md#prepared-host-cache) links the pinned
+upstream path-provider behavior. Portable regression controls reproduce the
+original added-directory rejection and verify reuse after complete cold assembly;
+the hosted native matrix supplies actual runtime validation.
 
 Cold preparation metrics are retained before launch. If warm verification fails,
 the report preserves that failed attempt, its typed integrity diagnostic from the

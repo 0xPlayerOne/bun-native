@@ -29,6 +29,16 @@ authenticated CEF acquisition remains responsible for validating its complete
 runtime inventory; a manifest file's hash alone does not prove the files it names.
 The development cache is not a second acquisition path or a new trust root.
 
+The assembler must provide the runtime's complete static directory layout before
+publication. The maintained Linux CEF assembler creates an empty `extensions`
+directory beside the runtime library: Chromium 156's
+[external extension path provider](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/common/chrome_paths.cc)
+otherwise creates that directory at first use. Its
+[external provider selection](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/extensions/external_provider_impl.cc)
+uses that path on Linux and a registry provider on Windows. The fixture validates
+an existing directory as real and empty, without clearing it. The directory enters
+the ordinary cache inventory; later contents or mode changes still reject reuse.
+
 Assembly uses a private staging directory, an exclusive per-key lock, and atomic
 publication. The native input identities are checked again before publication.
 Every prepared file, directory and contained relative symlink is inventoried;

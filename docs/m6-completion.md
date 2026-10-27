@@ -1,6 +1,6 @@
 # M6 — persistent development sessions
 
-## Implemented and locally qualified scope
+## Implemented scope and retained qualification
 
 M6 implements opt-in replacement of trusted Bun application code while the stable
 desktop owner retains windows, browser sessions, terminals and managed processes.
@@ -10,7 +10,7 @@ passed 500 actual backend replacements, 508 renderer receipts and a separate
 controlled relaunch. A separately pinned comparison executed the same selected
 edit outcome in Bunly, Electrobun and Mirin, with all 15 rows passing.
 
-This report records the implemented scope and retained local evidence.
+This report records the implemented scope and retained local and hosted evidence.
 [PR #130](https://github.com/0xPlayerOne/bunly/pull/130) carries the final-head
 portable/hosted validation and merge record. Merge requires all applicable checks;
 the local observations below do not assert their outcome or additional platform
@@ -34,7 +34,9 @@ work. Successful M6 observations do not erase their retained failures.
 The #28 ownership model and #29 mechanism matrix have their own accepted evidence,
 including their declared platform execution. Their earlier model transitions and
 synthetic owner experiments are separate from the 500 actual desktop replacements
-recorded here. This integrated native run establishes macOS arm64 coverage only.
+recorded here. The accepted integrated native captures at the historical
+checkpoints below establish macOS arm64 coverage. The final-head platform gates
+and merge receipt are maintained in PR #130, separately from those fixed captures.
 
 ## Supported lifecycle
 
@@ -146,6 +148,71 @@ records a failed result. The cache diagnostic retains the exact expected and
 actual inventory comparison, or an explicitly incomplete scan, without relaxing
 the cache-integrity rejection. A subsequent native run must establish any
 correction; these original failures are not promoted by later changes.
+
+### Follow-up hosted native validation
+
+[Native CEF workflow 40590492356](https://github.com/0xPlayerOne/bunly/actions/runs/40590492356)
+ran PR head `d44bd565ecea22c5b27d640d41c54398c02f47e9` as clean test merge
+`c47eee9cadbf0c4bc1d06b97f46d98c2eccbffdc`; both have tree
+`441f4643767e30bb631837c12e3d4ea790f95148`. macOS passed all eleven native
+matrix stages. Linux and Windows remained failed, with their new diagnostics
+retained under `followupWorkflows` in the hosted failure index.
+
+| Platform | Observed outcome                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux    | The soak passed 500 replacements, 508 renderer checks, 1,530 settled requests and ordered native shutdown. CEF shutdown took 20 ms and process-stop took 13 ms. Warm cache verification then rejected one added empty directory, `Managed Development/extensions`, with no removed or changed entries. No restart was admitted.                                                                                         |
+| Windows  | Generation 1 reached managed-resource validation and was rejected with `INCOMPATIBLE` / `ManagedError: DENIED`; its candidate was retired without publication. No replacement or renderer check completed. The single accepted request settled, the backend exited 1, and the observer reported no timeout, cancellation, overflow, orphan or survivor. Warm cache and artifact checks passed; no restart was admitted. |
+| macOS    | The complete soak and distinct controlled restart passed, including positive cleanup-helper identity and exact clone removal for both launches. The six fault scenarios and four terminal-load visibility modes also passed with positive helper and clone evidence.                                                                                                                                                    |
+
+The Linux diagnostic records the expected and actual complete inventories from
+the scan that rejected reuse. Chromium 156.0.8078.17's
+[external-extension path](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/common/chrome_paths.cc)
+selects and creates `DIR_MODULE/extensions`; its
+[external provider](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/extensions/external_provider_impl.cc)
+uses that directory on Linux. The cold managed-fixture assembly now declares and
+validates the empty directory before the immutable cache inventory is published.
+Warm verification still compares every entry and rejects later additions, file
+changes, links or directory removal; it neither repairs nor excludes this path.
+This correction requires a later native execution to establish qualification.
+
+The Windows fixture also contained a reproduced terminal parser incompatibility:
+the old consumer accepted plain records but rejected the same records wrapped in
+VT control operations. The corrected consumer reads actual xterm screen state,
+with bounded internal writes and parser callbacks before stream credit returns.
+Regressions preserve exact byte counts and checksums while rejecting malformed
+partial records before scrollback can erase them. Additional diagnostics retain
+the failed binding name, renderer error and terminal exit/closure. The hosted
+`DENIED` export lacks the original terminal bytes and renderer error, so this
+proposed causal chain still requires current-head Windows native validation.
+
+The macOS artifact is `12774692229`, ZIP SHA-256
+`2b6fad772038cf64b1214247419a9a6fbd5aa931fe0693a5b75339cbd9030311`
+(2,489,135 bytes). Its nonce-redacted `managed-development.json` export is
+2,048,705 bytes, SHA-256
+`6ea02aabbe3e01c7f03afb9bf35312079aee69794f49686c9143d13d122ae6e1`.
+Independent offline validation reapplied the complete managed acceptance rules
+and matched all 291 source hashes to the exact test merge. This export identity
+does not reconstruct an unavailable private raw report.
+
+That hosted macOS soak completed 500 replacements and 508 renderer receipts,
+settled all 1,530 accepted requests and returned owned counters to zero. Its
+single PTY supplied 53,766 bytes and 1,651 records, including 1,148 autonomous
+records; both cumulative checksum endpoints were `b908e755`. Main-isolate heap
+median changed by −312,552 bytes and owner RSS median by +589,824 bytes, within
+the unchanged finite sentinels. Soak and restart each observed one verified
+cleanup helper and one removed clone, with cleanup durations of 293.598459 ms
+and 203.424791 ms. Their CEF shutdown durations were 212 ms and 111 ms;
+process-stop durations were 9 ms and 6 ms. Neither launch timed out, overflowed,
+was cancelled or left an observed orphan or survivor.
+
+Warm preparation verified the unchanged 427,981,134-byte runtime in
+1851.967833 ms, with one total assembly and zero warm native copies or
+compilations. The restart admitted backend revision 500, shared revision 1 and
+the edited configuration, settled both requests and used fresh native and
+renderer identities. Unsaved form, ephemeral session and login state were
+absent as required by the full-restart boundary. These finite macOS passes do
+not resolve the earlier failures or establish release or comparative performance
+qualification.
 
 ## Native workload results
 

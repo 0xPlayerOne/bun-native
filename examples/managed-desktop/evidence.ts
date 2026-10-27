@@ -75,9 +75,10 @@ export interface ManagedDiagnosticText {
   readonly truncated: boolean
 }
 export interface ManagedFailureDiagnostic {
-  readonly source: 'development' | 'broker' | 'bindings' | 'reload' | 'fixture'
+  readonly source: 'development' | 'broker' | 'bindings' | 'reload' | 'fixture' | 'renderer'
   readonly event: 'error' | 'failure' | 'forced-termination'
   readonly stage: string
+  readonly binding?: 'session' | 'window' | 'view' | 'terminal' | 'temporary'
   readonly code?: string
   readonly generation?: number
   readonly sequence?: number

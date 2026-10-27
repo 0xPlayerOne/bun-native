@@ -125,6 +125,8 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     sourceHash = 0x811c9dc5
   let terminalExit: TerminalProcessExit | null = null,
     terminalClose: TerminalClosure | null = null
+  let terminalStopping = false,
+    cleaningUp = false
   let terminalReleased = false,
     outputOk = false
   let rendererTerminal: TerminalReceipt | undefined
@@ -180,10 +182,18 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     },
     dispose() {},
   })
-  const bindings = async () => ({
-    ...(await desktop.prepare()),
-    probe: { resource: probe, schema: 'fixture-probe:1' },
-  })
+  const bindings = async () => {
+    const resources = { ...(await desktop.prepare()) }
+    for (const name of ['session', 'window', 'view', 'terminal', 'temporary'] as const) {
+      const binding = resources[name]
+      if (binding)
+        resources[name] = {
+          ...binding,
+          validate: () => diagnostics.validateBinding(name, binding.validate),
+        }
+    }
+    return { ...resources, probe: { resource: probe, schema: 'fixture-probe:1' } }
+  }
   const broker = new ServiceReloadHost({
     owner,
     runner,
@@ -501,6 +511,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         admit(context, async () => {
           assert.equal(revision, MANAGED_PLAN.replacements)
           const terminal = await terminalReady.promise
+          terminalStopping = true
           await terminals.write(terminal.handle, new TextEncoder().encode('exit\n'))
           terminalExit = await terminal.observation.processExited
           terminalClose = await terminal.observation.terminalClosed
@@ -524,8 +535,9 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     },
     fail: {
       capability: 'managed-fixture',
-      handle: (_code, context) =>
+      handle: (code, context) =>
         admit(context, async () => {
+          diagnostics.failure('renderer', new Error(code))
           complete.reject(new Error('RENDERER_ASSERTION'))
           return null
         }),
@@ -546,8 +558,23 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         maxQueuedOutputChunks: 8,
       })
       const observation = terminals.observe(handle)
+      void observation.processExited.then((exit) => {
+        terminalExit = exit
+        if (!terminalStopping && !cleaningUp) {
+          const failure = new Error('TERMINAL_EARLY_EXIT')
+          diagnostics.failure('fixture', failure)
+          complete.reject(failure)
+        }
+      })
+      void observation.terminalClosed.then((closed) => {
+        terminalClose = closed
+      })
       void observation.outputFinished.then((outcome) => {
-        if (!outcome.ok) complete.reject(new Error('TERMINAL_OUTPUT_FAILED'))
+        if (!outcome.ok && !cleaningUp) {
+          const failure = new Error('TERMINAL_OUTPUT_FAILED')
+          diagnostics.failure('fixture', failure)
+          complete.reject(failure)
+        }
       })
       terminalReady.resolve({ handle, observation })
     })().catch((error) => {
@@ -665,6 +692,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     ready.reject(new Error(failureCode))
     console.error('BUNLY_MANAGED_FIXTURE_FAILED', error)
   } finally {
+    cleaningUp = true
     clearTimeout(deadline)
     try {
       await development?.close()

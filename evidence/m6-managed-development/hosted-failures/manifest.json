@@ -119,5 +119,80 @@
         "difference": "Only two inventory path strings differ: inputArtifact.entries[247].path and inputArtifactAfter.entries[247].path encode unicode-é.txt as unicode-Ã©.txt in this run-specific export. Outcomes and all other parsed fields agree; both exports are retained."
       }
     }
+  ],
+  "followupWorkflows": [
+    {
+      "workflowRun": 40590492356,
+      "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40590492356",
+      "sourceCommit": "c47eee9cadbf0c4bc1d06b97f46d98c2eccbffdc",
+      "pullRequestHead": "d44bd565ecea22c5b27d640d41c54398c02f47e9",
+      "sourceTree": "441f4643767e30bb631837c12e3d4ea790f95148",
+      "passed": false,
+      "performanceEligible": false,
+      "releaseApproved": false,
+      "provenance": "These inputs are the hosted workflow’s already nonce-redacted exports. Raw private report bytes and their hashes were not included in the downloaded artifacts and are not reconstructed. Embedded original observation/result hashes are preserved; an export hash does not attest those unavailable raw bytes. The source test merge and pull-request head were independently verified to have the same Git tree.",
+      "runs": [
+        {
+          "id": "linux-managed-development",
+          "profile": "native-managed-development-v1",
+          "passed": false,
+          "failureClass": "added-extensions-directory-cache-integrity-rejection",
+          "jobId": 122493153003,
+          "artifactId": 12775035972,
+          "artifactZipSha256": "31a50cca80f6206d1e7b6daf498cc42532932407b59f20ccb758178bb6e0c121",
+          "artifactZipBytes": 3485832,
+          "inputReport": {
+            "kind": "nonce-redacted-hosted-export",
+            "member": "managed-development.json",
+            "bytes": 5707587,
+            "sha256": "526ae6228064c38a1e09327281061232a16231e14480a0e8c5d3278afbf1133e"
+          },
+          "archive": "run-40590492356-linux-managed-development.json.gz",
+          "archiveBytes": 171569,
+          "archiveSha256": "76309c2fc808779321083c54b50054d2dfb5dd050f7036a9a4ef303f77f9fa63",
+          "expandedBytes": 5707587,
+          "expandedSha256": "526ae6228064c38a1e09327281061232a16231e14480a0e8c5d3278afbf1133e",
+          "redactions": [
+            "fixture-nonces"
+          ]
+        },
+        {
+          "id": "windows-managed-development",
+          "profile": "native-managed-development-v1",
+          "passed": false,
+          "failureClass": "initial-generation-validation-denied",
+          "jobId": 122493152570,
+          "artifactId": 12775135844,
+          "artifactZipSha256": "3a3a3e417f4ddc513bb79931483daa35447cf6373ad46d652526b66023def827",
+          "artifactZipBytes": 3092013,
+          "inputReport": {
+            "kind": "nonce-redacted-hosted-export",
+            "member": "managed-development.json",
+            "bytes": 622259,
+            "sha256": "bdb63633f99ac9b2701a722043ef795b6e5a2721ca8092de06ce10c8fd0d9754"
+          },
+          "archive": "run-40590492356-windows-managed-development.json.gz",
+          "archiveBytes": 73260,
+          "archiveSha256": "7376403b544d1401e3324450fef351f3f566b7dfbade5be3ff84780f7697e90f",
+          "expandedBytes": 622235,
+          "expandedSha256": "a95d003563e34fa8bd5727f7f7a065bde47bb9b4fa172c794a006067a119f5d6",
+          "redactions": [
+            "fixture-nonces",
+            "hosted-workspace-paths"
+          ],
+          "alternateExport": {
+            "member": "managed-development-run-BdTpFl.json",
+            "inputBytes": 622271,
+            "inputSha256": "3c80d62f974e93e1c768ade3e9bd0bf879d7df68109cb9aff3a1a411fb2029ca",
+            "archive": "run-40590492356-windows-run-export.json.gz",
+            "archiveBytes": 73266,
+            "archiveSha256": "bad969770fc0f7a74268c0e2bf7478ca3750d5ba977b1aab15b3cd6da9e3112b",
+            "expandedBytes": 622247,
+            "expandedSha256": "c118201077809d17dec0c258bcb256f0714710cc655d922bdef5d75db5fb2b59",
+            "difference": "Only two inventory path strings differ: inputArtifact.entries[247].path and inputArtifactAfter.entries[247].path encode unicode-é.txt as unicode-Ã©.txt in this run-specific export. Outcomes and all other parsed fields agree; both exports are retained."
+          }
+        }
+      ]
+    }
   ]
 }

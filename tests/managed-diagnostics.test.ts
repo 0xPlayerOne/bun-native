@@ -98,6 +98,49 @@ test('ordinary replacement stages are ignored and failure retention is bounded w
   expect(diagnostics.snapshot().dropped).toBe(69)
 })
 
+test('renderer terminal failures keep their own bounded source attribution', () => {
+  const diagnostics = new ManagedDiagnostics()
+  diagnostics.failure('renderer', new Error('TERMINAL_RECORD_ORDER'))
+  expect(diagnostics.snapshot()).toEqual({
+    schema: 1,
+    dropped: 0,
+    entries: [
+      {
+        source: 'renderer',
+        event: 'failure',
+        stage: 'renderer',
+        message: { text: 'TERMINAL_RECORD_ORDER', redacted: false, truncated: false },
+      },
+    ],
+  })
+})
+
+test('binding validation names the rejected resource and preserves the original error', async () => {
+  const diagnostics = new ManagedDiagnostics()
+  await diagnostics.validateBinding('window', async () => {})
+  expect(diagnostics.snapshot().entries).toHaveLength(0)
+  const denied = Object.assign(new Error('DENIED'), { code: 'DENIED' })
+  let caught: unknown
+  try {
+    await diagnostics.validateBinding('terminal', async () => {
+      throw denied
+    })
+  } catch (error) {
+    caught = error
+  }
+  expect(caught).toBe(denied)
+  expect(diagnostics.snapshot().entries).toEqual([
+    {
+      source: 'bindings',
+      event: 'failure',
+      stage: 'validate',
+      binding: 'terminal',
+      code: 'DENIED',
+      message: { text: 'DENIED', redacted: false, truncated: false },
+    },
+  ])
+})
+
 test('binding and typed reload observations preserve the exact original rejection', async () => {
   const diagnostics = new ManagedDiagnostics()
   const binding = Object.assign(new Error('Native authority is stale'), { code: 'STALE' })

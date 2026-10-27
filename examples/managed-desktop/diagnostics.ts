@@ -11,7 +11,7 @@ import type {
 
 const MAX_RECORDS = 32
 const MAX_TEXT = 512
-type RejectionSource = 'bindings' | 'reload' | 'fixture'
+type RejectionSource = 'bindings' | 'reload' | 'fixture' | 'renderer'
 
 /** Deliberately discard the suffix at a path or credential, including paths with spaces. */
 function firstLine(value: string): ManagedDiagnosticText {
@@ -98,7 +98,11 @@ export class ManagedDiagnostics {
     })
   }
 
-  failure(source: RejectionSource, error: unknown): void {
+  failure(
+    source: RejectionSource,
+    error: unknown,
+    binding?: ManagedFailureDiagnostic['binding']
+  ): void {
     // Even an unexpected thrown object/getter must not replace the original rejection.
     try {
       const code =
@@ -106,7 +110,8 @@ export class ManagedDiagnostics {
       this.#record({
         source,
         event: 'failure',
-        stage: error instanceof ServiceReloadError ? error.stage : source,
+        stage: binding ? 'validate' : error instanceof ServiceReloadError ? error.stage : source,
+        ...(binding ? { binding } : {}),
         ...(typeof code === 'string' && /^[A-Z][A-Z_0-9]{0,63}$/.test(code) ? { code } : {}),
         message: firstLine(error instanceof Error ? error.message : 'Non-Error rejection'),
         ...(error instanceof ServiceReloadError
@@ -128,6 +133,18 @@ export class ManagedDiagnostics {
       return await work()
     } catch (error) {
       this.failure(source, error)
+      throw error
+    }
+  }
+
+  async validateBinding(
+    binding: NonNullable<ManagedFailureDiagnostic['binding']>,
+    work: () => Promise<void>
+  ): Promise<void> {
+    try {
+      await work()
+    } catch (error) {
+      this.failure('bindings', error, binding)
       throw error
     }
   }

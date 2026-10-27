@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join, relative, resolve } from 'node:path'
-import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import {
   DevelopmentError,
   prepareDevelopmentHost,
@@ -59,6 +59,28 @@ function nativePaths(app: string, source: string) {
           : 'libcef.so'
     ),
   }
+}
+/** Complete the selected Linux runtime's static layout before publishing its
+ * immutable cache inventory. Chromium 156's DIR_EXTERNAL_EXTENSIONS lookup
+ * otherwise creates this empty directory beside libcef.so on first launch.
+ * Existing contents are never removed or excluded from later verification.
+ */
+export async function prepareManagedRuntimeLayout(
+  app: string,
+  platform: NodeJS.Platform = process.platform
+): Promise<void> {
+  if (platform !== 'linux') return
+  const rootInfo = await lstat(app)
+  assert.ok(rootInfo.isDirectory() && !rootInfo.isSymbolicLink(), 'Invalid prepared runtime root')
+  const extensions = join(app, 'extensions')
+  try {
+    await mkdir(extensions, { mode: 0o700 })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+  const info = await lstat(extensions)
+  assert.ok(info.isDirectory() && !info.isSymbolicLink(), 'Invalid static extensions directory')
+  assert.equal((await readdir(extensions)).length, 0, 'Static extensions directory must be empty')
 }
 export async function buildManagedApplication(resources: string) {
   const backend = join(resources, 'backend')
@@ -311,6 +333,7 @@ async function qualify(args: readonly string[]): Promise<void> {
           assert.equal(assemblies, 1, 'Warm preparation attempted another host assembly')
           const app = join(stage, mac ? 'Managed Development.app' : 'Managed Development')
           await cp(inputRoot, app, { recursive: true, dereference: false })
+          await prepareManagedRuntimeLayout(app)
           operations.push({
             operation: 'copy-prebuilt-runtime',
             count: 1,

@@ -9,12 +9,11 @@ import {
   LOGIN_MARKER,
   SESSION_MARKER,
   TOTAL_REPLACEMENTS,
-  byteHashText,
   managedRpcLimits,
   managedSchema,
-  updateByteHash,
   type ManagedAction,
 } from './contract.ts'
+import { ManagedTerminalConsumer } from './terminal-consumer.ts'
 
 function check(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message)
@@ -41,22 +40,26 @@ async function main(): Promise<void> {
   const instance = crypto.randomUUID()
   const terminal = new Terminal({ cols: 100, rows: 24, scrollback: 100, allowProposedApi: true })
   terminal.open(output)
-  const decoder = new TextDecoder('utf-8', { fatal: true })
+  const consumer = new ManagedTerminalConsumer(terminal)
   const finished = deferred<void>()
-  let carry = '',
-    bytes = 0,
-    hash = 0x811c9dc5,
-    records = 0,
-    lastSequence = -1,
-    lastAck = -1,
-    acks = 0
   let waiting: { revision: number; done: ReturnType<typeof deferred<void>> } | undefined
   const waitAck = (revision: number): Promise<void> => {
-    if (lastAck === revision) return Promise.resolve()
-    check(lastAck < revision && !waiting, 'Unexpected terminal acknowledgement ordering')
+    if (consumer.lastAck === revision) return Promise.resolve()
+    check(consumer.lastAck < revision && !waiting, 'Unexpected terminal acknowledgement ordering')
     const done = deferred<void>()
     waiting = { revision, done }
     return done.promise
+  }
+  const rpc = new RpcClient(managedSchema, await waitForCefRpcTransport(), {
+    limits: managedRpcLimits,
+  })
+  const terminalFailed = (error: unknown): void => {
+    const failure = error instanceof Error ? error : new Error('TERMINAL_CONSUMER_FAILED')
+    finished.reject(failure)
+    const code = /^TERMINAL_[A-Z_]{1,48}$/.test(failure.message)
+      ? failure.message
+      : 'TERMINAL_CONSUMER_FAILED'
+    void rpc.call('fail', code).catch(() => {})
   }
   const receiver = new BinaryStreamReceiver(
     await waitForCefStreamTransport(),
@@ -68,50 +71,30 @@ async function main(): Promise<void> {
     {
       continuity: {
         async consume(chunk) {
-          await new Promise<void>((resolve) => terminal.write(chunk, resolve))
-          bytes += chunk.byteLength
-          check(bytes <= 4 * 1024 * 1024, 'Bounded terminal output exceeded')
-          hash = updateByteHash(hash, chunk)
-          carry += decoder.decode(chunk, { stream: true })
-          check(carry.length <= 65_536, 'Bounded terminal parser exceeded')
-          for (;;) {
-            const newline = carry.indexOf('\n')
-            if (newline < 0) break
-            const line = carry.slice(0, newline).replace(/\r/g, '')
-            carry = carry.slice(newline + 1)
-            const match =
-              /^BUNLYM6\|([0-9]{1,5})\|(ready|tick|ack|final)\|([0-9]{1,3})\|café-🐙$/.exec(line)
-            check(match, 'Unexpected terminal record')
-            const sequence = Number(match[1]),
-              kind = match[2],
-              revision = Number(match[3])
-            check(
-              sequence === lastSequence + 1 && sequence < 20_000,
-              'Missing, duplicated or reordered terminal record'
-            )
-            lastSequence = sequence
-            records++
-            if (kind === 'ack') {
-              check(revision === lastAck + 1, 'Wrong terminal acknowledgement revision')
-              lastAck = revision
-              acks++
-              if (waiting?.revision === revision) {
+          try {
+            for (const record of await consumer.consume(chunk)) {
+              if (record.kind === 'ack' && waiting?.revision === record.revision) {
                 waiting.done.resolve()
                 waiting = undefined
               }
             }
+          } catch (error) {
+            terminalFailed(error)
+            throw error
           }
         },
         finish() {
-          check(!carry && decoder.decode() === '', 'Incomplete final terminal record')
-          finished.resolve()
+          try {
+            consumer.finish()
+            finished.resolve()
+          } catch (error) {
+            terminalFailed(error)
+            throw error
+          }
         },
       },
     }
   )
-  const rpc = new RpcClient(managedSchema, await waitForCefRpcTransport(), {
-    limits: managedRpcLimits,
-  })
   addEventListener(
     'pagehide',
     () => {
@@ -212,8 +195,8 @@ async function main(): Promise<void> {
       session: sessionStorage.getItem('bunly.managed.session')!,
       login: sessionStorage.getItem('bunly.managed.login')!,
       instance,
-      terminalSequence: lastSequence,
-      terminalAck: lastAck,
+      terminalSequence: consumer.lastSequence,
+      terminalAck: consumer.lastAck,
     })
   }
   const step = async (action: ManagedAction, revision: number) =>
@@ -256,7 +239,7 @@ async function main(): Promise<void> {
         await readback(revision)
       }
       if (revision % 25 === 0)
-        progress.textContent = `${revision} replacements; ${records} continuous terminal records; unsaved state retained.`
+        progress.textContent = `${revision} replacements; ${consumer.count} continuous terminal records; unsaved state retained.`
     }
     check(
       (await step('restart', TOTAL_REPLACEMENTS)).action === 'restart-required',
@@ -266,10 +249,16 @@ async function main(): Promise<void> {
     await rpc.call('endTerminal', null)
     await finished.promise
     check(
-      acks === TOTAL_REPLACEMENTS + 1 && lastAck === TOTAL_REPLACEMENTS,
+      consumer.acks === TOTAL_REPLACEMENTS + 1 && consumer.lastAck === TOTAL_REPLACEMENTS,
       'Terminal acknowledgements incomplete'
     )
-    await rpc.call('finish', { bytes, hash: byteHashText(hash), records, lastSequence, acks })
+    await rpc.call('finish', {
+      bytes: consumer.bytes,
+      hash: consumer.hash,
+      records: consumer.count,
+      lastSequence: consumer.lastSequence,
+      acks: consumer.acks,
+    })
     progress.textContent = '500 replacements verified. Terminal output and browser state retained.'
   } catch (error) {
     waiting?.done.reject(error instanceof Error ? error : new Error('Renderer failure'))
