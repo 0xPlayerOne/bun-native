@@ -272,8 +272,13 @@ export class ManagedGenerationOwner {
   detach(generation: ManagedGeneration, resource: ManagedResource): void {
     this.#asOwner(() => {
       this.#generation(generation).attachments.delete(resource)
-      for (const work of this.#work.values())
-        if (work.generation === generation && work.resource === resource) work.cancel?.()
+      // Abort listeners may synchronously reattach and admit new work. Snapshot
+      // the detached epoch's jobs before callbacks so a fresh attachment is not
+      // cancelled by the old detach, and this traversal cannot grow reentrantly.
+      const detached = [...this.#work.values()].filter(
+        (work) => work.generation === generation && work.resource === resource
+      )
+      for (const work of detached) work.cancel?.()
     })
   }
   /** No user callbacks run between validation and publication. No implicit state migration. */

@@ -749,3 +749,46 @@ test('invalid async authorization cannot escape capacity while its work remains 
   owner.dispose()
   await flush()
 })
+
+test('detach cancellation only visits work from the retired attachment epoch', async () => {
+  const owner = new ManagedGenerationOwner(),
+    pending = gate<string>()
+  let replacement: Promise<string> | undefined
+  let calls = 0
+  const resource = owner.register(
+    definition({
+      invoke: (operation, _input, context) => {
+        calls++
+        if (operation === 'replacement') return '"new"'
+        context.signal.addEventListener(
+          'abort',
+          () => {
+            owner.attach(generation, resource, 'window:1')
+            replacement = owner.invoke(generation, resource, 'replacement', 'null')
+            void replacement.catch(() => {})
+          },
+          { once: true }
+        )
+        return pending.promise
+      },
+    })
+  )
+  const generation = active(owner, resource)
+  const original = owner.invoke(generation, resource, 'original', 'null')
+  try {
+    await flush()
+    owner.detach(generation, resource)
+    await expect(original).rejects.toThrow('RETIRED')
+    expect(replacement).toBeDefined()
+    expect(await replacement).toBe('"new"')
+    expect(calls).toBe(2)
+    // Old adapter ownership remains charged, although the newly attached call completed.
+    expect(owner.diagnostics().inFlight).toBe(1)
+  } finally {
+    pending.resolve('"old"')
+    owner.dispose()
+    await flush()
+  }
+  expect(owner.diagnostics().work).toBe(0)
+  expect(owner.diagnostics().resources).toBe(0)
+})
