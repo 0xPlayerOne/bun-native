@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "dateUtc": "2026-10-27",
-  "classification": "cef-shutdown-investigation-resolution-no-current-adverse-no-runtime-fix",
-  "resolution": "close-not-planned-unreproduced-current-defect",
+  "classification": "cef-shutdown-finite-reversal-no-current-adverse-no-runtime-fix",
+  "resolution": "investigation-remains-open-awaiting-discriminating-adverse-evidence",
   "mainCommit": "40ffe083448d6e7df6c7385976c3f47ca7f3c72c",
   "currentNativeSourceTree": "b4e10795ca3d14f69f2c5d0e13826c4ba1cfc5ca",
   "baselineNativeSourceCommit": "de8cfc995de828e3b636fe77edbf79d113172cb5",
@@ -16,6 +16,7 @@
     "passed": true,
     "attempts": 42,
     "acceptedTrials": 42,
+    "shutdownSummaryPopulation": "All 21 launches per condition, including one warmup. Measured-only reused-profile median is 132.5 ms across 20 launches.",
     "shutdownMs": {
       "fresh-profile": {
         "min": 54,
@@ -44,6 +45,7 @@
     "passed": true,
     "attempts": 42,
     "acceptedTrials": 42,
+    "shutdownSummaryPopulation": "All 21 launches per condition, including one warmup. Measured-only reused-profile median is 56 ms across 20 launches.",
     "shutdownMs": {
       "fresh-profile": {
         "min": 44,
@@ -87,12 +89,29 @@
     "The exact current native source tree is unchanged from the retained baseline binary source used in this reversal.",
     "The ordinary pre-fix host completed 42 of 42 fresh/reused launches with 42 positively qualified macOS helper/clone cleanups.",
     "A global-request-context drain candidate also completed 42 of 42, but the unchanged baseline already passed and had the lower observed shutdown tail; the candidate is rejected rather than merged.",
-    "No current adverse run exists to satisfy the causal-correction gate. Shipping a speculative workaround would violate the issue acceptance contract."
+    "No adverse run was observed in this finite current-source plan. The causal-correction gate remains unmet; shipping a speculative workaround would violate the issue acceptance contract."
   ],
+  "reviewQualificationFailures": {
+    "workflowRun": "40530322285",
+    "prHead": "0894400c46c1e9372b59c27d77803d88d6576348",
+    "testedMerge": "253363f3dd03fa3c594bbb7b64792a066d1c31d1",
+    "target": "darwin-arm64",
+    "artifactId": "12748165106",
+    "artifactSha256": "0c08fc7c69050f77e24d9c9797c8483a7556573187abdf3f017c72f88813f353",
+    "stage": "terminal-load",
+    "trials": [
+      { "mode": "foreground", "passed": true },
+      { "mode": "minimized", "passed": false, "outcome": "90-second observer deadline during progressing workload; no CEF shutdown phase observed" },
+      { "mode": "hidden", "passed": false, "outcome": "stream-ack CONNECTION_REVOKED at batch 178; backend exit 1; CEF shutdown completed in 127 ms" },
+      { "mode": "background", "passed": true }
+    ],
+    "watchdogRecurrenceEstablished": false,
+    "disposition": "Retain both failures independently of the watchdog investigation and of later qualification outcomes. No runtime fix or root cause is inferred."
+  },
   "releaseBoundary": "Historical failures remain regression evidence. Any recurrence of watchdog exit 2 under current source is a release-reliability failure and should be captured with the maintained phase-triggered diagnostics before code changes.",
   "limitations": [
     "Finite local execution is not proof the historical Chromium/macOS failure can never recur.",
     "No individual Chromium blocking TaskSource was identified because no current adverse run was observed.",
-    "This resolution is not a performance claim, production signing qualification, or proof that Chromium contains no shutdown defects."
+    "This record is not issue closure, a performance claim, production signing qualification, or proof that Chromium contains no shutdown defects."
   ]
 }

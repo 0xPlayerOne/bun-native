@@ -139,11 +139,11 @@ cleanup gates are never replaced by a favorable metric. See
 
 - **Native teardown:** Historical intermittent CEF watchdog failures are retained.
   PR #121/#125 supplied ownership and phase-triggered diagnostics, not a runtime
-  correction. #124 was subsequently closed not-planned after the exact current native
-  source and unchanged control host repeatedly passed the adverse fresh/reused profile
-  plan and an evaluated shutdown candidate provided no causal discriminator. A future
-  current-source watchdog remains a release-reliability failure, not evidence erased by
-  this administrative resolution.
+  correction. The exact current native source and unchanged control host passed the
+  finite 42-launch fresh/reused plan; an evaluated shutdown candidate provided no
+  causal discriminator and was rejected. #124 remains open with its causal-resolution
+  criteria unchanged. A future current-source watchdog remains a release-reliability
+  failure; successful controls do not erase the historical failures.
 - **Process containment:** The supported native policy is explicitly non-detaching.
   Unrestricted job-control/setsid/breakaway descendants are not contained. Unix
   guardian SIGKILL/crash can orphan its group and remains an observed unsupported

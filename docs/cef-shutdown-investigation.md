@@ -3,16 +3,16 @@
 NetworkService shutdown state and native control results after the foundation merge.
 
 **Current disposition (October 27, 2026):** M5 functional acceptance is complete
-through #123. The historical watchdog failures remain retained evidence, but the
-current defect is no longer reproducible under the ordinary observer. Issue #124
-was resolved **not planned / no justified runtime patch** after an exact-current-native
-42-launch fresh/reused reversal passed with positive helper cleanup on every launch,
-and a proposed global-request-context drain failed to provide a causal discriminator.
-This is not a claim that Chromium's historical failure was fixed. The dated sections
+through #123. No watchdog reproduced in the finite exact-current-native 42-launch
+fresh/reused reversal under the ordinary observer; helper cleanup qualified on every
+launch. A proposed global-request-context drain provided no causal discriminator
+and was rejected. **Issue #124 remains open:** neither the responsible task sources
+nor a causal runtime correction have been established. The historical failures and
+the issue's resolution criteria remain valid. The dated sections
 below preserve their original source versions, outcomes and then-current milestone statements.
 
-**Status:** Historical intermittent failure retained; current defect not reproducible; no runtime patch accepted.
-**Tracking:** [Issue #124](https://github.com/0xPlayerOne/bunly/issues/124) closed not-planned after the October 27 reversal; #92 is the earlier CEF 154 investigation.
+**Status:** Historical intermittent failure retained; no recurrence in this finite plan; no runtime patch accepted.
+**Tracking:** [Issue #124](https://github.com/0xPlayerOne/bunly/issues/124) remains open pending discriminating adverse evidence; #92 is the earlier CEF 154 investigation.
 **Evidence date:** October 23, 2026.
 **Harness checkpoint:** Clean `dd95d8a261428c4bc029844332b61be1fbb142b1`.
 **Native build checkpoint:** `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`.
@@ -435,7 +435,7 @@ is not a causal runtime correction and does not close #124. In particular, the
 existing successful controls and zero audited wrapper counts still cannot replace
 a current adverse run with identified blocking task sources.
 
-## October 27 resolution of issue #124
+## October 27 finite reversal and rejected candidate
 
 The causal-fix gate was intentionally strict: a new Bunly runtime change required a
 **current adverse ordinary run**, task-source attribution, and a reversal proving the
@@ -445,8 +445,9 @@ identical to the native source used for the retained CEF 156 control artifact, a
 unchanged host completed a fixed **42-launch** foundation plan (one warmup plus twenty
 measured launches for each fresh/reused browser-root condition). All 42 application
 launches passed workload and ordered-shutdown validation and all 42 macOS code-sign
-clone/helper observations qualified. Reused-profile CEF shutdown was 56 ms median,
-454 ms maximum in that reversal.
+clone/helper observations qualified. Across all 21 reused-profile launches including
+the warmup, CEF shutdown was 147 ms median and 454 ms maximum. The 20 measured-only
+reused-profile launches had a 132.5 ms median. These are descriptive local samples.
 
 A narrow candidate was evaluated because CEF documents `CloseAllConnections()` as
 recommended after other CEF objects are released and before `CefShutdown()`: drain
@@ -461,13 +462,14 @@ waiting in Chromium `TaskTracker::CompleteShutdown` with three accounted
 shutdown-blocking items. Chromium's contract waits for already-running
 `SKIP_ON_SHUTDOWN` work and posted `BLOCK_SHUTDOWN` work. The capture did not identify
 the individual TaskSources, and later successful execution cannot manufacture that
-missing attribution. Consequently #124 is closed as **not planned / current defect
-not reproducible**, rather than falsely marked fixed.
+missing attribution. Consequently #124 remains **open with no justified runtime
+patch**. A passing finite plan does not establish that the historical reliability
+risk has disappeared or satisfy the issue's causal-resolution criteria.
 
-This changes the release disposition, not the history: a future current-source
+The release boundary remains unchanged: a future current-source
 watchdog exit remains a release-reliability failure. Preserve the failing trial and
 use the merged phase-triggered capture (`--shutdown-after`) before proposing another
 runtime change. No watchdog deadline, sandbox, security-cloning rule, helper allowance,
-provider policy, CEF version, or application runtime is changed by this resolution.
-The sanitized closeout is retained in
+provider policy, CEF version, or application runtime is changed by this record.
+The sanitized finite-plan record is retained in
 [`evidence/cef-shutdown-resolution-2026-10-27.json`](../evidence/cef-shutdown-resolution-2026-10-27.json).
