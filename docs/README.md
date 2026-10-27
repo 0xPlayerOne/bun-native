@@ -91,6 +91,9 @@ service supervision and measured load to the declared support boundary.
 [Terminal regression review](terminal-regression-review.md) defines retained-evidence
 replay and measured review envelopes without inventing a release threshold.
 
+[Managed application generations](managed-generations.md) defines the M6 stable-owner
+contract, portable model, failure accounting and remaining native integration boundaries.
+
 [Native control admission](native-control-admission.md) documents reserved command
 capacity, cancellation/task ownership and the real native saturation fixture.
 

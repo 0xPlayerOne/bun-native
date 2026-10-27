@@ -65,9 +65,12 @@ A referenced session cannot be disposed. Backend disposal releases windows,
 views, sessions, and event subscriptions. App startup rolls back created resources
 on failure. Actual native adapters must preserve these observable semantics.
 
-The planned reload manager will separate stable resource ownership from service
-callbacks; it will not preserve arbitrary closures, native addons, synchronous
-hangs, or irreversible external effects. See #28–#33.
+The opt-in [managed generation contract](managed-generations.md) separates stable
+owner adapters from replaceable handlers and tracks retirement without inventing
+cleanup completion. Its portable state-machine/example does not yet reload the
+native desktop. Mechanism qualification and integrated orchestration remain #29–#33;
+arbitrary closures, native addons, synchronous hangs and irreversible external
+effects are not magically preserved.
 
 ## Trust boundary
 
