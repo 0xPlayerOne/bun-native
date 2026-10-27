@@ -175,8 +175,9 @@ bun scripts/qualify-managed-development.ts --verify .bunly/m6/managed-developmen
 
 The native qualifier requires clean committed source, pinned Bun, the contributor
 Python environment, and the full immutable source commit for the already built
-host. It uses one actual desktop launch and a fixed 500-replacement plan. It keeps
-raw workload rows, process observation, exact artifact inventories, failures and
+host. It uses one desktop launch for the fixed 500-replacement plan and a separate
+controlled relaunch after successful shutdown. It keeps
+raw workload rows, process observations, exact artifact inventories, failures and
 cleanup receipts. The replay command verifies retained evidence; it does not
 launch another desktop or claim a fresh result. The shared hosted `full` suite
 runs this stage before the credential-provider stage on every declared platform.

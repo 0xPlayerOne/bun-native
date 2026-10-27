@@ -37,6 +37,7 @@ import {
   type ManagedRow,
 } from './evidence.ts'
 import { readManagedFrontendSource } from './frontend-source.ts'
+import managedRestartFixture from './restart.ts'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -63,6 +64,12 @@ const failureRevision: Readonly<Record<ManagedFailureCase, number>> = {
 
 /** Actual native fixture: the runner supplies a prepared CEF app and a private copied project. */
 export default async function managedDesktopFixture(backend: CefBackend): Promise<void> {
+  if (process.env['BUNLY_MANAGED_MODE'] === 'restart-check') return managedRestartFixture(backend)
+  if (
+    process.env['BUNLY_MANAGED_MODE'] !== undefined &&
+    process.env['BUNLY_MANAGED_MODE'] !== 'soak'
+  )
+    throw new Error('MANAGED_MODE_INVALID')
   const root = environment('BUNLY_MANAGED_ROOT')
   const runner = environment('BUNLY_SERVICE_RUNNER')
   const rowsPath = environment('BUNLY_MANAGED_ROWS')

@@ -57,7 +57,12 @@ bun run qualify:managed-development /absolute/path/to/prebuilt-app --native-sour
 Replace `COMMIT` with the full 40-character source commit used to build that host.
 The qualifier checks matching native source and records the actual artifact bytes.
 It creates a private fixture, runs the fixed 500-replacement plan and preserves
-its report under `.bunly/m6/managed-development`. It does not compile a native host.
+its report under `.bunly/m6/managed-development`. A separate observed relaunch
+checks changed configuration and the full-restart boundary. The
+[qualification guide](docs/managed-development-qualification.md) defines the
+workload, resource gates and retained evidence; the
+[edit outcome comparison](docs/managed-comparison.md) covers pinned reference
+frameworks. The qualifier does not compile a native host.
 Configuration/native changes and unmanaged state require a controlled restart;
 irreversible external effects are never automatically replayed.
 

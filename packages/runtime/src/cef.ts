@@ -644,6 +644,18 @@ export class CefBackend implements BrowserBackend {
       if (current[key] !== captured.nativeScope[key])
         throw new BunlyError('PERMISSION_DENIED', 'Retained native policy scope changed')
   }
+  /** Synchronous local revocation fence, including navigation before its native acknowledgment.
+   * This does not replace fresh native validation or grant an operation by itself.
+   */
+  isPolicyScopeLocallyCurrent(scope: PolicyScope): boolean {
+    try {
+      this.#active()
+      this.#capturedPolicyScope(scope)
+      return true
+    } catch {
+      return false
+    }
+  }
   /** @internal Contributor fixture only; ordinary native builds reject this command.
    * Requests one fixed native user-activation fixture, never arbitrary evaluation or input.
    */

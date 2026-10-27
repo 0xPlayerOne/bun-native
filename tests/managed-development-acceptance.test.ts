@@ -9,6 +9,8 @@ import {
   acceptManagedDevelopmentWorkload,
 } from '../benchmarks/reload/managed-acceptance.ts'
 import { decodeExportedNativeReport } from '../benchmarks/lib/exported-native-evidence.ts'
+import { managedObservationContentSha256 } from '../benchmarks/reload/managed-observation.ts'
+import { managedRestartParserFixture } from './fixtures/managed-restart.ts'
 
 const object = (value: unknown): Record<string, unknown> => value as Record<string, unknown>
 const list = (value: unknown): Record<string, unknown>[] => value as Record<string, unknown>[]
@@ -54,7 +56,7 @@ function fixture() {
         session: SESSION_MARKER,
         login: LOGIN_MARKER,
         instance: 'parser-fixture-document',
-        terminalSequence: revision + 1,
+        terminalSequence: revision + 1 + Math.floor(revision / 5),
         terminalAck: revision,
       },
     })
@@ -275,10 +277,18 @@ function reportFixture() {
   const source = { commit: 'a'.repeat(40), clean: true, reason: 'clean-checkout' }
   const sourceHashes = [
     'scripts/qualify-managed-development.ts',
+    'scripts/managed-restart-check.ts',
     'benchmarks/reload/managed-acceptance.ts',
+    'benchmarks/reload/managed-restart-acceptance.ts',
+    'benchmarks/reload/managed-observation.ts',
+    'benchmarks/reload/prepared-file-metadata.ts',
     'examples/managed-desktop/main.ts',
     'examples/managed-desktop/client.ts',
     'examples/managed-desktop/evidence.ts',
+    'examples/managed-desktop/restart.ts',
+    'examples/managed-desktop/restart-client.ts',
+    'examples/managed-desktop/restart-contract.ts',
+    'examples/managed-desktop/backend/restart-service.ts',
     'packages/runtime/src/service-reload.ts',
     'packages/runtime/src/service-reload-runner.ts',
     'packages/runtime/src/managed-desktop.ts',
@@ -300,7 +310,23 @@ function reportFixture() {
     bytes: 600,
     entries,
   }
-  const metadata = entries.map(({ path }) => ({ path, size: '100', mtimeNs: '1', ctimeNs: '1' }))
+  const metadata = entries.map(({ path }, index) => ({
+    path,
+    size: '100',
+    mtimeNs: '1',
+    ctimeNs: '1',
+    device: '1',
+    inode: String(index + 1),
+    mode: '33188',
+    uid: '1000',
+    gid: '1000',
+    links: '1',
+  }))
+  const firstRenderer = object(workload.rows.find((row) => row['kind'] === 'renderer')!['renderer'])
+  const restart = managedRestartParserFixture(
+    object(object(workload.result['identities'])['before']) as Record<string, string>,
+    String(firstRenderer['instance'])
+  )
   const report: Record<string, unknown> = {
     schema: 1,
     profile: MANAGED_PROFILE,
@@ -310,6 +336,7 @@ function reportFixture() {
     observerTimeoutMs: MANAGED_OBSERVER_MS,
     successfulReplacementPlan: 500,
     launchPlan: 1,
+    restartLaunchPlan: 1,
     performanceEligible: false,
     sourceBefore: source,
     sourceAfter: { ...source },
@@ -338,7 +365,7 @@ function reportFixture() {
     },
     inputArtifactUnchanged: true,
     preparedArtifactUnchanged: true,
-    preparedFileMetadataUnchanged: true,
+    preparedFileIdentityUnchanged: true,
     launchPathEmpty: true,
     inputArtifact: artifact,
     inputArtifactAfter: structuredClone(artifact),
@@ -346,11 +373,23 @@ function reportFixture() {
     preparedArtifactAfter: structuredClone(artifact),
     preparedFileMetadataBefore: metadata,
     preparedFileMetadataAfter: structuredClone(metadata),
+    preparedHostPath: 'bunly_host',
+    metadataAcceptance: {
+      identityUnchanged: true,
+      ctimeChangedPaths: [],
+      ctimeChangeReason: 'none',
+    },
+    restart: restart.report,
     bundledBun: {
       version: '1.4.3',
       path: 'resources/bun',
       sha256: 'c'.repeat(64),
       observationSha256: 'b'.repeat(64),
+      observationContentSha256: managedObservationContentSha256({
+        ...workload.observation,
+        stdoutTail: ['1.4.3'],
+        nativeDiagnostics: [],
+      }),
       observation: { ...workload.observation, stdoutTail: ['1.4.3'], nativeDiagnostics: [] },
     },
     trials: [
@@ -359,6 +398,7 @@ function reportFixture() {
         passed: true,
         observation: workload.observation,
         observationSha256: 'a'.repeat(64),
+        observationContentSha256: managedObservationContentSha256(workload.observation),
         rowsText,
         resultText,
         rowsBytes: Buffer.byteLength(rowsText),
@@ -495,6 +535,19 @@ test('predeclared heap/RSS sentinels and completed-generation cleanup reject ret
     expect(value.accept).toThrow()
   }
 })
+test('continuous autonomous output and the exact retired-request outcome are independently replayed', () => {
+  const stalled = fixture()
+  for (const row of stalled.rows.filter((row) => row['kind'] === 'renderer'))
+    object(row['renderer'])['terminalSequence'] = Number(row['revision']) + 1
+  expect(stalled.accept).toThrow('No autonomous terminal output')
+  const cancelled = fixture()
+  object(cancelled.result['retirement'])['outcome'] = 'CANCELLED'
+  cancelled.rows.find((row) => row['kind'] === 'retirement')!['action'] = 'CANCELLED'
+  expect(cancelled.accept).toThrow('must settle with retirement')
+  const mismatched = fixture()
+  mismatched.rows.find((row) => row['kind'] === 'retirement')!['action'] = 'CANCELLED'
+  expect(mismatched.accept).toThrow('Retirement row differs')
+})
 test('the workload file must match one retained native completion marker before backend exit', () => {
   for (const mode of ['missing', 'duplicate', 'wrong-count', 'late', 'tail-only']) {
     const value = fixture(),
@@ -591,6 +644,9 @@ test('report replay binds raw rows, sources, native inventory, observed Bun and 
       list(value['trials'])[0]!['rowsSha256'] = 'f'.repeat(64)
     },
     (value) => {
+      object(list(value['trials'])[0]!['observation'])['elapsedMs'] = 21000
+    },
+    (value) => {
       list(value['trials']).push(structuredClone(list(value['trials'])[0]!))
     },
     (value) => {
@@ -608,6 +664,7 @@ test('explicit sanitized export replay preserves failures and never fabricates l
   for (const observation of [
     object(list(report['trials'])[0]!['observation']),
     object(object(report['bundledBun'])['observation']),
+    object(object(report['restart'])['observation']),
   ]) {
     delete observation['observationId']
     observation['observationExport'] = { schema: 1, correlation: 'omitted' }
@@ -622,7 +679,9 @@ test('explicit sanitized export replay preserves failures and never fabricates l
   expect(acceptManagedDevelopmentReport(decoded).successfulReplacements).toBe(500)
   expect(object(list(decoded['trials'])[0]!['observation'])['observationId']).toBeUndefined()
   object(list(report['trials'])[0]!['observation'])['exitCode'] = 2
-  expect(() => acceptManagedDevelopmentReport(decodeExportedNativeReport(report))).toThrow(
-    'unexpected exit 2'
+  const changed = decodeExportedNativeReport(report)
+  list(changed['trials'])[0]!['observationContentSha256'] = managedObservationContentSha256(
+    list(changed['trials'])[0]!['observation']
   )
+  expect(() => acceptManagedDevelopmentReport(changed)).toThrow('unexpected exit 2')
 })

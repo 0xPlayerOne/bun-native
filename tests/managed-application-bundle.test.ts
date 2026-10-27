@@ -13,6 +13,8 @@ test('managed native fixture publishes verified renderer assets while keeping se
     const files = await readdir(publicRoot)
     expect(files).toContain('client.js')
     expect(files).toContain('index.html')
+    expect(files).toContain('restart-client.js')
+    expect(files).toContain('restart.html')
     expect(files).toContain('xterm-LICENSE.txt')
     // These are rejected by the real native public_name policy. A .map in the
     // inventory previously caused exit78 before the desktop could launch.

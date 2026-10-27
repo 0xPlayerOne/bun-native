@@ -7,11 +7,15 @@ import {
   SESSION_MARKER,
 } from '../../examples/managed-desktop/contract.ts'
 import { MANAGED_PLAN } from '../../examples/managed-desktop/evidence.ts'
-import { nativeEvents } from '../lib/cef-acceptance.ts'
 import { assertCleanCommand, validateCommandObservation } from '../lib/observed-command.ts'
-import { observeNativeShutdown, requireNativeShutdown } from '../foundation/native-shutdown.ts'
 import { quantile } from '../lib/statistics.ts'
 import { reloadObservationResources } from './acceptance.ts'
+import { acceptManagedNativeExit, managedObservationContentSha256 } from './managed-observation.ts'
+import {
+  MANAGED_RESTART_CONFIGURATION,
+  acceptManagedRestartReport,
+} from './managed-restart-acceptance.ts'
+import { acceptPreparedFileMetadata } from './prepared-file-metadata.ts'
 
 export const MANAGED_PROFILE = 'native-managed-development-v1'
 /** Whole-workload observation budget only; no native phase deadline is changed. */
@@ -259,43 +263,11 @@ export function acceptManagedDevelopmentWorkload(
   rowsText: unknown,
   resultText: unknown
 ) {
-  const observation = validateCommandObservation(observationInput)
-  assertCleanCommand(observation)
-  const shutdown = requireNativeShutdown(observeNativeShutdown(observation))
-  if (observation.environment['os'] === 'Darwin') {
-    assert.equal(
-      observation.postExitCleanup?.qualified,
-      true,
-      'macOS helper/clone cleanup must be positively qualified'
-    )
-    assert.equal(observation.postExitCleanup?.status, 'completed')
-  }
-  const events = nativeEvents(observation)
-  const drain = events.filter((event) => event['event'] === 'bunly.native.output-drained')
-  assert.deepEqual(
-    drain,
-    [
-      {
-        event: 'bunly.native.output-drained',
-        schema: 1,
-        frames: 0,
-        ordinaryFrames: 0,
-        retainedWireBytes: 0,
-        ordinaryWireBytes: 0,
-      },
-    ],
-    'Native output was not drained exactly once'
-  )
-  const backendExit = events.findIndex((event) => event['event'] === 'bunly.backend.exit')
-  assert.ok(backendExit >= 0 && backendExit < events.indexOf(drain[0]!))
-  assert.ok(
-    events.indexOf(drain[0]!) <
-      events.findIndex(
-        (event) =>
-          event['event'] === 'bunly.host.shutdown-phase' &&
-          event['phase'] === 'process-stop' &&
-          event['state'] === 'complete'
-      )
+  const { observation, events, backendExit, shutdown } = acceptManagedNativeExit(observationInput)
+  assert.equal(
+    events.some((event) => event['event'] === 'bunly.managed-restart'),
+    false,
+    'The soak and full restart require separate observed launches'
   )
   const rows = parseRows(rowsText)
   requireRowPlan(rows)
@@ -398,9 +370,15 @@ export function acceptManagedDevelopmentWorkload(
   const retired = record(result['retirement'], 'Missing retirement result')
   assert.equal(retired['accepted'], 1)
   assert.equal(retired['settled'], 1)
-  assert.ok(
-    ['RETIRED', 'CANCELLED'].includes(String(retired['outcome'])),
-    'Pending accepted request was not explicitly retired'
+  assert.equal(
+    retired['outcome'],
+    'RETIRED',
+    'This fixed pending request must settle with retirement'
+  )
+  assert.equal(
+    retirement[0]!['action'],
+    retired['outcome'],
+    'Retirement row differs from final caller outcome'
   )
   assert.equal(retired['staleMutations'], 0)
   const restart = rows.filter((row) => row['kind'] === 'restart')
@@ -412,7 +390,9 @@ export function acceptManagedDevelopmentWorkload(
   assert.equal(rendered.length, MANAGED_PLAN.replacements + 8)
   const seenRevisions = new Set<number>()
   let instance: string | undefined,
-    lastSequence = -1
+    lastSequence = -1,
+    initialTicks: number | undefined,
+    lastTicks = -1
   for (const row of rendered) {
     const receipt = record(row['renderer'], 'Actual renderer state receipt is missing')
     assert.equal(receipt['revision'], row['revision'])
@@ -469,6 +449,15 @@ export function acceptManagedDevelopmentWorkload(
     )
     assert.ok(sequence >= lastSequence, 'Terminal records moved backwards')
     lastSequence = sequence
+    // Before final closure: one ready record and revision+1 acknowledgements.
+    // The remaining exact numbered records were produced autonomously by the child.
+    const ticks = sequence - Number(row['revision']) - 1
+    assert.ok(
+      ticks >= 0 && ticks >= lastTicks,
+      'Autonomous terminal output was lost or moved backwards'
+    )
+    initialTicks ??= ticks
+    lastTicks = ticks
     assert.equal(
       receipt['terminalAck'],
       row['revision'],
@@ -480,6 +469,10 @@ export function acceptManagedDevelopmentWorkload(
     [...seenRevisions].sort((a, b) => a - b),
     Array.from({ length: 501 }, (_, index) => index),
     'Renderer did not verify every successful revision'
+  )
+  assert.ok(
+    initialTicks !== undefined && lastTicks > initialTicks,
+    'No autonomous terminal output continued during backend edits'
   )
   const rendererTimings: Record<'backend' | 'shared' | 'frontend', number[]> = {
     backend: [],
@@ -551,7 +544,14 @@ export function acceptManagedDevelopmentWorkload(
     checksum(terminal['rendererHash'], 'Invalid renderer stream checksum', 8)
   )
   const records = integer(terminal['records'], 'Invalid terminal record count', 20_000)
-  assert.ok(records >= 503)
+  assert.ok(
+    records > 503,
+    'Terminal produced no autonomous records beyond ready, acknowledgements and final closure'
+  )
+  assert.ok(
+    records - 503 >= lastTicks,
+    'Final autonomous output receipt omitted already acknowledged records'
+  )
   assert.equal(terminal['lastSequence'], records - 1)
   assert.ok(Number(terminal['lastSequence']) >= lastSequence)
   assert.equal(terminal['released'], true)
@@ -638,6 +638,7 @@ export function acceptManagedDevelopmentWorkload(
     terminalLaunches: 1,
     terminalBytes: bytes,
     terminalRecords: records,
+    terminalAutonomousRecords: records - 503,
     terminalChecksum: {
       algorithm: 'FNV-1a-32-plus-exact-monotonic-record-plan',
       value: terminal['runtimeHash'],
@@ -687,6 +688,7 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   assert.equal(report['observerTimeoutMs'], MANAGED_OBSERVER_MS)
   assert.equal(report['successfulReplacementPlan'], MANAGED_PLAN.replacements)
   assert.equal(report['launchPlan'], 1)
+  assert.equal(report['restartLaunchPlan'], 1)
   assert.equal(report['performanceEligible'], false)
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(String(report['target'])))
   const source = record(report['sourceBefore'], 'Missing source identity')
@@ -710,10 +712,18 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   }
   for (const required of [
     'scripts/qualify-managed-development.ts',
+    'scripts/managed-restart-check.ts',
     'benchmarks/reload/managed-acceptance.ts',
+    'benchmarks/reload/managed-restart-acceptance.ts',
+    'benchmarks/reload/managed-observation.ts',
+    'benchmarks/reload/prepared-file-metadata.ts',
     'examples/managed-desktop/main.ts',
     'examples/managed-desktop/client.ts',
     'examples/managed-desktop/evidence.ts',
+    'examples/managed-desktop/restart.ts',
+    'examples/managed-desktop/restart-client.ts',
+    'examples/managed-desktop/restart-contract.ts',
+    'examples/managed-desktop/backend/restart-service.ts',
     'packages/runtime/src/service-reload.ts',
     'packages/runtime/src/service-reload-runner.ts',
     'packages/runtime/src/managed-desktop.ts',
@@ -754,7 +764,7 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   for (const field of [
     'inputArtifactUnchanged',
     'preparedArtifactUnchanged',
-    'preparedFileMetadataUnchanged',
+    'preparedFileIdentityUnchanged',
     'launchPathEmpty',
   ])
     assert.equal(report[field], true, field)
@@ -821,15 +831,15 @@ export function acceptManagedDevelopmentReport(input: unknown) {
     for (const field of ['size', 'mtimeNs', 'ctimeNs'])
       assert.match(String(entry[field]), /^[0-9]{1,24}$/)
   }
-  assert.deepEqual(
-    report['preparedFileMetadataAfter'],
-    metadata,
-    'Prepared runtime files were recopied or rewritten'
-  )
   const bun = record(report['bundledBun'], 'Missing actual bundled Bun version observation')
   assert.equal(bun['version'], '1.4.3')
   checksum(bun['sha256'], 'Missing bundled Bun hash')
   checksum(bun['observationSha256'], 'Missing bundled Bun observation hash')
+  assert.equal(
+    bun['observationContentSha256'],
+    managedObservationContentSha256(bun['observation']),
+    'Embedded bundled Bun observation differs from its retained digest'
+  )
   assert.ok(
     prepared.some(
       (entry) =>
@@ -851,6 +861,11 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   assert.equal(trial['index'], 0)
   assert.equal(trial['passed'], true)
   checksum(trial['observationSha256'], 'Missing raw observation fingerprint')
+  assert.equal(
+    trial['observationContentSha256'],
+    managedObservationContentSha256(trial['observation']),
+    'Embedded native observation differs from its retained digest'
+  )
   const rows = trial['rowsText'],
     result = trial['resultText']
   assert.equal(typeof rows, 'string')
@@ -862,5 +877,38 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   const accepted = acceptManagedDevelopmentWorkload(trial['observation'], rows, result)
   assert.deepEqual(trial['acceptance'], accepted, 'Stored acceptance differs from replay')
   assert.deepEqual(trial['processResources'], accepted.processResources)
-  return accepted
+  const completed = record(JSON.parse(String(result)), 'Missing completed soak result')
+  const previousIdentities = record(
+    record(completed['identities'], 'Missing soak identities')['before'],
+    'Missing initial soak identities'
+  ) as Record<string, string>
+  const firstRenderer = parseRows(rows).find((row) => row['kind'] === 'renderer')!
+  const previousRendererInstance = record(firstRenderer['renderer'], 'Missing initial renderer')[
+    'instance'
+  ] as string
+  const restart = record(report['restart'], 'Missing separate controlled-restart launch')
+  const restarted = acceptManagedRestartReport(restart, {
+    previousIdentities,
+    previousRendererInstance,
+    configurationSha256: hash(MANAGED_RESTART_CONFIGURATION),
+  })
+  assert.notEqual(
+    restart['observationContentSha256'],
+    trial['observationContentSha256'],
+    'The full restart reused the soak observation'
+  )
+  assert.equal(report['preparedHostPath'] !== undefined, true)
+  const metadataAcceptance = acceptPreparedFileMetadata({
+    before: metadata,
+    after: report['preparedFileMetadataAfter'],
+    hostPath: String(report['preparedHostPath']),
+    target: String(report['target']),
+    observations: [trial['observation'], restart['observation']],
+  })
+  assert.deepEqual(
+    report['metadataAcceptance'],
+    metadataAcceptance,
+    'Stored file-identity qualification differs from replay'
+  )
+  return Object.freeze({ ...accepted, controlledRestart: restarted })
 }

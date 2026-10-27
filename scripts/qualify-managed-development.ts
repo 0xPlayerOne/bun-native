@@ -9,6 +9,12 @@ import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 import { decodeExportedNativeReport } from '../benchmarks/lib/exported-native-evidence.ts'
 import { assertCleanCommand, observedCommand } from '../benchmarks/lib/observed-command.ts'
 import { reloadObservationResources } from '../benchmarks/reload/acceptance.ts'
+import { managedObservationContentSha256 } from '../benchmarks/reload/managed-observation.ts'
+import {
+  capturePreparedFileMetadata,
+  acceptPreparedFileMetadata,
+} from '../benchmarks/reload/prepared-file-metadata.ts'
+import { runManagedRestartCheck } from './managed-restart-check.ts'
 import {
   MANAGED_OBSERVER_MS,
   MANAGED_PROFILE,
@@ -35,19 +41,6 @@ async function boundedFile(path: string, maximum: number): Promise<Buffer> {
   const bytes = await readFile(path)
   assert.equal(bytes.length, stat.size)
   return bytes
-}
-async function fileMetadata(directory: string, entries: readonly { path: string }[]) {
-  return Promise.all(
-    entries.map(async ({ path }) => {
-      const stat = await lstat(join(directory, path), { bigint: true })
-      return {
-        path,
-        size: stat.size.toString(),
-        mtimeNs: stat.mtimeNs.toString(),
-        ctimeNs: stat.ctimeNs.toString(),
-      }
-    })
-  )
 }
 function nativePaths(app: string, source: string) {
   return {
@@ -100,15 +93,17 @@ export async function buildManagedApplication(resources: string) {
   await cp(join(xterm, 'LICENSE'), join(publicRoot, 'xterm-LICENSE.txt'))
   // The native public-origin policy intentionally rejects source maps. Keep
   // service maps in the private backend tree; publish only renderer assets here.
-  const browser = await Bun.build({
-    entrypoints: [join(root, 'examples/managed-desktop/client.ts')],
-    outdir: publicRoot,
-    naming: 'client.js',
-    target: 'browser',
-    format: 'esm',
-    minify: false,
-  })
-  assert.equal(browser.success, true, 'Managed renderer bundling failed')
+  for (const name of ['client', 'restart-client']) {
+    const browser = await Bun.build({
+      entrypoints: [join(root, `examples/managed-desktop/${name}.ts`)],
+      outdir: publicRoot,
+      naming: `${name}.js`,
+      target: 'browser',
+      format: 'esm',
+      minify: false,
+    })
+    assert.equal(browser.success, true, 'Managed renderer bundling failed')
+  }
   const assets: Record<string, { bytes: number; sha256: string }> = {}
   for (const entry of (await inventory(publicRoot)).entries) {
     assert.equal(entry.kind, 'file', 'Public assets must be regular files')
@@ -231,12 +226,13 @@ async function qualify(args: readonly string[]): Promise<void> {
     observerTimeoutMs: MANAGED_OBSERVER_MS,
     successfulReplacementPlan: 500,
     launchPlan: 1,
+    restartLaunchPlan: 1,
     performanceEligible: false,
     comparisons: 'separate-matched-workflow-qualification-required',
     trials: [],
     operations: [],
     limitations: [
-      'One sequential native launch and 500 successful backend replacements, not 500 independent launches or a population latency confidence interval.',
+      'One sequential native soak launch with 500 successful backend replacements plus one separate controlled full relaunch; not 500 independent launches or a population latency confidence interval.',
       'Native watchdog, shutdown, sandbox, security cloning, helper qualification and credential policies are unchanged.',
       'Descriptor/RSS/process data is sampled; short child lifetimes can be missed, RSS can count shared pages more than once, and unavailable reads remain null.',
       'Main-isolate post-GC heap includes bundling/controller work and excludes Worker heaps. The predeclared finite retention sentinel does not establish universal leak freedom.',
@@ -354,9 +350,11 @@ async function qualify(args: readonly string[]): Promise<void> {
     const paths = nativePaths(app, source)
     assert.equal(paths.executable, cold.entrypoint)
     const prepared = await inventory(app)
-    const metadataBefore = await fileMetadata(app, prepared.entries)
+    const metadataBefore = await capturePreparedFileMetadata(app, prepared.entries)
     report['preparedArtifact'] = prepared
     report['preparedFileMetadataBefore'] = metadataBefore
+    const hostPath = relative(app, paths.executable).split('\\').join('/')
+    report['preparedHostPath'] = hostPath
     const bundledBun = join(paths.resources, process.platform === 'win32' ? 'bun.exe' : 'bun')
     const bunEntry = prepared.entries.find(
       (entry) => entry.path === relative(app, bundledBun).split('\\').join('/')
@@ -377,6 +375,7 @@ async function qualify(args: readonly string[]): Promise<void> {
       sha256: bunEntry.sha256,
       observation: bunObservation,
       observationSha256: hash(await readFile(bunObservationPath)),
+      observationContentSha256: managedObservationContentSha256(bunObservation),
     }
     const libraryEntry = prepared.entries.find(
       (entry) => entry.path === relative(app, paths.library).split('\\').join('/')
@@ -431,6 +430,7 @@ async function qualify(args: readonly string[]): Promise<void> {
     }).result
     trial['observation'] = observation
     trial['observationSha256'] = hash(await readFile(observationPath))
+    trial['observationContentSha256'] = managedObservationContentSha256(observation)
     trial['processResources'] = reloadObservationResources(observation)
     let rowBytes: Buffer | undefined, resultBytes: Buffer | undefined
     try {
@@ -487,24 +487,54 @@ async function qualify(args: readonly string[]): Promise<void> {
       evidence:
         'cold-only-assembler-count-plus-unchanged-complete-runtime-inventory-and-file-metadata; launch-PATH-empty',
     }
+    if (trial['passed']) {
+      const previousResult = JSON.parse(resultBytes!.toString()) as {
+        identities: { before: Record<string, string> }
+      }
+      const firstRenderer = rowBytes!
+        .toString()
+        .trimEnd()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+        .find((row) => row.kind === 'renderer') as { renderer: { instance: string } }
+      report['restart'] = await runManagedRestartCheck({
+        executable: cold.entrypoint,
+        cwd: work,
+        project,
+        serviceRunner: join(paths.resources, 'backend/service-reload-runner.js'),
+        previousIdentities: previousResult.identities.before,
+        previousRendererInstance: firstRenderer.renderer.instance,
+      })
+    } else
+      report['restart'] = {
+        attempted: false,
+        passed: false,
+        reason: 'Fixed soak failed; no follow-up launch admitted',
+      }
     const preparedAfter = await inventory(app)
     report['preparedArtifactAfter'] = preparedAfter
     assert.deepEqual(preparedAfter, prepared, 'Prepared host bytes changed across ordinary edits')
-    const metadataAfter = await fileMetadata(app, prepared.entries)
+    const metadataAfter = await capturePreparedFileMetadata(app, prepared.entries)
     report['preparedFileMetadataAfter'] = metadataAfter
-    assert.deepEqual(
-      metadataAfter,
-      metadataBefore,
-      'Prepared host file identity/timestamps changed across ordinary edits'
-    )
+    const restart = report['restart'] as Record<string, unknown>
+    report['metadataAcceptance'] = acceptPreparedFileMetadata({
+      before: metadataBefore,
+      after: metadataAfter,
+      hostPath,
+      target: `${process.platform}-${process.arch}`,
+      observations: [observation, ...(restart['observation'] ? [restart['observation']] : [])],
+    })
     const inputAfter = await inventory(inputRoot)
     report['inputArtifactAfter'] = inputAfter
     assert.deepEqual(inputAfter, inputInventory, 'Original selected prebuilt artifact changed')
     report['inputArtifactUnchanged'] = true
     report['preparedArtifactUnchanged'] = true
-    report['preparedFileMetadataUnchanged'] = true
+    report['preparedFileIdentityUnchanged'] = true
     report['launchPathEmpty'] = true
-    report['passed'] = trials.length === 1 && trials.every((row) => row['passed'] === true)
+    report['passed'] =
+      trials.length === 1 &&
+      trials.every((row) => row['passed'] === true) &&
+      restart['passed'] === true
   } catch (error) {
     report['failure'] = error instanceof Error ? error.message : 'Managed qualification failed'
   } finally {
@@ -544,12 +574,24 @@ async function qualify(args: readonly string[]): Promise<void> {
           runtimeIdentity: report['runtimeIdentity'],
           inputHostSha256: report['inputHostSha256'],
           cache: report['cache'],
+          metadataAcceptance: report['metadataAcceptance'],
+          restart: report['restart'] && {
+            passed: (report['restart'] as Record<string, unknown>)['passed'],
+            acceptance: (report['restart'] as Record<string, unknown>)['acceptance'],
+            observationSha256: (report['restart'] as Record<string, unknown>)['observationSha256'],
+            observationContentSha256: (report['restart'] as Record<string, unknown>)[
+              'observationContentSha256'
+            ],
+            resultSha256: (report['restart'] as Record<string, unknown>)['resultSha256'],
+            failure: (report['restart'] as Record<string, unknown>)['failure'],
+          },
           trials: trials.map((trial) => ({
             index: trial['index'],
             passed: trial['passed'],
             rowsSha256: trial['rowsSha256'],
             resultSha256: trial['resultSha256'],
             observationSha256: trial['observationSha256'],
+            observationContentSha256: trial['observationContentSha256'],
             acceptance: trial['acceptance'],
             failure: trial['failure'],
           })),

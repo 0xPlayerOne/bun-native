@@ -5,6 +5,11 @@ Current architecture and contributor guides, with historical evidence kept disti
 **Checkpoint:** M1–M5 completion records define their declared acceptance profiles;
 M6 adds managed reload and its integrated development qualification.
 
+The [managed development qualification](managed-development-qualification.md)
+defines the native 500-replacement and controlled-relaunch workload. The
+[common edit outcome comparison](managed-comparison.md) records the separately
+pinned Electrobun/Mirin workflow and its measurement limits.
+
 [M4 browser sessions](m4-browser-sessions.md) documents the implemented issue #20
 session surface, its prepared real-native qualifier, and the remaining macOS
 persistent-cookie/storage-clear limitations. Renderer authority remains separate.

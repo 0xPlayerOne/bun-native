@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CefBackend, type PolicyScope } from '../packages/runtime/src/cef.ts'
 import {
@@ -17,6 +20,7 @@ import {
   type TerminalDriverObserver,
 } from '../packages/runtime/src/terminal.ts'
 import { ServiceSupervisor } from '../packages/runtime/src/service-supervisor.ts'
+import { ServiceReloadHost } from '../packages/runtime/src/service-reload.ts'
 import type { BinaryStreamWriter, StreamOutcome } from '../packages/contracts/src/streams.ts'
 import { nativePeer, turn, type Command } from './helpers/native-peer.ts'
 import { QualificationTerminal } from '../benchmarks/pty/terminal-consumer.ts'
@@ -188,6 +192,8 @@ test('native scope revalidation rejects forged scopes and native-only document c
   const f = await fixture()
   try {
     const scope = await f.backend.capturePolicyScope(f.view)
+    expect(f.backend.isPolicyScopeLocallyCurrent(scope)).toBe(true)
+    expect(f.backend.isPolicyScopeLocallyCurrent({ ...scope } as PolicyScope)).toBe(false)
     await expect(f.backend.validatePolicyScope({ ...scope } as PolicyScope)).rejects.toThrow(
       'foreign'
     )
@@ -329,6 +335,72 @@ test('a native close during preparation invalidates the candidate without recrea
     await f.cleanup()
   }
 })
+
+test('navigation after native validation cannot publish a Worker with locally revoked authority', async () => {
+  const f = await fixture()
+  const root = await mkdtemp(join(tmpdir(), 'bunly-managed-scope-'))
+  let navigationCommand: Command | undefined
+  let navigation: Promise<unknown> | undefined
+  let navigateDuringQuiescence = false
+  let broker: ServiceReloadHost | undefined
+  try {
+    f.desktop.registerWindow('window', f.window, f.policy(['state']))
+    const bindings = await f.desktop.prepare()
+    f.intercept((command) => {
+      if (command.op !== 'view.navigate') return false
+      navigationCommand = command
+      return true
+    })
+    broker = new ServiceReloadHost({
+      owner: f.owner,
+      stateSchema: 'app:1',
+      permissions: ['workspace'],
+      resources: bindings,
+      onDiagnostic(event) {
+        if (navigateDuringQuiescence && event.event === 'stage' && event.stage === 'quiesce') {
+          navigateDuringQuiescence = false
+          navigation = f.backend.navigate(f.view, 'app://ui/next.html')
+          void navigation.catch(() => {})
+        }
+      },
+    })
+    const source = (revision: number) =>
+      `export default context => ({schema:'app:1',handlers:{revision:()=>JSON.stringify(${revision}),state:()=>context.invoke('window','state','null')}})`
+    const first = join(root, 'first.ts'),
+      second = join(root, 'second.ts')
+    await writeFile(first, source(1))
+    await writeFile(second, source(2))
+    await broker.reload({ entry: first })
+    expect(JSON.parse(await broker.request('state', 'null'))).toMatchObject({ visible: true })
+    navigateDuringQuiescence = true
+    await expect(broker.reload({ entry: second })).rejects.toMatchObject({
+      code: 'INCOMPATIBLE',
+      stage: 'commit',
+      candidateRetired: true,
+      committed: false,
+    })
+    expect(navigationCommand).toBeDefined()
+    // No native reply or document event has arrived, but navigate already retired the local scope.
+    expect(f.backend.state(f.view).documentId).toBe('native-3-1')
+    expect(bindings['window']!.current()).toBe(false)
+    await expect(bindings['window']!.validate()).rejects.toThrow('DENIED')
+    expect(await broker.request('revision', 'null')).toBe('1')
+    expect(f.commands.filter((command) => command.op === 'window.state')).toHaveLength(1)
+    expect(f.owner.diagnostics()).toMatchObject({
+      candidate: 0,
+      active: 1,
+      resources: 1,
+      generations: 1,
+    })
+  } finally {
+    if (navigationCommand) f.reply(navigationCommand)
+    await navigation
+    f.intercept()
+    await broker?.close()
+    await f.cleanup()
+    await rm(root, { recursive: true, force: true })
+  }
+}, 10_000)
 
 test('one stable listener buffers lifecycle state with bounded explicit acknowledgements', async () => {
   const f = await fixture(2)

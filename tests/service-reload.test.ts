@@ -550,6 +550,50 @@ describe('actual isolated service generation reload', () => {
     expect(await service.request('read', 'null')).toBe('2')
   })
 
+  test('host validation never starts when its work reservation is rejected', async () => {
+    const root = await workspace(),
+      owner = new ManagedGenerationOwner({ work: 2 })
+    let validations = 0
+    const resource = owner.register({
+      kind: 'view',
+      schema: 'view:1',
+      permission: 'test',
+      authorize: () => true,
+      invoke: () => 'null',
+      dispose: () => {},
+    })
+    const { host: service } = host({ owner })
+    const entry = await moduleAt(root, 'good', simple(1))
+    await service.reload({ entry })
+    // The active and candidate isolate lifetimes consume both available work slots.
+    const problem = await failure(
+      service.reload({
+        entry,
+        resources: {
+          view: {
+            resource,
+            schema: 'view:1',
+            validate: () => {
+              validations++
+              return new Promise<void>(() => {})
+            },
+          },
+        },
+      }),
+      'INCOMPATIBLE'
+    )
+    expect(problem.stage).toBe('validate')
+    expect(problem.committed).toBe(false)
+    expect(validations).toBe(0)
+    expect(owner.diagnostics().work).toBe(1)
+    expect(owner.diagnostics().generations).toBe(1)
+    expect(JSON.parse(await service.request('read', 'null')).revision).toBe(1)
+    await service.close()
+    expect(owner.diagnostics().work).toBe(0)
+    expect(owner.diagnostics().generations).toBe(0)
+    await owner.disposeResource(resource)
+  })
+
   test('timed-out host validation retains its work until actual settlement', async () => {
     const root = await workspace(),
       owner = new ManagedGenerationOwner()

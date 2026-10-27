@@ -186,6 +186,7 @@ export class ManagedDesktopResources {
       return (
         !this.#closed &&
         !entry.closed &&
+        this.backend.isPolicyScopeLocallyCurrent(entry.authority.scope) &&
         state.documentId === entry.authority.document &&
         state.trust.kind === 'application' &&
         state.trust.origin === entry.authority.origin

@@ -656,23 +656,27 @@ export class ServiceReloadHost {
   }
   async #validateAttachments(row: Generation): Promise<void> {
     if (![...row.resources.values()].some((attachment) => attachment.validate)) return
-    const validating = Promise.resolve().then(async () => {
-      for (const attachment of row.resources.values()) {
-        if (this.#closed || row.phase !== 'preparing')
-          throw new ServiceReloadError('CLOSED', 'validate')
-        await attachment.validate?.()
-      }
-    })
+    const validating = deferred<void>()
+    // Reserve before scheduling any validator: rejected admission must not start host work.
     // A timed-out host validator is still real unsettled work, even if its Worker exited.
     const work = this.#owner.own(row.identity, 'request', () =>
-      validating.then(
+      validating.promise.then(
         () => {},
         () => {}
       )
     )
-    void validating.finally(() => this.#owner.release(row.identity, work)).catch(() => {})
+    void Promise.resolve()
+      .then(async () => {
+        for (const attachment of row.resources.values()) {
+          if (this.#closed || row.phase !== 'preparing')
+            throw new ServiceReloadError('CLOSED', 'validate')
+          await attachment.validate?.()
+        }
+      })
+      .then(validating.resolve, validating.reject)
+    void validating.promise.finally(() => this.#owner.release(row.identity, work)).catch(() => {})
     await deadline(
-      validating,
+      validating.promise,
       this.#readyMs,
       new ServiceReloadError(
         'RESTART_REQUIRED',
