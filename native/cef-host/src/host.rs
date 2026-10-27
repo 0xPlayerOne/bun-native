@@ -6,7 +6,7 @@ use cef::*;
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::BTreeMap,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -72,7 +72,31 @@ struct HostState {
 #[path = "credential_callbacks.rs"]
 mod credential_callbacks;
 
-thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
+thread_local! {
+    static STATE: RefCell<HostState> = RefCell::new(HostState::default());
+    static GLOBAL_CONTEXT_DRAIN: Cell<GlobalContextDrain> = const { Cell::new(GlobalContextDrain::Pending) };
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GlobalContextDrain {
+    Pending,
+    Started,
+    Complete,
+}
+impl GlobalContextDrain {
+    fn begin(self) -> Result<Self, &'static str> {
+        match self {
+            Self::Pending => Ok(Self::Started),
+            Self::Started | Self::Complete => Err("Global request context drain already started"),
+        }
+    }
+    fn complete(self) -> Result<Self, &'static str> {
+        match self {
+            Self::Started => Ok(Self::Complete),
+            Self::Pending => Err("Global request context drain completed before it started"),
+            Self::Complete => Err("Global request context drain completed twice"),
+        }
+    }
+}
 fn number(value: &Value, key: &str) -> Result<u64, String> {
     value
         .get(key)
@@ -862,8 +886,7 @@ fn finalize_sessions() {
     };
     if sessions.is_empty() {
         if STATE.with(|state| state.borrow().sessions.is_empty()) {
-            let mut done = FinishLoopTask::new();
-            post_task(ThreadId::UI, Some(&mut done));
+            begin_global_context_drain();
         }
         return;
     }
@@ -1000,6 +1023,59 @@ wrap_completion_callback! {
         }
     } }
 }
+// CEF recommends closing the global request context after application contexts
+// are released and before CefShutdown. The root cache belongs to this context even
+// when application sessions are ephemeral, so reused browser-profile work must be
+// drained while the UI loop can still service its completion callback.
+fn begin_global_context_drain() {
+    let start = GLOBAL_CONTEXT_DRAIN.with(|state| {
+        let current = state.get();
+        match current.begin() {
+            Ok(next) => {
+                state.set(next);
+                true
+            }
+            Err(_) => false,
+        }
+    });
+    if !start {
+        return;
+    }
+    let Some(context) = request_context_get_global_context() else {
+        fail("Global request context unavailable during shutdown");
+        finish_global_context_drain();
+        return;
+    };
+    let mut closed = GlobalContextClosed::new(
+        context.clone(),
+        crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::ConnectionsClosed),
+    );
+    context.close_all_connections(Some(&mut closed));
+}
+fn finish_global_context_drain() {
+    let valid = GLOBAL_CONTEXT_DRAIN.with(|state| match state.get().complete() {
+        Ok(next) => {
+            state.set(next);
+            true
+        }
+        Err(_) => false,
+    });
+    if !valid {
+        fail("Global request context shutdown completion was duplicated or out of order");
+        return;
+    }
+    let mut done = FinishLoopTask::new();
+    if post_task(ThreadId::UI, Some(&mut done)) == 0 {
+        fail("Global request context shutdown fence could not be scheduled");
+        shutdown_acknowledged();
+        quit_message_loop();
+    }
+}
+wrap_completion_callback! {
+    struct GlobalContextClosed { _context: RequestContext, _audit: crate::shutdown_audit::Token }
+    impl CompletionCallback { fn on_complete(&self) { finish_global_context_drain(); } }
+}
+
 // Request-context destruction may enqueue work on CEF's IO sequence. Cross
 // that queue and return to UI before ending the loop, instead of entering
 // CefShutdown's task-drain from inside an outstanding close callback.
@@ -2870,6 +2946,30 @@ fn media_capabilities(bits: u32) -> Option<Vec<capability_policy::BrowserCapabil
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn global_context_drain_is_single_start_single_completion() {
+        assert_eq!(
+            GlobalContextDrain::Pending.begin(),
+            Ok(GlobalContextDrain::Started)
+        );
+        assert_eq!(
+            GlobalContextDrain::Started.begin(),
+            Err("Global request context drain already started")
+        );
+        assert_eq!(
+            GlobalContextDrain::Started.complete(),
+            Ok(GlobalContextDrain::Complete)
+        );
+        assert_eq!(
+            GlobalContextDrain::Pending.complete(),
+            Err("Global request context drain completed before it started")
+        );
+        assert_eq!(
+            GlobalContextDrain::Complete.complete(),
+            Err("Global request context drain completed twice")
+        );
+    }
 
     #[test]
     fn media_permission_bits_are_portable_and_unknown_bits_fail_closed() {
