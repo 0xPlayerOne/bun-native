@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
 import { Worker } from 'node:worker_threads'
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import {
   DevelopmentError,
   developmentHostKey,
@@ -502,10 +502,61 @@ test('filesystem events observe transitive dependencies outside the declared sou
         'parentPort!.postMessage(external)',
       ].join('\n')
     )
-    const adapter = workerAdapter()
-    session = await DevelopmentSession.start(
-      options(root, adapter, { watch: true, debounceMs: 10 })
-    )
+    const adapter = workerAdapter(),
+      diagnostics: DevelopmentDiagnostic[] = []
+    try {
+      session = await DevelopmentSession.start(
+        options(root, adapter, {
+          watch: true,
+          debounceMs: 10,
+          onDiagnostic: (event) => diagnostics.push(event),
+        })
+      )
+    } catch (cause) {
+      // Keep the exact startup failure and expose the paths Bun actually loaded.
+      // Hosted Windows uses a different drive for its checkout and temp directory;
+      // without this receipt BUILD_FAILED alone hides build versus watcher failures.
+      const loaded: string[] = []
+      const probe = await Bun.build({
+        entrypoints: [join(root, 'backend/main.ts')],
+        target: 'bun',
+        format: 'esm',
+        metafile: true,
+        throw: false,
+        plugins: [
+          {
+            name: 'observe-fixture-input-paths',
+            setup(build) {
+              build.onLoad({ filter: /./ }, ({ path }) => {
+                loaded.push(path)
+              })
+            },
+          },
+        ],
+      })
+      const inputs = await Promise.all(
+        Object.keys(probe.metafile?.inputs ?? {}).map(async (path) => ({
+          path,
+          resolved: resolve(path),
+          exists: await lstat(resolve(path)).then(
+            (stat) => stat.isFile(),
+            () => false
+          ),
+        }))
+      )
+      throw new Error(
+        `Watcher startup failed: ${JSON.stringify({
+          diagnostics,
+          cwd: process.cwd(),
+          root,
+          loaded,
+          inputs,
+          buildSuccess: probe.success,
+          buildMessages: probe.logs.map((message) => message.message),
+        })}`,
+        { cause }
+      )
+    }
     expect(adapter.value()).toBe(20)
     await writeFile(join(parent, 'external.ts'), 'export const external = 21')
     const deadline = performance.now() + 5000
