@@ -2,7 +2,7 @@ import { NativeTerminalDriver, type NativeTerminalConfiguration } from './termin
 import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
-import { NativeTransport, type NativeEvent } from './native-transport.ts'
+import { NativeShutdownError, NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { parseCefWindowState, type CefWindowState } from './cef-window-state.ts'
 export type { CefWindowState } from './cef-window-state.ts'
@@ -1285,7 +1285,23 @@ export class CefBackend implements BrowserBackend {
     this.#disposed = true
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
-    this.#shutdown = Promise.all([rpcClosed, this.#transport.call('quit').then(() => this.closed)])
+    const nativeClosed = this.#transport.diagnostics().closed
+      ? this.closed
+      : this.#transport.call('quit').then(
+          () => this.closed,
+          (error: unknown) => {
+            // Last-window closure may finish the host before a redundant quit is acknowledged.
+            // Only its explicit clean-shutdown cancellation is idempotent, not an RPC failure.
+            if (
+              error instanceof NativeShutdownError &&
+              this.#transport.diagnostics().closed &&
+              this.#transport.failure === null
+            )
+              return this.closed
+            throw error
+          }
+        )
+    this.#shutdown = Promise.all([rpcClosed, nativeClosed])
       .then(() => {})
       .catch((error) => {
         this.#transport.fail(error)

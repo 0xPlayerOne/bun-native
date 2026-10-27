@@ -1,6 +1,7 @@
 import { test } from 'bun:test'
 import assert from 'node:assert/strict'
 import { CefBackend, type PolicyScope } from '../packages/runtime/src/cef.ts'
+import { NativeShutdownError } from '../packages/runtime/src/native-transport.ts'
 import type { SessionHandle, ViewHandle, WindowHandle } from '../packages/contracts/src/index.ts'
 import { nativePeer, turn, type Command } from './helpers/native-peer.ts'
 const windowOptions = { title: 'fixture', bounds: { x: 0, y: 0, width: 800, height: 600 } }
@@ -88,6 +89,104 @@ test('CEF simultaneous dispose callers wait for the same shutdown completion', a
   peer.reply(peer.commands[0]!)
   peer.send({ v: 1, event: 'shutdown' })
   await first
+})
+test.each(['before-shutdown', 'during-shutdown', 'after-shutdown'] as const)(
+  'CEF disposal after last-window closure is idempotent %s',
+  async (timing) => {
+    const peer = await nativePeer()
+    const backend = new CefBackend(peer.transport)
+    peer.handle((command) => {
+      if (command.op === 'window.create') peer.reply(command, { id: 1 })
+      else if (command.op === 'window.close') peer.reply(command)
+      // A host already finishing its last window need not acknowledge the later quit.
+    })
+    const window = await backend.createWindow(windowOptions)
+    await backend.closeWindow(window)
+    const unrelated = assert.rejects(peer.transport.call('diagnostics'), NativeShutdownError)
+    let disposed: Promise<void> | undefined
+    if (timing === 'before-shutdown') disposed = backend.dispose()
+    if (timing === 'during-shutdown')
+      backend.observe((event) => {
+        if (event.event === 'shutdown') disposed = backend.dispose()
+      })
+    peer.send({ v: 1, event: 'shutdown' })
+    if (timing === 'after-shutdown') {
+      await backend.closed
+      disposed = backend.dispose()
+    }
+    await backend.closed
+    assert.ok(disposed)
+    assert.strictEqual(disposed, backend.dispose())
+    await Promise.all([disposed, unrelated])
+    await turn()
+    assert.equal(peer.transport.failure, null)
+    assert.equal(peer.transport.diagnostics().requests, 0)
+    assert.equal(peer.transport.diagnostics().queuedBytes, 0)
+    assert.equal(backend.diagnostics().windows, 0)
+    assert.equal(
+      peer.commands.filter((command) => command.op === 'quit').length,
+      timing === 'after-shutdown' ? 0 : 1
+    )
+  }
+)
+test.each([
+  'transport-failure',
+  'tagged-transport-failure',
+  'quit-rejected',
+  'quit-rejected-then-shutdown',
+] as const)(
+  'CEF disposal preserves %s instead of treating it as normal shutdown',
+  async (outcome) => {
+    const peer = await nativePeer()
+    const backend = new CefBackend(peer.transport)
+    // An explicit native error with identical text must not impersonate shutdown cancellation.
+    const failure =
+      outcome === 'tagged-transport-failure'
+        ? new NativeShutdownError()
+        : new Error('Native host shut down')
+    peer.handle((command) => {
+      if (command.op !== 'quit') return
+      if (outcome === 'transport-failure' || outcome === 'tagged-transport-failure')
+        peer.transport.fail(failure)
+      else if (outcome === 'quit-rejected') peer.reject(command, failure.message)
+      else
+        peer.input.write(
+          JSON.stringify({ v: 1, id: command.id, ok: false, error: failure.message }) +
+            '\n' +
+            JSON.stringify({ v: 1, event: 'shutdown' }) +
+            '\n'
+        )
+    })
+    const disposed = backend.dispose()
+    await assert.rejects(disposed, (error: unknown) => {
+      assert.ok(error instanceof Error)
+      assert.equal(error.message, failure.message)
+      assert.equal(error instanceof NativeShutdownError, outcome === 'tagged-transport-failure')
+      return true
+    })
+    assert.strictEqual(backend.dispose(), disposed)
+    if (outcome === 'quit-rejected-then-shutdown') {
+      await backend.closed
+      assert.equal(peer.transport.failure, null)
+    } else {
+      await assert.rejects(backend.closed, { message: failure.message })
+      assert.ok(peer.transport.failure)
+    }
+    assert.equal(peer.transport.diagnostics().requests, 0)
+  }
+)
+test('CEF disposal preserves another native request deadline failure', async () => {
+  const peer = await nativePeer()
+  const backend = new CefBackend(peer.transport)
+  const request = peer.transport.call('diagnostics', {}, undefined, 10)
+  const disposed = backend.dispose()
+  await Promise.all([
+    assert.rejects(request, /Native request deadline: diagnostics/),
+    assert.rejects(disposed, /Native request deadline: diagnostics/),
+    assert.rejects(backend.closed, /Native request deadline: diagnostics/),
+  ])
+  assert.ok(peer.transport.failure)
+  assert.equal(peer.transport.diagnostics().requests, 0)
 })
 test('CEF parent identity is revoked before reentrant child-disposal listeners run', async () => {
   const f = await fixture()
@@ -190,6 +289,7 @@ test('CEF unexpected native exit rejects backend closure and clears retained sta
   f.backend.onEvent(() => {})
   f.input.end()
   await assert.rejects(f.backend.closed, /disconnected/)
+  await assert.rejects(f.backend.dispose(), /disconnected/)
   assert.deepEqual(f.backend.diagnostics(), {
     windows: 0,
     views: 0,
