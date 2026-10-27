@@ -59,6 +59,57 @@ const zero = (value: Record<string, unknown>, names: readonly string[], context:
   for (const name of names) assert.equal(value[name], 0, `${context}: ${name}`)
 }
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex')
+const failureRevisions = {
+  syntax: 100,
+  import: 200,
+  initialization: 300,
+  'closed-resource': 425,
+  'runtime-handler': 450,
+} as const
+
+/** Independently reconstruct the complete finite plan; counts alone cannot hide omissions. */
+function requireRowPlan(rows: readonly Record<string, unknown>[]): void {
+  const expected: { kind: string; revision: number; case?: string }[] = [
+    { kind: 'checkpoint', revision: 0 },
+    { kind: 'renderer', revision: 0 },
+  ]
+  for (let revision = 1; revision <= MANAGED_PLAN.replacements; revision++) {
+    expected.push({ kind: 'replacement', revision })
+    if (revision % MANAGED_PLAN.checkpointEvery === 0)
+      expected.push({ kind: 'checkpoint', revision })
+    expected.push({ kind: 'renderer', revision })
+    const failure = Object.entries(failureRevisions).find(([, at]) => at === revision)?.[0]
+    if (failure)
+      expected.push({ kind: 'failure', revision, case: failure }, { kind: 'renderer', revision })
+    if (revision === MANAGED_PLAN.frontendAfter)
+      expected.push({ kind: 'frontend', revision }, { kind: 'renderer', revision })
+  }
+  expected.push(
+    { kind: 'restart', revision: MANAGED_PLAN.replacements },
+    { kind: 'renderer', revision: MANAGED_PLAN.replacements }
+  )
+  const observed = rows
+    .filter((row) => row['kind'] !== 'retirement')
+    .map((row) => ({
+      kind: row['kind'],
+      revision: row['revision'],
+      ...(row['case'] === undefined ? {} : { case: row['case'] }),
+    }))
+  assert.deepEqual(observed, expected, 'Workload did not execute the exact fixed scenario order')
+  const retirement = rows.findIndex((row) => row['kind'] === 'retirement')
+  assert.ok(
+    retirement >
+      rows.findIndex(
+        (row) => row['kind'] === 'renderer' && row['revision'] === MANAGED_PLAN.pendingAt - 1
+      )
+  )
+  assert.ok(
+    retirement <
+      rows.findIndex(
+        (row) => row['kind'] === 'renderer' && row['revision'] === MANAGED_PLAN.pendingAt
+      )
+  )
+}
 function distribution(values: readonly number[]) {
   assert.ok(values.length > 0 && values.length <= 2000)
   for (const value of values) finite(value, 'Invalid edit duration')
@@ -129,7 +180,7 @@ function acceptFinal(result: Record<string, unknown>, os: unknown): void {
   assert.equal(broker['candidate'], null)
   zero(
     broker,
-    ['generations', 'requests', 'unsettledCallers', 'hostCalls'],
+    ['generations', 'requests', 'unsettledCallers', 'hostCalls', 'forcedTerminations'],
     'Unreleased final broker state'
   )
   const desktop = record(final['desktop'], 'Missing desktop accounting')
@@ -165,7 +216,21 @@ function acceptFinal(result: Record<string, unknown>, os: unknown): void {
     'Retained development resources'
   )
   const native = record(final['native'], 'Missing final native state')
-  zero(native, ['windows', 'views', 'sessions'], 'Native resources were not closed')
+  assert.equal(final['nativeSnapshotPhase'], 'before-last-window-close')
+  assert.equal(native['windows'], 1, 'The final window stays alive until native diagnostics finish')
+  zero(
+    native,
+    [
+      'views',
+      'sessions',
+      'pending',
+      'nativeDeliveryPackets',
+      'nativeDeliveryBytes',
+      'rpcIncomingBytes',
+      'streamIncomingBytes',
+    ],
+    'Native resources were not closed'
+  )
   const process = record(
     record(result['terminal'], 'Missing terminal receipt')['processExit'],
     'Missing actual terminal child exit'
@@ -181,6 +246,8 @@ function acceptFinal(result: Record<string, unknown>, os: unknown): void {
     'Missing actual PTY close'
   )
   assert.equal(closure['observed'], true)
+  assert.equal(closure['started'], true)
+  assert.equal(closure['failure'], null)
   assert.ok(
     closure['status'] === 0 || (os === 'Linux' && closure['status'] === 1),
     'Unknown PTY close outcome'
@@ -231,6 +298,7 @@ export function acceptManagedDevelopmentWorkload(
       )
   )
   const rows = parseRows(rowsText)
+  requireRowPlan(rows)
   assert.ok(
     typeof resultText === 'string' &&
       Buffer.byteLength(resultText) > 0 &&
@@ -244,6 +312,22 @@ export function acceptManagedDevelopmentWorkload(
   assert.equal(result['failureCode'], undefined)
   assert.equal(result['successfulReplacements'], MANAGED_PLAN.replacements)
   assert.equal(result['restartRequired'], true)
+  const markers = events.filter((event) => event['event'] === 'bunly.managed-development')
+  assert.deepEqual(
+    markers,
+    [
+      {
+        event: 'bunly.managed-development',
+        schema: 1,
+        passed: true,
+        successfulReplacements: MANAGED_PLAN.replacements,
+        rendererChecks: result['rendererChecks'],
+        failureCode: null,
+      },
+    ],
+    'Exactly one matching workload completion receipt must belong to the observed launch'
+  )
+  assert.ok(events.indexOf(markers[0]!) < backendExit, 'Workload receipt followed backend shutdown')
   const replacements = rows.filter((row) => row['kind'] === 'replacement')
   assert.deepEqual(
     replacements.map((row) => row['revision']),
@@ -269,7 +353,7 @@ export function acceptManagedDevelopmentWorkload(
       'Failed candidate changed the serving revision'
     )
     assert.equal(failureResult[String(row['case'])], true)
-    assert.equal(row['action'], row['case'] === 'runtime-handler' ? 'request-rejected' : 'failed')
+    assert.equal(row['action'], 'failed')
   }
   const frontend = rows.filter((row) => row['kind'] === 'frontend')
   assert.equal(frontend.length, 1)
@@ -284,6 +368,30 @@ export function acceptManagedDevelopmentWorkload(
     false,
     'Do not turn fixed callback coverage into an external tooling claim'
   )
+  const frontendSources = frontendResult['sources']
+  assert.ok(
+    Array.isArray(frontendSources) && frontendSources.length === 3,
+    'Missing actual frontend source versions'
+  )
+  for (let version = 0; version < frontendSources.length; version++) {
+    const source = record(frontendSources[version], 'Missing bounded frontend source')
+    assert.equal(source['version'], version)
+    assert.equal(source['frontend'], version === 0 ? 0 : 1)
+    assert.equal(source['shared'], version === 2 ? 1 : 0)
+    assert.ok(
+      typeof source['css'] === 'string' &&
+        Buffer.byteLength(source['css']) > 0 &&
+        Buffer.byteLength(source['css']) <= 8192
+    )
+    assert.equal(checksum(source['sha256'], 'Missing frontend source digest'), hash(source['css']))
+    const declarations =
+      /^\s*:root\s*\{\s*--fixture-revision\s*:\s*([01])\s*;?\s*\}\s*:root\s*\{\s*--managed-shared\s*:\s*([01])\s*;?\s*\}\s*$/.exec(
+        source['css']
+      )
+    assert.ok(declarations, 'Unexpected fixed frontend source syntax')
+    assert.equal(Number(declarations[1]), source['frontend'])
+    assert.equal(Number(declarations[2]), source['shared'])
+  }
   const retirement = rows.filter((row) => row['kind'] === 'retirement')
   assert.equal(retirement.length, 1)
   assert.equal(retirement[0]!['revision'], MANAGED_PLAN.pendingAt)
@@ -301,7 +409,7 @@ export function acceptManagedDevelopmentWorkload(
   assert.equal(restart[0]!['action'], 'restart-required')
   const rendered = rows.filter((row) => row['kind'] === 'renderer')
   assert.equal(result['rendererChecks'], rendered.length)
-  assert.ok(rendered.length >= 501 && rendered.length <= 520)
+  assert.equal(rendered.length, MANAGED_PLAN.replacements + 8)
   const seenRevisions = new Set<number>()
   let instance: string | undefined,
     lastSequence = -1
@@ -320,7 +428,33 @@ export function acceptManagedDevelopmentWorkload(
       'Synthetic login state changed across a backend edit'
     )
     assert.equal(receipt['shared'], Number(row['revision']) >= MANAGED_PLAN.sharedAt ? 1 : 0)
-    integer(receipt['frontend'], 'Invalid frontend acknowledgement', 2)
+    const expectedFrontend =
+      Number(row['revision']) >= MANAGED_PLAN.sharedAt
+        ? 2
+        : Number(row['index']) > Number(frontend[0]!['index'])
+          ? 1
+          : 0
+    assert.equal(
+      receipt['frontend'],
+      expectedFrontend,
+      'Source update acknowledgement differs from fixed edit order'
+    )
+    const applied = record(frontendSources[expectedFrontend], 'Missing applied frontend source')
+    assert.equal(
+      receipt['frontendHash'],
+      applied['sha256'],
+      'Browser did not acknowledge the actual edited stylesheet bytes'
+    )
+    assert.equal(
+      receipt['frontendStyle'],
+      applied['frontend'],
+      'Computed frontend style did not change with source'
+    )
+    assert.equal(
+      receipt['sharedStyle'],
+      applied['shared'],
+      'Computed shared style did not change with source'
+    )
     assert.ok(
       typeof receipt['instance'] === 'string' &&
         receipt['instance'].length > 0 &&
@@ -346,6 +480,54 @@ export function acceptManagedDevelopmentWorkload(
     [...seenRevisions].sort((a, b) => a - b),
     Array.from({ length: 501 }, (_, index) => index),
     'Renderer did not verify every successful revision'
+  )
+  const rendererTimings: Record<'backend' | 'shared' | 'frontend', number[]> = {
+    backend: [],
+    shared: [],
+    frontend: [],
+  }
+  let pendingEdit: { kind: 'backend' | 'shared' | 'frontend'; minimumMs: number } | undefined
+  for (const row of rows) {
+    if (row['kind'] === 'replacement' || row['kind'] === 'frontend') {
+      assert.equal(
+        pendingEdit,
+        undefined,
+        'An edited source was never acknowledged by the renderer'
+      )
+      pendingEdit = {
+        kind:
+          row['kind'] === 'frontend'
+            ? 'frontend'
+            : row['revision'] === MANAGED_PLAN.sharedAt
+              ? 'shared'
+              : 'backend',
+        minimumMs: Number(row['elapsedMs']),
+      }
+    } else if (row['kind'] === 'renderer') {
+      if (pendingEdit) {
+        assert.equal(row['editKind'], pendingEdit.kind)
+        const elapsed = finite(
+          row['editToRendererMs'],
+          'Missing bounded source-write-to-renderer timing'
+        )
+        assert.ok(
+          elapsed >= pendingEdit.minimumMs,
+          'Renderer acknowledgement predates the completed source update'
+        )
+        rendererTimings[pendingEdit.kind].push(elapsed)
+        pendingEdit = undefined
+      } else {
+        assert.equal(row['editKind'], undefined)
+        assert.equal(row['editToRendererMs'], undefined)
+      }
+    }
+  }
+  assert.equal(pendingEdit, undefined)
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(rendererTimings).map(([kind, values]) => [kind, values.length])
+    ),
+    { backend: 499, shared: 1, frontend: 1 }
   )
   const identities = record(result['identities'], 'Missing native identity continuity')
   assert.equal(identities['stable'], true)
@@ -412,7 +594,11 @@ export function acceptManagedDevelopmentWorkload(
     assert.equal(broker['generations'], 1)
     assert.equal(broker['candidate'], null)
     assert.equal(broker['mechanism'], 'worker')
-    zero(broker, ['hostCalls'], 'Unsettled checkpoint resource invocation')
+    zero(
+      broker,
+      ['hostCalls', 'forcedTerminations'],
+      'Unsettled checkpoint resource invocation or forced generation retirement'
+    )
     integer(broker['requests'], 'Unbounded generation request admission', 64)
     const desktop = record(state['desktop'], 'Missing desktop checkpoint')
     assert.equal(desktop['listener'], 1)
@@ -437,6 +623,12 @@ export function acceptManagedDevelopmentWorkload(
     lastHeap - firstHeap <= MANAGED_PLAN.heapAllowanceBytes,
     'Post-warmup retained heap exceeded the predeclared 32-MiB finite retention sentinel'
   )
+  const firstRss = quantile(rss.slice(1, 6), 0.5),
+    lastRss = quantile(rss.slice(-5), 0.5)
+  assert.ok(
+    lastRss - firstRss <= MANAGED_PLAN.rssAllowanceBytes,
+    'Owner-process RSS exceeded the predeclared 256-MiB finite retention sentinel'
+  )
   acceptFinal(result, observation.environment['os'])
   return Object.freeze({
     successfulReplacements: replacements.length,
@@ -454,6 +646,13 @@ export function acceptManagedDevelopmentWorkload(
     requestsSettled: accepted,
     pendingAtShutdown: 0,
     backendEditMs: distribution(replacements.map((row) => Number(row['elapsedMs']))),
+    editToRendererMs: {
+      backend: distribution(rendererTimings.backend),
+      shared: distribution(rendererTimings.shared),
+      frontend: distribution(rendererTimings.frontend),
+      scope:
+        'source write through admitted replacement/style update and native renderer state acknowledgement; separate from bundle-and-reload timing',
+    },
     heap: {
       checkpoints: heaps,
       firstPostWarmupMedianBytes: firstHeap,
@@ -463,7 +662,15 @@ export function acceptManagedDevelopmentWorkload(
       method:
         'main-isolate full-GC checkpoints every25 edits; excludes Worker heaps; finite retention sentinel',
     },
-    ownerRssBytes: rss,
+    ownerRss: {
+      checkpoints: rss,
+      firstPostWarmupMedianBytes: firstRss,
+      finalMedianBytes: lastRss,
+      differenceBytes: lastRss - firstRss,
+      allowanceBytes: MANAGED_PLAN.rssAllowanceBytes,
+      method:
+        'owner-process RSS includes Worker heaps/native allocator retention; median windows edits25..125 and400..500; finite retention sentinel',
+    },
     processResources: reloadObservationResources(observation),
     nativeShutdownMs: shutdown,
     externalHmrQualified: false,
@@ -484,6 +691,7 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(String(report['target'])))
   const source = record(report['sourceBefore'], 'Missing source identity')
   assert.equal(source['clean'], true)
+  assert.equal(source['reason'], 'clean-checkout')
   checksum(source['commit'], 'Invalid immutable source commit', 40)
   assert.deepEqual(report['sourceAfter'], source)
   const sourceHashes = report['sourceHashes']
@@ -528,6 +736,7 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   const runtime = record(report['runtimeIdentity'], 'Missing actual exported CEF identity')
   assert.equal(runtime['event'], 'cef-binary-identity')
   assert.equal(runtime['cefVersion'], '156.0.7')
+  assert.equal(runtime['chromiumVersion'], '156.0.8078.17')
   assert.equal(runtime['source'], 'exported-api')
   checksum(runtime['sha256'], 'Missing actual CEF binary hash')
   const cache = record(report['cache'], 'Missing prepared-host reuse evidence')
@@ -535,6 +744,11 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   assert.equal(cache['assemblies'], 1)
   assert.equal(record(cache['cold'], 'Missing cold cache observation')['cacheHit'], false)
   assert.equal(record(cache['warm'], 'Missing warm cache observation')['cacheHit'], true)
+  for (const stage of ['cold', 'warm']) {
+    const item = record(cache[stage], 'Missing cache verification timing')
+    finite(item['durationMs'], 'Invalid cache verification timing', 600000)
+    integer(item['verifiedBytes'], 'Missing verified native byte count', 2 ** 40)
+  }
   assert.equal(cache['warmNativeCopies'], 0)
   assert.equal(cache['warmNativeCompilations'], 0)
   for (const field of [
@@ -554,7 +768,12 @@ export function acceptManagedDevelopmentReport(input: unknown) {
     const paths = new Set<string>()
     for (const value of entries) {
       const entry = record(value, 'Invalid runtime inventory member')
-      assert.ok(typeof entry['path'] === 'string' && !paths.has(entry['path']))
+      assert.ok(
+        typeof entry['path'] === 'string' &&
+          !entry['path'].startsWith('/') &&
+          !entry['path'].split('/').includes('..') &&
+          !paths.has(entry['path'])
+      )
       paths.add(entry['path'])
       bytes += integer(entry['bytes'], 'Invalid runtime member size', 2 ** 40)
       if (entry['kind'] === 'file') checksum(entry['sha256'], 'Missing runtime member hash')
@@ -565,7 +784,64 @@ export function acceptManagedDevelopmentReport(input: unknown) {
       }
     }
     assert.equal(artifact['bytes'], bytes)
+    assert.deepEqual(
+      report[field + 'After'],
+      artifact,
+      'Runtime inventory changed across ordinary edits'
+    )
   }
+  const prepared = record(report['preparedArtifact'], 'Missing prepared inventory')[
+    'entries'
+  ] as Record<string, unknown>[]
+  const selected = record(report['inputArtifact'], 'Missing input inventory')['entries'] as Record<
+    string,
+    unknown
+  >[]
+  assert.ok(
+    selected.some(
+      (entry) => entry['kind'] === 'file' && entry['sha256'] === report['inputHostSha256']
+    ),
+    'Selected native host hash is absent from the selected inventory'
+  )
+  assert.ok(
+    prepared.some((entry) => entry['kind'] === 'file' && entry['sha256'] === runtime['sha256']),
+    'Exported CEF identity does not match prepared bytes'
+  )
+  const metadata = report['preparedFileMetadataBefore']
+  assert.ok(
+    Array.isArray(metadata) && metadata.length === prepared.length,
+    'Incomplete prepared file metadata'
+  )
+  assert.deepEqual(
+    metadata.map((value) => record(value, 'Invalid prepared file metadata')['path']),
+    prepared.map((entry) => entry['path'])
+  )
+  for (const value of metadata) {
+    const entry = record(value, 'Invalid prepared file metadata')
+    for (const field of ['size', 'mtimeNs', 'ctimeNs'])
+      assert.match(String(entry[field]), /^[0-9]{1,24}$/)
+  }
+  assert.deepEqual(
+    report['preparedFileMetadataAfter'],
+    metadata,
+    'Prepared runtime files were recopied or rewritten'
+  )
+  const bun = record(report['bundledBun'], 'Missing actual bundled Bun version observation')
+  assert.equal(bun['version'], '1.4.3')
+  checksum(bun['sha256'], 'Missing bundled Bun hash')
+  checksum(bun['observationSha256'], 'Missing bundled Bun observation hash')
+  assert.ok(
+    prepared.some(
+      (entry) =>
+        entry['kind'] === 'file' &&
+        entry['path'] === bun['path'] &&
+        entry['sha256'] === bun['sha256']
+    ),
+    'Observed Bun does not match prepared bytes'
+  )
+  const bunObservation = validateCommandObservation(bun['observation'])
+  assertCleanCommand(bunObservation)
+  assert.deepEqual(bunObservation.stdoutTail, ['1.4.3'])
   const trials = report['trials']
   assert.ok(
     Array.isArray(trials) && trials.length === 1,

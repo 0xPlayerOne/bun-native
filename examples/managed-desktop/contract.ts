@@ -59,6 +59,9 @@ export interface RendererReceipt {
   readonly revision: number
   readonly shared: number
   readonly frontend: number
+  readonly frontendHash: string
+  readonly frontendStyle: number
+  readonly sharedStyle: number
   readonly form: string
   readonly session: string
   readonly login: string
@@ -72,6 +75,9 @@ const receipt = (value: unknown): RendererReceipt => {
     'revision',
     'shared',
     'frontend',
+    'frontendHash',
+    'frontendStyle',
+    'sharedStyle',
     'form',
     'session',
     'login',
@@ -79,10 +85,15 @@ const receipt = (value: unknown): RendererReceipt => {
     'terminalSequence',
     'terminalAck',
   ])
+  const frontendHash = text(row['frontendHash'], 64)
+  if (!/^[a-f0-9]{64}$/.test(frontendHash)) throw new TypeError('Expected frontend SHA-256')
   return {
     revision: integer(row['revision'], TOTAL_REPLACEMENTS),
     shared: integer(row['shared'], 1),
     frontend: integer(row['frontend'], 2),
+    frontendHash,
+    frontendStyle: integer(row['frontendStyle'], 1),
+    sharedStyle: integer(row['sharedStyle'], 1),
     form: text(row['form']),
     session: text(row['session']),
     login: text(row['login']),
@@ -115,6 +126,7 @@ export const managedSchema = defineRpc({
   begin: procedure(none, (value) => text(value, 16_384)),
   step: procedure(command, (value) => text(value, 16_384)),
   readback: procedure(none, (value) => text(value, 16_384)),
+  frontend: procedure(none, (value) => text(value, 16_384)),
   verify: procedure(receipt, none),
   pending: procedure(none, text),
   endTerminal: procedure(none, none),

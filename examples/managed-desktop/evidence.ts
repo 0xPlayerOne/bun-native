@@ -5,6 +5,7 @@ export const MANAGED_PLAN = Object.freeze({
   replacements: 500,
   checkpointEvery: 25,
   heapAllowanceBytes: 32 * 1024 * 1024,
+  rssAllowanceBytes: 256 * 1024 * 1024,
   failureCases: [
     'syntax',
     'import',
@@ -37,6 +38,8 @@ export interface ManagedRow {
   readonly servingRevision?: number
   readonly shared?: number
   readonly renderer?: RendererReceipt
+  readonly editToRendererMs?: number
+  readonly editKind?: 'backend' | 'shared' | 'frontend'
   readonly snapshot?: {
     readonly heapUsed: number
     readonly rss: number
@@ -58,6 +61,13 @@ export interface ManagedIdentities {
   readonly document: string
   readonly url: string
 }
+export interface ManagedFrontendSource {
+  readonly version: number
+  readonly frontend: number
+  readonly shared: number
+  readonly css: string
+  readonly sha256: string
+}
 export interface ManagedResult {
   readonly event: 'bunly.managed-development'
   readonly schema: 1
@@ -70,6 +80,7 @@ export interface ManagedResult {
     readonly acknowledged: number
     readonly sharedEdits: number
     readonly externalHmr: false
+    readonly sources: readonly ManagedFrontendSource[]
   }
   readonly retirement: {
     readonly accepted: number
@@ -113,6 +124,7 @@ export interface ManagedResult {
     readonly terminal: Record<string, unknown>
     readonly development: Record<string, unknown>
     readonly native: Record<string, unknown>
+    readonly nativeSnapshotPhase: 'before-last-window-close'
   }
   readonly restartRequired: boolean
   readonly failureCode?: string

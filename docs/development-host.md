@@ -107,6 +107,14 @@ requires controlled recovery. It never deletes live code or silently retries a
 mutation. The production `ServiceReloadHost` provides these receipts. A custom
 adapter must provide equivalent guarantees.
 
+The supplied `reload`, `frontendChanged`, `shutdown` and cold `assemble` callbacks
+are trusted stable-host code. They must bound their own I/O, honor supplied abort
+signals, and settle after their owned work has stopped. `shutdown` receives no
+signal and must enforce its own finite cleanup deadline. The session cannot
+safely interrupt an uncooperative in-process callback or claim that its work has
+stopped merely because a timer expired. The production generation broker bounds
+its prepare, quiesce, retirement and exit stages independently.
+
 On successful replacement the prior bundle and its map are removed. Failed
 preparation removes only the confirmed retired candidate. `close()` closes
 watchers, rejects queued work, aborts the session signal, calls the owned runtime's
@@ -121,6 +129,12 @@ explicit port. Startup probes the existing server without following redirects;
 unavailable servers fail with `FRONTEND_UNAVAILABLE`. The session does not start,
 kill, proxy or replace the user's frontend process or its HMR connection. No
 framework-specific frontend dependency is required.
+
+A frontend event reports `frontendNotified: true` only after the configured
+`frontendChanged` callback acknowledges it. Without a callback the event is still
+observed and classified, but the result explicitly leaves notification false;
+the external tool owns any actual HMR update. A callback receipt alone does not
+prove that a browser applied the edited source.
 
 An optional diagnostic port binds read-only status on `127.0.0.1`. A requested
 occupied port fails with `PORT_IN_USE`; there is no silent change to another port.

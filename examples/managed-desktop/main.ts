@@ -31,10 +31,12 @@ import {
 import {
   MANAGED_PLAN,
   type ManagedFailureCase,
+  type ManagedFrontendSource,
   type ManagedIdentities,
   type ManagedResult,
   type ManagedRow,
 } from './evidence.ts'
+import { readManagedFrontendSource } from './frontend-source.ts'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -95,6 +97,20 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     frontendAcknowledged = 0,
     rendererChecks = 0
   let firstRenderer: RendererReceipt | undefined
+  let frontendSource: ManagedFrontendSource | undefined
+  const frontendSources: ManagedFrontendSource[] = []
+  let pendingTiming:
+    | { revision: number; started: number; kind: 'backend' | 'shared' | 'frontend' }
+    | undefined
+  const refreshFrontend = async () => {
+    const next = await readManagedFrontendSource(root)
+    assert.equal(next.version, frontendSources.length)
+    assert.ok(frontendSources.length < 3)
+    if (frontendSource) assert.notEqual(next.sha256, frontendSource.sha256)
+    frontendSource = next
+    frontendSources.push(next)
+    frontendNotifications = next.version
+  }
   let launches = 0,
     sourceBytes = 0,
     sourceHash = 0x811c9dc5
@@ -243,6 +259,12 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         assert.equal(requested, revision + 1)
         assert.ok(requested <= MANAGED_PLAN.replacements)
         if (requested === MANAGED_PLAN.pendingAt) await pendingStarted.promise
+        assert.equal(pendingTiming, undefined)
+        pendingTiming = {
+          revision: requested,
+          started: performance.now(),
+          kind: requested === MANAGED_PLAN.sharedAt ? 'shared' : 'backend',
+        }
         await writeFile(dependency, `export const revision = ${requested}\n`)
         const paths = [dependency]
         if (requested === MANAGED_PLAN.sharedAt) {
@@ -273,6 +295,8 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       if (action === 'frontend') {
         assert.equal(revision, MANAGED_PLAN.frontendAfter)
         const before = broker.diagnostics().active
+        assert.equal(pendingTiming, undefined)
+        pendingTiming = { revision, started: performance.now(), kind: 'frontend' }
         await writeFile(join(root, 'frontend/style.css'), ':root { --fixture-revision: 1; }\n')
         const change = await development.invalidate([join(root, 'frontend/style.css')])
         assert.equal(change.action, 'frontend')
@@ -392,6 +416,15 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       capability: 'managed-fixture',
       handle: (_input, context) => admit(context, readback),
     },
+    frontend: {
+      capability: 'managed-fixture',
+      handle: (_input, context) =>
+        admit(context, async () => {
+          await ready.promise
+          assert.ok(frontendSource)
+          return JSON.stringify(frontendSource)
+        }),
+    },
     verify: {
       capability: 'managed-fixture',
       handle: (receipt, context) =>
@@ -399,6 +432,10 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
           assert.equal(receipt.revision, revision)
           assert.equal(receipt.shared, shared)
           assert.equal(receipt.frontend, frontendNotifications)
+          assert.ok(frontendSource)
+          assert.equal(receipt.frontendHash, frontendSource.sha256)
+          assert.equal(receipt.frontendStyle, frontendSource.frontend)
+          assert.equal(receipt.sharedStyle, frontendSource.shared)
           assert.equal(receipt.form, FORM_MARKER)
           assert.equal(receipt.session, SESSION_MARKER)
           assert.equal(receipt.login, LOGIN_MARKER)
@@ -407,7 +444,19 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
           else firstRenderer = receipt
           frontendAcknowledged = receipt.frontend
           rendererChecks++
-          await row({ kind: 'renderer', revision, elapsedMs: 0, passed: true, renderer: receipt })
+          const timing = pendingTiming
+          if (timing) assert.equal(timing.revision, receipt.revision)
+          pendingTiming = undefined
+          await row({
+            kind: 'renderer',
+            revision,
+            elapsedMs: 0,
+            passed: true,
+            renderer: receipt,
+            ...(timing
+              ? { editToRendererMs: performance.now() - timing.started, editKind: timing.kind }
+              : {}),
+          })
           return null
         }),
     },
@@ -556,6 +605,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       dependsOn: [retainedView],
     })
     identitiesBefore = await currentIdentities()
+    await refreshFrontend()
     development = await DevelopmentSession.start({
       projectRoot: root,
       entrypoint: 'backend/service.ts',
@@ -568,9 +618,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       debounceMs: 0,
       reload: async (bundle) => broker.reload({ entry: bundle.entry, resources: await bindings() }),
       shutdown: () => broker.close(),
-      frontendChanged: async () => {
-        frontendNotifications++
-      },
+      frontendChanged: refreshFrontend,
     })
     await checkpoint()
     ready.resolve()
@@ -589,6 +637,8 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     assert.equal(rendererTerminal.hash, byteHashText(sourceHash))
     assert.equal(rendererTerminal.acks, MANAGED_PLAN.replacements + 1)
     assert.equal(rendererTerminal.records, rendererTerminal.lastSequence + 1)
+    assert.equal(pendingTiming, undefined)
+    assert.equal(frontendSources.length, 3)
     identitiesAfter = await stable()
   } catch (error) {
     failureCode =
@@ -641,6 +691,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         acknowledged: frontendAcknowledged,
         sharedEdits: shared,
         externalHmr: false,
+        sources: frontendSources,
       },
       retirement: {
         accepted: pendingAccepted,
@@ -677,6 +728,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         terminal: terminals.diagnostics(),
         development: development?.diagnostics() ?? {},
         native: nativeFinal,
+        nativeSnapshotPhase: 'before-last-window-close',
       },
       restartRequired,
       ...(failureCode ? { failureCode } : {}),

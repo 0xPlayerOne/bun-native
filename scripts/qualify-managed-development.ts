@@ -6,6 +6,7 @@ import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/prom
 import { prepareDevelopmentHost, type DevelopmentHostInput } from '../packages/cli/src/dev-cache.ts'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
+import { decodeExportedNativeReport } from '../benchmarks/lib/exported-native-evidence.ts'
 import { assertCleanCommand, observedCommand } from '../benchmarks/lib/observed-command.ts'
 import { reloadObservationResources } from '../benchmarks/reload/acceptance.ts'
 import {
@@ -62,7 +63,7 @@ function nativePaths(app: string, source: string) {
     ),
   }
 }
-async function buildApplication(resources: string) {
+export async function buildManagedApplication(resources: string) {
   const backend = join(resources, 'backend')
   await rm(backend, { recursive: true, force: true })
   await mkdir(backend)
@@ -97,13 +98,14 @@ async function buildApplication(resources: string) {
   assert.equal(JSON.parse(await readFile(join(xterm, 'package.json'), 'utf8')).version, '5.5.0')
   await cp(join(xterm, 'css/xterm.css'), join(publicRoot, 'xterm.css'))
   await cp(join(xterm, 'LICENSE'), join(publicRoot, 'xterm-LICENSE.txt'))
+  // The native public-origin policy intentionally rejects source maps. Keep
+  // service maps in the private backend tree; publish only renderer assets here.
   const browser = await Bun.build({
     entrypoints: [join(root, 'examples/managed-desktop/client.ts')],
     outdir: publicRoot,
     naming: 'client.js',
     target: 'browser',
     format: 'esm',
-    sourcemap: 'linked',
     minify: false,
   })
   assert.equal(browser.success, true, 'Managed renderer bundling failed')
@@ -122,7 +124,10 @@ async function buildApplication(resources: string) {
 }
 async function verify(path: string): Promise<void> {
   const bytes = await boundedFile(resolve(path), 32 * 1024 * 1024)
-  const report = JSON.parse(bytes.toString()) as Record<string, unknown>
+  const parsed = JSON.parse(bytes.toString()) as Record<string, unknown>
+  const report = Object.hasOwn(parsed, 'nativeEvidenceExport')
+    ? decodeExportedNativeReport(parsed)
+    : parsed
   const acceptance = acceptManagedDevelopmentReport(report)
   const source = report['sourceBefore'] as { commit: string }
   const hashes = report['sourceHashes'] as { path: string; sha256: string }[]
@@ -283,11 +288,15 @@ async function qualify(args: readonly string[]): Promise<void> {
       engineVersion: `cef:${runtime['cef_version']}`,
       target: `${process.platform}-${process.arch}`,
       bunVersion: Bun.version,
-      configuration: JSON.stringify({ runtime, nativeTree, stableSources }),
+      configuration: JSON.stringify({
+        runtime,
+        nativeTree,
+        stableSourcesSha256: hash(JSON.stringify(stableSources)),
+      }),
       inputs,
     }
     let assemblies = 0
-    let built: Awaited<ReturnType<typeof buildApplication>> | undefined
+    let built: Awaited<ReturnType<typeof buildManagedApplication>> | undefined
     const prepare = () =>
       prepareDevelopmentHost({
         cacheRoot: join(work, 'hosts'),
@@ -303,7 +312,7 @@ async function qualify(args: readonly string[]): Promise<void> {
             bytes: inputInventory.bytes,
           })
           const paths = nativePaths(app, source)
-          built = await buildApplication(paths.resources)
+          built = await buildManagedApplication(paths.resources)
           operations.push({ operation: 'bundle-stable-host', count: 1, nativeCompiler: false })
           if (mac) {
             const signer = join(work, 'sign.py')
@@ -347,6 +356,28 @@ async function qualify(args: readonly string[]): Promise<void> {
     const prepared = await inventory(app)
     const metadataBefore = await fileMetadata(app, prepared.entries)
     report['preparedArtifact'] = prepared
+    report['preparedFileMetadataBefore'] = metadataBefore
+    const bundledBun = join(paths.resources, process.platform === 'win32' ? 'bun.exe' : 'bun')
+    const bunEntry = prepared.entries.find(
+      (entry) => entry.path === relative(app, bundledBun).split('\\').join('/')
+    )
+    assert.ok(bunEntry?.sha256, 'Selected bundled Bun is absent from prepared inventory')
+    const bunObservationPath = join(work, 'bun.process.json')
+    const bunObservation = await observedCommand([bundledBun, '--version'], {
+      cwd: work,
+      output: bunObservationPath,
+      timeoutMs: 30000,
+      env: { PATH: '' },
+    }).result
+    assertCleanCommand(bunObservation)
+    assert.deepEqual(bunObservation.stdoutTail, ['1.4.3'], 'Actual bundled Bun version differs')
+    report['bundledBun'] = {
+      version: '1.4.3',
+      path: bunEntry.path,
+      sha256: bunEntry.sha256,
+      observation: bunObservation,
+      observationSha256: hash(await readFile(bunObservationPath)),
+    }
     const libraryEntry = prepared.entries.find(
       (entry) => entry.path === relative(app, paths.library).split('\\').join('/')
     )
@@ -379,11 +410,6 @@ async function qualify(args: readonly string[]): Promise<void> {
         recursive: true,
         dereference: false,
       })
-    await writeFile(
-      join(project, 'bunly.config.json'),
-      '{"schema":1,"profile":"managed-development"}\n',
-      { flag: 'wx', mode: 0o600 }
-    )
     const rowsPath = join(work, 'workload.jsonl'),
       resultPath = join(work, 'workload.json')
     const trial: Record<string, unknown> = { index: 0, passed: false }
@@ -461,21 +487,19 @@ async function qualify(args: readonly string[]): Promise<void> {
       evidence:
         'cold-only-assembler-count-plus-unchanged-complete-runtime-inventory-and-file-metadata; launch-PATH-empty',
     }
+    const preparedAfter = await inventory(app)
+    report['preparedArtifactAfter'] = preparedAfter
+    assert.deepEqual(preparedAfter, prepared, 'Prepared host bytes changed across ordinary edits')
+    const metadataAfter = await fileMetadata(app, prepared.entries)
+    report['preparedFileMetadataAfter'] = metadataAfter
     assert.deepEqual(
-      await inventory(app),
-      prepared,
-      'Prepared host bytes changed across ordinary edits'
-    )
-    assert.deepEqual(
-      await fileMetadata(app, prepared.entries),
+      metadataAfter,
       metadataBefore,
       'Prepared host file identity/timestamps changed across ordinary edits'
     )
-    assert.deepEqual(
-      await inventory(inputRoot),
-      inputInventory,
-      'Original selected prebuilt artifact changed'
-    )
+    const inputAfter = await inventory(inputRoot)
+    report['inputArtifactAfter'] = inputAfter
+    assert.deepEqual(inputAfter, inputInventory, 'Original selected prebuilt artifact changed')
     report['inputArtifactUnchanged'] = true
     report['preparedArtifactUnchanged'] = true
     report['preparedFileMetadataUnchanged'] = true

@@ -289,6 +289,34 @@ test('actual fresh Worker bundles replace changed dependencies independently fro
 async function lstatDirectory(path: string): Promise<readonly string[]> {
   return readdir(path)
 }
+test('frontend edits without an integration callback do not claim a notification', async () => {
+  const root = await temporary()
+  let session: DevelopmentSession | undefined
+  try {
+    await fixture(root)
+    const adapter = workerAdapter(),
+      diagnostics: DevelopmentDiagnostic[] = []
+    session = await DevelopmentSession.start(
+      options(root, adapter, {
+        onDiagnostic: (event) => {
+          diagnostics.push(event)
+        },
+      })
+    )
+    const result = await session.invalidate(['frontend/main.ts'])
+    expect(result.action).toBe('frontend')
+    expect(result.frontendNotified).toBe(false)
+    expect(result.backendReplaced).toBe(false)
+    expect(session.diagnostics().frontendEvents).toBe(1)
+    expect(adapter.replacements()).toBe(1)
+    expect(diagnostics.some((event) => event.message.includes('external tooling owns HMR'))).toBe(
+      true
+    )
+  } finally {
+    await session?.close()
+    await rm(root, { recursive: true, force: true })
+  }
+})
 test('syntax and initialization failures retain serving code and preserve source locations', async () => {
   const root = await temporary()
   let session: DevelopmentSession | undefined
