@@ -110,3 +110,6 @@ backend shutdown handoff and its unchanged identity and deadline boundaries.
 
 [Native window-state terminal load](terminal-window-load.md) defines distinct foreground,
 inactive-visible, hidden and minimized execution with actual native and page receipts.
+
+[Reload mechanism qualification](reload-mechanism-qualification.md) defines the
+fixed pinned-Bun experiments and their separate synthetic/native acceptance boundaries.
