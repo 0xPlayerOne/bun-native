@@ -64,7 +64,9 @@
     "qualify:cef-window-modes": "bun scripts/qualify-cef-window-modes.ts",
     "qualify:terminal-window-load": "bun scripts/qualify-terminal-window-load.ts",
     "profile:terminal:review": "bun scripts/review-terminal-regression.ts",
-    "verify:terminal-acceptance": "bun scripts/verify-terminal-acceptance.ts"
+    "verify:terminal-acceptance": "bun scripts/verify-terminal-acceptance.ts",
+    "qualify:reload": "bun scripts/qualify-reload-mechanisms.ts",
+    "verify:reload": "bun scripts/verify-reload-qualification.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
