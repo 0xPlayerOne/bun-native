@@ -1,9 +1,11 @@
 # Native desktop terminal ownership
 
-Issue #25; draft #117. This implements the desktop owner path and its declared
-non-detaching profile. M5 completion still requires current-source acceptance on
-all three platforms and the separate restart/backoff and CEF shutdown work.
-Historical Mac/Linux runs at `5ee4ff8` qualify only the previous opt-in protocol.
+Issue #25; implementation merged in #117 and integrated service acceptance in #122.
+[M5 completion](m5-completion.md) records the accepted non-detaching profile and
+macOS/Linux/Windows execution. Historical Mac/Linux runs at `5ee4ff8` qualify only
+the previous opt-in protocol; dated incremental limitations below retain that scope.
+Managed application-generation replacement is M6, and the independent CEF teardown
+reliability investigation remains open under #124.
 
 ## Desktop integration and artifact identity
 
