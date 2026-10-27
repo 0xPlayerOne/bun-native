@@ -28,3 +28,25 @@ it('permits portable contract dependencies', () =>
     ),
     []
   ))
+it('permits only the private isolated runner application-entry expression', () => {
+  const runner = resolve(root, 'packages/runtime/src/service-reload-runner.ts')
+  const permitted = 'const application = await import(pathToFileURL(entry).href)'
+  assert.deepEqual(inspectSource(runner, permitted, root), [])
+  for (const source of [
+    'const application = import(entry)',
+    'const application = import(pathToFileURL(other).href)',
+    "const application = import(pathToFileURL(entry)['href'])",
+    'const application = import(pathToFileURL(entry).href, {with:{type:"json"}})',
+    'const application = require(pathToFileURL(entry).href)',
+    `${permitted};const duplicate = import(pathToFileURL(entry).href)`,
+    `${permitted};import {x} from '@bunly/artifacts'`,
+  ])
+    assert.ok(inspectSource(runner, source, root).length > 0, source)
+  for (const file of [
+    'packages/runtime/src/other.ts',
+    'packages/client/src/service-reload-runner.ts',
+    'packages/contracts/src/service-reload-runner.ts',
+    'packages/cli/src/service-reload-runner.ts',
+  ])
+    assert.ok(inspectSource(resolve(root, file), permitted, root).length > 0, file)
+})

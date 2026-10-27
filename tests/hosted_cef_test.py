@@ -36,6 +36,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "window-modes",
                 "terminals",
                 "terminal-load",
+                "managed-development",
                 "credentials",
             ],
         )
@@ -121,7 +122,14 @@ class HostedQualificationTests(unittest.TestCase):
                     [
                         row
                         for row in hosted.commands("full", bun, app)
-                        if row[0] not in ("faults", "window-modes", "terminals", "terminal-load")
+                        if row[0]
+                        not in (
+                            "faults",
+                            "window-modes",
+                            "terminals",
+                            "terminal-load",
+                            "managed-development",
+                        )
                     ],
                     m4,
                 )
@@ -285,7 +293,9 @@ class GraphicalTerminalStageTests(unittest.TestCase):
         app = Path("/app")
         commands = hosted.commands("full", "/bun", app)
         names = [name for name, _ in commands]
-        self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
+        self.assertEqual(
+            names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
+        )
         self.assertEqual(
             dict(commands)["terminals"],
             [
@@ -314,7 +324,14 @@ class NativeWindowStageTests(unittest.TestCase):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
                 self.assertEqual(
-                    names[-4:], ["window-modes", "terminals", "terminal-load", "credentials"]
+                    names[-5:],
+                    [
+                        "window-modes",
+                        "terminals",
+                        "terminal-load",
+                        "managed-development",
+                        "credentials",
+                    ],
                 )
                 expected = (
                     [
@@ -355,8 +372,10 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 10)
-                self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
+                self.assertEqual(len(names), 11)
+                self.assertEqual(
+                    names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
+                )
                 expected = (
                     [
                         sys.executable,
@@ -388,3 +407,38 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
         self.assertEqual(
             hosted.report_directory("terminal-load"), hosted.ROOT / ".bunly/m5/terminal-load"
         )
+
+
+class ManagedDevelopmentStageTests(unittest.TestCase):
+    def test_full_requires_exact_source_and_fresh_managed_report_before_credentials(self):
+        source = "a" * 40
+        for root, app, bun in (
+            (PurePosixPath("/repo"), PurePosixPath("/app"), "/bun"),
+            (PureWindowsPath("C:/repo"), PureWindowsPath("C:/app.exe"), "C:/bun.exe"),
+        ):
+            with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
+                selected = hosted.commands("full", bun, app, native_source=source)
+                self.assertEqual(
+                    dict(selected)["managed-development"],
+                    [
+                        bun,
+                        str(root / "scripts/qualify-managed-development.ts"),
+                        str(app),
+                        "--native-source=" + source,
+                    ],
+                )
+                self.assertEqual(
+                    hosted.report_directory("managed-development"),
+                    root / ".bunly/m6/managed-development",
+                )
+                rows = [{"name": name, "passed": True} for name, _ in selected[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                rows[-1]["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "managed-development", dict(hosted.commands("m4-acceptance", bun, app))
+                )
+                for invalid in ("HEAD", "main", source + "0", "--no-sandbox"):
+                    with self.assertRaises(ValueError):
+                        hosted.commands("full", bun, app, native_source=invalid)

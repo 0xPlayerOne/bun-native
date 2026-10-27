@@ -1,0 +1,4 @@
+/* Fixed frontend notification fixture; external-tooling HMR is separately scoped. */
+:root {
+  --fixture-revision: 0;
+}

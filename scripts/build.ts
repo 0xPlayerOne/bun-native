@@ -27,7 +27,12 @@ export async function buildWorkspace(
     const outdir = join(root, `packages/${name}/dist`)
     await rm(outdir, { recursive: true, force: true })
     const result = await Bun.build({
-      entrypoints: [join(root, `packages/${name}/src/${name === 'cli' ? 'main' : 'index'}.ts`)],
+      entrypoints: [
+        join(root, `packages/${name}/src/${name === 'cli' ? 'main' : 'index'}.ts`),
+        ...(name === 'runtime'
+          ? [join(root, 'packages/runtime/src/service-reload-runner.ts')]
+          : []),
+      ],
       outdir,
       target: name === 'client' || name === 'contracts' ? 'browser' : 'bun',
       sourcemap: 'external',

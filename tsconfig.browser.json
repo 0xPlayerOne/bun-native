@@ -9,7 +9,9 @@
     "examples/cef-terminal-load/client.ts",
     "benchmarks/adapters/electron/terminal-load/client.ts",
     "examples/cef-window-state/client.ts",
-    "examples/cef-window-state/contract.ts"
+    "examples/cef-window-state/contract.ts",
+    "examples/managed-desktop/client.ts",
+    "examples/managed-desktop/contract.ts"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**"]
 }

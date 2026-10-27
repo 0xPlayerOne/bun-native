@@ -67,7 +67,8 @@
     "verify:terminal-acceptance": "bun scripts/verify-terminal-acceptance.ts",
     "qualify:reload": "bun scripts/qualify-reload-mechanisms.ts",
     "verify:reload": "bun scripts/verify-reload-qualification.ts",
-    "example:managed": "bun examples/managed-generations/main.ts"
+    "example:managed": "bun examples/managed-generations/main.ts",
+    "qualify:managed-development": "bun scripts/qualify-managed-development.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

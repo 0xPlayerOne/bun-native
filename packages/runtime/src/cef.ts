@@ -631,6 +631,19 @@ export class CefBackend implements BrowserBackend {
     this.#policyScopes.set(token, { view, resource, documentId, nativeScope: scope, epoch })
     return token
   }
+  /** Revalidate a retained scope against the current native document, without granting an OS operation. */
+  async validatePolicyScope(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const current = nativePolicyScope(
+      await this.#transport.call('policy.scope', { id: captured.resource.native })
+    )
+    this.#active()
+    this.#capturedPolicyScope(scope)
+    for (const key of ['view', 'session', 'generation', 'mainFrame', 'document', 'origin'] as const)
+      if (current[key] !== captured.nativeScope[key])
+        throw new BunlyError('PERMISSION_DENIED', 'Retained native policy scope changed')
+  }
   /** @internal Contributor fixture only; ordinary native builds reject this command.
    * Requests one fixed native user-activation fixture, never arbitrary evaluation or input.
    */

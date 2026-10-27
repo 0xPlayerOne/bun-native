@@ -13,9 +13,11 @@ ordinary application build selects prebuilt components; it must not silently
 compile native sources when an artifact is missing.
 
 The first differentiation hypothesis is a less disruptive backend edit cycle.
-Managed windows, browser sessions, and terminals will eventually have persistent
-runtime owners. Replaceable service generations will own handlers, subscriptions,
-and disposable work. M1 supplies contracts and resource semantics, not hot reload.
+Managed windows, browser sessions, terminals and processes have stable runtime
+owners. Replaceable service generations own handlers, subscriptions and disposable
+work. The opt-in reload path prepares and validates a fresh Bun Worker, publishes
+one handler generation, and observes retirement before reporting success. The
+native host and desktop resources stay alive across supported edits.
 
 ## Package boundaries
 
@@ -37,7 +39,10 @@ Bun 1.4.3 subprocess** for application TypeScript. This formalizes the initial C
 host's existing arrangement, without introducing a Tauri dependency or native
 compilation into application builds. Bounded asynchronous IPC keeps native
 operations on their owner thread. Host resources and service handlers have
-separate lifetimes; managed reconnection/reload still requires M6 implementation.
+separate lifetimes. The stable Bun subprocess owns adapters and authorization;
+one replaceable application Worker receives only bounded JSON and host-issued
+resource names. An explicitly selected application-generation subprocess uses
+the same ownership protocol when stronger application isolation is required.
 
 Node-API/Worker and C-ABI/FFI/Worker modes remain qualified feasibility alternatives.
 The tests stop native dispatch before destroying callback owners; neither a
@@ -67,10 +72,18 @@ on failure. Actual native adapters must preserve these observable semantics.
 
 The opt-in [managed generation contract](managed-generations.md) separates stable
 owner adapters from replaceable handlers and tracks retirement without inventing
-cleanup completion. Its portable state-machine/example does not yet reload the
-native desktop. Mechanism qualification and integrated orchestration remain #29–#33;
-arbitrary closures, native addons, synchronous hangs and irreversible external
-effects are not magically preserved.
+cleanup completion. [Service reload](service-reload.md) implements readiness,
+quiescence, atomic handler publication and actual isolate retirement.
+[Managed desktop resources](managed-desktop.md) reattach native windows, views,
+sessions, terminals and managed processes after validating current document and
+policy authority. The terminal writer and native child stay with the stable owner.
+
+[Development sessions](development-host.md) reuse a verified prepared host and
+bundle backend changes with Bun. Frontend tooling keeps its independent HMR
+connection; shared edits notify both paths. An incompatible configuration, native
+ABI change, arbitrary unmanaged closure or native addon requires an explicit full
+restart. External effects are never replayed to simulate rollback. Mechanism
+experiments and the real desktop acceptance workload retain separate evidence.
 
 ## Trust boundary
 

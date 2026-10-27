@@ -7,6 +7,7 @@
   "bunly.host.shutdown-audit",
   "bunly.foundation.ready",
   "bunly.foundation.result",
+  "bunly.managed-development",
   "bunly.runtime.profile",
   "bunly.native.smoke",
   "bunly.native.rpc",
