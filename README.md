@@ -2,7 +2,7 @@
 
 The Bun-native desktop framework.
 
-**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
+**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. [M6 implementation and local qualification](docs/m6-completion.md) records 500 actual managed replacements, a distinct controlled relaunch and pinned workflow comparison; final validation and merge are tracked in [PR #130](https://github.com/0xPlayerOne/bunly/pull/130). This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
 
 Bunly is building a standalone TypeScript-first desktop framework around real Bun,
 prebuilt native components, and managed backend reloads. Better iteration and
@@ -65,6 +65,20 @@ workload, resource gates and retained evidence; the
 frameworks. The qualifier does not compile a native host.
 Configuration/native changes and unmanaged state require a controlled restart;
 irreversible external effects are never automatically replayed.
+
+[The M6 record](docs/m6-completion.md) maps issues #28–#33 to their implementation
+and qualification scope and preserves three failed development attempts beside
+the accepted native and comparison runs. Replay the five retained archives without
+launching a desktop or implicitly fetching historical source:
+
+```sh
+bun run verify:managed-acceptance
+```
+
+The comparison reports raw timings for different engine and restart/persistence
+cohorts; it makes no speedup claim. Native reliability issues
+[#124](https://github.com/0xPlayerOne/bunly/issues/124) and
+[#129](https://github.com/0xPlayerOne/bunly/issues/129) remain open.
 
 ## Interactive comparison workbench
 

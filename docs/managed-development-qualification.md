@@ -6,6 +6,14 @@ against a real prebuilt CEF desktop. It combines the public
 [development host](development-host.md) APIs. Portable tests exercise failure and
 authority boundaries separately; they do not substitute for native execution.
 
+The [M6 implementation and local qualification record](m6-completion.md) links the
+accepted macOS arm64 run at `96ce3fc2754c4e34e065bb58c9f183ac5abc7462`: 500 actual
+backend replacements, 508 renderer receipts and a separately observed controlled
+relaunch. It preserves all three earlier failed attempts and reports the measured
+scope. Final current-head validation and merge are tracked in
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130); this local run is not a
+release or all-platform qualification.
+
 ## Run and replay
 
 Use a clean committed checkout, pinned Bun 1.4.3, the contributor Python
@@ -33,6 +41,20 @@ actual cleanup receipts. It accepts the explicitly marked fixture-nonce export
 format. Original private report hashes remain separate from exported hashes.
 Missing historical Git objects fail with no implicit fetch or substitution of
 current source. Fetch the recorded commits explicitly before replaying them.
+
+Replay the complete retained development/comparison inventory with:
+
+```sh
+bun run verify:managed-acceptance
+```
+
+The [manifest](../evidence/m6-managed-development/manifest.json) binds all five
+archives to source, outcomes, original private report hashes, expanded exported
+JSON hashes and gzip archive hashes. Those are distinct identities. Replay checks
+the historical failures as failures; later source corrections never relabel them.
+It performs no implicit fetch and does not rerun the native workload. See
+[the retained attempt table](m6-completion.md#retained-attempts-and-offline-replay)
+for each source and disposition.
 
 ## Fixed native workload
 

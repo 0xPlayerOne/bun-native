@@ -11,6 +11,14 @@ checkout as a standard user. The installed reference repository is an input;
 its packages and Hutch cache are copied into the private run workspace before
 upstream commands execute. Original sources are not edited.
 
+The [retained current comparison](../evidence/m6-managed-development/common-workload-comparison.json.gz)
+at `db22f4e3f338b176a2a430f0b486b417232f9fbe` passed all 15 fixed-plan rows.
+[The M6 record](m6-completion.md#current-pinned-comparison) publishes the actual
+three measured durations per framework, engine/runtime versions and persistence
+distinctions. This is local functional evidence with `performanceEligible: false`;
+final validation and merge remain tracked in
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130).
+
 The fixed plan has an initial launch, one warmup backend edit, and three measured
 backend edits per framework. Every warmup and measured row must pass. A failure
 is retained and all remaining rows in that framework are marked unexecuted;
@@ -95,5 +103,10 @@ Replay recomputes fixed-plan correctness, lifecycle distinctions, timing
 summaries, engine identity receipts, process exit gates, equal renderer asset
 hashes and historical source fingerprints. A report that merely contains
 `passed: true`, a precomputed median, or an old unrelated M2 result is insufficient.
-The initial implementation does not imply a passing native run; the actual
-retained report and source commit must be linked in milestone acceptance.
+The [retained manifest](../evidence/m6-managed-development/manifest.json) also binds
+the accepted Bunly native soak and all three failed development attempts. Replay
+that complete inventory with `bun run verify:managed-acceptance`. Original private
+report, expanded exported JSON and gzip archive hashes remain distinct; historical
+source must already exist locally, with no implicit fetch. Passing this shared
+outcome profile does not convert the reference relaunches into native persistence
+or resolve the separate #124/#129 reliability investigations.

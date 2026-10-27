@@ -2,13 +2,20 @@
 
 Current architecture and contributor guides, with historical evidence kept distinct.
 
-**Checkpoint:** M1–M5 completion records define their declared acceptance profiles;
-M6 adds managed reload and its integrated development qualification.
+**Checkpoint:** M1–M5 completion records define their declared acceptance profiles.
+[M6 implementation and local qualification](m6-completion.md) records managed
+reload, the actual 500-replacement desktop run, a distinct controlled relaunch and
+the pinned reference comparison. Final validation and merge remain tracked in
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130).
 
 The [managed development qualification](managed-development-qualification.md)
 defines the native 500-replacement and controlled-relaunch workload. The
 [common edit outcome comparison](managed-comparison.md) records the separately
 pinned Electrobun/Mirin workflow and its measurement limits.
+The [five-run retained manifest](../evidence/m6-managed-development/manifest.json)
+keeps startup, metadata and last-window shutdown failures beside the later accepted
+native and comparison runs; `bun run verify:managed-acceptance` replays them without
+implicit source fetch or a new native launch.
 
 [M4 browser sessions](m4-browser-sessions.md) documents the implemented issue #20
 session surface, its prepared real-native qualifier, and the remaining macOS
@@ -42,6 +49,10 @@ The detailed M2/M3 acceptance reports and `evidence/` retain original source
 identities, failed attempts and qualification boundaries. Completing a milestone
 does not imply production signing, final performance superiority, or platform
 coverage outside its stated profile.
+
+[The M6 record](m6-completion.md) maps the already accepted #28/#29 contracts and
+the #30–#33 implementation to local evidence. PR #130 carries the final-head
+validation and merge record; merge requires all applicable checks.
 
 ## Active technical guides
 
