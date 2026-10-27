@@ -128,3 +128,18 @@ export type {
   ServiceSupervisorOptions,
 } from './service-supervisor.ts'
 export type { TerminalLaunch } from './terminal.ts'
+
+export { ManagedGenerationOwner, ManagedError } from './managed-generations.ts'
+export type {
+  ManagedIdentity,
+  ManagedGeneration,
+  ManagedResource,
+  ManagedWork,
+  ManagedResourceKind,
+  ManagedCleanupKind,
+  ManagedCallContext,
+  ManagedResourceDefinition,
+  ManagedLimits,
+  ManagedGenerationScope,
+  ManagedErrorCode,
+} from './managed-generations.ts'
