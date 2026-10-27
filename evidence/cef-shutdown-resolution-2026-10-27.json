@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "dateUtc": "2026-10-27",
+  "classification": "cef-shutdown-finite-reversal-no-current-adverse-no-runtime-fix",
+  "resolution": "investigation-remains-open-awaiting-discriminating-adverse-evidence",
+  "mainCommit": "40ffe083448d6e7df6c7385976c3f47ca7f3c72c",
+  "currentNativeSourceTree": "b4e10795ca3d14f69f2c5d0e13826c4ba1cfc5ca",
+  "baselineNativeSourceCommit": "de8cfc995de828e3b636fe77edbf79d113172cb5",
+  "baselineNativeSourceTree": "b4e10795ca3d14f69f2c5d0e13826c4ba1cfc5ca",
+  "baselineNativeTreeMatchesCurrent": true,
+  "baselineHost": {
+    "bytes": 2541104,
+    "sha256": "55234f85f0ec02a3a9b6628c674e412842091e5fb1b9764bc471203983aaa5b5"
+  },
+  "ordinaryReversal": {
+    "passed": true,
+    "attempts": 42,
+    "acceptedTrials": 42,
+    "shutdownSummaryPopulation": "All 21 launches per condition, including one warmup. Measured-only reused-profile median is 132.5 ms across 20 launches.",
+    "shutdownMs": {
+      "fresh-profile": {
+        "min": 54,
+        "median": 93,
+        "max": 452
+      },
+      "reused-profile": {
+        "min": 56,
+        "median": 147,
+        "max": 454
+      }
+    },
+    "helperCleanup": {
+      "qualified": 42,
+      "unobserved": 0,
+      "failed": 0
+    },
+    "privateReport": {
+      "bytes": 531400,
+      "sha256": "c94a705b1987906941f5d23163f4a56f7dd1a557582fcaea224dcb6793bf9606"
+    }
+  },
+  "rejectedCandidate": {
+    "change": "drain CEF global request context before existing IO-to-UI shutdown fence",
+    "commit": "be5974d5eaf90b4d255370c603b7ad2b1a285018",
+    "passed": true,
+    "attempts": 42,
+    "acceptedTrials": 42,
+    "shutdownSummaryPopulation": "All 21 launches per condition, including one warmup. Measured-only reused-profile median is 56 ms across 20 launches.",
+    "shutdownMs": {
+      "fresh-profile": {
+        "min": 44,
+        "median": 58,
+        "max": 992
+      },
+      "reused-profile": {
+        "min": 40,
+        "median": 56,
+        "max": 2481
+      }
+    },
+    "helperCleanup": {
+      "qualified": 42,
+      "unobserved": 0,
+      "failed": 0
+    },
+    "privateReport": {
+      "bytes": 538863,
+      "sha256": "379c973c8657366ad934eb4cb2a0d7ff25cd3346127c25d6d9957e38575f2e41"
+    },
+    "disposition": "rejected-no-causal-discriminator-baseline-also-passes-and-candidate-tail-not-better",
+    "patchSha256": "0d7eb2960cc5d52bc854764e780a95674872dd157e9b8237d70061717c541196"
+  },
+  "retainedHistoricalEvidence": [
+    {
+      "path": "evidence/cef-shutdown-load-2026-10-25.json",
+      "sha256": "c568c7c36e0e1e4ffffd66ef39978b0d6ff3c81e663eaa7de0927cb7e8f65c8a"
+    },
+    {
+      "path": "evidence/pre-m4-foundation-local.json",
+      "sha256": "57b0d460695c0821a62fa8cb072b5018d9c96ec49806337d2fcf29e7657ecc10"
+    },
+    {
+      "path": "evidence/cef-shutdown-controls-2026-10-23.json",
+      "sha256": "9dc80ca8cb5af5440350c59c13e70b1f7ad9312c098e92c61a911e6d56ae45b0"
+    }
+  ],
+  "findings": [
+    "Historical adverse capture remains valid: NetworkService was blocked in TaskTracker::CompleteShutdown with three accounted shutdown-blocking items; individual task sources were not identified.",
+    "The exact current native source tree is unchanged from the retained baseline binary source used in this reversal.",
+    "The ordinary pre-fix host completed 42 of 42 fresh/reused launches with 42 positively qualified macOS helper/clone cleanups.",
+    "A global-request-context drain candidate also completed 42 of 42, but the unchanged baseline already passed and had the lower observed shutdown tail; the candidate is rejected rather than merged.",
+    "No adverse run was observed in this finite current-source plan. The causal-correction gate remains unmet; shipping a speculative workaround would violate the issue acceptance contract."
+  ],
+  "reviewQualificationFailures": {
+    "workflowRun": "40530322285",
+    "prHead": "0894400c46c1e9372b59c27d77803d88d6576348",
+    "testedMerge": "253363f3dd03fa3c594bbb7b64792a066d1c31d1",
+    "target": "darwin-arm64",
+    "artifactId": "12748165106",
+    "artifactSha256": "0c08fc7c69050f77e24d9c9797c8483a7556573187abdf3f017c72f88813f353",
+    "stage": "terminal-load",
+    "trials": [
+      { "mode": "foreground", "passed": true },
+      { "mode": "minimized", "passed": false, "outcome": "90-second observer deadline during progressing workload; no CEF shutdown phase observed" },
+      { "mode": "hidden", "passed": false, "outcome": "stream-ack CONNECTION_REVOKED at batch 178; backend exit 1; CEF shutdown completed in 127 ms" },
+      { "mode": "background", "passed": true }
+    ],
+    "watchdogRecurrenceEstablished": false,
+    "disposition": "Retain both failures independently of the watchdog investigation and of later qualification outcomes. No runtime fix or root cause is inferred."
+  },
+  "releaseBoundary": "Historical failures remain regression evidence. Any recurrence of watchdog exit 2 under current source is a release-reliability failure and should be captured with the maintained phase-triggered diagnostics before code changes.",
+  "limitations": [
+    "Finite local execution is not proof the historical Chromium/macOS failure can never recur.",
+    "No individual Chromium blocking TaskSource was identified because no current adverse run was observed.",
+    "This record is not issue closure, a performance claim, production signing qualification, or proof that Chromium contains no shutdown defects."
+  ]
+}
