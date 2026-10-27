@@ -109,6 +109,44 @@ shutdown cancellation of redundant `quit`; native errors, request deadlines and
 RPC closure failures still reject. These corrections qualified later executions
 without retroactively accepting earlier trials.
 
+### Retained hosted failures
+
+[Native CEF workflow 40584770106](https://github.com/0xPlayerOne/bunly/actions/runs/40584770106)
+failed on all three platforms at PR head
+`109a895f9f56184215006dcce327c2735d779563`. Its clean test merge was
+`1c04bcce73ceb099f11ba9e9c8a8bdb409117ab4`; both revisions had tree
+`edb1519ee101989c842120f94a0881491b532338`. These failures remain separate from
+the earlier accepted local macOS execution.
+
+The [hosted failure index](../evidence/m6-managed-development/hosted-failures/manifest.json)
+records the downloaded artifact IDs and ZIP digests, exact exported report
+digests, compressed archive digests, source identities and unchanged failed
+outcomes. It retains the following reports:
+
+| Report                      | Observed outcome                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux managed development   | Completed 500 replacements, 508 renderer checks and all 1,530 accepted requests; exited 0. The completion marker interleaved with a native shutdown-phase line, so ordered shutdown was rejected. Warm preparation also rejected the complete cache inventory. The changed entry was not captured by that revision; no restart was admitted. |
+| macOS managed development   | Completed 500 replacements, 508 renderer checks and all 1,530 accepted requests; exited 0. The observer saw a new clone and its removal but did not positively identify a cleanup helper. Cleanup qualification and the metadata exception therefore failed. Warm cache verification passed; no restart was admitted.                        |
+| macOS fault matrix          | All six fault scenarios satisfied their individual expected outcomes and ordered shutdown. None collected positive helper evidence, so the aggregate qualification failed.                                                                                                                                                                   |
+| Windows managed development | Initial application generation did not become ready. No replacement or renderer check completed. One accepted request settled, the backend exited 1 and owned counters returned to zero. Warm cache and prepared artifact checks passed; no restart was admitted. The generic startup error did not retain the underlying broker failure.    |
+
+These downloaded inputs were already nonce-redacted exports. The artifact did
+not contain raw private report hashes, so the index explicitly identifies the
+input as an export and does not invent an original-report identity. Windows
+workspace paths are additionally redacted, with embedded original hashes left
+unchanged. Both Windows export variants are retained: two Unicode inventory
+path strings differ because of an encoding discrepancy; their remaining parsed
+fields agree. These supplemental archives are indexed separately from the five
+historical captures replayed by `verify:managed-acceptance`.
+
+The Linux completion-order regression requires both maintained fixtures to await
+the private native shutdown receipt before writing their result or completion
+marker. A failed resource-cleanup step still attempts backend disposal and
+records a failed result. The cache diagnostic retains the exact expected and
+actual inventory comparison, or an explicitly incomplete scan, without relaxing
+the cache-integrity rejection. A subsequent native run must establish any
+correction; these original failures are not promoted by later changes.
+
 ## Native workload results
 
 The accepted archive records Bun 1.4.3 with CEF 156.0.7 / Chromium 156.0.8078.17

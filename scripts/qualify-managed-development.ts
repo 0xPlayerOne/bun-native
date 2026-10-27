@@ -3,7 +3,11 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { prepareDevelopmentHost, type DevelopmentHostInput } from '../packages/cli/src/dev-cache.ts'
+import {
+  DevelopmentError,
+  prepareDevelopmentHost,
+  type DevelopmentHostInput,
+} from '../packages/cli/src/dev-cache.ts'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 import { decodeExportedNativeReport } from '../benchmarks/lib/exported-native-evidence.ts'
@@ -243,6 +247,11 @@ async function qualify(args: readonly string[]): Promise<void> {
   const operations = report['operations'] as Record<string, unknown>[]
   const trials = report['trials'] as Record<string, unknown>[]
   const python = process.env['PYTHON'] ?? 'python3'
+  report['restart'] = {
+    attempted: false,
+    passed: false,
+    reason: 'Prepared host and fixed soak have not passed; no follow-up launch admitted',
+  }
   try {
     const inputRoot = mac ? source : dirname(source)
     const inputInventory = await inventory(inputRoot)
@@ -344,6 +353,21 @@ async function qualify(args: readonly string[]): Promise<void> {
         },
       })
     const cold = await prepare()
+    const cache: Record<string, unknown> = {
+      key: cold.key,
+      cold: {
+        cacheHit: cold.cacheHit,
+        durationMs: cold.durationMs,
+        verifiedBytes: cold.verifiedBytes,
+      },
+      warm: { attempted: false },
+      assemblies,
+      warmNativeCopies: 0,
+      warmNativeCompilations: 0,
+      evidence:
+        'cold-only-assembler-count-plus-unchanged-complete-runtime-inventory-and-file-metadata; launch-PATH-empty',
+    }
+    report['cache'] = cache
     assert.equal(cold.cacheHit, false)
     report['backendBuild'] = built
     const app = mac ? resolve(cold.entrypoint, '../../..') : dirname(cold.entrypoint)
@@ -464,28 +488,39 @@ async function qualify(args: readonly string[]): Promise<void> {
     } catch (error) {
       trial['failure'] = error instanceof Error ? error.message : 'Managed workload failed'
     }
-    const warm = await prepare()
-    assert.equal(warm.cacheHit, true)
-    assert.equal(warm.key, cold.key)
-    assert.equal(warm.entrypoint, cold.entrypoint)
-    assert.equal(assemblies, 1)
-    report['cache'] = {
-      key: cold.key,
-      cold: {
-        cacheHit: cold.cacheHit,
-        durationMs: cold.durationMs,
-        verifiedBytes: cold.verifiedBytes,
-      },
-      warm: {
+    report['restart'] = {
+      attempted: false,
+      passed: false,
+      reason: trial['passed']
+        ? 'Warm prepared-host verification has not passed; no follow-up launch admitted'
+        : 'Fixed soak failed; no follow-up launch admitted',
+    }
+    const warmStarted = performance.now()
+    const warmAttempt: Record<string, unknown> = { attempted: true, passed: false }
+    cache['warm'] = warmAttempt
+    try {
+      const warm = await prepare()
+      Object.assign(warmAttempt, {
         cacheHit: warm.cacheHit,
         durationMs: warm.durationMs,
         verifiedBytes: warm.verifiedBytes,
-      },
-      assemblies,
-      warmNativeCopies: 0,
-      warmNativeCompilations: 0,
-      evidence:
-        'cold-only-assembler-count-plus-unchanged-complete-runtime-inventory-and-file-metadata; launch-PATH-empty',
+      })
+      assert.equal(warm.cacheHit, true)
+      assert.equal(warm.key, cold.key)
+      assert.equal(warm.entrypoint, cold.entrypoint)
+      assert.equal(assemblies, 1)
+      cache['warm'] = {
+        cacheHit: warm.cacheHit,
+        durationMs: warm.durationMs,
+        verifiedBytes: warm.verifiedBytes,
+      }
+    } catch (error) {
+      warmAttempt['durationMs'] = performance.now() - warmStarted
+      warmAttempt['failureCode'] =
+        error instanceof DevelopmentError ? error.code : 'PREPARATION_FAILED'
+      throw error
+    } finally {
+      cache['assemblies'] = assemblies
     }
     if (trial['passed']) {
       const previousResult = JSON.parse(resultBytes!.toString()) as {
@@ -537,6 +572,10 @@ async function qualify(args: readonly string[]): Promise<void> {
       restart['passed'] === true
   } catch (error) {
     report['failure'] = error instanceof Error ? error.message : 'Managed qualification failed'
+    if (error instanceof DevelopmentError) {
+      report['failureCode'] = error.code
+      if (error.cacheIntegrity) report['cacheIntegrityFailure'] = error.cacheIntegrity
+    }
   } finally {
     report['sourceAfter'] = sourceIdentity(root)
     report['sourceHashesAfter'] = await fingerprints().catch(() => [])
@@ -574,9 +613,12 @@ async function qualify(args: readonly string[]): Promise<void> {
           runtimeIdentity: report['runtimeIdentity'],
           inputHostSha256: report['inputHostSha256'],
           cache: report['cache'],
+          cacheIntegrityFailure: report['cacheIntegrityFailure'],
           metadataAcceptance: report['metadataAcceptance'],
           restart: report['restart'] && {
+            attempted: (report['restart'] as Record<string, unknown>)['attempted'],
             passed: (report['restart'] as Record<string, unknown>)['passed'],
+            reason: (report['restart'] as Record<string, unknown>)['reason'],
             acceptance: (report['restart'] as Record<string, unknown>)['acceptance'],
             observationSha256: (report['restart'] as Record<string, unknown>)['observationSha256'],
             observationContentSha256: (report['restart'] as Record<string, unknown>)[
@@ -600,6 +642,7 @@ async function qualify(args: readonly string[]): Promise<void> {
           performanceEligible: false,
           limitations: report['limitations'],
           failure: report['failure'],
+          failureCode: report['failureCode'],
         },
         null,
         2

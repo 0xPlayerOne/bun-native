@@ -37,6 +37,7 @@ import {
   type ManagedRow,
 } from './evidence.ts'
 import { readManagedFrontendSource } from './frontend-source.ts'
+import { ManagedDiagnostics } from './diagnostics.ts'
 import managedRestartFixture from './restart.ts'
 
 function deferred<T>() {
@@ -74,6 +75,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
   const runner = environment('BUNLY_SERVICE_RUNNER')
   const rowsPath = environment('BUNLY_MANAGED_ROWS')
   const resultPath = environment('BUNLY_MANAGED_RESULT')
+  const diagnostics = new ManagedDiagnostics()
   await writeFile(rowsPath, '', { flag: 'wx', mode: 0o600 })
   await writeFile(join(root, 'bunly-dev.json'), '{}\n', { mode: 0o600 })
   let rowIndex = 0,
@@ -195,6 +197,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     exitTimeoutMs: 2000,
     requestTimeoutMs: 15_000,
     onDiagnostic(event) {
+      diagnostics.broker(event)
       if (closeDuringPrepare && event.event === 'stage' && event.stage === 'prepare') {
         closeDuringPrepare = false
         temporaryClosed = desktop.close('temporary')
@@ -623,9 +626,15 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       configurationFile: 'bunly-dev.json',
       watch: false,
       debounceMs: 0,
-      reload: async (bundle) => broker.reload({ entry: bundle.entry, resources: await bindings() }),
+      reload: async (bundle) => {
+        const resources = await diagnostics.observe('bindings', bindings)
+        return diagnostics.observe('reload', () =>
+          broker.reload({ entry: bundle.entry, resources })
+        )
+      },
       shutdown: () => broker.close(),
       frontendChanged: refreshFrontend,
+      onDiagnostic: (event) => diagnostics.development(event),
     })
     await checkpoint()
     ready.resolve()
@@ -648,6 +657,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     assert.equal(frontendSources.length, 3)
     identitiesAfter = await stable()
   } catch (error) {
+    diagnostics.failure('fixture', error)
     failureCode =
       error instanceof Error && /^[A-Z_]{1,64}$/.test(error.message)
         ? error.message
@@ -682,6 +692,15 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       assert.equal(owner.diagnostics().resources, 0)
       assert.equal(owner.diagnostics().generations, 0)
       assert.equal(terminals.diagnostics().terminals, 0)
+    } catch (error) {
+      failureCode ??= 'CLEANUP_FAILED'
+      console.error('BUNLY_MANAGED_CLEANUP_FAILED', error)
+    }
+    try {
+      // Always attempt shutdown, including when managed resource cleanup failed.
+      // Native sends its shutdown receipt after writing process-stop/start to shared stderr.
+      // Await that receipt before emitting our completion marker into the same stream.
+      await backend.dispose()
     } catch (error) {
       failureCode ??= 'CLEANUP_FAILED'
       console.error('BUNLY_MANAGED_CLEANUP_FAILED', error)
@@ -738,6 +757,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         nativeSnapshotPhase: 'before-last-window-close',
       },
       restartRequired,
+      diagnostics: diagnostics.snapshot(),
       ...(failureCode ? { failureCode } : {}),
     }
     await rowTail
@@ -752,7 +772,6 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
         failureCode: failureCode ?? null,
       })
     )
-    await backend.dispose()
   }
   if (failureCode) throw new Error(failureCode)
 }

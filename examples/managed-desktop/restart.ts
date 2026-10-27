@@ -9,6 +9,7 @@ import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desk
 import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-generations.ts'
 import type { RpcContext, RpcHandlers } from '../../packages/runtime/src/rpc.ts'
 import { ServiceReloadHost } from '../../packages/runtime/src/service-reload.ts'
+import { ManagedDiagnostics } from './diagnostics.ts'
 import {
   RESTART_DEADLINE_MS,
   restartBackendReceipt,
@@ -61,6 +62,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
   const root = environment('BUNLY_MANAGED_ROOT')
   const runner = environment('BUNLY_SERVICE_RUNNER')
   const resultPath = environment('BUNLY_MANAGED_RESTART_RESULT')
+  const diagnostics = new ManagedDiagnostics()
   const owner = new ManagedGenerationOwner()
   const desktop = new ManagedDesktopResources(owner, backend)
   const broker = new ServiceReloadHost({
@@ -72,6 +74,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
     mechanism: 'worker',
     readyTimeoutMs: 5000,
     requestTimeoutMs: 10_000,
+    onDiagnostic: (event) => diagnostics.broker(event),
   })
   const started = deferred<RestartInitialReceipt>(),
     ready = deferred<void>(),
@@ -220,9 +223,14 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
       configurationFile: 'bunly-dev.json',
       watch: false,
       debounceMs: 0,
-      reload: (bundle) =>
-        desktop.prepare().then((resources) => broker.reload({ entry: bundle.entry, resources })),
+      reload: async (bundle) => {
+        const resources = await diagnostics.observe('bindings', () => desktop.prepare())
+        return diagnostics.observe('reload', () =>
+          broker.reload({ entry: bundle.entry, resources })
+        )
+      },
       shutdown: () => broker.close(),
+      onDiagnostic: (event) => diagnostics.development(event),
     })
     ready.resolve()
     renderer = await completed.promise
@@ -240,6 +248,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
       'Restart must not rewrite the edited configuration'
     )
   } catch (error) {
+    diagnostics.failure('fixture', error)
     failureCode =
       error instanceof Error && /^[A-Z_]{1,64}$/.test(error.message)
         ? error.message
@@ -274,6 +283,15 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
       failureCode ??= 'RESTART_CLEANUP_FAILED'
       console.error('BUNLY_MANAGED_RESTART_CLEANUP_FAILED', error)
     }
+    try {
+      // Always attempt shutdown, including when managed resource cleanup failed.
+      // Native sends its shutdown receipt after writing process-stop/start to shared stderr.
+      // Await that receipt before emitting our completion marker into the same stream.
+      await backend.dispose()
+    } catch (error) {
+      failureCode ??= 'RESTART_CLEANUP_FAILED'
+      console.error('BUNLY_MANAGED_RESTART_CLEANUP_FAILED', error)
+    }
     const result: ManagedRestartResult = {
       event: 'bunly.managed-restart',
       schema: 1,
@@ -290,6 +308,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
         nativeSnapshotPhase: 'before-last-window-close',
       },
       requests: { accepted, settled, pending: accepted - settled },
+      diagnostics: diagnostics.snapshot(),
       ...(failureCode ? { failureCode } : {}),
     }
     await writeFile(resultPath, JSON.stringify(result, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
@@ -304,7 +323,6 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
         failureCode: failureCode ?? null,
       })
     )
-    await backend.dispose()
   }
   if (failureCode) throw new Error(failureCode)
 }

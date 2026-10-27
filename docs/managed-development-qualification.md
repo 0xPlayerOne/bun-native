@@ -116,6 +116,19 @@ terminal, fully settled framework requests, backend exit, empty native output,
 all ordinary shutdown phases, and positive macOS helper/clone cleanup where
 applicable. It never invents a post-exit native query.
 
+Before publishing its result or compact completion marker, each maintained
+fixture awaits the backend's private native shutdown receipt. This follows the
+complete native `process-stop/start` diagnostic and prevents those two writers
+from interleaving that line on shared stderr. Backend disposal is attempted even
+when managed cleanup has failed; such an execution still records a failed result.
+
+Fixture results retain at most 32 failure diagnostics, distinguishing dependency
+build, native binding preparation, generation reload and outer fixture failure.
+Typed stage/code and restart disposition accompany a bounded first-line cause;
+local paths, stack frames and credential-like values are omitted with explicit
+redaction/truncation flags. Successful stage events are not retained. These fields
+explain rejected runs and do not supply native acceptance or change their outcome.
+
 ## Separate controlled relaunch
 
 After the soak has completed and its process observation passes, the qualifier
@@ -149,6 +162,11 @@ same key and executable without another copy or native compilation. Each native
 launch has an empty `PATH`. Complete runtime bytes, link targets, device/inode,
 size, modification time, permissions, ownership and final hard-link counts must
 remain unchanged across edits and relaunch.
+
+Cold preparation metrics are retained before launch. If warm verification fails,
+the report preserves that failed attempt, its typed integrity diagnostic from the
+actual comparison scan, and an explicitly unattempted restart. An incomplete scan
+remains incomplete; missing after-data cannot be interpreted as unchanged files.
 
 Chromium on macOS creates a signing clone hard-linked to the host executable.
 Its link/unlink lifecycle changes the original file's status-change timestamp.

@@ -11,7 +11,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 export type DevelopmentErrorCode =
@@ -31,7 +31,8 @@ export type DevelopmentErrorCode =
 export class DevelopmentError extends Error {
   constructor(
     readonly code: DevelopmentErrorCode,
-    message: string
+    message: string,
+    readonly cacheIntegrity?: DevelopmentCacheIntegrityDiagnostic
   ) {
     super(message)
     this.name = 'DevelopmentError'
@@ -71,13 +72,37 @@ export interface PrepareDevelopmentHostOptions {
   readonly signal?: AbortSignal
   readonly lockTimeoutMs?: number
 }
-interface FileEntry {
+export interface DevelopmentCacheInventoryEntry {
   readonly path: string
   readonly kind: 'file' | 'directory' | 'link'
   readonly mode: number
   readonly bytes: number
   readonly sha256: string
   readonly target?: string
+}
+type FileEntry = DevelopmentCacheInventoryEntry
+type InventoryChangeField = 'kind' | 'mode' | 'bytes' | 'sha256' | 'target' | 'propertyOrder'
+export interface DevelopmentCacheIntegrityDiagnostic {
+  readonly schema: 1
+  readonly phase: 'receipt' | 'inventory' | 'entrypoint'
+  readonly status: 'mismatch' | 'incomplete'
+  readonly scanComplete: boolean
+  readonly expected?: readonly DevelopmentCacheInventoryEntry[]
+  readonly actual?: readonly DevelopmentCacheInventoryEntry[]
+  readonly difference?: {
+    readonly added: readonly string[]
+    readonly removed: readonly string[]
+    readonly changed: readonly {
+      readonly path: string
+      readonly fields: readonly InventoryChangeField[]
+    }[]
+    readonly entryOrderChanged: boolean
+  }
+  readonly failure?: { readonly code: string; readonly path?: string }
+}
+interface InventoryScan {
+  entries: FileEntry[]
+  path: string | undefined
 }
 interface CacheReceipt {
   readonly schema: 1
@@ -86,10 +111,154 @@ interface CacheReceipt {
   readonly files: readonly FileEntry[]
 }
 const receiptName = 'bunly-dev-host.json'
+const maximumEntries = 16384
+const maximumReceiptBytes = 4 * 1024 * 1024
+const maximumDiagnosticBytes = 2 * maximumReceiptBytes
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex')
 const inDirectory = (directory: string, path: string): boolean => {
   const rel = relative(directory, path)
   return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep))
+}
+function diagnosticPath(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 4096 &&
+    !/^(?:[A-Za-z]:|\/)/.test(value) &&
+    !value.includes('\\') &&
+    !value.includes('\0') &&
+    !value.split('/').some((part) => part === '' || part === '.' || part === '..')
+  )
+}
+/** Receipt contents are untrusted. Only bounded, canonical relative metadata may
+ * become a diagnostic; failing this filter never changes cache admission.
+ */
+function diagnosticEntries(input: unknown): readonly FileEntry[] | undefined {
+  if (!Array.isArray(input) || input.length > maximumEntries) return undefined
+  const paths = new Set<string>(),
+    entries: FileEntry[] = []
+  for (const value of input) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+    const row = value as Record<string, unknown>
+    if (
+      !diagnosticPath(row['path']) ||
+      paths.has(row['path']) ||
+      typeof row['kind'] !== 'string' ||
+      !['file', 'directory', 'link'].includes(row['kind']) ||
+      !Number.isSafeInteger(row['mode']) ||
+      Number(row['mode']) < 0 ||
+      Number(row['mode']) > 0o777 ||
+      !Number.isSafeInteger(row['bytes']) ||
+      Number(row['bytes']) < 0 ||
+      typeof row['sha256'] !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(row['sha256'])
+    )
+      return undefined
+    const keys = ['path', 'kind', 'mode', 'bytes', 'sha256']
+    if (row['kind'] === 'link') {
+      const target = row['target']
+      if (
+        typeof target !== 'string' ||
+        target.length > 4096 ||
+        !target ||
+        /^(?:[A-Za-z]:|[\\/])/.test(target) ||
+        target.includes('\0')
+      )
+        return undefined
+      const destination = posix.normalize(
+        posix.join(posix.dirname(row['path']), target.replaceAll('\\', '/'))
+      )
+      if (destination !== '.' && !diagnosticPath(destination)) return undefined
+      if (row['bytes'] !== Buffer.byteLength(target) || row['sha256'] !== hash(target))
+        return undefined
+      keys.push('target')
+    } else if (row['kind'] === 'directory' && (row['bytes'] !== 0 || row['sha256'] !== hash('')))
+      return undefined
+    if (Object.keys(row).sort().join('\0') !== keys.sort().join('\0')) return undefined
+    paths.add(row['path'])
+    entries.push(Object.freeze({ ...row }) as unknown as FileEntry)
+  }
+  if (Buffer.byteLength(JSON.stringify(entries)) > maximumReceiptBytes) return undefined
+  return Object.freeze(entries)
+}
+function integrityDiagnostic(options: {
+  phase: DevelopmentCacheIntegrityDiagnostic['phase']
+  scanComplete: boolean
+  expected: unknown
+  actual: readonly FileEntry[]
+  mismatch?: boolean
+  error?: unknown
+  path?: string | undefined
+}): DevelopmentCacheIntegrityDiagnostic {
+  const expected = diagnosticEntries(options.expected)
+  const actual = diagnosticEntries(options.actual)
+  const code = (options.error as { code?: unknown } | undefined)?.code
+  const failure = {
+    code: !expected
+      ? 'INVALID_RECEIPT'
+      : !actual
+        ? 'DIAGNOSTIC_LIMIT'
+        : typeof code === 'string' && /^[A-Z_]{1,64}$/.test(code)
+          ? code
+          : 'CACHE_INTEGRITY',
+    ...(diagnosticPath(options.path) ? { path: options.path } : {}),
+  }
+  let diagnostic: DevelopmentCacheIntegrityDiagnostic = {
+    schema: 1,
+    phase: !expected ? 'receipt' : options.phase,
+    status: 'incomplete',
+    scanComplete: options.scanComplete,
+    ...(expected ? { expected } : {}),
+    ...(actual ? { actual } : {}),
+    failure,
+  }
+  if (options.mismatch && expected && actual) {
+    const before = new Map(expected.map((entry) => [entry.path, entry]))
+    const after = new Map(actual.map((entry) => [entry.path, entry]))
+    const fields = ['kind', 'mode', 'bytes', 'sha256', 'target'] as const
+    const changed: { path: string; fields: InventoryChangeField[] }[] = []
+    for (const path of [...before.keys()].filter((path) => after.has(path)).sort()) {
+      const old = before.get(path)!,
+        current = after.get(path)!
+      const differences: InventoryChangeField[] = fields.filter(
+        (field) => old[field] !== current[field]
+      )
+      const oldKeys = Object.keys(old),
+        currentKeys = Object.keys(current)
+      if (
+        oldKeys.length === currentKeys.length &&
+        oldKeys.every((key) => currentKeys.includes(key)) &&
+        JSON.stringify(oldKeys) !== JSON.stringify(currentKeys)
+      )
+        differences.push('propertyOrder')
+      if (differences.length) changed.push({ path, fields: differences })
+    }
+    diagnostic = {
+      schema: 1,
+      phase: 'inventory',
+      status: 'mismatch',
+      scanComplete: true,
+      expected,
+      actual,
+      difference: {
+        added: [...after.keys()].filter((path) => !before.has(path)).sort(),
+        removed: [...before.keys()].filter((path) => !after.has(path)).sort(),
+        changed,
+        entryOrderChanged:
+          JSON.stringify(expected.map((entry) => entry.path).filter((path) => after.has(path))) !==
+          JSON.stringify(actual.map((entry) => entry.path).filter((path) => before.has(path))),
+      },
+    }
+  }
+  if (Buffer.byteLength(JSON.stringify(diagnostic)) > maximumDiagnosticBytes)
+    return Object.freeze({
+      schema: 1,
+      phase: options.phase,
+      status: 'incomplete',
+      scanComplete: options.scanComplete,
+      failure: { code: 'DIAGNOSTIC_LIMIT' },
+    })
+  return Object.freeze(diagnostic)
 }
 const regularLabel = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9_.:@+/-]{1,128}$/.test(value)
@@ -198,16 +367,22 @@ async function privateDirectory(path: string): Promise<string> {
     throw new DevelopmentError('CACHE_INTEGRITY', 'Development cache must be private to its owner')
   return realpath(path)
 }
-async function inventory(directory: string, signal?: AbortSignal): Promise<FileEntry[]> {
-  const files: FileEntry[] = []
+async function inventory(
+  directory: string,
+  signal?: AbortSignal,
+  scan?: InventoryScan
+): Promise<FileEntry[]> {
+  const files: FileEntry[] = scan?.entries ?? []
   async function walk(prefix: string): Promise<void> {
+    if (scan) scan.path = prefix || undefined
     for (const name of (await readdir(join(directory, prefix))).sort()) {
       abort(signal)
       if (!prefix && name === receiptName) continue
       const path = prefix ? `${prefix}/${name}` : name
+      if (scan) scan.path = path
       const full = join(directory, path)
       const stat = await lstat(full)
-      if (files.length >= 16384)
+      if (files.length >= maximumEntries)
         throw new DevelopmentError('CACHE_INTEGRITY', 'Prepared host inventory exceeds its bound')
       const mode = process.platform === 'win32' ? 0 : stat.mode & 0o777
       if (stat.isDirectory()) {
@@ -269,7 +444,7 @@ async function readPrepared(
       throw new DevelopmentError('CACHE_INTEGRITY', 'Invalid prepared host directory')
     const receipt = join(directory, receiptName)
     const receiptStat = await lstat(receipt)
-    if (!receiptStat.isFile() || receiptStat.size > 4 * 1024 * 1024)
+    if (!receiptStat.isFile() || receiptStat.size > maximumReceiptBytes)
       throw new DevelopmentError('CACHE_INTEGRITY', 'Invalid prepared host receipt')
     source = await readFile(receipt, 'utf8')
   } catch (error) {
@@ -283,19 +458,50 @@ async function readPrepared(
     }
     throw new DevelopmentError('CACHE_INTEGRITY', 'Prepared host is incomplete or unreadable')
   }
-  let receipt: CacheReceipt
+  let receipt: CacheReceipt | undefined
+  const scan: InventoryScan = { entries: [], path: undefined }
+  let phase: DevelopmentCacheIntegrityDiagnostic['phase'] = 'receipt'
+  let scanComplete = false
+  let mismatch = false
   try {
     receipt = JSON.parse(source) as CacheReceipt
     if (receipt.schema !== 1 || receipt.key !== key || !Array.isArray(receipt.files))
       throw new Error()
+    phase = 'entrypoint'
     const entry = safeEntry(receipt.entrypoint, directory)
-    const files = await inventory(directory, signal)
-    if (JSON.stringify(files) !== JSON.stringify(receipt.files) || !(await lstat(entry)).isFile())
-      throw new Error()
-  } catch {
+    phase = 'inventory'
+    const files = await inventory(directory, signal, scan)
+    scanComplete = true
+    mismatch = JSON.stringify(files) !== JSON.stringify(receipt.files)
+    if (mismatch) throw new Error()
+    phase = 'entrypoint'
+    if (!(await lstat(entry)).isFile()) throw new Error()
+  } catch (error) {
+    let diagnostic: DevelopmentCacheIntegrityDiagnostic
+    try {
+      diagnostic = integrityDiagnostic({
+        phase,
+        scanComplete,
+        mismatch,
+        expected: receipt?.files,
+        actual: scan.entries,
+        error,
+        path: phase === 'inventory' && !scanComplete ? scan.path : undefined,
+      })
+    } catch {
+      // Diagnostic accounting must never replace the original integrity rejection.
+      diagnostic = {
+        schema: 1,
+        phase,
+        status: 'incomplete',
+        scanComplete,
+        failure: { code: 'DIAGNOSTIC_FAILED' },
+      }
+    }
     throw new DevelopmentError(
       'CACHE_INTEGRITY',
-      'Prepared host no longer matches its complete inventory'
+      'Prepared host no longer matches its complete inventory',
+      diagnostic
     )
   }
   return receipt

@@ -1,4 +1,5 @@
 import { defineRpc, procedure } from '../../packages/contracts/src/rpc.ts'
+import type { ManagedFailureDiagnostics } from './evidence.ts'
 
 export const RESTART_DEADLINE_MS = 15_000
 const object = (value: unknown): Record<string, unknown> => {
@@ -149,4 +150,5 @@ export interface ManagedRestartResult {
     readonly pending: number
   }
   readonly failureCode?: string
+  readonly diagnostics?: ManagedFailureDiagnostics
 }

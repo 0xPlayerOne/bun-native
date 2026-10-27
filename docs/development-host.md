@@ -36,6 +36,13 @@ reuse compares that complete inventory, including file bytes and executable mode
 where supported. Corruption or an extra file fails closed instead of silently
 reassembling over an in-use host. A stale lock is not removed automatically.
 
+An inventory rejection remains `CACHE_INTEGRITY`. Its optional `cacheIntegrity`
+diagnostic records bounded expected and actual relative-path metadata from the
+comparison that failed, with added, removed and changed entries. An interrupted
+scan or invalid receipt is explicitly incomplete; it cannot produce an empty
+successful difference. The diagnostic does not rescan, repair or rebuild the
+host, and does not expose an untrusted receipt or absolute symlink target.
+
 Simultaneous instances may share an immutable prepared host. Each instance owns a
 different mutable directory for generated code and, when the launcher chooses,
 browser profile data. An already owned instance identifier fails explicitly.
@@ -156,7 +163,7 @@ transition.
 ## Validation and limits
 
 ```sh
-bun test tests/dev-host.test.ts tests/dev-host-runtime.test.ts
+bun test tests/dev-host.test.ts tests/dev-host-runtime.test.ts tests/dev-cache-integrity.test.ts
 ```
 
 The tests exercise actual fresh Bun Workers and the production Worker/process

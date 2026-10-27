@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "classification": "retained-hosted-qualification-failures",
+  "workflowRun": 40584770106,
+  "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40584770106",
+  "sourceCommit": "1c04bcce73ceb099f11ba9e9c8a8bdb409117ab4",
+  "pullRequestHead": "109a895f9f56184215006dcce327c2735d779563",
+  "sourceTree": "edb1519ee101989c842120f94a0881491b532338",
+  "passed": false,
+  "performanceEligible": false,
+  "releaseApproved": false,
+  "provenance": "These inputs are the hosted workflow’s already nonce-redacted exports. Raw private report bytes and their hashes were not included in the downloaded artifacts and are not reconstructed. Embedded original observation/result hashes are preserved; an export hash does not attest those unavailable raw bytes. The source test merge and pull-request head were independently verified to have the same Git tree.",
+  "runs": [
+    {
+      "id": "linux-managed-development",
+      "profile": "native-managed-development-v1",
+      "passed": false,
+      "failureClass": "interleaved-native-shutdown-and-cache-integrity-rejection",
+      "jobId": 122473454148,
+      "artifactId": 12772735604,
+      "artifactZipSha256": "d9e096293243ebac0f7ac0056896c638183e08708974c617dc626591217ad483",
+      "artifactZipBytes": 3736382,
+      "inputReport": {
+        "kind": "nonce-redacted-hosted-export",
+        "member": "managed-development.json",
+        "bytes": 5363771,
+        "sha256": "a45d8e923af4b2a534dbf36f4e3202279b5a92ed6823cc078995c7c82c637dda"
+      },
+      "archive": "run-40584770106-linux-managed-development.json.gz",
+      "archiveBytes": 146198,
+      "archiveSha256": "dd2cc4a2b2d21fbadedda3e825c084b4a6a6462ea250f2a71ae3e3474e78c6f8",
+      "expandedBytes": 5363771,
+      "expandedSha256": "a45d8e923af4b2a534dbf36f4e3202279b5a92ed6823cc078995c7c82c637dda",
+      "redactions": [
+        "fixture-nonces"
+      ]
+    },
+    {
+      "id": "macos-managed-development",
+      "profile": "native-managed-development-v1",
+      "passed": false,
+      "failureClass": "positive-cleanup-helper-evidence-not-observed",
+      "jobId": 122473412702,
+      "artifactId": 12771833048,
+      "artifactZipSha256": "621883cc253de501b682ad933d553e177dfe9894625d14f819275f6571c767b1",
+      "artifactZipBytes": 2297192,
+      "inputReport": {
+        "kind": "nonce-redacted-hosted-export",
+        "member": "managed-development.json",
+        "bytes": 1778036,
+        "sha256": "95d79c5e9f70f0ef7bf2becb606dba9f764a4efc8803e58fd3f93bb4890e19a7"
+      },
+      "archive": "run-40584770106-macos-managed-development.json.gz",
+      "archiveBytes": 119111,
+      "archiveSha256": "4b67db4997aac33069cde3bdb5ab553d2331dd099825b91131182872496a1c06",
+      "expandedBytes": 1778036,
+      "expandedSha256": "95d79c5e9f70f0ef7bf2becb606dba9f764a4efc8803e58fd3f93bb4890e19a7",
+      "redactions": [
+        "fixture-nonces"
+      ]
+    },
+    {
+      "id": "macos-faults",
+      "profile": "real-native-private-process-faults",
+      "passed": false,
+      "failureClass": "positive-cleanup-helper-evidence-not-observed",
+      "jobId": 122473412702,
+      "artifactId": 12771833048,
+      "artifactZipSha256": "621883cc253de501b682ad933d553e177dfe9894625d14f819275f6571c767b1",
+      "artifactZipBytes": 2297192,
+      "inputReport": {
+        "kind": "nonce-redacted-hosted-export",
+        "member": "faults.json",
+        "bytes": 492620,
+        "sha256": "07177008485e6e309cd67b848f109e62182bce19c2b5c82527849bf32ab3f1de"
+      },
+      "archive": "run-40584770106-macos-faults.json.gz",
+      "archiveBytes": 34697,
+      "archiveSha256": "c9be4e9f4eb6ea0e60a9eb3152d796e685de266e458f81f140682fb266cbeffa",
+      "expandedBytes": 492620,
+      "expandedSha256": "07177008485e6e309cd67b848f109e62182bce19c2b5c82527849bf32ab3f1de",
+      "redactions": [
+        "fixture-nonces"
+      ]
+    },
+    {
+      "id": "windows-managed-development",
+      "profile": "native-managed-development-v1",
+      "passed": false,
+      "failureClass": "initial-application-generation-not-ready",
+      "jobId": 122473412554,
+      "artifactId": 12771058959,
+      "artifactZipSha256": "21ceaf0c3086bd186e5aa506a31066ddaf4f0abd1d9f4e6b1f0a7ae42e05ea57",
+      "artifactZipBytes": 2849865,
+      "inputReport": {
+        "kind": "nonce-redacted-hosted-export",
+        "member": "managed-development.json",
+        "bytes": 621821,
+        "sha256": "7abc40420912f3ec3e3ca3fe13bd4d82477a3a5da57c7cc3df31dd83e41eba41"
+      },
+      "archive": "run-40584770106-windows-managed-development.json.gz",
+      "archiveBytes": 73029,
+      "archiveSha256": "efb649f47c25a9d87c5a7ab6e0eaab6c49367d7197bd6a5d1a3cef9578c9b9fe",
+      "expandedBytes": 621797,
+      "expandedSha256": "106ecbf2f56b43be803cd295d42713d11b05fe0a4fb3f6fb3e85814525ea9e32",
+      "redactions": [
+        "fixture-nonces",
+        "hosted-workspace-paths"
+      ],
+      "alternateExport": {
+        "member": "managed-development-run-38MWjl.json",
+        "inputBytes": 621833,
+        "inputSha256": "f88b2fcd834140e87534129e5ce8f0ca09644ffdf7f62d6dce1f1db84f497cf9",
+        "archive": "run-40584770106-windows-run-export.json.gz",
+        "archiveBytes": 73035,
+        "archiveSha256": "72f17fce29346aa33f56b6e41f9b119da7b24e8f1e9d39f26a97314e5ddea27e",
+        "expandedBytes": 621809,
+        "expandedSha256": "80fb6e9a285027f4d4af758f3ff426828c98dfc1f74cec1caf13c9af51a769eb",
+        "difference": "Only two inventory path strings differ: inputArtifact.entries[247].path and inputArtifactAfter.entries[247].path encode unicode-é.txt as unicode-Ã©.txt in this run-specific export. Outcomes and all other parsed fields agree; both exports are retained."
+      }
+    }
+  ]
+}

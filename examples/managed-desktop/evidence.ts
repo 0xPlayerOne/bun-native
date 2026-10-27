@@ -68,6 +68,30 @@ export interface ManagedFrontendSource {
   readonly css: string
   readonly sha256: string
 }
+/** Public fixture evidence contains bounded first-line summaries, never local stacks. */
+export interface ManagedDiagnosticText {
+  readonly text: string
+  readonly redacted: boolean
+  readonly truncated: boolean
+}
+export interface ManagedFailureDiagnostic {
+  readonly source: 'development' | 'broker' | 'bindings' | 'reload' | 'fixture'
+  readonly event: 'error' | 'failure' | 'forced-termination'
+  readonly stage: string
+  readonly code?: string
+  readonly generation?: number
+  readonly sequence?: number
+  readonly restartRequired?: boolean
+  readonly candidateRetired?: boolean
+  readonly committed?: boolean
+  readonly message?: ManagedDiagnosticText
+  readonly detail?: ManagedDiagnosticText
+}
+export interface ManagedFailureDiagnostics {
+  readonly schema: 1
+  readonly entries: readonly ManagedFailureDiagnostic[]
+  readonly dropped: number
+}
 export interface ManagedResult {
   readonly event: 'bunly.managed-development'
   readonly schema: 1
@@ -128,4 +152,5 @@ export interface ManagedResult {
   }
   readonly restartRequired: boolean
   readonly failureCode?: string
+  readonly diagnostics?: ManagedFailureDiagnostics
 }
