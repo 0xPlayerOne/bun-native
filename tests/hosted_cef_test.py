@@ -1,5 +1,7 @@
 """Hosted orchestrator policy tests; these do not stand in for native execution."""
 
+import base64
+import io
 import json
 import os
 import sys
@@ -23,6 +25,45 @@ def cp1252_text_default():
 
 
 class HostedQualificationTests(unittest.TestCase):
+    def test_build_account_cli_handoff_is_ascii_even_with_windows_legacy_stdout(self):
+        selected = str(PureWindowsPath("C:/selected é Ω")) + chr(92)
+        data = io.BytesIO()
+        output = io.TextIOWrapper(data, encoding="cp1252", write_through=True)
+        with (
+            patch.dict(hosted.os.environ, {"GITHUB_ACTIONS": "true"}),
+            patch.object(hosted.shutil, "which", return_value="/build-account/bun"),
+            patch.object(hosted, "native_target_directory", return_value=selected) as query,
+            patch.object(hosted.sys, "stdout", output),
+        ):
+            hosted.main(["target-directory-base64"])
+        query.assert_called_once_with("/build-account/bun")
+        encoded = data.getvalue().removesuffix(b"\n")
+        self.assertTrue(encoded.isascii())
+        self.assertEqual(base64.b64decode(encoded, validate=True).decode("utf-8"), selected)
+        output.detach()
+
+    def test_worker_uses_the_exact_build_account_handoff_without_a_compiler(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "Unicode é Ω ")
+            with (
+                patch.dict(hosted.os.environ, {"PATH": "", "HOME": directory}, clear=True),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                self.assertEqual(
+                    hosted.native_target_directory("/missing-bun", selected), Path(selected)
+                )
+                run.assert_not_called()
+                for invalid in [
+                    "",
+                    "relative/target",
+                    selected + "\n",
+                    selected + "\r",
+                    selected + "\0",
+                ]:
+                    with self.subTest(value=invalid), self.assertRaises(ValueError):
+                        hosted.native_target_directory("/missing-bun", invalid)
+                run.assert_not_called()
+
     def test_terminal_fixture_uses_the_queried_cargo_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             selected = str(Path(directory) / "Unicode é Ω ")

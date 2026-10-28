@@ -108,6 +108,12 @@ they do not compile missing artifacts or fall back to an older checkout binary.
 The hosted CEF lookup defaults to the pinned Rust 1.91.0 toolchain and preserves
 an explicit `RUSTUP_TOOLCHAIN` override. A native-only runner does not need to
 install M1's older toolchain merely to locate the CEF artifacts.
+On Windows, the disposable build account resolves this directory before starting
+the standard-user acceptance worker. It passes the exact result explicitly to
+`hosted_cef.py run --native-target-directory`; the worker needs no compiler or
+access to the build account's Cargo home. Unicode and meaningful trailing spaces
+survive the encoded command-line handoff. An invalid handoff fails without
+probing a default or stale target directory.
 
 The CEF bundler selects regular nonempty native siblings beside its own running
 executable, including when a custom Cargo target directory is used.

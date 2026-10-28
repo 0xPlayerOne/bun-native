@@ -1,6 +1,7 @@
 """Bounded native qualification on disposable GitHub runners, never a release publisher."""
 
 import argparse
+import base64
 import ctypes
 import hashlib
 import json
@@ -93,7 +94,25 @@ def standard_user():
     return os.geteuid() != 0
 
 
-def native_target_directory(bun):
+def validated_native_target_directory(value):
+    if (
+        not value
+        or len(value) > 4096
+        or "\n" in value
+        or "\r" in value
+        or "\0" in value
+        or not Path(value).is_absolute()
+    ):
+        raise ValueError("Invalid native Cargo artifact directory")
+    return Path(value)
+
+
+def native_target_directory(bun, selected=None):
+    # Windows resolves metadata in the build account before launching its
+    # standard-user worker, which intentionally has no compiler or Cargo home.
+    # An explicit handoff is authoritative; never probe a second/default tree.
+    if selected is not None:
+        return validated_native_target_directory(selected)
     # Native-only jobs install the CEF compiler, not the repository's older M1
     # default. Metadata must use that installed toolchain instead of implicitly
     # fetching M1's toolchain. Preserve an explicit contributor selection.
@@ -115,16 +134,7 @@ def native_target_directory(bun):
         encoding="utf-8",
         timeout=15,
     )
-    value = result.stdout.removesuffix("\n")
-    if (
-        not value
-        or len(value) > 4096
-        or "\n" in value
-        or "\r" in value
-        or not Path(value).is_absolute()
-    ):
-        raise ValueError("Invalid native Cargo artifact directory")
-    return Path(value)
+    return validated_native_target_directory(result.stdout.removesuffix("\n"))
 
 
 def commands(suite, bun, app, native_source=None):
@@ -332,7 +342,7 @@ def new_report(name, before):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def run(suite):
+def run(suite, selected_native_target=None):
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     result = {"schema": 1, "suite": suite, "target": target(), "passed": False, "steps": []}
     reports = {}
@@ -379,7 +389,7 @@ def run(suite):
         app = artifact()
         if suite != "credentials":
             executable_dir = app / "Contents/MacOS" if sys.platform == "darwin" else app.parent
-            native_release = native_target_directory(bun) / "release"
+            native_release = native_target_directory(bun, selected_native_target) / "release"
             suffix = ".exe" if sys.platform == "win32" else ""
             code = execute(
                 "terminal-owner",
@@ -510,16 +520,31 @@ def collect():
     print("Qualification diagnostics collected; no runtime or credentials uploaded.")
 
 
-if __name__ == "__main__":
+def main(arguments=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "run", "collect"))
+    parser.add_argument("action", choices=("prepare", "run", "collect", "target-directory-base64"))
     parser.add_argument("--suite", choices=SUITES, default="full")
-    options = parser.parse_args()
+    parser.add_argument("--native-target-directory")
+    options = parser.parse_args(arguments)
     if os.environ.get("GITHUB_ACTIONS") != "true":
         raise SystemExit("This entrypoint is restricted to disposable GitHub Actions jobs")
+    if options.native_target_directory is not None and options.action != "run":
+        parser.error("--native-target-directory is only valid with run")
     if options.action == "prepare":
         prepare()
     elif options.action == "run":
-        raise SystemExit(run(options.suite))
+        raise SystemExit(run(options.suite, options.native_target_directory))
+    elif options.action == "target-directory-base64":
+        bun = shutil.which("bun")
+        if not bun:
+            raise SystemExit("Pinned Bun executable is missing")
+        # Keep the first Python-to-PowerShell hop ASCII too; a Windows pipe may
+        # use a legacy code page before PowerShell sees the selected directory.
+        selected = str(native_target_directory(bun)).encode("utf-8")
+        print(base64.b64encode(selected).decode("ascii"))
     else:
         collect()
+
+
+if __name__ == "__main__":
+    main()
