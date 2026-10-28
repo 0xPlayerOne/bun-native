@@ -11,6 +11,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desktop.ts'
 import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-generations.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
+import { formatDesktopFixtureFailure } from '../../benchmarks/desktop/failure-codes.ts'
 
 const hasCode = (code: string) => (error: unknown) =>
   error instanceof BunlyError && error.code === code
@@ -65,7 +66,7 @@ export default async function qualifyFileDialogs(backend: CefBackend): Promise<v
   const owner = new ManagedGenerationOwner()
   const desktop = new ManagedDesktopResources(owner, backend)
   const onAbort = () => {
-    failure ??= stage
+    failure ??= formatDesktopFixtureFailure('dialogs', stage, controller.signal.reason)
   }
   controller.signal.addEventListener('abort', onAbort, { once: true })
   const stop = backend.observe((event) => {
@@ -73,8 +74,8 @@ export default async function qualifyFileDialogs(backend: CefBackend): Promise<v
     try {
       assert.equal(++shutdowns, 1)
       shutdown = receipt(event.data)
-    } catch {
-      failure ??= 'shutdown-receipt'
+    } catch (error) {
+      failure ??= formatDesktopFixtureFailure('dialogs', 'shutdown-receipt', error)
     }
   })
   void backend.closed.then(
@@ -268,36 +269,37 @@ export default async function qualifyFileDialogs(backend: CefBackend): Promise<v
     }
     assert.deepEqual(await readdir(root), [])
     checks['directoryUnchanged'] = true
-  } catch {
-    failure ??= stage
+  } catch (error) {
+    failure ??= formatDesktopFixtureFailure('dialogs', stage, error)
   } finally {
     try {
       await bounded(desktop.dispose())
       owner.dispose()
-    } catch {
-      failure ??= 'managed-cleanup'
+    } catch (error) {
+      failure ??= formatDesktopFixtureFailure('dialogs', 'managed-cleanup', error)
     }
     disposing = true
     try {
       await bounded(backend.dispose())
       clean = true
-    } catch {
-      failure ??= 'native-cleanup'
+    } catch (error) {
+      failure ??= formatDesktopFixtureFailure('dialogs', 'native-cleanup', error)
     }
     if (clean && root) {
       try {
         await rm(root, { recursive: true })
         checks['temporaryDirectoryRemoved'] = true
-      } catch {
-        failure ??= 'directory-cleanup'
+      } catch (error) {
+        failure ??= formatDesktopFixtureFailure('dialogs', 'directory-cleanup', error)
       }
     }
-    if (shutdowns !== 1) failure ??= 'shutdown-receipt'
+    if (shutdowns !== 1)
+      failure ??= formatDesktopFixtureFailure('dialogs', 'shutdown-receipt', undefined)
     if (final && shutdown) {
       try {
         assert.deepEqual(final, shutdown)
-      } catch {
-        failure ??= 'shutdown-mismatch'
+      } catch (error) {
+        failure ??= formatDesktopFixtureFailure('dialogs', 'shutdown-mismatch', error)
       }
     }
     stop()

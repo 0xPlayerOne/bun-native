@@ -9,6 +9,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
 import { CommandObservations } from './observations.ts'
 import { WINDOW_COMMAND_WORKLOAD_MS, windowCommandFixtureEvents } from './contract.ts'
+import { formatDesktopFixtureFailure } from '../../benchmarks/desktop/failure-codes.ts'
 
 const definition: WindowCommandsDefinition = {
   commands: [
@@ -98,7 +99,7 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
   } | null = null
   const receipt: { type: string; sequence: number; command?: string; source?: string }[] = []
   const aborted = () => {
-    failure ??= stage
+    failure ??= formatDesktopFixtureFailure('commands', stage, controller.signal.reason)
   }
   controller.signal.addEventListener('abort', aborted, { once: true })
   void backend.closed.then(
@@ -244,24 +245,29 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
     await backend.dispose()
     shutdownSucceeded = true
     controller.signal.throwIfAborted()
-  } catch {
-    failure ??= stage
+  } catch (error) {
+    failure ??= formatDesktopFixtureFailure('commands', stage, error)
   } finally {
     observations?.close()
     shutdownRequested = true
     try {
       await backend.dispose()
       shutdownSucceeded = true
-    } catch {
-      failure ??= 'cleanup'
+    } catch (error) {
+      failure ??= formatDesktopFixtureFailure('commands', 'cleanup', error)
     }
     clearTimeout(deadline)
     controller.signal.removeEventListener('abort', aborted)
     const sdkFinal = backend.diagnostics()
-    if (Object.values(sdkFinal).some((value) => value !== 0)) failure ??= 'sdk-cleanup'
+    if (Object.values(sdkFinal).some((value) => value !== 0))
+      failure ??= formatDesktopFixtureFailure('commands', 'sdk-cleanup', undefined)
     const workloadMs = performance.now() - started
     if (controller.signal.aborted || workloadMs > WINDOW_COMMAND_WORKLOAD_MS)
-      failure ??= 'workload-deadline'
+      failure ??= formatDesktopFixtureFailure(
+        'commands',
+        'workload-deadline',
+        controller.signal.reason
+      )
     console.error(
       JSON.stringify({
         event: 'bunly.native.window-commands',
