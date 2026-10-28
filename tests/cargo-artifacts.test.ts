@@ -1,5 +1,7 @@
 import { expect, spyOn, test } from 'bun:test'
-import { join, resolve } from 'node:path'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { basename, join, resolve } from 'node:path'
 import { cargoTargetDirectory, nativeHostArtifacts } from '../scripts/cargo-artifacts.ts'
 
 function response(value: unknown, success = true) {
@@ -88,6 +90,36 @@ test('explicit Cargo targets are rejected before looking up ordinary host probe 
     expect(spawn).not.toHaveBeenCalled()
   } finally {
     spawn.mockRestore()
+  }
+})
+
+test('missing or partial selected outputs never switch to complete stale checkout artifacts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'bunly-cargo-target-'))
+  const checkout = join(root, 'repo')
+  const selected = join(root, 'shared', 'cargo-target')
+  const stale = join(checkout, 'native', 'target', 'release')
+  const spawn = spyOn(Bun, 'spawnSync').mockReturnValue(response({ target_directory: selected }))
+  try {
+    await mkdir(join(selected, 'release'), { recursive: true })
+    await mkdir(stale, { recursive: true })
+    const missing = nativeHostArtifacts(checkout, { CARGO_TARGET_DIR: selected })
+    for (const path of Object.values(missing)) {
+      await writeFile(join(stale, basename(path)), 'stale-artifact')
+      expect(path).toBe(join(selected, 'release', basename(path)))
+      await expect(readFile(path)).rejects.toMatchObject({ code: 'ENOENT' })
+    }
+    await writeFile(missing.library, 'selected-library')
+    const partial = nativeHostArtifacts(checkout, { CARGO_TARGET_DIR: selected })
+    expect(await readFile(partial.library, 'utf8')).toBe('selected-library')
+    await expect(readFile(partial.hostProbe)).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(partial.processSoak)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(stale, basename(partial.processSoak)), 'utf8')).toBe(
+      'stale-artifact'
+    )
+    expect(spawn.mock.calls).toHaveLength(2)
+  } finally {
+    spawn.mockRestore()
+    await rm(root, { recursive: true, force: true })
   }
 })
 
