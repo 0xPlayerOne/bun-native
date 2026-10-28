@@ -4,7 +4,8 @@ param(
     [ValidateSet('smoke', 'rpc', 'full', 'credentials', 'm4-acceptance', 'pty')][string]$Suite = 'full',
     [switch]$Worker,
     [string]$Python,
-    [string]$Bun
+    [string]$Bun,
+    [string]$NativeTargetDirectoryBase64
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -75,7 +76,14 @@ if ($Worker) {
         if ($LASTEXITCODE -ne 0) { throw 'Standard-user service supervisor qualification failed' }
         & $Bun (Join-Path $PSScriptRoot 'qualify-bun-pty.ts')
     } else {
-        & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite
+        if ($Suite -eq 'credentials') {
+            & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite
+        } else {
+            if (-not $NativeTargetDirectoryBase64) { throw 'The build account must supply the selected native target directory' }
+            $utf8 = [Text.UTF8Encoding]::new($false, $true)
+            $selectedTarget = $utf8.GetString([Convert]::FromBase64String($NativeTargetDirectoryBase64))
+            & $Python (Join-Path $PSScriptRoot 'hosted_cef.py') run --suite $Suite --native-target-directory $selectedTarget
+        }
     }
     exit $LASTEXITCODE
 }
@@ -86,6 +94,15 @@ $evidence = Join-Path $root '.bunly/hosted-evidence'
 New-Item -ItemType Directory -Force $tools, $evidence | Out-Null
 $bunExe = Join-Path $tools 'bun.exe'
 Copy-Item (Get-Command bun -ErrorAction Stop).Source $bunExe
+# Resolve with the exact build account/environment before crossing into the
+# compiler-free worker. No access to the build account's Cargo home is granted.
+$encodedTarget = $null
+if ($Suite -ne 'pty' -and $Suite -ne 'credentials') {
+    $encodedTarget = & $pythonExe (Join-Path $PSScriptRoot 'hosted_cef.py') target-directory-base64
+    if ($LASTEXITCODE -ne 0 -or $encodedTarget -isnot [string] -or -not $encodedTarget) {
+        throw 'Cannot resolve the selected native target directory'
+    }
+}
 $name = 'bunlyq' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $password = 'Bq!' + [Guid]::NewGuid().ToString('N')
 Write-Output "::add-mask::$password"
@@ -108,6 +125,11 @@ try {
     $script = $PSCommandPath
     # No password is put in a command line, file, or uploaded artifact.
     $arguments = "-NoProfile -NonInteractive -File `"$script`" -Worker -Suite $Suite -Python `"$pythonExe`" -Bun `"$bunExe`""
+    if ($null -ne $encodedTarget) {
+        # Base64 keeps Unicode, trailing spaces and a terminal backslash exact
+        # across Start-Process command-line parsing. Python validates the path.
+        $arguments += " -NativeTargetDirectoryBase64 $encodedTarget"
+    }
     $child = Start-Process -FilePath $shell -ArgumentList $arguments -Credential $credential -LoadUserProfile -WorkingDirectory $root -PassThru -Wait -RedirectStandardOutput (Join-Path $evidence ('windows-standard-' + $Suite + '.log')) -RedirectStandardError (Join-Path $evidence ('windows-standard-error-' + $Suite + '.log'))
     Get-Content (Join-Path $evidence ('windows-standard-' + $Suite + '.log')) -Tail 60
     Get-Content (Join-Path $evidence ('windows-standard-error-' + $Suite + '.log')) -Tail 40

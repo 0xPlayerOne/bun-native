@@ -1,30 +1,19 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { nativeHostArtifacts } from './cargo-artifacts.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
 const directory = join(root, '.bunly/qualification')
 await mkdir(directory, { recursive: true })
-const library =
-  process.platform === 'win32'
-    ? 'bunly_host_probe.dll'
-    : process.platform === 'darwin'
-      ? 'libbunly_host_probe.dylib'
-      : 'libbunly_host_probe.so'
+const native = nativeHostArtifacts(root)
 const addon = join(directory, 'kernel-probe.node')
-await copyFile(join(root, 'native/target/release', library), addon)
+await copyFile(native.library, addon)
 const results: Record<string, unknown>[] = []
 for (const mode of ['ffi', 'napi', 'process'] as const) {
   const path = join(directory, `kernel-${target}-${mode}.json`)
   const command =
     mode === 'process'
-      ? [
-          join(
-            root,
-            'native/target/release/process-soak' + (process.platform === 'win32' ? '.exe' : '')
-          ),
-          process.execPath,
-          join(root, 'scripts/probes/process-generation.ts'),
-        ]
+      ? [native.processSoak, process.execPath, join(root, 'scripts/probes/process-generation.ts')]
       : [process.execPath, join(root, 'scripts/probes/recreate.ts'), mode, addon, 'normal']
   const child = Bun.spawn(
     [
