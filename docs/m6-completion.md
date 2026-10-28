@@ -11,10 +11,13 @@ controlled relaunch. A separately pinned comparison executed the same selected
 edit outcome in Bunly, Electrobun and Mirin, with all 15 rows passing.
 
 This report records the implemented scope and retained local and hosted evidence.
-[PR #130](https://github.com/0xPlayerOne/bunly/pull/130) carries the final-head
-portable/hosted validation and merge record. Merge requires all applicable checks;
-the local observations below do not assert their outcome or additional platform
-coverage. The already accepted #28/#29 increments retain their separate records.
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130) completed its applicable
+checks and squash-merged as `1366ac600c7a16341fa420378b8c2263a40b5629` on
+October 27, 2026 (America/Puerto_Rico). Issues #28–#33 and milestone 6 are closed.
+The final [native workflow](https://github.com/0xPlayerOne/bunly/actions/runs/40610850173)
+passed all eleven stages on Linux x64, macOS arm64 and Windows x64 at head
+`5f33ab2b438731a88527959f7bb6a2509282524f`; the merged tree is identical to that
+tested head. The earlier #28/#29 increments retain their separate records.
 
 This is a functional development profile, not production release qualification,
 an untrusted-plugin sandbox, arbitrary application reload, or a demonstrated
@@ -35,10 +38,12 @@ The #28 ownership model and #29 mechanism matrix have their own accepted evidenc
 including their declared platform execution. Their earlier model transitions and
 synthetic owner experiments are separate from the 500 actual desktop replacements
 recorded here. The accepted integrated native captures at the historical
-checkpoints below establish macOS arm64 coverage; the later hosted run recorded
-below also qualifies the complete Linux workload and restart. The final-head
-platform gates and merge receipt are maintained in PR #130, separately from those
-fixed captures.
+checkpoints below establish macOS arm64 coverage. The final hosted run also
+qualifies the complete Linux and Windows workloads and restarts: each platform
+completed 500 replacements, 508 renderer receipts and 1,530 settled requests with
+zero pending, one retained PTY, no warm runtime copy or native compilation, and a
+distinct controlled restart. PR #130 retains the final-head replay and merge
+receipt separately from the historical captures below.
 
 ## Supported lifecycle
 
@@ -481,12 +486,13 @@ recorded environment and replay contract.
 
 ## Remaining qualification boundaries
 
-- Final full portable validation, current-head hosted checks, review and merge are
-  tracked on PR #130; this checkpoint does not substitute local native receipts
-  for those gates.
-- The integrated native persistence/relaunch workload and comparison were run on
-  macOS arm64. Previous cross-platform mechanism or runtime acceptance does not
-  establish this workload's Linux/Windows coverage.
+- The final integrated native persistence/relaunch workload passed on Linux x64,
+  macOS arm64 and Windows x64 in the linked workflow. Historical failed captures
+  below retain their original outcomes. Finite hosted acceptance does not prove
+  general reliability across every application or hardware configuration.
+- The common-workload framework comparison was run on macOS arm64 only. The
+  Linux/Windows functional passes do not expand that comparison's scope or
+  establish a comparative performance advantage.
 - The frontend integration is the maintained fixture adapter, not proof of every
   frontend framework's HMR behavior. Browser source maps remain outside the native
   public-asset contract.

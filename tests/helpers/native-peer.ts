@@ -7,7 +7,7 @@ export interface Command {
   args: Record<string, unknown>
 }
 /** A protocol peer, not a CEF implementation. Native rendering is tested in CI. */
-export async function nativePeer() {
+export async function nativePeer(options: { readonly desktopCapabilities?: unknown } = {}) {
   const input = new PassThrough()
   const output = new PassThrough()
   const commands: Command[] = []
@@ -45,7 +45,10 @@ export async function nativePeer() {
     }
     input.write(JSON.stringify(value) + '\n')
   }
-  send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7' })
+  const desktopCapabilities = Object.hasOwn(options, 'desktopCapabilities')
+    ? options.desktopCapabilities
+    : { version: 1, capabilities: ['window.state', 'window.geometry'] }
+  send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7', data: { desktopCapabilities } })
   await transport.ready
   return {
     transport,

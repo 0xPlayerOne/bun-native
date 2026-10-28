@@ -85,6 +85,8 @@ describe('explicit build profiles with versioned capability metadata', () => {
       {
         backend: 'cef',
         capabilities: [
+          'window.state',
+          'window.geometry',
           'session.persistent',
           'session.cookies',
           'session.protected-cookies',
