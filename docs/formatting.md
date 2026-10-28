@@ -2,7 +2,7 @@
 
 One checked style for maintained source, with separate native-language formatters.
 
-**Tools:** Oxfmt 0.68.0, Ruff 0.15.22, and the existing workspace Rust toolchains.
+**Tools:** Bun 1.4.4's built-in formatter, Ruff 0.15.22, and the existing workspace Rust toolchains.
 **Policy:** Formatting failures fail validation; historical evidence is not rewritten.
 
 ## TypeScript, JavaScript, configuration, and documentation
@@ -13,13 +13,13 @@ bun run format:check
 bun run check
 ```
 
-`format` writes Oxfmt's formatting. `format:check` is read-only and fails on drift.
+`format` writes Bun's built-in formatting. `format:check` is read-only and fails on drift.
 `check` runs that gate first, followed by Bun-native type checking, lint, AST
 boundaries, tests and builds. The hosted portable/full workflows already run
 `check`, so formatting cannot be skipped by those paths. Ordinary automatic CI
 remains subject to its existing pause and draft policies.
 
-The scripts run the installed Oxfmt launcher through Bun and explicitly select
+The scripts run Bun's built-in formatter and explicitly select
 `.oxfmtrc.json`, avoiding nested-configuration discovery. Style is two spaces,
 single quotes, no semicolons, a 100-column print width and LF endings. Import and
 package-key reordering are disabled; embedded fixture strings are not reformatted.
@@ -32,7 +32,7 @@ so generated policies and configuration remain stable under repeated syncs.
 
 ## Python and Rust contributors
 
-Oxfmt does not replace the native-language formatters:
+The JavaScript formatter does not replace the native-language formatters:
 
 ```sh
 python -m pip install -r requirements-format.txt
@@ -54,5 +54,5 @@ not required merely to format TypeScript or consume a prebuilt application.
 bytes and hashes. `.bunly/**`, dependencies, build output and other Git-ignored
 scratch are not source-formatting targets. Existing generated Foundry exclusions
 remain in place. No maintained package, test or script directory is excluded.
-Configure an editor's formatter to use the repository Oxfmt configuration; an
+Configure an editor's formatter to use the repository formatting configuration; an
 editor setting is not a substitute for the CLI gate.

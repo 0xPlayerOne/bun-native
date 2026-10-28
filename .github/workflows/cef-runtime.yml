@@ -200,7 +200,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0; node24
         with:
           python-version: '3.11'
@@ -212,6 +212,11 @@ jobs:
           python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - name: Portable checks
         run: bun run check:portable 2>&1 | tee .bunly/hosted-evidence/check.log
+      - name: Install pinned Bun runtime for native qualification
+        if: inputs.suite != 'portable'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24
         if: inputs.suite != 'portable'
         id: manual-cache

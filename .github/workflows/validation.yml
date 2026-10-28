@@ -1,6 +1,8 @@
 name: Code Foundry Validation
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
     types:
@@ -44,7 +46,7 @@ jobs:
         with:
           persist-credentials: false
           repository: 0xPlayerOne/code-foundry
-          ref: 0b5374bc59599b53e298bcf461d7727a9938b3ae
+          ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
           path: .github/.code-foundry
           sparse-checkout: |
             src/lib
@@ -79,14 +81,14 @@ jobs:
       issues: read
       packages: read
       security-events: write
-    uses: 0xPlayerOne/code-foundry/.github/workflows/validation-no-codeql.yml@0b5374bc59599b53e298bcf461d7727a9938b3ae
+    uses: 0xPlayerOne/code-foundry/.github/workflows/validation.yml@945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
     with:
       mode: ${{ needs.mode.outputs.mode }}
       runtime-repository: 0xPlayerOne/code-foundry
       # Pull requests validate the proposed runtime commit. Scheduled and
       # manually dispatched audits use a separate default-branch-pinned caller,
       # so this caller-selected ref never runs with default-branch cache access.
-      runtime-ref: 0b5374bc59599b53e298bcf461d7727a9938b3ae
+      runtime-ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
       ci-runner: ubuntu-latest
       test-runner: ubuntu-latest
       unit-runner: ubuntu-latest
@@ -111,3 +113,21 @@ jobs:
   # change manifests only, so the code tree is identical to the content merge
   # whose default-branch scan is still current; re-scanning it on every release
   # wastes the Rust-heavy analysis budget, and the scheduled audit covers drift.
+  default-branch-codeql:
+    name: CodeQL (default branch)
+    if: >-
+      vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'push' &&
+      !startsWith(github.event.head_commit.message, 'chore(main): release ')
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+    uses: 0xPlayerOne/code-foundry/.github/workflows/codeql.yml@945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
+    with:
+      runtime-repository: 0xPlayerOne/code-foundry
+      runtime-ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
+      runner: ubuntu-latest
+      rust-shards: '["all"]'
+      rust-threads: '1'
+      rust-max-parallel: 1

@@ -33,6 +33,7 @@ jobs:
       - name: Qualify actual Bun PTYs on Linux or macOS
         if: runner.os != 'Windows'
         run: |
+          bun test tests/terminal-owner.test.ts tests/pty-stream.test.ts
           bun test tests/terminal-service.test.ts tests/terminal-service-real.test.ts
           bun run qualify:services
           bun scripts/qualify-bun-pty.ts

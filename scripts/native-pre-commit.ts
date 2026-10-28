@@ -104,17 +104,10 @@ export async function runNativeGate(files: readonly string[]): Promise<void> {
     checkJs: existsSync(resolve(root, 'jsconfig.json')),
     build: /^pre_commit_build:\s*true\s*$/m.test(config),
   })
-  if (plan.formatAll) await execute([process.execPath, '--bun', 'oxfmt', '--check', '.'])
+  if (plan.formatAll) await execute([process.execPath, 'fmt', '--no-script', '--check', '.'])
   else
     for (const chunk of provider.chunkFiles(plan.formatFiles))
-      await execute([
-        process.execPath,
-        '--bun',
-        'oxfmt',
-        '--check',
-        '--no-error-on-unmatched-pattern',
-        ...chunk,
-      ])
+      await execute([process.execPath, 'fmt', '--no-script', '--check', ...chunk])
   if (plan.build) await execute([process.execPath, 'run', 'build'])
   if (plan.lintAll) await execute([process.execPath, 'run', 'lint'])
   else

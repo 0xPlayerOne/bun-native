@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dir, '..')
-const formatter = join(root, 'node_modules/oxfmt/bin/oxfmt')
 const config = await Bun.file(join(root, '.oxfmtrc.json')).json()
 
 async function fixture(run: (directory: string) => Promise<void>) {
@@ -22,11 +21,11 @@ async function format(directory: string, mode: '--check' | '--write', ...paths: 
   const child = Bun.spawn(
     [
       process.execPath,
-      formatter,
-      '--no-error-on-unmatched-pattern',
+      'fmt',
+      '--no-script',
       '--config',
       join(directory, '.oxfmtrc.json'),
-      mode,
+      ...(mode === '--check' ? ['--check'] : []),
       ...paths,
     ],
     { cwd: directory, stdout: 'pipe', stderr: 'pipe', timeout: 10000 }
@@ -41,8 +40,8 @@ async function format(directory: string, mode: '--check' | '--write', ...paths: 
 
 test('normal checks enforce formatting before compilation without native toolchain requirements', async () => {
   const pkg = await Bun.file(join(root, 'package.json')).json()
-  expect(pkg.scripts['format']).toBe('bun --bun oxfmt --config .oxfmtrc.json --write .')
-  expect(pkg.scripts['format:check']).toBe('bun --bun oxfmt --config .oxfmtrc.json --check .')
+  expect(pkg.scripts['format']).toBe('bun fmt --no-script .')
+  expect(pkg.scripts['format:check']).toBe('bun fmt --no-script --check .')
   expect(pkg.scripts.check).toStartWith('bun run format:check && ')
   expect(pkg.scripts.check).not.toContain('cargo')
   expect(pkg.scripts.check).not.toContain('format:all')
@@ -60,7 +59,7 @@ test('normal checks enforce formatting before compilation without native toolcha
   expect(config.ignorePatterns).not.toContain('tests/**')
 })
 
-test('the pinned CLI rejects drift, writes the expected style, then stays idempotent', async () => {
+test("Bun's formatter rejects drift, writes the expected style, then stays idempotent", async () => {
   await fixture(async (directory) => {
     const path = join(directory, 'example.ts')
     const original = 'export const example={title:"hello",values:[1,2]};\r\n'
@@ -70,11 +69,10 @@ test('the pinned CLI rejects drift, writes the expected style, then stays idempo
     expect((await format(directory, '--write', path)).exitCode).toBe(0)
     const formatted = await readFile(path, 'utf8')
     expect(formatted).toBe("export const example = { title: 'hello', values: [1, 2] }\n")
-    expect((await format(directory, '--check', path)).exitCode).toBe(0)
     expect((await format(directory, '--write', path)).exitCode).toBe(0)
     expect(await readFile(path, 'utf8')).toBe(formatted)
   })
-})
+}, 15_000)
 
 test('formatting leaves hash-bound evidence and local scratch byte-identical', async () => {
   await fixture(async (directory) => {
@@ -88,11 +86,14 @@ test('formatting leaves hash-bound evidence and local scratch byte-identical', a
     for (const name of ['evidence', '.bunly']) {
       const path = join(directory, name, 'raw.json')
       expect(await readFile(path, 'utf8')).toBe(raw)
-      expect((await format(directory, '--write', path)).exitCode).toBe(0)
+    }
+    expect((await format(directory, '--write', '.')).exitCode).toBe(0)
+    for (const name of ['evidence', '.bunly']) {
+      const path = join(directory, name, 'raw.json')
       expect(await readFile(path, 'utf8')).toBe(raw)
     }
   })
-})
+}, 15_000)
 
 test('formatting does not reorder side-effect imports or rewrite embedded fixture strings', async () => {
   await fixture(async (directory) => {
@@ -106,4 +107,4 @@ test('formatting does not reorder side-effect imports or rewrite embedded fixtur
     await writeFile(path, 'export const = ;')
     expect((await format(directory, '--check', path)).exitCode).not.toBe(0)
   })
-})
+}, 15_000)

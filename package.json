@@ -35,8 +35,8 @@
     "typecheck:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
     "typecheck:browser:reference": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.browser.json",
     "qualify:typecheck": "bun scripts/qualify-typecheck.ts",
-    "format": "bun --bun oxfmt --config .oxfmtrc.json --write .",
-    "format:check": "bun --bun oxfmt --config .oxfmtrc.json --check .",
+    "format": "bun fmt --no-script .",
+    "format:check": "bun fmt --no-script --check .",
     "format:python": "ruff format scripts tests benchmarks/adapters/frontend",
     "format:python:check": "ruff format --check scripts tests benchmarks/adapters/frontend",
     "format:native": "cargo +1.85.1 fmt --manifest-path native/Cargo.toml && cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml",
@@ -75,18 +75,17 @@
     "qualify:desktop": "bun scripts/qualify-desktop.ts"
   },
   "devDependencies": {
-    "@types/bun": "1.4.3",
+    "@types/bun": "1.4.4",
     "@types/node": "22.15.30",
     "@xterm/headless": "5.5.0",
     "@xterm/xterm": "5.5.0",
-    "code-foundry": "1.48.2",
+    "code-foundry": "1.48.8",
     "oxc-parser": "0.154.0",
-    "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
     "typescript": "7.0.2"
   },
   "engines": {
     "bun": "1.4.3"
   },
-  "packageManager": "bun@1.4.3"
+  "packageManager": "bun@1.4.4"
 }

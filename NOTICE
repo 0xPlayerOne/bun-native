@@ -9,4 +9,4 @@ Repository-maintenance templates and managed policy blocks are supplied by
 Code Foundry, copyright (C) 2026 0xPlayerOne, AGPL-3.0-or-later. Those notices
 apply to the upstream tooling/templates, not a replacement of Bunly's LICENSE.
 Code Foundry is a development dependency and is not included in runtime builds.
-Source: https://github.com/0xPlayerOne/code-foundry/tree/0b5374bc59599b53e298bcf461d7727a9938b3ae
+Source: https://github.com/0xPlayerOne/code-foundry/tree/945e548d1a1de5f6ca6195d245e9d82fc8e4ca63

@@ -5,15 +5,16 @@ languages: typescript,rust,python
 package_manager: bun
 toolchain: native
 runtime_repository: 0xPlayerOne/code-foundry
-# Code Foundry v1.48.2, pinned to the immutable release source.
-runtime_ref: 0b5374bc59599b53e298bcf461d7727a9938b3ae
-features: validation,draft-pr,dependabot
+# Code Foundry v1.49.0, pinned to the immutable release source.
+runtime_ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
+features: validation,draft-pr,dependabot,release
 draft_protection: true
 billing_paused: true
 billing_lanes: false
 dependency_updater: dependabot
-codeql: false
-dependency_review: false
+codeql: true
+dependency_review: true
+formatter: bun
 license: preserve
 sync_mode: overlay
 custom_workflows: preserve
