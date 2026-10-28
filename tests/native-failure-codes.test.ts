@@ -17,8 +17,32 @@ test('native failure diagnostics distinguish known shutdown, owner and protocol 
     ['Bun backend exited before native shutdown', 'backend-pipe-early-exit'],
     ['Bun input closed', 'backend-input-closed'],
     ['Invalid protocol version or request sequence', 'application-protocol-sequence'],
+    ['Menu qualification input unavailable', 'menu-input-unavailable'],
+    ['Menu input requires the native main thread', 'menu-input-main-thread'],
+    ['Menu owner view unavailable', 'menu-owner-view-unavailable'],
+    ['Menu owner window unavailable', 'menu-owner-window-unavailable'],
+    ['Menu input requires the active visible owner window', 'menu-owner-not-active-visible'],
+    ['Menu owner window number unavailable', 'menu-owner-window-number-unavailable'],
+    ['Menu input event construction failed', 'menu-input-event-construction'],
   ])
     assert.equal(classifyNativeHostFailure(message), code)
+})
+
+test('menu input diagnostics accept only fixed labels and never include native details', () => {
+  const privatePayload = '/private/example/menu-owner?secret=fixture-only'
+  for (const message of [
+    'Menu qualification input unavailable',
+    'Menu input requires the native main thread',
+    'Menu owner view unavailable',
+    'Menu owner window unavailable',
+    'Menu input requires the active visible owner window',
+    'Menu owner window number unavailable',
+    'Menu input event construction failed',
+  ]) {
+    assert.equal(classifyNativeHostFailure(`${message}: ${privatePayload}`), 'unclassified')
+    assert.equal(classifyNativeHostFailure(` ${message}`), 'unclassified')
+    assert.equal(classifyNativeHostFailure(`${message}\n`), 'unclassified')
+  }
 })
 
 test('unknown, decorated and malformed failures never return raw input or match a known prefix', () => {

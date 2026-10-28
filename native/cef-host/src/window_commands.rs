@@ -704,8 +704,8 @@ fn menu_shown(token: &str, birth: i32, popup: u64) {
             // Cocoa's native menu tracking disables nested application tasks.
             // Enqueue now, before returning from the real MenuWillShow callback;
             // posting a CEF task here cannot feed that tracking loop.
-            if macos::queue_first_selection(&owner).is_err() {
-                super::fail("Menu qualification input unavailable");
+            if let Err(reason) = macos::queue_first_selection(&owner) {
+                super::fail(reason);
             }
         }
         #[cfg(not(target_os = "macos"))]
