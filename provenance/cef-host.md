@@ -71,6 +71,18 @@ behavior. No upstream implementation is copied:
   the same parent owns reattached content, with attachment and parent identity
   read back before the retired overlay-controller wrapper is released.
 
+## Native menu input driver
+
+The contributor-only macOS menu input driver in
+`native/cef-host/src/window_commands_macos.rs` is Bunly-authored code using the
+pinned `objc2-app-kit` 0.3.2 bindings and AppKit's documented event queue. The
+Chromium 156.0.8078.17 `ui/views/controls/menu/menu_runner_impl_cocoa.mm` nested
+task behavior and CEF `47dbc1df023e99f006fb9e850a8d83cc19b4fdd9`
+`libcef/browser/views/view_util_mac.mm` NSView handle conversion were inspected;
+their implementations were not copied. The driver is limited to four local
+events for an already-authorized fixture popup and does not qualify physical
+input or invoke application command callbacks directly.
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

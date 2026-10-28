@@ -12,6 +12,10 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{atomic::Ordering, Arc};
 
+#[cfg(all(target_os = "macos", feature = "rpc-qualification"))]
+#[path = "window_commands_macos.rs"]
+mod macos;
+
 const MAX_REGISTRATIONS: usize = 64;
 const MAX_PER_WINDOW: usize = 8;
 const MAX_COMMANDS: usize = 32;
@@ -686,13 +690,30 @@ fn menu_shown(token: &str, birth: i32, popup: u64) {
     #[cfg(feature = "rpc-qualification")]
     if record.select_first {
         COMMANDS.with(|registry| {
-            if let Some(r) = registry.borrow_mut().registrations.get_mut(token) {
+            if let Some(r) = registry
+                .borrow_mut()
+                .registrations
+                .get_mut(token)
+                .filter(|r| r.birth() == birth && r.scope == record.scope)
+            {
                 r.select_first = false;
             }
         });
-        let mut task = SelectFirst::new(token.to_owned(), birth, popup);
-        if post_task(ThreadId::UI, Some(&mut task)) == 0 {
-            super::fail("Menu qualification input unavailable");
+        #[cfg(target_os = "macos")]
+        if let Some(owner) = selection_owner(token, birth, popup) {
+            // Cocoa's native menu tracking disables nested application tasks.
+            // Enqueue now, before returning from the real MenuWillShow callback;
+            // posting a CEF task here cannot feed that tracking loop.
+            if macos::queue_first_selection(&owner).is_err() {
+                super::fail("Menu qualification input unavailable");
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mut task = SelectFirst::new(token.to_owned(), birth, popup);
+            if post_task(ThreadId::UI, Some(&mut task)) == 0 {
+                super::fail("Menu qualification input unavailable");
+            }
         }
     }
 }
@@ -1044,7 +1065,24 @@ fn qualify(request: u64, args: &Value, record: &Registration) -> Result<(), Stri
     reply(request, Value::Null);
     Ok(())
 }
-#[cfg(feature = "rpc-qualification")]
+#[cfg(all(feature = "rpc-qualification", target_os = "macos"))]
+fn selection_owner(token: &str, birth: i32, popup: u64) -> Option<Window> {
+    let record = callback_record(token, birth)?;
+    same(&record).ok()?;
+    let current = COMMANDS.with(|registry| {
+        registry
+            .borrow()
+            .popup
+            .as_ref()
+            .is_some_and(|p| p.birth == birth && p.id == popup && p.shown && !p.cancelled)
+    });
+    if !current {
+        return None;
+    }
+    let owner = window(record.window).ok()?;
+    (owner.is_active() != 0 && owner.is_drawn() != 0 && owner.is_minimized() == 0).then_some(owner)
+}
+#[cfg(all(feature = "rpc-qualification", not(target_os = "macos")))]
 wrap_task! {
     struct SelectFirst { token: String, birth: i32, popup: u64 }
     impl Task { fn execute(&self) {

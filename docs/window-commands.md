@@ -205,12 +205,21 @@ rejects missing, extra and reordered callbacks. A fixed deadline and unexpected
 backend close latch failure; there is no polling or synthetic success receipt.
 
 Only the contributor feature admits `commands.qualification` and its count
-snapshot. Synthetic selection posts a native task after `MenuWillShow`, then uses
-CEF `Window.SendKeyPress` to feed the native menu. Shortcut input also uses that
-testing API. Neither path directly invokes the application delegate or fabricates
-a callback. Ordinary builds do not expose the operation, and no renderer message
-can enable it. The retained receipt explicitly records `syntheticNative: true`
-and `physical: false`. It does not qualify a system menubar, global shortcuts,
+snapshot. On macOS, synthetic selection queues a fixed Down/Return key-down and
+key-up sequence in the owning application's AppKit event queue directly from
+the real `MenuWillShow` callback. The driver revalidates the exact registration,
+popup and document grant, requires the active CEF owner and its visible, restored,
+key `NSWindow`, and constructs all four events before posting any of them. Every
+event targets that owned window number; no delayed block or system-wide input is
+used. Cocoa's native menu tracking disables nested application tasks, so a queued
+CEF task cannot drive that loop. Linux and Windows retain their CEF task and
+`Window.SendKeyPress` path. Shortcut input also uses that CEF testing API.
+
+These paths never directly invoke the application delegate or fabricate a
+callback: actual `ExecuteCommand` and `MenuClosed` callbacks remain required.
+Ordinary builds do not expose the operation, and no renderer message can enable
+it. The retained receipt explicitly records `syntheticNative: true` and
+`physical: false`. It does not qualify a system menubar, global shortcuts,
 physical input, accessibility, assistive technology, or OS shortcut conflicts.
 
 Primary sources reviewed at the pinned versions:
@@ -221,3 +230,4 @@ Primary sources reviewed at the pinned versions:
 - [CEF menu delegate dispatch](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/menu_model_impl.cc)
 - [Chromium Views menu completion](https://github.com/chromium/chromium/blob/156.0.8078.17/ui/views/controls/menu/menu_runner_impl.cc)
 - [Chromium macOS nested menu lifetime](https://github.com/chromium/chromium/blob/156.0.8078.17/ui/views/controls/menu/menu_runner_impl_cocoa.mm)
+- [AppKit application event queue](<https://developer.apple.com/documentation/appkit/nsapplication/postevent(_:atstart:)>)
