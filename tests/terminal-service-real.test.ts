@@ -81,64 +81,69 @@ const options = {
 }
 const input = (value: string) => new TextEncoder().encode(value + '\n')
 
-test('real pinned Bun terminal service exercises input, resize, binary output, exit and close', async () => {
-  expect(Bun.version).toBe('1.4.3')
-  const driver = new CapturingDriver()
-  const service = new TerminalService({ driver })
-  const writer = new TerminalWriter()
-  try {
-    const handle = await service.create({}, writer, options)
-    const observation = service.observe(handle)
-    expect(await writer.wait('ready')).toMatchObject({
-      tty: true,
-      token: 'fixed-repo-child',
-      inheritedSentinel: null,
-    })
-    const encoded = Buffer.from('owned café-🐙').toString('base64')
-    await service.write(handle, input(`input:${encoded}`))
-    expect(await writer.wait('input')).toMatchObject({ value: 'owned café-🐙' })
-
-    writer.terminal.resize(110, 37)
-    service.resize(handle, 110, 37)
-    await service.write(handle, input('size'))
-    expect(await writer.wait('size')).toMatchObject({ cols: 110, rows: 37 })
-    await service.write(handle, input('binary'))
-    await writer.wait('binary-complete')
-    await service.write(handle, input('exit'))
-
-    expect(await observation.processExited).toMatchObject({ started: true, exitCode: 7 })
-    const closure = await observation.terminalClosed
-    expect(closure.status === 0 || (process.platform === 'linux' && closure.status === 1)).toBe(
-      true
-    )
-    expect(await observation.outputFinished).toEqual({ ok: true })
-    await observation.released
-    expect(await writer.wait('final')).toMatchObject({ type: 'final' })
-    expect(driver.bytes).toBe(writer.bytes)
-    expect(driver.hash.digest('hex')).toBe(writer.hash.digest('hex'))
-    expect(service.diagnostics()).toMatchObject({ terminals: 0, sourceStreams: 0 })
-
-    const closingWriter = new TerminalWriter()
-    const closingService = new TerminalService({ driver: new CapturingDriver() })
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+pinnedRuntimeTest(
+  'real pinned Bun terminal service exercises input, resize, binary output, exit and close',
+  async () => {
+    expect(Bun.version).toBe('1.4.3')
+    const driver = new CapturingDriver()
+    const service = new TerminalService({ driver })
+    const writer = new TerminalWriter()
     try {
-      const closing = await closingService.create({}, closingWriter, options)
-      await closingWriter.wait('ready')
-      const closingObservation = closingService.observe(closing)
-      const result = await closingService.close(closing)
-      expect(result).toEqual({
-        processExited: true,
-        terminalClosed: true,
-        outputDrained: true,
-        released: true,
+      const handle = await service.create({}, writer, options)
+      const observation = service.observe(handle)
+      expect(await writer.wait('ready')).toMatchObject({
+        tty: true,
+        token: 'fixed-repo-child',
+        inheritedSentinel: null,
       })
-      expect(await closingObservation.outputFinished).toEqual({ ok: false, code: 'CANCELLED' })
-      expect((await closingObservation.processExited).exitCode).not.toBe(0)
+      const encoded = Buffer.from('owned café-🐙').toString('base64')
+      await service.write(handle, input(`input:${encoded}`))
+      expect(await writer.wait('input')).toMatchObject({ value: 'owned café-🐙' })
+
+      writer.terminal.resize(110, 37)
+      service.resize(handle, 110, 37)
+      await service.write(handle, input('size'))
+      expect(await writer.wait('size')).toMatchObject({ cols: 110, rows: 37 })
+      await service.write(handle, input('binary'))
+      await writer.wait('binary-complete')
+      await service.write(handle, input('exit'))
+
+      expect(await observation.processExited).toMatchObject({ started: true, exitCode: 7 })
+      const closure = await observation.terminalClosed
+      expect(closure.status === 0 || (process.platform === 'linux' && closure.status === 1)).toBe(
+        true
+      )
+      expect(await observation.outputFinished).toEqual({ ok: true })
+      await observation.released
+      expect(await writer.wait('final')).toMatchObject({ type: 'final' })
+      expect(driver.bytes).toBe(writer.bytes)
+      expect(driver.hash.digest('hex')).toBe(writer.hash.digest('hex'))
+      expect(service.diagnostics()).toMatchObject({ terminals: 0, sourceStreams: 0 })
+
+      const closingWriter = new TerminalWriter()
+      const closingService = new TerminalService({ driver: new CapturingDriver() })
+      try {
+        const closing = await closingService.create({}, closingWriter, options)
+        await closingWriter.wait('ready')
+        const closingObservation = closingService.observe(closing)
+        const result = await closingService.close(closing)
+        expect(result).toEqual({
+          processExited: true,
+          terminalClosed: true,
+          outputDrained: true,
+          released: true,
+        })
+        expect(await closingObservation.outputFinished).toEqual({ ok: false, code: 'CANCELLED' })
+        expect((await closingObservation.processExited).exitCode).not.toBe(0)
+      } finally {
+        await closingService.dispose()
+        closingWriter.dispose()
+      }
     } finally {
-      await closingService.dispose()
-      closingWriter.dispose()
+      await service.dispose()
+      writer.dispose()
     }
-  } finally {
-    await service.dispose()
-    writer.dispose()
-  }
-}, 20_000)
+  },
+  20_000
+)

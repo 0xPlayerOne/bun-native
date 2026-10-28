@@ -7,7 +7,8 @@ One local and hosted validation contract, with explicit platform boundaries.
 
 ## Contributor setup
 
-Use Bun 1.4.3 and Python 3.11. On macOS/Linux:
+Use Bun 1.4.4 for repository tooling and Python 3.11. The qualified packaged
+desktop runtime remains pinned to Bun 1.4.3. On macOS/Linux:
 
 ```sh
 bun install --frozen-lockfile

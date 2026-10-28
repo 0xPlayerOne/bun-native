@@ -4,13 +4,16 @@ import { access, chmod, lstat, readFile, readdir, writeFile } from 'node:fs/prom
 import { resolve } from 'node:path'
 
 /** Verified release source, not a floating tag resolved during CI execution. */
-export const FOUNDRY_SOURCE = '0b5374bc59599b53e298bcf461d7727a9938b3ae'
-export const FOUNDRY_VERSION = '1.48.2'
+export const FOUNDRY_SOURCE = '945e548d1a1de5f6ca6195d245e9d82fc8e4ca63'
+export const FOUNDRY_VERSION = '1.48.8'
 export const BILLING_GUARD = "vars.CI_BILLING_PAUSED != 'true'"
 /** While the checked-in pause is enabled, only an explicit remote false can run jobs. */
 export const PAUSED_BILLING_GUARD = "vars.CI_BILLING_PAUSED == 'false'"
 /** Explicit maintainer dispatch is independent of the automatic-CI budget switch. */
 export const MANUAL_DISPATCH_GUARD = "github.event_name == 'workflow_dispatch'"
+/** Upstream release exposes a manual pause bypass that Bunly does not permit. */
+export const UPSTREAM_RELEASE_BYPASS_GUARD =
+  "vars.CI_BILLING_PAUSED != 'true' || (github.event_name == 'workflow_dispatch' && inputs['release-while-paused'] == true)"
 
 function record(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -56,6 +59,13 @@ export function guardWorkflow(source: string, paused = false): string {
         throw new Error('Manual job requires an explicit workflow_dispatch trigger')
       // This exact predicate cannot run on PR, push, schedule, or workflow_call.
       // Do not accept OR expressions or weaken the ordinary billing guard.
+      continue
+    }
+    if (name === 'release' && condition === UPSTREAM_RELEASE_BYPASS_GUARD) {
+      const previous = `    if: ${UPSTREAM_RELEASE_BYPASS_GUARD}`
+      if (result.split(previous).length !== 2)
+        throw new Error('Unexpected Code Foundry release billing bypass layout')
+      result = result.replace(previous, `    if: ${desired}`)
       continue
     }
     const heading = `  ${name}:\n`
@@ -128,7 +138,17 @@ export function dependabotDirectories(source: string): string {
       .join('')
     if (replacements !== 1) throw new Error(`Expected exactly one ${ecosystem} updater`)
   }
-  return result
+  const previousToolchainNote = `      # TypeScript 7 (the native compiler) is supported by the oxlint/oxfmt
+      # toolchain; the tsconfig must use NodeNext or bundler resolution since
+      # legacy node10 resolution was removed. Held with 5.9 until each
+      # repository's tsconfig is verified on 7.`
+  const bunToolchainNote = `      # TypeScript 7 (the native compiler) is supported by Bun's type checker
+      # and Oxlint; the tsconfig must use NodeNext or bundler resolution since
+      # legacy node10 resolution was removed. Held with 5.9 until each
+      # repository's tsconfig is verified on 7.`
+  if (!result.includes(previousToolchainNote))
+    throw new Error('Unexpected upstream TypeScript Dependabot policy note')
+  return result.replace(previousToolchainNote, bunToolchainNote)
 }
 
 async function inspectGithubPaths(root: string): Promise<void> {
@@ -310,11 +330,10 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   const formatter = Bun.spawn(
     [
       process.execPath,
-      '--bun',
-      'oxfmt',
+      'fmt',
+      '--no-script',
       '--config',
       resolve(root, '.oxfmtrc.json'),
-      '--write',
       ...existing,
     ],
     { cwd: root, stdout: 'inherit', stderr: 'inherit' }

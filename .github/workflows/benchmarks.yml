@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0; node24
         with:
           python-version: '3.11'
@@ -34,6 +34,12 @@ jobs:
       - run: bun run check:portable
       - run: |
           python tests/process_observer_test.py
+      - name: Install pinned Bun runtime for benchmark evidence
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - name: Validate pinned terminal regression CLI
+        run: bun test tests/terminal-regression-command.test.ts
       - run: bun run benchmark:smoke
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; node24
         if: ${{ !cancelled() }}
