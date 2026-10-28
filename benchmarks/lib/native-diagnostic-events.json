@@ -53,5 +53,6 @@
   "bunly.fault.tree-observed",
   "bunly.native.renderer-injected",
   "bunly.native.browser-actions",
-  "bunly.native.programmatic-files"
+  "bunly.native.programmatic-files",
+  "bunly.native.programmatic-files-diagnostic"
 ]

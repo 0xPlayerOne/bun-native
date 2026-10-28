@@ -8,6 +8,7 @@ import type {
 } from '../../packages/contracts/src/programmatic-files.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { remoteDocumentReadiness } from '../file-downloads/readiness.ts'
+import { FileFixtureDiagnostic } from './diagnostics.ts'
 import { fileFixtureServer, type UploadCase } from './server.ts'
 
 /** Uses actual CEF documents and HTTP multipart requests. The page receives only
@@ -19,6 +20,7 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
   const abort = new AbortController()
   const timer = setTimeout(() => abort.abort(new Error('File fixture deadline')), 45_000)
   const server = fileFixtureServer()
+  const diagnostic = new FileFixtureDiagnostic()
   let phase = 'setup',
     failure: string | null = null
   let nativeSettled: Record<string, unknown> | null = null
@@ -82,9 +84,14 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
     assert.equal(result.synthetic, true)
     assert.equal(result.mayHaveExposedFile, false)
   }
-  const zeroOwners = async () => {
+  const zeroOwners = async (trackUpload = false) => {
+    if (trackUpload) diagnostic.step('native-owners-read')
     const native = (await backend.nativeDiagnostics()) as Record<string, unknown>
     const files = native['programmaticFiles'] as Record<string, unknown>
+    if (trackUpload) {
+      diagnostic.native(files)
+      diagnostic.step('native-owners-check')
+    }
     for (const key of [
       'operations',
       'registrations',
@@ -96,7 +103,12 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
       'deadlineWorkers',
     ])
       assert.equal(files[key], 0, key)
+    if (trackUpload) diagnostic.step('local-owners-read')
     const local = backend.viewControlDiagnostics()
+    if (trackUpload) {
+      diagnostic.local(local)
+      diagnostic.step('local-owners-check')
+    }
     assert.deepEqual(local, { operations: 0, bytes: 0 })
     return { native: files, local }
   }
@@ -108,19 +120,26 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
     mime: string,
     cookie: string
   ) => {
+    diagnostic.begin(name)
     await ready(view, name)
+    diagnostic.step('grant')
     const scope = await grant(view, kind, kind === 'file-input' ? 'upload' : 'drop')
     const filename = name + '.bin'
+    diagnostic.step('prepare')
     const operation = await prepare(scope, kind, filename, bytes, mime)
+    diagnostic.step('commit')
     const result = await wait(operation.commit())
+    diagnostic.result(result)
+    diagnostic.step('commit-result')
     assert.deepEqual(result, {
       status: 'completed',
       failure: null,
       synthetic: true,
       mayHaveExposedFile: true,
     })
+    diagnostic.step('http-receipt')
     const received = await wait(server.receipt(name))
-    assert.deepEqual(received, {
+    const expected = {
       case: name,
       name: filename,
       mime,
@@ -128,9 +147,13 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
       sha256: createHash('sha256').update(bytes).digest('hex'),
       cookie,
       kind,
-      trusted: false,
-    })
-    await zeroOwners()
+      trusted: false as const,
+    }
+    diagnostic.receipt(received, expected)
+    diagnostic.step('http-fields')
+    assert.deepEqual(received, expected)
+    await zeroOwners(true)
+    diagnostic.step('complete')
   }
   const prepared = async (view: ViewHandle, name: string): Promise<FileInteractionOperation> => {
     await ready(view, name)
@@ -346,6 +369,7 @@ export default async function programmaticFiles(backend: CefBackend): Promise<vo
       if (final[key] !== 0) failure ??= `final-${key}:Error`
     if (abort.signal.aborted || performance.now() - started >= 45_000)
       failure ??= 'workload-deadline:Error'
+    if (failure) console.error(JSON.stringify(diagnostic.failure(failure)))
     console.error(
       JSON.stringify({
         event: 'bunly.native.programmatic-files',

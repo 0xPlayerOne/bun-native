@@ -167,6 +167,16 @@ rollback or a sixth successful upload. All native callbacks, private controllers
 object groups, chunk buffers, deadlines and shared local reservations must return
 to zero before final teardown.
 
+On failure, a separate `bunly.native.programmatic-files-diagnostic` receipt records
+the last attempted upload's fixed case and substep. It contains finite terminal
+status fields, equality booleans for the HTTP receipt, and bounded native/local
+owner counters captured immediately before the existing assertions. A missing
+snapshot is `null`, not evidence of zero owners. The receipt contains no file
+names, MIME values, hashes, cookies, targets or arbitrary error text. It adds no
+queries, polling or grace period; the original success receipt and acceptance
+conditions remain unchanged. Reports retain this failure event independently of
+the bounded stderr tail, and exported failures remain failures.
+
 The other three process profiles require exit 78 before the application fixture
 starts. Reports retain source hashes, immutable input and prepared inventories,
 actual CEF identity, bounded receipts and process cleanup. A portable receipt
