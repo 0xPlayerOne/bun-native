@@ -9,6 +9,40 @@ pub const OVERHEAD: usize = 256 * 1024;
 pub const WORLD: &str = "bunly.programmatic-files";
 pub const MAX_CALLBACK: usize = 16 * 1024;
 
+/// Runtime events cover multiple frames. A context in another frame, even with
+/// our world name, cannot supply or replace the captured main-frame identity.
+pub fn created_context<'a>(
+    value: &'a Value,
+    main_frame: &str,
+) -> Result<Option<(i64, &'a str)>, &'static str> {
+    let Some(context) = value.get("context") else {
+        return Ok(None);
+    };
+    if context.get("name").and_then(Value::as_str) != Some(WORLD) {
+        return Ok(None);
+    }
+    let frame = context
+        .get("auxData")
+        .and_then(|data| data.get("frameId"))
+        .and_then(Value::as_str)
+        .filter(|frame| !frame.is_empty())
+        .ok_or("adapter-error")?;
+    if frame != main_frame {
+        return Ok(None);
+    }
+    let id = context
+        .get("id")
+        .and_then(Value::as_i64)
+        .filter(|id| *id > 0)
+        .ok_or("adapter-error")?;
+    let unique = context
+        .get("uniqueId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty() && id.len() <= 256)
+        .ok_or("unsupported-capability")?;
+    Ok(Some((id, unique)))
+}
+
 /// An operation incarnation owns every callback and private object until both
 /// cleanup acknowledgements, or its exact browser's real close callback. Merely
 /// allowing the close path to proceed never retires this owner.
@@ -359,6 +393,66 @@ const PREPARE: &str = r#"function(meta) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn file_context_ignores_named_child_frames_before_and_after_main_binding() {
+        let main = json!({"context":{
+            "name":WORLD,"id":1,"uniqueId":"main-context",
+            "auxData":{"frameId":"main-frame"}
+        }});
+        let child = json!({"context":{
+            "name":WORLD,"id":2,"uniqueId":"child-context",
+            "auxData":{"frameId":"child-frame"}
+        }});
+        assert_eq!(created_context(&child, "main-frame"), Ok(None));
+        assert_eq!(
+            created_context(&main, "main-frame"),
+            Ok(Some((1, "main-context")))
+        );
+        assert_eq!(created_context(&child, "main-frame"), Ok(None));
+        let browser_world = json!({"context":{
+            "name":"bunly.browser-actions","id":1,"uniqueId":"browser-context",
+            "auxData":{"frameId":"main-frame"}
+        }});
+        assert_eq!(created_context(&browser_world, "main-frame"), Ok(None));
+    }
+    #[test]
+    fn file_context_requires_positive_and_bounded_main_identity() {
+        let main = json!({"context":{
+            "name":WORLD,"id":1,"uniqueId":"main-context",
+            "auxData":{"frameId":"main-frame"}
+        }});
+        for id in [json!(null), json!(0), json!(-1), json!(1.5), json!("1")] {
+            let mut malformed = main.clone();
+            malformed["context"]["id"] = id;
+            assert_eq!(
+                created_context(&malformed, "main-frame"),
+                Err("adapter-error")
+            );
+        }
+        for unique in [json!(null), json!(""), json!("x".repeat(257)), json!(1)] {
+            let mut malformed = main.clone();
+            malformed["context"]["uniqueId"] = unique;
+            assert_eq!(
+                created_context(&malformed, "main-frame"),
+                Err("unsupported-capability")
+            );
+        }
+    }
+    #[test]
+    fn file_context_cannot_ignore_a_missing_frame_identity() {
+        for frame in [json!(null), json!(""), json!(1)] {
+            let value = json!({"context":{
+                "name":WORLD,"id":1,"uniqueId":"main-context",
+                "auxData":{"frameId":frame}
+            }});
+            assert_eq!(created_context(&value, "main-frame"), Err("adapter-error"));
+        }
+        let foreign = json!({"context":{
+            "name":WORLD,"auxData":{"frameId":"child-frame"}
+        }});
+        assert_eq!(created_context(&foreign, "main-frame"), Ok(None));
+    }
 
     #[test]
     fn detached_owner_allows_real_close_but_cannot_release_from_late_cleanup_or_old_incarnation() {

@@ -114,6 +114,10 @@ context in an isolated world. It retains the native browser, exact document
 scope, observer registration, outstanding callback, private controller and
 deadline worker. No controller is installed as a global binding. Fixed private
 methods cannot execute a caller-supplied expression or read a disk path.
+Runtime context notifications must match both the file world name and the
+captured main frame before binding. Known child-frame contexts are ignored;
+missing frame identities and replacement of the bound main context still fail.
+The file-only build applies this rule without enabling browser actions.
 
 After the final result, the private controller is cleared, its object group is
 released, and `Runtime.disable` is acknowledged before the observer is removed
