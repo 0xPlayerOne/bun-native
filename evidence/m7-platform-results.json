@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "workflowRun": 40630976372,
+  "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40630976372",
+  "pr": 135,
+  "prHead": "83b82351769048a95087bb489efba2eacffd0989",
+  "testedMerge": "e200edde926b6bd0909f162ff581dddc79249aeb",
+  "overallPassed": false,
+  "targetResults": {
+    "linux-x64": "passed",
+    "darwin-arm64": "failed",
+    "win32-x64": "passed"
+  },
+  "failedStage": "terminal-load",
+  "failedMode": "minimized",
+  "failure": "The minimized workload reported CONNECTION_REVOKED; the cause remains unproven.",
+  "relatedIssue": "https://github.com/0xPlayerOne/bunly/issues/129",
+  "workflowJob": 122627016745,
+  "report": {
+    "profile": "graphical-pty-window-load-v3",
+    "passed": false,
+    "exportedReportBytes": 16901368,
+    "exportedReportSha256": "266e1b28b6f85c2b4d9005301692df95c94f54d53ab9ee2e04780b0ee3eec71c",
+    "modeResults": {
+      "foreground": "passed",
+      "minimized": "failed",
+      "hidden": "passed",
+      "background": "passed"
+    }
+  },
+  "retention": "Full diagnostics remain in the original workflow artifacts and local retention. This record contains only source and workflow identifiers, fixed outcome labels, and the report checksum.",
+  "limits": [
+    "No runtime correction is claimed by this documentation change.",
+    "A later passing trial does not erase this failure or resolve issue #129.",
+    "No hardware input, IME, accessibility, DPI, performance or release qualification."
+  ]
+}
