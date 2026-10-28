@@ -10,12 +10,25 @@ import {
 } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { ApplicationLifecycle } from './application-lifecycle.ts'
+import { CefDownloads } from './cef-downloads.ts'
+import {
+  CefBrowserActions,
+  validateBrowserAction,
+  type NativeBrowserAction,
+} from './cef-browser-actions.ts'
+import type {
+  BrowserActionsBackend,
+  BrowserScreenshot,
+  ScreenshotOptions,
+  BrowserObservation,
+} from '../../contracts/src/browser-actions.ts'
 import {
   parseCefWindowBounds,
   parseCefWindowState,
   type CefWindowState,
 } from './cef-window-state.ts'
 export type { CefWindowState } from './cef-window-state.ts'
+import { parseCefViewFocusState, type CefViewFocusState } from './cef-view-focus-state.ts'
 import { RpcServer } from './rpc.ts'
 import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
 import { RpcLoopbackServer } from './rpc-loopback.ts'
@@ -49,6 +62,7 @@ import {
   validateBounds,
   normalizeViewPresentation,
   parseViewPresentationState,
+  normalizeDownloadRequest,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
@@ -86,6 +100,9 @@ import type {
   CookieQuery,
   DownloadRequest,
   DownloadResult,
+  DownloadManagementBackend,
+  DownloadOperation,
+  ScopedDownloadRequest,
   Handle,
   ResourceKind,
 } from '../../contracts/src/index.ts'
@@ -191,6 +208,14 @@ export type NativeCapabilityGrant =
   | {
       readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
     }
+  | {
+      readonly name:
+        | 'browser-snapshot'
+        | 'browser-observe-dom'
+        | 'browser-observe-accessibility'
+        | 'browser-input'
+    }
+  | { readonly name: 'browser-evaluate'; readonly expression: string }
   | { readonly name: 'external-url'; readonly origins: readonly string[] }
 
 export type NativeOperationRequest =
@@ -203,6 +228,14 @@ export type NativeOperationRequest =
   | {
       readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
     }
+  | {
+      readonly name:
+        | 'browser-snapshot'
+        | 'browser-observe-dom'
+        | 'browser-observe-accessibility'
+        | 'browser-input'
+    }
+  | { readonly name: 'browser-evaluate'; readonly expression: string }
   | { readonly name: 'external-url'; readonly url: string }
 
 export type BrowserPermissionCapability =
@@ -354,7 +387,13 @@ function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDe
 }
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
 export class CefBackend
-  implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend, ViewCompositionBackend
+  implements
+    BrowserBackend,
+    ClipboardBackend,
+    ApplicationLifecycleBackend,
+    ViewCompositionBackend,
+    DownloadManagementBackend,
+    BrowserActionsBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -362,6 +401,8 @@ export class CefBackend
   }
   readonly #transport: NativeTransport
   readonly #application = new ApplicationLifecycle()
+  readonly #browserActions: CefBrowserActions
+  readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
   readonly #native = new Map<number, Handle<ResourceKind>>()
@@ -424,6 +465,10 @@ export class CefBackend
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
+    this.#browserActions = new CefBrowserActions(transport)
+    this.#downloads = new CefDownloads(transport, () => {
+      this.#listenerErrors++
+    })
     this.#descriptor = descriptor(transport.desktopCapabilities)
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
     void transport.ready.then(
@@ -443,6 +488,8 @@ export class CefBackend
     })
     this.closed = transport.closed.then(async () => {
       this.#disposed = true
+      this.#downloads.close(transport.failure ?? new NativeShutdownError())
+      this.#browserActions.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -925,10 +972,31 @@ export class CefBackend
   ): Promise<void> {
     this.#active()
     const captured = this.#capturedPolicyScope(scope)
+    let prepared = capability
+    if (capability.name.startsWith('browser-')) {
+      const expected = capability.name === 'browser-evaluate' ? ['name', 'expression'] : ['name']
+      if (
+        Object.keys(capability).length !== expected.length ||
+        expected.some((key) => !Object.hasOwn(capability, key))
+      )
+        throw new BunlyError('INVALID_ARGUMENT', 'Unexpected browser grant fields')
+      if (capability.name === 'browser-evaluate') {
+        const expression = capability.expression
+        validateBrowserAction({ kind: 'evaluate', expression })
+        prepared = { name: 'browser-evaluate', expression }
+      } else if (
+        capability.name === 'browser-snapshot' ||
+        capability.name === 'browser-observe-dom' ||
+        capability.name === 'browser-observe-accessibility' ||
+        capability.name === 'browser-input'
+      )
+        prepared = { name: capability.name }
+      else throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Unknown browser grant')
+    }
     await this.#transport.call('policy.native.grant', {
       id: captured.resource.native,
       scope: captured.nativeScope,
-      capability: structuredClone(capability),
+      capability: structuredClone(prepared),
     })
   }
   /**
@@ -1154,6 +1222,21 @@ export class CefBackend
     signal?.addEventListener('abort', dispose, { once: true })
     return dispose
   }
+  /** @internal Read-only native eligibility, not a focus reservation or a renderer API. */
+  async nativeViewFocusState(
+    view: ViewHandle,
+    options?: OperationOptions
+  ): Promise<CefViewFocusState> {
+    const resource = this.#liveView(view)
+    if (resource.composition) requireCapability(this.descriptor, 'view.composition')
+    const value = await this.#transport.call(
+      'view.focus.state',
+      { id: resource.native },
+      options?.signal
+    )
+    this.#liveView(view)
+    return parseCefViewFocusState(value)
+  }
   async focusView(view: ViewHandle, options?: OperationOptions): Promise<void> {
     const resource = this.#liveView(view)
     if (resource.composition) requireCapability(this.descriptor, 'view.composition')
@@ -1285,18 +1368,72 @@ export class CefBackend
       }
     })
   }
-  async snapshot(_view: ViewHandle, _options?: OperationOptions): Promise<Uint8Array> {
-    return unsupported('view.snapshot')
+  async #browserAction(
+    view: ViewHandle,
+    action: NativeBrowserAction,
+    options?: OperationOptions
+  ): Promise<unknown> {
+    const resource = this.#liveView(view)
+    const capability = {
+      screenshot: 'view.snapshot',
+      evaluate: 'view.evaluate',
+      input: 'view.input.synthetic',
+      dom: 'view.observe-dom',
+      accessibility: 'view.observe-accessibility',
+    } as const
+    requireCapability(this.descriptor, capability[action.kind])
+    let token: PolicyScope | undefined
+    return this.#browserActions.run(
+      resource.native,
+      async () => {
+        token = await this.capturePolicyScope(view)
+        return { ...this.#capturedPolicyScope(token).nativeScope }
+      },
+      action,
+      () => {
+        this.#active()
+        if (this.#liveView(view) !== resource)
+          throw new BunlyError('DISPOSED', 'Browser target changed')
+        if (token) this.#capturedPolicyScope(token)
+      },
+      options?.signal
+    )
+  }
+  async captureScreenshot(
+    view: ViewHandle,
+    options?: ScreenshotOptions
+  ): Promise<BrowserScreenshot> {
+    return (await this.#browserAction(
+      view,
+      { kind: 'screenshot', width: options?.maxWidth ?? 1024, height: options?.maxHeight ?? 768 },
+      options
+    )) as BrowserScreenshot
+  }
+  async snapshot(view: ViewHandle, options?: OperationOptions): Promise<Uint8Array> {
+    return (await this.captureScreenshot(view, options)).data
+  }
+  async observeDom(view: ViewHandle, options?: OperationOptions): Promise<BrowserObservation> {
+    return (await this.#browserAction(view, { kind: 'dom' }, options)) as BrowserObservation
+  }
+  async accessibilityTree(
+    view: ViewHandle,
+    options?: OperationOptions
+  ): Promise<BrowserObservation> {
+    return (await this.#browserAction(
+      view,
+      { kind: 'accessibility' },
+      options
+    )) as BrowserObservation
   }
   async evaluate(
-    _view: ViewHandle,
-    _script: string,
-    _options?: OperationOptions
+    view: ViewHandle,
+    expression: string,
+    options?: OperationOptions
   ): Promise<unknown> {
-    return unsupported('view.evaluate')
+    return this.#browserAction(view, { kind: 'evaluate', expression }, options)
   }
-  async input(_view: ViewHandle, _action: InputAction, _options?: OperationOptions): Promise<void> {
-    return unsupported('view.input')
+  async input(view: ViewHandle, action: InputAction, options?: OperationOptions): Promise<void> {
+    await this.#browserAction(view, { kind: 'input', action }, options)
   }
   #session(session: SessionHandle): SessionResource {
     this.#active()
@@ -1395,11 +1532,44 @@ export class CefBackend
     return unsupported('permission.request')
   }
   async download(
-    _view: ViewHandle,
-    _request: DownloadRequest,
-    _options?: OperationOptions
+    view: ViewHandle,
+    request: DownloadRequest,
+    options?: OperationOptions
   ): Promise<DownloadResult> {
-    return unsupported('download.manage')
+    requireCapability(this.descriptor, 'download.manage')
+    if (!request?.destination)
+      throw new BunlyError('INVALID_ARGUMENT', 'Downloads require an explicit scoped destination')
+    const operation = await this.startDownload(
+      view,
+      { url: request.url, destination: request.destination },
+      options
+    )
+    const result = await operation.completed
+    if (result.status === 'failed') throw new Error(`Native download failed: ${result.failure}`)
+    return Object.freeze({ status: result.status, bytesWritten: result.bytesWritten })
+  }
+  async startDownload(
+    view: ViewHandle,
+    request: ScopedDownloadRequest,
+    options?: OperationOptions
+  ): Promise<DownloadOperation> {
+    this.#liveView(view)
+    requireCapability(this.descriptor, 'download.manage')
+    const normalized = normalizeDownloadRequest(request)
+    if (options?.signal?.aborted)
+      throw options.signal.reason ?? new DOMException('Aborted', 'AbortError')
+    const token = await this.capturePolicyScope(view)
+    const captured = this.#capturedPolicyScope(token)
+    return this.#downloads.start(
+      captured.resource.native,
+      { ...captured.nativeScope },
+      normalized,
+      () => {
+        this.#active()
+        this.#capturedPolicyScope(token)
+      },
+      options?.signal
+    )
   }
   async extension(
     _view: ViewHandle,
@@ -1433,7 +1603,8 @@ export class CefBackend
         this.#observers.size +
         this.#windowSubscriptionCount +
         application.listeners +
-        application.readyWaiters,
+        application.readyWaiters +
+        this.#downloads.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
@@ -1703,6 +1874,8 @@ export class CefBackend
       this.#disposed = true
       this.#application.quitting(event.data['reason'])
     }
+    this.#downloads.event(event)
+    this.#browserActions.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined

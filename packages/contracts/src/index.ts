@@ -6,6 +6,8 @@ export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
 export * from './network-policy.ts'
 export * from './view-composition.ts'
+export * from './downloads.ts'
+import type { DownloadDestination } from './downloads.ts'
 import type { ViewLayoutMode, ViewLayer, ViewPresentationOptions } from './view-composition.ts'
 export type {
   PersistentSessionResetOptions,
@@ -128,6 +130,8 @@ export interface SessionClearResult {
 export interface DownloadRequest {
   readonly url: string
   readonly suggestedName?: string
+  /** Native adapters require an explicit scoped destination; suggestedName never authorizes a path. */
+  readonly destination?: DownloadDestination
 }
 export interface DownloadResult {
   readonly status: 'completed' | 'cancelled'
@@ -319,3 +323,4 @@ export {
   writeStreamPacket,
 } from './stream-wire.ts'
 export type { StreamErrorCode } from './stream-wire.ts'
+export * from './browser-actions.ts'

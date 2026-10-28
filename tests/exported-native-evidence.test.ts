@@ -90,6 +90,39 @@ test('Python export replays exact native receipts without inventing live correla
   expect(await exported(report)).toEqual(report)
   expect(original.observationId).toBe('a'.repeat(48))
 })
+test('public export preserves download timeout evidence and its failed outcome', async () => {
+  const receipt = JSON.stringify({
+    event: 'bunly.host.download-timeout',
+    schema: 1,
+    before: true,
+    callbackOwned: true,
+    callbackCount: 5,
+    callbackCountSaturated: false,
+    quarantineObservedLaunches: 1,
+    lastCallback: {
+      phase: 'updated',
+      valid: true,
+      inProgress: true,
+      paused: false,
+      complete: false,
+      cancelled: false,
+      interrupted: false,
+      interruptReason: 'none',
+      bytesReceived: 32768,
+      totalBytes: 32768,
+      percentComplete: 100,
+      pathState: 'owned-stage',
+    },
+  })
+  const report = await exported({
+    passed: false,
+    observation: { ...observation(), exitCode: 1, nativeDiagnostics: [receipt] },
+  })
+  const result = validateCommandObservation(decodeExportedNativeReport(report)['observation'])
+  expect(result.nativeDiagnostics).toEqual([receipt])
+  expect(report['passed']).toBe(false)
+  expect(() => assertCleanCommand(result)).toThrow()
+})
 test('exported failures remain failures and corrupt receipts do not become successful', async () => {
   for (const change of [
     { exitCode: 2 },

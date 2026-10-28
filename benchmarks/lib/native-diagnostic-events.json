@@ -2,6 +2,9 @@
   "bunly.backend.exit",
   "bunly.host.error",
   "bunly.host.failure",
+  "bunly.host.download-denied",
+  "bunly.host.download-shutdown",
+  "bunly.host.download-timeout",
   "bunly.host.shutdown",
   "bunly.host.shutdown-phase",
   "bunly.host.shutdown-audit",
@@ -22,9 +25,12 @@
   "bunly.native.window-modes",
   "bunly.native.desktop-controls",
   "bunly.native.view-composition",
+  "bunly.native.view-parent-close",
   "bunly.native.desktop-services",
+  "bunly.native.file-downloads",
   "bunly.native.last-window",
   "bunly.native.cycle",
+  "bunly.native.focus",
   "bunly.native.renderer-failure-observed",
   "bunly.native.gpu-injection-acknowledged",
   "bunly.native.gpu-recovered",
@@ -38,5 +44,6 @@
   "bunly.network.https-observation",
   "bunly.fault.blocked",
   "bunly.fault.tree-observed",
-  "bunly.native.renderer-injected"
+  "bunly.native.renderer-injected",
+  "bunly.native.browser-actions"
 ]

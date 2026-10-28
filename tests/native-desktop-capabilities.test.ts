@@ -18,6 +18,7 @@ test('native desktop capabilities and ready metadata are bounded immutable disco
       'clipboard.text',
       'app.lifecycle',
       'view.composition',
+      'download.manage',
     ])
     assert.equal(metadata.version, 1)
     assert.deepEqual(metadata.capabilities, peer.transport.desktopCapabilities)

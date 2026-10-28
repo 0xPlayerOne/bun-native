@@ -163,7 +163,10 @@ mod tests {
                 "view.dispose",
                 "window.close",
                 "session.dispose",
-                "credentials.discard"
+                "credentials.discard",
+                "download.cancel",
+                "browser.action.cancel",
+                "browser.action.release"
             ]
         );
     }

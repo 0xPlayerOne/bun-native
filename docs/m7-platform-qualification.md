@@ -36,11 +36,11 @@ input method, and assistive-technology configuration that is claimed supported.
 Hosted virtual machines are useful native functional targets; they do not stand
 in for these equipment records.
 
-| Target      | Minimum equipment/configurations to record                                                                                                                                      | Current hardware status                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| macOS ARM64 | Built-in Retina display; second display with a different scale; exact keyboard layout and IME; exact VoiceOver/macOS version.                                                   | Not qualified.                                                      |
-| Windows x64 | Two displays at distinct configured scales; exact GPU/driver and Windows build; exact keyboard layout and IME; exact Narrator version and any additional claimed screen reader. | Not qualified.                                                      |
-| Linux x64   | Exact distribution, X11 server, window manager, compositor and GPU/driver; display scale/topology; input-method framework and engine; exact Orca/AT-SPI configuration.          | Not qualified. Wayland is not inferred from the current X11 target. |
+| Target      | Minimum equipment/configurations to record                                                                                                                                      | Current hardware status                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| macOS ARM64 | Built-in Retina display; second display with a different scale; exact keyboard layout and IME; exact VoiceOver/macOS version.                                                   | Not run; not qualified.                                                      |
+| Windows x64 | Two displays at distinct configured scales; exact GPU/driver and Windows build; exact keyboard layout and IME; exact Narrator version and any additional claimed screen reader. | Not run; not qualified.                                                      |
+| Linux x64   | Exact distribution, X11 server, window manager, compositor and GPU/driver; display scale/topology; input-method framework and engine; exact Orca/AT-SPI configuration.          | Not run; not qualified. Wayland is not inferred from the current X11 target. |
 
 Each record must include:
 
@@ -56,11 +56,71 @@ Each record must include:
   evidence. Use controlled fixture content; do not retain personal clipboard,
   document, credential, or browsing data.
 
-An interactive application is required for the operator cases. The fixed native
-acceptance fixtures terminate automatically and are not interactive hardware
-test applications. The current mock workbench is also not a native test target.
-An operator record without an identified real native interactive target remains
-incomplete; adding that maintained interactive target is explicit #38 follow-up.
+## Maintained interactive target
+
+Use the [native hardware workbench](hardware-workbench.md) at
+`examples/hardware-workbench` for the available operator steps. It provides
+application controls, two independently owned numeric-loopback preview panes,
+and a native application overlay, each with a separate ephemeral session. It
+includes editable multilingual text, selection, scrolling, bounded output and
+window/input observations, and stays open until explicitly closed. The fixed
+native acceptance fixtures terminate automatically; the web-only comparison
+workbench uses a different rendering path. Neither substitutes for this target.
+
+Prepare an existing native app from a clean committed checkout. Replace `COMMIT`
+with the full 40-character source commit that built the selected native app;
+its `native/cef-host` tree must match the current checkout and the object must
+already exist locally. macOS takes a `.app` directory; Linux and Windows take
+the packaged `bunly_host` or `bunly_host.exe` path. The
+[preparation guide](hardware-workbench.md#prepare-an-explicit-prebuilt) describes
+the fixed standard profile, inventories, platform requirements and local macOS
+ad-hoc signing of the private copy.
+
+```sh
+bun run workbench:native prepare /absolute/path/to/prebuilt-app --native-source=COMMIT
+bun run workbench:native run /absolute/path/to/preparation.json
+```
+
+Both commands finish without a GUI launch. Preparation bundles application
+assets only; it never compiles or fetches native code. The second command
+verifies the prepared source/artifact identities. Launch requires a separate
+explicit command:
+
+```sh
+bun run workbench:native run /absolute/path/to/preparation.json --launch
+```
+
+Copy the generated `operator-record.template.json` to a new attempt record,
+fill the equipment fields above, and follow the
+[equipment and evidence flow](hardware-workbench.md#equipment-and-evidence-record-flow).
+Retain the preparation record, actual launch command, session records and
+independent evidence for each case. Preparation leaves packaged Bun/CEF versions
+declared rather than observed; attach actual packaged-runtime observations and
+exported identity from the exact native evidence. No preparation, launch,
+root-process exit, UI action or protocol test changes a manual case to passed.
+
+### Initial case coverage
+
+The workbench's `hardwareCases` definitions and operator template use the same
+twelve case IDs as the protocol below. **All physical hardware and
+assistive-technology qualification remains not run.** Unsupported operations
+describe this workbench profile, even when another adapter or qualifier supplies
+a separate implementation. Available partial steps cannot pass the entire case.
+
+| Case | Initial workbench result | Available steps and remaining limits                                                                                                                                        |
+| ---- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| K1   | Not run                  | Physical traversal and pane eligibility/closure controls are available. API-directed focus does not prove keyboard routing.                                                 |
+| K2   | Not run                  | Pointer/clipping/resize and native overlay controls are available. The overlay is rectangular and nonmodal; transparent composition and click-through are unsupported.      |
+| I1   | Not run                  | Text/composition observations and focus/resize/minimize transitions are available. Actual IME behavior requires equipment; backend replacement is not driven here.          |
+| T1   | Not run                  | Controlled selection is available. Clipboard reads/writes, grants and permission tests are unsupported here; selection alone cannot pass T1.                                |
+| D1   | Not run                  | Move/resize/maximize/fullscreen/restore on actual equipment. Physical scale/topology/reconnect behavior is untested; native menus/dialogs are absent.                       |
+| A1   | Not run                  | Labeled controls, previews and a nonmodal overlay are available. Actual screen-reader observations remain untested; native menus/dialogs are absent.                        |
+| L1   | Not run                  | Window/page observations and bounded timer output are available. This is not terminal-load acceptance and does not resolve #129.                                            |
+| L2   | Not run                  | The app stays open for deliberate operator suspend/resume. No automated suspension or recovery result is supplied.                                                          |
+| F1   | Unsupported              | Fault injection belongs to the separate maintained native qualifier. Hardware GPU transitions and input/accessibility recovery still need their own observations.           |
+| E1   | Unsupported              | No deep-link registration, OS dispatch or app-reopen adapter is included in this workbench.                                                                                 |
+| M1   | Unsupported              | No native menu, shortcut, status item, OS dialog/file picker, or backend replacement during native UI is included here.                                                     |
+| C1   | Not run                  | Individual preview disposal/reopen and final-window close are available. Native/process/helper cleanup proof remains separately required; root-process exit cannot pass C1. |
 
 ## Operator cases and failure criteria
 
@@ -89,6 +149,13 @@ For each case use one of **passed**, **failed**, **not run**, or **unsupported**
 Attach a reason to every result other than passed. Keep original failed attempts
 and their source identities when a correction is retested. Never substitute a
 later successful attempt for the earlier failure record.
+
+Keep partial steps under their original case ID with their own observations and
+unsupported reasons. In particular, successful selection cannot replace T1's
+clipboard criteria, and the workbench's initial F1/E1/M1 unsupported results
+cannot be promoted using a different fixture without identifying its exact
+source, capabilities and evidence. A later adapter merge does not silently
+expand this workbench profile or qualify a physical test.
 
 ## Automated evidence and admission
 

@@ -24,6 +24,16 @@ M3 allows packaged `app://ui` resources and `about:blank`. An exact `http://127.
 
 The public fixture checks JavaScript modules, Unicode assets, conditional and range responses, missing/private paths, iframe behavior, and absence of Bun/Node globals. Native fixtures additionally cover resize/focus API calls, multiple child views, queued navigation, closing owners, repeated disposal, handler detachment, and twenty create/close cycles. API invocation is not a claim of manual keyboard, physical DPI, accessibility or hardware-GPU conformance.
 
+Before explicit focus, the smoke fixture observes the native focus predicate through
+an internal, read-only private-pipe snapshot. Sibling/session closure, window show
+and cycle creation have fixed diagnostic phase names. The existing page deadline
+bounds the wait; a paced read loop requires actual visible, drawn, enabled,
+focusable and nonempty native state before one focus request. The snapshot is
+available in ordinary prebuilt hosts and adds no renderer operation. It is not a
+focus reservation: the production guard checks again, and any focus rejection
+still fails the fixture without a retry. No deadline or teardown acceptance is
+relaxed by this readiness barrier.
+
 ## Full-runtime acquisition
 
 The schema-2 `cef-runtime` manifest is separate from the M1 64 MiB probe format. It pins Bun, CEF, Chromium, native ABI, cef-rs commit, target and toolchain, plus every file digest/mode, directory and relative symlink. Ed25519 authentication is checked against caller-supplied trust roots before transport. The resolver accepts explicitly allowed HTTPS origins with bounded redirects and exact compressed/expanded lengths.
