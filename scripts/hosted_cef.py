@@ -44,7 +44,8 @@ def write(name, value):
 
 def artifact():
     bundle = (ROOT / ".bunly/cef-bundle").resolve(strict=True)
-    path = Path(json.loads((bundle / "bundle.json").read_text())["path"]).resolve(strict=True)
+    manifest = json.loads((bundle / "bundle.json").read_text(encoding="utf-8"))
+    path = Path(manifest["path"]).resolve(strict=True)
     if not path.is_relative_to(bundle):
         raise ValueError("Assembled artifact escapes the private bundle")
     return path
@@ -92,9 +93,11 @@ def standard_user():
     return os.geteuid() != 0
 
 
-def commands(suite, bun, app):
+def commands(suite, bun, app, native_source=None):
     if suite not in SUITES:
         raise ValueError("Unknown qualification suite")
+    if native_source is not None and not re.fullmatch(r"[a-f0-9]{40}", native_source):
+        raise ValueError("Native source must be an immutable commit")
     if suite == "credentials":
         return [("credentials", [bun, str(ROOT / "scripts/qualify-cef-credentials.ts"), str(app)])]
     # The RPC suite wraps the same prebuilt matrix and additionally rejects
@@ -184,6 +187,12 @@ def commands(suite, bun, app):
             ]
         )
         result.append(("terminal-load", load))
+        # Listing a plan does not declare build provenance. run() supplies the
+        # verified checkout commit; the qualifier rejects an absent declaration.
+        managed = [bun, str(ROOT / "scripts/qualify-managed-development.ts"), str(app)]
+        if native_source is not None:
+            managed.append("--native-source=" + native_source)
+        result.append(("managed-development", managed))
     if suite in ("m4-acceptance", "full"):
         result.extend(commands("credentials", bun, app))
     return result
@@ -241,6 +250,8 @@ def report_directory(name):
         return ROOT / ".bunly/m5/window-modes"
     if name == "terminal-load":
         return ROOT / ".bunly/m5/terminal-load"
+    if name == "managed-development":
+        return ROOT / ".bunly/m6/managed-development"
     return ROOT / ".bunly/m3" / name
 
 
@@ -322,7 +333,9 @@ def run(suite):
                     str(EVIDENCE / "terminal-owner.json"),
                 ],
             )
-            owner_report = json.loads((EVIDENCE / "terminal-owner.json").read_text())
+            owner_report = json.loads(
+                (EVIDENCE / "terminal-owner.json").read_text(encoding="utf-8")
+            )
             result["terminalOwnership"] = {
                 "passed": code == 0 and owner_report.get("passed") is True
             }
@@ -343,10 +356,10 @@ def run(suite):
         )
         if code:
             raise ValueError("Actual native browser identity probe failed")
-        identity = json.loads((EVIDENCE / "identity.log").read_text().strip())
+        identity = json.loads((EVIDENCE / "identity.log").read_text(encoding="utf-8").strip())
         reports["identity"] = identity
         write("identity.json", identity)
-        for name, args in commands(suite, bun, app):
+        for name, args in commands(suite, bun, app, native_source=source):
             require_stage_prerequisites(suite, name, result["steps"])
             if name == "credentials":
                 prepare_credential_prerequisites()
@@ -399,17 +412,21 @@ def collect():
         ROOT / ".bunly/m5/graphical-terminals",
         ROOT / ".bunly/m5/window-modes",
         ROOT / ".bunly/m5/terminal-load",
+        ROOT / ".bunly/m6/managed-development",
     ):
         for path in directory.glob("run-*/report.json"):
             if not path.is_symlink() and path.stat().st_size <= 128 * 1024**2:
                 write(
-                    directory.name + "-" + path.parent.name + ".json", json.loads(path.read_text())
+                    directory.name + "-" + path.parent.name + ".json",
+                    json.loads(path.read_text(encoding="utf-8")),
                 )
     # Private test nonces are not production secrets, but do not publish them.
     for path in EVIDENCE.iterdir():
         if path.suffix not in (".json", ".log") or path.is_symlink() or not path.is_file():
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
+        # These are UTF-8 diagnostic files. Undecodable bytes must not be silently
+        # replaced and published as if they were the original recorded evidence.
+        text = path.read_text(encoding="utf-8")
         if path.suffix == ".json":
             text = json.dumps(sanitize_report(json.loads(text)), indent=2) + "\n"
         else:
@@ -420,7 +437,7 @@ def collect():
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
             output.write("## Native qualification\n\n")
             output.write(
-                "```json\n" + summary.read_text() + "```\n"
+                "```json\n" + summary.read_text(encoding="utf-8") + "```\n"
                 if summary.exists()
                 else "No native result was produced. Check setup/build logs; portable-only runs do not claim native acceptance.\n"
             )

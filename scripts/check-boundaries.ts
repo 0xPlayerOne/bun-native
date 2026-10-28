@@ -50,6 +50,33 @@ export function inspectSource(filename: string, source: string, root: string): s
       errors.push(`${file}: non-literal module load cannot be boundary-checked`)
     else inspect(source)
   }
+  let applicationEntryLoads = 0
+  function trustedApplicationEntry(node: Record<string, unknown>): boolean {
+    // This private isolate entry intentionally loads a trusted application's absolute path.
+    // Keep the exception specific to this one expression; package imports still use the
+    // ordinary checks, and browser packages never receive a dynamic-import exception.
+    if (file !== 'packages/runtime/src/service-reload-runner.ts' || node['options'] != null)
+      return false
+    const member = object(node['source'])
+    const call = object(member?.['object'])
+    const callee = object(call?.['callee'])
+    const property = object(member?.['property'])
+    const args = call?.['arguments']
+    const argument = Array.isArray(args) && args.length === 1 ? object(args[0]) : undefined
+    return (
+      member?.['type'] === 'MemberExpression' &&
+      member['computed'] === false &&
+      member['optional'] === false &&
+      call?.['type'] === 'CallExpression' &&
+      call['optional'] === false &&
+      callee?.['type'] === 'Identifier' &&
+      callee['name'] === 'pathToFileURL' &&
+      argument?.['type'] === 'Identifier' &&
+      argument['name'] === 'entry' &&
+      property?.['type'] === 'Identifier' &&
+      property['name'] === 'href'
+    )
+  }
   function walk(value: unknown): void {
     if (Array.isArray(value)) {
       for (const child of value) walk(child)
@@ -65,7 +92,12 @@ export function inspectSource(filename: string, source: string, root: string): s
       node['source']
     )
       moduleSource(node['source'])
-    if (type === 'ImportExpression') moduleSource(node['source'])
+    if (type === 'ImportExpression') {
+      if (trustedApplicationEntry(node)) {
+        if (++applicationEntryLoads > 1)
+          errors.push(`${file}: only one trusted application entry load is permitted`)
+      } else moduleSource(node['source'])
+    }
     if (type === 'TSImportType') moduleSource(node['source'] ?? node['argument'])
     if (type === 'TSExternalModuleReference') moduleSource(node['expression'])
     const callee = object(node['callee'])

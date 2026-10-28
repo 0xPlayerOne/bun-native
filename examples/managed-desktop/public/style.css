@@ -1,0 +1,27 @@
+:root {
+  color-scheme: dark;
+  font:
+    16px system-ui,
+    sans-serif;
+  background: #121923;
+  color: #e5edf8;
+}
+body {
+  margin: 0;
+}
+main {
+  padding: 24px;
+}
+h1 {
+  font-size: 24px;
+}
+input {
+  width: 320px;
+  padding: 8px;
+  margin: 0 0 20px 12px;
+}
+#terminal {
+  min-height: 400px;
+  padding: 12px;
+  background: #0d1117;
+}

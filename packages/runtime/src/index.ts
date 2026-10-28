@@ -143,3 +143,27 @@ export type {
   ManagedGenerationScope,
   ManagedErrorCode,
 } from './managed-generations.ts'
+
+export { ServiceReloadHost, ServiceReloadError } from './service-reload.ts'
+export type {
+  ServiceReloadStage,
+  ServiceReloadCode,
+  ServiceReloadOptions,
+  ServiceReloadInput,
+  ServiceReloadResult,
+  ServiceReloadDiagnostic,
+  ServiceResourceAttachment,
+  ServiceResourceAttachments,
+  ServiceApplication,
+  ServiceCallContext,
+  ServiceDefinition,
+  ServiceGenerationContext,
+  ServiceHandler,
+} from './service-reload.ts'
+
+export { ManagedDesktopResources } from './managed-desktop.ts'
+export type {
+  ManagedDesktopAuthority,
+  ManagedDesktopPolicy,
+  ManagedDesktopBinding,
+} from './managed-desktop.ts'

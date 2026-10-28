@@ -71,6 +71,14 @@ status 1 remains `linux-status-1-ambiguous`, never generic clean EOF.
   document-bound stream abort must stop and release exactly its owned terminal,
   while the sibling main view completes its terminals.
 
+Both negative controls use the [maintained ordering helper](../examples/cef-terminal/negative-control.ts)
+from the actual renderer: arm the sink, request one bounded stall record, await
+actual held consumption, then publish the pending marker. Only then does the
+overload case request its burst. A transport write acknowledgment alone cannot
+establish that the sink is held. Coalesced producer callbacks can otherwise
+exceed the source reservation before the first sink invocation, closing the
+stream before the renderer can publish its marker.
+
 The strict acceptance parser rejects absent or duplicate receipts, malformed or
 partial checksums, record gaps/reordering, false control/consumer/exit/release
 claims, runtime/renderer byte divergence, wrong overload/cancellation outcomes,
@@ -117,6 +125,21 @@ immediately instead of becoming a generic missing-marker timeout. The terminal
 service's lossless pending-byte coalescing resolved this without changing the
 32-KiB source reservation, eight-chunk cap, record volume or overload criterion.
 Only unsent blocks coalesce; active and allocated slack remain charged.
+
+The Linux graphical stage in [workflow 40608284146](https://github.com/0xPlayerOne/bunly/actions/runs/40608284146)
+failed at source `f82b12cb316617a4fec5578d14ec0a69cd0d042c` while waiting for
+`BUNLY_TERMINAL_OVERLOAD_PENDING`. Its native shutdown completed in order with
+no observed orphans or survivors. The [failed export](../evidence/m6-managed-development/hosted-failures/run-40608284146-linux-terminals.json.gz)
+and its original failed outcome remain retained. The renderer had bypassed the
+already tested helper and requested the overload burst before awaiting consumer
+entry. An actual-renderer regression reproduces that failure using real xterm
+screen processing and TerminalService, with substituted native/PTY edges and
+three coalesced callbacks of 16,384, 16,384 and one byte. The wired helper makes
+the pending marker precede the burst; the source still rejects the overload and
+releases its reservations. The hosted capture does not retain callback grouping,
+so its precise scheduling is not reconstructed from this deterministic regression.
+The qualifier now fingerprints the helper alongside the renderer. Queue limits,
+deadlines and native acceptance requirements are unchanged.
 
 Schema 2 additionally verifies each fixed record's exact index and Unicode text
 in the actual terminal screen, not merely equality of two dynamically computed

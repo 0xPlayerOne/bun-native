@@ -21,6 +21,13 @@ function object(value: unknown): Record<string, unknown> {
     throw new Error('Native frame is not an object')
   return value as Record<string, unknown>
 }
+/** A pending call was cancelled by the host's explicit normal-shutdown receipt. */
+export class NativeShutdownError extends Error {
+  constructor() {
+    super('Native host shut down')
+    this.name = 'NativeShutdownError'
+  }
+}
 /** Private inherited pipes, not renderer IPC. Application code never writes protocol frames itself. */
 export class NativeTransport {
   readonly #input: Readable
@@ -195,7 +202,7 @@ export class NativeTransport {
     if (this.#closed) return
     this.#closed = true
     this.#failure = failure
-    const error = failure ?? new Error('Native host shut down')
+    const error = failure ?? new NativeShutdownError()
     this.#rejectReady(error)
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer)

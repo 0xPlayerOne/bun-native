@@ -1,0 +1,13 @@
+import { app } from 'mirinjs';
+import { comparisonConfiguration, comparisonRegister, comparisonCommands } from './host.ts';
+import { revision } from './revision.ts';
+app.on('ready', () => {
+  void (async () => {
+    const config = comparisonConfiguration();
+    await comparisonRegister(config, { revision: revision(), framework: 'mirin', version: '0.1.0-alpha.26', identities: null });
+    await app.windows.open({ title: 'Managed edit comparison', width: 1000, height: 680,
+      url: config.origin + '/#token=' + config.rendererToken });
+    await comparisonCommands(config);
+    app.quit();
+  })().catch(() => { console.error('Comparison application failed'); app.quit() });
+});

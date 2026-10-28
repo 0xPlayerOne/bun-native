@@ -20,6 +20,8 @@ async function workspace(root: string) {
     const path = join(root, 'packages', name, 'src')
     await mkdir(path, { recursive: true })
     await writeFile(join(path, name === 'cli' ? 'main.ts' : 'index.ts'), 'export const value = 1;')
+    if (name === 'runtime')
+      await writeFile(join(path, 'service-reload-runner.ts'), 'export const isolateEntry = true;')
     await writeFile(join(path, '../package.json'), '{"dependencies":{}}')
   }
   const example = join(root, 'examples/workbench')
@@ -35,10 +37,15 @@ test('builds every declared target and preserves source maps without a compiler'
     await buildWorkspace(root)
     for (const name of ['contracts', 'client', 'runtime', 'artifacts', 'cli']) {
       const entry = name === 'cli' ? 'main' : 'index'
-      expect((await readdir(join(root, 'packages', name, 'dist'))).sort()).toEqual([
-        entry + '.js',
-        entry + '.js.map',
-      ])
+      expect((await readdir(join(root, 'packages', name, 'dist'))).sort()).toEqual(
+        [
+          entry + '.js',
+          entry + '.js.map',
+          ...(name === 'runtime'
+            ? ['service-reload-runner.js', 'service-reload-runner.js.map']
+            : []),
+        ].sort()
+      )
     }
     expect((await readdir(join(root, 'examples/workbench/dist'))).sort()).toEqual([
       'browser.js',

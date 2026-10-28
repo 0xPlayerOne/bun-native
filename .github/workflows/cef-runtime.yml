@@ -125,7 +125,7 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite full
-      # Native owner execution precedes the unchanged eight CEF/provider stages.
+      # Native owner execution precedes the CEF, managed reload and provider stages.
       # Both automatic/manual runs use the standard-user runner and deadlines.
       - name: Preserve native build diagnostics
         if: ${{ !cancelled() }}

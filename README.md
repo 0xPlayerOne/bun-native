@@ -2,7 +2,7 @@
 
 The Bun-native desktop framework.
 
-**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
+**Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. [M6 implementation and local qualification](docs/m6-completion.md) records 500 actual managed replacements, a distinct controlled relaunch and pinned workflow comparison; final validation and merge are tracked in [PR #130](https://github.com/0xPlayerOne/bunly/pull/130). This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
 
 Bunly is building a standalone TypeScript-first desktop framework around real Bun,
 prebuilt native components, and managed backend reloads. Better iteration and
@@ -34,6 +34,51 @@ identified rather than assigned invented zero-cost timings.
 Run `bun run format` to apply Oxfmt and `bun run format:check` to verify it.
 `bun run check` enforces formatting before the other checks. See
 [formatting](docs/formatting.md) for Python/Rust commands and preserved evidence.
+
+## Managed development
+
+The opt-in development APIs keep the native desktop owner alive while replacing
+supported backend code. `ServiceReloadHost` runs one application generation in a
+fresh Bun Worker; `ManagedDesktopResources` reattaches authorized windows, browser
+sessions and terminals. `DevelopmentSession` bundles changed dependencies and
+serializes reloads independently from the application's frontend tooling.
+
+Use [service reload](docs/service-reload.md) for the application contract,
+[managed desktop resources](docs/managed-desktop.md) for retained resource APIs,
+and [development hosts](docs/development-host.md) for cache and watcher setup.
+The executable `examples/managed-desktop` fixture combines these APIs with a real
+CEF window and numbered-output native PTY. Its explicit native qualification
+entrypoint accepts an already prepared host and its immutable source commit:
+
+```sh
+bun run qualify:managed-development /absolute/path/to/prebuilt-app --native-source=COMMIT
+```
+
+Replace `COMMIT` with the full 40-character source commit used to build that host.
+The qualifier checks matching native source and records the actual artifact bytes.
+It creates a private fixture, runs the fixed 500-replacement plan and preserves
+its report under `.bunly/m6/managed-development`. A separate observed relaunch
+checks changed configuration and the full-restart boundary. The
+[qualification guide](docs/managed-development-qualification.md) defines the
+workload, resource gates and retained evidence; the
+[edit outcome comparison](docs/managed-comparison.md) covers pinned reference
+frameworks. The qualifier does not compile a native host.
+Configuration/native changes and unmanaged state require a controlled restart;
+irreversible external effects are never automatically replayed.
+
+[The M6 record](docs/m6-completion.md) maps issues #28–#33 to their implementation
+and qualification scope and preserves three failed development attempts beside
+the accepted native and comparison runs. Replay the five retained archives without
+launching a desktop or implicitly fetching historical source:
+
+```sh
+bun run verify:managed-acceptance
+```
+
+The comparison reports raw timings for different engine and restart/persistence
+cohorts; it makes no speedup claim. Native reliability issues
+[#124](https://github.com/0xPlayerOne/bunly/issues/124) and
+[#129](https://github.com/0xPlayerOne/bunly/issues/129) remain open.
 
 ## Interactive comparison workbench
 
@@ -80,9 +125,9 @@ ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-c
 | -------------------- | ---------------------------------------------------------------------- |
 | `packages/contracts` | Browser-safe contracts and capability/version rules                    |
 | `packages/client`    | Browser-side discovery; no native authority                            |
-| `packages/runtime`   | Application entry point, registry and mock backend                     |
+| `packages/runtime`   | Native adapters, resource ownership, service supervision and reload    |
 | `packages/artifacts` | Authenticated manifests, archive verification and cache                |
-| `packages/cli`       | Foundation diagnostics and artifact resolution                         |
+| `packages/cli`       | Diagnostics, artifact resolution, prepared hosts and development edits |
 | `native/host-probe`  | Original Node-API/FFI and native subprocess fixtures                   |
 | `examples/workbench` | Mock consumer and shared browser workbench UI                          |
 | `benchmarks`         | Deterministic fixtures, reports, inventory and adapters                |
@@ -104,10 +149,11 @@ portable/native measurement commands and their qualification limits.
 [Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
 [M1/M2 implementation notes](docs/history/m1-m2-progress.md)
 
-M1 establishes the accepted foundation and host decision. M2 completes reproducible
-comparison infrastructure and competitor baselines. M3 qualifies the visible CEF host. Later
-milestones add secure IPC, PTYs, managed reload, packaging, and native webviews.
-The M2 workbench does not imply those runtime capabilities already exist.
+M1 establishes the accepted foundation and host decision. M2 supplies reproducible
+comparison infrastructure and competitor baselines. M3 qualifies the visible CEF
+host; M4 and M5 add native authority, isolated sessions, streams, PTYs and service
+supervision. M6 integrates persistent development sessions and their acceptance
+workloads. Packaging and additional native webviews belong to later milestones.
 
 Start with [the documentation index](docs/README.md), [architecture](docs/architecture.md), [host decision](docs/decisions/0002-host-qualification.md),
 [validation](docs/validation.md), and [contributing](.github/CONTRIBUTING.md).
