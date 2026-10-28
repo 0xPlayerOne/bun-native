@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
+import { cargoEnvironment } from './cargo-config.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
 const lib =
@@ -9,7 +10,7 @@ const lib =
     : process.platform === 'darwin'
       ? 'libbunly_host_probe.dylib'
       : 'libbunly_host_probe.so'
-const native = join(root, 'native/target/release')
+const native = join(cargoEnvironment([], process.env).targetDir, 'release')
 const dir = join(root, '.bunly/qualification')
 await mkdir(dir, { recursive: true })
 const addon = join(dir, 'probe.node')
