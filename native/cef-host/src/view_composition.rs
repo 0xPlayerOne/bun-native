@@ -236,6 +236,27 @@ fn apply_one(id: u64) -> Result<(), String> {
             overlay.set_visible(1);
         }
     }
+    #[cfg(target_os = "macos")]
+    {
+        let current = target(id)?;
+        if !eligible(&current)
+            && current.view.has_focus() != 0
+            && current.window.is_drawn() != 0
+            && current.window.is_minimized() == 0
+        {
+            // An overlay can be the key NSWindow while the shared Views focus
+            // manager's top-level widget is inactive. SetFocusable(false) then
+            // skips focus eviction. Move the real manager to its owner View;
+            // unlike Windows/Linux, this direct Mac request does not activate a
+            // background widget. No arbitrary sibling receives keyboard focus.
+            current.window.set_focusable(1);
+            target(id)?;
+            current.window.request_focus();
+            if target(id)?.view.has_focus() != 0 {
+                return Err("Native focus could not leave an ineligible pane".into());
+            }
+        }
+    }
     target(id)?;
     Ok(())
 }

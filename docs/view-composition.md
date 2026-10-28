@@ -124,6 +124,15 @@ native window key. Ordinary bounds updates avoid that activation path so a pane
 resize does not steal a sibling's focus. The fixture checks both native focus and
 authenticated renderer focus/blur observations.
 
+On macOS, a drawn owner window also supplies a neutral native focus target when
+an overlay becomes hidden, clipped or nonfocusable but CEF's shared focus manager
+still selects it. The host requests actual focus on the owner View and verifies
+that the old BrowserView no longer has focus. This Mac path does not activate a
+background application, and it does not redirect input to an arbitrary sibling.
+It makes the owner View focusable; physical Tab behavior and accessibility of
+that native traversal stop remain unqualified. Windows/Linux retain their native
+focusability behavior because requesting an inactive owner there can activate it.
+
 `ManagedDesktopResources.registerView` supports the policy-scoped `presentation`
 and `present` operations alongside existing state/focus/navigation operations.
 Reattaching a view across application generations retains the BrowserView,
