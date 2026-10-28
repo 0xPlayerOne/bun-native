@@ -149,6 +149,17 @@ operation to remove a sibling pane. The native fixture checks sibling survival
 and zero remaining view/session and queued-delivery counters. Those counters do
 not measure released GPU memory or renderer cache residency.
 
+Closing a parent window keeps every live browser and BrowserView owned until
+CEF delivers its actual `OnBeforeClose` callback. The host first asks every
+browser to accept closing as one guarded batch. A synchronous nested close is
+deferred once on the UI thread if the batch remains pending; pending browsers
+without a nested request are not polled. Once all browsers accept, live overlay
+contents are detached and added to the same parent's ordinary child hierarchy
+so parent destruction reaches those BrowserViews. If an overlay widget is
+already closing and cannot detach, the parent remains pending with its owners
+intact until the actual browser callback allows another attempt. This does not
+create close receipts, release browser owners early, or extend native deadlines.
+
 ## Why windowed CEF Views remains the renderer
 
 CEF's supported overlay primitive provides the required first increment without
@@ -183,6 +194,18 @@ Run it with `bun run qualify:desktop PREPARED_APP --native-source=COMMIT
 describes source/artifact binding and the hosted stage. A passing receipt requires
 all 28 ordered observations and exact retained identities; an incomplete or
 reordered sequence cannot be promoted to native acceptance.
+
+`examples/view-parent-close` is a separate regression selected with
+`--case=parent-close`, using profile `native-view-parent-close-v1`. It closes a
+manual-layout parent while four independently loaded panes and their sessions
+are still live. Each distinct native `view.closed` callback and the parent's
+native `window.closed` callback must arrive before session disposal. Native
+readback through the retained control-window handle proves that the intended
+control window survived, then diagnostics require no views, sessions or queued
+deliveries. The receipt is emitted only after final native shutdown. This case
+retains the 25-second fixture and 45-second observer budgets and does not change
+the historical composition receipt. It exercises API parent close; an OS-quit
+action still requires its own fresh native observation.
 
 Portable tests cover malformed geometry/readback, ownership and close races,
 cancellation admission, managed authority, bounded renderer receipts, legacy

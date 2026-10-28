@@ -50,7 +50,8 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition` and `desktop-services` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition`,
+`desktop-services` and `view-parent-close` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -111,6 +112,41 @@ On Linux the existing disposable display wrapper accepts
 cleans its own Xvfb/Openbox processes. The full hosted suite requires the native
 desktop stages on every platform before later credential/provider work. Neither
 profile changes the existing M4-only suite.
+
+## Live-pane parent close
+
+Close a parent while all four independently loaded manual panes remain live:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=parent-close
+```
+
+Reports use `.bunly/m7/view-parent-close/run-*/report.json` and profile
+`native-view-parent-close-v1`. The static-page fixture uses four separate
+ephemeral sessions. It records the exact native document/view identities before
+closing the parent, then requires four matching actual native `view.closed`
+callbacks and the parent's `window.closed` callback. SDK child-handle disposal
+after the parent reply cannot substitute for these browser callbacks. Sessions
+are disposed only after those receipts, and a native `windowState` request
+through the retained control handle must succeed. Final native diagnostics
+require that single surviving window with zero views, sessions and delivery
+buffers; ordinary shutdown then closes the control and must satisfy the shared
+native cleanup contract.
+
+This profile adds its own fixture, receipt binding, lifetime and document
+readiness helpers to the source inventory while leaving the historical
+composition profile unchanged. The same source/artifact/metadata checks,
+25-second fixture deadline and 45-second process observer apply. Offline
+`--verify` rejects incomplete identities, missing callbacks, an unproven control
+survivor, leaked owners or failed process cleanup. Linux uses the disposable
+display wrapper's `--desktop --desktop-case=parent-close` arguments. The full
+hosted suite requires this case on all three targets; the M4-only suite remains
+unchanged.
+
+The receipt explicitly leaves OS quit, physical input, hardware display,
+assistive technology and performance qualification false. The workbench's
+ordinary OS-quit action requires a separate fresh native observation against the
+matching host source.
 
 ## Clipboard and application lifecycle
 

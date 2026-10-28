@@ -16,6 +16,8 @@ mod clipboard;
 mod navigation;
 #[path = "shutdown_pending.rs"]
 mod shutdown_pending;
+#[path = "view_close.rs"]
+mod view_close;
 #[path = "view_composition.rs"]
 mod view_composition;
 #[path = "window_state.rs"]
@@ -53,6 +55,7 @@ struct WindowRecord {
     window: Option<Window>,
     request: u64,
     closing: Option<u64>,
+    close_batch: view_close::CloseBatch,
     view_layout: view_composition::LayoutMode,
 }
 struct ViewRecord {
@@ -1469,6 +1472,89 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
     Ok(())
 }
 
+/// CEF removes overlay contents from their widgets before destroying a parent
+/// Window, so retained BrowserViews would otherwise miss WidgetDestroyed. After
+/// every BrowserHost accepts closing, move live overlay contents into the same
+/// closing parent hierarchy. Keep all registry owners until OnBeforeClose.
+fn attach_closing_overlays(window_id: u64) -> bool {
+    let owned = STATE.with(|state| {
+        let state = state.borrow();
+        let window = state.windows.get(&window_id)?.window.clone()?;
+        let overlays = state
+            .views
+            .iter()
+            .filter_map(|(id, record)| {
+                if record.window != window_id {
+                    return None;
+                }
+                Some((*id, record.view.clone()?, record.overlay.clone()?))
+            })
+            .collect::<Vec<_>>();
+        Some((window, overlays))
+    });
+    let Some((window, overlays)) = owned else {
+        return false;
+    };
+    let mut ready = true;
+    for (id, view, overlay) in overlays {
+        // CEF calls and reference release must run outside the registry borrow.
+        if overlay.is_valid() != 0 {
+            overlay.destroy();
+        }
+        let live = STATE.with(|state| {
+            state
+                .borrow()
+                .views
+                .get(&id)
+                .is_some_and(|record| record.window == window_id)
+        });
+        if !live {
+            // Actual OnBeforeClose may have settled this owner synchronously.
+            continue;
+        }
+        if view.is_valid() == 0 || view.is_attached() != 0 {
+            // Destroy is a no-op if its Widget is already closing. Preserve
+            // the owner and wait for its actual callback to retry parent close.
+            ready = false;
+            continue;
+        }
+        let mut child = View::from(&view);
+        window.add_child_view(Some(&mut child));
+        let mut parent = View::from(&window);
+        if child.is_attached() == 0
+            || child
+                .parent_view()
+                .is_none_or(|attached| attached.is_same(Some(&mut parent)) == 0)
+        {
+            ready = false;
+            continue;
+        }
+        let retired = STATE.with(|state| {
+            state
+                .borrow_mut()
+                .views
+                .get_mut(&id)
+                .filter(|record| record.window == window_id)
+                .and_then(|record| record.overlay.take())
+        });
+        drop(retired);
+    }
+    ready
+}
+
+wrap_task! {
+    struct RetryWindowClose { id: u64 }
+    impl Task { fn execute(&self) {
+        let window = STATE.with(|state| {
+            let state = state.borrow();
+            let record = state.windows.get(&self.id)?;
+            record.close_batch.retry_started();
+            record.closing.and_then(|_| record.window.clone())
+        });
+        if let Some(window) = window { window.close(); }
+    } }
+}
+
 fn begin_navigation(
     state: &mut HostState,
     view: u64,
@@ -1877,6 +1963,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         window: None,
                         request,
                         closing: None,
+                        close_batch: view_close::CloseBatch::default(),
                         view_layout,
                     },
                 );
@@ -2570,6 +2657,9 @@ wrap_window_delegate! {
             window.show(); if request != 0 { reply(request, json!({"id":self.id})); }
         }
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
+            let batch = STATE.with(|s| s.borrow().windows.get(&self.id).map(|r| r.close_batch.clone()));
+            let Some(batch) = batch else { return 1; };
+            let Some(guard) = batch.enter() else { return 0; };
             let (browsers, pending, revocations) = STATE.with(|s| { let mut s = s.borrow_mut();
                 if let Some(r) = s.windows.get_mut(&self.id) { r.closing.get_or_insert(0); }
                 revoke_window(&mut s, self.id);
@@ -2581,7 +2671,16 @@ wrap_window_delegate! {
             });
             for (id, revoked) in revocations { revoke_renderer(id, revoked); }
             let mut allowed = !pending;
-            for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } }
+            for browser in browsers {
+                if browser.host().is_none_or(|host| host.try_close_browser() == 0) { allowed = false; }
+            }
+            if allowed { allowed = attach_closing_overlays(self.id); }
+            if guard.finish(!allowed) {
+                let mut retry = RetryWindowClose::new(self.id);
+                if post_task(ThreadId::UI, Some(&mut retry)) == 0 {
+                    fail("Native window close retry could not be scheduled");
+                }
+            }
             i32::from(allowed)
         }
         fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
@@ -3074,6 +3173,7 @@ mod tests {
                 window: None,
                 request: 0,
                 closing: None,
+                close_batch: view_close::CloseBatch::default(),
                 view_layout: view_composition::LayoutMode::Stack,
             },
         );

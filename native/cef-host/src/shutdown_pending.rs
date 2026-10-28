@@ -149,6 +149,7 @@ mod tests {
                 window: None,
                 request: 19,
                 closing: Some(23),
+                close_batch: Default::default(),
                 view_layout: super::super::view_composition::LayoutMode::Manual,
             },
         );

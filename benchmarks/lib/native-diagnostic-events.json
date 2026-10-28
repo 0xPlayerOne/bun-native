@@ -22,6 +22,7 @@
   "bunly.native.window-modes",
   "bunly.native.desktop-controls",
   "bunly.native.view-composition",
+  "bunly.native.view-parent-close",
   "bunly.native.desktop-services",
   "bunly.native.last-window",
   "bunly.native.cycle",

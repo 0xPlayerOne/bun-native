@@ -92,7 +92,7 @@ async function qualify(input: readonly string[]): Promise<void> {
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services] [--disposable-clipboard], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services|parent-close] [--disposable-clipboard], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')

@@ -131,6 +131,15 @@ An already borrowed registry reports `state-unavailable` without panicking or
 inventing zero owners.
 Zero counts alone cannot prove native cleanup or satisfy an acceptance gate.
 
+The finite `qualify:desktop --case=parent-close` regression separately closes a
+parent with four live manual panes, requires every actual native browser close
+callback before disposing sessions, and verifies a surviving control window.
+See [the parent-close qualification contract](desktop-qualification.md#live-pane-parent-close).
+Its API close receipt does not qualify the workbench's OS-quit path. After a
+native ownership change, the workbench still needs a fresh ordinary OS quit
+against the matching rebuilt host, with native shutdown and process/helper
+cleanup observed under the existing deadlines.
+
 ## Application surfaces and controls
 
 The window owns four independent native browser views. Each has a separate
@@ -277,4 +286,4 @@ to prove that bundling and verification do not execute them. It builds the actua
 Bun and browser assets. The inert-binary preparation test is inapplicable to
 macOS ad-hoc signing; real native Mac preparation/launch must be observed there.
 No portable test launches a GUI or claims physical input, accessibility or
-hardware qualification. Native sources and runtime deadlines are unchanged.
+hardware qualification. Runtime shutdown deadlines remain unchanged.

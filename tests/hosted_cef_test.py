@@ -46,6 +46,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "desktop",
                 "view-composition",
                 "desktop-services",
+                "view-parent-close",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -141,6 +142,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "desktop",
                             "view-composition",
                             "desktop-services",
+                            "view-parent-close",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -462,7 +464,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 14)
+                self.assertEqual(len(names), 15)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -563,6 +565,39 @@ class DesktopStageTests(unittest.TestCase):
                 )
         self.assertEqual(
             hosted.report_directory("desktop-services"), hosted.ROOT / ".bunly/m7/desktop-services"
+        )
+
+    def test_parent_close_requires_live_native_receipts_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("view-parent-close"), 1)
+                self.assertEqual(
+                    names.index("view-parent-close"), names.index("desktop-services") + 1
+                )
+                self.assertEqual(
+                    dict(selected)["view-parent-close"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=parent-close"
+                        if system == "linux"
+                        else "--case=parent-close",
+                    ],
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "view-parent-close")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "view-parent-close", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("view-parent-close"),
+            hosted.ROOT / ".bunly/m7/view-parent-close",
         )
 
     def test_composition_requires_its_own_report_and_every_platform_before_providers(self):
