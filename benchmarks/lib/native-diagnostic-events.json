@@ -26,6 +26,7 @@
   "bunly.native.desktop-services",
   "bunly.native.last-window",
   "bunly.native.cycle",
+  "bunly.native.focus",
   "bunly.native.renderer-failure-observed",
   "bunly.native.gpu-injection-acknowledged",
   "bunly.native.gpu-recovered",

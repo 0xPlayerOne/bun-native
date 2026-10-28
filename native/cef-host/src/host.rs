@@ -2204,6 +2204,12 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 }
             }
         }
+        "view.focus.state" => {
+            reply(
+                request,
+                view_composition::read_focus_state(number(args, "id")?)?,
+            );
+        }
         "view.focus" => {
             let id = number(args, "id")?;
             view_composition::focus(id)?;
