@@ -1,5 +1,33 @@
 import type { Readable, Writable } from 'node:stream'
 import capacity from './native-capacity.json'
+const DESKTOP_CAPABILITIES = Object.freeze([
+  'window.state',
+  'window.geometry',
+  'view.composition',
+] as const)
+export type NativeDesktopCapability = (typeof DESKTOP_CAPABILITIES)[number]
+function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[] {
+  // ABI 1 predates portable desktop capabilities. Absence preserves that legacy
+  // peer without claiming that newer native operations are available.
+  if (value === undefined) return Object.freeze([])
+  const metadata = object(value)
+  const capabilities = metadata['capabilities']
+  if (
+    Object.keys(metadata).length !== 2 ||
+    metadata['version'] !== 1 ||
+    !Array.isArray(capabilities) ||
+    capabilities.length > 16 ||
+    new Set(capabilities).size !== capabilities.length ||
+    capabilities.some(
+      (capability) =>
+        typeof capability !== 'string' ||
+        !DESKTOP_CAPABILITIES.includes(capability as NativeDesktopCapability)
+    )
+  )
+    throw new Error('Invalid native desktop capabilities')
+  Object.freeze(metadata)
+  return Object.freeze(capabilities) as readonly NativeDesktopCapability[]
+}
 export interface NativeEvent {
   readonly v: 1
   readonly event: string
@@ -42,6 +70,7 @@ export class NativeTransport {
   #ordinaryRequests = 0
   #controlAdmissionsUnderPressure = 0
   #ready = false
+  #desktopCapabilities: readonly NativeDesktopCapability[] = Object.freeze([])
   #requestTimeoutMs = 10000
   #failure: Error | null = null
   #resolveReady!: (event: NativeEvent) => void
@@ -70,6 +99,10 @@ export class NativeTransport {
   }
   get failure(): Error | null {
     return this.#failure
+  }
+  /** Validated current-host features. Empty before readiness and for legacy ABI 1 hosts. */
+  get desktopCapabilities(): readonly NativeDesktopCapability[] {
+    return this.#desktopCapabilities
   }
   onEvent(listener: (event: NativeEvent) => void): () => void {
     if (this.#closed) throw new Error('Native transport closed')
@@ -326,6 +359,7 @@ export class NativeTransport {
       const event = Object.freeze(frame) as unknown as NativeEvent
       if (event.event === 'ready') {
         if (this.#ready || event.abi !== 1) throw new Error('Native readiness/ABI mismatch')
+        const capabilities = desktopCapabilities(event.data?.['desktopCapabilities'])
         if (
           event.data?.['deadlineProfile'] !== undefined ||
           event.data?.['requestTimeoutMs'] !== undefined
@@ -337,6 +371,7 @@ export class NativeTransport {
             throw new Error('Invalid native deadline profile')
           this.#requestTimeoutMs = expected
         }
+        this.#desktopCapabilities = capabilities
         this.#ready = true
         this.#resolveReady(event)
       } else if (!this.#ready) throw new Error('Native event before readiness')

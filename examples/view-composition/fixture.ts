@@ -199,6 +199,12 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     state.viewport.height === page.height &&
     page.width > 0 &&
     page.height > 0
+  const atBounds = (expected: Bounds) => (state: ViewPresentationState, page: CompositionPage) =>
+    shown(state, page) &&
+    state.viewport.x === expected.x &&
+    state.viewport.y === expected.y &&
+    page.width === expected.width &&
+    page.height === expected.height
   const present = (name: Pane, value: ViewPresentationOptions) =>
     backend.setViewPresentation(pane(name).view, value, options)
   const focus = async (name: Pane) => {
@@ -257,7 +263,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
         operations: ['state', 'presentation', 'present', 'focus'],
         dependsOn: [retainedSession],
       })
-      await capture(`initial-${name}`, name, shown)
+      await capture(`initial-${name}`, name, atBounds(bounds[name]))
     }
     assert.equal(new Set([...owned.values()].map((entry) => entry.initial.instance)).size, 3)
     assert.equal(new Set([...owned.values()].map((entry) => entry.session.id)).size, 3)
@@ -304,7 +310,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     checks.hiddenFocusRejected = true
     await focus('right')
     await present('left', pane('left').base)
-    await capture('restored-pane', 'left', shown)
+    await capture('restored-pane', 'left', atBounds(bounds.left))
 
     await present('right', { ...pane('right').base, focusable: false })
     await assert.rejects(
@@ -321,12 +327,9 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     assert.equal(await backend.focusNextView(window, false, options), null)
     await present('right', pane('right').base)
 
-    await present('left', { ...pane('left').base, clip: { x: 24, y: 24, width: 196, height: 164 } })
-    await capture(
-      'clipped-viewport',
-      'left',
-      (state, page) => shown(state, page) && page.width === 196 && page.height === 164
-    )
+    const clipped = { x: 44, y: 40, width: 196, height: 164 }
+    await present('left', { ...pane('left').base, clip: clipped })
+    await capture('clipped-viewport', 'left', atBounds(clipped))
     await present('left', {
       ...pane('left').base,
       clip: { x: 1200, y: 1200, width: 10, height: 10 },
@@ -348,20 +351,21 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     )
     checks.clippedFocusRejected = true
     await present('left', pane('left').base)
-    await capture('clip-cleared', 'left', shown)
+    await capture('clip-cleared', 'left', atBounds(bounds.left))
 
     await backend.resizeWindow(window, 500, 400)
     await capture(
       'window-clips-pane',
       'right',
-      (state, page) => shown(state, page) && state.viewport.width < 280
+      (state, page) =>
+        shown(state, page) &&
+        state.viewport.x === bounds.right.x &&
+        state.viewport.y === bounds.right.y &&
+        state.viewport.width < 280 &&
+        page.height === 220
     )
     await backend.resizeWindow(window, 820, 520)
-    await capture(
-      'window-restores-pane',
-      'right',
-      (state, page) => shown(state, page) && page.width === 280 && page.height === 220
-    )
+    await capture('window-restores-pane', 'right', atBounds(bounds.right))
     await focus('right')
     for (let index = 0; index < 16; index++) {
       await present('left', {
@@ -370,11 +374,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
       })
       resizeTransitions++
     }
-    await capture(
-      'rapid-resize-final',
-      'left',
-      (state, page) => shown(state, page) && page.width === 285
-    )
+    await capture('rapid-resize-final', 'left', atBounds({ ...bounds.left, width: 285 }))
     await capture(
       'resize-preserves-sibling-focus',
       'right',
@@ -408,14 +408,10 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
       'present',
       JSON.stringify({ presentation: pane('left').base })
     )
-    await capture(
-      'retained-after-generations',
-      'left',
-      (state, page) => shown(state, page) && page.width === 280
-    )
+    await capture('retained-after-generations', 'left', atBounds(bounds.left))
 
     await present('overlay', pane('overlay').base)
-    await capture('overlay-shown', 'overlay', shown)
+    await capture('overlay-shown', 'overlay', atBounds(bounds.overlay))
     await focus('overlay')
     await assert.rejects(
       backend.navigate(pane('overlay').view, 'https://example.invalid/'),
@@ -428,22 +424,14 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
       after: currentPage('overlay').sequence,
     })
     await present('overlay', { ...pane('overlay').base, bounds: { ...bounds.overlay, width: 221 } })
-    await capture(
-      'overlay-before-close',
-      'overlay',
-      (state, page) => shown(state, page) && page.width === 221
-    )
+    await capture('overlay-before-close', 'overlay', atBounds({ ...bounds.overlay, width: 221 }))
     await backend.drainRpc(pane('overlay').view)
     await desktop.close('overlay')
     await assert.rejects(backend.viewPresentation(pane('overlay').view, options), /disposed/)
     checks.staleViewRejected = true
     await focus('right')
     await present('right', { ...pane('right').base, bounds: { ...bounds.right, width: 281 } })
-    await capture(
-      'sibling-after-overlay-close',
-      'right',
-      (state, page) => shown(state, page) && page.width === 281
-    )
+    await capture('sibling-after-overlay-close', 'right', atBounds({ ...bounds.right, width: 281 }))
     checks.siblingSurvived = true
 
     for (const name of ['left', 'right'] as const) {
@@ -453,11 +441,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
         after: currentPage(name).sequence,
       })
       await present(name, { ...pane(name).base, bounds: { ...bounds[name], width: 282 } })
-      await capture(
-        `final-${name}`,
-        name,
-        (state, page) => shown(state, page) && page.width === 282
-      )
+      await capture(`final-${name}`, name, atBounds({ ...bounds[name], width: 282 }))
       await backend.drainRpc(pane(name).view)
     }
     await desktop.dispose()

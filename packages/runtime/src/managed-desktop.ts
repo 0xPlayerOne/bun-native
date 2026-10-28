@@ -1,10 +1,11 @@
 import type {
+  Bounds,
   RuntimeEvent,
   SessionHandle,
   ViewHandle,
   WindowHandle,
 } from '../../contracts/src/index.ts'
-import { normalizeViewPresentation } from '../../contracts/src/index.ts'
+import { normalizeViewPresentation, validateBounds } from '../../contracts/src/index.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
   ManagedError,
@@ -47,6 +48,8 @@ interface EventRecord {
   readonly sequence: number
   readonly type: string
   readonly state?: unknown
+  readonly bounds?: Bounds
+  readonly completed?: boolean
 }
 interface Entry {
   readonly name: string
@@ -65,7 +68,18 @@ interface Entry {
 }
 const lifecycleOperations = ['events', 'ack-events']
 const operations = {
-  window: ['state', 'show', 'resize', 'activate', 'minimize', 'restore'],
+  window: [
+    'state',
+    'show',
+    'resize',
+    'activate',
+    'minimize',
+    'restore',
+    'maximize',
+    'fullscreen',
+    'bounds',
+    'set-bounds',
+  ],
   view: ['state', 'navigate', 'focus', 'presentation', 'present'],
   session: ['identity', 'cookies', 'flush'],
   terminal: ['identity', 'write', 'resize', 'signal'],
@@ -116,7 +130,7 @@ function signalInput(input: string): NodeJS.Signals {
  */
 export class ManagedDesktopResources {
   readonly #entries = new Map<string, Entry>()
-  readonly #handles = new WeakSet<object>()
+  readonly #entriesByHandle = new WeakMap<object, Entry>()
   readonly #authorities = new WeakMap<ManagedDesktopAuthority, Authority>()
   readonly #stopEvents: () => void
   readonly #maxEvents: number
@@ -224,7 +238,7 @@ export class ManagedDesktopResources {
   ): Entry {
     if (this.#closed) throw new ManagedError('DISPOSED')
     if (!/^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$/.test(name) || this.#entries.has(name)) invalid()
-    if (this.#handles.has(handle)) throw new ManagedError('INVALID_IDENTITY')
+    if (this.#entriesByHandle.has(handle)) throw new ManagedError('INVALID_IDENTITY')
     const authority = this.#authorities.get(policy.authority)
     if (!authority) throw new ManagedError('DENIED')
     if (
@@ -290,7 +304,7 @@ export class ManagedDesktopResources {
         entry.events.length = 0
         entry.eventBytes = 0
         entry.lastRead = undefined
-        this.#handles.delete(handle)
+        this.#entriesByHandle.delete(handle)
         if (this.#entries.get(name) === entry) this.#entries.delete(name)
       },
     })
@@ -315,7 +329,7 @@ export class ManagedDesktopResources {
       disposal: undefined,
     }
     this.#entries.set(name, entry)
-    this.#handles.add(handle)
+    this.#entriesByHandle.set(handle, entry)
     return entry
   }
   registerWindow(
@@ -328,11 +342,11 @@ export class ManagedDesktopResources {
       'window',
       window,
       policy,
-      async (operation, input) => {
+      async (operation, input, context) => {
         if (operation === 'show') {
           const visible = object(input, ['visible'])['visible']
           if (typeof visible !== 'boolean') invalid()
-          await this.backend.showWindow(window, visible)
+          await this.backend.showWindow(window, visible, { signal: context.signal })
         } else if (operation === 'resize') {
           const value = object(input, ['width', 'height'])
           const width = value['width'],
@@ -346,13 +360,31 @@ export class ManagedDesktopResources {
             Number(height) > 16384
           )
             invalid()
-          await this.backend.resizeWindow(window, Number(width), Number(height))
+          await this.backend.resizeWindow(window, Number(width), Number(height), {
+            signal: context.signal,
+          })
+        } else if (operation === 'fullscreen') {
+          const fullscreen = object(input, ['fullscreen'])['fullscreen']
+          if (typeof fullscreen !== 'boolean') invalid()
+          return this.backend.setWindowFullscreen(window, fullscreen, { signal: context.signal })
+        } else if (operation === 'set-bounds') {
+          const bounds = object(input, ['x', 'y', 'width', 'height']) as unknown as Bounds
+          try {
+            validateBounds(bounds)
+          } catch {
+            invalid()
+          }
+          if (bounds.width > 16384 || bounds.height > 16384) invalid()
+          return this.backend.setWindowBounds(window, bounds, { signal: context.signal })
         } else {
           empty(input)
-          if (operation === 'state') return this.backend.windowState(window)
-          if (operation === 'activate') return this.backend.activateWindow(window)
-          if (operation === 'minimize') return this.backend.minimizeWindow(window)
-          if (operation === 'restore') return this.backend.restoreWindow(window)
+          const options = { signal: context.signal }
+          if (operation === 'state') return this.backend.windowState(window, options)
+          if (operation === 'activate') return this.backend.activateWindow(window, options)
+          if (operation === 'minimize') return this.backend.minimizeWindow(window, options)
+          if (operation === 'restore') return this.backend.restoreWindow(window, options)
+          if (operation === 'maximize') return this.backend.maximizeWindow(window, options)
+          if (operation === 'bounds') return this.backend.windowBounds(window, options)
           invalid()
         }
         return null
@@ -381,7 +413,7 @@ export class ManagedDesktopResources {
           if (operation === 'state') return this.backend.state(view)
           if (operation === 'presentation')
             return this.backend.viewPresentation(view, { signal: context.signal })
-          if (operation === 'focus') await this.backend.focusView(view)
+          if (operation === 'focus') await this.backend.focusView(view, { signal: context.signal })
           else invalid()
         }
         return null
@@ -521,29 +553,27 @@ export class ManagedDesktopResources {
     return Object.freeze(Object.fromEntries(entries.map((entry) => [entry.name, entry.binding])))
   }
   #event(event: RuntimeEvent): void {
-    for (const entry of this.#entries.values()) {
-      if (event.resource !== entry.handle || entry.closed) continue
-      if (event.type === 'disposed') {
-        this.#close(entry)
-        continue
-      }
-      if (!entry.operations.has('events') || entry.eventOverflow) continue
-      const item: EventRecord = {
-        sequence: ++entry.eventSequence,
-        type: event.type,
-        ...(event.type === 'navigated' ? { state: structuredClone(event.state) } : {}),
-      }
-      const bytes = Buffer.byteLength(JSON.stringify(item))
-      if (
-        entry.events.length >= this.#maxEvents ||
-        entry.eventBytes + bytes > this.#maxEventBytes
-      ) {
-        entry.eventOverflow = true
-        continue
-      }
-      entry.events.push(item)
-      entry.eventBytes += bytes
+    const entry = this.#entriesByHandle.get(event.resource)
+    if (!entry || entry.closed) return
+    if (event.type === 'disposed') {
+      this.#close(entry)
+      return
     }
+    if (!entry.operations.has('events') || entry.eventOverflow) return
+    const item: EventRecord = {
+      sequence: ++entry.eventSequence,
+      type: event.type,
+      ...('state' in event ? { state: structuredClone(event.state) } : {}),
+      ...(event.type === 'window-bounds-changed' ? { bounds: structuredClone(event.bounds) } : {}),
+      ...(event.type === 'window-fullscreen-transition' ? { completed: event.completed } : {}),
+    }
+    const bytes = Buffer.byteLength(JSON.stringify(item))
+    if (entry.events.length >= this.#maxEvents || entry.eventBytes + bytes > this.#maxEventBytes) {
+      entry.eventOverflow = true
+      return
+    }
+    entry.events.push(item)
+    entry.eventBytes += bytes
   }
   #close(entry: Entry): Promise<void> {
     entry.closed = true

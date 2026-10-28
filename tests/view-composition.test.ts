@@ -25,8 +25,8 @@ const observed = {
   focused: false,
   focusable: true,
 }
-async function fixture(manual = true) {
-  const peer = await nativePeer()
+async function fixture(manual = true, peerOptions: { desktopCapabilities?: unknown } = {}) {
+  const peer = await nativePeer(peerOptions)
   let next = 0
   peer.handle((command) =>
     peer.reply(command, command.op.endsWith('.create') ? { id: ++next } : observed)
@@ -124,6 +124,43 @@ test('legacy windows preserve existing creation payloads and reject opt-in prese
     await assert.rejects(f.backend.setViewPresentation(f.view, { bounds }), /view.composition/)
     await assert.rejects(f.backend.viewPresentation(f.view), /view.composition/)
     assert.equal(f.commands.length, count)
+  } finally {
+    await f.stop()
+  }
+})
+
+test('composition is negotiated independently and old hosts reject new APIs before dispatch', async () => {
+  for (const desktopCapabilities of [
+    undefined,
+    { version: 1, capabilities: [] },
+    { version: 1, capabilities: ['window.state', 'window.geometry'] },
+  ]) {
+    const f = await fixture(false, { desktopCapabilities })
+    try {
+      assert.equal(f.backend.descriptor.contractVersion, 3)
+      assert.ok(!f.backend.descriptor.capabilities.includes('view.composition'))
+      const count = f.commands.length
+      await assert.rejects(
+        f.backend.createWindow({ title: 'Manual', bounds, viewLayout: 'manual' }),
+        /view.composition/
+      )
+      await assert.rejects(f.backend.viewPresentation(f.view), /view.composition/)
+      await assert.rejects(f.backend.setViewPresentation(f.view, { bounds }), /view.composition/)
+      await assert.rejects(f.backend.focusNextView(f.window), /view.composition/)
+      assert.equal(f.commands.length, count)
+      await f.backend.focusView(f.view)
+      assert.equal(f.commands.at(-1)?.op, 'view.focus', 'Legacy focus remains available')
+    } finally {
+      await f.stop()
+    }
+  }
+  const f = await fixture(true, {
+    desktopCapabilities: { version: 1, capabilities: ['view.composition'] },
+  })
+  try {
+    assert.ok(f.backend.descriptor.capabilities.includes('view.composition'))
+    assert.ok(!f.backend.descriptor.capabilities.includes('window.geometry'))
+    assert.deepEqual(await f.backend.viewPresentation(f.view), observed)
   } finally {
     await f.stop()
   }

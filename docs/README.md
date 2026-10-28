@@ -2,11 +2,15 @@
 
 Current architecture and contributor guides, with historical evidence kept distinct.
 
-**Checkpoint:** M1–M5 completion records define their declared acceptance profiles.
-[M6 implementation and local qualification](m6-completion.md) records managed
-reload, the actual 500-replacement desktop run, a distinct controlled relaunch and
-the pinned reference comparison. Final validation and merge remain tracked in
-[PR #130](https://github.com/0xPlayerOne/bunly/pull/130).
+**Checkpoint:** M1–M6 completion records define their declared acceptance profiles.
+[M6 completion](m6-completion.md) records managed reload, the actual
+500-replacement workload and distinct controlled relaunch on Linux, macOS and
+Windows, plus the separately pinned macOS reference comparison.
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130) is merged. M7 remains in
+progress; [desktop window APIs](desktop-window-api.md) and the
+[native desktop qualifier](desktop-qualification.md) describe its first increment.
+[Native view composition](view-composition.md) describes the next increment's
+opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
 
 The [managed development qualification](managed-development-qualification.md)
 defines the native 500-replacement and controlled-relaunch workload. The
@@ -36,23 +40,24 @@ Windows, Linux and macOS cloud tests without local VMs.
 
 ## Accepted milestone records
 
-| Record                                  | Scope                                                         |
-| --------------------------------------- | ------------------------------------------------------------- |
-| [M1 completion](m1-completion.md)       | Host decision, native probes and foundational contracts       |
-| [M2 completion](m2-completion.md)       | Local reference baselines and measurement infrastructure      |
-| [M3 completion](m3-completion.md)       | Declared native CEF platform and lifecycle acceptance         |
-| [M4 completion](m4-completion.md)       | Native authority, sessions, transport and provider acceptance |
-| [M5 completion](m5-completion.md)       | Native streams, graphical terminals and service supervision   |
-| [Foundation audit](foundation-audit.md) | Post-M3 hygiene, sync and dependency-security review          |
+| Record                                  | Scope                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| [M1 completion](m1-completion.md)       | Host decision, native probes and foundational contracts                     |
+| [M2 completion](m2-completion.md)       | Local reference baselines and measurement infrastructure                    |
+| [M3 completion](m3-completion.md)       | Declared native CEF platform and lifecycle acceptance                       |
+| [M4 completion](m4-completion.md)       | Native authority, sessions, transport and provider acceptance               |
+| [M5 completion](m5-completion.md)       | Native streams, graphical terminals and service supervision                 |
+| [M6 completion](m6-completion.md)       | Managed application generations, retained resources and controlled relaunch |
+| [Foundation audit](foundation-audit.md) | Post-M3 hygiene, sync and dependency-security review                        |
 
 The detailed M2/M3 acceptance reports and `evidence/` retain original source
 identities, failed attempts and qualification boundaries. Completing a milestone
 does not imply production signing, final performance superiority, or platform
 coverage outside its stated profile.
 
-[The M6 record](m6-completion.md) maps the already accepted #28/#29 contracts and
-the #30–#33 implementation to local evidence. PR #130 carries the final-head
-validation and merge record; merge requires all applicable checks.
+[The M6 record](m6-completion.md) maps closed issues #28–#33 to implementation,
+retained local evidence and the final hosted acceptance. PR #130 carries the
+completed final-head validation and squash-merge record.
 
 ## Active technical guides
 

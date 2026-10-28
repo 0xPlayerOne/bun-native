@@ -15,7 +15,9 @@
     "examples/managed-desktop/client.ts",
     "examples/managed-desktop/contract.ts",
     "examples/managed-desktop/restart-client.ts",
-    "examples/managed-desktop/restart-contract.ts"
+    "examples/managed-desktop/restart-contract.ts",
+    "examples/desktop-controls/client.ts",
+    "examples/desktop-controls/contract.ts"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**"]
 }

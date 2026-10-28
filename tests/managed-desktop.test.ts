@@ -45,11 +45,13 @@ async function fixture(maxEvents = 64) {
         ? { id: ++next }
         : command.op === 'policy.scope'
           ? scope
-          : command.op === 'window.state'
+          : ['window.state', 'window.maximize', 'window.fullscreen'].includes(command.op)
             ? { visible: true, active: true, minimized: false, maximized: false, fullscreen: false }
-            : command.op === 'session.cookies'
-              ? []
-              : null
+            : ['window.bounds', 'window.bounds.set'].includes(command.op)
+              ? { x: 10, y: 20, width: 640, height: 480 }
+              : command.op === 'session.cookies'
+                ? []
+                : null
     )
     if (command.op === 'quit') peer.send({ v: 1, event: 'shutdown' })
   })
@@ -183,6 +185,119 @@ test('concrete resource adapters preserve exact native resources over handler ge
     expect(f.owner.diagnostics()).toMatchObject({ resources: 3, generations: 1, attachments: 3 })
     await f.owner.invoke(generation, window, 'show', '{"visible":false}')
     expect(f.commands.at(-1)!.op).toBe('window.hide')
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test('managed window geometry and fullscreen preserve policy, generation and bounded event ownership', async () => {
+  const f = await fixture(3)
+  try {
+    const resource = f.desktop.registerWindow(
+      'window',
+      f.window,
+      f.policy(['bounds', 'set-bounds', 'maximize', 'fullscreen', 'events', 'ack-events'])
+    )
+    let generation = commit(f.owner, await f.desktop.prepare())
+    expect(
+      JSON.parse(
+        await f.owner.invoke(
+          generation,
+          resource,
+          'set-bounds',
+          '{"x":1,"y":2,"width":700,"height":500}'
+        )
+      )
+    ).toEqual({ x: 10, y: 20, width: 640, height: 480 })
+    expect(f.commands.at(-1)?.args).toEqual({ id: 2, x: 1, y: 2, width: 700, height: 500 })
+    await f.owner.invoke(generation, resource, 'maximize', 'null')
+    expect(f.commands.at(-1)?.op).toBe('window.maximize')
+    await f.owner.invoke(generation, resource, 'fullscreen', '{"fullscreen":true}')
+    expect(f.commands.at(-1)?.args).toEqual({ id: 2, fullscreen: true })
+    await expect(
+      f.owner.invoke(generation, resource, 'set-bounds', '{"x":1.5,"y":2,"width":700,"height":500}')
+    ).rejects.toThrow('INVALID_ARGUMENT')
+    await expect(
+      f.owner.invoke(generation, resource, 'set-bounds', '{"x":1,"y":2,"width":16385,"height":500}')
+    ).rejects.toThrow('INVALID_ARGUMENT')
+    await expect(
+      f.owner.invoke(generation, resource, 'fullscreen', '{"fullscreen":1}')
+    ).rejects.toThrow('INVALID_ARGUMENT')
+    const state = {
+      visible: true,
+      active: true,
+      minimized: false,
+      maximized: false,
+      fullscreen: true,
+    }
+    const bounds = { x: 10, y: 20, width: 640, height: 480 }
+    f.send({ v: 1, event: 'window.bounds-changed', target: 2, data: bounds })
+    f.send({
+      v: 1,
+      event: 'window.fullscreen-transition',
+      target: 2,
+      data: { completed: true, state },
+    })
+    await turn()
+    const events = JSON.parse(await f.owner.invoke(generation, resource, 'events', 'null'))
+    expect(events).toEqual([
+      { sequence: 1, type: 'window-bounds-changed', bounds },
+      { sequence: 2, type: 'window-fullscreen-transition', state, completed: true },
+    ])
+    const previous = generation
+    generation = commit(f.owner, await f.desktop.prepare())
+    await expect(
+      f.owner.invoke(previous, resource, 'fullscreen', '{"fullscreen":false}')
+    ).rejects.toThrow('RETIRED')
+    await expect(f.owner.invoke(previous, resource, 'ack-events', '{"through":2}')).rejects.toThrow(
+      'RETIRED'
+    )
+    expect(JSON.parse(await f.owner.invoke(generation, resource, 'events', 'null'))).toEqual(events)
+    await f.owner.invoke(generation, resource, 'ack-events', '{"through":2}')
+    expect(JSON.parse(await f.owner.invoke(generation, resource, 'events', 'null'))).toEqual([])
+    for (let n = 0; n < 4; n++)
+      f.send({
+        v: 1,
+        event: 'window.bounds-changed',
+        target: 2,
+        data: { ...bounds, width: 640 + n },
+      })
+    await turn()
+    expect(f.desktop.diagnostics()).toMatchObject({ queuedEvents: 3, eventOverflows: 1 })
+    await expect(f.owner.invoke(generation, resource, 'events', 'null')).rejects.toThrow('CAPACITY')
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test('managed desktop policy revocation during geometry readback rejects the stale result', async () => {
+  const f = await fixture()
+  try {
+    let allowed = true
+    const resource = f.desktop.registerWindow('window', f.window, {
+      ...f.policy(['bounds']),
+      authorize: () => allowed,
+    })
+    const generation = commit(f.owner, await f.desktop.prepare())
+    let pending: Command | undefined
+    f.intercept((command) => {
+      if (command.op === 'window.bounds') {
+        pending = command
+        return true
+      }
+      return false
+    })
+    const call = f.owner.invoke(generation, resource, 'bounds', 'null')
+    const outcome = call.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error })
+    )
+    await turn()
+    expect(pending).toBeDefined()
+    allowed = false
+    f.reply(pending!, { x: 0, y: 0, width: 640, height: 480 })
+    expect(await outcome).toMatchObject({ error: { code: 'DENIED' } })
+    f.intercept()
   } finally {
     await f.cleanup()
   }

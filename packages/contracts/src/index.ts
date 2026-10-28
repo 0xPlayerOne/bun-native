@@ -1,5 +1,6 @@
 /** Engine-independent contracts. This package must remain browser-safe. */
 export * from './core.ts'
+export * from './windows.ts'
 export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
 export * from './network-policy.ts'
@@ -10,6 +11,7 @@ export type {
   PersistentSessionResetResult,
 } from './session-reset.ts'
 import type { SessionNetworkPolicy } from './network-policy.ts'
+import type { Bounds, WindowEvent, WindowState } from './windows.ts'
 import { BunlyError, CONTRACT_VERSION } from './core.ts'
 import { PROFILE_CAPABILITY_VERSION } from './profiles.ts'
 import type { BackendName, Capability } from './core.ts'
@@ -32,12 +34,6 @@ export interface Handle<K extends ResourceKind> {
 export type WindowHandle = Handle<'window'>
 export type ViewHandle = Handle<'view'>
 export type SessionHandle = Handle<'session'>
-export interface Bounds {
-  readonly x: number
-  readonly y: number
-  readonly width: number
-  readonly height: number
-}
 export interface WindowOptions {
   readonly title: string
   readonly bounds: Bounds
@@ -139,6 +135,22 @@ export interface DownloadResult {
 export type RuntimeEvent =
   | { readonly type: 'created' | 'disposed'; readonly resource: Handle<ResourceKind> }
   | { readonly type: 'navigated'; readonly resource: ViewHandle; readonly state: ViewState }
+  | {
+      readonly type: 'window-state-changed'
+      readonly resource: WindowHandle
+      readonly state: WindowState
+    }
+  | {
+      readonly type: 'window-bounds-changed'
+      readonly resource: WindowHandle
+      readonly bounds: Bounds
+    }
+  | {
+      readonly type: 'window-fullscreen-transition'
+      readonly resource: WindowHandle
+      readonly completed: boolean
+      readonly state: WindowState
+    }
 export interface Diagnostics {
   readonly windows: number
   readonly views: number
@@ -155,6 +167,30 @@ export interface BrowserBackend {
   state(view: ViewHandle): ViewState
   /** Return the opaque session that owns this exact live view handle. */
   session(view: ViewHandle): SessionHandle
+  windowState(window: WindowHandle, options?: OperationOptions): Promise<WindowState>
+  minimizeWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState>
+  restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState>
+  activateWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState>
+  maximizeWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState>
+  setWindowFullscreen(
+    window: WindowHandle,
+    fullscreen: boolean,
+    options?: OperationOptions
+  ): Promise<WindowState>
+  showWindow(window: WindowHandle, visible: boolean, options?: OperationOptions): Promise<void>
+  resizeWindow(
+    window: WindowHandle,
+    width: number,
+    height: number,
+    options?: OperationOptions
+  ): Promise<void>
+  windowBounds(window: WindowHandle, options?: OperationOptions): Promise<Bounds>
+  setWindowBounds(window: WindowHandle, bounds: Bounds, options?: OperationOptions): Promise<Bounds>
+  onWindowEvent(
+    window: WindowHandle,
+    listener: (event: WindowEvent) => void,
+    options?: OperationOptions
+  ): () => void
   closeWindow(window: WindowHandle): Promise<void>
   disposeView(view: ViewHandle): Promise<void>
   disposeSession(session: SessionHandle): Promise<void>
@@ -198,15 +234,22 @@ export function requireCapability(descriptor: BackendDescriptor, capability: Cap
   }
 }
 export function validateBounds(value: Bounds): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new BunlyError('INVALID_ARGUMENT', 'Bounds must be an object')
   const numbers = [value.x, value.y, value.width, value.height]
   if (
-    !numbers.every(Number.isFinite) ||
+    !numbers.every(Number.isSafeInteger) ||
+    Math.abs(value.x) > 32768 ||
+    Math.abs(value.y) > 32768 ||
     value.width <= 0 ||
     value.height <= 0 ||
     value.width > 32768 ||
     value.height > 32768
   ) {
-    throw new BunlyError('INVALID_ARGUMENT', 'Bounds must be finite, with dimensions in (0, 32768]')
+    throw new BunlyError(
+      'INVALID_ARGUMENT',
+      'Bounds require integer coordinates in [-32768, 32768] and dimensions in [1, 32768]'
+    )
   }
 }
 /** URL validation is not an origin grant. Native adapters must validate redirects too. */

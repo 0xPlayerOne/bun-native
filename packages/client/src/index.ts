@@ -6,6 +6,14 @@ export {
 } from '../../contracts/src/index.ts'
 export type {
   BackendDescriptor,
+  Bounds,
+  WindowState,
+  WindowEvent,
+  ViewLayoutMode,
+  ViewLayer,
+  ViewPresentationOptions,
+  ViewPresentation,
+  ViewPresentationState,
   Capability,
   ViewState,
   InputAction,
