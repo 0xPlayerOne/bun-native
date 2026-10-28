@@ -36,6 +36,7 @@ enum Cancel {
     Permission,
     Limit,
     Timeout,
+    Network,
 }
 impl Cancel {
     fn failure(self) -> Option<&'static str> {
@@ -44,6 +45,7 @@ impl Cancel {
             Self::Permission => Some("permission"),
             Self::Limit => Some("limit"),
             Self::Timeout => Some("timeout"),
+            Self::Network => Some("network"),
         }
     }
 }
@@ -339,6 +341,7 @@ struct Observation {
     complete: bool,
     cancelled: bool,
     interrupted: bool,
+    interrupt_reason: DownloadInterruptReason,
 }
 fn observe(item: &DownloadItem) -> Option<Observation> {
     if item.is_valid() == 0 {
@@ -363,42 +366,92 @@ fn observe(item: &DownloadItem) -> Option<Observation> {
         complete: item.is_complete() != 0,
         cancelled: item.is_canceled() != 0,
         interrupted: item.is_interrupted() != 0,
+        interrupt_reason: item.interrupt_reason(),
     })
 }
-fn bind(view: u64, observation: &Observation, callback: Option<&DownloadItemCallback>) -> bool {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CallbackPhase {
+    Before,
+    Updated,
+}
+impl CallbackPhase {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Before => "before",
+            Self::Updated => "updated",
+        }
+    }
+}
+#[derive(Debug, PartialEq, Eq)]
+enum ProgressAction {
+    Continue,
+    Stop,
+}
+fn bind(
+    view: u64,
+    observation: &Observation,
+    callback: Option<&DownloadItemCallback>,
+    phase: CallbackPhase,
+) -> Option<ProgressAction> {
     let (bound, previous) = STATE.with(|s| {
         let mut s = s.borrow_mut();
         let Some(record) = s.downloads.entries.get_mut(&view) else {
-            return (false, None);
+            return (None, None);
         };
         if observation.id == 0
             || observation.original != record.permit.request_url()
             || record.terminal.is_some()
             || record.cef_id.is_some_and(|id| id != observation.id)
         {
-            return (false, None);
+            return (None, None);
         }
         record.cef_id = Some(observation.id);
         let previous = callback.and_then(|callback| record.callback.replace(callback.clone()));
-        // Chromium 156's InterruptAndDiscardPartialState resets its stored byte
-        // counter before notifying cancellation/interruption observers. Retain
-        // only bytes already observed; a discarded partial file is not negative
-        // transfer progress. Running/completed counters and the raw observation
-        // used by byte limits and final file verification remain unchanged.
+        // Chromium 156 may auto-resume before notifying its observers. RESUMING
+        // is externally IN_PROGRESS, but GetLastReason still exposes the
+        // interruption and a restart may reset received bytes. Bunly grants one
+        // transfer, not a retry: stop it, including an unexplained nonterminal
+        // regression or repeated target request. Never publish repaired running
+        // progress or allow a new request/destination claim.
+        let terminal = observation.complete || observation.cancelled || observation.interrupted;
+        let stop = !terminal
+            && (observation.interrupt_reason != DownloadInterruptReason::NONE
+                || observation.received < record.received
+                || (phase == CallbackPhase::Before && record.before));
+        // Discarded partial state and a transfer being stopped retain only bytes
+        // already observed. A healthy completion keeps its raw counter, as do
+        // byte-limit checks and successful file-size verification below.
         let discarded = !observation.complete && (observation.cancelled || observation.interrupted);
-        record.received = if discarded {
+        let retain = discarded || stop || record.cancel.is_some();
+        record.received = if retain {
             record.received.max(observation.received)
         } else {
             observation.received
         };
         record.total = observation
             .total
-            .filter(|total| !discarded || *total >= record.received);
-        (true, previous)
+            .filter(|total| !retain || *total >= record.received);
+        (
+            Some(if stop {
+                ProgressAction::Stop
+            } else {
+                ProgressAction::Continue
+            }),
+            previous,
+        )
     });
     // A CEF reference may release native state; never drop one under STATE.
     drop(previous);
     bound
+}
+fn continue_transfer(view: u64, action: ProgressAction) -> bool {
+    if action == ProgressAction::Stop {
+        // Normal authority and raw size checks run first. Their failure reason
+        // and an earlier user/lifecycle cancellation must keep precedence.
+        request_cancel(view, Cancel::Network);
+        return false;
+    }
+    true
 }
 fn deny_callback(view: u64, phase: &'static str, reason: &'static str) {
     // One fixed-label receipt per newly denied operation. Never print the URL,
@@ -422,7 +475,7 @@ fn callback_allowed(
     view: u64,
     actual: Option<&Browser>,
     observation: &Observation,
-    phase: &'static str,
+    phase: CallbackPhase,
 ) -> bool {
     let captured = STATE.with(|s| {
         s.borrow().downloads.entries.get(&view).map(|record| {
@@ -456,7 +509,7 @@ fn callback_allowed(
         None
     };
     if let Some(reason) = denial {
-        deny_callback(view, phase, reason);
+        deny_callback(view, phase.label(), reason);
         return false;
     }
     if observation.received > maximum || observation.total.is_some_and(|total| total > maximum) {
@@ -474,7 +527,12 @@ fn before(
     let Some(observation) = item.and_then(observe) else {
         return;
     };
-    if !bind(view, &observation, None) || !callback_allowed(view, browser, &observation, "before") {
+    let Some(action) = bind(view, &observation, None, CallbackPhase::Before) else {
+        return;
+    };
+    if !callback_allowed(view, browser, &observation, CallbackPhase::Before)
+        || !continue_transfer(view, action)
+    {
         return;
     }
     let stage = STATE.with(|s| {
@@ -523,13 +581,14 @@ fn updated(
         }
         return;
     };
-    if !bind(view, &observation, callback) {
+    let Some(action) = bind(view, &observation, callback, CallbackPhase::Updated) else {
         if let Some(callback) = callback {
             callback.cancel();
         }
         return;
-    }
-    let allowed = callback_allowed(view, browser, &observation, "updated");
+    };
+    let allowed = callback_allowed(view, browser, &observation, CallbackPhase::Updated)
+        && continue_transfer(view, action);
     if observation.complete || observation.cancelled || observation.interrupted {
         terminal(view, allowed, observation);
     } else {
@@ -801,6 +860,7 @@ mod tests {
                 complete: false,
                 cancelled: false,
                 interrupted: false,
+                interrupt_reason: DownloadInterruptReason::NONE,
             };
             let record = Record {
                 id: 100,
@@ -838,8 +898,14 @@ mod tests {
                 assert!(state.downloads.is_empty());
                 state.downloads.entries.insert(view, record);
             });
-            assert!(bind(view, &observation, None));
+            assert_eq!(
+                bind(view, &observation, None, CallbackPhase::Updated),
+                Some(ProgressAction::Continue)
+            );
             Self { view, observation }
+        }
+        fn bind(&self, phase: CallbackPhase) -> Option<ProgressAction> {
+            bind(self.view, &self.observation, None, phase)
         }
         fn progress(&self) -> (u64, Option<u64>) {
             STATE.with(|state| {
@@ -876,13 +942,19 @@ mod tests {
         });
         fixture.observation.cancelled = true;
         fixture.observation.received = 0;
-        assert!(bind(fixture.view, &fixture.observation, None));
+        assert_eq!(
+            fixture.bind(CallbackPhase::Updated),
+            Some(ProgressAction::Continue)
+        );
         assert_eq!(fixture.progress(), (8192, Some(32768)));
         assert_eq!(fixture.observation.received, 0);
 
         // Bytes newly observed in a terminal callback remain real progress.
         fixture.observation.received = 12288;
-        assert!(bind(fixture.view, &fixture.observation, None));
+        assert_eq!(
+            fixture.bind(CallbackPhase::Updated),
+            Some(ProgressAction::Continue)
+        );
         assert_eq!(fixture.progress(), (12288, Some(32768)));
     }
 
@@ -893,21 +965,156 @@ mod tests {
         fixture.observation.received = 0;
         for total in [None, Some(4096)] {
             fixture.observation.total = total;
-            assert!(bind(fixture.view, &fixture.observation, None));
+            assert_eq!(
+                fixture.bind(CallbackPhase::Updated),
+                Some(ProgressAction::Continue)
+            );
             assert_eq!(fixture.progress(), (8192, None));
             assert_eq!(fixture.observation.total, total);
         }
     }
 
     #[test]
-    fn running_and_completed_counters_are_never_repaired() {
+    fn healthy_running_and_completed_counters_remain_raw() {
         for complete in [false, true] {
             let mut fixture = Fixture::new();
             fixture.observation.complete = complete;
-            fixture.observation.received = 4096;
-            assert!(bind(fixture.view, &fixture.observation, None));
-            assert_eq!(fixture.progress(), (4096, Some(32768)));
-            assert_eq!(fixture.observation.received, 4096);
+            fixture.observation.received = 12288;
+            assert_eq!(
+                fixture.bind(CallbackPhase::Updated),
+                Some(ProgressAction::Continue)
+            );
+            assert_eq!(fixture.progress(), (12288, Some(32768)));
+            assert_eq!(fixture.observation.received, 12288);
+            if complete {
+                fixture.observation.received = 4096;
+                assert_eq!(
+                    fixture.bind(CallbackPhase::Updated),
+                    Some(ProgressAction::Continue)
+                );
+                assert_eq!(fixture.progress(), (4096, Some(32768)));
+                assert_eq!(fixture.observation.received, 4096);
+            }
+        }
+    }
+
+    #[test]
+    fn nonterminal_interruption_stops_before_publishing_regressed_progress() {
+        for (reason, received) in [
+            (DownloadInterruptReason::NONE, 0),
+            (DownloadInterruptReason::NETWORK_FAILED, 0),
+            (DownloadInterruptReason::NETWORK_FAILED, 8192),
+        ] {
+            let mut fixture = Fixture::new();
+            fixture.observation.interrupt_reason = reason;
+            fixture.observation.received = received;
+            let action = fixture.bind(CallbackPhase::Updated).unwrap();
+            assert_eq!(action, ProgressAction::Stop);
+            assert!(!continue_transfer(fixture.view, action));
+            assert_eq!(fixture.progress(), (8192, Some(32768)));
+            assert_eq!(fixture.observation.received, received);
+            STATE.with(|state| {
+                let state = state.borrow();
+                let record = state.downloads.entries.get(&fixture.view).unwrap();
+                assert!(record.cancel == Some(Cancel::Network));
+                assert!(!record.permit.active());
+                assert!(record.settlement.is_some());
+                assert!(record.terminal.is_none());
+                assert_eq!(
+                    record.last_progress.as_ref().unwrap()["status"],
+                    "cancelling"
+                );
+                assert_eq!(state.downloads.counts.terminals, 0);
+            });
+            // Cancelling a restart discards partial state again. The actual
+            // terminal receipt, not the interruption evidence, settles it.
+            fixture.observation.cancelled = true;
+            fixture.observation.received = 0;
+            fixture.observation.total = Some(4096);
+            assert_eq!(
+                fixture.bind(CallbackPhase::Updated),
+                Some(ProgressAction::Continue)
+            );
+            assert_eq!(fixture.progress(), (8192, None));
+        }
+    }
+
+    #[test]
+    fn repeated_native_target_request_cannot_restart_an_admitted_transfer() {
+        let fixture = Fixture::new();
+        STATE.with(|state| {
+            state
+                .borrow_mut()
+                .downloads
+                .entries
+                .get_mut(&fixture.view)
+                .unwrap()
+                .before = true;
+        });
+        assert_eq!(
+            fixture.bind(CallbackPhase::Updated),
+            Some(ProgressAction::Continue)
+        );
+        let action = fixture.bind(CallbackPhase::Before).unwrap();
+        assert_eq!(action, ProgressAction::Stop);
+        assert!(!continue_transfer(fixture.view, action));
+        STATE.with(|state| {
+            let state = state.borrow();
+            let record = state.downloads.entries.get(&fixture.view).unwrap();
+            assert!(record.before);
+            assert!(record.cancel == Some(Cancel::Network));
+            assert!(!record.permit.active());
+            assert!(record.terminal.is_none());
+        });
+    }
+
+    #[test]
+    fn interruption_does_not_replace_an_existing_cancellation_reason() {
+        for reason in [
+            Cancel::Requested,
+            Cancel::Revoked,
+            Cancel::Permission,
+            Cancel::Limit,
+            Cancel::Timeout,
+        ] {
+            let mut fixture = Fixture::new();
+            STATE.with(|state| {
+                mark_cancel(
+                    state
+                        .borrow_mut()
+                        .downloads
+                        .entries
+                        .get_mut(&fixture.view)
+                        .unwrap(),
+                    reason,
+                );
+            });
+            fixture.observation.interrupt_reason = DownloadInterruptReason::NETWORK_FAILED;
+            fixture.observation.received = 0;
+            let action = fixture.bind(CallbackPhase::Updated).unwrap();
+            assert!(!continue_transfer(fixture.view, action));
+            STATE.with(|state| {
+                assert!(
+                    state
+                        .borrow()
+                        .downloads
+                        .entries
+                        .get(&fixture.view)
+                        .unwrap()
+                        .cancel
+                        == Some(reason)
+                );
+            });
+            assert_eq!(fixture.progress(), (8192, Some(32768)));
+            // A completion racing with cancellation cannot become success or
+            // undo progress. Its raw size is still available to the caller.
+            fixture.observation.complete = true;
+            assert_eq!(
+                fixture.bind(CallbackPhase::Updated),
+                Some(ProgressAction::Continue)
+            );
+            assert_eq!(fixture.progress(), (8192, Some(32768)));
+            assert_eq!(fixture.observation.received, 0);
         }
     }
 
@@ -918,12 +1125,12 @@ mod tests {
         fixture.observation.received = 16384;
         for id in [0, 8] {
             fixture.observation.id = id;
-            assert!(!bind(fixture.view, &fixture.observation, None));
+            assert_eq!(fixture.bind(CallbackPhase::Updated), None);
             assert_eq!(fixture.progress(), (8192, Some(32768)));
         }
         fixture.observation.id = 7;
         fixture.observation.original = "https://download.test/file".into();
-        assert!(!bind(fixture.view, &fixture.observation, None));
+        assert_eq!(fixture.bind(CallbackPhase::Updated), None);
         assert_eq!(fixture.progress(), (8192, Some(32768)));
     }
 }

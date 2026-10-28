@@ -353,6 +353,60 @@ test('discarding native partial state cannot regress a terminal protocol counter
   }
 })
 
+test('a native interrupted retry retains its reservation until matching failed terminal receipts', async () => {
+  const f = await fixture()
+  try {
+    const operation = await f.backend.startDownload(f.view, request)
+    const observations: DownloadProgress[] = []
+    operation.onProgress((progress) => observations.push(progress))
+    let settled = false
+    void operation.completed.then(() => {
+      settled = true
+    })
+    f.progress('in-progress', 8192)
+    f.progress('cancelling', 8192)
+    await turn()
+    assert.equal(settled, false)
+    await assert.rejects(f.backend.startDownload(f.view, request), { code: 'RESOURCE_IN_USE' })
+    assert.equal(f.backend.diagnostics().listeners, 1)
+    f.progress('failed', 8192, 'network')
+    await turn()
+    assert.equal(settled, false)
+    await assert.rejects(f.backend.startDownload(f.view, request), { code: 'RESOURCE_IN_USE' })
+    f.send({
+      v: 1,
+      event: 'download.finished',
+      target: 3,
+      data: {
+        id: 101,
+        outcome: { status: 'failed', failure: 'network', bytesReceived: 8192, bytesWritten: 0 },
+      },
+    })
+    assert.deepEqual(await operation.completed, {
+      status: 'failed',
+      failure: 'network',
+      bytesReceived: 8192,
+      bytesWritten: 0,
+    })
+    assert.deepEqual(
+      observations.map((value) => [value.status, value.bytesReceived]),
+      [
+        ['starting', 0],
+        ['in-progress', 8192],
+        ['cancelling', 8192],
+        ['failed', 8192],
+      ]
+    )
+    assert.equal(f.backend.diagnostics().listeners, 0)
+    assert.equal(f.transport.failure, null)
+    const next = await f.backend.startDownload(f.view, request)
+    f.finish('completed', 1)
+    assert.equal((await next.completed).status, 'completed')
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
 test('legacy download convenience requires an explicit destination and preserves its result contract', async () => {
   const f = await fixture()
   try {

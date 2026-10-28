@@ -6,6 +6,7 @@ import { remoteDocumentReadiness } from '../examples/file-downloads/readiness.ts
 import { CefBackend } from '../packages/runtime/src/cef.ts'
 import { nativePeer, turn } from './helpers/native-peer.ts'
 import { downloadFixturePayloads } from '../examples/file-downloads/contract.ts'
+import { downloadFixtureFailure } from '../examples/file-downloads/failure.ts'
 
 test('owned download fixture serves exact bytes, bounded reload, and cancellable streams', async () => {
   const server = await downloadFixtureServer({ html: '<p>owned page</p>', client: 'export {}' })
@@ -43,6 +44,64 @@ test('owned download fixture serves exact bytes, bounded reload, and cancellable
   }
   assert.equal(server.observations().activeStreams, 0)
   assert.equal(server.observations().cancelledStreams, 1)
+})
+
+test('owned interruption endpoint closes before its declared content length', async () => {
+  const server = await downloadFixtureServer({ html: '', client: '' })
+  try {
+    const signal = AbortSignal.timeout(1000)
+    const response = await fetch(server.origin + '/broken.bin', { signal })
+    assert.equal(response.headers.get('content-length'), String(1024 * 1024))
+    await assert.rejects(response.arrayBuffer())
+    assert.equal(
+      signal.aborted,
+      false,
+      'The server must interrupt without waiting for the test deadline'
+    )
+    assert.equal(server.count('/broken.bin'), 1)
+    assert.equal(server.observations().blockedRequests, 0)
+  } finally {
+    await server.close()
+  }
+  assert.equal(server.observations().activeStreams, 0)
+})
+
+test('download failure receipts classify exact protocol errors without exporting arbitrary text', () => {
+  assert.equal(
+    downloadFixtureFailure(
+      'network-interruption',
+      new Error('Invalid native download state transition')
+    ),
+    'network-interruption: Error [native-transition]'
+  )
+  assert.equal(
+    downloadFixtureFailure('cancel', new Error('Transfer settled before positive native progress')),
+    'cancel: Error [no-positive-progress]'
+  )
+  assert.equal(
+    downloadFixtureFailure('native-shutdown', {
+      name: 'AssertionError',
+      code: 'ERR_ASSERTION',
+      message: '/private/fixture-path',
+    }),
+    'native-shutdown: AssertionError (ERR_ASSERTION) [unclassified]'
+  )
+  for (const message of [
+    '/private/fixture-path',
+    'https://private.invalid/path?secret=fixture',
+    'Invalid native download state transition /private/fixture-path',
+    'secret Invalid native download state transition',
+    'x'.repeat(1_000_000),
+  ]) {
+    const receipt = downloadFixtureFailure('/private/phase', {
+      name: 'PrivateFixtureName',
+      code: 'PRIVATE_FIXTURE_CODE',
+      message,
+      stack: 'private stack',
+      cause: { message: 'private cause' },
+    })
+    assert.equal(receipt, 'unknown-phase: Error [unclassified]')
+  }
 })
 
 test('remote fixture readiness requires exact native load completion and a new reload document', async () => {

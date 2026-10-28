@@ -76,10 +76,23 @@ observed from CEF, with zero bytes published. The pinned Chromium implementation
 [discards partial state during cancellation](https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_item_impl.cc),
 resetting its stored counter before notifying observers. That reset does not
 undo previously reported transfer progress. A terminal total below the retained
-count is reported as unknown, without inventing a replacement total. Running and
-successful-completion counters are never repaired; byte limits and final file
-size verification continue to use the exact current CEF observation. The SDK
-still rejects any regressing counter received over the native protocol.
+count is reported as unknown, without inventing a replacement total.
+
+The same pinned Chromium implementation can automatically resume an interrupted
+download before notifying observers. Its internal resuming state is exposed as
+in progress, and a restart can reset received bytes. CEF still exposes the last
+interruption through
+[`GetInterruptReason`](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/download_item_impl.cc).
+Bunly does not grant retries: a nonterminal interruption, regressing running
+counter, or repeated target callback stops the operation with a `network`
+failure. Existing authority, size-limit, and cancellation reasons keep precedence.
+The request permit is revoked immediately; callback, view, and staging ownership
+remain charged until an actual terminal callback and cleanup. Observed bytes
+remain monotonic while it stops, with no repaired in-progress event or renewed
+request/destination permission. Healthy running and successful-completion
+counters remain raw; byte limits and final file-size verification continue to
+use the exact current CEF observation. The SDK still rejects any regressing
+counter received over the native protocol.
 
 The existing `download(view, request)` convenience method remains available. Its
 request now accepts an optional typed `destination`, and the native adapter
@@ -156,6 +169,9 @@ diagnostic with fixed phase and reason labels. It distinguishes missing native
 request admission, revoked authority, rejected network policy, and unavailable
 staging without retaining URLs, destination paths, request secrets, payloads,
 or filesystem exception text. It does not turn a denied transfer into a pass.
+Fixture failure receipts additionally distinguish exact known protocol,
+deadline, and readiness errors with fixed labels. Unknown error messages,
+paths, URLs, stacks, causes, names, and codes are not exported by those receipts.
 
 ## Destination and filesystem guarantees
 

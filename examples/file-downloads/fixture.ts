@@ -25,6 +25,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { remoteDocumentReadiness } from './readiness.ts'
 import { downloadFixtureServer } from './server.ts'
 import { DOWNLOAD_WORKLOAD_MS, downloadFixtureSteps } from './contract.ts'
+import { downloadFixtureFailure } from './failure.ts'
 
 /** Finite real-CEF transfers, including cancellation while the native owner closes. */
 export default async function fileDownloads(backend: CefBackend): Promise<void> {
@@ -49,20 +50,7 @@ export default async function fileDownloads(backend: CefBackend): Promise<void> 
   }[] = []
   const checks: Record<string, boolean> = {}
   let phase = 'setup'
-  // Failure receipts identify the fixed workload phase without exporting error
-  // messages that may contain filesystem paths or compared fixture contents.
-  const failureText = (error: unknown): string => {
-    const value = error && typeof error === 'object' ? (error as Record<string, unknown>) : {}
-    const name =
-      typeof value['name'] === 'string' && /^[A-Za-z]{1,48}$/.test(value['name'])
-        ? value['name']
-        : 'Error'
-    const code =
-      typeof value['code'] === 'string' && /^[A-Z][A-Z0-9_]{0,47}$/.test(value['code'])
-        ? ` (${value['code']})`
-        : ''
-    return `${phase}: ${name}${code}`
-  }
+  const failureText = (error: unknown): string => downloadFixtureFailure(phase, error)
   let server: Awaited<ReturnType<typeof downloadFixtureServer>> | undefined,
     failure: string | null = null,
     disposing = false,
