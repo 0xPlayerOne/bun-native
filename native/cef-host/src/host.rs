@@ -14,6 +14,8 @@ use std::{
 mod clipboard;
 #[path = "navigation.rs"]
 mod navigation;
+#[path = "shutdown_pending.rs"]
+mod shutdown_pending;
 #[path = "view_composition.rs"]
 mod view_composition;
 #[path = "window_state.rs"]
@@ -794,7 +796,8 @@ fn bound_shutdown() {
 wrap_task! { struct ShutdownDeadline; impl Task { fn execute(&self) {
     if SHUTDOWN_WAIT.get().is_some_and(|(lock, _)| *lock.lock().unwrap()) { return; }
     FAILED.store(true, Ordering::SeqCst);
-    eprintln!("{}", json!({"event":"bunly.host.failure","error":"Native shutdown acknowledgement deadline exceeded"}));
+    let pending = STATE.with(shutdown_pending::snapshot);
+    eprintln!("{}", json!({"event":"bunly.host.failure","error":"Native shutdown acknowledgement deadline exceeded","pending":pending}));
     shutdown_acknowledged(); quit_message_loop();
 } } }
 fn observe_quitting(reason: &'static str) -> bool {
@@ -868,6 +871,7 @@ wrap_task! {
     }
 }
 fn finalize_sessions() {
+    shutdown_pending::record(shutdown_pending::Point::FinalizeSessions);
     let sessions = STATE.with(|state| {
         let mut state = state.borrow_mut();
         if state.sessions.values().any(|record| record.busy)
@@ -989,6 +993,7 @@ fn begin_dispose_flush(id: u64, context: RequestContext) {
         context,
         crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::FlushCallback),
     );
+    shutdown_pending::record(shutdown_pending::Point::FlushRequested);
     if manager.flush_store(Some(&mut callback)) == 0 {
         dispose_failed(id, "Cookie store flush could not be scheduled");
     }
@@ -1010,15 +1015,18 @@ fn dispose_failed(id: u64, message: &str) {
 wrap_completion_callback! {
     struct SessionFlushedForDispose { id: u64, context: RequestContext, _audit: crate::shutdown_audit::Token }
     impl CompletionCallback { fn on_complete(&self) {
+        shutdown_pending::record(shutdown_pending::Point::FlushCompleted);
         self.context.clear_scheme_handler_factories();
         let mut closed = ContextClosed::new(self.id, crate::shutdown_audit::Token::new(crate::shutdown_audit::Kind::ConnectionsClosed));
         // Keep the context and profile lock in STATE until asynchronous CEF cleanup.
+        shutdown_pending::record(shutdown_pending::Point::ConnectionsCloseRequested);
         self.context.close_all_connections(Some(&mut closed));
     } }
 }
 wrap_completion_callback! {
     struct ContextClosed { id: u64, _audit: crate::shutdown_audit::Token }
     impl CompletionCallback { fn on_complete(&self) {
+        shutdown_pending::record(shutdown_pending::Point::ConnectionsClosed);
         let record = STATE.with(|s| { let mut state=s.borrow_mut();
             if state.credential_probe==Some(self.id) {state.credential_probe=None;state.retired_credential_probe=None;state.credential_ready=false;}
             state.sessions.remove(&self.id)
@@ -1041,14 +1049,17 @@ wrap_completion_callback! {
 // that queue and return to UI before ending the loop, instead of entering
 // CefShutdown's task-drain from inside an outstanding close callback.
 wrap_task! { struct FinishLoopTask; impl Task { fn execute(&self) {
+    shutdown_pending::record(shutdown_pending::Point::FinishLoop);
     let mut fence = ShutdownIoFence::new();
     if post_task(ThreadId::IO, Some(&mut fence)) == 0 { FAILED.store(true, Ordering::SeqCst); shutdown_acknowledged(); quit_message_loop(); }
 } } }
 wrap_task! { struct ShutdownIoFence; impl Task { fn execute(&self) {
+    shutdown_pending::record(shutdown_pending::Point::IoFence);
     let mut fence = ShutdownUiFence::new();
     if post_task(ThreadId::UI, Some(&mut fence)) == 0 { FAILED.store(true, Ordering::SeqCst); }
 } } }
 wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
+    shutdown_pending::record(shutdown_pending::Point::UiFence);
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
@@ -2573,7 +2584,7 @@ wrap_window_delegate! {
             for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } }
             i32::from(allowed)
         }
-        fn on_window_destroyed(&self, _window: Option<&mut Window>) { let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
+        fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
     }
 }
 wrap_browser_view_delegate! {
@@ -2673,6 +2684,7 @@ wrap_life_span_handler! {
             }
         }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
+            shutdown_pending::record(shutdown_pending::Point::BrowserBeforeClose);
             let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
             if let Some(mut record) = record {
                 revoke_renderer(self.id, record.rpc.revoke());

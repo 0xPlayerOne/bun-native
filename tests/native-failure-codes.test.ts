@@ -87,3 +87,126 @@ test('arbitrary phase names and error payloads cannot escape the finite summary'
     /^Error: Native failure event budget exceeded$/
   )
 })
+
+function pendingSnapshot() {
+  return {
+    schema: 1,
+    stateAvailable: true,
+    quitting: true,
+    finalizing: false,
+    saturated: false,
+    credentialRetirementPending: false,
+    owners: {
+      windows: 0,
+      windowsClosing: 0,
+      views: 4,
+      viewsClosing: 0,
+      viewsCreating: 0,
+      browserReferences: 4,
+      browserViewReferences: 4,
+      overlayReferences: 4,
+      sessions: 4,
+      sessionsBusy: 0,
+      sessionsCreating: 0,
+      sessionsDisposing: 0,
+    },
+    callbacks: {
+      finalizeSessions: 0,
+      finishLoop: 0,
+      ioFence: 0,
+      uiFence: 0,
+      windowDestroyed: 1,
+      browserBeforeClose: 0,
+      flushRequested: 0,
+      flushCompleted: 0,
+      connectionsCloseRequested: 0,
+      connectionsClosed: 0,
+    },
+  }
+}
+
+test('fresh native deadline snapshots return only fixed bounded counts and booleans', () => {
+  const pending = pendingSnapshot()
+  const privatePayload = '/private/example/profile?secret=fixture-only'
+  const summary = summarizeNativeHostFailures([
+    {
+      event: 'bunly.host.failure',
+      error: 'Native shutdown acknowledgement deadline exceeded',
+      pending: {
+        ...pending,
+        privateDetail: privatePayload,
+        owners: { ...pending.owners, privateDetail: privatePayload },
+        callbacks: { ...pending.callbacks, privateDetail: privatePayload },
+      },
+    },
+  ])
+  assert.deepEqual(summary, [
+    {
+      code: 'native-shutdown-deadline',
+      phase: 'no-phase-start-observed',
+      pending: { status: 'observed', ...pending },
+    },
+  ])
+  assert.equal(JSON.stringify(summary).includes(privatePayload), false)
+  // These counts are synthetic parser input, not a native workbench result.
+  assert.equal(pending.owners.views, 4)
+})
+
+test('malformed, unsupported or falsely unsaturated deadline snapshots remain unclassified', () => {
+  const valid = pendingSnapshot()
+  for (const pending of [
+    undefined,
+    null,
+    [],
+    {},
+    { ...valid, schema: 2 },
+    { ...valid, quitting: 'private text' },
+    { ...valid, owners: { ...valid.owners, views: '/private/example' } },
+    { ...valid, owners: { ...valid.owners, views: -1 } },
+    { ...valid, owners: { ...valid.owners, views: 0.5 } },
+    { ...valid, owners: { ...valid.owners, views: Infinity } },
+    { ...valid, callbacks: { ...valid.callbacks, flushCompleted: 65_536 } },
+    { ...valid, callbacks: { ...valid.callbacks, flushCompleted: 65_535 } },
+    { ...valid, saturated: true },
+  ]) {
+    const summary = summarizeNativeHostFailures([
+      {
+        event: 'bunly.host.failure',
+        error: 'Native shutdown acknowledgement deadline exceeded',
+        pending,
+      },
+    ])
+    assert.deepEqual(summary[0]?.pending, { status: 'unclassified' })
+  }
+  const saturated = {
+    ...valid,
+    saturated: true,
+    callbacks: { ...valid.callbacks, flushCompleted: 65_535 },
+  }
+  assert.deepEqual(
+    summarizeNativeHostFailures([
+      {
+        event: 'bunly.host.failure',
+        error: 'Native shutdown acknowledgement deadline exceeded',
+        pending: saturated,
+      },
+    ])[0]?.pending,
+    { status: 'observed', ...saturated }
+  )
+  assert.deepEqual(
+    summarizeNativeHostFailures([
+      { event: 'bunly.host.failure', error: 'unknown', pending: valid },
+    ]),
+    [{ code: 'unclassified', phase: 'no-phase-start-observed' }]
+  )
+  assert.deepEqual(
+    summarizeNativeHostFailures([
+      {
+        event: 'bunly.host.failure',
+        error: 'Native shutdown acknowledgement deadline exceeded',
+        pending: { schema: 1, stateAvailable: false, privateDetail: '/private/example' },
+      },
+    ])[0]?.pending,
+    { status: 'state-unavailable' }
+  )
+})

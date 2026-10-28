@@ -119,6 +119,18 @@ quit cannot substitute for that path. This helper does not change native bytes,
 enable a diagnostic build feature, launch an app, or authorize reading a retained
 private report.
 
+The native shutdown-acknowledgment deadline also attaches fixed `pending` owner
+counts and lifetime callback counts to its existing failure receipt. These count
+registry records and retained Bunly wrappers, not CEF internal reference counts.
+The snapshot distinguishes pending window/view owners, session initialization
+or disposal, and executed finalization/IO/UI fence callbacks. It reads registry
+state without invoking CEF, releasing owners, or changing the failure path. Counts
+saturate at 65,535 with an explicit flag. The fresh-run classifier projects only
+those fixed numeric/boolean fields; malformed snapshots become `unclassified`.
+An already borrowed registry reports `state-unavailable` without panicking or
+inventing zero owners.
+Zero counts alone cannot prove native cleanup or satisfy an acceptance gate.
+
 ## Application surfaces and controls
 
 The window owns four independent native browser views. Each has a separate

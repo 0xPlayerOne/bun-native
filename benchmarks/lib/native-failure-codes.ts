@@ -61,10 +61,104 @@ type ShutdownPhase =
   | 'cef-shutdown'
   | 'unclassified-phase'
 
+const ownerFields = [
+  'windows',
+  'windowsClosing',
+  'views',
+  'viewsClosing',
+  'viewsCreating',
+  'browserReferences',
+  'browserViewReferences',
+  'overlayReferences',
+  'sessions',
+  'sessionsBusy',
+  'sessionsCreating',
+  'sessionsDisposing',
+] as const
+const callbackFields = [
+  'finalizeSessions',
+  'finishLoop',
+  'ioFence',
+  'uiFence',
+  'windowDestroyed',
+  'browserBeforeClose',
+  'flushRequested',
+  'flushCompleted',
+  'connectionsCloseRequested',
+  'connectionsClosed',
+] as const
+type NativeShutdownPending =
+  | { readonly status: 'unclassified' }
+  | { readonly status: 'state-unavailable' }
+  | {
+      readonly status: 'observed'
+      readonly schema: 1
+      readonly stateAvailable: true
+      readonly quitting: boolean
+      readonly finalizing: boolean
+      readonly saturated: boolean
+      readonly credentialRetirementPending: boolean
+      readonly owners: Readonly<Record<(typeof ownerFields)[number], number>>
+      readonly callbacks: Readonly<Record<(typeof callbackFields)[number], number>>
+    }
+
+function object(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+function fixedCounts<T extends string>(
+  input: unknown,
+  fields: readonly T[]
+): Record<T, number> | undefined {
+  const value = object(input)
+  if (
+    !value ||
+    fields.some((field) => {
+      const count = value[field]
+      return typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > 65_535
+    })
+  )
+    return undefined
+  return Object.fromEntries(fields.map((field) => [field, value[field]])) as Record<T, number>
+}
+function shutdownPending(input: unknown): NativeShutdownPending {
+  const value = object(input)
+  if (value?.['schema'] === 1 && value['stateAvailable'] === false)
+    return { status: 'state-unavailable' }
+  const owners = fixedCounts(value?.['owners'], ownerFields)
+  const callbacks = fixedCounts(value?.['callbacks'], callbackFields)
+  if (
+    !value ||
+    value['schema'] !== 1 ||
+    value['stateAvailable'] !== true ||
+    typeof value['quitting'] !== 'boolean' ||
+    typeof value['finalizing'] !== 'boolean' ||
+    typeof value['saturated'] !== 'boolean' ||
+    typeof value['credentialRetirementPending'] !== 'boolean' ||
+    !owners ||
+    !callbacks ||
+    value['saturated'] !== [...Object.values(owners), ...Object.values(callbacks)].includes(65_535)
+  )
+    return { status: 'unclassified' }
+  return {
+    status: 'observed',
+    schema: 1,
+    stateAvailable: true,
+    quitting: value['quitting'],
+    finalizing: value['finalizing'],
+    saturated: value['saturated'],
+    credentialRetirementPending: value['credentialRetirementPending'],
+    owners,
+    callbacks,
+  }
+}
+
 export interface NativeFailureReceipt {
   readonly code: NativeFailureCode
   /** Last observed phase start, not proof that earlier native close callbacks completed. */
   readonly phase: ShutdownPhase
+  readonly pending?: NativeShutdownPending
 }
 
 /** For a fresh observed command's nativeEvents only; not an acceptance validator.
@@ -91,8 +185,14 @@ export function summarizeNativeHostFailures(
           phase = 'unclassified-phase'
       }
     }
-    if (event['event'] === 'bunly.host.failure')
-      failures.push({ code: classifyNativeHostFailure(event['error']), phase })
+    if (event['event'] === 'bunly.host.failure') {
+      const code = classifyNativeHostFailure(event['error'])
+      const pending =
+        code === 'native-shutdown-deadline' && Object.hasOwn(event, 'pending')
+          ? { pending: shutdownPending(event['pending']) }
+          : {}
+      failures.push({ code, phase, ...pending })
+    }
   }
   return failures
 }
