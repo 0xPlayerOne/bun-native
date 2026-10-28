@@ -90,6 +90,11 @@ export class MockBackend implements BrowserBackend {
   async createWindow(options: WindowOptions): Promise<WindowHandle> {
     this.#active()
     validateBounds(options.bounds)
+    if (options.viewLayout !== undefined && options.viewLayout !== 'stack') {
+      if (options.viewLayout !== 'manual')
+        throw new BunlyError('INVALID_ARGUMENT', 'Invalid view layout mode')
+      requireCapability(this.descriptor, 'view.composition')
+    }
     if (typeof options.title !== 'string' || options.title.length > 1024)
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid title')
     const handle = this.#registry.create(
@@ -101,6 +106,8 @@ export class MockBackend implements BrowserBackend {
   }
   async createView(options: ViewOptions): Promise<ViewHandle> {
     this.#active()
+    if (options.presentation !== undefined || options.layer !== undefined)
+      requireCapability(this.descriptor, 'view.composition')
     this.#registry.get(options.window, 'window')
     this.#registry.get(options.session, 'session')
     const url = normalizeUrl(options.url)

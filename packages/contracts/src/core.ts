@@ -5,6 +5,7 @@ export const CAPABILITIES = [
   'window.state',
   'window.geometry',
   'view.navigate',
+  'view.composition',
   'session.ephemeral',
   'session.persistent',
   'session.cookies',
