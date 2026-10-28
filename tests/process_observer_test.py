@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -472,20 +473,33 @@ class ObserverTests(unittest.TestCase):
         self.assertEqual(result["observedOrphans"], [])
 
     def test_native_receipts_survive_noise_without_deduplicating_or_accepting_stdout(self):
-        code = (
-            'import json,sys; event={"event":"bunly.native.transport-throttle","rate":4,"completed":True}; '
-            "print(json.dumps(event)); "
-            "print(json.dumps(event),file=sys.stderr); "
-            "print(json.dumps(event),file=sys.stderr); "
-            'print(json.dumps({"event":"not-allowlisted"}),file=sys.stderr); '
-            'print(json.dumps({"event":["bunly.host.shutdown"]}),file=sys.stderr); '
-            '[print("ordinary diagnostic noise",file=sys.stderr) for _ in range(80)]'
-        )
-        result = observer.observe([sys.executable, "-c", code])
-        self.assertFalse(result["outputOverflow"])
-        self.assertEqual(len(result["nativeDiagnostics"]), 2)
-        self.assertEqual(result["nativeDiagnostics"][0], result["nativeDiagnostics"][1])
-        self.assertTrue(all(line == "ordinary diagnostic noise" for line in result["stderr"]))
+        for event in [
+            {"event": "bunly.native.transport-throttle", "rate": 4, "completed": True},
+            {
+                "event": "bunly.native.focus",
+                "phase": "window-shown",
+                "stage": "readiness",
+                "state": None,
+            },
+        ]:
+            with self.subTest(event=event["event"]):
+                code = (
+                    f"import json,sys; event={event!r}; "
+                    "print(json.dumps(event)); "
+                    "print(json.dumps(event),file=sys.stderr); "
+                    "print(json.dumps(event),file=sys.stderr); "
+                    'print(json.dumps({"event":"not-allowlisted"}),file=sys.stderr); '
+                    'print(json.dumps({"event":["bunly.host.shutdown"]}),file=sys.stderr); '
+                    '[print("ordinary diagnostic noise",file=sys.stderr) for _ in range(80)]'
+                )
+                result = observer.observe([sys.executable, "-c", code])
+                self.assertFalse(result["outputOverflow"])
+                self.assertEqual(len(result["nativeDiagnostics"]), 2)
+                self.assertEqual(result["nativeDiagnostics"][0], result["nativeDiagnostics"][1])
+                self.assertEqual(json.loads(result["nativeDiagnostics"][0]), event)
+                self.assertTrue(
+                    all(line == "ordinary diagnostic noise" for line in result["stderr"])
+                )
 
     def test_native_receipt_count_line_and_total_bytes_fail_closed_on_overflow(self):
         for count, size in [(129, 1), (1, 17000), (8, 10000)]:

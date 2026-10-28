@@ -338,22 +338,62 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
     Ok(())
 }
 
-fn eligible(current: &Target) -> bool {
-    current.window.is_visible() != 0
-        && current.window.is_minimized() == 0
-        && current.view.is_visible() != 0
-        && current.view.is_drawn() != 0
-        && current.view.is_enabled() != 0
-        && current.view.is_focusable() != 0
-        && current.view.bounds().width > 0
-        && current.view.bounds().height > 0
-        && current.placement.as_ref().is_none_or(|placement| {
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FocusState {
+    window_visible: bool,
+    window_minimized: bool,
+    view_visible: bool,
+    view_drawn: bool,
+    view_enabled: bool,
+    view_focusable: bool,
+    positive_bounds: bool,
+    presentation_allows_focus: bool,
+    overlay_allows_focus: bool,
+}
+impl FocusState {
+    fn eligible(self) -> bool {
+        self.window_visible
+            && !self.window_minimized
+            && self.view_visible
+            && self.view_drawn
+            && self.view_enabled
+            && self.view_focusable
+            && self.positive_bounds
+            && self.presentation_allows_focus
+            && self.overlay_allows_focus
+    }
+}
+fn focus_state(current: &Target) -> FocusState {
+    let bounds = current.view.bounds();
+    FocusState {
+        window_visible: current.window.is_visible() != 0,
+        window_minimized: current.window.is_minimized() != 0,
+        view_visible: current.view.is_visible() != 0,
+        view_drawn: current.view.is_drawn() != 0,
+        view_enabled: current.view.is_enabled() != 0,
+        view_focusable: current.view.is_focusable() != 0,
+        positive_bounds: bounds.width > 0 && bounds.height > 0,
+        presentation_allows_focus: current.placement.as_ref().is_none_or(|placement| {
             placement.presentation.visible && placement.presentation.focusable
-        })
-        && (current.placement.is_none()
+        }),
+        overlay_allows_focus: current.placement.is_none()
             || current.overlay.as_ref().is_some_and(|overlay| {
                 overlay.is_valid() != 0 && overlay.is_visible() != 0 && overlay.is_drawn() != 0
-            }))
+            }),
+    }
+}
+fn eligible(current: &Target) -> bool {
+    focus_state(current).eligible()
+}
+/// Private-pipe readback, available in ordinary builds. It never shows, lays out,
+/// activates or focuses a view. A later focus request still checks eligibility.
+pub(super) fn read_focus_state(id: u64) -> Result<Value, String> {
+    let state = focus_state(&target(id)?);
+    target(id)?;
+    let mut value = json!(state);
+    value["eligible"] = json!(state.eligible());
+    Ok(value)
 }
 pub(super) fn can_focus(id: u64) -> bool {
     target(id).is_ok_and(|current| eligible(&current))
@@ -557,5 +597,66 @@ mod tests {
         assert!(!can_focus(999));
         assert!(focus(999).is_err());
         assert!(read(999).is_err());
+        assert!(read_focus_state(999).is_err());
+    }
+    #[test]
+    fn focus_state_requires_every_existing_native_precondition() {
+        let ready = FocusState {
+            window_visible: true,
+            window_minimized: false,
+            view_visible: true,
+            view_drawn: true,
+            view_enabled: true,
+            view_focusable: true,
+            positive_bounds: true,
+            presentation_allows_focus: true,
+            overlay_allows_focus: true,
+        };
+        assert!(ready.eligible());
+        for changed in [
+            FocusState {
+                window_visible: false,
+                ..ready
+            },
+            FocusState {
+                window_minimized: true,
+                ..ready
+            },
+            FocusState {
+                view_visible: false,
+                ..ready
+            },
+            FocusState {
+                view_drawn: false,
+                ..ready
+            },
+            FocusState {
+                view_enabled: false,
+                ..ready
+            },
+            FocusState {
+                view_focusable: false,
+                ..ready
+            },
+            FocusState {
+                positive_bounds: false,
+                ..ready
+            },
+            FocusState {
+                presentation_allows_focus: false,
+                ..ready
+            },
+            FocusState {
+                overlay_allows_focus: false,
+                ..ready
+            },
+        ] {
+            assert!(!changed.eligible());
+        }
+        assert!(json!(ready)
+            .as_object()
+            .unwrap()
+            .values()
+            .all(Value::is_boolean));
     }
 }

@@ -18,7 +18,11 @@
     "examples/managed-desktop/restart-contract.ts",
     "examples/desktop-controls/client.ts",
     "examples/desktop-controls/contract.ts",
-    "examples/file-downloads/client.ts"
+    "examples/file-downloads/client.ts",
+    "examples/hardware-workbench/client.ts",
+    "examples/hardware-workbench/contract.ts",
+    "examples/hardware-workbench/cases.ts",
+    "examples/hardware-workbench/page.ts"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**"]
 }

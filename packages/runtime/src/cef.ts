@@ -28,6 +28,7 @@ import {
   type CefWindowState,
 } from './cef-window-state.ts'
 export type { CefWindowState } from './cef-window-state.ts'
+import { parseCefViewFocusState, type CefViewFocusState } from './cef-view-focus-state.ts'
 import { RpcServer } from './rpc.ts'
 import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
 import { RpcLoopbackServer } from './rpc-loopback.ts'
@@ -1220,6 +1221,21 @@ export class CefBackend
     this.#windowSubscriptionCount++
     signal?.addEventListener('abort', dispose, { once: true })
     return dispose
+  }
+  /** @internal Read-only native eligibility, not a focus reservation or a renderer API. */
+  async nativeViewFocusState(
+    view: ViewHandle,
+    options?: OperationOptions
+  ): Promise<CefViewFocusState> {
+    const resource = this.#liveView(view)
+    if (resource.composition) requireCapability(this.descriptor, 'view.composition')
+    const value = await this.#transport.call(
+      'view.focus.state',
+      { id: resource.native },
+      options?.signal
+    )
+    this.#liveView(view)
+    return parseCefViewFocusState(value)
   }
   async focusView(view: ViewHandle, options?: OperationOptions): Promise<void> {
     const resource = this.#liveView(view)

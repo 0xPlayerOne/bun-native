@@ -51,6 +51,26 @@ copied. It does not establish a cause for any historical download timeout.
 - https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
 - https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
 
+## Parent-window close references
+
+The guarded close batch and overlay reattachment in Bunly's host are authored
+implementation based on pinned CEF `47dbc1df023e99f006fb9e850a8d83cc19b4fdd9`
+behavior. No upstream implementation is copied:
+
+- [Alloy browser host](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/alloy/alloy_browser_host_impl.cc):
+  `TryCloseBrowser` can return false after a synchronous `CloseContents`
+  transition has accepted close and requested another parent close. Bunly
+  preserves that nested request through one deferred UI retry.
+- [Views platform delegate](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/views/browser_platform_delegate_views.cc):
+  `CloseHostWindow` calls the owning widget's close operation.
+- [Overlay view host](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/views/overlay_view_host.cc):
+  cleanup detaches overlay contents and resumes their ownership for reuse;
+  `Close` does not repeat that cleanup while its widget is already closing.
+- [Window API](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/include/views/cef_window.h)
+  and [View API](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/include/views/cef_view.h):
+  the same parent owns reattached content, with attachment and parent identity
+  read back before the retired overlay-controller wrapper is released.
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

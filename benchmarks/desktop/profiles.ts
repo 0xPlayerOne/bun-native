@@ -23,6 +23,12 @@ import {
   acceptFileDownloads,
   acceptDownloadsReport,
 } from './downloads-acceptance.ts'
+import {
+  PARENT_CLOSE_PROFILE,
+  parentCloseSourceSelectors,
+  acceptParentClose,
+  acceptParentCloseReport,
+} from './parent-close-acceptance.ts'
 
 const profiles = {
   windows: {
@@ -73,11 +79,27 @@ const profiles = {
     acceptObservation: acceptFileDownloads,
     acceptReport: acceptDownloadsReport,
   },
+  'parent-close': {
+    profile: PARENT_CLOSE_PROFILE,
+    sourceSelectors: parentCloseSourceSelectors,
+    fixture: 'examples/view-parent-close',
+    browserEntry: null,
+    directory: 'view-parent-close',
+    title: 'View Parent Close',
+    workloadLimitation:
+      'One API parent-window close with four live native panes; OS quit, physical input and assistive technology remain separate qualification.',
+    acceptObservation: acceptParentClose,
+    acceptReport: acceptParentCloseReport,
+  },
 } as const
 
 export function desktopProfile(name = 'windows') {
   assert.ok(
-    name === 'windows' || name === 'composition' || name === 'services' || name === 'downloads',
+    name === 'windows' ||
+      name === 'composition' ||
+      name === 'services' ||
+      name === 'downloads' ||
+      name === 'parent-close',
     'Unknown desktop qualification case'
   )
   return profiles[name]
