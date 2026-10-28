@@ -12,7 +12,12 @@ test('native desktop capabilities and ready metadata are bounded immutable disco
       version: number
       capabilities: string[]
     }
-    assert.deepEqual(peer.transport.desktopCapabilities, ['window.state', 'window.geometry'])
+    assert.deepEqual(peer.transport.desktopCapabilities, [
+      'window.state',
+      'window.geometry',
+      'clipboard.text',
+      'app.lifecycle',
+    ])
     assert.equal(metadata.version, 1)
     assert.deepEqual(metadata.capabilities, peer.transport.desktopCapabilities)
     assert.ok(Object.isFrozen(peer.transport.desktopCapabilities))

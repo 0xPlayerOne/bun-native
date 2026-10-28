@@ -4,6 +4,8 @@ export const CAPABILITIES = [
   'window.lifecycle',
   'window.state',
   'window.geometry',
+  'clipboard.text',
+  'app.lifecycle',
   'view.navigate',
   'session.ephemeral',
   'session.persistent',

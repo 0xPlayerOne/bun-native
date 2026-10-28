@@ -1,6 +1,11 @@
 import type { Readable, Writable } from 'node:stream'
 import capacity from './native-capacity.json'
-const DESKTOP_CAPABILITIES = Object.freeze(['window.state', 'window.geometry'] as const)
+const DESKTOP_CAPABILITIES = Object.freeze([
+  'window.state',
+  'window.geometry',
+  'clipboard.text',
+  'app.lifecycle',
+] as const)
 export type NativeDesktopCapability = (typeof DESKTOP_CAPABILITIES)[number]
 function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[] {
   // ABI 1 predates portable desktop capabilities. Absence preserves that legacy
@@ -371,6 +376,13 @@ export class NativeTransport {
         this.#ready = true
         this.#resolveReady(event)
       } else if (!this.#ready) throw new Error('Native event before readiness')
+      if (
+        event.event === 'shutdown' &&
+        event.data !== undefined &&
+        event.data !== null &&
+        (Object.keys(event.data).length !== 1 || typeof event.data['failed'] !== 'boolean')
+      )
+        throw new Error('Malformed native shutdown result')
       for (const listener of Array.from(this.#listeners)) {
         if (!this.#listeners.has(listener)) continue
         try {
@@ -379,7 +391,10 @@ export class NativeTransport {
           /* Diagnostics listeners cannot disrupt protocol progress. */
         }
       }
-      if (event.event === 'shutdown') this.#finish(null)
+      if (event.event === 'shutdown')
+        this.#finish(
+          event.data?.['failed'] === true ? new Error('Native host reported failed shutdown') : null
+        )
       return event.event === 'ready'
     }
     const id = frame['id']
