@@ -322,6 +322,7 @@ def main():
                 data,
                 injected,
                 require_renderer_handshake=True,
+                require_failed_shutdown=True,
                 renderer_platform=sys.platform,
             )
             if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
