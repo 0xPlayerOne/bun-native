@@ -50,7 +50,7 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop` and `view-composition` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition` and `desktop-services` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -108,6 +108,43 @@ See [the composition contract and limitations](view-composition.md).
 
 On Linux the existing disposable display wrapper accepts
 `--desktop --desktop-case=composition --native-source=COMMIT`; it creates and
-cleans its own Xvfb/Openbox processes. The full hosted suite requires both native
+cleans its own Xvfb/Openbox processes. The full hosted suite requires the native
 desktop stages on every platform before later credential/provider work. Neither
 profile changes the existing M4-only suite.
+
+## Clipboard and application lifecycle
+
+The `services` case uses a static local page and native document readiness. It
+does not add a renderer RPC endpoint. On disposable GitHub-hosted macOS ARM64 and
+Windows x64 runners, launch it with explicit clipboard opt-in:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=services --disposable-clipboard
+```
+
+The qualifier rejects local/connected desktops, self-hosted runners, missing
+opt-in, and mismatched runner identities **before native launch or artifact
+preparation**. The receipt records this contributor launch condition separately
+from the runtime's exact document authority. The fixture refuses every nonempty
+or uncertain initial clipboard, compares only its own bounded text in memory,
+and restores the initial emptiness after success or failure. It does not retain
+clipboard payloads. This requires an isolated runner with no competing clipboard
+producer; the empty preflight is not an atomic reservation.
+
+Linux uses `--case=services` without the clipboard opt-in, or the disposable
+display wrapper's `--desktop --desktop-case=services --native-source=COMMIT`.
+It verifies explicit unsupported clipboard errors and real application lifecycle
+without accessing an OS clipboard. This outcome cannot satisfy a macOS/Windows
+clipboard support claim.
+
+Reports use `.bunly/m7/desktop-services/run-*/report.json` and profile
+`native-desktop-services-v1`. The same offline `--verify` command checks the
+complete source, runtime, artifact, metadata, ordinary teardown, output drain and
+process cleanup contract. Service acceptance additionally requires the ordered
+quit-requested/quitting/closed observations, stale document rejection, zero
+remaining native resource owners and, where executed, all clipboard
+denial/Unicode/byte-boundary/clear/restoration checks. No hardware, assistive
+technology or performance eligibility is inferred from these operations.
+
+The full hosted suite requires this case on all three targets. See
+[desktop services](desktop-services.md) for the public API and adapter limits.

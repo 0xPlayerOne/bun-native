@@ -164,6 +164,11 @@ def commands(suite, bun, app, native_source=None):
             "--desktop-case=composition" if sys.platform == "linux" else "--case=composition"
         )
         result.append(("view-composition", composition))
+        services = [*desktop]
+        services.append("--desktop-case=services" if sys.platform == "linux" else "--case=services")
+        if sys.platform != "linux":
+            services.append("--disposable-clipboard")
+        result.append(("desktop-services", services))
         # A real window manager is a qualification prerequisite on Linux, not
         # an application dependency or permission to reuse a contributor desktop.
         window = (
@@ -269,6 +274,8 @@ def report_directory(name):
         return ROOT / ".bunly/m7/desktop"
     if name == "view-composition":
         return ROOT / ".bunly/m7/view-composition"
+    if name == "desktop-services":
+        return ROOT / ".bunly/m7/desktop-services"
     if name == "terminals":
         return ROOT / ".bunly/m5/graphical-terminals"
     if name == "window-modes":
@@ -440,6 +447,7 @@ def collect():
         ROOT / ".bunly/m6/managed-development",
         ROOT / ".bunly/m7/desktop",
         ROOT / ".bunly/m7/view-composition",
+        ROOT / ".bunly/m7/desktop-services",
     ):
         for path in directory.glob("run-*/report.json"):
             if not path.is_symlink() and path.stat().st_size <= 128 * 1024**2:

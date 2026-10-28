@@ -138,7 +138,27 @@ fn control(value: &Value, bytes: usize) -> bool {
     };
     if let Some(event) = value.get("event").and_then(Value::as_str) {
         if event == "shutdown" {
-            return object.len() == 2;
+            return object.len() == 2
+                || (object.len() == 3
+                    && value
+                        .get("data")
+                        .and_then(Value::as_object)
+                        .is_some_and(|data| {
+                            data.len() == 1 && data.get("failed").is_some_and(Value::is_boolean)
+                        }));
+        }
+        if event == "app.quitting" {
+            return object.len() == 3
+                && value
+                    .get("data")
+                    .and_then(Value::as_object)
+                    .is_some_and(|data| {
+                        data.len() == 1
+                            && matches!(
+                                data.get("reason").and_then(Value::as_str),
+                                Some("requested" | "last-window" | "native" | "failure")
+                            )
+                    });
         }
         if event == "ready" {
             return object.keys().all(|key| {
@@ -456,6 +476,10 @@ mod tests {
         for denied in [
             json!({"v":1,"event":"shutdown","priority":"control"}),
             json!({"v":1,"event":"shutdown.extra"}),
+            json!({"v":1,"event":"shutdown","data":{"failed":"false"}}),
+            json!({"v":1,"event":"shutdown","data":{"failed":false,"extra":true}}),
+            json!({"v":1,"event":"app.quitting","data":{"reason":"unknown"}}),
+            json!({"v":1,"event":"app.quitting","target":1,"data":{"reason":"native"}}),
             json!({"v":1,"event":"view.closed","target":0}),
             json!({"v":1,"id":0,"ok":true,"value":null}),
             json!({"v":1,"id":1,"ok":true,"value":"x".repeat(CONTROL_BYTES)}),
@@ -465,6 +489,8 @@ mod tests {
         }
         for accepted in [
             json!({"v":1,"event":"ready","abi":1,"data":{}}),
+            json!({"v":1,"event":"shutdown","data":{"failed":false}}),
+            json!({"v":1,"event":"app.quitting","data":{"reason":"native"}}),
             json!({"v":1,"event":"rpc.revoked","target":1,"data":{"connection":1}}),
             json!({"v":1,"event":"stream.revoked","target":1,"data":{"connection":1}}),
             json!({"v":1,"event":"view.closed","target":1,"data":null}),

@@ -1,5 +1,19 @@
 import { test, expect } from 'bun:test'
-import { rendererFaultExit } from '../examples/cef/fault-exit.ts'
+import { rendererFaultExit, rendererFaultShutdown } from '../examples/cef/fault-exit.ts'
+
+test('renderer fault requires the explicit failed-shutdown rejection', async () => {
+  expect(
+    await rendererFaultShutdown(Promise.reject(new Error('Native host reported failed shutdown')))
+  ).toBe(true)
+  await expect(rendererFaultShutdown(Promise.resolve())).rejects.toThrow()
+  for (const error of [
+    new Error('Native renderer failure did not close the host'),
+    new Error('Native control pipe closed unexpectedly'),
+    new TypeError('Native host reported failed shutdown'),
+    'Native host reported failed shutdown',
+  ])
+    await expect(rendererFaultShutdown(Promise.reject(error))).rejects.toThrow()
+})
 
 test('fixed renderer fault preserves and validates the platform-specific native exit status', () => {
   for (const platform of ['darwin', 'linux', 'win32']) {

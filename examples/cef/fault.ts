@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { rendererFaultExit } from './fault-exit.ts'
+import { rendererFaultExit, rendererFaultShutdown } from './fault-exit.ts'
 import { pageTimeout } from './page-readiness.ts'
 import { waitForGpuInjection } from './fault-ack.ts'
 import { startObservedDirectChild, startObservedShellTree } from './fault-supervision.ts'
@@ -110,18 +110,27 @@ async function runFault(backend: CefBackend, mode: string, faultDeadlineMs: numb
       await backend.qualifyRendererCrash(rendererScope)
       let deadline: ReturnType<typeof setTimeout> | undefined
       try {
-        await Promise.race([
-          backend.closed,
-          new Promise<never>((_, bad) => {
-            deadline = setTimeout(
-              () => bad(new Error('Native renderer failure did not close the host')),
-              faultDeadlineMs
-            )
-          }),
-        ])
+        const shutdownRejected = await rendererFaultShutdown(
+          Promise.race([
+            backend.closed,
+            new Promise<never>((_, bad) => {
+              deadline = setTimeout(
+                () => bad(new Error('Native renderer failure did not close the host')),
+                faultDeadlineMs
+              )
+            }),
+          ])
+        )
         assert.ok(rendererExitSeen, 'Missing native renderer exit event')
 
-        console.error(JSON.stringify(rendererFaultExit(rendererExitCode, process.platform)))
+        console.error(
+          JSON.stringify({
+            ...rendererFaultExit(rendererExitCode, process.platform),
+            shutdownRejected,
+          })
+        )
+        // Disposal/bootstrap still observe the same failed close and exit 1.
+        // This receipt acknowledges the injected fault; it never makes it clean.
         return
       } finally {
         if (deadline) clearTimeout(deadline)

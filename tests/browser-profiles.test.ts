@@ -87,6 +87,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
         capabilities: [
           'window.state',
           'window.geometry',
+          'app.lifecycle',
           'view.composition',
           'session.persistent',
           'session.cookies',
@@ -95,10 +96,19 @@ describe('explicit build profiles with versioned capability metadata', () => {
           'session.flush',
         ],
       },
+      {
+        backend: 'cef',
+        capabilities: ['clipboard.text'],
+        platforms: ['darwin-arm64', 'win32-x64'],
+      },
     ])
     assert.equal(profileProvidesCapability(cef, 'cef', 'window.lifecycle'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'session.persistent'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'view.snapshot'), false)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text'), false)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'linux-x64'), false)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'darwin-arm64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'win32-x64'), true)
     assert.throws(() => capabilityMetadataFor(cef, 'wkwebview'), hasCode('INVALID_ARGUMENT'))
   })
 

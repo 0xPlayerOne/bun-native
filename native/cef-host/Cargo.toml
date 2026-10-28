@@ -72,6 +72,8 @@ objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
   "NSEvent",
   "NSResponder",
   "NSRunningApplication",
+  "NSPasteboard",
+  "NSPasteboardItem",
 ] }
 
 [target.'cfg(unix)'.dependencies]
@@ -89,6 +91,9 @@ windows-sys = { version = "=0.61.2", features = [
   "Win32_System_StationsAndDesktops",
   "Win32_Graphics_Dwm",
   "Win32_System_Console",
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_Ole",
 ] }
 
 [profile.release]

@@ -113,8 +113,9 @@ policy scope. The host returns that scope only for a ready document; the backend
 revalidates its local document after the asynchronous capture, and every later
 private-pipe grant or check must exactly match all native scope fields. Document
 identity comes from the merged issue #19 native authority, not a provisional token. Navigation start and close revoke the scope.
-It is an authorization gate for future OS adapters, not an implementation of
-filesystem, process, clipboard, dialog or download APIs; see
+The M7 [desktop services](desktop-services.md) use this gate immediately before
+native clipboard execution and before returning its result. Filesystem, process,
+general dialog and download adapters remain separate work; see
 [M4 capability policy](m4-capability-policy.md).
 
 ## Browser independence

@@ -48,7 +48,7 @@ def main() -> int:
     workload = parser.add_mutually_exclusive_group()
     workload.add_argument("--terminal-load", action="store_true")
     workload.add_argument("--desktop", action="store_true")
-    parser.add_argument("--desktop-case", choices=("windows", "composition"))
+    parser.add_argument("--desktop-case", choices=("windows", "composition", "services"))
     parser.add_argument("--native-source")
     parser.add_argument("app", type=Path)
     args = parser.parse_args()

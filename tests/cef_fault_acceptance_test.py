@@ -531,6 +531,61 @@ class NativeRendererTaskTests(unittest.TestCase):
 
 
 class NativeRendererHandshakeTests(unittest.TestCase):
+    def test_current_renderer_fault_requires_failed_sdk_shutdown_and_backend_exit_one(self):
+        observation = NativeRendererTaskTests.task_fixture()
+        rows = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        rows[1].update({"schema": 2, "authority": "native-main-frame-handshake"})
+        for row in rows:
+            if row["event"] == "bunly.backend.exit":
+                row["code"] = 1
+            if row["event"] == "bunly.native.renderer-failure-observed":
+                row["shutdownRejected"] = True
+
+        def accept(current):
+            return accept_fault(
+                "renderer-exit",
+                {**observation, "nativeDiagnostics": [json.dumps(row) for row in current]},
+                [],
+                require_renderer_handshake=True,
+                require_failed_shutdown=True,
+                renderer_platform="darwin",
+            )
+
+        self.assertTrue(accept(rows)["expectedApplicationFailure"])
+        for code in (0, 2, True, None):
+            changed = copy.deepcopy(rows)
+            for row in changed:
+                if row["event"] == "bunly.backend.exit":
+                    row["code"] = code
+            with self.assertRaises(ValueError):
+                accept(changed)
+        for rejected in (False, 1, None, "true"):
+            changed = copy.deepcopy(rows)
+            for row in changed:
+                if row["event"] == "bunly.native.renderer-failure-observed":
+                    if rejected is None:
+                        del row["shutdownRejected"]
+                    else:
+                        row["shutdownRejected"] = rejected
+            with self.assertRaises(ValueError):
+                accept(changed)
+        for event in (
+            "bunly.native.renderer-injected",
+            "bunly.native.renderer-failure-observed",
+            "bunly.host.failure",
+            "bunly.native.output-drained",
+        ):
+            with self.assertRaises(ValueError):
+                accept([row for row in rows if row["event"] != event])
+        with self.assertRaises(ValueError):
+            accept_fault(
+                "renderer-exit",
+                observation,
+                [],
+                require_failed_shutdown=True,
+                renderer_platform="darwin",
+            )
+
     def test_native_ack_and_commit_receipt_cannot_replace_the_actual_renderer_exit(self):
         observation = NativeRendererTaskTests.task_fixture()
         rows = [json.loads(line) for line in observation["nativeDiagnostics"]]

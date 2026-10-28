@@ -322,6 +322,7 @@ def main():
                 data,
                 injected,
                 require_renderer_handshake=True,
+                require_failed_shutdown=True,
                 renderer_platform=sys.platform,
             )
             if mode in ("backend-tree-exit", "backend-shell-tree-exit") and tree_notification != {
@@ -367,7 +368,7 @@ def main():
         ],
     }
     result = {
-        "schema": 7,
+        "schema": 8,
         "sourceBefore": before["source"],
         "sourceAfter": after["source"],
         "sourceHashes": before["hashes"],

@@ -10,12 +10,15 @@ export function desktopReportFixture(options: {
 }): Record<string, unknown> {
   const { target = 'linux-x64' } = options
   const mac = target === 'darwin-arm64'
-  const hostPath = mac ? 'Contents/MacOS/bunly_host' : 'bunly_host'
+  const windows = target === 'win32-x64'
+  const hostPath = mac ? 'Contents/MacOS/bunly_host' : windows ? 'bunly_host.exe' : 'bunly_host'
   const libraryPath = mac
     ? 'Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework'
-    : 'libcef.so'
+    : windows
+      ? 'libcef.dll'
+      : 'libcef.so'
   const resources = mac ? 'Contents/Resources' : 'resources'
-  const bunPath = resources + '/bun'
+  const bunPath = resources + (windows ? '/bun.exe' : '/bun')
   const entries = [
     hostPath,
     libraryPath,
@@ -24,6 +27,7 @@ export function desktopReportFixture(options: {
     resources + '/backend/main.js',
     resources + '/backend/application.js',
     resources + '/public/client.js',
+    ...(windows ? ['bunly_host.dll'] : []),
   ].map((path, i) => ({ path, kind: 'file', bytes: i + 1, sha256: String(i).repeat(64) }))
   const artifact = {
     schema: 1,
@@ -58,7 +62,7 @@ export function desktopReportFixture(options: {
     stdoutTail: [] as string[],
     samples: [],
     environment: {
-      os: mac ? 'Darwin' : 'Linux',
+      os: mac ? 'Darwin' : windows ? 'Windows' : 'Linux',
       arch: mac ? 'arm64' : 'x86_64',
       runClass: 'local-smoke',
     },

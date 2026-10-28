@@ -268,7 +268,7 @@ pub fn start() -> Result<(), String> {
     #[cfg(windows)]
     let terminal_configuration = json!({"version":terminal_manifest.version,"protocol":terminal_manifest.protocol,"executable":paths.terminal_owner,"sha256":terminal_manifest.sha256,"bytes":terminal_manifest.bytes,"platform":terminal_manifest.platform,"arch":terminal_manifest.arch,"hostFd":-1});
     emit(
-        json!({"v":1,"event":"ready","abi":1,"cef":"156.0.7","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms(),"terminalOwner":terminal_configuration,"desktopCapabilities":{"version":1,"capabilities":["window.state","window.geometry","view.composition"]}}}),
+        json!({"v":1,"event":"ready","abi":1,"cef":"156.0.7","host":"native-owner-bun-process","data":{"deadlineProfile":crate::deadlines::current().name(),"requestTimeoutMs":crate::deadlines::current().requests_ms(),"terminalOwner":terminal_configuration,"desktopCapabilities":{"version":1,"capabilities":crate::host::desktop_capabilities()}}}),
     );
     Ok(())
 }
@@ -277,7 +277,9 @@ pub fn stop() {
         return;
     }
     handshake();
-    emit(json!({"v":1,"event":"shutdown"}));
+    emit(
+        json!({"v":1,"event":"shutdown","data":{"failed":crate::host::FAILED.load(Ordering::SeqCst)}}),
+    );
     if let Some(slot) = OUTPUT.get() {
         if let Ok(mut slot) = slot.lock() {
             slot.take();

@@ -34,11 +34,12 @@ notifications, clipboard, multiple downloads, and pointer lock, with explicit
 unknown CEF bit flags deny. User decisions are single-document, single-session
 and single-origin; no persistent grant store is implemented.
 
-Authorization is separate from availability. M7 OS adapters do not exist yet,
-so `authorizeNativeOperation(capturedScope, request)` runs the real native gate and returns
-`unavailable` rather than succeeding or being mislabeled as denied. Future
-adapters must call this gate immediately
-before execution. Filesystem grants use relative paths under a canonical root,
+Authorization is separate from availability. The policy-only
+`authorizeNativeOperation(capturedScope, request)` runs the native gate and returns
+`unavailable` for a matching grant without executing an OS action. Adapter
+capabilities are discovered separately. The M7 [text clipboard adapter](desktop-services.md)
+calls this gate immediately before execution and again before returning its
+result; other adapters must preserve that boundary. Filesystem grants use relative paths under a canonical root,
 reject traversal, prefixes, UNC/device forms, reserved Windows names, alias characters and
 symlink/reparse components. Directory inspection is capped at 4,096 entries per
 component, input paths at 4,096 bytes and 128 components. Requested relative
