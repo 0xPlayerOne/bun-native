@@ -92,6 +92,11 @@ as the sole admission gate would be incorrect. Bunly denies renderer-initiated
 downloads in `CanDownload` and admits a backend operation with an unpredictable
 native-only URL fragment. The fragment leaves the HTTP path and query unchanged.
 The IO handler accepts only that exact original URL and one native request ID.
+CEF's pinned WebContents interceptor sets its advisory `is_download` flag to
+false, including backend-started downloads. Routing therefore recognizes the
+exact native secret independently of that flag. A known secret with a revoked
+permit or wrong request identity is denied; the public URL never substitutes for
+it. Ordinary requests retain their existing network policy.
 The UI download callbacks must report that same original URL and CEF download
 identity. A renderer link or default menu command cannot consume a pending
 backend admission. If a future CEF version stops preserving this identity, the
@@ -240,6 +245,7 @@ The adapter was authored for Bunly; no upstream implementation was copied.
 
 - [CEF download callback contract at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/include/cef_download_handler.h)
 - [CEF StartDownload at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/browser_host_base.cc)
+- [CEF request classification at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/net_service/resource_request_handler_wrapper.cc)
 - [CEF download/browser ownership at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/download_manager_delegate_impl.cc)
 - [Chromium 156.0.8078.17 download lifecycle and annotation](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/internal/common/download_item_impl.cc)
 - [Chromium 156.0.8078.17 destination permission handling](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/public/common/download_file_utils.cc)

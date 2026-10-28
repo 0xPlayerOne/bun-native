@@ -2910,10 +2910,16 @@ wrap_request_handler! {
         fn resource_request_handler(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
             request: Option<&mut Request>, _navigation: i32, download: i32, _initiator: Option<&CefString>,
             _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> {
-            if download != 0 {
-                let permit = request.and_then(|request| scheme::bounded_string(request.url(), 4096).and_then(|url| self.download_access.claim(&url, request.identifier())));
-                Some(scheme::download_resources(self.network.clone(), permit))
-            } else { Some(scheme::local_resources(self.network.clone())) }
+            // CEF's WebContents request wrapper reports is_download=false for
+            // StartDownload. The exact native secret/request identity, never
+            // the advisory classification or public URL, selects its permit.
+            let url = request.as_ref().and_then(|request| scheme::bounded_string(request.url(), 4096));
+            let identifier = request.map_or(0, |request| request.identifier());
+            Some(match self.download_access.route(url.as_deref(), identifier, download != 0) {
+                crate::download_access::RequestPolicy::Owned(permit) => scheme::download_resources(self.network.clone(), Some(permit)),
+                crate::download_access::RequestPolicy::Denied => scheme::download_resources(self.network.clone(), None),
+                crate::download_access::RequestPolicy::Ordinary => scheme::local_resources(self.network.clone()),
+            })
         }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }

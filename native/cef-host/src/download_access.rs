@@ -9,6 +9,11 @@ use std::sync::{
 
 #[derive(Default)]
 pub(crate) struct Access(Mutex<Option<Arc<Permit>>>);
+pub(crate) enum RequestPolicy {
+    Ordinary,
+    Denied,
+    Owned(Arc<Permit>),
+}
 pub(crate) struct Permit {
     request_url: String,
     active: AtomicBool,
@@ -17,6 +22,24 @@ pub(crate) struct Permit {
     current: Mutex<String>,
 }
 impl Access {
+    pub fn route(&self, url: Option<&str>, identifier: u64, is_download: bool) -> RequestPolicy {
+        let known = self
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|permit| url == Some(permit.request_url()));
+        if known {
+            return url
+                .and_then(|url| self.claim(url, identifier))
+                .map_or(RequestPolicy::Denied, RequestPolicy::Owned);
+        }
+        if is_download {
+            RequestPolicy::Denied
+        } else {
+            RequestPolicy::Ordinary
+        }
+    }
     pub fn install(&self, permit: Arc<Permit>) -> Result<(), &'static str> {
         let mut current = self.0.lock().unwrap();
         if current.is_some() {
@@ -126,6 +149,41 @@ impl Permit {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn exact_native_download_identity_does_not_depend_on_cefs_advisory_download_flag() {
+        let access = Access::default();
+        let permit = Permit::new("https://download.test/file").unwrap();
+        access.install(permit.clone()).unwrap();
+        assert!(matches!(
+            access.route(Some("https://download.test/file"), 1, false),
+            RequestPolicy::Ordinary
+        ));
+        assert!(matches!(
+            access.route(Some("https://download.test/file"), 1, true),
+            RequestPolicy::Denied
+        ));
+        let RequestPolicy::Owned(admitted) = access.route(Some(permit.request_url()), 2, false)
+        else {
+            panic!("Exact native admission must not depend on is_download");
+        };
+        assert!(Arc::ptr_eq(&admitted, &permit));
+        assert!(matches!(
+            access.route(Some(permit.request_url()), 2, true),
+            RequestPolicy::Owned(_)
+        ));
+        for identifier in [0, 3] {
+            assert!(matches!(
+                access.route(Some(permit.request_url()), identifier, false),
+                RequestPolicy::Denied
+            ));
+        }
+        permit.revoke();
+        assert!(matches!(
+            access.route(Some(permit.request_url()), 2, false),
+            RequestPolicy::Denied
+        ));
+        assert!(matches!(access.route(None, 2, true), RequestPolicy::Denied));
+    }
     #[test]
     fn admission_is_secret_exact_single_request_and_revocable() {
         let access = Access::default();
