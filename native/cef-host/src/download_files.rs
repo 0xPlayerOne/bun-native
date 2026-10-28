@@ -266,6 +266,33 @@ mod tests {
         assert_eq!(fs::read(root.0.join("result.bin")).unwrap(), b"replacement");
     }
     #[test]
+    fn destination_created_after_validation_is_not_overwritten() {
+        let root = Root::new();
+        let mut stage = Staging::prepare(&root.0, "result.bin", false).unwrap();
+        write(&mut stage, b"replacement");
+        stage.capture().unwrap();
+        stage
+            .root
+            .validate_destination("result.bin", false)
+            .unwrap();
+        fs::write(root.0.join("result.bin"), b"original").unwrap();
+        // Exercise the native publication primitive after the preflight check,
+        // so the OS itself must enforce no-replace if another writer wins.
+        assert!(stage
+            .stage
+            .place(
+                "payload",
+                stage.payload.as_ref().unwrap(),
+                &stage.root,
+                "result.bin",
+                false,
+            )
+            .is_err());
+        stage.cleanup().unwrap();
+        assert_eq!(fs::read(root.0.join("result.bin")).unwrap(), b"original");
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+    }
+    #[test]
     fn staging_refuses_case_aliases_and_non_file_targets() {
         let root = Root::new();
         fs::write(root.0.join("Report.txt"), b"original").unwrap();

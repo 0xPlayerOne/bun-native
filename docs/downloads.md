@@ -204,7 +204,10 @@ never publish partial final content.
 Unix placement and cleanup use directory-relative operations with no-follow
 checks. Windows pins the root ancestors and staging directory against renaming,
 uses a protected per-user staging DACL, and publishes through a source handle
-with a root-relative `FILE_RENAME_INFO`. The move preserves the downloaded file
+with root-relative `FILE_RENAME_INFORMATION` through the documented user-mode
+`NtSetInformationFile` entry point. This keeps the verified destination directory
+handle authoritative. The hosted Windows Server 2022 run rejected the relative
+form in the Win32 `SetFileInformationByHandle` wrapper. The move preserves the downloaded file
 and its existing platform metadata, including extended attributes and Windows
 named streams. The adapter does not strip quarantine metadata, claim to scan
 downloads for malware, or claim that CEF creates quarantine metadata on every
@@ -299,5 +302,5 @@ The adapter was authored for Bunly; no upstream implementation was copied.
 - [CEF download/browser ownership at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/download_manager_delegate_impl.cc)
 - [Chromium 156.0.8078.17 download lifecycle and annotation](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/internal/common/download_item_impl.cc)
 - [Chromium 156.0.8078.17 destination permission handling](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/public/common/download_file_utils.cc)
-- [Windows FILE_RENAME_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info)
-- [Windows SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle)
+- [Windows FILE_RENAME_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information)
+- [Windows NtSetInformationFile](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntsetinformationfile)

@@ -10,10 +10,13 @@ use std::{
     path::{Component, Path, PathBuf, Prefix},
     ptr::{null, null_mut},
 };
+use windows_sys::Wdk::Storage::FileSystem::{
+    FileRenameInformation, NtSetInformationFile, FILE_RENAME_INFORMATION,
+};
 use windows_sys::Win32::{
     Foundation::{
-        CloseHandle, LocalFree, GENERIC_ALL, GENERIC_READ, GENERIC_WRITE, HANDLE,
-        INVALID_HANDLE_VALUE,
+        CloseHandle, LocalFree, RtlNtStatusToDosError, GENERIC_ALL, GENERIC_READ, GENERIC_WRITE,
+        HANDLE, INVALID_HANDLE_VALUE,
     },
     Security::Authorization::{GetSecurityInfo, SE_FILE_OBJECT},
     Security::*,
@@ -24,6 +27,7 @@ use windows_sys::Win32::{
             FILE_PERSISTENT_ACLS,
         },
         Threading::{GetCurrentProcess, OpenProcessToken},
+        IO::IO_STATUS_BLOCK,
     },
 };
 pub(super) struct Directory {
@@ -469,9 +473,10 @@ impl Directory {
             return Err("Download source was replaced".into());
         }
         let encoded: Vec<u16> = target.encode_utf16().collect();
-        let size = offset_of!(FILE_RENAME_INFO, FileName) + (encoded.len() + 1) * 2;
+        let size = offset_of!(FILE_RENAME_INFORMATION, FileName) + (encoded.len() + 1) * 2;
         let mut storage = vec![0u64; size.div_ceil(8)];
-        let info = storage.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+        let info = storage.as_mut_ptr().cast::<FILE_RENAME_INFORMATION>();
+        let mut completion = IO_STATUS_BLOCK::default();
         unsafe {
             (*info).Anonymous.ReplaceIfExists = replace;
             (*info).RootDirectory = root.file()?.as_raw_handle();
@@ -481,14 +486,24 @@ impl Directory {
                 (*info).FileName.as_mut_ptr(),
                 encoded.len(),
             );
-            if SetFileInformationByHandle(
+            // Use the documented user-mode native call for a root-relative
+            // rename. The hosted Windows Server 2022 run rejected this form in
+            // the Win32 wrapper; an absolute destination would lose the pinned
+            // directory handle as the final name-resolution authority.
+            // `open` creates a synchronous handle (no FILE_FLAG_OVERLAPPED), so
+            // the completion and filename buffers remain live through return.
+            let status = NtSetInformationFile(
                 source.as_raw_handle(),
-                FileRenameInfo,
+                &mut completion,
                 info.cast(),
                 size as u32,
-            ) == 0
-            {
-                return Err(error());
+                FileRenameInformation,
+            );
+            if status < 0 {
+                return Err(
+                    std::io::Error::from_raw_os_error(RtlNtStatusToDosError(status) as i32)
+                        .to_string(),
+                );
             }
         }
         Ok(())
