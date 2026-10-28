@@ -32,12 +32,14 @@ export function cargoTargetDirectory(
   return target
 }
 
-/** These M1 probes execute native host release builds, not cross-target artifacts. */
+/** These M1 probes require release/ artifacts from a build with no target selection. */
 export function nativeHostArtifacts(
   root: string,
   current: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform
 ) {
+  if (current.CARGO_BUILD_TARGET !== undefined)
+    throw new Error('M1 native probes require a host release build without CARGO_BUILD_TARGET')
   const release = join(cargoTargetDirectory(join(root, 'native/Cargo.toml'), current), 'release')
   const suffix = platform === 'win32' ? '.exe' : ''
   const library =

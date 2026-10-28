@@ -66,6 +66,31 @@ test('CI artifact lookup asks Cargo for its workspace directory without injectin
   }
 })
 
+test('explicit Cargo targets are rejected before looking up ordinary host probe artifacts', () => {
+  const spawn = spyOn(Bun, 'spawnSync').mockReturnValue(
+    response({ target_directory: resolve('selected-artifacts') })
+  )
+  try {
+    for (const target of [
+      'x86_64-unknown-linux-gnu',
+      'aarch64-apple-darwin',
+      'x86_64-pc-windows-msvc',
+      '',
+    ]) {
+      expect(() =>
+        nativeHostArtifacts(resolve('workspace'), {
+          CARGO_TARGET_DIR: resolve('selected-artifacts'),
+          BUNLY_SHARED_CACHE_DIR: resolve('shared-cache'),
+          CARGO_BUILD_TARGET: target,
+        })
+      ).toThrow('M1 native probes require a host release build without CARGO_BUILD_TARGET')
+    }
+    expect(spawn).not.toHaveBeenCalled()
+  } finally {
+    spawn.mockRestore()
+  }
+})
+
 test('missing or malformed artifact metadata fails without falling back to stale release files', () => {
   const spawn = spyOn(Bun, 'spawnSync')
   try {

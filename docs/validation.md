@@ -108,6 +108,15 @@ they do not compile missing artifacts or fall back to an older checkout binary.
 The CEF bundler selects regular nonempty native siblings beside its own running
 executable, including when a custom Cargo target directory is used.
 
+The M1 probes require ordinary host release builds without `--target`,
+`CARGO_BUILD_TARGET`, or `build.target` in Cargo configuration. These target
+selections add a target-specific output directory even when they name the host
+triple. An explicitly defined `CARGO_BUILD_TARGET` is rejected before artifact
+lookup; the probes do not query unstable Cargo configuration or infer prior
+build arguments. `CARGO_TARGET_DIR` and `BUNLY_SHARED_CACHE_DIR` remain supported
+directory overrides. This M1 limitation does not apply to the CEF bundler's
+selection of siblings beside its running executable.
+
 ### Concurrent builds and qualification
 
 A shared Cargo target is a mutable build cache. Cargo fingerprints distinguish
