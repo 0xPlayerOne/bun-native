@@ -54,18 +54,18 @@ The policy supplies the signed envelope, expected identity, explicit public trus
 
 ## Contributor and acceptance commands
 
-Native contributor builds use Rust 1.91.0 and the committed CEF Cargo lock. They are distinct from consumer app builds. Set `CEF_PATH` to the contributor download cache and `PYTHON` to the isolated interpreter with the pinned development requirements.
+Native contributor builds use Rust 1.91.0 and the committed CEF Cargo lock. They are distinct from consumer app builds. Local Cargo commands use the shared per-user Bunly target cache, and CEF builds default `CEF_PATH` to the versioned CEF subdirectory under that cache. Put the matching contributor distribution there or set `CEF_PATH` to override the location. Set `PYTHON` to the isolated interpreter with the pinned development requirements.
 
 ```sh
 bun install --frozen-lockfile
 bun run check
 bun run typecheck:browser
 python -m unittest discover -s tests -p '*_test.py'
-cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
-cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
+bun scripts/cargo.ts +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
+bun scripts/cargo.ts +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
 bun scripts/build-cef-fixture.ts
-cargo +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --release --features packaging
-native/cef-host/target/release/bunly-bundle /absolute/private/bundle
+bun scripts/cargo.ts +1.91.0 build --locked --manifest-path native/cef-host/Cargo.toml --release --features packaging
+bun scripts/cargo.ts +1.91.0 run --locked --manifest-path native/cef-host/Cargo.toml --features packaging --release --bin bunly-bundle -- /absolute/private/bundle
 ```
 
 The native pre-commit router preserves Foundry's format/lint/type/Python checks and directs Cargo checks to the independent native workspaces. It does not skip hooks or replace validation with no-ops.
