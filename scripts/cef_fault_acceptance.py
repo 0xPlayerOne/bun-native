@@ -28,8 +28,14 @@ def accept_fault(
     require_renderer_message=False,
     renderer_platform=None,
     require_renderer_handshake=False,
+    require_failed_shutdown=False,
 ):
     require(mode in MODES, "Unknown fault mode")
+    require(type(require_failed_shutdown) is bool, "Invalid failed-shutdown selection")
+    require(
+        not require_failed_shutdown or require_renderer_handshake,
+        "Failed shutdown requires the exact native renderer handshake",
+    )
     require(type(observation.get("exitCode")) is int, "Invalid native exit")
     clean_process(observation, 0 if mode == "gpu-exit" else 1)
     require(observation.get("observerFailure") is None, "Native observer failed")
@@ -109,8 +115,18 @@ def accept_fault(
             "Forced exit did not exercise the original grace deadline",
         )
     else:
+        # Old retained fixtures predate the SDK's failed-shutdown rejection.
+        # Current runs explicitly require the backend to propagate that failure.
+        expected_backend_exit = (
+            23
+            if mode.startswith("backend-")
+            else 1
+            if mode == "renderer-exit" and require_failed_shutdown
+            else 0
+        )
         require(
-            backend.get("code") == (23 if mode.startswith("backend-") else 0)
+            type(backend.get("code")) is int
+            and backend.get("code") == expected_backend_exit
             and backend.get("forced") is False
             and backend.get("pid") == ready["pid"],
             "Wrong or forced backend exit",
@@ -198,10 +214,12 @@ def accept_fault(
                 "exitCode": 86,
                 "nativeErrorCode": 86 if renderer_platform == "win32" else 86 << 8,
                 "platform": renderer_platform,
+                **({"shutdownRejected": True} if require_failed_shutdown else {}),
             }
             and type(observed.get("exitCode")) is int
             and type(observed.get("nativeErrorCode")) is int
             and observed.get("passed") is True
+            and (not require_failed_shutdown or observed.get("shutdownRejected") is True)
             and records.index(ready)
             < records.index(injection)
             < records.index(observed)

@@ -47,7 +47,16 @@ export async function nativePeer(options: { readonly desktopCapabilities?: unkno
   }
   const desktopCapabilities = Object.hasOwn(options, 'desktopCapabilities')
     ? options.desktopCapabilities
-    : { version: 1, capabilities: ['window.state', 'window.geometry', 'view.composition'] }
+    : {
+        version: 1,
+        capabilities: [
+          'window.state',
+          'window.geometry',
+          'clipboard.text',
+          'app.lifecycle',
+          'view.composition',
+        ],
+      }
   send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7', data: { desktopCapabilities } })
   await transport.ready
   return {

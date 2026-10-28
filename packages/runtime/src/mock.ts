@@ -11,6 +11,11 @@ import type {
   BackendDescriptor,
   Bounds,
   BrowserBackend,
+  ClipboardBackend,
+  ApplicationLifecycleBackend,
+  ApplicationState,
+  ApplicationEvent,
+  PolicyScope,
   Cookie,
   CookieDelete,
   CookieInput,
@@ -41,7 +46,7 @@ interface ViewRecord {
   state: ViewState
 }
 /** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
-export class MockBackend implements BrowserBackend {
+export class MockBackend implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
     version: '0.1.0-dev.0',
@@ -57,6 +62,43 @@ export class MockBackend implements BrowserBackend {
   readonly #listeners = new Set<(event: RuntimeEvent) => void>()
   #disposed = false
   #listenerErrors = 0
+  #desktopUnavailable(
+    capability: 'clipboard.text' | 'app.lifecycle',
+    options?: OperationOptions
+  ): never {
+    this.#active()
+    options?.signal?.throwIfAborted()
+    requireCapability(this.descriptor, capability)
+    throw new Error('Unreachable')
+  }
+  async readClipboardText(_scope: PolicyScope, options?: OperationOptions): Promise<string | null> {
+    return this.#desktopUnavailable('clipboard.text', options)
+  }
+  async writeClipboardText(
+    _scope: PolicyScope,
+    _text: string,
+    options?: OperationOptions
+  ): Promise<void> {
+    this.#desktopUnavailable('clipboard.text', options)
+  }
+  async clearClipboard(_scope: PolicyScope, options?: OperationOptions): Promise<void> {
+    this.#desktopUnavailable('clipboard.text', options)
+  }
+  async whenApplicationReady(options?: OperationOptions): Promise<ApplicationState> {
+    return this.#desktopUnavailable('app.lifecycle', options)
+  }
+  applicationState(): ApplicationState {
+    return this.#desktopUnavailable('app.lifecycle')
+  }
+  onApplicationEvent(
+    _listener: (event: ApplicationEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#desktopUnavailable('app.lifecycle', options)
+  }
+  async quit(): Promise<void> {
+    this.#desktopUnavailable('app.lifecycle')
+  }
   async createSession(options: SessionOptions): Promise<SessionHandle> {
     this.#active()
     if (

@@ -384,6 +384,11 @@ export function acceptDesktopEvidence<T>(
   assert.equal(report['hostPath'], hostPath)
   assert.equal(report['inputHostSha256'], file(selected, hostPath).sha256)
   assert.equal(report['preparedHostSha256'], file(prepared, hostPath).sha256)
+  // Only macOS preparation re-signs native binaries. Windows' executable is a
+  // launcher; its implementation DLL is also required in the complete inventory.
+  if (!mac) assert.equal(file(selected, hostPath).sha256, file(prepared, hostPath).sha256)
+  if (windows)
+    assert.equal(file(selected, 'bunly_host.dll').sha256, file(prepared, 'bunly_host.dll').sha256)
   const library = file(
     prepared,
     mac
@@ -399,10 +404,12 @@ export function acceptDesktopEvidence<T>(
   assert.equal(identity.cefVersion, '156.0.7')
   assert.equal(identity.chromiumVersion, '156.0.8078.17')
   assert.deepEqual(report['runtimeIdentity'], identity)
+  if (!mac) assert.equal(file(selected, library.path).sha256, library.sha256)
   const bun = record(report['bundledBun'])
   const bunPath = mac ? 'Contents/Resources/bun' : windows ? 'resources/bun.exe' : 'resources/bun'
   assert.equal(bun['path'], bunPath)
   assert.equal(bun['sha256'], file(prepared, bunPath).sha256)
+  if (!mac) assert.equal(file(selected, bunPath).sha256, file(prepared, bunPath).sha256)
   assert.equal(bun['version'], '1.4.3')
   assert.deepEqual(observedPlatform(bun['observation'], target, 30_000).stdoutTail, ['1.4.3'])
   const observation = observedPlatform(report['observation'], target, DESKTOP_OBSERVER_MS)

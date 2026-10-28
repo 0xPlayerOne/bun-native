@@ -8,7 +8,13 @@ export interface ManagedIdentity<K extends 'generation' | 'resource' | 'work'> {
 export type ManagedGeneration = ManagedIdentity<'generation'>
 export type ManagedResource = ManagedIdentity<'resource'>
 export type ManagedWork = ManagedIdentity<'work'>
-export type ManagedResourceKind = 'window' | 'view' | 'session' | 'terminal' | 'process'
+export type ManagedResourceKind =
+  | 'window'
+  | 'view'
+  | 'session'
+  | 'terminal'
+  | 'process'
+  | 'clipboard'
 export type ManagedCleanupKind = 'handler' | 'listener' | 'timer' | 'request' | 'state'
 export type ManagedErrorCode =
   | 'INVALID_ARGUMENT'
@@ -190,7 +196,7 @@ export class ManagedGenerationOwner {
       label(schema)
       label(permission)
       if (
-        !['window', 'view', 'session', 'terminal', 'process'].includes(kind) ||
+        !['window', 'view', 'session', 'terminal', 'process', 'clipboard'].includes(kind) ||
         typeof authorize !== 'function' ||
         typeof invoke !== 'function' ||
         typeof dispose !== 'function'
