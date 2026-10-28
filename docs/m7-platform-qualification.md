@@ -20,6 +20,15 @@ The historical native teardown watchdog remains tracked by
 does not erase a failure or establish that either reliability investigation is
 resolved.
 
+The documentation candidate also retained a failed macOS minimized terminal-load
+trial in [run 40630976372](https://github.com/0xPlayerOne/bunly/actions/runs/40630976372).
+Foreground, hidden, and background modes passed; minimized delivery reported
+`CONNECTION_REVOKED`. The [results record](../evidence/m7-platform-results.json)
+preserves the tested source, outcome, workflow job, and original report checksum.
+This is another observation relevant to #129, not a proven cause or a runtime
+correction. Full diagnostics remain with the workflow artifacts and local
+retention; later successful trials do not replace this result.
+
 ## Required target records
 
 Record a separate result for every candidate, OS/architecture, display topology,
