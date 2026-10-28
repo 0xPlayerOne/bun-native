@@ -175,7 +175,9 @@ describe('actual isolated service generation reload', () => {
     '%s terminates a synchronous-loop candidate without killing the stable owner',
     async (mechanism) => {
       const root = await workspace(),
-        { host: service } = host({ mechanism, readyTimeoutMs: 120 })
+        // A process candidate must start a fresh Bun runtime before it can reach
+        // the loop. Keep the deadline bounded, but leave room for cold startup.
+        { host: service } = host({ mechanism, readyTimeoutMs: 1500 })
       await service.reload({ entry: await moduleAt(root, 'good', simple(1)) })
       const loop = await moduleAt(root, 'loop', 'export default ()=>{for(;;){}}')
       const problem = await failure(service.reload({ entry: loop }), 'TIMEOUT')

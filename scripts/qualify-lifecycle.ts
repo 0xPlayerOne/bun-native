@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, basename } from 'node:path'
 import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observation.ts'
+import { nativeReleaseDirectory } from './cargo-config.ts'
 const root = resolve(import.meta.dir, '..')
 const out = join(root, '.bunly/qualification')
 await mkdir(out, { recursive: true })
@@ -13,8 +14,10 @@ const library =
     : process.platform === 'darwin'
       ? 'libbunly_host_probe.dylib'
       : 'libbunly_host_probe.so'
+const executableName = 'process-soak' + (process.platform === 'win32' ? '.exe' : '')
+const native = await nativeReleaseDirectory(root, [library, executableName])
 const addon = join(out, 'probe.node')
-await copyFile(join(root, 'native/target/release', library), addon)
+await copyFile(join(native, library), addon)
 const results: Record<string, unknown>[] = []
 async function observe(name: string, command: string[], expectedCrash = false): Promise<void> {
   const file = join(out, `lifecycle-${target}-${name}.json`)
@@ -75,10 +78,7 @@ for (const mode of ['ffi', 'napi'] as const) {
       scenario,
     ])
 }
-const executable = join(
-  root,
-  'native/target/release/process-soak' + (process.platform === 'win32' ? '.exe' : '')
-)
+const executable = join(native, executableName)
 await observe('process-soak', [
   executable,
   process.execPath,
