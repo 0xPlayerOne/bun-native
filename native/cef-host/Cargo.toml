@@ -45,6 +45,8 @@ rpc-qualification = []
 rpc-context-diagnostics = ["rpc-qualification"]
 # Native-only callback lifetime receipts; never enables a browser endpoint.
 shutdown-diagnostics = []
+# Explicit development manifest opt-in is also required. Never opens a listener.
+browser-actions = []
 
 [package.metadata.cef.bundle]
 helper_name = "bunly_helper"

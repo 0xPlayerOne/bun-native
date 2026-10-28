@@ -16,7 +16,9 @@
     "window.close",
     "session.dispose",
     "credentials.discard",
-    "download.cancel"
+    "download.cancel",
+    "browser.action.cancel",
+    "browser.action.release"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,

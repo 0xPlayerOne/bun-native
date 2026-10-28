@@ -1,5 +1,9 @@
 /**
- * Portable, engine-neutral browser actions (issue #37).
+ * Portable browser-action policy model (issue #37).
+ *
+ * This in-memory model is not a native authority or CEF adapter. Actual control
+ * uses BrowserActionsBackend and native document-scoped grants; its acceptance
+ * is the real browser-actions fixture, not these model tests.
  *
  * The public surface is a capability-based action vocabulary. A concrete
  * embedder (CEF, a future webview adapter) implements the adapter interface

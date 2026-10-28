@@ -35,6 +35,14 @@ impl PreparedDocumentScope {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeCapability {
+    BrowserSnapshot,
+    BrowserObserveDom,
+    BrowserObserveAccessibility,
+    BrowserInput,
+    BrowserEvaluate {
+        expression: String,
+    },
+
     FileRead {
         root: PathBuf,
     },
@@ -111,6 +119,14 @@ struct BrowserGrant {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeRequest {
+    BrowserSnapshot,
+    BrowserObserveDom,
+    BrowserObserveAccessibility,
+    BrowserInput,
+    BrowserEvaluate {
+        expression: String,
+    },
+
     FileRead {
         path: PathBuf,
     },
@@ -390,6 +406,12 @@ pub fn prepare_native_capability(
     capability: NativeCapability,
 ) -> Result<PreparedNativeCapability, &'static str> {
     let capability = match capability {
+        NativeCapability::BrowserEvaluate { expression } => {
+            if expression.is_empty() || expression.len() > 4096 || expression.contains('\0') {
+                return Err("browser evaluation source is empty or oversized");
+            }
+            NativeCapability::BrowserEvaluate { expression }
+        }
         NativeCapability::FileRead { root } => NativeCapability::FileRead {
             root: canonical_root(&root)?,
         },
@@ -435,6 +457,11 @@ pub fn decode_native_capability(
             ("file-read", &["root"]),
             ("file-write", &["root"]),
             ("process-execute", &["executable", "arguments"]),
+            ("browser-snapshot", &[]),
+            ("browser-observe-dom", &[]),
+            ("browser-observe-accessibility", &[]),
+            ("browser-input", &[]),
+            ("browser-evaluate", &["expression"]),
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("dialog-open", &[]),
@@ -453,6 +480,11 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("file-read", &["path"]),
             ("file-write", &["path"]),
             ("process-execute", &["executable", "arguments"]),
+            ("browser-snapshot", &[]),
+            ("browser-observe-dom", &[]),
+            ("browser-observe-accessibility", &[]),
+            ("browser-input", &[]),
+            ("browser-evaluate", &["expression"]),
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("dialog-open", &[]),
@@ -520,6 +552,19 @@ pub(crate) fn download_root(
 
 fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
     match (grant, request) {
+        (NativeCapability::BrowserSnapshot, NativeRequest::BrowserSnapshot)
+        | (NativeCapability::BrowserObserveDom, NativeRequest::BrowserObserveDom)
+        | (
+            NativeCapability::BrowserObserveAccessibility,
+            NativeRequest::BrowserObserveAccessibility,
+        )
+        | (NativeCapability::BrowserInput, NativeRequest::BrowserInput) => true,
+        (
+            NativeCapability::BrowserEvaluate {
+                expression: granted,
+            },
+            NativeRequest::BrowserEvaluate { expression },
+        ) => granted == expression,
         (NativeCapability::FileRead { root }, NativeRequest::FileRead { path }) => {
             contained_path(root, path, true).is_ok()
         }
@@ -849,6 +894,91 @@ mod tests {
             document: format!("document-{generation}"),
             origin: origin.into(),
         }
+    }
+    #[test]
+    fn browser_actions_require_the_exact_native_document_session_and_expression() {
+        let mut policy = Policy::default();
+        let live = scope(1, 2, 3, "https://remote.invalid");
+        policy.install_document(live.clone()).unwrap();
+        policy
+            .grant_native(
+                &live,
+                NativeCapability::BrowserEvaluate {
+                    expression: "document.title".into(),
+                },
+            )
+            .unwrap();
+        let request = NativeRequest::BrowserEvaluate {
+            expression: "document.title".into(),
+        };
+        assert_eq!(
+            policy.authorize_native(&live, &request, AdapterAvailability::Available),
+            GateDecision::Authorized
+        );
+        assert_eq!(
+            policy.authorize_native(
+                &scope(1, 9, 3, "https://remote.invalid"),
+                &request,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::BrowserEvaluate {
+                    expression: "document.cookie".into()
+                },
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ClipboardRead,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy.navigation_started(1);
+        assert_eq!(
+            policy.authorize_native(&live, &request, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+        let replacement = scope(1, 2, 4, "https://remote.invalid");
+        policy.install_document(replacement.clone()).unwrap();
+        assert_eq!(
+            policy.authorize_native(&replacement, &request, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+    }
+    #[test]
+    fn browser_grants_are_byte_bounded_and_reject_unknown_fields() {
+        assert!(
+            prepare_native_capability(NativeCapability::BrowserEvaluate {
+                expression: "é".repeat(2049)
+            })
+            .is_err()
+        );
+        assert!(
+            prepare_native_capability(NativeCapability::BrowserEvaluate {
+                expression: String::new()
+            })
+            .is_err()
+        );
+        for name in [
+            "browser-snapshot",
+            "browser-observe-dom",
+            "browser-observe-accessibility",
+            "browser-input",
+        ] {
+            assert!(decode_native_capability(serde_json::json!({"name":name})).is_ok());
+            assert!(
+                decode_native_capability(serde_json::json!({"name":name,"frame":"child"})).is_err()
+            );
+        }
+        assert!(decode_native_capability(serde_json::json!({"name":"browser-evaluate","expression":"document.title","frame":"child"})).is_err());
     }
     fn fixture() -> PathBuf {
         let base = std::env::temp_dir().join(format!(

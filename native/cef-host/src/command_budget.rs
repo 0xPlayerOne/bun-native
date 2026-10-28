@@ -164,7 +164,9 @@ mod tests {
                 "window.close",
                 "session.dispose",
                 "credentials.discard",
-                "download.cancel"
+                "download.cancel",
+                "browser.action.cancel",
+                "browser.action.release"
             ]
         );
     }

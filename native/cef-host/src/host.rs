@@ -10,6 +10,9 @@ use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicBool, Ordering},
 };
+#[cfg(feature = "browser-actions")]
+#[path = "browser_actions.rs"]
+mod browser_actions;
 #[path = "clipboard.rs"]
 mod clipboard;
 #[path = "downloads.rs"]
@@ -31,6 +34,18 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
             "app.lifecycle",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "browser-actions")]
+            "view.snapshot",
+            #[cfg(feature = "browser-actions")]
+            "view.evaluate",
+            #[cfg(feature = "browser-actions")]
+            "view.input",
+            #[cfg(feature = "browser-actions")]
+            "view.input.synthetic",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-dom",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-accessibility",
         ]
     } else {
         &[
@@ -39,6 +54,18 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
             "app.lifecycle",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "browser-actions")]
+            "view.snapshot",
+            #[cfg(feature = "browser-actions")]
+            "view.evaluate",
+            #[cfg(feature = "browser-actions")]
+            "view.input",
+            #[cfg(feature = "browser-actions")]
+            "view.input.synthetic",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-dom",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-accessibility",
         ]
     }
 }
@@ -101,11 +128,34 @@ struct HostState {
     retired_credential_probe: Option<credential_callbacks::RetiredProbe>,
     credential_ready: bool,
     downloads: downloads::Registry,
+    #[cfg(feature = "browser-actions")]
+    browser_actions: browser_actions::Registry,
 }
 #[path = "credential_callbacks.rs"]
 mod credential_callbacks;
 
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
+#[cfg(feature = "browser-actions")]
+fn view_control_available(state: &HostState, view: u64, reservation: usize) -> bool {
+    !state.browser_actions.contains(view)
+        && state.browser_actions.len() < 8
+        && state
+            .browser_actions
+            .reserved_bytes()
+            .checked_add(reservation)
+            .is_some_and(|bytes| bytes <= 8 * 1024 * 1024)
+}
+fn browser_action_diagnostics(state: &HostState) -> Value {
+    #[cfg(feature = "browser-actions")]
+    {
+        state.browser_actions.diagnostics()
+    }
+    #[cfg(not(feature = "browser-actions"))]
+    {
+        let _ = state;
+        json!({"operations":0,"registrations":0,"callbacks":0,"byteLeases":0,"ownedBytes":0,"reservedBytes":0,"deadlineWorkers":0,"admitted":0,"completed":0,"failed":0})
+    }
+}
 fn number(value: &Value, key: &str) -> Result<u64, String> {
     value
         .get(key)
@@ -173,6 +223,8 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
         downloads::invalidate_stale(id);
     }
     downloads::cancel_if_revoked(id);
+    #[cfg(feature = "browser-actions")]
+    browser_actions::invalidate_stale(id);
     let Some(binding) = binding else {
         return;
     };
@@ -1071,6 +1123,8 @@ wrap_task! { struct ShutdownIoFence; impl Task { fn execute(&self) {
 } } }
 wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     downloads::shutdown_receipt();
+    #[cfg(feature = "browser-actions")]
+    if !browser_actions::shutdown_ready() { return; }
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
@@ -1557,6 +1611,8 @@ fn begin_navigation(
 ) -> Result<(), &'static str> {
     state.policy.navigation_started(view);
     state.downloads.revoke(view);
+    #[cfg(feature = "browser-actions")]
+    state.browser_actions.revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1577,6 +1633,8 @@ fn revoke_window(state: &mut HostState, window: u64) {
 fn revoke_view(state: &mut HostState, view: u64) {
     state.policy.close_view(view);
     state.downloads.revoke(view);
+    #[cfg(feature = "browser-actions")]
+    state.browser_actions.revoke(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1635,7 +1693,10 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
 }
 
 fn allowed_during_quit(operation: &str) -> bool {
-    matches!(operation, "quit" | "download.cancel")
+    matches!(
+        operation,
+        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release"
+    )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
     if currently_on(ThreadId::UI) == 0 {
@@ -2146,6 +2207,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        #[cfg(feature = "browser-actions")]
+        "browser.action.start" => browser_actions::start(request, args)?,
+        #[cfg(feature = "browser-actions")]
+        "browser.action.read" => browser_actions::read(request, args)?,
+        #[cfg(feature = "browser-actions")]
+        "browser.action.cancel" => browser_actions::cancel(request, args)?,
+        #[cfg(feature = "browser-actions")]
+        "browser.action.release" => browser_actions::release(request, args)?,
         "download.start" => downloads::start(request, args)?,
         "download.cancel" => downloads::cancel(request, args)?,
         "view.presentation" | "view.present" => {
@@ -2615,7 +2684,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"browserActions":browser_action_diagnostics(&s),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
@@ -2723,6 +2792,8 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
         {
             state.policy.navigation_started(id);
             state.downloads.revoke(id);
+            #[cfg(feature = "browser-actions")]
+            state.browser_actions.revoke(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -2779,6 +2850,8 @@ wrap_life_span_handler! {
             }
         }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
+            #[cfg(feature = "browser-actions")]
+            browser_actions::before_close(self.id, _browser);
             if STATE.with(|s| s.borrow().downloads.contains(self.id)) { fail("Browser closed with an unsettled native download"); }
             let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
             if let Some(mut record) = record {

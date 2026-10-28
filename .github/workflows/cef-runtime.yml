@@ -125,6 +125,11 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite full
+      - name: Check optional browser actions after the ordinary native suite
+        shell: bash
+        run: |
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions
       # Native owner execution precedes the CEF, managed reload and provider stages.
       # Both automatic/manual runs use the standard-user runner and deadlines.
       - name: Preserve native build diagnostics
@@ -268,6 +273,12 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite $env:QUALIFICATION_SUITE
+      - name: Check optional browser actions after the ordinary native suite
+        if: inputs.suite == 'full'
+        shell: bash
+        run: |
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions
       - name: Save immutable download inputs after successful qualification
         if: success() && inputs.suite != 'portable' && steps.manual-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24

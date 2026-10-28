@@ -21,6 +21,9 @@ export const CAPABILITIES = [
   'view.snapshot',
   'view.evaluate',
   'view.input',
+  'view.input.synthetic',
+  'view.observe-dom',
+  'view.observe-accessibility',
   'backend.extensions',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]

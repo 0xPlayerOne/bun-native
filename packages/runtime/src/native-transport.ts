@@ -7,6 +7,12 @@ const DESKTOP_CAPABILITIES = Object.freeze([
   'app.lifecycle',
   'view.composition',
   'download.manage',
+  'view.snapshot',
+  'view.evaluate',
+  'view.input',
+  'view.input.synthetic',
+  'view.observe-dom',
+  'view.observe-accessibility',
 ] as const)
 export type NativeDesktopCapability = (typeof DESKTOP_CAPABILITIES)[number]
 function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[] {
@@ -19,7 +25,7 @@ function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[]
     Object.keys(metadata).length !== 2 ||
     metadata['version'] !== 1 ||
     !Array.isArray(capabilities) ||
-    capabilities.length > 16 ||
+    capabilities.length > 32 ||
     new Set(capabilities).size !== capabilities.length ||
     capabilities.some(
       (capability) =>
