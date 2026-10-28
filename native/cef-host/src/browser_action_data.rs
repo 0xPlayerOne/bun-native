@@ -9,6 +9,41 @@ pub const MAX_CALLBACK: usize = MAX_PNG.div_ceil(3) * 4 + 64;
 pub const RESERVATION: usize = 3 * 1024 * 1024;
 pub const MAX_WIDTH: u32 = 1024;
 pub const MAX_HEIGHT: u32 = 768;
+pub const WORLD_NAME: &str = "bunly.browser-actions";
+
+/// A named isolated world can have contexts in multiple frames. Only the root
+/// frame selected by this operation may supply its execution context identity.
+pub fn created_context<'a>(
+    value: &'a Value,
+    main_frame: &str,
+) -> Result<Option<(i64, &'a str)>, &'static str> {
+    let Some(context) = value.get("context") else {
+        return Ok(None);
+    };
+    if context.get("name").and_then(Value::as_str) != Some(WORLD_NAME) {
+        return Ok(None);
+    }
+    let frame = context
+        .get("auxData")
+        .and_then(|data| data.get("frameId"))
+        .and_then(Value::as_str)
+        .filter(|frame| !frame.is_empty())
+        .ok_or("adapter-error")?;
+    if frame != main_frame {
+        return Ok(None);
+    }
+    let id = context
+        .get("id")
+        .and_then(Value::as_i64)
+        .filter(|id| *id > 0)
+        .ok_or("adapter-error")?;
+    let unique = context
+        .get("uniqueId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty() && id.len() <= 256)
+        .ok_or("unsupported-capability")?;
+    Ok(Some((id, unique)))
+}
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
@@ -339,6 +374,66 @@ const INPUT: &str = r#"function(action) {
 mod tests {
     use super::*;
     const PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1cAAAAASUVORK5CYII=";
+    #[test]
+    fn named_child_context_never_binds_or_invalidates_the_root_context() {
+        let child = json!({"context":{
+            "name":WORLD_NAME,"id":2,"uniqueId":"child-context",
+            "auxData":{"frameId":"child-frame"}
+        }});
+        let root = json!({"context":{
+            "name":WORLD_NAME,"id":1,"uniqueId":"root-context",
+            "auxData":{"frameId":"root-frame"}
+        }});
+        // Runtime.enable may replay child contexts before the main one, and
+        // touching a child WindowProxy can create one during a main-frame call.
+        assert_eq!(created_context(&child, "root-frame"), Ok(None));
+        assert_eq!(
+            created_context(&root, "root-frame"),
+            Ok(Some((1, "root-context")))
+        );
+        assert_eq!(created_context(&child, "root-frame"), Ok(None));
+        assert_eq!(created_context(&root, "child-frame"), Ok(None));
+    }
+    #[test]
+    fn root_context_binding_requires_the_exact_world_and_bounded_identity() {
+        let root = json!({"context":{
+            "name":WORLD_NAME,"id":1,"uniqueId":"root-context",
+            "auxData":{"frameId":"root-frame"}
+        }});
+        let mut unrelated = root.clone();
+        unrelated["context"]["name"] = json!("another-world");
+        assert_eq!(created_context(&unrelated, "root-frame"), Ok(None));
+        for id in [json!(null), json!(0), json!(-1), json!(1.5), json!("1")] {
+            let mut malformed = root.clone();
+            malformed["context"]["id"] = id;
+            assert_eq!(
+                created_context(&malformed, "root-frame"),
+                Err("adapter-error")
+            );
+        }
+        for unique in [json!(null), json!(""), json!("x".repeat(257)), json!(1)] {
+            let mut malformed = root.clone();
+            malformed["context"]["uniqueId"] = unique;
+            assert_eq!(
+                created_context(&malformed, "root-frame"),
+                Err("unsupported-capability")
+            );
+        }
+    }
+    #[test]
+    fn missing_frame_identity_cannot_be_treated_as_an_unrelated_context() {
+        for frame in [json!(null), json!(""), json!(1)] {
+            let value = json!({"context":{
+                "name":WORLD_NAME,"id":1,"uniqueId":"root-context",
+                "auxData":{"frameId":frame}
+            }});
+            assert_eq!(created_context(&value, "root-frame"), Err("adapter-error"));
+        }
+        let foreign = json!({"context":{
+            "name":WORLD_NAME,"auxData":{"frameId":"child-frame"}
+        }});
+        assert_eq!(created_context(&foreign, "root-frame"), Ok(None));
+    }
     #[test]
     fn png_transfer_owns_decoded_bytes_and_verifies_dimensions() {
         let raw = format!("{{\"data\":\"{PNG}\"}}");

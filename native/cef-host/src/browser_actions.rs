@@ -247,7 +247,7 @@ fn method(entry: &Entry) -> Option<(&'static str, Value)> {
         Phase::Frames => ("Page.getFrameTree", json!({})),
         Phase::World => (
             "Page.createIsolatedWorld",
-            json!({"frameId":entry.frame,"worldName":"bunly.browser-actions","grantUniveralAccess":false}),
+            json!({"frameId":entry.frame,"worldName":data::WORLD_NAME,"grantUniveralAccess":false}),
         ),
         Phase::Execute | Phase::Metrics => (
             "Runtime.evaluate",
@@ -615,36 +615,13 @@ fn context_event(view: u64, id: u64, browser: Option<&mut Browser>, name: &str, 
         };
         match name {
             "Runtime.executionContextCreated" => {
-                let Some(context) = value.get("context") else {
-                    return;
-                };
-                if context.get("name").and_then(Value::as_str) != Some("bunly.browser-actions") {
-                    return;
-                }
-                if context
-                    .get("auxData")
-                    .and_then(|data| data.get("frameId"))
-                    .and_then(Value::as_str)
-                    != Some(entry.frame.as_str())
-                {
-                    entry.stop("stale-target");
-                    return;
-                }
-                let Some(context_id) = context
-                    .get("id")
-                    .and_then(Value::as_i64)
-                    .filter(|id| *id > 0)
-                else {
-                    entry.stop("adapter-error");
-                    return;
-                };
-                let Some(unique) = context
-                    .get("uniqueId")
-                    .and_then(Value::as_str)
-                    .filter(|id| !id.is_empty() && id.len() <= 256)
-                else {
-                    entry.stop("unsupported-capability");
-                    return;
+                let (context_id, unique) = match data::created_context(&value, &entry.frame) {
+                    Ok(Some(context)) => context,
+                    Ok(None) => return,
+                    Err(reason) => {
+                        entry.stop(reason);
+                        return;
+                    }
                 };
                 if entry.context_id.is_some()
                     && (entry.context_id != Some(context_id)

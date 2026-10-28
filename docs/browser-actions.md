@@ -123,6 +123,10 @@ revalidate the captured document, CEF main-frame identifier, current URL and
 browser identity. The private transport obtains the CDP root frame and an isolated
 execution context's system-unique ID. It never accepts a caller's frame/context ID.
 The world is reused within the document, avoiding a new retained world per call.
+Runtime notifications are filtered by the captured root frame before binding an
+execution context. A same-named context in a child frame is ignored; it cannot
+replace the main context or invalidate an operation on that main context. A change
+to the main context's numeric or system-unique identity still revokes the operation.
 Per-operation object groups are released, then `Runtime.disable` is acknowledged,
 before the observer is dropped and a result becomes readable.
 

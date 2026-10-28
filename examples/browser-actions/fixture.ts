@@ -212,12 +212,14 @@ export default async function browserActions(backend: CefBackend): Promise<void>
       assert.equal(await evaluate(view, 'document.getElementById("text").value'), '')
     }
     checks['beforeinputRevalidated'] = true
-    phase = 'cross-origin-frame'
+    phase = 'cross-origin-frame-create'
     await evaluate(
       view,
       `(()=>{const e=document.createElement('iframe');e.id='foreign';e.src=${JSON.stringify(child.url.origin)};document.body.append(e);return true})()`
     )
+    phase = 'cross-origin-frame-load'
     await waitFor(childLoaded.promise)
+    phase = 'cross-origin-frame-same-origin-policy'
     assert.equal(
       await evaluate(
         view,
@@ -225,15 +227,19 @@ export default async function browserActions(backend: CefBackend): Promise<void>
       ),
       false
     )
+    phase = 'cross-origin-frame-focus'
     await evaluate(view, 'document.getElementById("foreign").focus()')
+    phase = 'cross-origin-frame-text'
     await assert.rejects(
       backend.input(view, { type: 'text', text: 'forbidden' }),
       /unsupported-capability/
     )
+    phase = 'cross-origin-frame-pointer'
     await assert.rejects(
       backend.input(view, { type: 'pointer', x: 350, y: 150, button: 'left' }),
       /unsupported-capability/
     )
+    phase = 'cross-origin-frame-dom'
     const framed = await backend.observeDom(view)
     assert.equal(
       framed.nodes.some((node) => node.text.includes('FOREIGN_FRAME_SENTINEL')),
