@@ -277,6 +277,13 @@ document identities and content digests; the workload receipt excludes payloads,
 destination paths and source URLs. Failure labels identify a fixed workload phase
 and error kind without exporting filesystem exception messages.
 
+The disposable Windows worker creates a fresh protected temporary directory for
+its standard user. It verifies the owner and DACL before launching the suite:
+only that user, SYSTEM and Administrators receive inherited access. A temporary
+directory beneath the shared checkout would otherwise retain the build account's
+writable grant, which the native download policy correctly rejects. The fixture
+does not relax that policy or change permissions on an existing user directory.
+
 See [native desktop qualification](desktop-qualification.md#file-downloads) for
 launch and offline replay commands.
 

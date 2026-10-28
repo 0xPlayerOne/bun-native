@@ -20,8 +20,41 @@ if ($Worker) {
     foreach ($name in @('GITHUB_TOKEN', 'GH_TOKEN', 'ACTIONS_RUNTIME_TOKEN', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN')) {
         Remove-Item "Env:$name" -ErrorAction SilentlyContinue
     }
-    $privateTemp = Join-Path $root '.bunly/hosted-tools/temp'
-    New-Item -ItemType Directory -Force $privateTemp | Out-Null
+    # The checkout inherits the build account's writable ACL. Download roots
+    # correctly reject that other-user access, so this worker needs its own
+    # protected temporary directory. Change only this newly created directory.
+    $privateTemp = Join-Path $root ('.bunly/hosted-tools/temp-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $privateTemp | Out-Null
+    $privateAcl = [Security.AccessControl.DirectorySecurity]::new()
+    $privateAcl.SetAccessRuleProtection($true, $false)
+    $allowedSids = @($identity.User.Value, 'S-1-5-18', 'S-1-5-32-544')
+    foreach ($sid in $allowedSids) {
+        $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+            [Security.Principal.SecurityIdentifier]::new($sid),
+            [Security.AccessControl.FileSystemRights]::FullControl,
+            [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',
+            [Security.AccessControl.PropagationFlags]::None,
+            [Security.AccessControl.AccessControlType]::Allow
+        )
+        $privateAcl.AddAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $privateTemp -AclObject $privateAcl
+    $actualAcl = Get-Acl -LiteralPath $privateTemp
+    $actualRules = @($actualAcl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+    if (-not $actualAcl.AreAccessRulesProtected -or
+        $actualAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $identity.User.Value -or
+        $actualRules.Count -ne $allowedSids.Count) {
+        throw 'Private worker temporary-directory ownership or ACL was not applied'
+    }
+    foreach ($rule in $actualRules) {
+        if ($rule.IsInherited -or $rule.IdentityReference.Value -notin $allowedSids -or
+            $rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or
+            $rule.FileSystemRights -ne [Security.AccessControl.FileSystemRights]::FullControl -or
+            $rule.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit' -or
+            $rule.PropagationFlags -ne [Security.AccessControl.PropagationFlags]::None) {
+            throw 'Private worker temporary-directory ACL failed its native readback'
+        }
+    }
     $env:TEMP = $privateTemp
     $env:TMP = $privateTemp
     $env:USERPROFILE = [Environment]::GetFolderPath('UserProfile')

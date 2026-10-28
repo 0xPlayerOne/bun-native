@@ -33,6 +33,10 @@ const unknown = {
 }
 
 test('desktop summaries recognize only fixed fixture labels, including current download literals', () => {
+  assert.deepEqual(
+    classifyDesktopFixtureFailure('downloads', 'complete: Error [windows-root-shared-writer]'),
+    { phase: 'complete', name: 'Error', code: null, category: 'windows-root-shared-writer' }
+  )
   assert.deepEqual(classifyDesktopFixtureFailure('commands', 'shortcut'), {
     ...unknown,
     phase: 'shortcut',

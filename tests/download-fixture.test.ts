@@ -78,6 +78,20 @@ test('download failure receipts classify exact protocol errors without exporting
     downloadFixtureFailure('cancel', new Error('Transfer settled before positive native progress')),
     'cancel: Error [no-positive-progress]'
   )
+  for (const [message, category] of [
+    ['Download directory is writable by another user', 'windows-root-shared-writer'],
+    ['Download directory must belong to the current user', 'windows-root-owner'],
+    ['Access is denied. (os error 5)', 'windows-access-denied'],
+  ]) {
+    assert.equal(
+      downloadFixtureFailure('complete', new Error(message)),
+      `complete: Error [${category}]`
+    )
+    assert.equal(
+      downloadFixtureFailure('complete', new Error(message + ' C:\\private\\fixture')),
+      'complete: Error [unclassified]'
+    )
+  }
   assert.equal(
     downloadFixtureFailure('native-shutdown', {
       name: 'AssertionError',
