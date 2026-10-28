@@ -2,9 +2,18 @@ import { NativeTerminalDriver, type NativeTerminalConfiguration } from './termin
 import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
-import { NativeShutdownError, NativeTransport, type NativeEvent } from './native-transport.ts'
+import {
+  NativeShutdownError,
+  NativeTransport,
+  type NativeDesktopCapability,
+  type NativeEvent,
+} from './native-transport.ts'
 import { Registry } from './registry.ts'
-import { parseCefWindowState, type CefWindowState } from './cef-window-state.ts'
+import {
+  parseCefWindowBounds,
+  parseCefWindowState,
+  type CefWindowState,
+} from './cef-window-state.ts'
 export type { CefWindowState } from './cef-window-state.ts'
 import { RpcServer } from './rpc.ts'
 import { RpcViewAuthority, bindRpcAuthority, type RpcAuthorityBinding } from './rpc-authority.ts'
@@ -34,6 +43,7 @@ import {
   BunlyError,
   normalizeUrl,
   originOf,
+  requireCapability,
   validateBounds,
 } from '../../contracts/src/index.ts'
 import type {
@@ -46,6 +56,9 @@ import type {
   SessionClearOptions,
   SessionClearResult,
   WindowOptions,
+  Bounds,
+  WindowEvent,
+  WindowState,
   ViewOptions,
   SessionOptions,
   ViewState,
@@ -111,6 +124,11 @@ function nativeRpcOptions(options: RpcServerOptions): RpcServerOptions {
 }
 interface NativeResource {
   native: number
+}
+interface WindowSubscription {
+  readonly listener: (event: WindowEvent) => void
+  readonly dispose: () => void
+  active: boolean
 }
 interface SessionResource extends NativeResource {
   partition: string
@@ -299,15 +317,15 @@ function checkedCookie(value: CookieInput): CookieInput {
     ...(value.expires === undefined ? {} : { expires: value.expires }),
   })
 }
-/** Native-owned windows and sessions. This module is never imported by renderer code. */
-export class CefBackend implements BrowserBackend {
-  readonly descriptor: BackendDescriptor = Object.freeze({
+function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDescriptor {
+  return Object.freeze({
     name: 'cef',
     version: '0.1.0-dev.0',
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
       'window.lifecycle',
+      ...capabilities,
       'view.navigate',
       'session.ephemeral',
       'session.persistent',
@@ -318,6 +336,13 @@ export class CefBackend implements BrowserBackend {
       'session.network-policy',
     ] as const),
   })
+}
+/** Native-owned windows and sessions. This module is never imported by renderer code. */
+export class CefBackend implements BrowserBackend {
+  #descriptor: BackendDescriptor
+  get descriptor(): BackendDescriptor {
+    return this.#descriptor
+  }
   readonly #transport: NativeTransport
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
@@ -328,6 +353,8 @@ export class CefBackend implements BrowserBackend {
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
+  readonly #windowSubscriptions = new Map<WindowHandle, Set<WindowSubscription>>()
+  #windowSubscriptionCount = 0
   readonly #policyEpochs = new WeakMap<ViewHandle, number>()
   readonly #partitions = new Set<string>()
   #credentialCheck: Promise<void> | undefined
@@ -379,8 +406,10 @@ export class CefBackend implements BrowserBackend {
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
+    this.#descriptor = descriptor(transport.desktopCapabilities)
     transport.onEvent((event) => {
       try {
+        if (event.event === 'ready') this.#descriptor = descriptor(transport.desktopCapabilities)
         this.#event(event)
       } catch (error) {
         transport.fail(error)
@@ -398,6 +427,8 @@ export class CefBackend implements BrowserBackend {
         }
       this.#native.clear()
       this.#listeners.clear()
+      for (const subscriptions of this.#windowSubscriptions.values())
+        for (const subscription of subscriptions) subscription.dispose()
       this.#observers.clear()
       this.#partitions.clear()
       await rpcClosed
@@ -433,10 +464,47 @@ export class CefBackend implements BrowserBackend {
       Object.freeze(event.state)
     }
     Object.freeze(event)
-    for (const listener of Array.from(this.#listeners)) {
+    const listeners = Array.from(this.#listeners)
+    if (event.type === 'window-state-changed')
+      this.#emitWindow(event.resource, Object.freeze({ type: 'state-changed', state: event.state }))
+    else if (event.type === 'window-bounds-changed')
+      this.#emitWindow(
+        event.resource,
+        Object.freeze({ type: 'bounds-changed', bounds: event.bounds })
+      )
+    else if (event.type === 'window-fullscreen-transition')
+      this.#emitWindow(
+        event.resource,
+        Object.freeze({
+          type: 'fullscreen-transition',
+          completed: event.completed,
+          state: event.state,
+        })
+      )
+    else if (event.type === 'disposed' && event.resource.kind === 'window')
+      this.#emitWindow(event.resource as WindowHandle, Object.freeze({ type: 'closed' }))
+    for (const listener of listeners) {
       if (!this.#listeners.has(listener)) continue
       try {
         listener(event)
+      } catch {
+        this.#listenerErrors++
+      }
+    }
+  }
+  #emitWindow(window: WindowHandle, event: WindowEvent): void {
+    const subscriptions = this.#windowSubscriptions.get(window)
+    if (!subscriptions) return
+    for (const subscription of Array.from(subscriptions)) {
+      if (!subscription.active) continue
+      if (
+        event.type !== 'closed' &&
+        (this.#disposed || this.#closing.has(window) || this.#registry.isDisposed(window, 'window'))
+      )
+        break
+      if (event.type === 'closed') subscription.dispose()
+      try {
+        subscription.listener(event)
       } catch {
         this.#listenerErrors++
       }
@@ -785,11 +853,24 @@ export class CefBackend implements BrowserBackend {
   }
   async #windowStateOperation(
     window: WindowHandle,
-    operation: 'window.state' | 'window.minimize' | 'window.restore' | 'window.activate',
-    options?: OperationOptions
+    operation:
+      | 'window.state'
+      | 'window.minimize'
+      | 'window.restore'
+      | 'window.activate'
+      | 'window.maximize'
+      | 'window.fullscreen',
+    options?: OperationOptions,
+    extra: Readonly<Record<string, unknown>> = {}
   ): Promise<CefWindowState> {
     const resource = this.#liveWindow(window)
-    const result = await this.#transport.call(operation, { id: resource.native }, options?.signal)
+    if (operation === 'window.maximize' || operation === 'window.fullscreen')
+      requireCapability(this.descriptor, 'window.state')
+    const result = await this.#transport.call(
+      operation,
+      { id: resource.native, ...extra },
+      options?.signal
+    )
     this.#liveWindow(window)
     return parseCefWindowState(result)
   }
@@ -818,19 +899,103 @@ export class CefBackend implements BrowserBackend {
   restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<CefWindowState> {
     return this.#windowStateOperation(window, 'window.restore', options)
   }
-  async showWindow(window: WindowHandle, visible: boolean): Promise<void> {
-    this.#active()
-    if (typeof visible !== 'boolean') throw new BunlyError('INVALID_ARGUMENT', 'Invalid visibility')
-    if (this.#closing.has(window)) throw new BunlyError('DISPOSED', 'Window is closing')
-    const { native } = this.#registry.get<'window', NativeResource>(window, 'window')
-    await this.#transport.call(visible ? 'window.show' : 'window.hide', { id: native })
+  maximizeWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowStateOperation(window, 'window.maximize', options)
   }
-  async resizeWindow(window: WindowHandle, width: number, height: number): Promise<void> {
-    this.#active()
-    if (this.#closing.has(window)) throw new BunlyError('DISPOSED', 'Window is closing')
+  async setWindowFullscreen(
+    window: WindowHandle,
+    fullscreen: boolean,
+    options?: OperationOptions
+  ): Promise<WindowState> {
+    this.#liveWindow(window)
+    if (typeof fullscreen !== 'boolean')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid fullscreen flag')
+    return this.#windowStateOperation(window, 'window.fullscreen', options, { fullscreen })
+  }
+  async showWindow(
+    window: WindowHandle,
+    visible: boolean,
+    options?: OperationOptions
+  ): Promise<void> {
+    const resource = this.#liveWindow(window)
+    if (typeof visible !== 'boolean') throw new BunlyError('INVALID_ARGUMENT', 'Invalid visibility')
+    await this.#transport.call(
+      visible ? 'window.show' : 'window.hide',
+      { id: resource.native },
+      options?.signal
+    )
+    this.#liveWindow(window)
+  }
+  async resizeWindow(
+    window: WindowHandle,
+    width: number,
+    height: number,
+    options?: OperationOptions
+  ): Promise<void> {
+    const resource = this.#liveWindow(window)
     validateBounds({ x: 0, y: 0, width, height })
-    const { native } = this.#registry.get<'window', NativeResource>(window, 'window')
-    await this.#transport.call('window.resize', { id: native, width, height })
+    await this.#transport.call(
+      'window.resize',
+      { id: resource.native, width, height },
+      options?.signal
+    )
+    this.#liveWindow(window)
+  }
+  async windowBounds(window: WindowHandle, options?: OperationOptions): Promise<Bounds> {
+    const resource = this.#liveWindow(window)
+    requireCapability(this.descriptor, 'window.geometry')
+    const result = await this.#transport.call(
+      'window.bounds',
+      { id: resource.native },
+      options?.signal
+    )
+    this.#liveWindow(window)
+    return parseCefWindowBounds(result)
+  }
+  async setWindowBounds(
+    window: WindowHandle,
+    bounds: Bounds,
+    options?: OperationOptions
+  ): Promise<Bounds> {
+    const resource = this.#liveWindow(window)
+    requireCapability(this.descriptor, 'window.geometry')
+    validateBounds(bounds)
+    const result = await this.#transport.call(
+      'window.bounds.set',
+      { id: resource.native, x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+      options?.signal
+    )
+    this.#liveWindow(window)
+    return parseCefWindowBounds(result)
+  }
+  onWindowEvent(
+    window: WindowHandle,
+    listener: (event: WindowEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    this.#liveWindow(window)
+    requireCapability(this.descriptor, 'window.state')
+    options?.signal?.throwIfAborted()
+    if (typeof listener !== 'function')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid window listener')
+    if (this.#windowSubscriptionCount >= 128)
+      throw new BunlyError('RESOURCE_IN_USE', 'Window listener capacity exceeded')
+    const subscriptions = this.#windowSubscriptions.get(window) ?? new Set<WindowSubscription>()
+    const signal = options?.signal
+    const dispose = () => {
+      if (!subscription.active) return
+      subscription.active = false
+      subscriptions.delete(subscription)
+      this.#windowSubscriptionCount--
+      if (subscriptions.size === 0) this.#windowSubscriptions.delete(window)
+      signal?.removeEventListener('abort', dispose)
+    }
+    const subscription: WindowSubscription = { listener, dispose, active: true }
+    subscriptions.add(subscription)
+    this.#windowSubscriptions.set(window, subscriptions)
+    this.#windowSubscriptionCount++
+    signal?.addEventListener('abort', dispose, { once: true })
+    return dispose
   }
   async focusView(view: ViewHandle): Promise<void> {
     this.#active()
@@ -1048,7 +1213,7 @@ export class CefBackend implements BrowserBackend {
       windows: this.#registry.count('window'),
       views: this.#registry.count('view'),
       sessions: this.#registry.count('session'),
-      listeners: this.#listeners.size + this.#observers.size,
+      listeners: this.#listeners.size + this.#observers.size + this.#windowSubscriptionCount,
       listenerErrors: this.#listenerErrors,
     }
   }
@@ -1314,7 +1479,47 @@ export class CefBackend implements BrowserBackend {
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
     if (event.event === 'window.closed' && window) this.#dropWindow(window)
-    else if (event.event === 'view.closed' && view) this.#dropView(view)
+    else if (
+      window &&
+      !this.#closing.has(window) &&
+      this.descriptor.capabilities.includes('window.state') &&
+      event.event === 'window.state-changed'
+    )
+      this.#emit({
+        type: 'window-state-changed',
+        resource: window,
+        state: parseCefWindowState(event.data),
+      })
+    else if (
+      window &&
+      !this.#closing.has(window) &&
+      this.descriptor.capabilities.includes('window.geometry') &&
+      event.event === 'window.bounds-changed'
+    )
+      this.#emit({
+        type: 'window-bounds-changed',
+        resource: window,
+        bounds: parseCefWindowBounds(event.data),
+      })
+    else if (
+      window &&
+      !this.#closing.has(window) &&
+      this.descriptor.capabilities.includes('window.state') &&
+      event.event === 'window.fullscreen-transition'
+    ) {
+      if (
+        !event.data ||
+        Object.keys(event.data).sort().join(',') !== 'completed,state' ||
+        typeof event.data['completed'] !== 'boolean'
+      )
+        throw new Error('Malformed native fullscreen transition')
+      this.#emit({
+        type: 'window-fullscreen-transition',
+        resource: window,
+        completed: event.data['completed'],
+        state: parseCefWindowState(event.data['state']),
+      })
+    } else if (event.event === 'view.closed' && view) this.#dropView(view)
     else if (view && (event.event === 'view.navigating' || event.event === 'view.loaded')) {
       if (typeof event.data?.['url'] !== 'string') throw new Error('Missing native navigation URL')
       // Initial native-approved navigation establishes the first document. Only

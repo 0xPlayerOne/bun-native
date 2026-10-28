@@ -9,6 +9,7 @@ import {
 } from '../../contracts/src/index.ts'
 import type {
   BackendDescriptor,
+  Bounds,
   BrowserBackend,
   Cookie,
   CookieDelete,
@@ -30,6 +31,8 @@ import type {
   ViewTrust,
   WindowHandle,
   WindowOptions,
+  WindowState,
+  WindowEvent,
 } from '../../contracts/src/index.ts'
 import { Registry } from './registry.ts'
 interface ViewRecord {
@@ -143,6 +146,71 @@ export class MockBackend implements BrowserBackend {
   session(view: ViewHandle): SessionHandle {
     this.#active()
     return this.#registry.get<'view', ViewRecord>(view, 'view').session
+  }
+  #windowUnavailable(
+    window: WindowHandle,
+    capability: 'window.state' | 'window.geometry',
+    options?: OperationOptions
+  ): never {
+    this.#active()
+    this.#registry.get(window, 'window')
+    options?.signal?.throwIfAborted()
+    requireCapability(this.descriptor, capability)
+    throw new Error('Unreachable')
+  }
+  async windowState(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async minimizeWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async restoreWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async activateWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async maximizeWindow(window: WindowHandle, options?: OperationOptions): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async setWindowFullscreen(
+    window: WindowHandle,
+    _fullscreen: boolean,
+    options?: OperationOptions
+  ): Promise<WindowState> {
+    return this.#windowUnavailable(window, 'window.state', options)
+  }
+  async showWindow(
+    window: WindowHandle,
+    _visible: boolean,
+    options?: OperationOptions
+  ): Promise<void> {
+    this.#windowUnavailable(window, 'window.state', options)
+  }
+  async resizeWindow(
+    window: WindowHandle,
+    _width: number,
+    _height: number,
+    options?: OperationOptions
+  ): Promise<void> {
+    this.#windowUnavailable(window, 'window.geometry', options)
+  }
+  async windowBounds(window: WindowHandle, options?: OperationOptions): Promise<Bounds> {
+    return this.#windowUnavailable(window, 'window.geometry', options)
+  }
+  async setWindowBounds(
+    window: WindowHandle,
+    _bounds: Bounds,
+    options?: OperationOptions
+  ): Promise<Bounds> {
+    return this.#windowUnavailable(window, 'window.geometry', options)
+  }
+  onWindowEvent(
+    window: WindowHandle,
+    _listener: (event: WindowEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#windowUnavailable(window, 'window.state', options)
   }
   async disposeView(view: ViewHandle): Promise<void> {
     if (this.#registry.dispose(view, 'view')) this.#emit({ type: 'disposed', resource: view })

@@ -6,6 +6,9 @@ export {
 } from '../../contracts/src/index.ts'
 export type {
   BackendDescriptor,
+  Bounds,
+  WindowState,
+  WindowEvent,
   Capability,
   ViewState,
   InputAction,

@@ -70,7 +70,8 @@
     "example:managed": "bun examples/managed-generations/main.ts",
     "qualify:managed-development": "bun scripts/qualify-managed-development.ts",
     "qualify:managed-comparison": "bun scripts/qualify-managed-comparison.ts",
-    "verify:managed-acceptance": "bun scripts/verify-managed-acceptance.ts"
+    "verify:managed-acceptance": "bun scripts/verify-managed-acceptance.ts",
+    "qualify:desktop": "bun scripts/qualify-desktop.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",

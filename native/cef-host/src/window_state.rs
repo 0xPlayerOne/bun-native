@@ -1,6 +1,6 @@
 //! CEF-specific owner-thread operations. IDs only select an existing host-owned window.
 use super::{number, reply, STATE};
-use cef::{BoxLayoutSettings, ImplView, ImplWindow, Window};
+use cef::{BoxLayoutSettings, ImplPanel, ImplView, ImplWindow, Rect, Window};
 use serde_json::{json, Value};
 
 /// Vertical host layout; per-view main-axis flex is assigned at attachment.
@@ -39,6 +39,29 @@ fn read(window: &Window) -> Result<Value, &'static str> {
     }))
 }
 
+fn read_bounds(window: &Window) -> Result<Value, &'static str> {
+    read(window)?;
+    let bounds = window.bounds();
+    if bounds.width < 0 || bounds.height < 0 {
+        return Err("Invalid native window bounds");
+    }
+    Ok(json!({"x":bounds.x,"y":bounds.y,"width":bounds.width,"height":bounds.height}))
+}
+
+fn requested_bounds(args: &Value) -> Result<Rect, String> {
+    let width = number(args, "width")?;
+    let height = number(args, "height")?;
+    if width > 32768 || height > 32768 {
+        return Err("Invalid window dimensions".into());
+    }
+    Ok(Rect {
+        x: crate::policy::coordinate(args, "x")?,
+        y: crate::policy::coordinate(args, "y")?,
+        width: width as i32,
+        height: height as i32,
+    })
+}
+
 pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<(), String> {
     let id = number(args, "id")?;
     let window = live(id)?;
@@ -48,6 +71,28 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
         "window.activate" => window.activate(),
         "window.minimize" => window.minimize(),
         "window.restore" => window.restore(),
+        "window.maximize" => window.maximize(),
+        "window.fullscreen" => {
+            let fullscreen = args
+                .get("fullscreen")
+                .and_then(Value::as_bool)
+                .ok_or("Invalid fullscreen flag")?;
+            window.set_fullscreen(i32::from(fullscreen));
+        }
+        "window.bounds" => {
+            reply(request, read_bounds(&window)?);
+            return Ok(());
+        }
+        "window.bounds.set" => {
+            let bounds = requested_bounds(args)?;
+            window.set_bounds(Some(&bounds));
+            // Both setters/layout may synchronously reenter the delegate.
+            let window = live(id)?;
+            window.layout();
+            let window = live(id)?;
+            reply(request, read_bounds(&window)?);
+            return Ok(());
+        }
         _ => return Err("Unknown window state operation".into()),
     }
     // CEF calls may reenter the delegate. Revalidate ownership after the action.
@@ -57,10 +102,30 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
 }
 
 /// Notification is only a hint; callers still read the exact live owned window.
-pub(super) fn activation_changed(id: u64) {
+pub(super) fn state_changed(id: u64) {
     if let Ok(window) = live(id) {
         if let Ok(state) = read(&window) {
             super::event("window.state-changed", id, state);
+        }
+    }
+}
+
+pub(super) fn bounds_changed(id: u64) {
+    if let Ok(window) = live(id) {
+        if let Ok(bounds) = read_bounds(&window) {
+            super::event("window.bounds-changed", id, bounds);
+        }
+    }
+}
+
+pub(super) fn fullscreen_transition(id: u64, completed: bool) {
+    if let Ok(window) = live(id) {
+        if let Ok(state) = read(&window) {
+            super::event(
+                "window.fullscreen-transition",
+                id,
+                json!({"completed":completed,"state":state}),
+            );
         }
     }
 }
@@ -201,6 +266,28 @@ fn windows_snapshot(hwnd: windows_sys::Win32::Foundation::HWND) -> Result<Value,
 mod tests {
     use super::*;
     use crate::host::WindowRecord;
+
+    #[test]
+    fn requested_geometry_is_bounded_integer_data_before_cef() {
+        let bounds =
+            requested_bounds(&json!({"x":-32768,"y":32768,"width":1,"height":32768})).unwrap();
+        assert_eq!(
+            (bounds.x, bounds.y, bounds.width, bounds.height),
+            (-32768, 32768, 1, 32768)
+        );
+        for value in [
+            json!(null),
+            json!({"x":0,"y":0,"width":0,"height":1}),
+            json!({"x":0,"y":0,"width":32769,"height":1}),
+            json!({"x":0,"y":0,"width":1.5,"height":1}),
+            json!({"x":32769,"y":0,"width":1,"height":1}),
+            json!({"x":0,"y":-32769,"width":1,"height":1}),
+            json!({"x":0.5,"y":0,"width":1,"height":1}),
+            json!({"x":0,"y":0,"width":1,"height":"1"}),
+        ] {
+            assert!(requested_bounds(&value).is_err(), "{value}");
+        }
+    }
 
     #[test]
     fn browser_layout_stretches_cross_axis_instead_of_reusing_minimized_preferred_width() {
