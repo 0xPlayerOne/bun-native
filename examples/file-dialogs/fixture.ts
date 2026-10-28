@@ -2,19 +2,17 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import {
-  BunlyError,
-  type PolicyScope,
-  type ViewHandle,
-} from '../../packages/contracts/src/index.ts'
+import type { ErrorCode, PolicyScope, ViewHandle } from '../../packages/contracts/src/index.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desktop.ts'
 import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-generations.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
 import { formatDesktopFixtureFailure } from '../../benchmarks/desktop/failure-codes.ts'
 
-const hasCode = (code: string) => (error: unknown) =>
-  error instanceof BunlyError && error.code === code
+// Bootstrap and fixture are separate bundles in one Bun realm. SDK errors keep
+// their name and code across that boundary, but not a shared BunlyError class.
+export const hasCode = (code: ErrorCode) => (error: unknown) =>
+  error instanceof Error && error.name === 'BunlyError' && 'code' in error && error.code === code
 type Receipt = {
   supported: boolean
   active: number
