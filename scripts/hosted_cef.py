@@ -357,8 +357,8 @@ def run(suite):
                     str(executable_dir / ("bunly-terminal-owner" + suffix)),
                     "--host",
                     str(
-                        ROOT
-                        / "native/cef-host/target/release"
+                        Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "native/cef-host/target"))
+                        / "release"
                         / ("bunly-terminal-fixture-host" + suffix)
                     ),
                     "--output",

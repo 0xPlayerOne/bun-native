@@ -75,8 +75,8 @@ and Clippy. Configure the trusted CEF distribution as described in
 
 ```sh
 bun run check:ci:native
-cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
-  --all-targets --features packaging,cef/dox --target-dir .bunly/cef-typecheck
+bun scripts/cargo.ts +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
+  --all-targets --features packaging,cef/dox
 bun run qualify:host
 bun run qualify:lifecycle
 bun run artifact:probe
@@ -84,10 +84,21 @@ BUNLY_KERNEL_COUNTERS=1 bun scripts/qualify-kernel.ts
 ```
 
 The combined native command formats, lints with warnings denied, tests and builds
-both real workspaces. The CEF documentation-feature check uses a separate target
-directory and never substitutes for an actual CEF build or launch. The native
+both real workspaces. The CEF documentation-feature check uses a distinct Cargo
+feature fingerprint and never substitutes for an actual CEF build or launch. The native
 commit hook selects the correct compiler for each workspace, including changes
 to shared Cargo configuration. Application consumers still use prebuilt binaries.
+
+Local Cargo commands run through `bun scripts/cargo.ts`, which puts Rust build
+outputs in one per-user Bunly cache shared by all checkouts and Git worktrees.
+Set `CARGO_TARGET_DIR` to override it, or `BUNLY_SHARED_CACHE_DIR` to choose the
+parent cache directory. Commands for `native/cef-host` also default `CEF_PATH`
+to `<shared-cache>/cef/<locked-version>`; put the matching contributor CEF
+distribution there or set `CEF_PATH` to override it. Keep run evidence and
+qualification output under each checkout's `.bunly` directory so concurrent
+worktrees cannot overwrite one another. CI continues to use isolated workspaces.
+
+`bun scripts/cargo.ts --print-target-dir` prints the active target directory.
 
 For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 
@@ -104,9 +115,9 @@ and `cmake`), then prepare without launching a GUI:
 
 ```sh
 bun scripts/build-cef-fixture.ts
-cargo +1.91.0 test --locked --offline --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
-cargo +1.91.0 build --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification
-native/cef-host/target/release/bunly-bundle /absolute/private/new-rpc-bundle
+bun scripts/cargo.ts +1.91.0 test --locked --offline --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
+bun scripts/cargo.ts +1.91.0 build --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification
+bun scripts/cargo.ts +1.91.0 run --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification --bin bunly-bundle -- /absolute/private/new-rpc-bundle
 ```
 
 On macOS, copy resources into **only the newly assembled private fixture**, then

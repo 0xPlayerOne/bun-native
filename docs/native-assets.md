@@ -156,15 +156,15 @@ stream lengths used for HEAD, full and partial bodies, 304, and 416.
 Run the pinned native checks with:
 
 ```sh
-cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
-cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
+bun scripts/cargo.ts +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib
+bun scripts/cargo.ts +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging -- -D warnings
 ```
 
 To exercise the upstream software implementation against the same fixed digest
 checks without changing the installed feature selection:
 
 ```sh
-cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features sha2/force-soft sha256_
+bun scripts/cargo.ts +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib --features sha2/force-soft sha256_
 ```
 
 These checks establish deterministic resource and integrity behavior. Actual

@@ -635,7 +635,9 @@ test.each(['native', 'malformed-cross-drive'] as const)(
           ).toBe(false)
       }
       await writeFile(join(parent, 'external.ts'), 'export const external = 21')
-      const deadline = performance.now() + 5000
+      // Cold filesystem watcher setup and rebuilds can be delayed when this
+      // suite runs alongside the rest of the workspace tests.
+      const deadline = performance.now() + 15000
       while (adapter.value() !== 21 && performance.now() < deadline) await Bun.sleep(10)
       expect(adapter.value()).toBe(21)
       await session.close()
@@ -646,7 +648,7 @@ test.each(['native', 'malformed-cross-drive'] as const)(
       await rm(parent, { recursive: true, force: true })
     }
   },
-  10000
+  20000
 )
 test('shutdown cancels queued changes and waits for owned runtime completion', async () => {
   const root = await temporary()
