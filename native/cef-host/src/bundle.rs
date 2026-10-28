@@ -1,9 +1,23 @@
 #[allow(dead_code)]
 mod terminal_runtime;
 // Contributor-only assembly. This binary is never included in an application.
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+fn artifacts(executable: &Path, required: &[&str]) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let target = executable
+        .parent()
+        .ok_or("Bundler executable directory is unavailable")?;
+    if !target.is_absolute() {
+        return Err("Bundler executable directory must be absolute".into());
+    }
+    for name in required {
+        let info = target.join(name).symlink_metadata()?;
+        if !info.is_file() || info.len() == 0 {
+            return Err(format!("Missing regular native sibling artifact: {name}").into());
+        }
+    }
+    Ok(target.to_path_buf())
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let output = PathBuf::from(
         std::env::args()
             .nth(1)
@@ -12,10 +26,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !output.is_absolute() {
         return Err("Bundle destination must be absolute".into());
     }
-    let target_root = std::env::var_os("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.join("target"));
-    let target = target_root.join("release");
+    #[cfg(target_os = "macos")]
+    let required = &["bunly_host", "bunly_helper", "bunly-terminal-owner"][..];
+    #[cfg(target_os = "linux")]
+    let required = &["bunly_host", "bunly-terminal-owner"][..];
+    #[cfg(all(windows, feature = "sandbox"))]
+    let required = &[
+        "bunly_host.dll",
+        "bunly_host.pdb",
+        "bunly-terminal-owner.exe",
+    ][..];
+    #[cfg(all(windows, not(feature = "sandbox")))]
+    let required = &["bunly_host.exe", "bunly-terminal-owner.exe"][..];
+    // Cargo target overrides and separate feature builds must select their own
+    // actual artifacts. Never silently assemble a different target/release host.
+    let target = artifacts(&std::env::current_exe()?, required)?;
     #[cfg(target_os = "macos")]
     let path = cef::build_util::mac::bundle(
         &output,
@@ -106,4 +131,40 @@ fn independent_files(root: &std::path::Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn selection_uses_only_actual_siblings_and_never_falls_back() {
+        let root =
+            std::env::temp_dir().join(format!("bunly-bundle-artifacts-{}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            let chosen = root.join("chosen");
+            let stale = root.join("target/release");
+            std::fs::create_dir(&chosen)?;
+            std::fs::create_dir_all(&stale)?;
+            std::fs::write(stale.join("host"), b"wrong-host")?;
+            assert!(artifacts(&chosen.join("bundler"), &["host"]).is_err());
+            std::fs::write(chosen.join("host"), b"")?;
+            assert!(artifacts(&chosen.join("bundler"), &["host"]).is_err());
+            std::fs::remove_file(chosen.join("host"))?;
+            std::fs::create_dir(chosen.join("host"))?;
+            assert!(artifacts(&chosen.join("bundler"), &["host"]).is_err());
+            std::fs::remove_dir(chosen.join("host"))?;
+            std::fs::write(chosen.join("host"), b"chosen-host")?;
+            assert_eq!(artifacts(&chosen.join("bundler"), &["host"])?, chosen);
+            assert!(artifacts(&chosen.join("bundler"), &["host", "helper"]).is_err());
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(stale.join("host"), chosen.join("helper"))?;
+                assert!(artifacts(&chosen.join("bundler"), &["host", "helper"]).is_err());
+            }
+            Ok(())
+        })();
+        std::fs::remove_dir_all(root).unwrap();
+        result.unwrap();
+    }
 }

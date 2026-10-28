@@ -1,8 +1,5 @@
 import { expect, test } from 'bun:test'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { cargoEnvironment, nativeReleaseDirectory } from '../scripts/cargo-config.ts'
+import { cargoEnvironment } from '../scripts/cargo-config.ts'
 
 test('shares Cargo target and CEF paths across macOS worktrees', () => {
   const result = cargoEnvironment(
@@ -53,28 +50,28 @@ test('uses platform cache conventions and rejects relative shared cache override
   ).toThrow('A valid locked CEF package version is required for the shared CEF path')
 })
 
-test('native qualification finds artifacts in the shared target or direct Cargo target', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bunly-cargo-target-'))
-  const shared = join(root, 'shared', 'cargo-target', 'release')
-  const direct = join(root, 'repo', 'native', 'target', 'release')
-  const env = { BUNLY_SHARED_CACHE_DIR: join(root, 'shared') }
-  try {
-    await mkdir(shared, { recursive: true })
-    await mkdir(direct, { recursive: true })
-    await writeFile(join(direct, 'probe.node'), '')
-    await writeFile(join(direct, 'process-soak'), '')
-    expect(await nativeReleaseDirectory(join(root, 'repo'), ['probe.node'], env, 'linux')).toBe(
-      direct
+test('CI retains workspace-local Cargo defaults unless an explicit override opts in', () => {
+  for (const platform of ['linux', 'darwin', 'win32'] as const) {
+    const result = cargoEnvironment(
+      ['--manifest-path=native/cef-host/Cargo.toml'],
+      { CI: 'true' },
+      platform
     )
-    await writeFile(join(shared, 'probe.node'), '')
-    expect(await nativeReleaseDirectory(join(root, 'repo'), ['probe.node'], env, 'linux')).toBe(
-      shared
-    )
-    await rm(join(shared, 'probe.node'))
-    expect(
-      await nativeReleaseDirectory(join(root, 'repo'), ['probe.node', 'process-soak'], env, 'linux')
-    ).toBe(direct)
-  } finally {
-    await rm(root, { recursive: true, force: true })
+    expect(result.targetDir).toBeUndefined()
+    expect(result.env.CARGO_TARGET_DIR).toBeUndefined()
+    expect(result.env.CEF_PATH).toBeUndefined()
   }
+  expect(cargoEnvironment([], { CI: 'true', CARGO_TARGET_DIR: '/private/target' }).targetDir).toBe(
+    '/private/target'
+  )
+  expect(
+    cargoEnvironment([], { CI: 'true', BUNLY_SHARED_CACHE_DIR: '/explicit/cache' }, 'linux')
+      .targetDir
+  ).toBe('/explicit/cache/cargo-target')
+  expect(cargoEnvironment([], { CI: 'false' }, 'linux', '/home/dev').targetDir).toBe(
+    '/home/dev/.cache/bunly/cargo-target'
+  )
+  expect(cargoEnvironment([], { BUNLY_SHARED_CACHE_DIR: 'C:\\cache' }, 'win32').targetDir).toBe(
+    'C:\\cache\\cargo-target'
+  )
 })

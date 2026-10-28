@@ -1,21 +1,14 @@
 import { spawn } from 'node:child_process'
 import { copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
-import { nativeReleaseDirectory } from './cargo-config.ts'
+import { nativeHostArtifacts } from './cargo-artifacts.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
-const lib =
-  process.platform === 'win32'
-    ? 'bunly_host_probe.dll'
-    : process.platform === 'darwin'
-      ? 'libbunly_host_probe.dylib'
-      : 'libbunly_host_probe.so'
-const executable = 'bunly-host-probe' + (process.platform === 'win32' ? '.exe' : '')
-const native = await nativeReleaseDirectory(root, [lib, executable])
+const native = nativeHostArtifacts(root)
 const dir = join(root, '.bunly/qualification')
 await mkdir(dir, { recursive: true })
 const addon = join(dir, 'probe.node')
-await copyFile(join(native, lib), addon)
+await copyFile(native.library, addon)
 async function execute(command: string, args: string[]): Promise<Record<string, unknown>> {
   const started = performance.now()
   const child = spawn(command, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -57,7 +50,7 @@ for (const mode of ['ffi', 'napi', 'process'] as const) {
     try {
       const result =
         mode === 'process'
-          ? await execute(join(native, executable), [
+          ? await execute(native.hostProbe, [
               process.execPath,
               join(root, 'scripts/probes/process-child.ts'),
             ])

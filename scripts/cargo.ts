@@ -2,9 +2,25 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { cargoEnvironment, cefManifestPath } from './cargo-config.ts'
+import { cargoTargetDirectory } from './cargo-artifacts.ts'
 
 const args = process.argv.slice(2)
 if (!args.length) throw new Error('Usage: bun scripts/cargo.ts [cargo arguments]')
+
+if (args[0] === '--print-target-dir') {
+  const options = args.slice(1)
+  const manifest =
+    options.length === 0
+      ? join(import.meta.dir, '../native/Cargo.toml')
+      : options.length === 2 && options[0] === '--manifest-path'
+        ? options[1]!
+        : options.length === 1 && options[0]!.startsWith('--manifest-path=')
+          ? options[0]!.slice('--manifest-path='.length)
+          : undefined
+  if (!manifest) throw new Error('Usage: --print-target-dir [--manifest-path Cargo.toml]')
+  console.log(cargoTargetDirectory(manifest))
+  process.exit(0)
+}
 
 const manifest = cefManifestPath(args)
 const cefVersion =
@@ -18,12 +34,7 @@ const { targetDir, env } = cargoEnvironment(
   undefined,
   cefVersion
 )
-if (args.length === 1 && args[0] === '--print-target-dir') {
-  console.log(resolve(targetDir))
-  process.exit(0)
-}
-
-await mkdir(resolve(targetDir), { recursive: true, mode: 0o700 })
+if (targetDir !== undefined) await mkdir(resolve(targetDir), { recursive: true, mode: 0o700 })
 
 const child = Bun.spawn(['cargo', ...args], {
   env,

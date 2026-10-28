@@ -1,6 +1,9 @@
 """Hosted orchestrator policy tests; these do not stand in for native execution."""
 
+import base64
+import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -22,6 +25,122 @@ def cp1252_text_default():
 
 
 class HostedQualificationTests(unittest.TestCase):
+    def test_build_account_cli_handoff_is_ascii_even_with_windows_legacy_stdout(self):
+        selected = str(PureWindowsPath("C:/selected é Ω")) + chr(92)
+        for newline in ("\n", "\r\n"):
+            with self.subTest(newline=newline):
+                data = io.BytesIO()
+                output = io.TextIOWrapper(
+                    data, encoding="cp1252", newline=newline, write_through=True
+                )
+                with (
+                    patch.dict(hosted.os.environ, {"GITHUB_ACTIONS": "true"}),
+                    patch.object(hosted.shutil, "which", return_value="/build-account/bun"),
+                    patch.object(hosted, "native_target_directory", return_value=selected) as query,
+                    patch.object(hosted.sys, "stdout", output),
+                ):
+                    hosted.main(["target-directory-base64"])
+                query.assert_called_once_with("/build-account/bun")
+                # PowerShell captures one native-output line without its OS newline.
+                # Model both encodings of that boundary on every test platform.
+                lines = data.getvalue().splitlines()
+                self.assertEqual(len(lines), 1)
+                encoded = lines[0]
+                self.assertTrue(encoded.isascii())
+                self.assertEqual(base64.b64decode(encoded, validate=True).decode("utf-8"), selected)
+                output.detach()
+
+    def test_worker_uses_the_exact_build_account_handoff_without_a_compiler(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "Unicode é Ω ")
+            with (
+                patch.dict(hosted.os.environ, {"PATH": "", "HOME": directory}, clear=True),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                self.assertEqual(
+                    hosted.native_target_directory("/missing-bun", selected), Path(selected)
+                )
+                run.assert_not_called()
+                for invalid in [
+                    "",
+                    "relative/target",
+                    selected + "\n",
+                    selected + "\r",
+                    selected + "\0",
+                ]:
+                    with self.subTest(value=invalid), self.assertRaises(ValueError):
+                        hosted.native_target_directory("/missing-bun", invalid)
+                run.assert_not_called()
+
+    def test_terminal_fixture_uses_the_queried_cargo_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "Unicode é Ω ")
+            with patch.object(hosted.subprocess, "run") as run:
+                run.return_value.stdout = selected + "\n"
+                self.assertEqual(hosted.native_target_directory("/bun"), Path(selected))
+                run.assert_called_once_with(
+                    [
+                        "/bun",
+                        str(hosted.ROOT / "scripts/cargo.ts"),
+                        "--print-target-dir",
+                        "--manifest-path",
+                        str(hosted.ROOT / "native/cef-host/Cargo.toml"),
+                    ],
+                    cwd=hosted.ROOT,
+                    env={
+                        **os.environ,
+                        "RUSTUP_TOOLCHAIN": os.environ.get("RUSTUP_TOOLCHAIN", "1.91.0"),
+                    },
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    timeout=15,
+                )
+            for value in [
+                "",
+                "target/release",
+                directory + "\nextra-output",
+                directory + "\n\n",
+                directory + "\rextra-output",
+            ]:
+                with self.subTest(value=value), patch.object(hosted.subprocess, "run") as run:
+                    run.return_value.stdout = value
+                    with self.assertRaises(ValueError):
+                        hosted.native_target_directory("/bun")
+
+    def test_native_query_uses_installed_cef_toolchain_without_changing_target_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "selected-target")
+            environment = {
+                "PATH": "/tools",
+                "CI": "true",
+                "CARGO_TARGET_DIR": selected,
+                "BUNLY_SHARED_CACHE_DIR": str(Path(directory) / "shared-cache"),
+                "CEF_PATH": str(Path(directory) / "cef-sdk"),
+            }
+            with (
+                patch.dict(hosted.os.environ, environment, clear=True),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                run.return_value.stdout = selected + "\n"
+                self.assertEqual(hosted.native_target_directory("/bun"), Path(selected))
+                self.assertEqual(
+                    run.call_args.kwargs["env"],
+                    {**environment, "RUSTUP_TOOLCHAIN": "1.91.0"},
+                )
+                self.assertNotIn("RUSTUP_TOOLCHAIN", hosted.os.environ)
+
+    def test_native_query_preserves_explicit_contributor_toolchain(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(hosted.os.environ, {"RUSTUP_TOOLCHAIN": "custom-cef"}, clear=True),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            run.return_value.stdout = directory + "\n"
+            self.assertEqual(hosted.native_target_directory("/bun"), Path(directory))
+            self.assertEqual(run.call_args.kwargs["env"], {"RUSTUP_TOOLCHAIN": "custom-cef"})
+
     def test_only_declared_native_architectures(self):
         self.assertEqual(hosted.target("win32", "AMD64"), "win32-x64")
         self.assertEqual(hosted.target("linux", "x86_64"), "linux-x64")
