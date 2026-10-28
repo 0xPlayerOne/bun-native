@@ -248,7 +248,12 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
   } catch (error) {
     failure ??= formatDesktopFixtureFailure('commands', stage, error)
   } finally {
-    observations?.close()
+    if (observations) {
+      // Preserve the actual bounded prefix when a waiter rejects. The exact
+      // seven-event acceptance gate above still requires the complete workload.
+      receipt.splice(0, receipt.length, ...observations.events)
+      observations.close()
+    }
     shutdownRequested = true
     try {
       await backend.dispose()
