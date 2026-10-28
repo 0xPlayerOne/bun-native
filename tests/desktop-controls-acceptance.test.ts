@@ -42,6 +42,9 @@ function receipt() {
       height: 400,
       devicePixelRatio: 1,
     },
+    pageVisibility: ['visible', 'hidden', 'visible', 'hidden', 'visible'].map(
+      (visibility, sequence) => ({ sequence, visibility })
+    ),
     events: {
       count: 25,
       state: 10,
@@ -178,6 +181,18 @@ test('desktop acceptance requires state and bounds notifications, beyond readbac
     value.events[key] = 0
     assert.throws(() => acceptDesktopControlReceipt(value))
   }
+})
+
+test('desktop acceptance requires independent ordered page visibility, not native intent', () => {
+  const missing = receipt()
+  missing.pageVisibility.pop()
+  assert.throws(() => acceptDesktopControlReceipt(missing))
+  const reordered = receipt()
+  reordered.pageVisibility[3]!.visibility = 'visible'
+  assert.throws(() => acceptDesktopControlReceipt(reordered))
+  const duplicate = receipt()
+  duplicate.pageVisibility[4]!.sequence = 3
+  assert.throws(() => acceptDesktopControlReceipt(duplicate))
 })
 
 /** Synthetic parser inputs only; never exported as native qualification evidence. */
