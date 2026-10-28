@@ -87,6 +87,38 @@ when the final executable bytes are unchanged. This tool refuses to infer the
 clone-removal proof provided by the separate finite native observer. Keep the
 earlier attempt and its records when preparing another copy.
 
+### Fresh-run shutdown diagnostics
+
+For an explicitly authorized finite process-observer probe, the contributor helper
+`summarizeNativeHostFailures` in `benchmarks/lib/native-failure-codes.ts` can print
+bounded failure codes from that probe's newly captured `nativeEvents(observation)`.
+It maps exact fixed native source messages to fixed labels, preserves repeated
+failures, and records the last observed shutdown phase start. An absent phase is
+`no-phase-start-observed`, which does not prove that shutdown has not started.
+Unknown messages
+and phase names become `unclassified` and `unclassified-phase`; no raw message,
+path, application payload or arbitrary input property is returned. The helper has
+no file, process or network access and is not a retained-report reader.
+
+For example, the next fresh probe can print its diagnostic summary immediately
+after awaiting its observed command, before applying the existing acceptance
+checks:
+
+```ts
+console.log(JSON.stringify({
+  event: 'bunly.workbench.failure-codes',
+  failures: summarizeNativeHostFailures(nativeEvents(observation)),
+}))
+```
+
+This is diagnostic output, not an acceptance result. A missing failure record or
+an `unclassified` code cannot establish clean shutdown. Keep root exit, native
+shutdown, backend exit, all existing deadlines and process/helper cleanup gates.
+An OS-quit probe must continue to use the actual OS quit action; a successful SDK
+quit cannot substitute for that path. This helper does not change native bytes,
+enable a diagnostic build feature, launch an app, or authorize reading a retained
+private report.
+
 ## Application surfaces and controls
 
 The window owns four independent native browser views. Each has a separate

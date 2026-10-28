@@ -1,0 +1,89 @@
+import { test } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  classifyNativeHostFailure,
+  summarizeNativeHostFailures,
+} from '../benchmarks/lib/native-failure-codes.ts'
+
+test('native failure diagnostics distinguish known shutdown, owner and protocol failures', () => {
+  for (const [message, code] of [
+    ['Native shutdown acknowledgement deadline exceeded', 'native-shutdown-deadline'],
+    ['Cookie store unavailable during session disposal', 'session-disposal-cookie-store'],
+    ['Cookie store flush could not be scheduled', 'session-disposal-cookie-flush'],
+    ['CEF command dispatch unavailable', 'cef-command-dispatch-unavailable'],
+    ['Renderer process terminated before native shutdown', 'renderer-terminated'],
+    ['Native focus could not leave an ineligible pane', 'view-focus-eviction'],
+    ['Bun backend process exited before native shutdown', 'backend-supervised-early-exit'],
+    ['Bun backend exited before native shutdown', 'backend-pipe-early-exit'],
+    ['Bun input closed', 'backend-input-closed'],
+    ['Invalid protocol version or request sequence', 'application-protocol-sequence'],
+  ])
+    assert.equal(classifyNativeHostFailure(message), code)
+})
+
+test('unknown, decorated and malformed failures never return raw input or match a known prefix', () => {
+  const known = 'Native shutdown acknowledgement deadline exceeded'
+  const privatePayload = '/private/example/profile?secret=fixture-only'
+  for (const value of [
+    null,
+    undefined,
+    {},
+    [],
+    1,
+    'constructor',
+    '__proto__',
+    '',
+    privatePayload,
+    `${known} ${privatePayload}`,
+    `${known}\n${privatePayload}`,
+    ` ${known}`,
+    `${known} `,
+    known.toLowerCase(),
+    known.repeat(1000),
+  ])
+    assert.equal(classifyNativeHostFailure(value), 'unclassified')
+})
+
+test('fresh failure summaries preserve duplicate failures and their observed shutdown order', () => {
+  const failure = {
+    event: 'bunly.host.failure',
+    error: 'Native shutdown acknowledgement deadline exceeded',
+    privateDetail: '/private/example/ignored',
+  }
+  assert.deepEqual(
+    summarizeNativeHostFailures([
+      { event: 'bunly.workbench.ready', privateDetail: 'ignored' },
+      failure,
+      failure,
+      { event: 'bunly.host.shutdown-phase', phase: 'process-stop', state: 'start' },
+      { event: 'bunly.host.failure', error: 'Bun input closed' },
+      { event: 'bunly.host.shutdown-phase', phase: 'process-stop', state: 'complete' },
+      { event: 'bunly.host.failure' },
+      { event: 'bunly.host.shutdown-phase', phase: 'host-release', state: 'start' },
+      { event: 'bunly.host.failure', error: 'View overlay unavailable' },
+      { event: 'bunly.host.shutdown', clean: false },
+    ]),
+    [
+      { code: 'native-shutdown-deadline', phase: 'no-phase-start-observed' },
+      { code: 'native-shutdown-deadline', phase: 'no-phase-start-observed' },
+      { code: 'backend-input-closed', phase: 'process-stop' },
+      { code: 'unclassified', phase: 'process-stop' },
+      { code: 'view-overlay-unavailable', phase: 'host-release' },
+    ]
+  )
+})
+
+test('arbitrary phase names and error payloads cannot escape the finite summary', () => {
+  const privatePayload = '/private/example/profile?secret=fixture-only'
+  const summary = summarizeNativeHostFailures([
+    { event: 'bunly.host.shutdown-phase', phase: privatePayload, state: 'start' },
+    { event: 'bunly.host.failure', error: privatePayload, privateDetail: privatePayload },
+  ])
+  assert.deepEqual(summary, [{ code: 'unclassified', phase: 'unclassified-phase' }])
+  assert.equal(JSON.stringify(summary).includes(privatePayload), false)
+  assert.throws(
+    () =>
+      summarizeNativeHostFailures(Array.from({ length: 169 }, () => ({ event: privatePayload }))),
+    /^Error: Native failure event budget exceeded$/
+  )
+})
