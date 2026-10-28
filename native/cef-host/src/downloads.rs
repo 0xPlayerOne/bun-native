@@ -380,8 +380,20 @@ fn bind(view: u64, observation: &Observation, callback: Option<&DownloadItemCall
         }
         record.cef_id = Some(observation.id);
         let previous = callback.and_then(|callback| record.callback.replace(callback.clone()));
-        record.received = observation.received;
-        record.total = observation.total;
+        // Chromium 156's InterruptAndDiscardPartialState resets its stored byte
+        // counter before notifying cancellation/interruption observers. Retain
+        // only bytes already observed; a discarded partial file is not negative
+        // transfer progress. Running/completed counters and the raw observation
+        // used by byte limits and final file verification remain unchanged.
+        let discarded = !observation.complete && (observation.cancelled || observation.interrupted);
+        record.received = if discarded {
+            record.received.max(observation.received)
+        } else {
+            observation.received
+        };
+        record.total = observation
+            .total
+            .filter(|total| !discarded || *total >= record.received);
         (true, previous)
     });
     // A CEF reference may release native state; never drop one under STATE.
@@ -762,5 +774,156 @@ wrap_download_handler! {
         fn on_download_updated(&self, browser: Option<&mut Browser>, item: Option<&mut DownloadItem>, callback: Option<&mut DownloadItemCallback>) {
             updated(self.id, browser.as_deref(), item.as_deref(), callback.as_deref());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Fixture {
+        view: u64,
+        observation: Observation,
+    }
+    impl Fixture {
+        fn new() -> Self {
+            let view = 3;
+            let permit = Permit::new("https://download.test/file").unwrap();
+            let access = Arc::new(Access::default());
+            access.install(permit.clone()).unwrap();
+            let observation = Observation {
+                id: 7,
+                original: permit.request_url().to_owned(),
+                url: "https://download.test/file".into(),
+                path: String::new(),
+                received: 8192,
+                total: Some(32768),
+                complete: false,
+                cancelled: false,
+                interrupted: false,
+            };
+            let record = Record {
+                id: 100,
+                scope: capability_policy::DocumentScope {
+                    view,
+                    session: 1,
+                    generation: 1,
+                    main_frame: "main".into(),
+                    document: "native-3-1".into(),
+                    origin: "app://ui".into(),
+                },
+                destination: Destination {
+                    root: PathBuf::new(),
+                    name: "test.bin".into(),
+                    overwrite: "deny".into(),
+                },
+                permit,
+                access,
+                staging: None,
+                cef_id: None,
+                callback: None,
+                before: false,
+                cancel: None,
+                cancel_notified: false,
+                received: 0,
+                total: None,
+                max_bytes: MAX_BYTES,
+                deadline: deadline::Deadline::new(view, 100, Duration::from_secs(300)).unwrap(),
+                settlement: None,
+                terminal: None,
+                last_progress: None,
+            };
+            STATE.with(|state| {
+                let mut state = state.borrow_mut();
+                assert!(state.downloads.is_empty());
+                state.downloads.entries.insert(view, record);
+            });
+            assert!(bind(view, &observation, None));
+            Self { view, observation }
+        }
+        fn progress(&self) -> (u64, Option<u64>) {
+            STATE.with(|state| {
+                let state = state.borrow();
+                let record = state.downloads.entries.get(&self.view).unwrap();
+                (record.received, record.total)
+            })
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let record =
+                STATE.with(|state| state.borrow_mut().downloads.entries.remove(&self.view));
+            if let Some(record) = record {
+                record.access.clear(&record.permit);
+                drop(record);
+            }
+        }
+    }
+
+    #[test]
+    fn cancelled_partial_state_discard_preserves_observed_progress() {
+        let mut fixture = Fixture::new();
+        STATE.with(|state| {
+            mark_cancel(
+                state
+                    .borrow_mut()
+                    .downloads
+                    .entries
+                    .get_mut(&fixture.view)
+                    .unwrap(),
+                Cancel::Requested,
+            );
+        });
+        fixture.observation.cancelled = true;
+        fixture.observation.received = 0;
+        assert!(bind(fixture.view, &fixture.observation, None));
+        assert_eq!(fixture.progress(), (8192, Some(32768)));
+        assert_eq!(fixture.observation.received, 0);
+
+        // Bytes newly observed in a terminal callback remain real progress.
+        fixture.observation.received = 12288;
+        assert!(bind(fixture.view, &fixture.observation, None));
+        assert_eq!(fixture.progress(), (12288, Some(32768)));
+    }
+
+    #[test]
+    fn interrupted_partial_state_discard_never_invents_a_known_total() {
+        let mut fixture = Fixture::new();
+        fixture.observation.interrupted = true;
+        fixture.observation.received = 0;
+        for total in [None, Some(4096)] {
+            fixture.observation.total = total;
+            assert!(bind(fixture.view, &fixture.observation, None));
+            assert_eq!(fixture.progress(), (8192, None));
+            assert_eq!(fixture.observation.total, total);
+        }
+    }
+
+    #[test]
+    fn running_and_completed_counters_are_never_repaired() {
+        for complete in [false, true] {
+            let mut fixture = Fixture::new();
+            fixture.observation.complete = complete;
+            fixture.observation.received = 4096;
+            assert!(bind(fixture.view, &fixture.observation, None));
+            assert_eq!(fixture.progress(), (4096, Some(32768)));
+            assert_eq!(fixture.observation.received, 4096);
+        }
+    }
+
+    #[test]
+    fn terminal_progress_correction_cannot_bind_another_download_identity() {
+        let mut fixture = Fixture::new();
+        fixture.observation.cancelled = true;
+        fixture.observation.received = 16384;
+        for id in [0, 8] {
+            fixture.observation.id = id;
+            assert!(!bind(fixture.view, &fixture.observation, None));
+            assert_eq!(fixture.progress(), (8192, Some(32768)));
+        }
+        fixture.observation.id = 7;
+        fixture.observation.original = "https://download.test/file".into();
+        assert!(!bind(fixture.view, &fixture.observation, None));
+        assert_eq!(fixture.progress(), (8192, Some(32768)));
     }
 }
