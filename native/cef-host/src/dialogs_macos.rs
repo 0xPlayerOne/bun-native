@@ -109,7 +109,7 @@ pub(super) fn prepare(options: &Options, window: &Window) -> Result<Panel, Strin
     };
     let panel = Panel { native, owner };
     let base = panel.base();
-    base.setTitle(&NSString::from_str(&options.title));
+    base.setTitle(Some(&NSString::from_str(&options.title)));
     base.setCanCreateDirectories(false);
     base.setTreatsFilePackagesAsDirectories(false);
     base.setShowsHiddenFiles(false);
