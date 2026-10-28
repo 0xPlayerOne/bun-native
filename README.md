@@ -99,6 +99,24 @@ with actual browser windows, isolated profiles, sandboxed renderer execution,
 terminal rendering, and deliberate renderer-failure observation. Electron is a
 benchmark dependency, never Bunly's runtime.
 
+## Interactive native hardware workbench
+
+The maintained [native hardware workbench](docs/hardware-workbench.md) gives M7
+operators two independent remote browser panes, application controls, a native
+overlay, multilingual text fields and live window/input observations. It stays
+open until explicitly closed. Preparation accepts an existing native app and its
+full native build commit, bundles only application assets, and does not launch a
+GUI:
+
+```sh
+bun run workbench:native prepare /absolute/path/to/prebuilt-app --native-source=COMMIT
+```
+
+The guide covers the separate `run PREPARATION_JSON --launch` opt-in, supported
+operator steps, unsupported adapters and equipment-record template. Manual IME,
+assistive-technology, high-DPI/display and suspend/resume cases remain not run;
+no preparation or UI action automatically passes them.
+
 ## Framework contributor probes
 
 Contributors need the pinned Rust toolchain for the native fixtures. The optional

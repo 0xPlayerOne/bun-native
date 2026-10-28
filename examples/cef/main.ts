@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { packagedPageReadiness, pageTimeout } from './page-readiness.ts'
+import { focusWhenReady } from './focus-readiness.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { serveRpcFixture } from './rpc-fixture-service.ts'
 import { nativeRpcProbeReadiness } from './rpc-readiness.ts'
@@ -135,7 +136,7 @@ export default async function main(backend: CefBackend): Promise<void> {
         assert.equal(backend.diagnostics().windows, 1, 'View disposal closed its parent window')
         assert.equal(backend.diagnostics().views, 1, 'View disposal removed a sibling')
         assert.equal(backend.state(view).trust.kind, 'application')
-        await backend.focusView(view)
+        await focusWhenReady(backend, view, 'sibling-closed', pageDeadlineMs)
         assert.equal(
           waits.get(mode)?.aborted,
           true,
@@ -159,13 +160,21 @@ export default async function main(backend: CefBackend): Promise<void> {
       await backend.disposeView(remote)
       assert.equal(backend.diagnostics().views, 1)
     }
-    await qualifyRpcSessions(backend, window, view, session, consoleWait, (mode) => waits.get(mode))
+    await qualifyRpcSessions(
+      backend,
+      window,
+      view,
+      session,
+      consoleWait,
+      (mode) => waits.get(mode),
+      pageDeadlineMs
+    )
     assert.equal(evidence.stale, false)
     assert.ok(ticks > 0, 'Bun timers must progress while CEF runs')
     await backend.resizeWindow(window, 1000, 700)
     await backend.showWindow(window, false)
     await backend.showWindow(window, true)
-    await backend.focusView(view)
+    await focusWhenReady(backend, view, 'window-shown', pageDeadlineMs)
     let detachedEvents = 0
     const detach = backend.observe(() => {
       detachedEvents++
@@ -187,7 +196,7 @@ export default async function main(backend: CefBackend): Promise<void> {
           })
         )
       )
-      await backend.focusView(children[0]!)
+      await focusWhenReady(backend, children[0]!, 'cycle-created', pageDeadlineMs)
       const pending = backend.navigate(children[1]!, 'app://ui/index.html')
       void pending.catch(() => {})
       await Promise.all([

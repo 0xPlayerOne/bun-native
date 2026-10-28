@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import type { SessionHandle, ViewHandle, WindowHandle } from '../../packages/contracts/src/index.ts'
+import { focusWhenReady } from './focus-readiness.ts'
 
 interface Pending {
   readonly started: boolean
@@ -22,7 +23,8 @@ export async function qualifyRpcSessions(
   primary: ViewHandle,
   primarySession: SessionHandle,
   consoleWait: (marker: string) => Waiter,
-  pending: (mode: string) => Pending | undefined
+  pending: (mode: string) => Pending | undefined,
+  pageDeadlineMs = 10000
 ): Promise<void> {
   const views: ViewHandle[] = []
   const sessions: SessionHandle[] = []
@@ -101,7 +103,7 @@ export async function qualifyRpcSessions(
     assert.equal(await backend.deleteCookies(primarySession, { url, name: cookie.name }), 1)
     assert.equal(backend.diagnostics().sessions, 1)
     assert.equal(backend.diagnostics().views, 1)
-    await backend.focusView(primary)
+    await focusWhenReady(backend, primary, 'sessions-closed', pageDeadlineMs)
   } finally {
     // Only this fixture's handles; never delete or reuse a native profile path.
     for (const view of views.reverse()) await backend.disposeView(view).catch(() => {})

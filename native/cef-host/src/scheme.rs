@@ -55,6 +55,12 @@ pub(crate) fn context_handler(session: u64, network: Arc<NetworkPolicy>) -> Requ
 pub(crate) fn local_resources(network: Arc<NetworkPolicy>) -> ResourceRequestHandler {
     LocalResources::new(Arc::new(RequestPreparation::default()), network)
 }
+pub(crate) fn download_resources(
+    network: Arc<NetworkPolicy>,
+    lease: Option<crate::download_access::RequestLease>,
+) -> ResourceRequestHandler {
+    DownloadResources::new(network, lease)
+}
 fn bounded_utf16(value: &[u16], limit: usize) -> Option<String> {
     if value.len() > limit {
         return None;
@@ -64,7 +70,10 @@ fn bounded_utf16(value: &[u16], limit: usize) -> Option<String> {
         .ok()
         .filter(|value| value.len() <= limit)
 }
-fn bounded_string(value: cef::string::CefStringUserfreeUtf16, limit: usize) -> Option<String> {
+pub(crate) fn bounded_string(
+    value: cef::string::CefStringUserfreeUtf16,
+    limit: usize,
+) -> Option<String> {
     let raw: Option<&sys::_cef_string_utf16_t> = (&value).into();
     let Some(raw) = raw else {
         return Some(String::new());
@@ -356,11 +365,49 @@ wrap_request_context_handler! {
             _frame: Option<&mut Frame>,
             _request: Option<&mut Request>,
             _navigation: i32,
-            _download: i32,
+            download: i32,
             _initiator: Option<&CefString>,
             _disable_default: Option<&mut i32>,
         ) -> Option<ResourceRequestHandler> {
-            Some(local_resources(self.network.clone()))
+            Some(if download != 0 { download_resources(self.network.clone(), None) } else { local_resources(self.network.clone()) })
+        }
+    }
+}
+wrap_resource_request_handler! {
+    struct DownloadResources { network: Arc<NetworkPolicy>, lease: Option<crate::download_access::RequestLease> }
+    impl ResourceRequestHandler {
+        fn on_before_resource_load(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, request: Option<&mut Request>, _callback: Option<&mut Callback>) -> ReturnValue {
+            let allowed = self.lease.as_ref().zip(request).is_some_and(|(lease, request)| {
+                bounded_string(request.url(), 4096).is_some_and(|url| lease.allows(&url, request.identifier(), &self.network))
+                    && bounded_string(request.method(), 16).as_deref() == Some("GET")
+            });
+            if allowed { ReturnValue::CONTINUE } else {
+                if let Some(lease) = &self.lease { lease.deny(); }
+                ReturnValue::CANCEL
+            }
+        }
+        fn on_resource_redirect(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, request: Option<&mut Request>, _response: Option<&mut Response>, new_url: Option<&mut CefString>) {
+            let Some(new_url) = new_url else {
+                if let Some(lease) = &self.lease { lease.deny(); }
+                crate::host::fail("Missing native download redirect target");
+                return;
+            };
+            let target = self.lease.as_ref().zip(request).and_then(|(lease, request)| {
+                if bounded_string(request.method(), 16).as_deref() != Some("GET") { return None; }
+                let source = bounded_string(request.url(), 4096)?;
+                let target = bounded_utf16(new_url.as_slice().unwrap_or_default(), 4096)?;
+                lease.redirect(&source, request.identifier(), &target, &self.network)
+            });
+            if let Some(target) = target {
+                if new_url.try_set(&target) { return; }
+            }
+            if let Some(lease) = &self.lease { lease.deny(); }
+            if !new_url.try_set("bunly-denied://download-redirect") {
+                crate::host::fail("Unable to reject download redirect");
+            }
+        }
+        fn on_protocol_execution(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, _request: Option<&mut Request>, allow: Option<&mut i32>) {
+            if let Some(allow) = allow { *allow = 0; }
         }
     }
 }

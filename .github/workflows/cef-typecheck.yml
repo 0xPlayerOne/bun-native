@@ -49,4 +49,6 @@ jobs:
         # Upstream's documentation feature skips browser acquisition/linking.
         # These artifacts are never packaged or executed; the separate native
         # workflow must still build and run with real CEF and sandbox support.
-        run: cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,cef/dox
+        run: |
+          cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,cef/dox
+          cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions,cef/dox

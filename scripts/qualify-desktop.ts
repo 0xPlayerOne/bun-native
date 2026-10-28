@@ -5,7 +5,11 @@ import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/prom
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
-import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
+import {
+  observedCommand,
+  assertCleanCommand,
+  type CommandObservation,
+} from '../benchmarks/lib/observed-command.ts'
 import { cefIdentityFromObservation } from '../benchmarks/lib/cef-identity.ts'
 import { decodeExportedNativeReport } from '../benchmarks/lib/exported-native-evidence.ts'
 import {
@@ -14,6 +18,7 @@ import {
 } from '../benchmarks/reload/prepared-file-metadata.ts'
 import { DESKTOP_OBSERVER_MS } from '../benchmarks/desktop/acceptance.ts'
 import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/profiles.ts'
+import { summarizeDesktopFailures } from '../benchmarks/desktop/failure-codes.ts'
 import { prepareManagedRuntimeLayout } from './qualify-managed-development.ts'
 import { requireDisposableClipboardRunner } from './cef-desktop-services-precondition.ts'
 
@@ -92,7 +97,7 @@ async function qualify(input: readonly string[]): Promise<void> {
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services] [--disposable-clipboard], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services|downloads|parent-close] [--disposable-clipboard], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
@@ -165,6 +170,7 @@ async function qualify(input: readonly string[]): Promise<void> {
     ],
   }
   const python = process.env['PYTHON'] ?? 'python3'
+  let observation: CommandObservation | undefined
   try {
     const app = join(work, profile.title + (mac ? '.app' : ' Unicode é Ω'))
     await cp(inputRoot, app, { recursive: true, dereference: false })
@@ -302,7 +308,7 @@ async function qualify(input: readonly string[]): Promise<void> {
     report['runtimeIdentity'] = cefIdentityFromObservation(identity, libraryHash)
     const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(source))
     assert.equal(relative(app, executable).split('\\').join('/'), hostPath)
-    const observation = await observedCommand([executable], {
+    observation = await observedCommand([executable], {
       cwd: work,
       output: join(work, 'trial.process.json'),
       timeoutMs: DESKTOP_OBSERVER_MS,
@@ -350,7 +356,14 @@ async function qualify(input: readonly string[]): Promise<void> {
     }
     const output = join(work, 'report.json')
     await writeFile(output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
-    console.log(JSON.stringify({ passed: report['passed'], output, failure: report['failure'] }))
+    console.log(
+      JSON.stringify({
+        passed: report['passed'] === true,
+        output,
+        failure: report['passed'] === true ? null : 'qualification-failed',
+        diagnostics: summarizeDesktopFailures(profile.profile, observation),
+      })
+    )
   }
   if (!report['passed']) process.exitCode = 1
 }

@@ -55,6 +55,7 @@ export async function nativePeer(options: { readonly desktopCapabilities?: unkno
           'clipboard.text',
           'app.lifecycle',
           'view.composition',
+          'download.manage',
         ],
       }
   send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7', data: { desktopCapabilities } })

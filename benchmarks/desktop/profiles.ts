@@ -17,6 +17,18 @@ import {
   acceptDesktopServices,
   acceptServicesReport,
 } from './services-acceptance.ts'
+import {
+  DOWNLOADS_PROFILE,
+  downloadsSourceSelectors,
+  acceptFileDownloads,
+  acceptDownloadsReport,
+} from './downloads-acceptance.ts'
+import {
+  PARENT_CLOSE_PROFILE,
+  parentCloseSourceSelectors,
+  acceptParentClose,
+  acceptParentCloseReport,
+} from './parent-close-acceptance.ts'
 
 const profiles = {
   windows: {
@@ -55,11 +67,39 @@ const profiles = {
     acceptObservation: acceptDesktopServices,
     acceptReport: acceptServicesReport,
   },
+  downloads: {
+    profile: DOWNLOADS_PROFILE,
+    sourceSelectors: downloadsSourceSelectors,
+    fixture: 'examples/file-downloads',
+    browserEntry: 'examples/file-downloads/client.ts',
+    directory: 'file-downloads',
+    title: 'File Downloads',
+    workloadLimitation:
+      'Fourteen real CEF transfers under exact document grants and private temporary roots; native file input, uploads and OS-file drops remain unsupported.',
+    acceptObservation: acceptFileDownloads,
+    acceptReport: acceptDownloadsReport,
+  },
+  'parent-close': {
+    profile: PARENT_CLOSE_PROFILE,
+    sourceSelectors: parentCloseSourceSelectors,
+    fixture: 'examples/view-parent-close',
+    browserEntry: null,
+    directory: 'view-parent-close',
+    title: 'View Parent Close',
+    workloadLimitation:
+      'One API parent-window close with four live native panes; OS quit, physical input and assistive technology remain separate qualification.',
+    acceptObservation: acceptParentClose,
+    acceptReport: acceptParentCloseReport,
+  },
 } as const
 
 export function desktopProfile(name = 'windows') {
   assert.ok(
-    name === 'windows' || name === 'composition' || name === 'services',
+    name === 'windows' ||
+      name === 'composition' ||
+      name === 'services' ||
+      name === 'downloads' ||
+      name === 'parent-close',
     'Unknown desktop qualification case'
   )
   return profiles[name]

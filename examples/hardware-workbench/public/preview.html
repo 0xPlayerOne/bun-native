@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-surface="preview">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bunly — Controlled preview</title>
+    <link rel="stylesheet" href="workbench.css" />
+    <script type="module" src="page.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#scroll-content">Skip to scrollable text</a>
+    <header>
+      <span class="eyebrow">NUMERIC LOOPBACK / NO APPLICATION AUTHORITY</span>
+      <h1 id="surface-name">Controlled preview</h1>
+      <p class="edge">Pointer boundary — click near each viewport edge</p>
+    </header>
+    <main>
+      <label for="draft">Preview IME and text field</label
+      ><textarea
+        id="draft"
+        rows="5"
+        maxlength="4096"
+        spellcheck="false"
+        autocomplete="off"
+      ></textarea>
+      <div class="buttons">
+        <button id="reset-text">Reset controlled text</button
+        ><button id="select-text">Select text</button
+        ><button id="local-action">Local action</button>
+      </div>
+      <p id="local-action-result" role="status"></p>
+      <p id="page-observation" class="readback"></p>
+      <details open>
+        <summary>Local input and composition events</summary>
+        <ol id="page-events"></ol>
+      </details>
+      <section id="scroll-content" aria-labelledby="selection-heading">
+        <h2 id="selection-heading">Controlled selection and scrolling</h2>
+        <p>
+          Select these words by pointer or keyboard. Café and Café use different Unicode
+          representations. 日本語の入力 · 中文输入 · 한국어 입력 · Ελληνικό κείμενο.
+        </p>
+        <p lang="ar" dir="rtl">نص عربي لاختبار اتجاه القراءة وتحديد النص.</p>
+        <p lang="hi">यह नियंत्रित पाठ चयन और लेखन की जाँच के लिए है।</p>
+        <p>
+          Every preview owns a separate native view and ephemeral browser session. Closing this
+          preview must leave its sibling usable. Reopening resets this document.
+        </p>
+        <p>
+          This document makes no clipboard requests and opens no files, dialogs or external links.
+          Use controlled text only. Selection is one part of T1; clipboard authority remains
+          unsupported in this workbench.
+        </p>
+        <p>
+          Move the pointer across the clipped edge. A partial clip changes the native viewport and
+          page reflow. A full clip removes the visible viewport. Native readback is shown in the
+          application controls.
+        </p>
+        <p>
+          Physical keyboard layout, IME candidate placement, screen-reader announcements and display
+          transitions cannot be established by this page's event counters.
+        </p>
+        <p>
+          Continue downward with wheel, trackpad, Page Down, arrows and screen-reader navigation.
+          Return upward and inspect focus, selected text and composition behavior.
+        </p>
+        <a href="#surface-name">Return to preview heading</a>
+      </section>
+      <section aria-labelledby="output-heading">
+        <h2 id="output-heading">Bounded numbered output</h2>
+        <p>
+          One local timer update per second while scheduled; latest forty rows. Normal background
+          throttling stays enabled. Timer gaps are observations, not performance or suspend/resume
+          acceptance.
+        </p>
+        <ol id="numbered-output"></ol>
+      </section>
+      <button id="end-control">Last focusable control in this preview</button>
+    </main>
+  </body>
+</html>

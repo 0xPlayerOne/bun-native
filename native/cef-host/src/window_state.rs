@@ -309,6 +309,7 @@ mod tests {
                     window: None,
                     request: 1,
                     closing: None,
+                    close_batch: Default::default(),
                     view_layout: super::super::view_composition::LayoutMode::Stack,
                 },
             );

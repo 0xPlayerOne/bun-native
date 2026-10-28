@@ -24,6 +24,53 @@ CEF/Bun/native-helper binaries are obtained by the contributor build pipeline;
 none are committed as repository source. Public runtime signing/publishing is
 not enabled by this work. Application assembly consumes prebuilt components.
 
+## Download completion diagnostics
+
+The download timeout diagnostics are Bunly-authored. The pinned sources below
+were inspected to identify CEF's existing child-launch callback, Chromium's exact
+quarantine utility subtype, and its position after download-completion gates.
+No upstream implementation was copied. The diagnostic reads only fixed native
+callback fields and counts recognized launches; it does not change Chromium's
+download or Windows Attachment Services behavior.
+
+- https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/content/browser/service_host/utility_process_host.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_item_impl.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/public/mojom/quarantine.mojom
+
+## Download staging filename
+
+The private staging target preserves the validated final basename so Chromium
+and Windows Attachment Services receive the intended filename during annotation.
+This Bunly-authored change follows the pinned rename/annotation flow and the
+documented Windows filename and extension policy inputs; no upstream code was
+copied. It does not establish a cause for any historical download timeout.
+
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_file_impl.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/quarantine_win.cc
+- https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
+- https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
+
+## Parent-window close references
+
+The guarded close batch and overlay reattachment in Bunly's host are authored
+implementation based on pinned CEF `47dbc1df023e99f006fb9e850a8d83cc19b4fdd9`
+behavior. No upstream implementation is copied:
+
+- [Alloy browser host](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/alloy/alloy_browser_host_impl.cc):
+  `TryCloseBrowser` can return false after a synchronous `CloseContents`
+  transition has accepted close and requested another parent close. Bunly
+  preserves that nested request through one deferred UI retry.
+- [Views platform delegate](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/views/browser_platform_delegate_views.cc):
+  `CloseHostWindow` calls the owning widget's close operation.
+- [Overlay view host](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/views/overlay_view_host.cc):
+  cleanup detaches overlay contents and resumes their ownership for reuse;
+  `Close` does not repeat that cleanup while its widget is already closing.
+- [Window API](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/include/views/cef_window.h)
+  and [View API](https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/include/views/cef_view.h):
+  the same parent owns reattached content, with attachment and parent identity
+  read back before the retired overlay-controller wrapper is released.
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

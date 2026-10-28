@@ -50,7 +50,8 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition` and `desktop-services` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition`,
+`desktop-services`, `file-downloads` and `view-parent-close` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -112,6 +113,41 @@ cleans its own Xvfb/Openbox processes. The full hosted suite requires the native
 desktop stages on every platform before later credential/provider work. Neither
 profile changes the existing M4-only suite.
 
+## Live-pane parent close
+
+Close a parent while all four independently loaded manual panes remain live:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=parent-close
+```
+
+Reports use `.bunly/m7/view-parent-close/run-*/report.json` and profile
+`native-view-parent-close-v1`. The static-page fixture uses four separate
+ephemeral sessions. It records the exact native document/view identities before
+closing the parent, then requires four matching actual native `view.closed`
+callbacks and the parent's `window.closed` callback. SDK child-handle disposal
+after the parent reply cannot substitute for these browser callbacks. Sessions
+are disposed only after those receipts, and a native `windowState` request
+through the retained control handle must succeed. Final native diagnostics
+require that single surviving window with zero views, sessions and delivery
+buffers; ordinary shutdown then closes the control and must satisfy the shared
+native cleanup contract.
+
+This profile adds its own fixture, receipt binding, lifetime and document
+readiness helpers to the source inventory while leaving the historical
+composition profile unchanged. The same source/artifact/metadata checks,
+25-second fixture deadline and 45-second process observer apply. Offline
+`--verify` rejects incomplete identities, missing callbacks, an unproven control
+survivor, leaked owners or failed process cleanup. Linux uses the disposable
+display wrapper's `--desktop --desktop-case=parent-close` arguments. The full
+hosted suite requires this case on all three targets; the M4-only suite remains
+unchanged.
+
+The receipt explicitly leaves OS quit, physical input, hardware display,
+assistive technology and performance qualification false. The workbench's
+ordinary OS-quit action requires a separate fresh native observation against the
+matching host source.
+
 ## Clipboard and application lifecycle
 
 The `services` case uses a static local page and native document readiness. It
@@ -148,3 +184,44 @@ technology or performance eligibility is inferred from these operations.
 
 The full hosted suite requires this case on all three targets. See
 [desktop services](desktop-services.md) for the public API and adapter limits.
+
+## File downloads
+
+The download case exercises the real CEF download pipeline using only its own
+numeric-loopback HTTP fixtures and a private temporary destination root:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=downloads
+```
+
+On Linux use the disposable display wrapper with
+`--desktop --desktop-case=downloads --native-source=COMMIT`. The ordinary native
+host implements this adapter; the qualifier needs no browser inspection flag,
+renderer RPC authority, clipboard permission or separate transfer implementation.
+
+Fourteen ordered transfers cover three successful files, seven cancellations
+and four failures. Acceptance checks actual successful byte counts and fixed
+SHA-256 digests, explicit replacement and duplicate preservation, denied grants
+and traversal, allowed/denied redirects, unknown-size limits, timeout, interrupted
+responses, AbortSignal, navigation/reload, view/window closure, and cancellation
+during application quit. An unrelated sentinel must survive owned staging cleanup.
+The native download settlement receipt reports exactly matching admissions,
+terminal callbacks and outcomes, with zero owned transfer/callback/staging/timer
+resources before ordinary shutdown. Missing callbacks fail the existing deadlines.
+
+The settled native baseline retains one anchor window. `nativeBeforeQuit`
+deliberately retains one view, one session, one window and the final transfer.
+The final SDK snapshot is all zero after `backend.dispose()` has received the
+native shutdown response. These are separate observations; the live snapshot is
+never represented as post-shutdown evidence.
+
+Reports use `.bunly/m7/file-downloads/run-*/report.json` and profile
+`native-file-downloads-v1`. The shared `--verify` command checks their exact
+source inventory and the same prepared-artifact, runtime identity, metadata,
+native shutdown, output drain and process-cleanup gates. Native and application
+receipts contain bounded counters, opaque document identities and content digests,
+without destination paths, source URLs or file payloads. The workload and observer
+retain their fixed 25-second and 45-second limits. Uploads, native file-input
+selection and OS file drops remain unavailable; this case does not qualify their
+behavior or claim physical input, hardware displays, assistive technology,
+antivirus or performance support. See [scoped native downloads](downloads.md).

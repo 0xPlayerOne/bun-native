@@ -3,10 +3,13 @@ use cef::*;
 use serde::Deserialize;
 use std::{path::PathBuf, sync::OnceLock};
 mod asset_service;
+mod browser_action_gate;
 pub mod capability_policy;
 mod command_budget;
 mod cookie_completion;
 mod deadlines;
+mod download_access;
+mod download_files;
 mod event_queue;
 mod exit_notification;
 mod handshake;
@@ -60,6 +63,8 @@ struct Config {
     maintenance_protocol: u32,
     #[serde(default)]
     development_origin: Option<String>,
+    #[serde(default)]
+    development_browser_actions: bool,
     #[serde(default)]
     qualification_profile: deadlines::DeadlineProfile,
 }
@@ -161,6 +166,11 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .as_deref()
         .map(policy::development_origin)
         .transpose()?;
+    browser_action_gate::validate(
+        cfg!(feature = "browser-actions"),
+        dev_origin.is_some(),
+        config.development_browser_actions,
+    )?;
     let asset_service = scheme::load(resources.join("public"))?;
     #[cfg(target_os = "macos")]
     for suffix in ["", " (GPU)", " (Renderer)", " (Plugin)", " (Alerts)"] {
@@ -310,6 +320,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     shutdown_audit::checkpoint("before-cef-shutdown");
     shutdown_phase("cef-shutdown", shutdown);
     shutdown_audit::checkpoint("after-cef-shutdown");
+    host::cleanup_downloads_after_cef_shutdown()?;
     session::release_after_cef_shutdown()?;
     eprintln!(
         "{}",

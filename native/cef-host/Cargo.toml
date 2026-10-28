@@ -45,6 +45,8 @@ rpc-qualification = []
 rpc-context-diagnostics = ["rpc-qualification"]
 # Native-only callback lifetime receipts; never enables a browser endpoint.
 shutdown-diagnostics = []
+# Explicit development manifest opt-in is also required. Never opens a listener.
+browser-actions = []
 
 [package.metadata.cef.bundle]
 helper_name = "bunly_helper"
@@ -81,12 +83,16 @@ libc = "=0.2.177"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "=0.61.2", features = [
+  "Wdk_Storage_FileSystem",
   "Win32_Foundation",
   "Win32_System_JobObjects",
   "Win32_System_Threading",
   "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Security_Cryptography",
   "Win32_Storage_FileSystem",
   "Win32_System_IO",
+  "Win32_System_SystemServices",
   "Win32_UI_WindowsAndMessaging",
   "Win32_System_StationsAndDesktops",
   "Win32_Graphics_Dwm",
