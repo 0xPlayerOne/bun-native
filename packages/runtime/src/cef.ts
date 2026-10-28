@@ -9,6 +9,7 @@ import {
   type NativeEvent,
 } from './native-transport.ts'
 import { Registry } from './registry.ts'
+import { ApplicationLifecycle } from './application-lifecycle.ts'
 import {
   parseCefWindowBounds,
   parseCefWindowState,
@@ -44,12 +45,18 @@ import {
   normalizeUrl,
   originOf,
   requireCapability,
+  validateClipboardText,
   validateBounds,
   normalizeViewPresentation,
   parseViewPresentationState,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
+  ClipboardBackend,
+  ApplicationLifecycleBackend,
+  ApplicationState,
+  ApplicationEvent,
+  PolicyScope,
   BackendDescriptor,
   Diagnostics,
   WindowHandle,
@@ -207,11 +214,7 @@ export type BrowserPermissionCapability =
   | 'clipboard'
   | 'multiple-downloads'
   | 'pointer-lock'
-const policyScopeBrand: unique symbol = Symbol('BunlyPolicyScope')
-/** Opaque authority captured for one native-known document. It cannot be reconstructed. */
-export interface PolicyScope {
-  readonly [policyScopeBrand]: true
-}
+export type { PolicyScope } from '../../contracts/src/desktop.ts'
 interface NativePolicyScope {
   readonly view: number
   readonly session: number
@@ -350,12 +353,15 @@ function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDe
   })
 }
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
-export class CefBackend implements BrowserBackend, ViewCompositionBackend {
+export class CefBackend
+  implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend, ViewCompositionBackend
+{
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
     return this.#descriptor
   }
   readonly #transport: NativeTransport
+  readonly #application = new ApplicationLifecycle()
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
   readonly #native = new Map<number, Handle<ResourceKind>>()
@@ -419,9 +425,17 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
   constructor(transport: NativeTransport) {
     this.#transport = transport
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
+    void transport.ready.then(
+      () => this.#application.ready(transport.desktopCapabilities.includes('app.lifecycle')),
+      () => this.#application.closed(true)
+    )
     transport.onEvent((event) => {
       try {
-        if (event.event === 'ready') this.#descriptor = descriptor(transport.desktopCapabilities)
+        if (event.event === 'ready') {
+          this.#descriptor = descriptor(transport.desktopCapabilities)
+          this.#application.ready(transport.desktopCapabilities.includes('app.lifecycle'))
+        }
         this.#event(event)
       } catch (error) {
         transport.fail(error)
@@ -443,13 +457,113 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
         for (const subscription of subscriptions) subscription.dispose()
       this.#observers.clear()
       this.#partitions.clear()
-      await rpcClosed
+      try {
+        await rpcClosed
+      } catch (error) {
+        this.#application.closed(true)
+        throw error
+      }
+      this.#application.closed(transport.failure !== null)
       if (transport.failure) throw transport.failure
+      if (this.#application.state().outcome === 'failed')
+        throw new Error('Native application shutdown failed')
     })
     void this.closed.catch(() => {})
   }
   #active(): void {
     if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+  }
+  whenApplicationReady(options?: OperationOptions): Promise<ApplicationState> {
+    return this.#application.whenReady(options)
+  }
+  applicationState(): ApplicationState {
+    requireCapability(this.descriptor, 'app.lifecycle')
+    return this.#application.state()
+  }
+  onApplicationEvent(
+    listener: (event: ApplicationEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    this.#active()
+    requireCapability(this.descriptor, 'app.lifecycle')
+    return this.#application.subscribe(listener, options)
+  }
+  quit(): Promise<void> {
+    try {
+      requireCapability(this.descriptor, 'app.lifecycle')
+    } catch (error) {
+      return Promise.reject(error)
+    }
+    return this.dispose()
+  }
+  async #clipboard(
+    scope: PolicyScope,
+    operation:
+      | 'clipboard.read'
+      | 'clipboard.write'
+      | 'clipboard.clear'
+      | 'clipboard.qualification.empty',
+    text: string | undefined,
+    options?: OperationOptions
+  ): Promise<unknown> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    requireCapability(this.descriptor, 'clipboard.text')
+    if (operation === 'clipboard.write') validateClipboardText(text)
+    let result: unknown
+    try {
+      result = await this.#transport.call(
+        operation,
+        {
+          id: captured.resource.native,
+          scope: captured.nativeScope,
+          ...(operation === 'clipboard.write' ? { text } : {}),
+        },
+        options?.signal
+      )
+    } catch (error) {
+      if (error instanceof Error) {
+        for (const code of [
+          'PERMISSION_DENIED',
+          'UNSUPPORTED_CAPABILITY',
+          'INVALID_ARGUMENT',
+          'RESOURCE_IN_USE',
+        ] as const)
+          if (error.message.startsWith(`${code}:`)) throw new BunlyError(code, error.message)
+      }
+      throw error
+    }
+    this.#active()
+    this.#capturedPolicyScope(scope)
+    return result
+  }
+  async readClipboardText(scope: PolicyScope, options?: OperationOptions): Promise<string | null> {
+    const result = await this.#clipboard(scope, 'clipboard.read', undefined, options)
+    if (result === null) return null
+    try {
+      validateClipboardText(result)
+    } catch {
+      throw new Error('Malformed native clipboard text')
+    }
+    return result
+  }
+  async writeClipboardText(
+    scope: PolicyScope,
+    text: string,
+    options?: OperationOptions
+  ): Promise<void> {
+    const result = await this.#clipboard(scope, 'clipboard.write', text, options)
+    if (result !== null) throw new Error('Malformed native clipboard write receipt')
+  }
+  async clearClipboard(scope: PolicyScope, options?: OperationOptions): Promise<void> {
+    const result = await this.#clipboard(scope, 'clipboard.clear', undefined, options)
+    if (result !== null) throw new Error('Malformed native clipboard clear receipt')
+  }
+  /** @internal Contributor-only metadata preflight; ordinary native hosts reject this operation. */
+  async qualifyClipboardEmpty(scope: PolicyScope, options?: OperationOptions): Promise<boolean> {
+    const result = await this.#clipboard(scope, 'clipboard.qualification.empty', undefined, options)
+    if (typeof result !== 'boolean') throw new Error('Malformed native clipboard preflight receipt')
+    return result
   }
   #createdId(value: unknown): number {
     try {
@@ -737,7 +851,7 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
       scope.session !== session.native
     )
       throw new BunlyError('PERMISSION_DENIED', 'Policy document changed during scope capture')
-    const token = Object.freeze({ [policyScopeBrand]: true as const })
+    const token = Object.freeze({}) as PolicyScope
     this.#policyScopes.set(token, { view, resource, documentId, nativeScope: scope, epoch })
     return token
   }
@@ -818,8 +932,9 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
     })
   }
   /**
-   * Exercise the mandatory native gate. M7 adapters are not present, so a
-   * matching grant is reported as unavailable and never performs an OS action.
+   * Policy-only diagnostic. A matching grant is reported as unavailable and
+   * never performs an OS action. Discover usable adapters through capabilities;
+   * their execution methods independently perform the final native policy gate.
    */
   async authorizeNativeOperation(
     scope: PolicyScope,
@@ -1308,12 +1423,18 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
     }
   }
   diagnostics(): Diagnostics {
+    const application = this.#application.diagnostics()
     return {
       windows: this.#registry.count('window'),
       views: this.#registry.count('view'),
       sessions: this.#registry.count('session'),
-      listeners: this.#listeners.size + this.#observers.size + this.#windowSubscriptionCount,
-      listenerErrors: this.#listenerErrors,
+      listeners:
+        this.#listeners.size +
+        this.#observers.size +
+        this.#windowSubscriptionCount +
+        application.listeners +
+        application.readyWaiters,
+      listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
   /** Trusted-backend pipe accounting only; not renderer authority or native RSS. */
@@ -1547,6 +1668,7 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
+    this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
     const nativeClosed = this.#transport.diagnostics().closed
@@ -1574,6 +1696,13 @@ export class CefBackend implements BrowserBackend, ViewCompositionBackend {
     return this.#shutdown
   }
   #event(event: NativeEvent): void {
+    if (event.event === 'app.quitting' && this.descriptor.capabilities.includes('app.lifecycle')) {
+      if (event.target !== undefined || !event.data || Object.keys(event.data).length !== 1)
+        throw new Error('Malformed native application quitting event')
+      // Native-initiated quit fences local calls before application callbacks run.
+      this.#disposed = true
+      this.#application.quitting(event.data['reason'])
+    }
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined

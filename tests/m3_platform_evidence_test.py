@@ -165,6 +165,62 @@ def fixture(target="linux-x64"):
     }
 
 
+def supervised_fixture(target="linux-x64", schema=4):
+    from cef_fault_acceptance import MODES
+    from cef_fault_acceptance_test import NativeRendererTaskTests
+    from cef_fault_acceptance_test import fixture as fault_fixture
+
+    report = fixture(target)
+    trials = []
+    for mode in MODES:
+        observation, injections = fault_fixture(mode)
+        if mode == "renderer-exit" and schema in (7, 8):
+            observation = NativeRendererTaskTests.task_fixture()
+            injections = []
+        records = [json.loads(line) for line in observation["nativeDiagnostics"]]
+        for row in records:
+            if row["event"] == "bunly.runtime.profile":
+                row["profile"] = "emulated-functional"
+            if (
+                mode == "backend-hang"
+                and row["event"] == "bunly.host.shutdown-phase"
+                and row.get("phase") == "process-stop"
+                and row.get("state") == "complete"
+            ):
+                row["durationMs"] = 5000
+            if mode == "renderer-exit" and schema in (7, 8):
+                if row["event"] == "bunly.native.renderer-injected":
+                    row.update(schema=2, authority="native-main-frame-handshake")
+                elif row["event"] == "bunly.native.renderer-failure-observed":
+                    row.update(
+                        platform=target.split("-")[0],
+                        nativeErrorCode=86 if target == "win32-x64" else 86 << 8,
+                    )
+                    if schema == 8:
+                        row["shutdownRejected"] = True
+                elif row["event"] == "bunly.backend.exit" and schema == 8:
+                    row["code"] = 1
+        observation["nativeDiagnostics"] = [json.dumps(row) for row in records]
+        trials.append(
+            {
+                "mode": mode,
+                "passed": True,
+                "injected": injections,
+                "observation": observation,
+                "foreignControl": {
+                    "pid": 909,
+                    "creationTime": 1.25,
+                    "ready": True,
+                    "aliveAfterHostExit": True,
+                    "releasedNormally": True,
+                    "sameExecutableAsBackend": True,
+                },
+            }
+        )
+    report["faults"].update(schema=schema, trials=trials)
+    return report
+
+
 class PlatformEvidenceTests(unittest.TestCase):
     def test_complete_synthetic_plans_are_not_performance_or_hardware_claims(self):
         for target, count in [("linux-x64", 12), ("win32-x64", 10)]:
@@ -271,42 +327,7 @@ class PlatformEvidenceTests(unittest.TestCase):
             )
 
     def test_current_supervision_requires_six_cases_and_an_independent_control(self):
-        from cef_fault_acceptance import MODES
-        from cef_fault_acceptance_test import fixture as fault_fixture
-
-        report = fixture()
-        trials = []
-        for mode in MODES:
-            observation, injections = fault_fixture(mode)
-            records = [json.loads(line) for line in observation["nativeDiagnostics"]]
-            for row in records:
-                if row["event"] == "bunly.runtime.profile":
-                    row["profile"] = "emulated-functional"
-                if (
-                    mode == "backend-hang"
-                    and row["event"] == "bunly.host.shutdown-phase"
-                    and row.get("phase") == "process-stop"
-                    and row.get("state") == "complete"
-                ):
-                    row["durationMs"] = 5000
-            observation["nativeDiagnostics"] = [json.dumps(row) for row in records]
-            trials.append(
-                {
-                    "mode": mode,
-                    "passed": True,
-                    "injected": injections,
-                    "observation": observation,
-                    "foreignControl": {
-                        "pid": 909,
-                        "creationTime": 1.25,
-                        "ready": True,
-                        "aliveAfterHostExit": True,
-                        "releasedNormally": True,
-                        "sameExecutableAsBackend": True,
-                    },
-                }
-            )
-        report["faults"].update(schema=4, trials=trials)
+        report = supervised_fixture()
         self.assertEqual(validate("linux-x64", "emulated-functional", report)["faultCases"], 6)
         missing = copy.deepcopy(report)
         missing["faults"]["trials"].pop()
@@ -316,6 +337,53 @@ class PlatformEvidenceTests(unittest.TestCase):
         missing["faults"]["trials"][0].pop("foreignControl")
         with self.assertRaises(ValueError):
             validate("linux-x64", "emulated-functional", missing)
+
+    def test_failed_shutdown_schema_preserves_current_and_historical_aggregate_contracts(self):
+        for target in ("linux-x64", "win32-x64"):
+            for schema in (7, 8):
+                report = supervised_fixture(target, schema)
+                with self.subTest(target=target, schema=schema):
+                    self.assertEqual(
+                        validate(target, "emulated-functional", report)["faultCases"], 6
+                    )
+                report["faults"]["schema"] = 8 if schema == 7 else 7
+                with self.assertRaises(ValueError):
+                    validate(target, "emulated-functional", report)
+
+            for field, value in (
+                ("code", 0),
+                ("code", 2),
+                ("code", True),
+                ("shutdownRejected", False),
+                ("shutdownRejected", 1),
+                ("shutdownRejected", None),
+            ):
+                report = supervised_fixture(target, 8)
+                trial = next(t for t in report["faults"]["trials"] if t["mode"] == "renderer-exit")
+                rows = [json.loads(line) for line in trial["observation"]["nativeDiagnostics"]]
+                event = (
+                    "bunly.backend.exit"
+                    if field == "code"
+                    else "bunly.native.renderer-failure-observed"
+                )
+                row = next(row for row in rows if row["event"] == event)
+                if value is None:
+                    del row[field]
+                else:
+                    row[field] = value
+                trial["observation"]["nativeDiagnostics"] = [json.dumps(row) for row in rows]
+                with (
+                    self.subTest(target=target, field=field, value=value),
+                    self.assertRaises(ValueError),
+                ):
+                    validate(target, "emulated-functional", report)
+
+    def test_unknown_fault_schema_cannot_fall_back_to_legacy_acceptance(self):
+        for schema in (0, 9, True, "8"):
+            report = fixture()
+            report["faults"]["schema"] = schema
+            with self.assertRaisesRegex(ValueError, "fault evidence schema"):
+                validate("linux-x64", "emulated-functional", report)
 
     def test_preserved_linux_reports_reproduce_the_declared_summary(self):
         # Replays real historical records; this test does not launch a browser.

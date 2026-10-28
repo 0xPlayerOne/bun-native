@@ -25,6 +25,8 @@ export type ProfileAdapterStatus = 'implemented' | 'qualified' | 'not-implemente
 export interface ProfileCapabilityExtension {
   readonly backend: BackendName
   readonly capabilities: readonly Capability[]
+  /** If present, this implementation extension exists only on the named targets. */
+  readonly platforms?: readonly ProfilePlatform[]
 }
 
 export interface ProfileCapabilityMetadata {
@@ -89,6 +91,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
           capabilities: Object.freeze([
             'window.state',
             'window.geometry',
+            'app.lifecycle',
             'view.composition',
             'session.persistent',
             'session.cookies',
@@ -96,6 +99,11 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
             'session.cache',
             'session.flush',
           ] as const),
+        }),
+        Object.freeze({
+          backend: 'cef',
+          capabilities: Object.freeze(['clipboard.text'] as const),
+          platforms: Object.freeze(['darwin-arm64', 'win32-x64'] as const),
         }),
       ] as const),
     }),
@@ -213,17 +221,24 @@ export function capabilityMetadataFor(
   })
 }
 
-/** True when a backend provides the capability, either as a portable guarantee or an extension. */
+/** Platform-scoped extensions require a matching target; they are never universal guarantees. */
 export function profileProvidesCapability(
   profile: BuildProfile,
   backend: BackendName,
-  capability: Capability
+  capability: Capability,
+  platform?: ProfilePlatform
 ): boolean {
   if (!profile.backends.includes(backend)) return false
+  if (platform !== undefined && !profile.supportedPlatforms.includes(platform)) return false
   const metadata = capabilityMetadataFor(profile, backend)
   return (
     metadata.portable.includes(capability) ||
-    metadata.extensions.some((extension) => extension.capabilities.includes(capability))
+    metadata.extensions.some(
+      (extension) =>
+        extension.capabilities.includes(capability) &&
+        (extension.platforms === undefined ||
+          (platform !== undefined && extension.platforms.includes(platform)))
+    )
   )
 }
 

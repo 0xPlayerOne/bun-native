@@ -1,6 +1,7 @@
 /** Engine-independent contracts. This package must remain browser-safe. */
 export * from './core.ts'
 export * from './windows.ts'
+export * from './desktop.ts'
 export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
 export * from './network-policy.ts'

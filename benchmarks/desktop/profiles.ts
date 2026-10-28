@@ -11,12 +11,19 @@ import {
   acceptViewComposition,
   acceptCompositionReport,
 } from './composition-acceptance.ts'
+import {
+  SERVICES_PROFILE,
+  servicesSourceSelectors,
+  acceptDesktopServices,
+  acceptServicesReport,
+} from './services-acceptance.ts'
 
 const profiles = {
   windows: {
     profile: DESKTOP_PROFILE,
     sourceSelectors: desktopSourceSelectors,
     fixture: 'examples/desktop-controls',
+    browserEntry: 'examples/desktop-controls/client.ts',
     directory: 'desktop',
     title: 'Desktop Controls',
     workloadLimitation:
@@ -28,6 +35,7 @@ const profiles = {
     profile: COMPOSITION_PROFILE,
     sourceSelectors: compositionSourceSelectors,
     fixture: 'examples/view-composition',
+    browserEntry: 'examples/view-composition/client.ts',
     directory: 'view-composition',
     title: 'View Composition',
     workloadLimitation:
@@ -35,10 +43,25 @@ const profiles = {
     acceptObservation: acceptViewComposition,
     acceptReport: acceptCompositionReport,
   },
+  services: {
+    profile: SERVICES_PROFILE,
+    sourceSelectors: servicesSourceSelectors,
+    fixture: 'examples/desktop-services',
+    browserEntry: null,
+    directory: 'desktop-services',
+    title: 'Desktop Services',
+    workloadLimitation:
+      'Clipboard round trips require an initially empty disposable hosted session; Linux explicitly qualifies unsupported clipboard and real application lifecycle only.',
+    acceptObservation: acceptDesktopServices,
+    acceptReport: acceptServicesReport,
+  },
 } as const
 
 export function desktopProfile(name = 'windows') {
-  assert.ok(name === 'windows' || name === 'composition', 'Unknown desktop qualification case')
+  assert.ok(
+    name === 'windows' || name === 'composition' || name === 'services',
+    'Unknown desktop qualification case'
+  )
   return profiles[name]
 }
 

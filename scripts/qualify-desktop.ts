@@ -15,6 +15,7 @@ import {
 import { DESKTOP_OBSERVER_MS } from '../benchmarks/desktop/acceptance.ts'
 import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/profiles.ts'
 import { prepareManagedRuntimeLayout } from './qualify-managed-development.ts'
+import { requireDisposableClipboardRunner } from './cef-desktop-services-precondition.ts'
 
 const root = resolve(import.meta.dir, '..')
 const mac = process.platform === 'darwin'
@@ -86,16 +87,42 @@ async function qualify(input: readonly string[]): Promise<void> {
   const args = [...input]
   const flag = args.findIndex((argument) => argument.startsWith('--case='))
   const profile = desktopProfile(flag < 0 ? 'windows' : args.splice(flag, 1)[0]!.slice(7))
+  const clipboardFlag = args.indexOf('--disposable-clipboard')
+  const clipboardOptIn = clipboardFlag < 0 ? undefined : args.splice(clipboardFlag, 1)[0]
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services] [--disposable-clipboard], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
   const target = `${process.platform}-${process.arch}`
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(target))
   assert.ok(process.platform === 'win32' || process.getuid?.() !== 0, 'Use a standard user')
+  // This contributor precondition is checked before copying, signing or launching
+  // any native application. It is independent of runtime clipboard authority.
+  const services = profile.directory === 'desktop-services'
+  assert.ok(clipboardOptIn === undefined || services, 'Clipboard opt-in requires --case=services')
+  let clipboardLaunch: Record<string, unknown> | undefined
+  if (services) {
+    if (target === 'linux-x64') {
+      assert.equal(clipboardOptIn, undefined, 'Linux clipboard execution is unsupported')
+      clipboardLaunch = { mode: 'unsupported', target }
+    } else {
+      requireDisposableClipboardRunner({
+        optIn: clipboardOptIn,
+        platform: process.platform,
+        arch: process.arch,
+        environment: process.env,
+      })
+      clipboardLaunch = {
+        mode: 'disposable-github-hosted',
+        target,
+        explicitOptIn: true,
+        runId: process.env['GITHUB_RUN_ID'],
+      }
+    }
+  }
   const before = sourceIdentity(root)
   assert.equal(before.clean, true, 'Qualification requires clean committed source')
   assert.ok(before.commit)
@@ -130,6 +157,7 @@ async function qualify(input: readonly string[]): Promise<void> {
     nativeSource: { declaredCommit: selected, tree: nativeTree, embeddedBuildAttestation: false },
     inputArtifact,
     performanceEligible: false,
+    ...(clipboardLaunch === undefined ? {} : { clipboardLaunch }),
     limitations: [
       profile.workloadLimitation,
       'No physical keyboard, IME, assistive technology, multi-monitor or hardware DPI qualification.',
@@ -173,15 +201,17 @@ async function qualify(input: readonly string[]): Promise<void> {
       recursive: true,
       dereference: false,
     })
-    const browser = await Bun.build({
-      entrypoints: [join(root, profile.fixture, 'client.ts')],
-      outdir: publicRoot,
-      naming: 'client.js',
-      target: 'browser',
-      format: 'esm',
-      minify: false,
-    })
-    assert.equal(browser.success, true, browser.logs.join('\n'))
+    if (profile.browserEntry !== null) {
+      const browser = await Bun.build({
+        entrypoints: [join(root, profile.browserEntry)],
+        outdir: publicRoot,
+        naming: 'client.js',
+        target: 'browser',
+        format: 'esm',
+        minify: false,
+      })
+      assert.equal(browser.success, true, browser.logs.join('\n'))
+    }
     const assets: Record<string, { bytes: number; sha256: string }> = {}
     for (const entry of (await inventory(publicRoot)).entries) {
       assert.equal(entry.kind, 'file')

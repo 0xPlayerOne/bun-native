@@ -10,12 +10,32 @@ use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicBool, Ordering},
 };
+#[path = "clipboard.rs"]
+mod clipboard;
 #[path = "navigation.rs"]
 mod navigation;
 #[path = "view_composition.rs"]
 mod view_composition;
 #[path = "window_state.rs"]
 mod window_state;
+pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
+    if clipboard::SUPPORTED {
+        &[
+            "window.state",
+            "window.geometry",
+            "clipboard.text",
+            "app.lifecycle",
+            "view.composition",
+        ]
+    } else {
+        &[
+            "window.state",
+            "window.geometry",
+            "app.lifecycle",
+            "view.composition",
+        ]
+    }
+}
 pub static FAILED: AtomicBool = AtomicBool::new(false);
 pub static QUITTING: AtomicBool = AtomicBool::new(false);
 fn command_budget() -> &'static Arc<crate::command_budget::CommandBudget> {
@@ -777,9 +797,21 @@ wrap_task! { struct ShutdownDeadline; impl Task { fn execute(&self) {
     eprintln!("{}", json!({"event":"bunly.host.failure","error":"Native shutdown acknowledgement deadline exceeded"}));
     shutdown_acknowledged(); quit_message_loop();
 } } }
-fn quit_on_ui() {
-    RPC_STOPPED.store(true, Ordering::SeqCst);
+fn observe_quitting(reason: &'static str) -> bool {
     if QUITTING.swap(true, Ordering::SeqCst) {
+        return false;
+    }
+    let reason = if FAILED.load(Ordering::SeqCst) {
+        "failure"
+    } else {
+        reason
+    };
+    process::emit(json!({"v":1,"event":"app.quitting","data":{"reason":reason}}));
+    true
+}
+fn quit_on_ui(reason: &'static str) {
+    RPC_STOPPED.store(true, Ordering::SeqCst);
+    if !observe_quitting(reason) {
         return;
     }
     bound_shutdown();
@@ -823,7 +855,7 @@ fn finish_on_ui() {
     if FINALIZING.swap(true, Ordering::SeqCst) {
         return;
     }
-    QUITTING.store(true, Ordering::SeqCst);
+    observe_quitting("last-window");
     // Release request contexts while the UI loop can still run CEF destruction tasks.
     // Enter the final task only after native close callbacks have unwound.
     let mut task = FinalizeTask::new();
@@ -1099,7 +1131,7 @@ wrap_task! {
         }
     }
 }
-wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui(); } } }
+wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui("native"); } } }
 wrap_app! {
     pub struct BunlyApp;
     impl App {
@@ -2412,6 +2444,11 @@ fn dispatch(command: &Value) -> Result<(), String> {
             })?;
             reply(request, Value::Null);
         }
+        "clipboard.read" | "clipboard.write" | "clipboard.clear" => {
+            clipboard::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "clipboard.qualification.empty" => clipboard::dispatch(request, operation, args)?,
         "policy.native.check" => {
             let id = number(args, "id")?;
             let captured = policy_scope(args)?;
@@ -2489,7 +2526,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
         }
         "quit" => {
             reply(request, Value::Null);
-            quit_on_ui();
+            quit_on_ui("requested");
         }
         _ => return Err("UNSUPPORTED_CAPABILITY: unknown native operation".into()),
     }
@@ -2536,7 +2573,7 @@ wrap_window_delegate! {
             for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } }
             i32::from(allowed)
         }
-        fn on_window_destroyed(&self, _window: Option<&mut Window>) { let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { QUITTING.store(true, Ordering::SeqCst); finish_on_ui(); } }
+        fn on_window_destroyed(&self, _window: Option<&mut Window>) { let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
     }
 }
 wrap_browser_view_delegate! {
@@ -2654,7 +2691,7 @@ wrap_life_span_handler! {
                     if closing || QUITTING.load(Ordering::SeqCst) { window.close(); }
                 }
             }
-            if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { QUITTING.store(true, Ordering::SeqCst); finish_on_ui(); }
+            if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); }
         }
     }
 }
@@ -2971,7 +3008,10 @@ mod tests {
         }
     }
 
-    fn state_with_view(view: u64, window: u64) -> (HostState, capability_policy::DocumentScope) {
+    pub(super) fn state_with_view(
+        view: u64,
+        window: u64,
+    ) -> (HostState, capability_policy::DocumentScope) {
         let scope = capability_policy::DocumentScope {
             view,
             session: 3,

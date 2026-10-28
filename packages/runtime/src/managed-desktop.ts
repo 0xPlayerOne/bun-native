@@ -6,6 +6,7 @@ import type {
   WindowHandle,
 } from '../../contracts/src/index.ts'
 import { normalizeViewPresentation, validateBounds } from '../../contracts/src/index.ts'
+import { validateClipboardText } from '../../contracts/src/desktop.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
   ManagedError,
@@ -84,6 +85,7 @@ const operations = {
   session: ['identity', 'cookies', 'flush'],
   terminal: ['identity', 'write', 'resize', 'signal'],
   process: ['state', 'write', 'resize', 'signal'],
+  clipboard: ['read-text', 'write-text', 'clear'],
 } as const
 const signals = new Set([
   'SIGHUP',
@@ -331,6 +333,40 @@ export class ManagedDesktopResources {
     this.#entries.set(name, entry)
     this.#entriesByHandle.set(handle, entry)
     return entry
+  }
+  /** Owns the scoped adapter binding, never clipboard contents placed by another application. */
+  registerClipboard(name: string, policy: ManagedDesktopPolicy): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority) throw new ManagedError('DENIED')
+    return this.#register(
+      name,
+      'clipboard',
+      Object.freeze({}),
+      policy,
+      async (operation, input, context) => {
+        if (operation === 'read-text') {
+          empty(input)
+          return this.backend.readClipboardText(authority.scope, { signal: context.signal })
+        }
+        if (operation === 'write-text') {
+          const text = object(input, ['text'])['text']
+          try {
+            validateClipboardText(text)
+          } catch {
+            invalid()
+          }
+          await this.backend.writeClipboardText(authority.scope, text, { signal: context.signal })
+          return null
+        }
+        if (operation === 'clear') {
+          empty(input)
+          await this.backend.clearClipboard(authority.scope, { signal: context.signal })
+          return null
+        }
+        invalid()
+      },
+      async () => {}
+    ).binding.resource
   }
   registerWindow(
     name: string,
