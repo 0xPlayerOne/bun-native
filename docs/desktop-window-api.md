@@ -144,6 +144,10 @@ not queue capacity or event ordering.
 
 ## Platform matrix and verification
 
+The [M7 desktop and hardware matrix](m7-platform-qualification.md) defines the
+separate physical keyboard, IME, display and assistive-technology records. Native
+API receipts do not qualify those operator cases.
+
 | Backend / platform               | Implementation                                        | Qualification boundary                                                                          |
 | -------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | CEF / macOS arm64                | CEF Views owner-thread adapter                        | Current-head native controls fixture required; physical input/display/accessibility remain #38  |
