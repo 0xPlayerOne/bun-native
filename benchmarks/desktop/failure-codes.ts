@@ -171,7 +171,7 @@ export function classifyDesktopFixtureFailure(
     /^([a-z][a-z-]{0,47}): ([A-Za-z]{1,32})(?: \(([A-Z][A-Z0-9_]{0,47})\))?(?: \[([a-z][a-z-]{0,63})\])?$/.exec(
       failure
     )
-  if (!match) return unknownFailure
+  if (!match || match[0] !== failure) return unknownFailure
   const selectedPhase = phase(fixture, match[1])
   const name = names.find((candidate) => candidate === match[2])
   const code = match[3] === undefined ? null : codes.find((candidate) => candidate === match[3])
