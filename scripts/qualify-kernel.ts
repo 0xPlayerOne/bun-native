@@ -1,10 +1,9 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { cargoEnvironment } from './cargo-config.ts'
+import { nativeReleaseDirectory } from './cargo-config.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
 const directory = join(root, '.bunly/qualification')
-const native = join(cargoEnvironment([], process.env).targetDir, 'release')
 await mkdir(directory, { recursive: true })
 const library =
   process.platform === 'win32'
@@ -12,6 +11,10 @@ const library =
     : process.platform === 'darwin'
       ? 'libbunly_host_probe.dylib'
       : 'libbunly_host_probe.so'
+const native = await nativeReleaseDirectory(root, [
+  library,
+  'process-soak' + (process.platform === 'win32' ? '.exe' : ''),
+])
 const addon = join(directory, 'kernel-probe.node')
 await copyFile(join(native, library), addon)
 const results: Record<string, unknown>[] = []

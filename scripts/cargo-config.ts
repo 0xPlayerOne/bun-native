@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
-import { isAbsolute, posix, win32 } from 'node:path'
+import { access } from 'node:fs/promises'
+import { isAbsolute, join, posix, win32 } from 'node:path'
 
 export function cefManifestPath(args: readonly string[]) {
   const manifests = args.flatMap((arg, index) => {
@@ -38,4 +39,26 @@ export function cargoEnvironment(
     env.CEF_PATH = path.join(cacheRoot, 'cef', cefVersion)
   }
   return { cacheRoot, targetDir, env }
+}
+
+/** Locate artifacts built through Bunly's wrapper or directly by Cargo. */
+export async function nativeReleaseDirectory(
+  root: string,
+  requiredFiles: readonly string[],
+  current: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform
+) {
+  const candidates = [
+    join(cargoEnvironment([], current, platform).targetDir, 'release'),
+    join(root, 'native', 'target', 'release'),
+  ]
+  for (const candidate of candidates) {
+    try {
+      await Promise.all(requiredFiles.map((file) => access(join(candidate, file))))
+      return candidate
+    } catch {
+      // A partial target directory is not a complete artifact source.
+    }
+  }
+  return candidates[0]!
 }

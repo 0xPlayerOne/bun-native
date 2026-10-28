@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test'
-import { cargoEnvironment } from '../scripts/cargo-config.ts'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { cargoEnvironment, nativeReleaseDirectory } from '../scripts/cargo-config.ts'
 
 test('shares Cargo target and CEF paths across macOS worktrees', () => {
   const result = cargoEnvironment(
@@ -48,4 +51,30 @@ test('uses platform cache conventions and rejects relative shared cache override
   expect(() =>
     cargoEnvironment(['--manifest-path=native/cef-host/Cargo.toml'], {}, 'linux', '/home/dev')
   ).toThrow('A valid locked CEF package version is required for the shared CEF path')
+})
+
+test('native qualification finds artifacts in the shared target or direct Cargo target', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'bunly-cargo-target-'))
+  const shared = join(root, 'shared', 'cargo-target', 'release')
+  const direct = join(root, 'repo', 'native', 'target', 'release')
+  const env = { BUNLY_SHARED_CACHE_DIR: join(root, 'shared') }
+  try {
+    await mkdir(shared, { recursive: true })
+    await mkdir(direct, { recursive: true })
+    await writeFile(join(direct, 'probe.node'), '')
+    await writeFile(join(direct, 'process-soak'), '')
+    expect(await nativeReleaseDirectory(join(root, 'repo'), ['probe.node'], env, 'linux')).toBe(
+      direct
+    )
+    await writeFile(join(shared, 'probe.node'), '')
+    expect(await nativeReleaseDirectory(join(root, 'repo'), ['probe.node'], env, 'linux')).toBe(
+      shared
+    )
+    await rm(join(shared, 'probe.node'))
+    expect(
+      await nativeReleaseDirectory(join(root, 'repo'), ['probe.node', 'process-soak'], env, 'linux')
+    ).toBe(direct)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

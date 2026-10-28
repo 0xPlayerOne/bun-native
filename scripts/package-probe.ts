@@ -5,10 +5,9 @@ import { execFileSync } from 'node:child_process'
 import { createTar, sha256, resolveArtifact } from '../packages/artifacts/src/index.ts'
 import type { ArtifactIdentity, ArtifactManifest } from '../packages/artifacts/src/index.ts'
 import { loadNative } from './probes/native-api.ts'
-import { cargoEnvironment } from './cargo-config.ts'
+import { nativeReleaseDirectory } from './cargo-config.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
-const native = join(cargoEnvironment([], process.env).targetDir, 'release')
 if (!['linux-x64', 'darwin-arm64', 'win32-x64'].includes(target))
   throw new Error(`Probe target ${target} is not supported`)
 const out = join(root, '.bunly/artifacts', target)
@@ -20,6 +19,10 @@ const lib =
     : process.platform === 'darwin'
       ? 'libbunly_host_probe.dylib'
       : 'libbunly_host_probe.so'
+const native = await nativeReleaseDirectory(
+  root,
+  process.platform === 'win32' ? [lib, 'bunly_host_probe.pdb'] : [lib]
+)
 const stage = join(out, 'probe.node')
 await copyFile(join(native, lib), stage)
 if (process.platform === 'linux') {

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
-import { cargoEnvironment } from './cargo-config.ts'
+import { nativeReleaseDirectory } from './cargo-config.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
 const lib =
@@ -10,7 +10,8 @@ const lib =
     : process.platform === 'darwin'
       ? 'libbunly_host_probe.dylib'
       : 'libbunly_host_probe.so'
-const native = join(cargoEnvironment([], process.env).targetDir, 'release')
+const executable = 'bunly-host-probe' + (process.platform === 'win32' ? '.exe' : '')
+const native = await nativeReleaseDirectory(root, [lib, executable])
 const dir = join(root, '.bunly/qualification')
 await mkdir(dir, { recursive: true })
 const addon = join(dir, 'probe.node')
@@ -56,10 +57,10 @@ for (const mode of ['ffi', 'napi', 'process'] as const) {
     try {
       const result =
         mode === 'process'
-          ? await execute(
-              join(native, 'bunly-host-probe' + (process.platform === 'win32' ? '.exe' : '')),
-              [process.execPath, join(root, 'scripts/probes/process-child.ts')]
-            )
+          ? await execute(join(native, executable), [
+              process.execPath,
+              join(root, 'scripts/probes/process-child.ts'),
+            ])
           : await execute(process.execPath, [join(root, 'scripts/probes/handoff.ts'), mode, addon])
       results.push({ mode, trial, ...result })
     } catch (error) {
