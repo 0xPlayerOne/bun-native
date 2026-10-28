@@ -501,6 +501,23 @@ pub fn authorize_native_grants(
     }
 }
 
+/// Resolve one explicit download root after the ordinary policy gate. Selection
+/// is never inferred from the first grant or from a renderer-suggested filename.
+pub(crate) fn download_root(
+    grants: &[NativeCapability],
+    root: &Path,
+    name: &str,
+) -> Result<PathBuf, &'static str> {
+    let root = canonical_root(root)?;
+    if !grants.iter().any(|grant| {
+        matches!(grant, NativeCapability::Download { root: granted } if granted == &root)
+            && native_matches(grant, &NativeRequest::Download { path: name.into() })
+    }) {
+        return Err("PERMISSION_DENIED: download destination is outside its native grant");
+    }
+    Ok(root)
+}
+
 fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
     match (grant, request) {
         (NativeCapability::FileRead { root }, NativeRequest::FileRead { path }) => {

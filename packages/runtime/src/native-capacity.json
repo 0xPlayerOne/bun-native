@@ -15,7 +15,8 @@
     "view.dispose",
     "window.close",
     "session.dispose",
-    "credentials.discard"
+    "credentials.discard",
+    "download.cancel"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,

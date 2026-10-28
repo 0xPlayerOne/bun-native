@@ -46,6 +46,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "desktop",
                 "view-composition",
                 "desktop-services",
+                "file-downloads",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -141,6 +142,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "desktop",
                             "view-composition",
                             "desktop-services",
+                            "file-downloads",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -462,7 +464,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 14)
+                self.assertEqual(len(names), 15)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -535,6 +537,35 @@ class ManagedDevelopmentStageTests(unittest.TestCase):
 
 
 class DesktopStageTests(unittest.TestCase):
+    def test_downloads_requires_exact_source_and_settlement_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("file-downloads"), 1)
+                self.assertEqual(names.index("file-downloads"), names.index("desktop-services") + 1)
+                self.assertEqual(
+                    dict(selected)["file-downloads"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=downloads" if system == "linux" else "--case=downloads",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["file-downloads"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "file-downloads")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "file-downloads", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("file-downloads"), hosted.ROOT / ".bunly/m7/file-downloads"
+        )
+
     def test_services_requires_disposable_clipboard_opt_in_only_on_supported_platforms(self):
         source = "a" * 40
         app = Path("/app")

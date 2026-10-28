@@ -7,6 +7,8 @@ pub mod capability_policy;
 mod command_budget;
 mod cookie_completion;
 mod deadlines;
+mod download_access;
+mod download_files;
 mod event_queue;
 mod exit_notification;
 mod handshake;
@@ -310,6 +312,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     shutdown_audit::checkpoint("before-cef-shutdown");
     shutdown_phase("cef-shutdown", shutdown);
     shutdown_audit::checkpoint("after-cef-shutdown");
+    host::cleanup_downloads_after_cef_shutdown()?;
     session::release_after_cef_shutdown()?;
     eprintln!(
         "{}",

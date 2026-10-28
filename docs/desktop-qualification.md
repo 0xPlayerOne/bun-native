@@ -50,7 +50,8 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition` and `desktop-services` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition`, `desktop-services`
+and `file-downloads` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -148,3 +149,44 @@ technology or performance eligibility is inferred from these operations.
 
 The full hosted suite requires this case on all three targets. See
 [desktop services](desktop-services.md) for the public API and adapter limits.
+
+## File downloads
+
+The download case exercises the real CEF download pipeline using only its own
+numeric-loopback HTTP fixtures and a private temporary destination root:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=downloads
+```
+
+On Linux use the disposable display wrapper with
+`--desktop --desktop-case=downloads --native-source=COMMIT`. The ordinary native
+host implements this adapter; the qualifier needs no browser inspection flag,
+renderer RPC authority, clipboard permission or separate transfer implementation.
+
+Fourteen ordered transfers cover three successful files, seven cancellations
+and four failures. Acceptance checks actual successful byte counts and fixed
+SHA-256 digests, explicit replacement and duplicate preservation, denied grants
+and traversal, allowed/denied redirects, unknown-size limits, timeout, interrupted
+responses, AbortSignal, navigation/reload, view/window closure, and cancellation
+during application quit. An unrelated sentinel must survive owned staging cleanup.
+The native download settlement receipt reports exactly matching admissions,
+terminal callbacks and outcomes, with zero owned transfer/callback/staging/timer
+resources before ordinary shutdown. Missing callbacks fail the existing deadlines.
+
+The settled native baseline retains one anchor window. `nativeBeforeQuit`
+deliberately retains one view, one session, one window and the final transfer.
+The final SDK snapshot is all zero after `backend.dispose()` has received the
+native shutdown response. These are separate observations; the live snapshot is
+never represented as post-shutdown evidence.
+
+Reports use `.bunly/m7/file-downloads/run-*/report.json` and profile
+`native-file-downloads-v1`. The shared `--verify` command checks their exact
+source inventory and the same prepared-artifact, runtime identity, metadata,
+native shutdown, output drain and process-cleanup gates. Native and application
+receipts contain bounded counters, opaque document identities and content digests,
+without destination paths, source URLs or file payloads. The workload and observer
+retain their fixed 25-second and 45-second limits. Uploads, native file-input
+selection and OS file drops remain unavailable; this case does not qualify their
+behavior or claim physical input, hardware displays, assistive technology,
+antivirus or performance support. See [scoped native downloads](downloads.md).

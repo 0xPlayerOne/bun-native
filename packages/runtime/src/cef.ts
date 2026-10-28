@@ -10,6 +10,7 @@ import {
 } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { ApplicationLifecycle } from './application-lifecycle.ts'
+import { CefDownloads } from './cef-downloads.ts'
 import {
   parseCefWindowBounds,
   parseCefWindowState,
@@ -49,6 +50,7 @@ import {
   validateBounds,
   normalizeViewPresentation,
   parseViewPresentationState,
+  normalizeDownloadRequest,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
@@ -86,6 +88,9 @@ import type {
   CookieQuery,
   DownloadRequest,
   DownloadResult,
+  DownloadManagementBackend,
+  DownloadOperation,
+  ScopedDownloadRequest,
   Handle,
   ResourceKind,
 } from '../../contracts/src/index.ts'
@@ -354,7 +359,12 @@ function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDe
 }
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
 export class CefBackend
-  implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend, ViewCompositionBackend
+  implements
+    BrowserBackend,
+    ClipboardBackend,
+    ApplicationLifecycleBackend,
+    ViewCompositionBackend,
+    DownloadManagementBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -362,6 +372,7 @@ export class CefBackend
   }
   readonly #transport: NativeTransport
   readonly #application = new ApplicationLifecycle()
+  readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
   readonly #native = new Map<number, Handle<ResourceKind>>()
@@ -424,6 +435,9 @@ export class CefBackend
   readonly closed: Promise<void>
   constructor(transport: NativeTransport) {
     this.#transport = transport
+    this.#downloads = new CefDownloads(transport, () => {
+      this.#listenerErrors++
+    })
     this.#descriptor = descriptor(transport.desktopCapabilities)
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
     void transport.ready.then(
@@ -443,6 +457,7 @@ export class CefBackend
     })
     this.closed = transport.closed.then(async () => {
       this.#disposed = true
+      this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -1395,11 +1410,44 @@ export class CefBackend
     return unsupported('permission.request')
   }
   async download(
-    _view: ViewHandle,
-    _request: DownloadRequest,
-    _options?: OperationOptions
+    view: ViewHandle,
+    request: DownloadRequest,
+    options?: OperationOptions
   ): Promise<DownloadResult> {
-    return unsupported('download.manage')
+    requireCapability(this.descriptor, 'download.manage')
+    if (!request?.destination)
+      throw new BunlyError('INVALID_ARGUMENT', 'Downloads require an explicit scoped destination')
+    const operation = await this.startDownload(
+      view,
+      { url: request.url, destination: request.destination },
+      options
+    )
+    const result = await operation.completed
+    if (result.status === 'failed') throw new Error(`Native download failed: ${result.failure}`)
+    return Object.freeze({ status: result.status, bytesWritten: result.bytesWritten })
+  }
+  async startDownload(
+    view: ViewHandle,
+    request: ScopedDownloadRequest,
+    options?: OperationOptions
+  ): Promise<DownloadOperation> {
+    this.#liveView(view)
+    requireCapability(this.descriptor, 'download.manage')
+    const normalized = normalizeDownloadRequest(request)
+    if (options?.signal?.aborted)
+      throw options.signal.reason ?? new DOMException('Aborted', 'AbortError')
+    const token = await this.capturePolicyScope(view)
+    const captured = this.#capturedPolicyScope(token)
+    return this.#downloads.start(
+      captured.resource.native,
+      { ...captured.nativeScope },
+      normalized,
+      () => {
+        this.#active()
+        this.#capturedPolicyScope(token)
+      },
+      options?.signal
+    )
   }
   async extension(
     _view: ViewHandle,
@@ -1433,7 +1481,8 @@ export class CefBackend
         this.#observers.size +
         this.#windowSubscriptionCount +
         application.listeners +
-        application.readyWaiters,
+        application.readyWaiters +
+        this.#downloads.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
@@ -1703,6 +1752,7 @@ export class CefBackend
       this.#disposed = true
       this.#application.quitting(event.data['reason'])
     }
+    this.#downloads.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined

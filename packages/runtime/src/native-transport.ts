@@ -6,6 +6,7 @@ const DESKTOP_CAPABILITIES = Object.freeze([
   'clipboard.text',
   'app.lifecycle',
   'view.composition',
+  'download.manage',
 ] as const)
 export type NativeDesktopCapability = (typeof DESKTOP_CAPABILITIES)[number]
 function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[] {

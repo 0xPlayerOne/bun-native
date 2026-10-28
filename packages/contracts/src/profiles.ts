@@ -93,6 +93,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
             'window.geometry',
             'app.lifecycle',
             'view.composition',
+            'download.manage',
             'session.persistent',
             'session.cookies',
             'session.protected-cookies',

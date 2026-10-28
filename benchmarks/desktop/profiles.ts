@@ -17,6 +17,12 @@ import {
   acceptDesktopServices,
   acceptServicesReport,
 } from './services-acceptance.ts'
+import {
+  DOWNLOADS_PROFILE,
+  downloadsSourceSelectors,
+  acceptFileDownloads,
+  acceptDownloadsReport,
+} from './downloads-acceptance.ts'
 
 const profiles = {
   windows: {
@@ -55,11 +61,23 @@ const profiles = {
     acceptObservation: acceptDesktopServices,
     acceptReport: acceptServicesReport,
   },
+  downloads: {
+    profile: DOWNLOADS_PROFILE,
+    sourceSelectors: downloadsSourceSelectors,
+    fixture: 'examples/file-downloads',
+    browserEntry: 'examples/file-downloads/client.ts',
+    directory: 'file-downloads',
+    title: 'File Downloads',
+    workloadLimitation:
+      'Fourteen real CEF transfers under exact document grants and private temporary roots; native file input, uploads and OS-file drops remain unsupported.',
+    acceptObservation: acceptFileDownloads,
+    acceptReport: acceptDownloadsReport,
+  },
 } as const
 
 export function desktopProfile(name = 'windows') {
   assert.ok(
-    name === 'windows' || name === 'composition' || name === 'services',
+    name === 'windows' || name === 'composition' || name === 'services' || name === 'downloads',
     'Unknown desktop qualification case'
   )
   return profiles[name]

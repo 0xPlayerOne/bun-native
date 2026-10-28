@@ -12,6 +12,10 @@ use std::{
 };
 #[path = "clipboard.rs"]
 mod clipboard;
+#[path = "downloads.rs"]
+mod downloads;
+#[path = "file_guards.rs"]
+mod file_guards;
 #[path = "navigation.rs"]
 mod navigation;
 #[path = "view_composition.rs"]
@@ -26,6 +30,7 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
             "clipboard.text",
             "app.lifecycle",
             "view.composition",
+            "download.manage",
         ]
     } else {
         &[
@@ -33,6 +38,7 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
             "window.geometry",
             "app.lifecycle",
             "view.composition",
+            "download.manage",
         ]
     }
 }
@@ -66,6 +72,7 @@ struct ViewRecord {
     navigation_in_progress: bool,
     expected_document_url: String,
     rpc: rpc_authority::Authority,
+    download_access: Arc<crate::download_access::Access>,
     #[cfg(feature = "rpc-qualification")]
     previous_rpc: Option<wire::Identity>,
 }
@@ -93,6 +100,7 @@ struct HostState {
     credential_probe: Option<u64>,
     retired_credential_probe: Option<credential_callbacks::RetiredProbe>,
     credential_ready: bool,
+    downloads: downloads::Registry,
 }
 #[path = "credential_callbacks.rs"]
 mod credential_callbacks;
@@ -159,12 +167,17 @@ fn event(kind: &str, target: u64, data: Value) {
     process::emit(json!({"v":1,"event":kind,"target":target,"data":data}));
 }
 fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
+    if binding.is_some() {
+        STATE.with(|s| revoke_view(&mut s.borrow_mut(), id));
+    } else {
+        downloads::invalidate_stale(id);
+    }
+    downloads::cancel_if_revoked(id);
     let Some(binding) = binding else {
         return;
     };
     let (browser, requests) = STATE.with(|s| {
         let mut state = s.borrow_mut();
-        state.policy.close_view(id);
         #[cfg(feature = "rpc-qualification")]
         if let Some(view) = state.views.get_mut(&id) {
             view.previous_rpc = Some(binding.identity());
@@ -838,6 +851,14 @@ fn quit_on_ui(reason: &'static str) {
     for (id, revoked) in revocations {
         revoke_renderer(id, revoked);
     }
+    if STATE.with(|s| !s.borrow().downloads.is_empty()) {
+        // CEF stops download callbacks once a browser is destroyed, but lets its
+        // transfer continue. Retain all owners until actual cancellation settles.
+        return;
+    }
+    close_quitting_owners(windows, browsers);
+}
+fn close_quitting_owners(windows: Vec<Window>, browsers: Vec<Browser>) {
     for browser in browsers {
         if let Some(host) = browser.host() {
             host.close_browser(1);
@@ -1049,6 +1070,7 @@ wrap_task! { struct ShutdownIoFence; impl Task { fn execute(&self) {
     if post_task(ThreadId::UI, Some(&mut fence)) == 0 { FAILED.store(true, Ordering::SeqCst); }
 } } }
 wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
+    downloads::shutdown_receipt();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
@@ -1063,7 +1085,8 @@ pub fn release() {
             }
         }
     }
-    let retired = STATE.with(|s| std::mem::take(&mut *s.borrow_mut()));
+    let mut retired = STATE.with(|s| std::mem::take(&mut *s.borrow_mut()));
+    downloads::retire(std::mem::take(&mut retired.downloads));
     if !retired.windows.is_empty() || !retired.views.is_empty() || !retired.sessions.is_empty() {
         FAILED.store(true, Ordering::SeqCst);
     }
@@ -1072,6 +1095,9 @@ pub fn release() {
     }
     // Drop CEF references outside the registry borrow during final teardown.
     drop(retired);
+}
+pub(crate) fn cleanup_downloads_after_cef_shutdown() -> Result<(), String> {
+    downloads::cleanup_after_cef_shutdown()
 }
 fn cancel_navigation(id: u64, message: &str) {
     let requests = STATE.with(|s| {
@@ -1404,11 +1430,32 @@ wrap_delete_cookies_callback! {
 /// callback instead. The registry retains the browser/request until that callback.
 /// See the pinned CEF BrowserViewImpl destructor and Views platform delegate.
 fn dispose_view(id: u64, request: u64) -> Result<(), String> {
-    let (window, view, overlay, revoked) = STATE.with(|state| {
+    let revoked = STATE.with(|state| {
         let mut state = state.borrow_mut();
         let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
         if record.close.is_some() {
             return Err("View is closing");
+        }
+        if record.browser.is_none() || record.view.is_none() {
+            return Err("Browser view not ready");
+        }
+        revoke_view(&mut state, id);
+        let record = state.views.get_mut(&id).unwrap();
+        record.close = Some(request);
+        Ok::<_, &str>(record.rpc.revoke())
+    })?;
+    revoke_renderer(id, revoked);
+    if STATE.with(|s| s.borrow().downloads.contains(id)) {
+        return Ok(());
+    }
+    destroy_disposed_view(id)
+}
+fn destroy_disposed_view(id: u64) -> Result<(), String> {
+    let (window, view, overlay, revoked) = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
+        if record.close.is_none() {
+            return Err("View is not closing");
         }
         if record.browser.is_none() || record.view.is_none() {
             return Err("Browser view not ready");
@@ -1424,7 +1471,6 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         let owner_closing = owner.closing.is_some() || QUITTING.load(Ordering::SeqCst);
         revoke_view(&mut state, id);
         let record = state.views.get_mut(&id).unwrap();
-        record.close = Some(request);
         // Once TryCloseBrowser has accepted the parent close, the BrowserView
         // destructor deliberately does not force destruction. Keep it attached
         // so widget teardown supplies WindowDestroyed and settles this request.
@@ -1457,6 +1503,52 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
     }
     Ok(())
 }
+fn resume_after_download(id: u64) {
+    if QUITTING.load(Ordering::SeqCst) {
+        let owners = STATE.with(|s| {
+            let state = s.borrow();
+            state.downloads.is_empty().then(|| {
+                (
+                    state
+                        .windows
+                        .values()
+                        .filter_map(|record| record.window.clone())
+                        .collect(),
+                    state
+                        .views
+                        .values()
+                        .filter_map(|record| record.browser.clone())
+                        .collect(),
+                )
+            })
+        });
+        if let Some((windows, browsers)) = owners {
+            close_quitting_owners(windows, browsers);
+        }
+        return;
+    }
+    let (closing, window) = STATE.with(|s| {
+        let state = s.borrow();
+        let Some(view) = state.views.get(&id) else {
+            return (false, None);
+        };
+        (
+            view.close.is_some(),
+            state
+                .windows
+                .get(&view.window)
+                .filter(|window| window.closing.is_some())
+                .and_then(|window| window.window.clone()),
+        )
+    });
+    if let Some(window) = window {
+        window.close();
+    } else if closing {
+        if let Err(error) = destroy_disposed_view(id) {
+            fail(&error);
+        }
+    }
+}
 
 fn begin_navigation(
     state: &mut HostState,
@@ -1464,6 +1556,7 @@ fn begin_navigation(
     expected_url: &str,
 ) -> Result<(), &'static str> {
     state.policy.navigation_started(view);
+    state.downloads.revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1477,12 +1570,13 @@ fn revoke_window(state: &mut HostState, window: u64) {
         .filter_map(|(id, view)| (view.window == window).then_some(*id))
         .collect::<Vec<_>>()
     {
-        state.policy.close_view(view);
+        revoke_view(state, view);
     }
 }
 
 fn revoke_view(state: &mut HostState, view: u64) {
     state.policy.close_view(view);
+    state.downloads.revoke(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1540,6 +1634,9 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
     .map_err(str::to_owned)
 }
 
+fn allowed_during_quit(operation: &str) -> bool {
+    matches!(operation, "quit" | "download.cancel")
+}
 fn dispatch(command: &Value) -> Result<(), String> {
     if currently_on(ThreadId::UI) == 0 {
         return Err("Wrong native thread".into());
@@ -1547,7 +1644,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
     let request = number(command, "id")?;
     let operation = string(command, "op")?;
     let args = command.get("args").unwrap_or(&Value::Null);
-    if QUITTING.load(Ordering::SeqCst) && operation != "quit" {
+    if QUITTING.load(Ordering::SeqCst) && !allowed_during_quit(operation) {
         return Err("Host is shutting down".into());
     }
     match operation {
@@ -1935,6 +2032,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 ))
             })?;
             let id = next_id()?;
+            let download_access = Arc::new(crate::download_access::Access::default());
             STATE.with(|s| {
                 s.borrow_mut().views.insert(
                     id,
@@ -1949,6 +2047,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         navigate: navigation::Navigation::default(),
                         close: None,
                         rpc: rpc_authority::Authority::new(id, url.clone(), approved_origin),
+                        download_access: download_access.clone(),
                         #[cfg(feature = "rpc-qualification")]
                         previous_rpc: None,
                         navigation_in_progress: true,
@@ -1956,7 +2055,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     },
                 );
             });
-            let mut client = BunlyClient::new(id, network);
+            let mut client = BunlyClient::new(id, network, download_access);
             let mut delegate = BunlyView::new(RuntimeStyle::ALLOY);
             let settings = BrowserSettings {
                 javascript_close_windows: cef::State::DISABLED,
@@ -2047,6 +2146,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        "download.start" => downloads::start(request, args)?,
+        "download.cancel" => downloads::cancel(request, args)?,
         "view.presentation" | "view.present" => {
             view_composition::dispatch(request, operation, args)?
         }
@@ -2514,7 +2615,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
@@ -2564,11 +2665,12 @@ wrap_window_delegate! {
                 revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
-                let pending = view_ids.iter().any(|id| s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
                 let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
                 (browsers, pending, revocations)
             });
             for (id, revoked) in revocations { revoke_renderer(id, revoked); }
+            if pending { return 0; }
             let mut allowed = !pending;
             for browser in browsers { if let Some(host) = browser.host() { if host.try_close_browser() == 0 { allowed = false; } } }
             i32::from(allowed)
@@ -2582,15 +2684,18 @@ wrap_browser_view_delegate! {
     impl BrowserViewDelegate { fn browser_runtime_style(&self) -> RuntimeStyle { self.style } }
 }
 wrap_client! {
-    struct BunlyClient { id: u64, network: Arc<NetworkPolicy> }
+    struct BunlyClient { id: u64, network: Arc<NetworkPolicy>, download_access: Arc<crate::download_access::Access> }
     impl Client {
         fn focus_handler(&self) -> Option<FocusHandler> { Some(BunlyFocus::new(self.id)) }
         fn permission_handler(&self) -> Option<PermissionHandler> { Some(BunlyPermissions::new(self.id)) }
-        fn download_handler(&self) -> Option<DownloadHandler> { Some(BunlyDownloads::new(self.id)) }
+        fn download_handler(&self) -> Option<DownloadHandler> { Some(downloads::handler(self.id)) }
+        fn dialog_handler(&self) -> Option<DialogHandler> { Some(file_guards::dialogs(self.id)) }
+        fn drag_handler(&self) -> Option<DragHandler> { Some(file_guards::drag(self.id)) }
+        fn context_menu_handler(&self) -> Option<ContextMenuHandler> { Some(file_guards::menus()) }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> { Some(BunlyLife::new(self.id)) }
         fn load_handler(&self) -> Option<LoadHandler> { Some(BunlyLoad::new(self.id)) }
         fn display_handler(&self) -> Option<DisplayHandler> { Some(BunlyDisplay::new(self.id)) }
-        fn request_handler(&self) -> Option<RequestHandler> { Some(BunlyRequest::new(self.id, self.network.clone())) }
+        fn request_handler(&self) -> Option<RequestHandler> { Some(BunlyRequest::new(self.id, self.network.clone(), self.download_access.clone())) }
         fn frame_handler(&self) -> Option<FrameHandler> { Some(BunlyFrame::new(self.id)) }
         fn on_process_message_received(&self, browser: Option<&mut Browser>, frame: Option<&mut Frame>, source: ProcessId, message: Option<&mut ProcessMessage>) -> i32 {
             renderer_message(self.id, browser, frame, source, message)
@@ -2617,6 +2722,7 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             .is_some_and(|scope| scope.main_frame == frame_id)
         {
             state.policy.navigation_started(id);
+            state.downloads.revoke(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -2673,6 +2779,7 @@ wrap_life_span_handler! {
             }
         }
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
+            if STATE.with(|s| s.borrow().downloads.contains(self.id)) { fail("Browser closed with an unsettled native download"); }
             let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
             if let Some(mut record) = record {
                 revoke_renderer(self.id, record.rpc.revoke());
@@ -2766,7 +2873,7 @@ wrap_display_handler! {
     }
 }
 wrap_request_handler! {
-    struct BunlyRequest { id: u64, network: Arc<NetworkPolicy> }
+    struct BunlyRequest { id: u64, network: Arc<NetworkPolicy>, download_access: Arc<crate::download_access::Access> }
     impl RequestHandler {
         fn on_document_available_in_main_frame(&self, browser: Option<&mut Browser>) {
             let Some(frame) = browser.and_then(|browser| browser.main_frame()) else { return; };
@@ -2801,8 +2908,13 @@ wrap_request_handler! {
         }
         // IO-thread callback: request policy is separate from UI-only host state.
         fn resource_request_handler(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
-            _request: Option<&mut Request>, _navigation: i32, _download: i32, _initiator: Option<&CefString>,
-            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> { Some(scheme::local_resources(self.network.clone())) }
+            request: Option<&mut Request>, _navigation: i32, download: i32, _initiator: Option<&CefString>,
+            _disable_default: Option<&mut i32>) -> Option<ResourceRequestHandler> {
+            if download != 0 {
+                let permit = request.and_then(|request| scheme::bounded_string(request.url(), 4096).and_then(|url| self.download_access.claim(&url, request.identifier())));
+                Some(scheme::download_resources(self.network.clone(), permit))
+            } else { Some(scheme::local_resources(self.network.clone())) }
+        }
         fn on_render_process_terminated(&self, _browser: Option<&mut Browser>, status: TerminationStatus, code: i32, _message: Option<&CefString>) {
             if !live_view(self.id) || QUITTING.load(Ordering::SeqCst) { return; }
             STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
@@ -2866,14 +2978,6 @@ wrap_permission_handler! {
             event("policy.permission-denied", self.id, json!({"permissions":permissions}));
             if let Some(callback) = callback { callback.cont(PermissionRequestResult::DENY); } 1
         }
-    }
-}
-wrap_download_handler! {
-    struct BunlyDownloads { id: u64 }
-    impl DownloadHandler {
-        // Download destinations are an M7 adapter. A grant alone cannot make
-        // this available, and CEF default handling is never allowed to choose a path.
-        fn can_download(&self, _browser: Option<&mut Browser>, _url: Option<&CefString>, _method: Option<&CefString>) -> i32 { event("policy.download-denied", self.id, Value::Null); 0 }
     }
 }
 
@@ -3038,6 +3142,7 @@ mod tests {
                     "app://ui/index.html".into(),
                     Some("app://ui".into()),
                 ),
+                download_access: Arc::new(crate::download_access::Access::default()),
                 #[cfg(feature = "rpc-qualification")]
                 previous_rpc: None,
                 navigation_in_progress: false,
@@ -3190,6 +3295,22 @@ mod tests {
 #[cfg(test)]
 mod command_task_lifetime_tests {
     use super::*;
+    #[test]
+    fn quitting_admits_id_bound_download_cleanup_without_reopening_native_authority() {
+        assert!(allowed_during_quit("quit"));
+        assert!(allowed_during_quit("download.cancel"));
+        for operation in [
+            "download.start",
+            "policy.native.grant",
+            "clipboard.write",
+            "view.navigate",
+            "window.create",
+            "session.create",
+            "download.cancel.extra",
+        ] {
+            assert!(!allowed_during_quit(operation), "{operation}");
+        }
+    }
     #[test]
     fn discarded_cef_task_releases_admission_only_with_its_last_native_reference() {
         let budget = Arc::new(crate::command_budget::CommandBudget::default());
