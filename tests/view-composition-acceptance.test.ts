@@ -79,6 +79,7 @@ function receipt() {
     }
     if (name === 'window-clips-pane') viewport.width = 164
     const focused =
+      name === 'final-right' ||
       name.startsWith('focus-') ||
       ['forward-tab-order', 'reverse-tab-order', 'resize-preserves-sibling-focus'].includes(name)
     const page = {
@@ -159,6 +160,7 @@ function report() {
       'examples/view-composition/fixture.ts',
       'examples/view-composition/client.ts',
       'examples/view-composition/contract.ts',
+      'examples/view-composition/lifetime.ts',
       'examples/managed-desktop/document-readiness.ts',
       'benchmarks/desktop/composition-acceptance.ts',
     ],
@@ -232,6 +234,24 @@ test('composition rejects reloaded documents, shared sessions, lost state and st
     mutate(value)
     assert.throws(() => acceptCompositionReceipt(value))
   }
+})
+
+test('composition cannot reuse one page sequence for contradictory viewport, visibility or focus', () => {
+  const value = receipt()
+  for (const step of value.observations.steps) step.page.sequence = 1
+  for (const pane of panes) {
+    value.observations.pages[pane].final = { ...value.observations.pages[pane].final, sequence: 1 }
+    value.observations.pages[pane].observations = 2
+  }
+  assert.throws(() => acceptCompositionReceipt(value))
+})
+
+test('composition final resizing cannot steal right-pane focus or claim two focused panes', () => {
+  const value = receipt()
+  const left = value.observations.steps.find((step) => step.name === 'final-left')!
+  left.native.focused = left.page.focused = true
+  value.observations.pages.left.final = { ...value.observations.pages.left.final, focused: true }
+  assert.throws(() => acceptCompositionReceipt(value))
 })
 
 test('composition rejects wrong native geometry, intent-only visibility and focus on hidden surfaces', () => {

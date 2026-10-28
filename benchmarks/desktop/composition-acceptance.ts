@@ -27,6 +27,7 @@ const requiredSources = [
   'examples/view-composition/fixture.ts',
   'examples/view-composition/client.ts',
   'examples/view-composition/contract.ts',
+  'examples/view-composition/lifetime.ts',
   'examples/managed-desktop/document-readiness.ts',
   'benchmarks/desktop/composition-acceptance.ts',
 ] as const
@@ -160,7 +161,7 @@ export function acceptCompositionReceipt(input: unknown) {
     }),
     compositionSteps
   )
-  const sequences = new Map<Pane, number>()
+  const previous = new Map(panes.map((pane) => [pane, pageSummary(documents.get(pane)!.initial)]))
   const last = new Map<Pane, ReturnType<typeof pageSummary>>()
   for (const item of steps) {
     const row = record(item)
@@ -177,9 +178,16 @@ export function acceptCompositionReceipt(input: unknown) {
       'width',
     ])
     const parsedPage = parseCompositionPage({ ...document.initial, ...page })
-    assert.ok(parsedPage.sequence >= (sequences.get(pane) ?? document.initial.sequence))
+    const prior = previous.get(pane)!
+    assert.ok(parsedPage.sequence >= prior.sequence)
     assert.ok(parsedPage.sequence <= document.final.sequence)
-    sequences.set(pane, parsedPage.sequence)
+    if (parsedPage.sequence === prior.sequence)
+      assert.deepEqual(
+        pageSummary(parsedPage),
+        prior,
+        'One page sequence cannot describe contradictory state'
+      )
+    previous.set(pane, pageSummary(parsedPage))
     last.set(pane, pageSummary(parsedPage))
     const native = parseViewPresentationState(row['native'])
     assert.equal(native.layer, pane === 'overlay' ? 'overlay' : 'content')
@@ -230,6 +238,10 @@ export function acceptCompositionReceipt(input: unknown) {
     if (name === 'nonfocusable-pane') {
       assert.equal(native.focused, false)
       assert.equal(parsedPage.focused, false)
+    }
+    if (name.startsWith('final-')) {
+      assert.equal(native.focused, pane === 'right', 'Final resize must preserve right-pane focus')
+      assert.equal(parsedPage.focused, pane === 'right')
     }
   }
   for (const pane of panes)

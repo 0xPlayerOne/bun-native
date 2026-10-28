@@ -14,6 +14,7 @@ import {
 } from '../../packages/runtime/src/managed-generations.ts'
 import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desktop.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
+import { observeCompositionLifetime } from './lifetime.ts'
 import {
   compositionMarker,
   compositionSchema,
@@ -71,6 +72,9 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     revision++
     wake?.()
   }
+  const lifetime = observeCompositionLifetime(backend.closed, controller, (error) => {
+    failure ??= String(error).slice(0, 1024)
+  })
   controller.signal.addEventListener(
     'abort',
     () => {
@@ -103,10 +107,6 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
       else if (revision !== seen) wake()
     })
   }
-  void backend.closed.then(
-    () => controller.abort(new Error('Composition host closed before completion')),
-    (error: unknown) => controller.abort(error)
-  )
   const stopRpc = backend.serveRpc(
     compositionSchema,
     {
@@ -441,7 +441,15 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
         after: currentPage(name).sequence,
       })
       await present(name, { ...pane(name).base, bounds: { ...bounds[name], width: 282 } })
-      await capture(`final-${name}`, name, atBounds({ ...bounds[name], width: 282 }))
+      const matchesBounds = atBounds({ ...bounds[name], width: 282 })
+      await capture(
+        `final-${name}`,
+        name,
+        (state, page) =>
+          matchesBounds(state, page) &&
+          state.focused === (name === 'right') &&
+          page.focused === (name === 'right')
+      )
       await backend.drainRpc(pane(name).view)
     }
     await desktop.dispose()
@@ -476,11 +484,13 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     }
     owner.dispose()
     try {
+      lifetime.beginShutdown()
       await backend.dispose()
     } catch (error) {
       failure ??= String(error)
     }
     clearTimeout(deadline)
+    lifetime.detach()
     // The native shutdown receipt precedes the final application line, so shared
     // stderr cannot interleave it with the host's process-stop diagnostic.
     const serialized = JSON.stringify({

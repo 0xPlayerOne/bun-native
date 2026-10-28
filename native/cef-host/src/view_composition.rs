@@ -342,6 +342,17 @@ pub(super) fn focus(id: u64) -> Result<(), String> {
     if !eligible(&current) {
         return Err("PERMISSION_DENIED: view is hidden, clipped or nonfocusable".into());
     }
+    if let Some(overlay) = current.overlay.as_ref() {
+        // An activatable overlay has its own native widget/first responder.
+        // RequestFocus alone changes the Views FocusManager but does not make
+        // that widget key on macOS. Show is intentional only for an explicit
+        // focus request; ordinary resize/no-op presentation never reactivates it.
+        overlay.set_visible(1);
+    }
+    let current = target(id)?;
+    if !eligible(&current) {
+        return Err("PERMISSION_DENIED: focus target changed during activation".into());
+    }
     current.view.request_focus();
     target(id)?;
     Ok(())
