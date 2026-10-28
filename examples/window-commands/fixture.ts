@@ -8,6 +8,7 @@ import type {
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
 import { CommandObservations } from './observations.ts'
+import { WINDOW_COMMAND_WORKLOAD_MS, windowCommandFixtureEvents } from './contract.ts'
 
 const definition: WindowCommandsDefinition = {
   commands: [
@@ -69,15 +70,17 @@ async function activate(
  * a host built with rpc-qualification. An ordinary renderer cannot enable input.
  */
 export default async function qualifyWindowCommands(backend: CefBackend): Promise<void> {
+  const started = performance.now()
   const controller = new AbortController()
   const deadline = setTimeout(
     () => controller.abort(new Error('Window commands qualification deadline')),
-    25_000
+    WINDOW_COMMAND_WORKLOAD_MS
   )
   const options = { signal: controller.signal }
   let stage = 'ready',
     failure: string | null = null,
-    shutdownRequested = false
+    shutdownRequested = false,
+    shutdownSucceeded = false
   let denied = false,
     forged = false,
     oversized = false,
@@ -87,6 +90,7 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
     disposedOpenMenu = false
   let commands: WindowCommandsHandle | undefined
   let observations: CommandObservations | undefined
+  let nativeFinal: Record<string, number> | null = null
   let final: {
     readonly registrations: number
     readonly shortcuts: number
@@ -179,6 +183,7 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
     disposedOpenMenu = true
     observations.assertDrained()
     receipt.push(...observations.events)
+    assert.deepEqual(receipt, windowCommandFixtureEvents)
     observations.close()
     observations = undefined
     assert.deepEqual(await backend.qualifyWindowCommandsSnapshot(), {
@@ -214,27 +219,55 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
       popups: 0,
     })
     assert.equal(backend.diagnostics().listenerErrors, 0)
+    stage = 'native-cleanup'
+    await backend.disposeView(view)
+    await backend.disposeSession(session)
+    const native = (await backend.nativeDiagnostics()) as Record<string, unknown>
+    nativeFinal = {}
+    for (const key of [
+      'views',
+      'sessions',
+      'windows',
+      'rpcBindings',
+      'pending',
+      'downloads',
+      'nativeDeliveryPackets',
+      'nativeDeliveryBytes',
+      'rpcIncomingBytes',
+      'streamIncomingBytes',
+    ]) {
+      assert.equal(native[key], key === 'windows' ? 1 : 0)
+      nativeFinal[key] = Number(native[key])
+    }
     stage = 'quit'
     shutdownRequested = true
     await backend.dispose()
+    shutdownSucceeded = true
     controller.signal.throwIfAborted()
   } catch {
     failure ??= stage
   } finally {
-    clearTimeout(deadline)
     observations?.close()
     shutdownRequested = true
     try {
       await backend.dispose()
+      shutdownSucceeded = true
     } catch {
       failure ??= 'cleanup'
     }
+    clearTimeout(deadline)
     controller.signal.removeEventListener('abort', aborted)
+    const sdkFinal = backend.diagnostics()
+    if (Object.values(sdkFinal).some((value) => value !== 0)) failure ??= 'sdk-cleanup'
+    const workloadMs = performance.now() - started
+    if (controller.signal.aborted || workloadMs > WINDOW_COMMAND_WORKLOAD_MS)
+      failure ??= 'workload-deadline'
     console.error(
       JSON.stringify({
         event: 'bunly.native.window-commands',
         schema: 1,
         passed: failure === null,
+        workloadMs,
         input: { syntheticNative: true, physical: false },
         denied,
         forged,
@@ -245,7 +278,14 @@ export default async function qualifyWindowCommands(backend: CefBackend): Promis
         disposedOpenMenu,
         observations: receipt,
         final,
+        nativeFinal,
+        sdkFinal,
+        shutdownSucceeded,
         failure,
+        physicalInputQualified: false,
+        hardwareDpiQualified: false,
+        assistiveTechnologyQualified: false,
+        performanceEligible: false,
       })
     )
   }

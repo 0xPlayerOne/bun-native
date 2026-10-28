@@ -29,6 +29,12 @@ import {
   acceptParentClose,
   acceptParentCloseReport,
 } from './parent-close-acceptance.ts'
+import {
+  COMMANDS_PROFILE,
+  commandsSourceSelectors,
+  acceptWindowCommands,
+  acceptCommandsReport,
+} from './commands-acceptance.ts'
 
 const profiles = {
   windows: {
@@ -90,6 +96,18 @@ const profiles = {
       'One API parent-window close with four live native panes; OS quit, physical input and assistive technology remain separate qualification.',
     acceptObservation: acceptParentClose,
     acceptReport: acceptParentCloseReport,
+import {
+  commands: {
+    profile: COMMANDS_PROFILE,
+    sourceSelectors: commandsSourceSelectors,
+    fixture: 'examples/window-commands',
+    browserEntry: null,
+    directory: 'window-commands',
+    title: 'Window Commands',
+    workloadLimitation:
+      'Actual native popup and window-local shortcut callbacks driven by contributor-only synthetic native input; physical input, system menus and global shortcuts remain unqualified.',
+    acceptObservation: acceptWindowCommands,
+    acceptReport: acceptCommandsReport,
   },
 } as const
 
@@ -99,7 +117,8 @@ export function desktopProfile(name = 'windows') {
       name === 'composition' ||
       name === 'services' ||
       name === 'downloads' ||
-      name === 'parent-close',
+      name === 'parent-close' ||
+      name === 'commands',
     'Unknown desktop qualification case'
   )
   return profiles[name]

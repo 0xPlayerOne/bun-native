@@ -172,6 +172,29 @@ generation signal when persistence across reloads is unnecessary.
 
 ## Contributor validation
 
+Use a clean source commit and a matching, explicitly prepared native host built
+with `packaging,rpc-qualification`:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=commands
+bun run qualify:desktop --verify /absolute/path/to/report.json
+```
+
+The independent `native-window-commands-v1` report lives in
+`.bunly/m7/window-commands/run-*/report.json`. It retains every selected source
+fingerprint, input and prepared binary inventory, actual CEF/Chromium and Bun
+probes, prepared file identity and all native teardown phases. The fixed
+25-second workload includes application cleanup; the process observer keeps its
+45-second launch budget and existing outer cleanup guard. Failed native attempts
+remain failures. The application receipt must follow the private shutdown
+response, and physical input, hardware DPI, accessibility and performance flags
+must remain false.
+
+The full hosted suite adds this case after file downloads on each supported
+target, before window-mode/terminal/managed/credential stages. Linux uses its
+owned Xvfb/Openbox instance and Windows the existing standard-user launcher. This
+does not change the M4-only suite or require any clipboard access.
+
 `examples/window-commands/fixture.ts` is an explicit contributor entry for an
 outer qualifier using a disposable runner and a native host compiled with
 `rpc-qualification`. It checks missing-grant denial, forged scope, oversized

@@ -223,6 +223,9 @@ def commands(suite, bun, app, native_source=None):
             "--desktop-case=parent-close" if sys.platform == "linux" else "--case=parent-close"
         )
         result.append(("view-parent-close", parent_close))
+        menus = [*desktop]
+        menus.append("--desktop-case=commands" if sys.platform == "linux" else "--case=commands")
+        result.append(("window-commands", menus))
         # A real window manager is a qualification prerequisite on Linux, not
         # an application dependency or permission to reuse a contributor desktop.
         window = (
@@ -334,6 +337,8 @@ def report_directory(name):
         return ROOT / ".bunly/m7/file-downloads"
     if name == "view-parent-close":
         return ROOT / ".bunly/m7/view-parent-close"
+    if name == "window-commands":
+        return ROOT / ".bunly/m7/window-commands"
     if name == "terminals":
         return ROOT / ".bunly/m5/graphical-terminals"
     if name == "window-modes":
@@ -505,6 +510,7 @@ def collect():
         ROOT / ".bunly/m7/desktop-services",
         ROOT / ".bunly/m7/file-downloads",
         ROOT / ".bunly/m7/view-parent-close",
+        ROOT / ".bunly/m7/window-commands",
     ):
         for path in directory.glob("run-*/report.json"):
             if not path.is_symlink() and path.stat().st_size <= 128 * 1024**2:

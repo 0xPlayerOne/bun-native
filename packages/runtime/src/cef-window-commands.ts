@@ -344,13 +344,15 @@ export class CefWindowCommands {
     if (!this.transport.failure)
       for (const record of this.#registrations.values()) this.#forget(record)
   }
+  get listenerCount(): number {
+    let count = 0
+    for (const record of this.#registrations.values()) count += record.listeners.size
+    return count
+  }
   diagnostics() {
     return Object.freeze({
       registrations: this.#registrations.size,
-      listeners: [...this.#registrations.values()].reduce(
-        (n, record) => n + record.listeners.size,
-        0
-      ),
+      listeners: this.listenerCount,
       popups: [...this.#registrations.values()].filter((record) => record.popup).length,
     })
   }

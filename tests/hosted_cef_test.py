@@ -167,6 +167,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "desktop-services",
                 "file-downloads",
                 "view-parent-close",
+                "window-commands",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -264,6 +265,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "desktop-services",
                             "file-downloads",
                             "view-parent-close",
+                            "window-commands",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -659,6 +661,35 @@ class ManagedDevelopmentStageTests(unittest.TestCase):
 
 
 class DesktopStageTests(unittest.TestCase):
+    def test_window_commands_requires_native_callbacks_and_owned_shutdown_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("window-commands"), 1)
+                self.assertEqual(names.index("window-commands"), names.index("file-downloads") + 1)
+                self.assertEqual(
+                    dict(selected)["window-commands"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=commands" if system == "linux" else "--case=commands",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["window-commands"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "window-commands")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "window-commands", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("window-commands"), hosted.ROOT / ".bunly/m7/window-commands"
+        )
+
     def test_downloads_requires_exact_source_and_settlement_before_providers(self):
         source = "a" * 40
         app = Path("/app")

@@ -407,9 +407,11 @@ test('listener signals and capacity have independent bounded ownership', async (
     const stops = Array.from({ length: 16 }, () =>
       f.backend.onWindowCommandsEvent(handle, () => {})
     )
+    assert.equal(f.backend.diagnostics().listeners, 16)
     assert.throws(() => f.backend.onWindowCommandsEvent(handle, () => {}), code('RESOURCE_IN_USE'))
     for (const stop of stops) stop()
     assert.equal(f.backend.windowCommandsDiagnostics().listeners, 0)
+    assert.equal(f.backend.diagnostics().listeners, 0)
     await f.backend.disposeWindowCommands(handle)
   } finally {
     await f.cleanup()

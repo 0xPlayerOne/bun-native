@@ -28,6 +28,7 @@
   "bunly.native.view-parent-close",
   "bunly.native.desktop-services",
   "bunly.native.file-downloads",
+  "bunly.native.window-commands",
   "bunly.native.last-window",
   "bunly.native.cycle",
   "bunly.native.focus",

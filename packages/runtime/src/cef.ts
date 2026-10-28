@@ -1704,7 +1704,8 @@ export class CefBackend
         this.#windowSubscriptionCount +
         application.listeners +
         application.readyWaiters +
-        this.#downloads.listenerCount,
+        this.#downloads.listenerCount +
+        this.#commands.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
