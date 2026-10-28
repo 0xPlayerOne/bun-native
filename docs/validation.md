@@ -75,8 +75,8 @@ and Clippy. Configure the trusted CEF distribution as described in
 
 ```sh
 bun run check:ci:native
-cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
-  --all-targets --features packaging,cef/dox --target-dir .bunly/cef-typecheck
+bun scripts/cargo.ts +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml \
+  --all-targets --features packaging,cef/dox
 bun run qualify:host
 bun run qualify:lifecycle
 bun run artifact:probe
@@ -84,10 +84,59 @@ BUNLY_KERNEL_COUNTERS=1 bun scripts/qualify-kernel.ts
 ```
 
 The combined native command formats, lints with warnings denied, tests and builds
-both real workspaces. The CEF documentation-feature check uses a separate target
-directory and never substitutes for an actual CEF build or launch. The native
+both real workspaces. The CEF documentation-feature check uses a distinct Cargo
+feature fingerprint and never substitutes for an actual CEF build or launch. The native
 commit hook selects the correct compiler for each workspace, including changes
 to shared Cargo configuration. Application consumers still use prebuilt binaries.
+
+Local Cargo commands run through `bun scripts/cargo.ts`, which puts Rust build
+outputs in one per-user Bunly cache shared by all checkouts and Git worktrees.
+Set `CARGO_TARGET_DIR` to override it, or `BUNLY_SHARED_CACHE_DIR` to choose the
+parent cache directory. Commands for `native/cef-host` also default `CEF_PATH`
+to `<shared-cache>/cef/<locked-version>`; put the matching contributor CEF
+distribution there or set `CEF_PATH` to override it. Keep run evidence and
+qualification output under each checkout's `.bunly` directory so concurrent
+worktrees cannot overwrite one another. Without an explicit cache or target
+override, CI keeps Cargo's ordinary workspace-local target directory and does not
+inject a per-user CEF path.
+
+`bun scripts/cargo.ts --print-target-dir` queries Cargo metadata for the M1
+workspace's active target directory. Add
+`--manifest-path native/cef-host/Cargo.toml` to query the CEF workspace. The M1
+qualifiers, packaged probe and hosted terminal fixture use this same lookup;
+they do not compile missing artifacts or fall back to an older checkout binary.
+The hosted CEF lookup defaults to the pinned Rust 1.91.0 toolchain and preserves
+an explicit `RUSTUP_TOOLCHAIN` override. A native-only runner does not need to
+install M1's older toolchain merely to locate the CEF artifacts.
+On Windows, the disposable build account resolves this directory before starting
+the standard-user acceptance worker. It passes the exact result explicitly to
+`hosted_cef.py run --native-target-directory`; the worker needs no compiler or
+access to the build account's Cargo home. Unicode and meaningful trailing spaces
+survive the encoded command-line handoff. An invalid handoff fails without
+probing a default or stale target directory.
+
+The CEF bundler selects regular nonempty native siblings beside its own running
+executable, including when a custom Cargo target directory is used.
+
+The M1 probes require ordinary host release builds without `--target`,
+`CARGO_BUILD_TARGET`, or `build.target` in Cargo configuration. These target
+selections add a target-specific output directory even when they name the host
+triple. An explicitly defined `CARGO_BUILD_TARGET` is rejected before artifact
+lookup; the probes do not query unstable Cargo configuration or infer prior
+build arguments. `CARGO_TARGET_DIR` and `BUNLY_SHARED_CACHE_DIR` remain supported
+directory overrides. This M1 limitation does not apply to the CEF bundler's
+selection of siblings beside its running executable.
+
+### Concurrent builds and qualification
+
+A shared Cargo target is a mutable build cache. Cargo fingerprints distinguish
+compilation units, but later builds can replace the stable `release` executable
+names. A path beside the bundler does not establish source provenance, feature
+identity or a consistent snapshot across concurrent builds. Use an exclusive
+`CARGO_TARGET_DIR` for each native source/feature qualification and keep that
+override for its build, assembly and qualifier commands. Build and assemble
+sequentially before admitting another writer to the same target. Existing source,
+artifact identity and input-unchanged qualification checks still apply.
 
 For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 
@@ -104,9 +153,9 @@ and `cmake`), then prepare without launching a GUI:
 
 ```sh
 bun scripts/build-cef-fixture.ts
-cargo +1.91.0 test --locked --offline --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
-cargo +1.91.0 build --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification
-native/cef-host/target/release/bunly-bundle /absolute/private/new-rpc-bundle
+bun scripts/cargo.ts +1.91.0 test --locked --offline --manifest-path native/cef-host/Cargo.toml --lib --features rpc-qualification
+bun scripts/cargo.ts +1.91.0 build --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification
+bun scripts/cargo.ts +1.91.0 run --locked --offline --manifest-path native/cef-host/Cargo.toml --release --features packaging,rpc-qualification --bin bunly-bundle -- /absolute/private/new-rpc-bundle
 ```
 
 On macOS, copy resources into **only the newly assembled private fixture**, then
