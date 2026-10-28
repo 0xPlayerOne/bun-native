@@ -242,6 +242,44 @@
           }
         }
       ]
+    },
+    {
+      "workflowRun": 40608284146,
+      "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40608284146",
+      "sourceCommit": "f82b12cb316617a4fec5578d14ec0a69cd0d042c",
+      "pullRequestHead": "3943f5f43db10969abf5f3e70ddf4761a04bbcf8",
+      "sourceTree": "3635483bc040705d30b1b91fff9df21816c2b007",
+      "passed": false,
+      "performanceEligible": false,
+      "releaseApproved": false,
+      "provenance": "These inputs are the hosted workflow’s already nonce-redacted exports. Raw private report bytes and their hashes were not included in the downloaded artifacts and are not reconstructed. Embedded original observation/result hashes are preserved; an export hash does not attest those unavailable raw bytes. The source test merge and pull-request head were independently verified to have the same Git tree. The single hosted workspace stack-frame prefix is additionally redacted; all other input bytes and embedded original observation/result hashes are preserved.",
+      "runs": [
+        {
+          "id": "linux-graphical-terminals",
+          "profile": "functional-v2",
+          "passed": false,
+          "failureClass": "missing-overload-pending-marker",
+          "jobId": 122553188728,
+          "artifactId": 12782013789,
+          "artifactZipSha256": "a704fa6409fe1b7b43780596fc3dcd8bd05a7b86d6c6b59470b33862c77c9d88",
+          "artifactZipBytes": 3670797,
+          "inputReport": {
+            "kind": "nonce-redacted-hosted-export",
+            "member": "terminals.json",
+            "bytes": 4648344,
+            "sha256": "40fb19caa9355b803f78731127cba370ed71537a7276681b6dcdc8aea145175b"
+          },
+          "archive": "run-40608284146-linux-terminals.json.gz",
+          "archiveBytes": 67329,
+          "archiveSha256": "7cfcb7d403a4ddbf68db08becdb130c8b9931093cbca9e3761aedb6c7086137b",
+          "expandedBytes": 4648326,
+          "expandedSha256": "3468c91d329ff2309591bbfbb0b7bc92b97458b0962fe430534348ef2aa6e88d",
+          "redactions": [
+            "fixture-nonces",
+            "hosted-workspace-paths"
+          ]
+        }
+      ]
     }
   ]
 }

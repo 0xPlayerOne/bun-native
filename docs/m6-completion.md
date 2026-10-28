@@ -295,8 +295,78 @@ summary inputs as UTF-8. Invalid bytes fail without a lossy replacement rewrite.
 Real-filesystem regressions reproduce both the earlier Unicode mojibake and this
 CP1252 failure under a simulated locale default; malformed UTF-8 reports and
 exports remain rejected and unchanged. The focused collector suite passed 20
-tests and 19 subtests. A later Windows native run must still qualify the restart
-correction and complete the gated stages.
+tests and 19 subtests. The subsequent hosted Windows execution below qualifies
+the corrected restart and completes the gated stages.
+
+### Hosted validation of document readiness and UTF-8 collection
+
+[Native CEF workflow 40608284146](https://github.com/0xPlayerOne/bunly/actions/runs/40608284146)
+ran head `3943f5f43db10969abf5f3e70ddf4761a04bbcf8` as clean test merge
+`f82b12cb316617a4fec5578d14ec0a69cd0d042c`, both with tree
+`3635483bc040705d30b1b91fff9df21816c2b007`. The complete managed soak, warm
+cache verification and distinct controlled restart passed on all three platforms.
+Independent acceptance replay matched all 293 managed source fingerprints on
+each platform. macOS and Windows passed all eleven native stages. Linux remained
+failed because its separate graphical-terminal stage lacked the overload-pending
+marker; credentials were correctly gated. The aggregate workflow remains failed.
+
+Each managed soak completed 500 replacements, 508 renderer checks and all 1,530
+accepted requests, retaining one original PTY with zero pending requests at
+shutdown. Each restart applied backend revision 500, shared revision 1 and the
+edited configuration, settled both requests, obtained fresh native and renderer
+identities, and lacked the previous ephemeral form/session/login state.
+
+| Platform | PTY bytes / records / autonomous records | Matching checksum | Warm verification                                           |
+| -------- | ---------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| Linux    | 47,760 / 1,469 / 966                     | `e6e1421d`        | 3175.742280 ms; 1,691,918,428 bytes                         |
+| macOS    | 52,512 / 1,613 / 1,110                   | `0de54e80`        | 1852.605791 ms; 427,981,134 bytes                           |
+| Windows  | 44,981 / 1,422 / 919                     | `853fbeb3`        | Verified cache hit; zero warm native copies or compilations |
+
+Every platform recorded one total runtime assembly. Both managed macOS launches
+positively identified a cleanup helper and exact clone removal, taking
+316.810833 ms and 97.322000 ms. All six macOS fault trials and four terminal-load
+modes also retained that positive evidence. The Windows collector completed
+with 26 valid UTF-8 JSON files; its canonical and run-specific managed exports
+are byte-identical. The earlier failed restart and CP1252 capture remain failed
+historical records.
+
+Artifact and exported managed-report identities:
+
+- Linux artifact `12782013789`: ZIP 3,670,797 bytes, SHA-256
+  `a704fa6409fe1b7b43780596fc3dcd8bd05a7b86d6c6b59470b33862c77c9d88`.
+  Managed export 6,532,218 bytes, SHA-256
+  `b49c409a1bfc899557263397049af16d2b1cf7822ef3141e8c64f4a5286cf246`.
+- macOS artifact `12781054804`: ZIP 2,485,172 bytes, SHA-256
+  `9a8de04e78e143a7ae15ae0f5f4fcd823abdbdafac4b393192087ef74ee098a5`.
+  Managed export 2,051,254 bytes, SHA-256
+  `980da6c7f520a5a574092515da8d8be8d16a47b3756172b4827998ed2d6916c8`.
+- Windows artifact `12781879894`: ZIP 3,352,067 bytes, SHA-256
+  `6097965a510b94ffa58b4cad941444ae195b7ed2c1a7f6f48b00cc2a842891b2`.
+  Managed export 5,047,501 bytes, SHA-256
+  `854e0c7f6ff8ce70729c6a79c16586867fd2075aab361361030bdd8e6944f75d`.
+
+The [retained Linux graphical-terminal export](../evidence/m6-managed-development/hosted-failures/run-40608284146-linux-terminals.json.gz)
+has 80 independently matched historical source fingerprints. Its visible trial
+exited 1 after 16,346.709957 ms with
+`Missing terminal fixture marker: BUNLY_TERMINAL_OVERLOAD_PENDING`. Native
+process-stop and CEF shutdown completed in 8 ms and 24 ms, with no observer
+timeout, cancellation, overflow, orphan or survivor. Its 4,648,344-byte hosted
+export has SHA-256
+`40fb19caa9355b803f78731127cba370ed71537a7276681b6dcdc8aea145175b`.
+The failure index records the distinct archive identity and one workspace-path
+redaction.
+
+The graphical renderer had bypassed its already tested negative-control ordering
+helper. The [fixture correction](cef-terminal-qualification.md#retained-integration-findings)
+wires that helper into the actual renderer and fingerprints it. A regression
+executes the bundled renderer with real xterm screen processing and TerminalService:
+a coalesced burst reproduces source overload before consumer entry in the old
+sequence. The corrected sequence establishes held consumption first, while still
+requiring the original overload outcome and complete release. The captured hosted
+report does not contain callback grouping, so the regression does not reconstruct
+its exact schedule. All subsequent current-head gates remain required before
+merge; these finite passes establish neither release qualification nor a
+comparative performance advantage.
 
 ## Native workload results
 
