@@ -79,6 +79,48 @@
     }
   ],
   "retention": "Full diagnostic exports are retained locally and in the original workflow artifacts; this public record contains no process, path, clipboard, URL-payload or environment details.",
+  "followupRuns": [
+    {
+      "workflowRun": 40634777242,
+      "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40634777242",
+      "prHead": "36eed3c68d45562892c4f3fc11b3c27a93945cd5",
+      "testedMerge": "6767e588aa1f37837f7e8ba43f3287128d15c1d8",
+      "overallPassed": false,
+      "failure": "All 14 native stages passed on each target. The Linux and Windows final aggregate still applied schema 7's historical backend-exit expectation to the new failed-shutdown receipt.",
+      "fixCommit": "633ee760e4f1e134e6456cf91e8632112e5a00df",
+      "results": [
+        {
+          "target": "linux-x64",
+          "nativeStagesPassed": 14,
+          "nativeStagesTotal": 14,
+          "qualificationPassed": false,
+          "workflowJob": 122639102267,
+          "artifactId": 12793581972,
+          "artifactZipSha256": "907f786f5e5420dcaa8add5ceeec67399b5e1a3823921c52ae8812818db457e2",
+          "qualificationReportSha256": "80de0a3de07a312e073e22f8aa22d0f17f2d96cc44020291de734c281623b1dc",
+          "faultReportSha256": "30978dc3263ba1970aeac52b935463ad0766582b9340aa9c40b1408cf8e06aa3"
+        },
+        {
+          "target": "darwin-arm64",
+          "nativeStagesPassed": 14,
+          "nativeStagesTotal": 14,
+          "qualificationPassed": true,
+          "workflowJob": 122639102547,
+          "artifactId": 12793697378,
+          "artifactZipSha256": "8639d83ec7b8b4fd90e7148eba6252d2e0aed7c8a5c4e3b412bdecb544a56f81"
+        },
+        {
+          "target": "win32-x64",
+          "nativeStagesPassed": 14,
+          "nativeStagesTotal": 14,
+          "qualificationPassed": false,
+          "workflowJob": 122639102504,
+          "artifactId": 12793628530,
+          "artifactZipSha256": "4332ab29da0953a9a1c39465968519d43405581ff6278efb73aecb5c2d48ff89"
+        }
+      ]
+    }
+  ],
   "limits": [
     "Services stages passed independently; complete native suites failed fault qualification and did not run final credentials.",
     "No hardware input, IME, accessibility, DPI, performance or release qualification."
