@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import {
-  BunlyError,
   requireCapability,
   type Bounds,
   type WindowEvent,
@@ -209,7 +208,8 @@ export default async function desktopControls(backend: CefBackend): Promise<void
     assert.ok(stateEvents > 0 && boundsEvents > 0, 'Native state and bounds events are required')
     await assert.rejects(
       backend.setWindowBounds(window, { ...moved, x: 0.5 }, options),
-      (error: unknown) => error instanceof BunlyError && error.code === 'INVALID_ARGUMENT'
+      // The app and bootstrap are separately bundled; error constructors differ.
+      { name: 'BunlyError', code: 'INVALID_ARGUMENT' }
     )
     await assert.rejects(backend.windowBounds({ ...window } as WindowHandle, options))
     invalidRejected = true
