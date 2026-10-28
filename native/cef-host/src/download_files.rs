@@ -1,6 +1,8 @@
 //! Scoped staging and final placement. CEF accepts a pathname, not an OS handle;
 //! never pass a user destination to it. Commit preserves the downloaded inode
 //! (including platform security metadata) and cleanup is limited to owned files.
+//! The private stage keeps the validated final basename so Chromium's attachment
+//! checks see the same filename and extension that will be published.
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -62,7 +64,7 @@ impl Staging {
         let stage_name = format!(".bunly-download-{}-{serial}", std::process::id());
         if root
             .join(&stage_name)
-            .join("payload")
+            .join(name)
             .to_str()
             .is_none_or(|path| path.len() > 4096)
         {
@@ -85,7 +87,7 @@ impl Staging {
         })
     }
     pub fn path(&self) -> PathBuf {
-        self.root_path.join(&self.stage_name).join("payload")
+        self.root_path.join(&self.stage_name).join(&self.name)
     }
     pub fn handle_count(&self) -> usize {
         self.root.handle_count() + self.stage.handle_count() + usize::from(self.payload.is_some())
@@ -94,13 +96,13 @@ impl Staging {
         self.root.verify_path(&self.root_path)?;
         self.root.verify_child(&self.stage_name, &self.stage)?;
         if let Some(file) = &self.payload {
-            self.stage.verify_file("payload", file)?;
+            self.stage.verify_file(&self.name, file)?;
         }
         Ok(())
     }
     pub fn begin(&mut self) -> Result<(), String> {
         self.verify()?;
-        if self.started || self.stage.open_file("payload")?.is_some() {
+        if self.started || self.stage.open_file(&self.name)?.is_some() {
             return Err("Download staging target is not empty".into());
         }
         // Chromium creates a temporary file, then RenameAndUniquify moves it
@@ -110,7 +112,7 @@ impl Staging {
     }
     fn capture(&mut self) -> Result<(), String> {
         if self.payload.is_none() && self.started {
-            self.payload = self.stage.open_file("payload")?;
+            self.payload = self.stage.open_file(&self.name)?;
         }
         Ok(())
     }
@@ -122,10 +124,10 @@ impl Staging {
         if metadata.len() != received {
             return Err("Downloaded file size does not match native transfer completion".into());
         }
-        self.stage.sync_file("payload", file)?;
+        self.stage.sync_file(&self.name, file)?;
         self.root.validate_destination(&self.name, self.replace)?;
         self.stage
-            .place("payload", file, &self.root, &self.name, self.replace)?;
+            .place(&self.name, file, &self.root, &self.name, self.replace)?;
         self.placed = true;
         Ok(metadata.len())
     }
@@ -135,7 +137,7 @@ impl Staging {
         if !self.placed && !self.removed {
             self.capture()?;
             if let Some(file) = &self.payload {
-                self.stage.remove_file_if_owned("payload", file)?;
+                self.stage.remove_file_if_owned(&self.name, file)?;
             }
             self.removed = true;
         }
@@ -226,6 +228,51 @@ mod tests {
         }
     }
     #[test]
+    fn chromium_receives_the_final_basename_inside_an_empty_private_stage() {
+        // This shared suite exercises the Unix and Windows file helpers on
+        // their actual targets, including case, compound and absent extensions.
+        for name in ["Setup.EXE", "archive.tar.gz", "report-1.txt", "README"] {
+            let root = Root::new();
+            let destination = root.0.join(name);
+            let mut stage = Staging::prepare(&root.0, name, false).unwrap();
+            let staged_path = stage.path();
+            let stage_directory = staged_path.parent().unwrap();
+            assert_eq!(staged_path.file_name(), Path::new(name).file_name());
+            assert_ne!(staged_path, destination);
+            assert_eq!(stage_directory.parent(), Some(root.0.as_path()));
+            assert_eq!(fs::read_dir(stage_directory).unwrap().count(), 0);
+            assert!(!staged_path.exists());
+            assert!(!destination.exists());
+            // create_new also proves begin() did not pre-create a placeholder
+            // that would make Chromium uniquify its selected filename.
+            write(&mut stage, b"native bytes");
+            assert!(!destination.exists());
+            assert_eq!(stage.commit(12).unwrap(), 12);
+            stage.cleanup().unwrap();
+            assert!(!stage_directory.exists());
+            assert_eq!(fs::read(destination).unwrap(), b"native bytes");
+            assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+        }
+    }
+    #[test]
+    fn cancellation_before_chromium_creation_preserves_the_existing_destination() {
+        for started in [false, true] {
+            let root = Root::new();
+            let destination = root.0.join("Setup.EXE");
+            fs::write(&destination, b"original").unwrap();
+            let mut stage = Staging::prepare(&root.0, "Setup.EXE", true).unwrap();
+            let staged_path = stage.path();
+            if started {
+                stage.begin().unwrap();
+            }
+            assert!(!staged_path.exists());
+            stage.cleanup().unwrap();
+            assert!(!staged_path.parent().unwrap().exists());
+            assert_eq!(fs::read(destination).unwrap(), b"original");
+            assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+        }
+    }
+    #[test]
     fn completion_places_exact_bytes_and_cleans_only_its_stage() {
         let root = Root::new();
         fs::write(root.0.join("unrelated"), b"keep").unwrap();
@@ -281,7 +328,7 @@ mod tests {
         assert!(stage
             .stage
             .place(
-                "payload",
+                &stage.name,
                 stage.payload.as_ref().unwrap(),
                 &stage.root,
                 "result.bin",
@@ -311,13 +358,17 @@ mod tests {
     #[test]
     fn cleanup_never_recursively_deletes_an_unowned_staging_entry() {
         let root = Root::new();
-        let mut stage = Staging::prepare(&root.0, "result.bin", false).unwrap();
+        fs::write(root.0.join("Setup.EXE"), b"original").unwrap();
+        let mut stage = Staging::prepare(&root.0, "Setup.EXE", true).unwrap();
         write(&mut stage, b"partial");
-        let unrelated = stage.path().with_file_name("unexpected");
+        // A file at the old fixed staging basename is still unowned. Cleanup
+        // may remove only the verified selected basename, even during overwrite.
+        let unrelated = stage.path().with_file_name("payload");
         fs::write(&unrelated, b"keep").unwrap();
         assert!(stage.cleanup().is_err());
         assert_eq!(fs::read(unrelated).unwrap(), b"keep");
-        assert!(!root.0.join("result.bin").exists());
+        assert!(!stage.path().exists());
+        assert_eq!(fs::read(root.0.join("Setup.EXE")).unwrap(), b"original");
     }
     #[cfg(unix)]
     #[test]
@@ -363,7 +414,8 @@ mod tests {
     fn publication_preserves_platform_extended_security_metadata() {
         use std::os::fd::AsRawFd;
         let root = Root::new();
-        let mut stage = Staging::prepare(&root.0, "result.bin", false).unwrap();
+        let mut stage = Staging::prepare(&root.0, "Setup.EXE", false).unwrap();
+        assert_eq!(stage.path().file_name(), Path::new("Setup.EXE").file_name());
         write(&mut stage, b"metadata");
         stage.capture().unwrap();
         let file = stage.payload.as_ref().unwrap();
@@ -396,7 +448,7 @@ mod tests {
         assert_eq!(set, 0, "{}", std::io::Error::last_os_error());
         stage.commit(8).unwrap();
         stage.cleanup().unwrap();
-        let file = File::open(root.0.join("result.bin")).unwrap();
+        let file = File::open(root.0.join("Setup.EXE")).unwrap();
         let mut actual = [0u8; 128];
         #[cfg(target_os = "linux")]
         let size = unsafe {
@@ -425,7 +477,8 @@ mod tests {
     #[test]
     fn publication_preserves_windows_zone_identifier_stream() {
         let root = Root::new();
-        let mut stage = Staging::prepare(&root.0, "result.bin", false).unwrap();
+        let mut stage = Staging::prepare(&root.0, "Setup.EXE", false).unwrap();
+        assert_eq!(stage.path().file_name(), Path::new("Setup.EXE").file_name());
         write(&mut stage, b"metadata");
         let zone = b"[ZoneTransfer]\r\nZoneId=3\r\n";
         fs::write(format!("{}:Zone.Identifier", stage.path().display()), zone).unwrap();
@@ -434,7 +487,7 @@ mod tests {
         assert_eq!(
             fs::read(format!(
                 "{}:Zone.Identifier",
-                root.0.join("result.bin").display()
+                root.0.join("Setup.EXE").display()
             ))
             .unwrap(),
             zone

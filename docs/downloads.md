@@ -209,6 +209,17 @@ temporary file and later moves it to that target; pre-creating a placeholder wou
 cause Chromium's rename-and-uniquify behavior to select a different name. After a
 terminal callback, Bunly opens and verifies the actual regular, single-link file,
 checks its size, flushes it, and publishes it atomically within the pinned root.
+
+The private target keeps the validated destination basename and its exact
+extension. Pinned Chromium
+[annotates the file after naming it](https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_file_impl.cc)
+so antivirus services see the intended filename. Its Windows implementation
+[passes that path to Attachment Services](https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/quarantine_win.cc),
+and [Windows Attachment Manager policies](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager)
+can classify risk by extension. Keeping the final basename inside the private
+directory preserves this policy input through annotation and publication.
+Attachment checks and transfer deadlines remain unchanged.
+
 Chromium applies umask-derived POSIX permissions during its move; a resulting
 0644 file remains contained by the 0700 stage. Before publication, Bunly tightens
 the verified open inode to 0600 with `fchmod`, revalidates the inode/path and mode,

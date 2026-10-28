@@ -38,6 +38,19 @@ download or Windows Attachment Services behavior.
 - https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_item_impl.cc
 - https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/public/mojom/quarantine.mojom
 
+## Download staging filename
+
+The private staging target preserves the validated final basename so Chromium
+and Windows Attachment Services receive the intended filename during annotation.
+This Bunly-authored change follows the pinned rename/annotation flow and the
+documented Windows filename and extension policy inputs; no upstream code was
+copied. It does not establish a cause for any historical download timeout.
+
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_file_impl.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/quarantine_win.cc
+- https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
+- https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium
