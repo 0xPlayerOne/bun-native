@@ -148,6 +148,12 @@ paths. An orderly control-channel closure does **not** prove that the OS process
 has exited: native qualification separately requires actual process exit and
 the existing shutdown diagnostics.
 
+The contributor renderer-crash fixture now requires that failed-shutdown
+rejection, the exact injected renderer exit status, and a non-forced backend
+exit of 1. Its acknowledgment cannot turn the deliberately failed host into an
+orderly close. Historical fault evidence retains its original validation rules;
+new runs explicitly select the stronger failed-shutdown contract.
+
 There are at most 64 lifecycle subscriptions and 64 pending readiness waiters per
 backend. Abort removes the associated listener/waiter, disposers are idempotent,
 listener exceptions are isolated and counted, and final closure releases all
