@@ -6,6 +6,10 @@ export interface DesktopPageReceipt {
   readonly height: number
   readonly devicePixelRatio: number
 }
+export interface DesktopVisibility {
+  readonly sequence: number
+  readonly visibility: 'visible' | 'hidden'
+}
 
 export const desktopControlsSchema = defineRpc({
   ready: procedure(
@@ -38,6 +42,29 @@ export const desktopControlsSchema = defineRpc({
     },
     (input: unknown): null => {
       if (input !== null) throw new Error('Invalid desktop page acknowledgment')
+      return null
+    }
+  ),
+  visibility: procedure(
+    (input: unknown): DesktopVisibility => {
+      if (!input || typeof input !== 'object' || Array.isArray(input))
+        throw new Error('Invalid desktop visibility')
+      const row = input as Record<string, unknown>
+      if (
+        Object.keys(row).sort().join(',') !== 'sequence,visibility' ||
+        !Number.isSafeInteger(row['sequence']) ||
+        Number(row['sequence']) < 0 ||
+        Number(row['sequence']) >= 5 ||
+        !['hidden', 'visible'].includes(String(row['visibility']))
+      )
+        throw new Error('Invalid desktop visibility')
+      return {
+        sequence: Number(row['sequence']),
+        visibility: row['visibility'] as 'visible' | 'hidden',
+      }
+    },
+    (input: unknown): null => {
+      if (input !== null) throw new Error('Invalid desktop visibility acknowledgment')
       return null
     }
   ),

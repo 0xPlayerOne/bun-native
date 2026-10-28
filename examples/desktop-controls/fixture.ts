@@ -8,7 +8,11 @@ import {
   type ViewHandle,
 } from '../../packages/contracts/src/index.ts'
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
-import { desktopControlsSchema, type DesktopPageReceipt } from './contract.ts'
+import {
+  desktopControlsSchema,
+  type DesktopPageReceipt,
+  type DesktopVisibility,
+} from './contract.ts'
 
 /** A finite real-window sequence. Native notifications wake readback; no polling. */
 export default async function desktopControls(backend: CefBackend): Promise<void> {
@@ -22,6 +26,7 @@ export default async function desktopControls(backend: CefBackend): Promise<void
   let wake: (() => void) | undefined
   let view: ViewHandle | undefined
   let page: DesktopPageReceipt | undefined
+  const pageVisibility: DesktopVisibility[] = []
   let closedEvents = 0
   let eventCount = 0
   let stateEvents = 0
@@ -71,6 +76,17 @@ export default async function desktopControls(backend: CefBackend): Promise<void
           assert.equal(context.identity.viewId, view?.id)
           assert.equal(page, undefined, 'Duplicate renderer receipt')
           page = receipt
+          changed()
+          return null
+        },
+      },
+      visibility: {
+        capability: 'desktop-controls-fixture',
+        handle: (receipt, context) => {
+          assert.equal(context.identity.viewId, view?.id)
+          assert.equal(receipt.sequence, pageVisibility.length)
+          assert.ok(pageVisibility.length < 5)
+          pageVisibility.push(receipt)
           changed()
           return null
         },
@@ -129,7 +145,8 @@ export default async function desktopControls(backend: CefBackend): Promise<void
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
-    while (!page) await wait(revision)
+    while (!page || !pageVisibility[0]) await wait(revision)
+    assert.equal(pageVisibility[0].visibility, 'visible')
 
     const capture = async (
       name: string,
@@ -167,15 +184,23 @@ export default async function desktopControls(backend: CefBackend): Promise<void
     await capture(
       'hidden',
       () => backend.showWindow(window, false),
-      (state) => !state.visible
+      (state) => !state.visible && pageVisibility[1]?.visibility === 'hidden'
     )
-    await capture('shown', () => backend.showWindow(window, true), ordinary)
+    await capture(
+      'shown',
+      () => backend.showWindow(window, true),
+      (state) => ordinary(state) && pageVisibility[2]?.visibility === 'visible'
+    )
     await capture(
       'minimized',
       () => backend.minimizeWindow(window, options),
-      (state) => state.minimized
+      (state) => state.minimized && pageVisibility[3]?.visibility === 'hidden'
     )
-    await capture('restored', () => backend.restoreWindow(window, options), ordinary)
+    await capture(
+      'restored',
+      () => backend.restoreWindow(window, options),
+      (state) => ordinary(state) && pageVisibility[4]?.visibility === 'visible'
+    )
     await capture(
       'maximized',
       () => backend.maximizeWindow(window, options),
@@ -259,6 +284,7 @@ export default async function desktopControls(backend: CefBackend): Promise<void
         passed: failure === null,
         steps,
         page: page ?? null,
+        pageVisibility,
         events: {
           count: eventCount,
           state: stateEvents,

@@ -207,6 +207,14 @@ export function acceptDesktopControlReceipt(input: unknown) {
       page['devicePixelRatio'] > 0 &&
       page['devicePixelRatio'] <= 16
   )
+  assert.deepEqual(
+    receipt['pageVisibility'],
+    ['visible', 'hidden', 'visible', 'hidden', 'visible'].map((visibility, sequence) => ({
+      sequence,
+      visibility,
+    })),
+    'Independent hide/show/minimize/restore page visibility is required'
+  )
   const events = record(receipt['events'])
   assert.ok(
     Number.isSafeInteger(events['count']) &&

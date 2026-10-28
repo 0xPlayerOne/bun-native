@@ -28,6 +28,9 @@ completed native transition callbacks. Activation records the real result;
 operating-system focus policy can refuse a request.
 Both state-change and bounds-change notifications must be delivered; successful
 readback alone cannot satisfy that callback contract.
+The hide/show/minimize/restore sequence also waits for five ordered, authenticated
+renderer visibility receipts. Native minimize readback is not a completion callback:
+page visibility supplies an independent transition observation and wake-up signal.
 
 An authenticated renderer receipt establishes an actual browser document and
 records its viewport and device-pixel ratio. That observation is not physical
