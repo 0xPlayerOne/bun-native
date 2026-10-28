@@ -10,6 +10,8 @@ use std::{
 };
 #[path = "download_deadline.rs"]
 mod deadline;
+#[path = "download_diagnostics.rs"]
+mod diagnostics;
 const MAX_OPERATIONS: usize = 8;
 const MAX_BYTES: u64 = 1024 * 1024 * 1024;
 #[derive(Deserialize, Clone)]
@@ -74,6 +76,7 @@ struct Record {
     settlement: Option<Instant>,
     terminal: Option<Terminal>,
     last_progress: Option<Value>,
+    diagnostics: diagnostics::Trace,
 }
 #[derive(Default)]
 struct Counts {
@@ -243,6 +246,7 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
                 settlement: None,
                 terminal: None,
                 last_progress: None,
+                diagnostics: diagnostics::Trace::new(diagnostics::QUARANTINE_LAUNCHES.count()),
             },
         );
     });
@@ -338,6 +342,9 @@ struct Observation {
     path: String,
     received: u64,
     total: Option<u64>,
+    in_progress: bool,
+    paused: bool,
+    percent_complete: i32,
     complete: bool,
     cancelled: bool,
     interrupted: bool,
@@ -363,6 +370,9 @@ fn observe(item: &DownloadItem) -> Option<Observation> {
         path,
         received,
         total,
+        in_progress: item.is_in_progress() != 0,
+        paused: item.is_paused() != 0,
+        percent_complete: item.percent_complete(),
         complete: item.is_complete() != 0,
         cancelled: item.is_canceled() != 0,
         interrupted: item.is_interrupted() != 0,
@@ -406,6 +416,10 @@ fn bind(
             return (None, None);
         }
         record.cef_id = Some(observation.id);
+        let expected_path = record.staging.as_ref().map(Staging::path);
+        record
+            .diagnostics
+            .observe(phase, observation, expected_path.as_deref());
         let previous = callback.and_then(|callback| record.callback.replace(callback.clone()));
         // Chromium 156 may auto-resume before notifying its observers. RESUMING
         // is externally IN_PROGRESS, but GetLastReason still exposes the
@@ -749,11 +763,47 @@ fn expired(view: u64, id: u64, serial: u64, phase: u8) {
         return;
     }
     match phase {
-        0 => request_cancel(view, Cancel::Timeout),
+        0 => {
+            let diagnostic = STATE.with(|s| {
+                let mut s = s.borrow_mut();
+                let record = s.downloads.entries.get_mut(&view)?;
+                if record.cancel.is_some() || record.terminal.is_some() {
+                    return None;
+                }
+                record.diagnostics.timeout(
+                    diagnostics::QUARANTINE_LAUNCHES.count(),
+                    record.before,
+                    record.callback.is_some(),
+                )
+            });
+            if let Some(diagnostic) = diagnostic {
+                eprintln!("{diagnostic}");
+            }
+            request_cancel(view, Cancel::Timeout);
+        }
         1 => fail("Native download cancellation did not settle before its deadline"),
         2 => finish(view),
         _ => fail("Invalid native download deadline phase"),
     }
+}
+pub(super) fn observe_child_launch(command_line: Option<&CommandLine>) {
+    let Some(command_line) = command_line else {
+        return;
+    };
+    // Read only these two fixed switches, without retaining or printing argv.
+    // The callback may run off UI; never access STATE or any download owner.
+    let process_type = scheme::bounded_string(
+        command_line.switch_value(Some(&CefString::from("type"))),
+        32,
+    );
+    if process_type.as_deref() != Some("utility") {
+        return;
+    }
+    let subtype = scheme::bounded_string(
+        command_line.switch_value(Some(&CefString::from("utility-sub-type"))),
+        64,
+    );
+    diagnostics::QUARANTINE_LAUNCHES.observe(process_type.as_deref(), subtype.as_deref());
 }
 wrap_task! {
     struct DownloadClosedTask { view: u64 }
@@ -857,6 +907,9 @@ mod tests {
                 path: String::new(),
                 received: 8192,
                 total: Some(32768),
+                in_progress: true,
+                paused: false,
+                percent_complete: 25,
                 complete: false,
                 cancelled: false,
                 interrupted: false,
@@ -892,6 +945,7 @@ mod tests {
                 settlement: None,
                 terminal: None,
                 last_progress: None,
+                diagnostics: diagnostics::Trace::new(diagnostics::QUARANTINE_LAUNCHES.count()),
             };
             STATE.with(|state| {
                 let mut state = state.borrow_mut();
@@ -924,6 +978,40 @@ mod tests {
                 drop(record);
             }
         }
+    }
+    #[test]
+    fn timeout_snapshot_follows_only_exact_owned_callback_updates() {
+        let mut fixture = Fixture::new();
+        fixture.observation.received = 16384;
+        fixture.observation.percent_complete = 50;
+        assert_eq!(
+            fixture.bind(CallbackPhase::Updated),
+            Some(ProgressAction::Continue)
+        );
+        fixture.observation.original = "https://foreign.invalid/secret".into();
+        fixture.observation.received = 32768;
+        fixture.observation.percent_complete = 100;
+        assert_eq!(fixture.bind(CallbackPhase::Updated), None);
+        STATE.with(|state| {
+            let mut state = state.borrow_mut();
+            let record = state.downloads.entries.get_mut(&fixture.view).unwrap();
+            let diagnostic = record
+                .diagnostics
+                .timeout(
+                    diagnostics::QUARANTINE_LAUNCHES.count(),
+                    record.before,
+                    record.callback.is_some(),
+                )
+                .unwrap();
+            assert_eq!(diagnostic["callbackCount"], 2);
+            assert_eq!(diagnostic["lastCallback"]["bytesReceived"], 16384);
+            assert_eq!(diagnostic["lastCallback"]["percentComplete"], 50);
+            assert_eq!(diagnostic["lastCallback"]["phase"], "updated");
+            assert!(record.cancel.is_none());
+            assert!(record.terminal.is_none());
+            assert!(record.permit.active());
+            assert!(!diagnostic.to_string().contains("secret"));
+        });
     }
 
     #[test]

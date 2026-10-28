@@ -173,6 +173,25 @@ Fixture failure receipts additionally distinguish exact known protocol,
 deadline, and readiness errors with fixed labels. Unknown error messages,
 paths, URLs, stacks, causes, names, and codes are not exported by those receipts.
 
+An operation deadline emits at most one `bunly.host.download-timeout` diagnostic
+before normal cancellation. It records the last valid, exactly bound CEF
+callback's fixed state flags, byte counters, percent complete, callback phase and
+count. `pathState` is only `empty`, `owned-stage`, `other`, or `unavailable`; it
+never contains a pathname. A missing callback is `null`, unknown percentages are
+`null`, and native interruption reasons use a fixed label set. No CEF item is
+retained or polled for this receipt.
+
+`quarantineObservedLaunches` counts exact Chromium quarantine utility launches
+observed anywhere in this application since the operation's admission. A
+saturated/unavailable delta is `null`. The read-only child-launch callback
+recognizes only `type=utility` and
+`utility-sub-type=quarantine.mojom.Quarantine`; it retains neither switch text nor
+argv. In a fixture with one transfer, an observed launch distinguishes entry to
+Chromium's completion/annotation pipeline from earlier transfer gates. It does
+not prove that Windows Attachment Services is blocked, that the service is still
+running, or which transfer caused a launch when operations overlap. The native
+deadline, cancellation, antivirus behavior and cleanup rules remain unchanged.
+
 ## Destination and filesystem guarantees
 
 Destinations have a single 1–128 character portable ASCII filename. Separators,
