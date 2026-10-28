@@ -54,6 +54,7 @@ export async function nativePeer(options: { readonly desktopCapabilities?: unkno
           'window.geometry',
           'window.commands',
           'clipboard.text',
+          'dialog.file',
           'app.lifecycle',
           'view.composition',
           'download.manage',

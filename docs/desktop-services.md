@@ -3,9 +3,10 @@
 This issue #34 increment adds native text clipboard operations and observations
 of application startup and shutdown. It builds on the [window APIs](desktop-window-api.md)
 and the exact document authority introduced by [issue #21](m4-capability-policy.md).
-[Window commands](window-commands.md) add native popup menus and window-local
-shortcuts. System menus, tray, general dialogs, global shortcuts, external URLs,
-deep links, relaunch and application reopen remain separate work. This increment does not close #34.
+[Window commands](window-commands.md) add native popup menus and local shortcuts.
+[File dialogs](file-dialogs.md) add scoped macOS selection. System menus, tray,
+general message dialogs, global shortcuts, external URLs, deep links, relaunch
+and application reopen remain separate work. This increment does not close #34.
 
 ## Capabilities and platform boundary
 

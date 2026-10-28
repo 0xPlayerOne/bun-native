@@ -36,6 +36,13 @@ import {
   acceptCommandsReport,
 } from './commands-acceptance.ts'
 
+import {
+  DIALOGS_PROFILE,
+  dialogsSourceSelectors,
+  acceptFileDialogs,
+  acceptDialogsReport,
+} from './dialogs-acceptance.ts'
+
 const profiles = {
   windows: {
     profile: DESKTOP_PROFILE,
@@ -72,6 +79,18 @@ const profiles = {
       'Clipboard round trips require an initially empty disposable hosted session; Linux explicitly qualifies unsupported clipboard and real application lifecycle only.',
     acceptObservation: acceptDesktopServices,
     acceptReport: acceptServicesReport,
+  },
+  dialogs: {
+    profile: DIALOGS_PROFILE,
+    sourceSelectors: dialogsSourceSelectors,
+    fixture: 'examples/file-dialogs',
+    browserEntry: null,
+    directory: 'file-dialogs',
+    title: 'File Dialogs',
+    workloadLimitation:
+      'Six actual macOS panel cancellations; Windows/Linux explicitly unsupported. No file selection, upload, physical input or assistive-technology claim.',
+    acceptObservation: acceptFileDialogs,
+    acceptReport: acceptDialogsReport,
   },
   downloads: {
     profile: DOWNLOADS_PROFILE,
@@ -118,7 +137,8 @@ export function desktopProfile(name = 'windows') {
       name === 'services' ||
       name === 'downloads' ||
       name === 'parent-close' ||
-      name === 'commands',
+      name === 'commands' ||
+      name === 'dialogs',
     'Unknown desktop qualification case'
   )
   return profiles[name]

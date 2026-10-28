@@ -13,6 +13,7 @@ import {
   validateWindowMenuPoint,
 } from '../../contracts/src/index.ts'
 import { validateClipboardText } from '../../contracts/src/desktop.ts'
+import { normalizeFileDialog } from '../../contracts/src/dialogs.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
   ManagedError,
@@ -94,6 +95,7 @@ const operations = {
   process: ['state', 'write', 'resize', 'signal'],
   clipboard: ['read-text', 'write-text', 'clear'],
   commands: ['show', 'cancel'],
+  dialog: ['open', 'save'],
 } as const
 const signals = new Set([
   'SIGHUP',
@@ -438,6 +440,35 @@ export class ManagedDesktopResources {
       throw error
     }
     return entry.binding.resource
+  }
+  /** A generation owns each pending selection and cancels it before retiring. */
+  registerFileDialogs(name: string, policy: ManagedDesktopPolicy): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority) throw new ManagedError('DENIED')
+    return this.#register(
+      name,
+      'dialog',
+      Object.freeze({}),
+      policy,
+      async (operation, input, context) => {
+        if (operation !== 'open' && operation !== 'save') invalid()
+        let dialog
+        try {
+          dialog = normalizeFileDialog(operation, JSON.parse(input))
+        } catch {
+          invalid()
+        }
+        const options = { signal: context.signal }
+        return operation === 'open'
+          ? this.backend.showOpenFileDialog(
+              authority.scope,
+              { title: dialog.title, directory: dialog.directory },
+              options
+            )
+          : this.backend.showSaveFileDialog(authority.scope, dialog, options)
+      },
+      async () => {}
+    ).binding.resource
   }
   registerWindow(
     name: string,

@@ -6,6 +6,7 @@ export const CAPABILITIES = [
   'window.geometry',
   'window.commands',
   'clipboard.text',
+  'dialog.file',
   'app.lifecycle',
   'view.navigate',
   'view.composition',

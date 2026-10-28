@@ -5,6 +5,7 @@ const DESKTOP_CAPABILITIES = Object.freeze([
   'window.geometry',
   'window.commands',
   'clipboard.text',
+  'dialog.file',
   'app.lifecycle',
   'view.composition',
   'download.manage',

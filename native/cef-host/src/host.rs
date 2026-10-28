@@ -15,6 +15,8 @@ use std::{
 mod browser_actions;
 #[path = "clipboard.rs"]
 mod clipboard;
+#[path = "dialogs.rs"]
+mod dialogs;
 #[path = "downloads.rs"]
 mod downloads;
 #[path = "file_guards.rs"]
@@ -34,7 +36,17 @@ mod window_commands;
 #[path = "window_state.rs"]
 mod window_state;
 pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
-    if clipboard::SUPPORTED {
+    if dialogs::SUPPORTED {
+        &[
+            "window.state",
+            "window.geometry",
+            "clipboard.text",
+            "app.lifecycle",
+            "view.composition",
+            "download.manage",
+            "dialog.file",
+        ]
+    } else if clipboard::SUPPORTED {
         &[
             "window.state",
             "window.geometry",
@@ -916,7 +928,7 @@ fn quit_on_ui(reason: &'static str) {
     for (id, revoked) in revocations {
         revoke_renderer(id, revoked);
     }
-    if STATE.with(|s| !s.borrow().downloads.is_empty()) {
+    if !dialogs::is_empty() || STATE.with(|s| !s.borrow().downloads.is_empty()) {
         // CEF stops download callbacks once a browser is destroyed, but lets its
         // transfer continue. Retain all owners until actual cancellation settles.
         return;
@@ -938,6 +950,10 @@ fn close_quitting_owners(windows: Vec<Window>, browsers: Vec<Browser>) {
 }
 fn finish_on_ui() {
     bound_shutdown();
+    if !dialogs::is_empty() {
+        observe_quitting("last-window");
+        return;
+    }
     if FINALIZING.swap(true, Ordering::SeqCst) {
         return;
     }
@@ -1147,10 +1163,12 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     #[cfg(feature = "browser-actions")]
     if !browser_actions::shutdown_ready() { return; }
     window_commands::verify_shutdown();
+    dialogs::shutdown_receipt();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
 pub fn release() {
+    dialogs::stop();
     shutdown_acknowledged();
     window_commands::release_all();
     #[cfg(feature = "rpc-qualification")]
@@ -1525,7 +1543,7 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         Ok::<_, &str>(record.rpc.revoke())
     })?;
     revoke_renderer(id, revoked);
-    if STATE.with(|s| s.borrow().downloads.contains(id)) {
+    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
         return Ok(());
     }
     destroy_disposed_view(id)
@@ -1584,10 +1602,17 @@ fn destroy_disposed_view(id: u64) -> Result<(), String> {
     Ok(())
 }
 fn resume_after_download(id: u64) {
+    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+        return;
+    }
+    if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) {
+        finish_on_ui();
+        return;
+    }
     if QUITTING.load(Ordering::SeqCst) {
         let owners = STATE.with(|s| {
             let state = s.borrow();
-            state.downloads.is_empty().then(|| {
+            (state.downloads.is_empty() && dialogs::is_empty()).then(|| {
                 (
                     state
                         .windows
@@ -1723,6 +1748,7 @@ fn begin_navigation(
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    dialogs::revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1746,6 +1772,7 @@ fn revoke_view(state: &mut HostState, view: u64) {
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    dialogs::revoke(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1806,7 +1833,7 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
 fn allowed_during_quit(operation: &str) -> bool {
     matches!(
         operation,
-        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release" | "commands.cancel" | "commands.dispose"
+        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release" | "commands.cancel" | "commands.dispose" | "dialog.cancel"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2329,6 +2356,10 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "browser.action.release" => browser_actions::release(request, args)?,
         "download.start" => downloads::start(request, args)?,
         "download.cancel" => downloads::cancel(request, args)?,
+        "dialog.show" => dialogs::start(request, args)?,
+        "dialog.cancel" => dialogs::cancel(request, args)?,
+        #[cfg(feature = "rpc-qualification")]
+        "dialog.qualification.state" => dialogs::qualification(request, args)?,
         "view.presentation" | "view.present" => {
             view_composition::dispatch(request, operation, args)?
         }
@@ -2863,7 +2894,7 @@ wrap_window_delegate! {
                 revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
-                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || dialogs::contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
                 let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
                 (browsers, pending, revocations)
             });
@@ -2934,6 +2965,7 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             #[cfg(feature = "browser-actions")]
             state.browser_actions.revoke(id);
             window_commands::retire_view(id);
+            dialogs::revoke(id);
         }
     });
     let revoked = STATE.with(|s| {

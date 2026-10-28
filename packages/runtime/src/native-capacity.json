@@ -20,7 +20,8 @@
     "browser.action.cancel",
     "browser.action.release",
     "commands.cancel",
-    "commands.dispose"
+    "commands.dispose",
+    "dialog.cancel"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,

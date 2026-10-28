@@ -6,8 +6,6 @@ use std::cell::RefCell;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Owner {
     WindowMenu,
-    // The separately delivered native dialog adapter enables this owner in production.
-    #[cfg(test)]
     FileDialog,
 }
 

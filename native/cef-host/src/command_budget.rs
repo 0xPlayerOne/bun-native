@@ -168,7 +168,8 @@ mod tests {
                 "browser.action.cancel",
                 "browser.action.release",
                 "commands.cancel",
-                "commands.dispose"
+                "commands.dispose",
+                "dialog.cancel"
             ]
         );
     }

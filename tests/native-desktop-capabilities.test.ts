@@ -17,6 +17,7 @@ test('native desktop capabilities and ready metadata are bounded immutable disco
       'window.geometry',
       'window.commands',
       'clipboard.text',
+      'dialog.file',
       'app.lifecycle',
       'view.composition',
       'download.manage',

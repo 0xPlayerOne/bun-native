@@ -168,6 +168,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "file-downloads",
                 "view-parent-close",
                 "window-commands",
+                "file-dialogs",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -266,6 +267,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "file-downloads",
                             "view-parent-close",
                             "window-commands",
+                            "file-dialogs",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -669,7 +671,7 @@ class DesktopStageTests(unittest.TestCase):
                 selected = hosted.commands("full", "/bun", app, native_source=source)
                 names = [name for name, _ in selected]
                 self.assertEqual(names.count("window-commands"), 1)
-                self.assertEqual(names.index("window-commands"), names.index("file-downloads") + 1)
+                self.assertEqual(names.index("window-commands"), names.index("view-parent-close") + 1)
                 self.assertEqual(
                     dict(selected)["window-commands"],
                     [
@@ -689,6 +691,62 @@ class DesktopStageTests(unittest.TestCase):
         self.assertEqual(
             hosted.report_directory("window-commands"), hosted.ROOT / ".bunly/m7/window-commands"
         )
+
+    def test_dialogs_requires_exact_source_and_platform_specific_receipts_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("file-dialogs"), 1)
+                self.assertEqual(names.index("file-dialogs"), names.index("window-commands") + 1)
+                self.assertEqual(
+                    dict(selected)["file-dialogs"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=dialogs" if system == "linux" else "--case=dialogs",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["file-dialogs"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "file-dialogs")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "file-dialogs", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("file-dialogs"), hosted.ROOT / ".bunly/m7/file-dialogs"
+        )
+
+    def test_dialog_collection_keeps_failed_and_unsupported_reports_without_fixture_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = root / ".bunly/hosted-evidence"
+            for status in ("failed", "unsupported"):
+                report = root / ".bunly/m7/file-dialogs" / ("run-" + status) / "report.json"
+                report.parent.mkdir(parents=True)
+                report.write_text(json.dumps({"passed": status == "unsupported", "status": status}))
+                (report.parent / "fixture.json").write_text('{"private":"not-for-upload"}')
+            with (
+                patch.object(hosted, "ROOT", root),
+                patch.object(hosted, "EVIDENCE", evidence),
+                patch.dict("os.environ", {"GITHUB_STEP_SUMMARY": ""}),
+            ):
+                hosted.collect()
+            self.assertEqual(
+                {path.name for path in evidence.iterdir()},
+                {"file-dialogs-run-failed.json", "file-dialogs-run-unsupported.json"},
+            )
+            self.assertFalse(
+                json.loads((evidence / "file-dialogs-run-failed.json").read_text())["passed"]
+            )
+            self.assertEqual(
+                json.loads((evidence / "file-dialogs-run-unsupported.json").read_text())["status"],
+                "unsupported",
+            )
 
     def test_downloads_requires_exact_source_and_settlement_before_providers(self):
         source = "a" * 40

@@ -10,6 +10,7 @@ import {
 } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { ApplicationLifecycle } from './application-lifecycle.ts'
+import { CefFileDialogs } from './cef-dialogs.ts'
 import { CefDownloads } from './cef-downloads.ts'
 import { CefWindowCommands } from './cef-window-commands.ts'
 import {
@@ -64,6 +65,7 @@ import {
   normalizeViewPresentation,
   parseViewPresentationState,
   normalizeDownloadRequest,
+  normalizeFileDialog,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
@@ -73,6 +75,10 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  FileDialogBackend,
+  FileDialogResult,
+  OpenFileDialogOptions,
+  SaveFileDialogOptions,
   ApplicationLifecycleBackend,
   ApplicationState,
   ApplicationEvent,
@@ -406,6 +412,7 @@ export class CefBackend
   implements
     BrowserBackend,
     ClipboardBackend,
+    FileDialogBackend,
     ApplicationLifecycleBackend,
     ViewCompositionBackend,
     DownloadManagementBackend,
@@ -420,6 +427,7 @@ export class CefBackend
   readonly #commands: CefWindowCommands
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
+  readonly #dialogs: CefFileDialogs
   readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
@@ -484,6 +492,7 @@ export class CefBackend
   constructor(transport: NativeTransport) {
     this.#transport = transport
     this.#browserActions = new CefBrowserActions(transport)
+    this.#dialogs = new CefFileDialogs(transport)
     this.#downloads = new CefDownloads(transport, () => {
       this.#listenerErrors++
     })
@@ -528,6 +537,7 @@ export class CefBackend
       this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
       this.#commands.close()
+      this.#dialogs.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -711,6 +721,60 @@ export class CefBackend
     const result = await this.#clipboard(scope, 'clipboard.qualification.empty', undefined, options)
     if (typeof result !== 'boolean') throw new Error('Malformed native clipboard preflight receipt')
     return result
+  }
+  async #fileDialog(
+    scope: PolicyScope,
+    kind: 'open' | 'save',
+    dialog: OpenFileDialogOptions | SaveFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    requireCapability(this.descriptor, 'dialog.file')
+    const settings = normalizeFileDialog(kind, dialog)
+    try {
+      return await this.#dialogs.show(
+        captured.resource.native,
+        { ...captured.nativeScope },
+        kind,
+        settings,
+        () => {
+          this.#active()
+          this.#capturedPolicyScope(scope)
+        },
+        options?.signal
+      )
+    } catch (error) {
+      if (error instanceof Error) {
+        for (const code of [
+          'PERMISSION_DENIED',
+          'UNSUPPORTED_CAPABILITY',
+          'INVALID_ARGUMENT',
+          'RESOURCE_IN_USE',
+        ] as const)
+          if (error.message.startsWith(`${code}:`)) throw new BunlyError(code, error.message)
+      }
+      throw error
+    }
+  }
+  showOpenFileDialog(
+    scope: PolicyScope,
+    dialog: OpenFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    return this.#fileDialog(scope, 'open', dialog, options)
+  }
+  showSaveFileDialog(
+    scope: PolicyScope,
+    dialog: SaveFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    return this.#fileDialog(scope, 'save', dialog, options)
+  }
+  /** @internal Bounded metadata only; ordinary hosts reject this contributor operation. */
+  async qualifyFileDialogState(): Promise<unknown> {
+    this.#active()
+    return this.#transport.call('dialog.qualification.state', {})
   }
   #createdId(value: unknown): number {
     try {
@@ -1980,6 +2044,7 @@ export class CefBackend
     }
     this.#downloads.event(event)
     this.#browserActions.event(event)
+    this.#dialogs.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
