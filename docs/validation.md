@@ -105,6 +105,10 @@ workspace's active target directory. Add
 `--manifest-path native/cef-host/Cargo.toml` to query the CEF workspace. The M1
 qualifiers, packaged probe and hosted terminal fixture use this same lookup;
 they do not compile missing artifacts or fall back to an older checkout binary.
+The hosted CEF lookup defaults to the pinned Rust 1.91.0 toolchain and preserves
+an explicit `RUSTUP_TOOLCHAIN` override. A native-only runner does not need to
+install M1's older toolchain merely to locate the CEF artifacts.
+
 The CEF bundler selects regular nonempty native siblings beside its own running
 executable, including when a custom Cargo target directory is used.
 

@@ -94,6 +94,11 @@ def standard_user():
 
 
 def native_target_directory(bun):
+    # Native-only jobs install the CEF compiler, not the repository's older M1
+    # default. Metadata must use that installed toolchain instead of implicitly
+    # fetching M1's toolchain. Preserve an explicit contributor selection.
+    environment = dict(os.environ)
+    environment.setdefault("RUSTUP_TOOLCHAIN", "1.91.0")
     result = subprocess.run(
         [
             bun,
@@ -103,6 +108,7 @@ def native_target_directory(bun):
             str(ROOT / "native/cef-host/Cargo.toml"),
         ],
         cwd=ROOT,
+        env=environment,
         check=True,
         capture_output=True,
         text=True,

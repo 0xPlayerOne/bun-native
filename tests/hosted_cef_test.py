@@ -1,6 +1,7 @@
 """Hosted orchestrator policy tests; these do not stand in for native execution."""
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -37,6 +38,10 @@ class HostedQualificationTests(unittest.TestCase):
                         str(hosted.ROOT / "native/cef-host/Cargo.toml"),
                     ],
                     cwd=hosted.ROOT,
+                    env={
+                        **os.environ,
+                        "RUSTUP_TOOLCHAIN": os.environ.get("RUSTUP_TOOLCHAIN", "1.91.0"),
+                    },
                     check=True,
                     capture_output=True,
                     text=True,
@@ -54,6 +59,38 @@ class HostedQualificationTests(unittest.TestCase):
                     run.return_value.stdout = value
                     with self.assertRaises(ValueError):
                         hosted.native_target_directory("/bun")
+
+    def test_native_query_uses_installed_cef_toolchain_without_changing_target_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "selected-target")
+            environment = {
+                "PATH": "/tools",
+                "CI": "true",
+                "CARGO_TARGET_DIR": selected,
+                "BUNLY_SHARED_CACHE_DIR": str(Path(directory) / "shared-cache"),
+                "CEF_PATH": str(Path(directory) / "cef-sdk"),
+            }
+            with (
+                patch.dict(hosted.os.environ, environment, clear=True),
+                patch.object(hosted.subprocess, "run") as run,
+            ):
+                run.return_value.stdout = selected + "\n"
+                self.assertEqual(hosted.native_target_directory("/bun"), Path(selected))
+                self.assertEqual(
+                    run.call_args.kwargs["env"],
+                    {**environment, "RUSTUP_TOOLCHAIN": "1.91.0"},
+                )
+                self.assertNotIn("RUSTUP_TOOLCHAIN", hosted.os.environ)
+
+    def test_native_query_preserves_explicit_contributor_toolchain(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(hosted.os.environ, {"RUSTUP_TOOLCHAIN": "custom-cef"}, clear=True),
+            patch.object(hosted.subprocess, "run") as run,
+        ):
+            run.return_value.stdout = directory + "\n"
+            self.assertEqual(hosted.native_target_directory("/bun"), Path(directory))
+            self.assertEqual(run.call_args.kwargs["env"], {"RUSTUP_TOOLCHAIN": "custom-cef"})
 
     def test_only_declared_native_architectures(self):
         self.assertEqual(hosted.target("win32", "AMD64"), "win32-x64")
