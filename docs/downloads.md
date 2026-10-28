@@ -91,18 +91,33 @@ entering the corresponding CEF action.
 as the sole admission gate would be incorrect. Bunly denies renderer-initiated
 downloads in `CanDownload` and admits a backend operation with an unpredictable
 native-only URL fragment. The fragment leaves the HTTP path and query unchanged.
-The IO handler accepts only that exact original URL and one native request ID.
-CEF's pinned WebContents interceptor sets its advisory `is_download` flag to
-false, including backend-started downloads. Routing therefore recognizes the
-exact native secret independently of that flag. A known secret with a revoked
-permit or wrong request identity is denied; the public URL never substitutes for
-it. Ordinary requests retain their existing network policy.
+The first IO handler accepts only that exact original URL and captures CEF's
+opaque request identifier. Chromium's pinned `ResourceDownloader::Start` passes
+**zero** for this identifier; `Some(0)` is a claimed request, while `None` is
+unclaimed. This does not change Bunly's wire IDs or the separate nonzero CEF
+download-item identity. The claim is one-shot even when the raw ID is repeated.
+The pinned WebContents interceptor also has an advisory `is_download=false`
+path. Routing recognizes the operation's secret independently of that flag.
+A known secret with a revoked permit, stale/wrong URL or wrong request identity
+is denied; the public URL never substitutes for it. Ordinary requests retain
+their existing network policy.
 The UI download callbacks must report that same original URL and CEF download
 identity. A renderer link or default menu command cannot consume a pending
 backend admission. If a future CEF version stops preserving this identity, the
 adapter must fail closed, not fall back to matching the public URL alone.
 
-Every redirect uses the same revocable permit and exact session network policy.
+CEF obtains a fresh resource handler on each redirect restart. Every handler
+therefore holds a lease for one native hop epoch, its exact current URL and the
+established request ID. An owned redirect callback checks that lease, GET method,
+source URL and destination's exact session network policy before arming one next
+hop. It replaces any server-provided fragment with the same private operation
+fragment, preserving the HTTP path and query, and bounds both the original and
+redirected tagged URLs to 4,096 bytes. The current/pending hop lives under one
+mutex; claiming the next hop consumes its admission. Old handler callbacks,
+duplicate claims and stale same-URL redirects cannot regain the new epoch.
+Invalid redirects revoke the permit, and shutdown/navigation revocation cannot
+reactivate it. UI callbacks still require an admitted permit, exact original URL,
+current document/browser/session authority and the existing byte limits.
 No renderer-provided filename or callback metadata can create a destination
 grant. Native file dialogs cancel explicitly, and OS-file drag/drop is denied.
 The default context menu retains navigation/edit/find commands only; file save,
@@ -252,6 +267,9 @@ The adapter was authored for Bunly; no upstream implementation was copied.
 - [CEF download callback contract at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/include/cef_download_handler.h)
 - [CEF StartDownload at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/browser_host_base.cc)
 - [CEF request classification at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/net_service/resource_request_handler_wrapper.cc)
+- [CEF proxy request IDs and redirect restarts at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/net_service/proxy_url_loader_factory.cc)
+- [CEF request identifier storage at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/common/request_impl.cc)
+- [Chromium 156.0.8078.17 zero-ID resource downloader](https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/resource_downloader.cc)
 - [CEF download/browser ownership at g47dbc1d](https://github.com/chromiumembedded/cef/blob/47dbc1d/libcef/browser/download_manager_delegate_impl.cc)
 - [Chromium 156.0.8078.17 download lifecycle and annotation](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/internal/common/download_item_impl.cc)
 - [Chromium 156.0.8078.17 destination permission handling](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.17/components/download/public/common/download_file_utils.cc)
