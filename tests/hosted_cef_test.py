@@ -44,6 +44,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "session-reset",
                 "faults",
                 "desktop",
+                "view-composition",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -137,6 +138,7 @@ class HostedQualificationTests(unittest.TestCase):
                         not in (
                             "faults",
                             "desktop",
+                            "view-composition",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -458,7 +460,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 12)
+                self.assertEqual(len(names), 13)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -531,6 +533,34 @@ class ManagedDevelopmentStageTests(unittest.TestCase):
 
 
 class DesktopStageTests(unittest.TestCase):
+    def test_composition_requires_its_own_report_and_every_platform_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("view-composition"), 1)
+                self.assertEqual(names.index("view-composition"), names.index("desktop") + 1)
+                self.assertEqual(
+                    dict(selected)["view-composition"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=composition" if system == "linux" else "--case=composition",
+                    ],
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "view-composition")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "view-composition", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("view-composition"), hosted.ROOT / ".bunly/m7/view-composition"
+        )
+
     def test_native_desktop_requires_exact_source_and_gates_providers_on_every_platform(self):
         source = "a" * 40
         app = Path("/app")

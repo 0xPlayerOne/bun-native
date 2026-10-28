@@ -1,0 +1,27 @@
+:root {
+  color-scheme: light dark;
+  font: 15px system-ui;
+  background: #19283d;
+  color: #eef4ff;
+}
+:root[data-pane='right'] {
+  background: #233e31;
+}
+:root[data-pane='overlay'] {
+  background: #55334b;
+}
+body {
+  margin: 16px;
+  overflow: hidden;
+}
+h1 {
+  font-size: 18px;
+}
+input {
+  display: block;
+  width: 90%;
+  margin: 8px 0;
+}
+button {
+  margin-right: 8px;
+}

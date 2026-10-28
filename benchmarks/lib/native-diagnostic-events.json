@@ -21,6 +21,7 @@
   "bunly.native.terminal-load",
   "bunly.native.window-modes",
   "bunly.native.desktop-controls",
+  "bunly.native.view-composition",
   "bunly.native.last-window",
   "bunly.native.cycle",
   "bunly.native.renderer-failure-observed",

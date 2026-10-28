@@ -22,7 +22,9 @@ adapters must advertise only the operations they implement.
 | `window.geometry` | `windowBounds`, `setWindowBounds`, `resizeWindow`                                                                                          |
 
 The private ABI 1 readiness receipt carries
-`data.desktopCapabilities = { version: 1, capabilities: ['window.state', 'window.geometry'] }`.
+`data.desktopCapabilities = { version: 1, capabilities: ['window.state', 'window.geometry', 'view.composition'] }`.
+The independently negotiated `view.composition` facet is documented in
+[native view composition](view-composition.md).
 The transport validates a bounded allowlist, rejects duplicate names, unknown
 names/versions and malformed metadata before readiness, and freezes the parsed
 capabilities. `CefBackend.descriptor` exposes an immutable snapshot; a backend
@@ -30,7 +32,7 @@ constructed before readiness gains only the features in the validated receipt.
 Build profile extensions describe the current implementation, while the running
 backend descriptor describes the actual connected host.
 
-A legacy ABI 1 host without this metadata advertises neither new capability.
+A legacy ABI 1 host without this metadata advertises neither window capability.
 Its existing CEF-specific state, minimize, restore, activate, show and resize
 methods remain callable for compatibility. New maximize/fullscreen operations,
 bounds queries/updates and portable event subscriptions reject with

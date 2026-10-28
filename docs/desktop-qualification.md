@@ -50,7 +50,7 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes the `desktop` stage before the existing
+The full hosted native matrix includes `desktop` and `view-composition` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -79,3 +79,35 @@ The [retained window observations](../evidence/m7-desktop/README.md) preserve th
 two initial macOS fixture failures and the subsequent accepted run, with separate
 original/export/archive digests and an offline replay command. Their fixed source
 commits remain distinct from the current-head three-platform merge gates.
+
+## View composition
+
+The same runner selects the fixed three-pane composition workload explicitly:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=composition
+```
+
+Its report family is `.bunly/m7/view-composition/run-*/report.json`, with profile
+`native-view-composition-v1`. Offline `--verify` selects the matching acceptance
+rules from the report; unknown profiles are rejected. Window-v1 retains its
+original source selectors so historical window evidence remains replayable.
+Composition adds the entire fixture and its shared document-readiness helper to
+the source inventory. Both profiles enforce the same artifact, identity, process,
+shutdown and metadata requirements and the unchanged 45-second observer budget.
+
+Twenty-eight ordered observations cover two independently controlled content
+panes and an application-owned native overlay. Acceptance requires native and
+renderer viewport agreement, partial/full clipping, hide/show, forward/reverse
+view focus traversal, 16 resize transitions, two managed-generation reattachments,
+retained document/form/session identity, stale-generation rejection, sibling
+survival after overlay closure, and no remaining owned views or sessions.
+API-directed focus and observed device-pixel ratios do not establish physical
+keyboard, pointer, IME, assistive-technology or hardware display behavior.
+See [the composition contract and limitations](view-composition.md).
+
+On Linux the existing disposable display wrapper accepts
+`--desktop --desktop-case=composition --native-source=COMMIT`; it creates and
+cleans its own Xvfb/Openbox processes. The full hosted suite requires both native
+desktop stages on every platform before later credential/provider work. Neither
+profile changes the existing M4-only suite.

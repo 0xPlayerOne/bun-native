@@ -1,6 +1,10 @@
 import type { Readable, Writable } from 'node:stream'
 import capacity from './native-capacity.json'
-const DESKTOP_CAPABILITIES = Object.freeze(['window.state', 'window.geometry'] as const)
+const DESKTOP_CAPABILITIES = Object.freeze([
+  'window.state',
+  'window.geometry',
+  'view.composition',
+] as const)
 export type NativeDesktopCapability = (typeof DESKTOP_CAPABILITIES)[number]
 function desktopCapabilities(value: unknown): readonly NativeDesktopCapability[] {
   // ABI 1 predates portable desktop capabilities. Absence preserves that legacy

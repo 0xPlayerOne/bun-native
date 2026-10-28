@@ -272,12 +272,25 @@ export function acceptDesktopControlReceipt(input: unknown) {
 }
 
 export function acceptDesktopControls(input: unknown) {
+  return acceptDesktopObservation(
+    input,
+    'bunly.native.desktop-controls',
+    acceptDesktopControlReceipt
+  )
+}
+
+/** Shared process/shutdown checks; each workload still validates its exact receipt. */
+export function acceptDesktopObservation<T>(
+  input: unknown,
+  eventName: string,
+  acceptReceipt: (receipt: unknown) => T
+): T {
   const observation = validateCommandObservation(input)
   assertCleanCommand(observation)
   requireNativeShutdown(observeNativeShutdown(observation))
   const events = nativeEvents(observation)
-  const results = events.filter((event) => event['event'] === 'bunly.native.desktop-controls')
-  assert.equal(results.length, 1, 'Missing or duplicate desktop controls receipt')
+  const results = events.filter((event) => event['event'] === eventName)
+  assert.equal(results.length, 1, `Missing or duplicate ${eventName} receipt`)
   assert.deepEqual(
     events.filter((event) => event['event'] === 'bunly.native.output-drained'),
     [
@@ -291,13 +304,23 @@ export function acceptDesktopControls(input: unknown) {
       },
     ]
   )
-  return acceptDesktopControlReceipt(results[0])
+  return acceptReceipt(results[0])
 }
 
 export function acceptDesktopReport(input: unknown) {
+  return acceptDesktopEvidence(input, DESKTOP_PROFILE, [], acceptDesktopControls)
+}
+
+/** Preserve one source/artifact/observer contract for all native desktop cases. */
+export function acceptDesktopEvidence<T>(
+  input: unknown,
+  profile: string,
+  requiredSources: readonly string[],
+  acceptObservation: (observation: unknown) => T
+): T {
   const report = record(input)
   assert.equal(report['schema'], 1)
-  assert.equal(report['profile'], DESKTOP_PROFILE)
+  assert.equal(report['profile'], profile)
   assert.equal(report['passed'], true)
   assert.equal(report['bun'], '1.4.3')
   assert.equal(report['observerTimeoutMs'], DESKTOP_OBSERVER_MS)
@@ -340,6 +363,7 @@ export function acceptDesktopReport(input: unknown) {
     'native/cef-host/src/window_state.rs',
     'native/cef-host/src/process.rs',
     'native/cef-host/src/host.rs',
+    ...requiredSources,
   ])
     assert.ok(sourcePaths.has(required), `Missing source fingerprint: ${required}`)
   assert.deepEqual(report['sourceHashesAfter'], hashes)
@@ -409,7 +433,7 @@ export function acceptDesktopReport(input: unknown) {
     observations: [observation],
   })
   assert.deepEqual(report['preparedMetadata'], metadata)
-  const result = acceptDesktopControls(observation)
+  const result = acceptObservation(observation)
   assert.deepEqual(report['acceptance'], result)
   return result
 }

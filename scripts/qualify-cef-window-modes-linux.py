@@ -48,13 +48,14 @@ def main() -> int:
     workload = parser.add_mutually_exclusive_group()
     workload.add_argument("--terminal-load", action="store_true")
     workload.add_argument("--desktop", action="store_true")
+    parser.add_argument("--desktop-case", choices=("windows", "composition"))
     parser.add_argument("--native-source")
     parser.add_argument("app", type=Path)
     args = parser.parse_args()
     if args.desktop:
         if not args.native_source or not re.fullmatch(r"[a-f0-9]{40}", args.native_source):
             raise ValueError("Desktop qualification requires an immutable native source")
-    elif args.native_source is not None:
+    elif args.native_source is not None or args.desktop_case is not None:
         raise ValueError("Native source selection is only supported for the desktop workload")
     if sys.platform != "linux" or os.geteuid() == 0:
         raise RuntimeError("Use a standard user on a disposable Linux runner")
@@ -128,6 +129,7 @@ def main() -> int:
                         str(ROOT / "scripts/qualify-desktop.ts"),
                         str(args.app.resolve(strict=True)),
                         "--native-source=" + args.native_source,
+                        "--case=" + (args.desktop_case or "windows"),
                     ]
                     if args.desktop
                     else [

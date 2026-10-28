@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "profile": "native-view-composition-v1",
+  "runs": [
+    {
+      "id": "composition-renderer-focus-failure",
+      "archive": "composition-renderer-focus-failure.json.gz",
+      "source": "e6c8fb01168b2712ad37f9785da230397a618dd9",
+      "nativeSource": "e6c8fb01168b2712ad37f9785da230397a618dd9",
+      "nativeTree": "3984e856f18a2413bb84e5683b347c11aab7b441",
+      "passed": false,
+      "reportOriginal": {
+        "bytes": 2653121,
+        "sha256": "b9be271c25746c736df8c83444192d51052efad958e4c49a761e2c4281056c28"
+      },
+      "archiveBytes": 91396,
+      "archiveSha256": "0be41c8e47b912457777388fbfd47a79cad9da4e553bd1ae44e16234a11895d7",
+      "expandedBytes": 2653194,
+      "expandedSha256": "9cf8390ba52522ed66859e2d64779b8fcda4c054a3280f229c2bd8dda6d0ee78",
+      "redactions": [
+        "fixture-nonces",
+        "workspace-prefix",
+        "home-prefix"
+      ]
+    },
+    {
+      "id": "composition-native-focus-failure",
+      "archive": "composition-native-focus-failure.json.gz",
+      "source": "cd3d77fb1d70fca1a99ae92426c8148fc4ad3c1d",
+      "nativeSource": "cd3d77fb1d70fca1a99ae92426c8148fc4ad3c1d",
+      "nativeTree": "17232cb03cbd01988110b6b88721afbcb21b8f7c",
+      "passed": false,
+      "reportOriginal": {
+        "bytes": 2660024,
+        "sha256": "cf49d2d033419d9298fa8f516c564d1cd2240afd95119924ff85a0dff1f416c6"
+      },
+      "archiveBytes": 97292,
+      "archiveSha256": "7b088818ab1e79266a06915f80881702ff81f4cb82223a508331d64698ba7833",
+      "expandedBytes": 2660101,
+      "expandedSha256": "24e4d77d9d76f8f400d5087235f322e14492cba06d452588839f28ebbf0e2515",
+      "redactions": [
+        "fixture-nonces",
+        "workspace-prefix",
+        "home-prefix"
+      ]
+    },
+    {
+      "id": "composition-macos",
+      "archive": "composition-macos.json.gz",
+      "source": "2771bed9af84c956372ca8bbac56711508640ecc",
+      "nativeSource": "2771bed9af84c956372ca8bbac56711508640ecc",
+      "nativeTree": "78c081c270017557a29eb8834528f34c4e577f59",
+      "passed": true,
+      "reportOriginal": {
+        "bytes": 954679,
+        "sha256": "560174b1c6fde637491a36d3e1a270c17d0518aeb6cc5e7ed59fff181fc7012d"
+      },
+      "archiveBytes": 81941,
+      "archiveSha256": "dc4bc24248e9218f693013adfb7ddbc17c741f46b799f497f5ca1f490c868f74",
+      "expandedBytes": 954797,
+      "expandedSha256": "e5a6371304692cb3e2904cf74ac3b0e16174308c81eee9b4c0630bc146dcf6d1",
+      "redactions": [
+        "fixture-nonces",
+        "workspace-prefix",
+        "home-prefix"
+      ]
+    }
+  ],
+  "limitations": [
+    "Finite macOS functional execution; current-head Linux and Windows gates remain required.",
+    "Failed attempts remain failed; no native deadline or acceptance condition was relaxed.",
+    "Selected native source is a declaration with matching source tree, not embedded build attestation.",
+    "Physical keyboard and pointer routing, IME, assistive technology, hardware DPI and performance remain unqualified."
+  ]
+}

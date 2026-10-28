@@ -12,6 +12,8 @@ use std::{
 };
 #[path = "navigation.rs"]
 mod navigation;
+#[path = "view_composition.rs"]
+mod view_composition;
 #[path = "window_state.rs"]
 mod window_state;
 pub static FAILED: AtomicBool = AtomicBool::new(false);
@@ -29,9 +31,12 @@ struct WindowRecord {
     window: Option<Window>,
     request: u64,
     closing: Option<u64>,
+    view_layout: view_composition::LayoutMode,
 }
 struct ViewRecord {
     view: Option<BrowserView>,
+    overlay: Option<OverlayController>,
+    placement: Option<view_composition::Placement>,
     browser: Option<Browser>,
     window: u64,
     session: u64,
@@ -1153,7 +1158,16 @@ fn checked_cookie_url(text: &str) -> Result<String, String> {
     Ok(url.into())
 }
 fn live_view(id: u64) -> bool {
-    STATE.with(|s| s.borrow().views.get(&id).is_some_and(|r| r.close.is_none()))
+    !QUITTING.load(Ordering::SeqCst) && STATE.with(|s| live_view_owner(&s.borrow(), id))
+}
+fn live_view_owner(state: &HostState, id: u64) -> bool {
+    state.views.get(&id).is_some_and(|record| {
+        record.close.is_none()
+            && state
+                .windows
+                .get(&record.window)
+                .is_some_and(|owner| owner.closing.is_none())
+    })
 }
 fn begin_session_operation(id: u64, require_cookies: bool) -> Result<RequestContext, String> {
     STATE.with(|state| {
@@ -1358,7 +1372,7 @@ wrap_delete_cookies_callback! {
 /// callback instead. The registry retains the browser/request until that callback.
 /// See the pinned CEF BrowserViewImpl destructor and Views platform delegate.
 fn dispose_view(id: u64, request: u64) -> Result<(), String> {
-    let (window, view, revoked) = STATE.with(|state| {
+    let (window, view, overlay, revoked) = STATE.with(|state| {
         let mut state = state.borrow_mut();
         let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
         if record.close.is_some() {
@@ -1387,15 +1401,26 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         } else {
             record.view.take()
         };
-        Ok::<_, &str>((window, view, record.rpc.revoke()))
+        let overlay = if owner_closing {
+            None
+        } else {
+            record.overlay.take()
+        };
+        Ok::<_, &str>((window, view, overlay, record.rpc.revoke()))
     })?;
     revoke_renderer(id, revoked);
     // Neither hierarchy mutation nor final reference release may run while a
     // registry borrow is held: CEF can synchronously call OnBeforeClose here.
     if let Some(view) = view {
-        let mut child = View::from(&view);
-        window.remove_child_view(Some(&mut child));
-        drop(child);
+        if let Some(overlay) = overlay {
+            if overlay.is_valid() != 0 {
+                overlay.destroy();
+            }
+            drop(overlay);
+        } else {
+            let mut child = View::from(&view);
+            window.remove_child_view(Some(&mut child));
+        }
         drop(view);
     }
     Ok(())
@@ -1800,6 +1825,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
             let x = policy::coordinate(args, "x")?;
             let y = policy::coordinate(args, "y")?;
+            let view_layout = view_composition::LayoutMode::parse(args.get("viewLayout"))?;
             let id = next_id()?;
             STATE.with(|s| {
                 s.borrow_mut().windows.insert(
@@ -1808,6 +1834,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         window: None,
                         request,
                         closing: None,
+                        view_layout,
                     },
                 );
             });
@@ -1842,13 +1869,26 @@ fn dispatch(command: &Value) -> Result<(), String> {
             {
                 return Err("Application origin must match the initial document".into());
             }
-            let (window, mut context) = STATE.with(|s| {
+            let (window, mut context, placement) = STATE.with(|s| {
                 let s = s.borrow();
                 let record = s.windows.get(&owner).ok_or("INVALID_HANDLE: window")?;
                 if record.closing.is_some() {
-                    return Err("Window is closing");
+                    return Err("Window is closing".into());
                 }
-                Ok::<_, &str>((
+                let overlay_exists = s.views.values().any(|record| {
+                    record.window == owner
+                        && record.close.is_none()
+                        && record.placement.as_ref().is_some_and(|placement| {
+                            placement.layer == view_composition::Layer::Overlay
+                        })
+                });
+                let placement = view_composition::creation(
+                    args,
+                    record.view_layout,
+                    overlay_exists,
+                    approved_origin.is_some(),
+                )?;
+                Ok::<_, String>((
                     record.window.clone().ok_or("Window not ready")?,
                     s.sessions
                         .get(&session)
@@ -1859,6 +1899,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         })
                         .map(|record| record.context.clone())
                         .ok_or("INVALID_HANDLE: session")?,
+                    placement,
                 ))
             })?;
             let id = next_id()?;
@@ -1867,6 +1908,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     id,
                     ViewRecord {
                         view: None,
+                        overlay: None,
+                        placement: placement.clone(),
                         browser: None,
                         window: owner,
                         session,
@@ -1906,29 +1949,52 @@ fn dispatch(command: &Value) -> Result<(), String> {
                 }
             });
             let mut native = View::from(&view);
-            window.add_child_view(Some(&mut native));
-            if let Some(layout) =
-                window.set_to_box_layout(Some(&window_state::browser_layout_settings()))
-            {
-                let views = STATE.with(|s| {
-                    s.borrow()
-                        .views
-                        .values()
-                        .filter(|v| v.window == owner)
-                        .filter_map(|v| v.view.clone())
-                        .collect::<Vec<_>>()
+            if placement.is_some() {
+                let Some(overlay) =
+                    window.add_overlay_view(Some(&mut native), DockingMode::CUSTOM, 1)
+                else {
+                    fail("Native view overlay attachment failed");
+                    return Err("Native view overlay attachment failed".into());
+                };
+                STATE.with(|state| {
+                    if let Some(record) = state.borrow_mut().views.get_mut(&id) {
+                        record.overlay = Some(overlay);
+                    }
                 });
-                for child in views {
-                    let mut native = View::from(&child);
-                    layout.set_flex_for_view(Some(&mut native), 1);
+                if let Err(message) = view_composition::apply(id) {
+                    fail(&message);
+                    return Err(message);
                 }
+            } else {
+                window.add_child_view(Some(&mut native));
+                if let Some(layout) =
+                    window.set_to_box_layout(Some(&window_state::browser_layout_settings()))
+                {
+                    let views = STATE.with(|s| {
+                        s.borrow()
+                            .views
+                            .values()
+                            .filter(|v| v.window == owner)
+                            .filter_map(|v| v.view.clone())
+                            .collect::<Vec<_>>()
+                    });
+                    for child in views {
+                        let mut native = View::from(&child);
+                        layout.set_flex_for_view(Some(&mut native), 1);
+                    }
+                }
+                window.layout();
+                native.request_focus();
             }
-            window.layout();
-            native.request_focus();
         }
         "view.navigate" => {
             let id = number(args, "id")?;
             let url = view_network(id)?.navigation(string(args, "url")?)?;
+            if !view_composition::navigation_allowed(id, &url) {
+                return Err(
+                    "PERMISSION_DENIED: overlay navigation must remain application-owned".into(),
+                );
+            }
             let (start, revoked) = STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let r = s.views.get_mut(&id).ok_or("INVALID_HANDLE: view")?;
@@ -1949,6 +2015,10 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        "view.presentation" | "view.present" => {
+            view_composition::dispatch(request, operation, args)?
+        }
+        "window.focus.next" => view_composition::focus_next(request, args)?,
         #[cfg(feature = "rpc-qualification")]
         "window.qualification.visibility" => window_state::qualification(request, args)?,
         "window.state" | "window.minimize" | "window.restore" | "window.activate"
@@ -2006,16 +2076,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
         }
         "view.focus" => {
             let id = number(args, "id")?;
-            let view = STATE
-                .with(|s| {
-                    s.borrow()
-                        .views
-                        .get(&id)
-                        .filter(|r| r.close.is_none())
-                        .and_then(|r| r.view.clone())
-                })
-                .ok_or("INVALID_HANDLE: view")?;
-            view.request_focus();
+            view_composition::focus(id)?;
             reply(request, Value::Null);
         }
         "rpc.ack" => {
@@ -2436,7 +2497,10 @@ fn dispatch(command: &Value) -> Result<(), String> {
 }
 wrap_window_delegate! {
     struct BunlyWindow { id: u64, title: String, x: i32, y: i32, width: i32, height: i32 }
-    impl ViewDelegate { fn preferred_size(&self, _view: Option<&mut View>) -> Size { Size { width: self.width, height: self.height } } }
+    impl ViewDelegate {
+        fn preferred_size(&self, _view: Option<&mut View>) -> Size { Size { width: self.width, height: self.height } }
+        fn on_layout_changed(&self, _view: Option<&mut View>, _new_bounds: Option<&Rect>) { view_composition::layout_changed(self.id); }
+    }
     impl PanelDelegate {}
     impl WindowDelegate {
         fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
@@ -2483,6 +2547,7 @@ wrap_browser_view_delegate! {
 wrap_client! {
     struct BunlyClient { id: u64, network: Arc<NetworkPolicy> }
     impl Client {
+        fn focus_handler(&self) -> Option<FocusHandler> { Some(BunlyFocus::new(self.id)) }
         fn permission_handler(&self) -> Option<PermissionHandler> { Some(BunlyPermissions::new(self.id)) }
         fn download_handler(&self) -> Option<DownloadHandler> { Some(BunlyDownloads::new(self.id)) }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> { Some(BunlyLife::new(self.id)) }
@@ -2493,6 +2558,13 @@ wrap_client! {
         fn on_process_message_received(&self, browser: Option<&mut Browser>, frame: Option<&mut Frame>, source: ProcessId, message: Option<&mut ProcessMessage>) -> i32 {
             renderer_message(self.id, browser, frame, source, message)
         }
+    }
+}
+wrap_focus_handler! {
+    struct BunlyFocus { id: u64 }
+    impl FocusHandler {
+        fn on_set_focus(&self, _browser: Option<&mut Browser>, _source: FocusSource) -> i32 { i32::from(!view_composition::can_focus(self.id)) }
+        fn on_take_focus(&self, _browser: Option<&mut Browser>, next: i32) { view_composition::take_focus(self.id, next != 0); }
     }
 }
 fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
@@ -2573,7 +2645,11 @@ wrap_life_span_handler! {
                 event("view.closed", self.id, Value::Null);
                 let window = STATE.with(|s| s.borrow().windows.get(&record.window).and_then(|r| r.window.clone()));
                 if let Some(window) = window {
-                    if let Some(view) = record.view { let mut view = View::from(&view); window.remove_child_view(Some(&mut view)); }
+                    if let Some(overlay) = record.overlay.take() {
+                        if overlay.is_valid() != 0 { overlay.destroy(); }
+                    } else if let Some(view) = record.view.take() {
+                        let mut view = View::from(&view); window.remove_child_view(Some(&mut view));
+                    }
                     let closing = STATE.with(|s| s.borrow().windows.get(&record.window).is_some_and(|r| r.closing.is_some()));
                     if closing || QUITTING.load(Ordering::SeqCst) { window.close(); }
                 }
@@ -2704,7 +2780,9 @@ wrap_request_handler! {
         // is closing: Chromium needs them for teardown. URL policy still applies,
         // while only live application views receive navigation events.
         fn on_before_browse(&self, _browser: Option<&mut Browser>, frame: Option<&mut Frame>, request: Option<&mut Request>, _gesture: i32, redirect: i32) -> i32 {
-            let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string(); let denied = self.network.navigation(&url).is_err();
+            let Some(request) = request else { return 1 }; let url = CefString::from(&request.url()).to_string();
+            let main = frame.as_ref().is_some_and(|frame| frame.is_main()!=0);
+            let denied = self.network.navigation(&url).is_err() || (main && !view_composition::navigation_allowed(self.id, &url));
             if denied { event("network.navigation-denied", self.id, json!({"main":frame.as_ref().is_some_and(|frame| frame.is_main()!=0)})); }
             if denied && frame.as_ref().is_some_and(|frame| frame.is_main() != 0) {
                 STATE.with(|s| revoke_view(&mut s.borrow_mut(), self.id));
@@ -2907,6 +2985,8 @@ mod tests {
             view,
             ViewRecord {
                 view: None,
+                overlay: None,
+                placement: None,
                 browser: None,
                 window,
                 session: 3,
@@ -2930,6 +3010,28 @@ mod tests {
             .grant_native(&scope, capability_policy::NativeCapability::ClipboardRead)
             .unwrap();
         (state, scope)
+    }
+
+    #[test]
+    fn closing_view_or_owner_never_emits_live_document_callbacks() {
+        let (mut state, scope) = state_with_view(7, 11);
+        assert!(!live_view_owner(&state, scope.view));
+        state.windows.insert(
+            11,
+            WindowRecord {
+                window: None,
+                request: 0,
+                closing: None,
+                view_layout: view_composition::LayoutMode::Stack,
+            },
+        );
+        assert!(live_view_owner(&state, scope.view));
+        state.windows.get_mut(&11).unwrap().closing = Some(0);
+        assert!(!live_view_owner(&state, scope.view));
+        state.windows.get_mut(&11).unwrap().closing = None;
+        state.views.get_mut(&7).unwrap().close = Some(0);
+        assert!(!live_view_owner(&state, scope.view));
+        assert!(!live_view_owner(&state, 999));
     }
 
     #[test]
