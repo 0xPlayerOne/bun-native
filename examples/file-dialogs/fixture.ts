@@ -7,6 +7,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desktop.ts'
 import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-generations.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
+import { dialogNavigationReadiness } from './readiness.ts'
 import { formatDesktopFixtureFailure } from '../../benchmarks/desktop/failure-codes.ts'
 
 // Bootstrap and fixture are separate bundles in one Bun realm. SDK errors keep
@@ -217,10 +218,10 @@ export default async function qualifyFileDialogs(backend: CefBackend): Promise<v
       )
       await visible()
       const url = 'app://ui/index.html?new-document=1'
-      const readiness = managedDocumentReadiness(backend, url)
+      const readiness = dialogNavigationReadiness(backend, view, url)
       try {
         await bounded(backend.navigate(view, url))
-        await bounded(readiness.wait(view))
+        await bounded(readiness.wait())
       } finally {
         readiness.close()
       }
