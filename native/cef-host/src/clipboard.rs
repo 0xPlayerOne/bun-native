@@ -254,7 +254,7 @@ mod platform {
         System::DataExchange::EnumClipboardFormats,
     };
     use windows_sys::Win32::{
-        Foundation::{GlobalFree, HANDLE, HGLOBAL},
+        Foundation::{GlobalFree, HANDLE, HGLOBAL, HWND},
         System::{
             DataExchange::{
                 CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable,
@@ -291,7 +291,7 @@ mod platform {
         }
     }
     fn open(window: &Window) -> Result<Open, String> {
-        let handle = window.window_handle().0.cast();
+        let handle: HWND = window.window_handle().0.cast();
         if handle.is_null() {
             return Err("Native clipboard owner window unavailable".into());
         }
