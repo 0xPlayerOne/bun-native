@@ -151,8 +151,9 @@ the existing shutdown diagnostics.
 The contributor renderer-crash fixture now requires that failed-shutdown
 rejection, the exact injected renderer exit status, and a non-forced backend
 exit of 1. Its acknowledgment cannot turn the deliberately failed host into an
-orderly close. Historical fault evidence retains its original validation rules;
-new runs explicitly select the stronger failed-shutdown contract.
+orderly close. Current fault reports use schema 8 so the final Linux/Windows aggregate also
+requires the explicit rejection and backend exit 1. Schema 7 and earlier reports
+keep their original expectations during historical replay.
 
 There are at most 64 lifecycle subscriptions and 64 pending readiness waiters per
 backend. Abort removes the associated listener/waiter, disposers are idempotent,
