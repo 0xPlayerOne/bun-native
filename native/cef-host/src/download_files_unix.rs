@@ -15,13 +15,14 @@ fn error() -> String {
 fn name(value: &str) -> Result<CString, String> {
     CString::new(value).map_err(|_| "Invalid native file component".into())
 }
+#[allow(clippy::unnecessary_cast)] // Darwin's u16 mode_t needs C varargs integer promotion.
 fn open_at(fd: i32, component: &CStr, flags: i32, mode: libc::mode_t) -> Result<File, String> {
     let opened = unsafe {
         libc::openat(
             fd,
             component.as_ptr(),
             flags | libc::O_CLOEXEC | libc::O_NOFOLLOW,
-            mode,
+            mode as libc::c_uint,
         )
     };
     if opened < 0 {
