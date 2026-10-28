@@ -27,20 +27,28 @@ def cp1252_text_default():
 class HostedQualificationTests(unittest.TestCase):
     def test_build_account_cli_handoff_is_ascii_even_with_windows_legacy_stdout(self):
         selected = str(PureWindowsPath("C:/selected é Ω")) + chr(92)
-        data = io.BytesIO()
-        output = io.TextIOWrapper(data, encoding="cp1252", write_through=True)
-        with (
-            patch.dict(hosted.os.environ, {"GITHUB_ACTIONS": "true"}),
-            patch.object(hosted.shutil, "which", return_value="/build-account/bun"),
-            patch.object(hosted, "native_target_directory", return_value=selected) as query,
-            patch.object(hosted.sys, "stdout", output),
-        ):
-            hosted.main(["target-directory-base64"])
-        query.assert_called_once_with("/build-account/bun")
-        encoded = data.getvalue().removesuffix(b"\n")
-        self.assertTrue(encoded.isascii())
-        self.assertEqual(base64.b64decode(encoded, validate=True).decode("utf-8"), selected)
-        output.detach()
+        for newline in ("\n", "\r\n"):
+            with self.subTest(newline=newline):
+                data = io.BytesIO()
+                output = io.TextIOWrapper(
+                    data, encoding="cp1252", newline=newline, write_through=True
+                )
+                with (
+                    patch.dict(hosted.os.environ, {"GITHUB_ACTIONS": "true"}),
+                    patch.object(hosted.shutil, "which", return_value="/build-account/bun"),
+                    patch.object(hosted, "native_target_directory", return_value=selected) as query,
+                    patch.object(hosted.sys, "stdout", output),
+                ):
+                    hosted.main(["target-directory-base64"])
+                query.assert_called_once_with("/build-account/bun")
+                # PowerShell captures one native-output line without its OS newline.
+                # Model both encodings of that boundary on every test platform.
+                lines = data.getvalue().splitlines()
+                self.assertEqual(len(lines), 1)
+                encoded = lines[0]
+                self.assertTrue(encoded.isascii())
+                self.assertEqual(base64.b64decode(encoded, validate=True).decode("utf-8"), selected)
+                output.detach()
 
     def test_worker_uses_the_exact_build_account_handoff_without_a_compiler(self):
         with tempfile.TemporaryDirectory() as directory:
