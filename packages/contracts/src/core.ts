@@ -3,6 +3,7 @@ export const CONTRACT_VERSION = 2 as const
 export const CAPABILITIES = [
   'window.lifecycle',
   'view.navigate',
+  'view.composition',
   'session.ephemeral',
   'session.persistent',
   'session.cookies',

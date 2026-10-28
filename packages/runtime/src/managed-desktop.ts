@@ -4,6 +4,7 @@ import type {
   ViewHandle,
   WindowHandle,
 } from '../../contracts/src/index.ts'
+import { normalizeViewPresentation } from '../../contracts/src/index.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
   ManagedError,
@@ -65,7 +66,7 @@ interface Entry {
 const lifecycleOperations = ['events', 'ack-events']
 const operations = {
   window: ['state', 'show', 'resize', 'activate', 'minimize', 'restore'],
-  view: ['state', 'navigate', 'focus'],
+  view: ['state', 'navigate', 'focus', 'presentation', 'present'],
   session: ['identity', 'cookies', 'flush'],
   terminal: ['identity', 'write', 'resize', 'signal'],
   process: ['state', 'write', 'resize', 'signal'],
@@ -370,9 +371,16 @@ export class ManagedDesktopResources {
           const url = object(input, ['url'])['url']
           if (typeof url !== 'string' || url.length > 8192) invalid()
           await this.backend.navigate(view, url, { signal: context.signal })
+        } else if (operation === 'present') {
+          const presentation = normalizeViewPresentation(
+            object(input, ['presentation'])['presentation']
+          )
+          return this.backend.setViewPresentation(view, presentation, { signal: context.signal })
         } else {
           empty(input)
           if (operation === 'state') return this.backend.state(view)
+          if (operation === 'presentation')
+            return this.backend.viewPresentation(view, { signal: context.signal })
           if (operation === 'focus') await this.backend.focusView(view)
           else invalid()
         }

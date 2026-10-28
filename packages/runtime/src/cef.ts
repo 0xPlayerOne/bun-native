@@ -35,6 +35,9 @@ import {
   normalizeUrl,
   originOf,
   validateBounds,
+  normalizeViewPresentation,
+  parseViewPresentationState,
+  requireCapability,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
@@ -46,6 +49,11 @@ import type {
   SessionClearOptions,
   SessionClearResult,
   WindowOptions,
+  ViewCompositionBackend,
+  ViewPresentationOptions,
+  ViewPresentationState,
+  ViewLayoutMode,
+  ViewLayer,
   ViewOptions,
   SessionOptions,
   ViewState,
@@ -120,6 +128,11 @@ interface ViewResource extends NativeResource {
   window: WindowHandle
   session: SessionHandle
   state: ViewState
+  composition: boolean
+  layer: ViewLayer
+}
+interface WindowResource extends NativeResource {
+  viewLayout: ViewLayoutMode
 }
 const MAX_NATIVE_RPC_PACKET = 24 * 1024
 function unhex(value: unknown): Uint8Array {
@@ -300,7 +313,7 @@ function checkedCookie(value: CookieInput): CookieInput {
   })
 }
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
-export class CefBackend implements BrowserBackend {
+export class CefBackend implements BrowserBackend, ViewCompositionBackend {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'cef',
     version: '0.1.0-dev.0',
@@ -309,6 +322,7 @@ export class CefBackend implements BrowserBackend {
     capabilities: Object.freeze([
       'window.lifecycle',
       'view.navigate',
+      'view.composition',
       'session.ephemeral',
       'session.persistent',
       'session.cookies',
@@ -508,6 +522,11 @@ export class CefBackend implements BrowserBackend {
   async createWindow(options: WindowOptions): Promise<WindowHandle> {
     this.#active()
     validateBounds(options.bounds)
+    const requestedLayout = options.viewLayout
+    const viewLayout = requestedLayout ?? 'stack'
+    if (viewLayout !== 'stack' && viewLayout !== 'manual')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid view layout mode')
+    if (viewLayout === 'manual') requireCapability(this.descriptor, 'view.composition')
     if (
       typeof options.title !== 'string' ||
       options.title.length > 1024 ||
@@ -515,10 +534,14 @@ export class CefBackend implements BrowserBackend {
     )
       throw new BunlyError('INVALID_ARGUMENT', 'Invalid window title')
     const native = this.#createdId(
-      await this.#transport.call('window.create', { title: options.title, ...options.bounds })
+      await this.#transport.call('window.create', {
+        title: options.title,
+        ...options.bounds,
+        ...(requestedLayout === undefined ? {} : { viewLayout }),
+      })
     )
     this.#active()
-    const handle = this.#remember('window', { native })
+    const handle = this.#remember('window', { native, viewLayout } satisfies WindowResource)
     this.#windowViews.set(handle, new Set())
     this.#emit({ type: 'created', resource: handle })
     return handle
@@ -526,7 +549,7 @@ export class CefBackend implements BrowserBackend {
   async createView(options: ViewOptions): Promise<ViewHandle> {
     this.#active()
     const { window: windowHandle, session: sessionHandle } = options
-    const window = this.#registry.get<'window', NativeResource>(windowHandle, 'window')
+    const window = this.#registry.get<'window', WindowResource>(windowHandle, 'window')
     const session = this.#registry.get<'session', NativeResource>(sessionHandle, 'session')
     if (this.#closing.has(windowHandle) || this.#closing.has(sessionHandle))
       throw new BunlyError('DISPOSED', 'Window is closing')
@@ -544,11 +567,28 @@ export class CefBackend implements BrowserBackend {
         'Application origin must explicitly match the initial document'
       )
     const trust: ViewTrust = Object.freeze({ ...options.trust })
+    if (window.viewLayout === 'manual') requireCapability(this.descriptor, 'view.composition')
+    if (
+      window.viewLayout === 'stack' &&
+      (options.presentation !== undefined || options.layer !== undefined)
+    )
+      throw new BunlyError('INVALID_ARGUMENT', 'View presentation requires a manual-layout window')
+    const presentation =
+      window.viewLayout === 'manual' ? normalizeViewPresentation(options.presentation) : undefined
+    const layer = options.layer ?? 'content'
+    if (layer !== 'content' && layer !== 'overlay')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid view layer')
+    if (layer === 'overlay' && (trust.kind !== 'application' || trust.origin !== 'app://ui'))
+      throw new BunlyError(
+        'PERMISSION_DENIED',
+        'Overlays require an application-owned app://ui document'
+      )
     const created = await this.#transport.call('view.create', {
       window: window.native,
       session: session.native,
       url,
       trust,
+      ...(presentation === undefined ? {} : { presentation, layer }),
     })
     const native = this.#createdId(created)
     let documentId: string
@@ -575,6 +615,8 @@ export class CefBackend implements BrowserBackend {
       window: windowHandle,
       session: sessionHandle,
       state: { url, documentId, trust },
+      composition: presentation !== undefined,
+      layer,
     } satisfies ViewResource)
     this.#windowViews.get(windowHandle)!.add(handle)
     this.#sessionViews.get(sessionHandle)!.add(handle)
@@ -591,6 +633,8 @@ export class CefBackend implements BrowserBackend {
     if (this.#closing.has(view) || this.#closing.has(resource.window))
       throw new BunlyError('DISPOSED', 'View is closing')
     const url = normalizeUrl(value)
+    if (resource.layer === 'overlay' && originOf(url) !== 'app://ui')
+      throw new BunlyError('PERMISSION_DENIED', 'Overlay navigation must remain application-owned')
     this.#policyEpochs.set(view, (this.#policyEpochs.get(view) ?? 0) + 1)
     this.#retireRpc(view)
     await this.#transport.call('view.navigate', { id: resource.native, url }, options.signal)
@@ -832,12 +876,69 @@ export class CefBackend implements BrowserBackend {
     const { native } = this.#registry.get<'window', NativeResource>(window, 'window')
     await this.#transport.call('window.resize', { id: native, width, height })
   }
-  async focusView(view: ViewHandle): Promise<void> {
-    this.#active()
-    const resource = this.#registry.get<'view', ViewResource>(view, 'view')
-    if (this.#closing.has(view) || this.#closing.has(resource.window))
-      throw new BunlyError('DISPOSED', 'View is closing')
-    await this.#transport.call('view.focus', { id: resource.native })
+  async focusView(view: ViewHandle, options?: OperationOptions): Promise<void> {
+    const resource = this.#liveView(view)
+    if (resource.composition) requireCapability(this.descriptor, 'view.composition')
+    await this.#transport.call('view.focus', { id: resource.native }, options?.signal)
+    this.#liveView(view)
+  }
+  async viewPresentation(
+    view: ViewHandle,
+    options?: OperationOptions
+  ): Promise<ViewPresentationState> {
+    const resource = this.#liveView(view)
+    requireCapability(this.descriptor, 'view.composition')
+    if (!resource.composition) return unsupported('view.composition')
+    const value = await this.#transport.call(
+      'view.presentation',
+      { id: resource.native },
+      options?.signal
+    )
+    this.#liveView(view)
+    return parseViewPresentationState(value)
+  }
+  async setViewPresentation(
+    view: ViewHandle,
+    presentation: ViewPresentationOptions,
+    options?: OperationOptions
+  ): Promise<ViewPresentationState> {
+    const resource = this.#liveView(view)
+    requireCapability(this.descriptor, 'view.composition')
+    if (!resource.composition) return unsupported('view.composition')
+    const normalized = normalizeViewPresentation(presentation)
+    const value = await this.#transport.call(
+      'view.present',
+      { id: resource.native, presentation: normalized },
+      options?.signal
+    )
+    this.#liveView(view)
+    return parseViewPresentationState(value)
+  }
+  async focusNextView(
+    window: WindowHandle,
+    reverse = false,
+    options?: OperationOptions
+  ): Promise<ViewHandle | null> {
+    const resource = this.#liveWindow(window)
+    requireCapability(this.descriptor, 'view.composition')
+    if (typeof reverse !== 'boolean')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid traversal direction')
+    const value = await this.#transport.call(
+      'window.focus.next',
+      { id: resource.native, reverse },
+      options?.signal
+    )
+    this.#liveWindow(window)
+    if (value === null) return null
+    if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).join(',') !== 'id')
+      throw new Error('Malformed native focus target')
+    const native = this.#createdId(value)
+    const target = this.#native.get(native)
+    if (!target || target.kind !== 'view') throw new Error('Malformed native focus target')
+    const view = target as ViewHandle
+    if (this.#liveView(view).window !== window)
+      throw new Error('Native focus target has a different owner')
+    return view
   }
   #disposeResource<K extends ResourceKind>(
     handle: Handle<K>,
@@ -1324,6 +1425,8 @@ export class CefBackend implements BrowserBackend {
         this.#retireRpc(view)
       const resource = this.#registry.get<'view', ViewResource>(view, 'view')
       const url = normalizeUrl(event.data['url'])
+      if (resource.layer === 'overlay' && originOf(url) !== 'app://ui')
+        throw new Error('Native overlay escaped its application origin')
       const documentId = nativeDocumentId(event.data)
       const trust =
         (event.event === 'view.loaded' || event.data['applicationTrust'] === true) &&
