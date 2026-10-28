@@ -14,7 +14,10 @@ opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
 The [interactive hardware workbench](hardware-workbench.md) supplies a maintained
 native target for operator input, display, accessibility and lifecycle work.
 It prepares an explicit prebuilt without launching it and keeps manual results
-not run or unsupported until separately recorded.
+not run or unsupported until separately recorded. The
+[M7 platform qualification protocol](m7-platform-qualification.md) defines the
+matching twelve case IDs, physical equipment records and admission criteria;
+all physical hardware and assistive-technology qualification remains not run.
 
 The [managed development qualification](managed-development-qualification.md)
 defines the native 500-replacement and controlled-relaunch workload. The

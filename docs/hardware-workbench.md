@@ -7,7 +7,7 @@ APIs. It stays open until the operator closes its final window or explicitly
 quits. The application has no timed completion, automatic case acceptance, or
 hardware qualification claim.
 
-The separate [twelve-case hardware protocol](https://github.com/0xPlayerOne/bunly/blob/10ee31aca0a027b7670941ff92e4ec7334ea85f9/docs/m7-platform-qualification.md)
+The [twelve-case hardware protocol](m7-platform-qualification.md)
 defines the required equipment and failure criteria. This workbench supplies an
 interactive target for its supported steps. The fixed native acceptance fixtures
 and the web-only comparison workbench keep their existing purposes.
@@ -175,14 +175,16 @@ with a reason. Partial steps cannot pass a complete matrix case.
 | M1   | Unsupported in this workbench.                                                                                                    | No native menu/shortcut/status item, OS dialog/file picker, or backend replacement during native UI.                       |
 | C1   | Individual preview disposal/reopen, surviving sibling use, final-window close and explicit quit.                                  | Exact-head native shutdown and process/helper cleanup evidence still come from the full finite native suite.               |
 
-The workbench imports no unmerged desktop-services, download, menu, status-item,
-dialog or browser-actions adapter. Adding those controls later requires their own
+The workbench does not import the desktop-services, download, menu, status-item,
+dialog or browser-actions adapters. Adding those controls later requires their own
 explicit authorization, current-owner checks and evidence. An absent adapter is
 never represented as a successful cancellation or no-op.
 
 ## Equipment and evidence record flow
 
-1. Run the [full hosted/native qualification](manual-native-qualification.md) on
+1. Read the [protocol's failure criteria](m7-platform-qualification.md#operator-cases-and-failure-criteria)
+   for the same twelve case IDs used by the UI and operator template. Run the
+   [full hosted/native qualification](manual-native-qualification.md) on
    the exact candidate using the normal profile and existing deadlines. Preserve
    runtime identity, artifact inventory, native shutdown, output drain and
    process/helper cleanup evidence, including failures. A passing workbench

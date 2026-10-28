@@ -189,6 +189,14 @@ cancellation admission, managed authority, bounded renderer receipts, legacy
 layout behavior, and explicit unsupported backends. Those tests are protocol
 evidence; native behavior requires the shared runner on each supported platform.
 
+For deliberate operator input and equipment tests, use the separate
+[interactive native workbench](hardware-workbench.md). It prepares an explicitly
+selected prebuilt without launching it, opens only with `run ... --launch`, and
+stays alive until explicit close. Its two remote previews and application overlay
+exercise this composition API under the
+[M7 twelve-case protocol](m7-platform-qualification.md); all physical hardware
+and assistive-technology results remain not run or explicitly unsupported.
+
 Issue #35 remains open until the complete desktop matrix is qualified. In
 particular, physical keyboard/pointer and IME paths, context-menu/dialog focus,
 assistive technology, hardware multi-monitor/DPI behavior, transparent or modal
