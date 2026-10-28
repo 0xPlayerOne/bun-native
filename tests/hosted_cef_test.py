@@ -43,6 +43,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "transports",
                 "session-reset",
                 "faults",
+                "desktop",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -135,6 +136,7 @@ class HostedQualificationTests(unittest.TestCase):
                         if row[0]
                         not in (
                             "faults",
+                            "desktop",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -456,7 +458,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 11)
+                self.assertEqual(len(names), 12)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -526,3 +528,38 @@ class ManagedDevelopmentStageTests(unittest.TestCase):
                 for invalid in ("HEAD", "main", source + "0", "--no-sandbox"):
                     with self.assertRaises(ValueError):
                         hosted.commands("full", bun, app, native_source=invalid)
+
+
+class DesktopStageTests(unittest.TestCase):
+    def test_native_desktop_requires_exact_source_and_gates_providers_on_every_platform(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("desktop"), 1)
+                self.assertLess(names.index("desktop"), names.index("credentials"))
+                expected = (
+                    [
+                        sys.executable,
+                        str(hosted.ROOT / "scripts/qualify-cef-window-modes-linux.py"),
+                        "--disposable-runner",
+                        "--desktop",
+                        "--bun",
+                        "/bun",
+                        str(app),
+                    ]
+                    if system == "linux"
+                    else ["/bun", str(hosted.ROOT / "scripts/qualify-desktop.ts"), str(app)]
+                )
+                self.assertEqual(
+                    dict(selected)["desktop"], [*expected, "--native-source=" + source]
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "desktop")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn("desktop", dict(hosted.commands("m4-acceptance", "/bun", app)))
+        self.assertEqual(hosted.report_directory("desktop"), hosted.ROOT / ".bunly/m7/desktop")

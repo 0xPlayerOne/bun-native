@@ -1951,7 +1951,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
         #[cfg(feature = "rpc-qualification")]
         "window.qualification.visibility" => window_state::qualification(request, args)?,
-        "window.state" | "window.minimize" | "window.restore" | "window.activate" => {
+        "window.state" | "window.minimize" | "window.restore" | "window.activate"
+        | "window.maximize" | "window.fullscreen" | "window.bounds" | "window.bounds.set" => {
             window_state::dispatch(request, operation, args)?;
         }
         "window.close" | "window.show" | "window.hide" | "window.resize" => {
@@ -2439,7 +2440,11 @@ wrap_window_delegate! {
     impl PanelDelegate {}
     impl WindowDelegate {
         fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
-        fn on_window_activation_changed(&self, _window: Option<&mut Window>, _active: i32) { window_state::activation_changed(self.id); }
+        fn can_maximize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn can_resize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn on_window_activation_changed(&self, _window: Option<&mut Window>, _active: i32) { window_state::state_changed(self.id); }
+        fn on_window_bounds_changed(&self, _window: Option<&mut Window>, _new_bounds: Option<&Rect>) { window_state::bounds_changed(self.id); }
+        fn on_window_fullscreen_transition(&self, _window: Option<&mut Window>, is_completed: i32) { window_state::fullscreen_transition(self.id, is_completed != 0); }
         fn window_runtime_style(&self) -> RuntimeStyle { RuntimeStyle::ALLOY }
         fn on_window_created(&self, window: Option<&mut Window>) {
             let Some(window) = window else {
