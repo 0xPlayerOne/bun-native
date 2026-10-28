@@ -202,6 +202,10 @@ export class CefProgrammaticFiles {
         this.#cancel(entry)
       }
     } finally {
+      // The commit closure is not exposed until this owned snapshot is dropped.
+      // Staging holds SDK+private-world bytes; commit holds private-world+File
+      // bytes. Retaining data in Entry or a returned closure would require a
+      // third payload reservation. This is ownership accounting, not GC/RSS.
       data = undefined
       entry.preparing = false
       this.#finalize(entry)

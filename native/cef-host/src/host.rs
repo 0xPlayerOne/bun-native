@@ -32,6 +32,9 @@ mod native_menu_wake;
 mod native_modal;
 #[path = "navigation.rs"]
 mod navigation;
+#[cfg(feature = "programmatic-files")]
+#[path = "programmatic_files.rs"]
+mod programmatic_files;
 #[path = "shutdown_pending.rs"]
 mod shutdown_pending;
 #[path = "status_items.rs"]
@@ -65,6 +68,10 @@ fn desktop_capabilities_for(
             "download.manage",
             "dialog.file",
             "status.item",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -89,6 +96,10 @@ fn desktop_capabilities_for(
             "app.open-url",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -111,6 +122,10 @@ fn desktop_capabilities_for(
             "app.links",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -188,20 +203,56 @@ struct HostState {
     downloads: downloads::Registry,
     #[cfg(feature = "browser-actions")]
     browser_actions: browser_actions::Registry,
+    #[cfg(feature = "programmatic-files")]
+    programmatic_files: programmatic_files::Registry,
 }
 #[path = "credential_callbacks.rs"]
 mod credential_callbacks;
 
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
-#[cfg(feature = "browser-actions")]
+#[cfg(any(feature = "browser-actions", feature = "programmatic-files"))]
 fn view_control_available(state: &HostState, view: u64, reservation: usize) -> bool {
-    !state.browser_actions.contains(view)
-        && state.browser_actions.len() < 8
-        && state
-            .browser_actions
-            .reserved_bytes()
+    let (mut occupied, mut operations, mut bytes) = (false, 0_usize, 0_usize);
+    #[cfg(feature = "browser-actions")]
+    {
+        occupied |= state.browser_actions.contains(view);
+        operations += state.browser_actions.len();
+        bytes += state.browser_actions.reserved_bytes();
+    }
+    #[cfg(feature = "programmatic-files")]
+    {
+        occupied |= state.programmatic_files.contains(view);
+        operations += state.programmatic_files.len();
+        bytes += state.programmatic_files.reserved_bytes();
+    }
+    !occupied
+        && operations < 8
+        && bytes
             .checked_add(reservation)
-            .is_some_and(|bytes| bytes <= 8 * 1024 * 1024)
+            .is_some_and(|total| total <= 8 * 1024 * 1024)
+}
+fn view_close_pending(state: &HostState, view: u64) -> bool {
+    let pending = state.downloads.contains(view) || dialogs::contains(view);
+    #[cfg(feature = "programmatic-files")]
+    let pending = pending || state.programmatic_files.blocks_close(view);
+    pending
+}
+fn any_close_pending(state: &HostState) -> bool {
+    !dialogs::is_empty() || state
+        .views
+        .keys()
+        .any(|view| view_close_pending(state, *view))
+}
+fn programmatic_file_diagnostics(state: &HostState) -> Value {
+    #[cfg(feature = "programmatic-files")]
+    {
+        state.programmatic_files.diagnostics()
+    }
+    #[cfg(not(feature = "programmatic-files"))]
+    {
+        let _ = state;
+        json!({"operations":0,"registrations":0,"callbacks":0,"privateControllers":0,"objectGroups":0,"chunkBytes":0,"reservedBytes":0,"deadlineWorkers":0,"admitted":0,"prepared":0,"committed":0,"dispatched":0,"completed":0,"released":0})
+    }
 }
 fn browser_action_diagnostics(state: &HostState) -> Value {
     #[cfg(feature = "browser-actions")]
@@ -286,6 +337,8 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     window_commands::retire_view(id);
     status_items::retire_view(id);
     application_links::retire_view(id);
+    #[cfg(feature = "programmatic-files")]
+    programmatic_files::invalidate_stale(id);
     let Some(binding) = binding else {
         return;
     };
@@ -971,7 +1024,7 @@ fn quit_on_ui(reason: &'static str) {
     for (id, revoked) in revocations {
         revoke_renderer(id, revoked);
     }
-    if !dialogs::is_empty() || STATE.with(|s| !s.borrow().downloads.is_empty()) {
+    if STATE.with(|s| any_close_pending(&s.borrow())) {
         // CEF stops download callbacks once a browser is destroyed, but lets its
         // transfer continue. Retain all owners until actual cancellation settles.
         return;
@@ -1210,6 +1263,8 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     status_items::shutdown_receipt();
     application_links::shutdown();
     dialogs::shutdown_receipt();
+    #[cfg(feature = "programmatic-files")]
+    if !programmatic_files::shutdown_ready() { return; }
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
@@ -1599,12 +1654,15 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         Ok::<_, &str>(record.rpc.revoke())
     })?;
     revoke_renderer(id, revoked);
-    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
         return Ok(());
     }
     destroy_disposed_view(id)
 }
 fn destroy_disposed_view(id: u64) -> Result<(), String> {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
+        return Ok(());
+    }
     let (window, view, overlay, revoked) = STATE.with(|state| {
         let mut state = state.borrow_mut();
         let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
@@ -1657,8 +1715,8 @@ fn destroy_disposed_view(id: u64) -> Result<(), String> {
     }
     Ok(())
 }
-fn resume_after_download(id: u64) {
-    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+fn resume_after_owned_operation(id: u64) {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
         return;
     }
     if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) {
@@ -1668,7 +1726,7 @@ fn resume_after_download(id: u64) {
     if QUITTING.load(Ordering::SeqCst) {
         let owners = STATE.with(|s| {
             let state = s.borrow();
-            (state.downloads.is_empty() && dialogs::is_empty()).then(|| {
+            (!any_close_pending(&state)).then(|| {
                 (
                     state
                         .windows
@@ -1807,6 +1865,8 @@ fn begin_navigation(
     status_items::retire_view(view);
     application_links::retire_view(view);
     dialogs::revoke(view);
+    #[cfg(feature = "programmatic-files")]
+    state.programmatic_files.revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1833,6 +1893,8 @@ fn revoke_view(state: &mut HostState, view: u64) {
     status_items::retire_view(view);
     application_links::retire_view(view);
     dialogs::revoke(view);
+    #[cfg(feature = "programmatic-files")]
+    state.programmatic_files.revoke(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1902,6 +1964,7 @@ fn allowed_during_quit(operation: &str) -> bool {
             | "dialog.cancel"
             | "status.dispose"
             | "links.dispose"
+            | "file.interaction.cancel"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2414,6 +2477,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.prepare" => programmatic_files::prepare(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.write" => programmatic_files::write(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.commit" => programmatic_files::commit(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.cancel" => programmatic_files::cancel(request, args)?,
         #[cfg(feature = "browser-actions")]
         "browser.action.start" => browser_actions::start(request, args)?,
         #[cfg(feature = "browser-actions")]
@@ -2922,7 +2993,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"browserActions":browser_action_diagnostics(&s),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"browserActions":browser_action_diagnostics(&s),"programmaticFiles":programmatic_file_diagnostics(&s),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
@@ -2976,7 +3047,7 @@ wrap_window_delegate! {
                 revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
-                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || dialogs::contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let pending = view_ids.iter().any(|id| view_close_pending(&s, *id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
                 let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
                 (browsers, pending, revocations)
             });
@@ -3050,6 +3121,8 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             status_items::retire_view(id);
             application_links::retire_view(id);
             dialogs::revoke(id);
+            #[cfg(feature = "programmatic-files")]
+            state.programmatic_files.revoke(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -3108,7 +3181,9 @@ wrap_life_span_handler! {
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             shutdown_pending::record(shutdown_pending::Point::BrowserBeforeClose);
             #[cfg(feature = "browser-actions")]
-            browser_actions::before_close(self.id, _browser);
+            browser_actions::before_close(self.id, _browser.as_deref());
+            #[cfg(feature = "programmatic-files")]
+            programmatic_files::before_close(self.id, _browser.as_deref());
             if STATE.with(|s| s.borrow().downloads.contains(self.id)) { fail("Browser closed with an unsettled native download"); }
             let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
             if let Some(mut record) = record {
@@ -3726,6 +3801,7 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("status.dispose"));
         assert!(allowed_during_quit("links.dispose"));
         assert!(allowed_during_quit("dialog.cancel"));
+        assert!(allowed_during_quit("file.interaction.cancel"));
         for operation in [
             "download.start",
             "commands.create",
@@ -3743,6 +3819,10 @@ mod command_task_lifetime_tests {
             "session.create",
             "download.cancel.extra",
             "commands.cancel.extra",
+            "file.interaction.prepare",
+            "file.interaction.write",
+            "file.interaction.commit",
+            "file.interaction.cancel.extra",
         ] {
             assert!(!allowed_during_quit(operation), "{operation}");
         }

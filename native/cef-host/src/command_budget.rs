@@ -177,7 +177,8 @@ mod tests {
                 "commands.dispose",
                 "dialog.cancel",
                 "status.dispose",
-                "links.dispose"
+                "links.dispose",
+                "file.interaction.cancel"
             ]
         );
     }

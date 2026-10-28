@@ -35,6 +35,14 @@ impl PreparedDocumentScope {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeCapability {
+    FileInput {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
+    FileDrop {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
     BrowserSnapshot,
     BrowserObserveDom,
     BrowserObserveAccessibility,
@@ -122,6 +130,14 @@ struct BrowserGrant {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeRequest {
+    FileInput {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
+    FileDrop {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
     BrowserSnapshot,
     BrowserObserveDom,
     BrowserObserveAccessibility,
@@ -408,10 +424,30 @@ pub fn decode_document_scope(value: serde_json::Value) -> Result<DocumentScope, 
     Ok(scope)
 }
 
+pub fn file_element_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value.as_bytes()[0].is_ascii_alphabetic()
+        && value
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+}
+
 pub fn prepare_native_capability(
     capability: NativeCapability,
 ) -> Result<PreparedNativeCapability, &'static str> {
     let capability = match capability {
+        capability @ (NativeCapability::FileInput { .. } | NativeCapability::FileDrop { .. }) => {
+            let element = match &capability {
+                NativeCapability::FileInput { element_id }
+                | NativeCapability::FileDrop { element_id } => element_id,
+                _ => unreachable!(),
+            };
+            if !file_element_id(element) {
+                return Err("file interaction requires one exact element ID");
+            }
+            capability
+        }
         NativeCapability::BrowserEvaluate { expression } => {
             if expression.is_empty() || expression.len() > 4096 || expression.contains('\0') {
                 return Err("browser evaluation source is empty or oversized");
@@ -463,6 +499,8 @@ pub fn decode_native_capability(
             ("file-read", &["root"]),
             ("file-write", &["root"]),
             ("process-execute", &["executable", "arguments"]),
+            ("file-input", &["elementId"]),
+            ("file-drop", &["elementId"]),
             ("browser-snapshot", &[]),
             ("browser-observe-dom", &[]),
             ("browser-observe-accessibility", &[]),
@@ -489,6 +527,8 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("file-read", &["path"]),
             ("file-write", &["path"]),
             ("process-execute", &["executable", "arguments"]),
+            ("file-input", &["elementId"]),
+            ("file-drop", &["elementId"]),
             ("browser-snapshot", &[]),
             ("browser-observe-dom", &[]),
             ("browser-observe-accessibility", &[]),
@@ -564,6 +604,18 @@ pub(crate) fn download_root(
 
 fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
     match (grant, request) {
+        (
+            NativeCapability::FileInput {
+                element_id: granted,
+            },
+            NativeRequest::FileInput { element_id },
+        )
+        | (
+            NativeCapability::FileDrop {
+                element_id: granted,
+            },
+            NativeRequest::FileDrop { element_id },
+        ) => file_element_id(element_id) && granted == element_id,
         (NativeCapability::BrowserSnapshot, NativeRequest::BrowserSnapshot)
         | (NativeCapability::BrowserObserveDom, NativeRequest::BrowserObserveDom)
         | (
@@ -908,6 +960,98 @@ mod tests {
             main_frame: format!("frame-{view}"),
             document: format!("document-{generation}"),
             origin: origin.into(),
+        }
+    }
+    #[test]
+    fn file_interactions_require_separate_exact_element_and_document_grants() {
+        let mut policy = Policy::default();
+        let live = scope(1, 2, 3, "https://remote.invalid");
+        policy.install_document(live.clone()).unwrap();
+        let input = NativeRequest::FileInput {
+            element_id: "upload".into(),
+        };
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(
+                &live,
+                NativeCapability::FileInput {
+                    element_id: "upload".into(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Authorized
+        );
+        for denied in [
+            NativeRequest::FileDrop {
+                element_id: "upload".into(),
+            },
+            NativeRequest::FileInput {
+                element_id: "other".into(),
+            },
+            NativeRequest::FileInput {
+                element_id: "upload\n".into(),
+            },
+            NativeRequest::FileRead {
+                path: "upload".into(),
+            },
+            NativeRequest::BrowserInput,
+        ] {
+            assert_eq!(
+                policy.authorize_native(&live, &denied, AdapterAvailability::Available),
+                GateDecision::Denied
+            );
+        }
+        assert_eq!(
+            policy.authorize_native(
+                &scope(1, 9, 3, "https://remote.invalid"),
+                &input,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy.navigation_started(1);
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+        let replacement = scope(1, 2, 4, "https://remote.invalid");
+        policy.install_document(replacement.clone()).unwrap();
+        assert_eq!(
+            policy.authorize_native(&replacement, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+    }
+    #[test]
+    fn file_grants_reject_paths_selectors_aliases_and_additional_wire_fields() {
+        for name in ["file-input", "file-drop"] {
+            let capability =
+                decode_native_capability(serde_json::json!({"name":name,"elementId":"upload"}))
+                    .unwrap();
+            assert!(prepare_native_capability(capability).is_ok());
+            for extra in ["path", "frame", "script", "element_id"] {
+                let mut invalid = serde_json::json!({"name":name,"elementId":"upload"});
+                invalid[extra] = serde_json::json!("unexpected");
+                assert!(decode_native_capability(invalid).is_err());
+            }
+        }
+        for element in [
+            "",
+            "#upload",
+            "input[type=file]",
+            "upload\n",
+            "a b",
+            "1upload",
+            "../path",
+        ] {
+            assert!(prepare_native_capability(NativeCapability::FileInput {
+                element_id: element.into()
+            })
+            .is_err());
         }
     }
     #[test]

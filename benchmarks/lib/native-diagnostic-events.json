@@ -52,5 +52,6 @@
   "bunly.fault.blocked",
   "bunly.fault.tree-observed",
   "bunly.native.renderer-injected",
-  "bunly.native.browser-actions"
+  "bunly.native.browser-actions",
+  "bunly.native.programmatic-files"
 ]
