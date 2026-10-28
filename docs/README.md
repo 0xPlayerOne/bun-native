@@ -9,6 +9,8 @@ Windows, plus the separately pinned macOS reference comparison.
 [PR #130](https://github.com/0xPlayerOne/bunly/pull/130) is merged. M7 remains in
 progress; [desktop window APIs](desktop-window-api.md) and the
 [native desktop qualifier](desktop-qualification.md) describe its first increment.
+[Native view composition](view-composition.md) describes the next increment's
+opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
 
 The [managed development qualification](managed-development-qualification.md)
 defines the native 500-replacement and controlled-relaunch workload. The

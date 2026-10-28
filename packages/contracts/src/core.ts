@@ -7,6 +7,7 @@ export const CAPABILITIES = [
   'clipboard.text',
   'app.lifecycle',
   'view.navigate',
+  'view.composition',
   'session.ephemeral',
   'session.persistent',
   'session.cookies',

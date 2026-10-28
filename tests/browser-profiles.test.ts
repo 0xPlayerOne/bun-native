@@ -88,6 +88,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
           'window.state',
           'window.geometry',
           'app.lifecycle',
+          'view.composition',
           'session.persistent',
           'session.cookies',
           'session.protected-cookies',

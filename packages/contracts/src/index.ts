@@ -5,6 +5,8 @@ export * from './desktop.ts'
 export * from './profiles.ts'
 export * from './rpc-websocket-wire.ts'
 export * from './network-policy.ts'
+export * from './view-composition.ts'
+import type { ViewLayoutMode, ViewLayer, ViewPresentationOptions } from './view-composition.ts'
 export type {
   PersistentSessionResetOptions,
   PersistentSessionResetResult,
@@ -36,6 +38,8 @@ export type SessionHandle = Handle<'session'>
 export interface WindowOptions {
   readonly title: string
   readonly bounds: Bounds
+  /** Default stack retains the automatic equal-height layout. Manual placement is opt-in. */
+  readonly viewLayout?: ViewLayoutMode
 }
 export interface SessionOptions {
   readonly persistence: 'ephemeral' | 'persistent'
@@ -58,6 +62,10 @@ export interface ViewOptions {
   readonly session: SessionHandle
   readonly url: string
   readonly trust: ViewTrust
+  /** Required in manual windows and forbidden in default stack windows. */
+  readonly presentation?: ViewPresentationOptions
+  /** Overlays are application-owned surfaces, created after all content panes. */
+  readonly layer?: ViewLayer
 }
 export interface ViewState {
   readonly url: string

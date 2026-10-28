@@ -12,13 +12,8 @@ import {
   capturePreparedFileMetadata,
   acceptPreparedFileMetadata,
 } from '../benchmarks/reload/prepared-file-metadata.ts'
-import {
-  DESKTOP_PROFILE,
-  DESKTOP_OBSERVER_MS,
-  desktopSourceSelectors,
-  acceptDesktopControls,
-  acceptDesktopReport,
-} from '../benchmarks/desktop/acceptance.ts'
+import { DESKTOP_OBSERVER_MS } from '../benchmarks/desktop/acceptance.ts'
+import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/profiles.ts'
 import { prepareManagedRuntimeLayout } from './qualify-managed-development.ts'
 
 const root = resolve(import.meta.dir, '..')
@@ -44,7 +39,8 @@ async function verify(filename: string): Promise<void> {
   const report = Object.hasOwn(parsed, 'nativeEvidenceExport')
     ? decodeExportedNativeReport(parsed)
     : parsed
-  const acceptance = acceptDesktopReport(report)
+  const profile = desktopReportProfile(report['profile'])
+  const acceptance = profile.acceptReport(report)
   const source = report['sourceBefore'] as { commit: string }
   const entries = report['sourceHashes'] as { path: string; sha256: string }[]
   const expected = git(
@@ -53,7 +49,7 @@ async function verify(filename: string): Promise<void> {
     '--name-only',
     source.commit,
     '--',
-    ...desktopSourceSelectors
+    ...profile.sourceSelectors
   )
     .split('\n')
     .filter(Boolean)
@@ -77,7 +73,7 @@ async function verify(filename: string): Promise<void> {
   assert.equal(git('rev-parse', `${source.commit}:native/cef-host`), native.tree)
   console.log(
     JSON.stringify({
-      profile: DESKTOP_PROFILE + '-retained-replay',
+      profile: profile.profile + '-retained-replay',
       source: source.commit,
       reportSha256: hash(bytes),
       acceptance,
@@ -85,12 +81,15 @@ async function verify(filename: string): Promise<void> {
   )
 }
 
-async function qualify(args: readonly string[]): Promise<void> {
+async function qualify(input: readonly string[]): Promise<void> {
   assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  const args = [...input]
+  const flag = args.findIndex((argument) => argument.startsWith('--case='))
+  const profile = desktopProfile(flag < 0 ? 'windows' : args.splice(flag, 1)[0]!.slice(7))
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT, or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
@@ -106,7 +105,7 @@ async function qualify(args: readonly string[]): Promise<void> {
     git('rev-parse', `${before.commit}:native/cef-host`),
     'Prebuilt native source mismatch'
   )
-  const paths = git('ls-tree', '-r', '--name-only', before.commit, '--', ...desktopSourceSelectors)
+  const paths = git('ls-tree', '-r', '--name-only', before.commit, '--', ...profile.sourceSelectors)
     .split('\n')
     .filter(Boolean)
   const fingerprints = () =>
@@ -116,12 +115,12 @@ async function qualify(args: readonly string[]): Promise<void> {
   const source = resolve(args[0]!)
   const inputRoot = mac ? source : dirname(source)
   const inputArtifact = await inventory(inputRoot)
-  const parent = join(root, '.bunly/m7/desktop')
+  const parent = join(root, '.bunly/m7', profile.directory)
   await mkdir(parent, { recursive: true, mode: 0o700 })
   const work = await mkdtemp(join(parent, 'run-'))
   const report: Record<string, unknown> = {
     schema: 1,
-    profile: DESKTOP_PROFILE,
+    profile: profile.profile,
     passed: false,
     target,
     bun: Bun.version,
@@ -132,14 +131,14 @@ async function qualify(args: readonly string[]): Promise<void> {
     inputArtifact,
     performanceEligible: false,
     limitations: [
-      'One fixed functional native-window sequence; actual activation is observed, not guaranteed.',
+      profile.workloadLimitation,
       'No physical keyboard, IME, assistive technology, multi-monitor or hardware DPI qualification.',
       'Selected prebuilt source is declared and its bytes inventoried; no embedded build attestation.',
     ],
   }
   const python = process.env['PYTHON'] ?? 'python3'
   try {
-    const app = join(work, mac ? 'Desktop Controls.app' : 'Desktop Controls Unicode é Ω')
+    const app = join(work, profile.title + (mac ? '.app' : ' Unicode é Ω'))
     await cp(inputRoot, app, { recursive: true, dereference: false })
     await prepareManagedRuntimeLayout(app)
     const resources = join(app, mac ? 'Contents/Resources' : 'resources')
@@ -155,7 +154,7 @@ async function qualify(args: readonly string[]): Promise<void> {
     await mkdir(backend)
     for (const [entry, name] of [
       ['scripts/cef-bootstrap.ts', 'main.js'],
-      ['examples/desktop-controls/fixture.ts', 'application.js'],
+      [profile.fixture + '/fixture.ts', 'application.js'],
     ] as const) {
       const built = await Bun.build({
         entrypoints: [join(root, entry)],
@@ -170,12 +169,12 @@ async function qualify(args: readonly string[]): Promise<void> {
     }
     const publicRoot = join(resources, 'public')
     await rm(publicRoot, { recursive: true, force: true })
-    await cp(join(root, 'examples/desktop-controls/public'), publicRoot, {
+    await cp(join(root, profile.fixture, 'public'), publicRoot, {
       recursive: true,
       dereference: false,
     })
     const browser = await Bun.build({
-      entrypoints: [join(root, 'examples/desktop-controls/client.ts')],
+      entrypoints: [join(root, profile.fixture, 'client.ts')],
       outdir: publicRoot,
       naming: 'client.js',
       target: 'browser',
@@ -280,7 +279,7 @@ async function qualify(args: readonly string[]): Promise<void> {
       env: { BUNLY_CACHE_DIR: join(work, 'cache'), BUNLY_BENCH_SANDBOX: '1' },
     }).result
     report['observation'] = observation
-    report['acceptance'] = acceptDesktopControls(observation)
+    report['acceptance'] = profile.acceptObservation(observation)
     report['preparedArtifactAfter'] = await inventory(app)
     assert.deepEqual(report['preparedArtifactAfter'], prepared)
     const metadataAfter = await capturePreparedFileMetadata(app, prepared.entries)
@@ -313,7 +312,7 @@ async function qualify(args: readonly string[]): Promise<void> {
     }
     if (report['passed']) {
       try {
-        acceptDesktopReport(report)
+        profile.acceptReport(report)
       } catch (error) {
         report['passed'] = false
         report['failure'] = String(error)

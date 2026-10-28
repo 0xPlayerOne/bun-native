@@ -49,7 +49,13 @@ export async function nativePeer(options: { readonly desktopCapabilities?: unkno
     ? options.desktopCapabilities
     : {
         version: 1,
-        capabilities: ['window.state', 'window.geometry', 'clipboard.text', 'app.lifecycle'],
+        capabilities: [
+          'window.state',
+          'window.geometry',
+          'clipboard.text',
+          'app.lifecycle',
+          'view.composition',
+        ],
       }
   send({ v: 1, event: 'ready', abi: 1, cef: '156.0.7', data: { desktopCapabilities } })
   await transport.ready

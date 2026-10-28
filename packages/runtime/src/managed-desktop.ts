@@ -5,7 +5,7 @@ import type {
   ViewHandle,
   WindowHandle,
 } from '../../contracts/src/index.ts'
-import { validateBounds } from '../../contracts/src/index.ts'
+import { normalizeViewPresentation, validateBounds } from '../../contracts/src/index.ts'
 import { validateClipboardText } from '../../contracts/src/desktop.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
@@ -81,7 +81,7 @@ const operations = {
     'bounds',
     'set-bounds',
   ],
-  view: ['state', 'navigate', 'focus'],
+  view: ['state', 'navigate', 'focus', 'presentation', 'present'],
   session: ['identity', 'cookies', 'flush'],
   terminal: ['identity', 'write', 'resize', 'signal'],
   process: ['state', 'write', 'resize', 'signal'],
@@ -439,10 +439,17 @@ export class ManagedDesktopResources {
           const url = object(input, ['url'])['url']
           if (typeof url !== 'string' || url.length > 8192) invalid()
           await this.backend.navigate(view, url, { signal: context.signal })
+        } else if (operation === 'present') {
+          const presentation = normalizeViewPresentation(
+            object(input, ['presentation'])['presentation']
+          )
+          return this.backend.setViewPresentation(view, presentation, { signal: context.signal })
         } else {
           empty(input)
           if (operation === 'state') return this.backend.state(view)
-          if (operation === 'focus') await this.backend.focusView(view)
+          if (operation === 'presentation')
+            return this.backend.viewPresentation(view, { signal: context.signal })
+          if (operation === 'focus') await this.backend.focusView(view, { signal: context.signal })
           else invalid()
         }
         return null
