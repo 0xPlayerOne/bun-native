@@ -484,6 +484,85 @@ test('native callback in the same pipe turn as show reply is observed', async ()
   }
 })
 
+test('abort before the menu admission reply queues exact cleanup and waits for native closure', async () => {
+  const f = await fixture()
+  try {
+    const handle = await f.backend.createWindowCommands(f.scope, definition)
+    let showing: Command | undefined
+    f.intercept((command) => {
+      if (command.op === 'commands.show') {
+        showing = command
+        return true
+      }
+      if (command.op === 'commands.cancel') {
+        f.reply(command, { pending: true })
+        return true
+      }
+      return false
+    })
+    const owner = new AbortController()
+    const shown = f.backend.showWindowMenu(handle, { x: 0, y: 0 }, { signal: owner.signal })
+    void shown.catch(() => {})
+    owner.abort(new Error('early menu cancellation'))
+    await turn()
+    assert.ok(showing)
+    const cleanup = f.commands.find((command) => command.op === 'commands.cancel')!
+    assert.deepEqual(cleanup.args, {
+      registration: handle.id,
+      scope: f.scopeWire,
+      popup: 1,
+    })
+    assert.ok(f.commands.indexOf(showing) < f.commands.indexOf(cleanup))
+    assert.equal(f.backend.windowCommandsDiagnostics().popups, 1)
+    f.reply(showing)
+    await assert.rejects(shown, /early menu cancellation/)
+    assert.equal(f.backend.windowCommandsDiagnostics().popups, 1)
+    f.emit(handle, 1, { type: 'menu-shown', popup: 1 })
+    f.emit(handle, 2, { type: 'menu-closed', popup: 1 })
+    await turn()
+    assert.equal(f.backend.windowCommandsDiagnostics().popups, 0)
+    await f.backend.disposeWindowCommands(handle)
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test('navigation and view or window close queue scoped popup cleanup before native lifecycle work', async () => {
+  for (const operation of ['view.navigate', 'view.dispose', 'window.close']) {
+    const f = await fixture()
+    try {
+      const handle = await f.backend.createWindowCommands(f.scope, definition)
+      await f.backend.showWindowMenu(handle, { x: 0, y: 0 })
+      f.emit(handle, 1, { type: 'menu-shown', popup: 1 })
+      let disposal: Command | undefined
+      f.intercept((command) => {
+        if (command.op !== 'commands.dispose') return false
+        disposal = command
+        return true
+      })
+      const closing =
+        operation === 'view.navigate'
+          ? f.backend.navigate(f.view, 'app://ui/index.html?next=1')
+          : operation === 'view.dispose'
+            ? f.backend.disposeView(f.view)
+            : f.backend.closeWindow(f.window)
+      await turn()
+      assert.ok(disposal)
+      const lifecycle = f.commands.find((command) => command.op === operation)!
+      assert.ok(lifecycle)
+      assert.ok(f.commands.indexOf(disposal) < f.commands.indexOf(lifecycle))
+      assert.deepEqual(disposal.args, { registration: handle.id, scope: f.scopeWire })
+      assert.equal(f.backend.windowCommandsDiagnostics().registrations, 1)
+      f.reply(disposal)
+      await closing
+      await turn()
+      assert.equal(f.backend.windowCommandsDiagnostics().registrations, 0)
+    } finally {
+      await f.cleanup()
+    }
+  }
+})
+
 test('native failure to open is distinct from a closed visible menu and releases the popup', async () => {
   const f = await fixture()
   try {

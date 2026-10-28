@@ -15,12 +15,17 @@ use std::{
 mod browser_actions;
 #[path = "clipboard.rs"]
 mod clipboard;
+#[path = "command_envelope.rs"]
+mod command_envelope;
 #[path = "dialogs.rs"]
 mod dialogs;
 #[path = "downloads.rs"]
 mod downloads;
 #[path = "file_guards.rs"]
 mod file_guards;
+#[cfg(target_os = "macos")]
+#[path = "native_menu_wake.rs"]
+mod native_menu_wake;
 #[path = "native_modal.rs"]
 mod native_modal;
 #[path = "navigation.rs"]
@@ -834,13 +839,19 @@ pub fn enqueue(value: Value, frame_bytes: usize) {
             return;
         }
     };
-    let mut task = CommandTask::new(value, permit);
+    let command = Arc::new(command_envelope::CommandEnvelope::new(value, permit));
+    let mut task = CommandTask::new(command.clone());
     if post_task(ThreadId::UI, Some(&mut task)) == 0 {
         fail("CEF command dispatch unavailable");
+    } else {
+        #[cfg(target_os = "macos")]
+        native_menu_wake::track(&command);
     }
 }
 pub fn request_quit() {
     RPC_STOPPED.store(true, Ordering::SeqCst);
+    #[cfg(target_os = "macos")]
+    native_menu_wake::request_quit();
     let mut task = QuitTask::new();
     post_task(ThreadId::UI, Some(&mut task));
 }
@@ -1168,6 +1179,8 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     shutdown_acknowledged(); quit_message_loop();
 } } }
 pub fn release() {
+    #[cfg(target_os = "macos")]
+    native_menu_wake::stop();
     dialogs::stop();
     shutdown_acknowledged();
     window_commands::release_all();
@@ -1244,15 +1257,20 @@ fn issue_navigation(id: u64, request: navigation::Request) {
     }
 }
 wrap_task! {
-    struct CommandTask { value: Value, _permit: Arc<crate::command_budget::CommandPermit> }
+    struct CommandTask { command: Arc<command_envelope::CommandEnvelope> }
     impl Task {
         fn execute(&self) {
-            let id = self.value.get("id").and_then(Value::as_u64).unwrap_or(0);
-            if let Err(e) = dispatch(&self.value) { error(id, &e); }
+            let Some(value) = self.command.claim() else { return; };
+            let id = value.get("id").and_then(Value::as_u64).unwrap_or(0);
+            if let Err(e) = dispatch(value) { error(id, &e); }
         }
     }
 }
-wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui("native"); } } }
+wrap_task! { struct QuitTask; impl Task { fn execute(&self) {
+    #[cfg(target_os = "macos")]
+    native_menu_wake::quit_dispatched();
+    quit_on_ui("native");
+} } }
 wrap_app! {
     pub struct BunlyApp;
     impl App {
@@ -3574,7 +3592,11 @@ mod command_task_lifetime_tests {
     fn discarded_cef_task_releases_admission_only_with_its_last_native_reference() {
         let budget = Arc::new(crate::command_budget::CommandBudget::default());
         let permit = budget.reserve("view.create", 128).unwrap();
-        let task = CommandTask::new(json!({"v":1,"id":1,"op":"view.create"}), permit);
+        let command = Arc::new(command_envelope::CommandEnvelope::new(
+            json!({"v":1,"id":1,"op":"view.create"}),
+            permit,
+        ));
+        let task = CommandTask::new(command);
         let posted_reference = task.clone();
         drop(task);
         assert_eq!(budget.snapshot().requests, 1);

@@ -137,6 +137,23 @@ accelerators; it never calls `RemoveAllAccelerators`. Small cancel/dispose frame
 use the existing bounded control reserve without changing transport limits or
 FIFO order. Oversized frames do not acquire the reserve.
 
+Cocoa menu tracking suppresses ordinary CEF application tasks. The macOS host
+therefore schedules one coalesced main-run-loop wake that can only request
+cancellation of the currently tracked, actually shown popup. It revalidates the
+pending cleanup's exact fields, registration, native document scope and popup
+identity. The ordinary CEF task remains the sole command dispatcher and reply
+owner; accelerators, views and windows are not destroyed inside the menu loop.
+Pending cleanup is represented by weak references to already-admitted tasks,
+bounded by the existing native command limit, with no second payload copy.
+An early wake remains pending for `MenuWillShow`, and the tracking marker is
+installed before the show admission reply. SDK navigation and view/window close
+queue their scoped registration cleanup before native lifecycle work. Both
+application quit and internal native quit can cancel the owned popup while their
+ordinary shutdown tasks wait for the loop to return. Host release permanently
+stops the wake before dropping native owners; a late run-loop block returns
+without entering CEF, and clearing weak entries leaves queued task permits owned
+by their ordinary CEF tasks.
+
 Popup admission also reserves the host's single native modal slot. The slot has
 an independently issued monotonic identity and is released only by the matching
 native closure, destroyed owner, or an observed failure to open. Cancellation

@@ -217,6 +217,8 @@ struct Registry {
     popup: Option<Popup>,
     next_id: i32,
     cleanup_queued: bool,
+    #[cfg(any(target_os = "macos", test))]
+    tracking: Option<(i32, u64)>,
 }
 impl Default for Registry {
     fn default() -> Self {
@@ -225,10 +227,36 @@ impl Default for Registry {
             popup: None,
             next_id: FIRST_COMMAND_ID,
             cleanup_queued: false,
+            #[cfg(any(target_os = "macos", test))]
+            tracking: None,
         }
     }
 }
 impl Registry {
+    #[cfg(any(target_os = "macos", test))]
+    fn cancel_tracking(&mut self, command: Option<&Value>, quitting: bool) -> Option<u64> {
+        let tracking = self.tracking?;
+        let popup = self.popup.as_ref()?;
+        if tracking != (popup.birth, popup.id) || !popup.shown || popup.cancelled {
+            return None;
+        }
+        let record = self
+            .registrations
+            .values()
+            .find(|record| record.birth() == popup.birth)?;
+        let authorized = match command {
+            Some(command) => pending_cleanup_matches(record, popup, command),
+            None => quitting || record.retired,
+        };
+        if !authorized {
+            return None;
+        }
+        let window = record.window;
+        // Cancellation fences command callbacks immediately. It does not
+        // release the popup, modal lease, registration or accelerator owners.
+        self.popup.as_mut().unwrap().cancelled = true;
+        Some(window)
+    }
     fn begin_popup(&mut self, record: &Registration, popup: u64) -> Result<(), String> {
         if self.popup.is_some() {
             return Err(busy());
@@ -353,6 +381,111 @@ impl Registry {
 }
 thread_local! { static COMMANDS: RefCell<Registry> = RefCell::new(Registry::default()); }
 
+/// This is only a cancellation preflight. The original CEF task remains the
+/// sole dispatcher/acknowledger. Match its exact cleanup field validation before
+/// requesting any effect; stale scopes may release only their own registration.
+#[cfg(any(target_os = "macos", test))]
+fn pending_cleanup_matches(record: &Registration, popup: &Popup, command: &Value) -> bool {
+    if super::number(command, "id").is_err() {
+        return false;
+    }
+    let Some(operation) = command.get("op").and_then(Value::as_str) else {
+        return false;
+    };
+    if operation == "quit" {
+        // Quit is application-owned on the private pipe. It has no scoped
+        // arguments in ordinary dispatch and still runs only after ShowMenu.
+        return true;
+    }
+    let args = command.get("args").unwrap_or(&Value::Null);
+    let expected: &[&str] = match operation {
+        "commands.cancel" => &["registration", "scope", "popup"],
+        "commands.dispose" => &["registration", "scope"],
+        _ => return false,
+    };
+    fields(args, expected).is_ok()
+        && token(args).is_ok_and(|token| token == record.token)
+        && pending_scope_matches(&record.scope, &args["scope"])
+        && record.birth() == popup.birth
+        && (operation == "commands.dispose"
+            || super::number(args, "popup").is_ok_and(|id| id == popup.id))
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn pending_scope_matches(scope: &DocumentScope, value: &Value) -> bool {
+    // This scope was validated at native registration. Compare its entire exact
+    // wire shape by borrowing the already-admitted Value, without cloning even
+    // a malformed/oversized scope while inspecting the cleanup queue.
+    value.as_object().is_some_and(|value| {
+        value.len() == 6
+            && value.get("view").and_then(Value::as_u64) == Some(scope.view)
+            && value.get("session").and_then(Value::as_u64) == Some(scope.session)
+            && value.get("generation").and_then(Value::as_u64) == Some(scope.generation)
+            && value.get("mainFrame").and_then(Value::as_str) == Some(scope.main_frame.as_str())
+            && value.get("document").and_then(Value::as_str) == Some(scope.document.as_str())
+            && value.get("origin").and_then(Value::as_str) == Some(scope.origin.as_str())
+    })
+}
+
+#[cfg(target_os = "macos")]
+struct TrackingGuard(i32, u64);
+#[cfg(target_os = "macos")]
+impl TrackingGuard {
+    fn begin(birth: i32, popup: u64) -> Result<Self, String> {
+        COMMANDS.with(|registry| {
+            let mut registry = registry.borrow_mut();
+            if registry.tracking.is_some()
+                || !registry
+                    .popup
+                    .as_ref()
+                    .is_some_and(|p| p.birth == birth && p.id == popup)
+            {
+                return Err(busy());
+            }
+            registry.tracking = Some((birth, popup));
+            Ok(Self(birth, popup))
+        })
+    }
+}
+#[cfg(target_os = "macos")]
+impl Drop for TrackingGuard {
+    fn drop(&mut self) {
+        COMMANDS.with(|registry| {
+            let mut registry = registry.borrow_mut();
+            if registry.tracking == Some((self.0, self.1)) {
+                registry.tracking = None;
+            }
+        });
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn cancel_tracking(command: Option<&Value>, quitting: bool) {
+    let owner = COMMANDS.with(|registry| registry.borrow_mut().cancel_tracking(command, quitting));
+    let window = owner.and_then(|owner| {
+        STATE.with(|state| {
+            state
+                .borrow()
+                .windows
+                .get(&owner)
+                .and_then(|record| record.window.clone())
+        })
+    });
+    // No registry borrow crosses AppKit/CEF reentrancy. Only this exact current
+    // popup is cancelled; actual MenuClosed and normal FIFO dispatch settle it.
+    if let Some(window) = window {
+        window.cancel_menu();
+    }
+}
+#[cfg(target_os = "macos")]
+pub(super) fn cancel_retired_tracking(quitting: bool) {
+    cancel_tracking(None, quitting);
+}
+#[cfg(target_os = "macos")]
+pub(super) fn cancel_tracking_for_command(command: &Value) {
+    cancel_tracking(Some(command), false);
+}
+
 fn authorize(scope: &DocumentScope) -> Result<(), String> {
     if super::RPC_STOPPED.load(Ordering::SeqCst) || super::QUITTING.load(Ordering::SeqCst) {
         return Err("PERMISSION_DENIED: native application is shutting down".into());
@@ -447,6 +580,8 @@ pub(super) fn retire_view(view: u64) {
         if post_task(ThreadId::UI, Some(&mut task)) == 0 {
             super::fail("Window command cleanup unavailable");
         }
+        #[cfg(target_os = "macos")]
+        super::native_menu_wake::wake();
     }
 }
 wrap_task! { struct Cleanup; impl Task { fn execute(&self) { drain_retired(); } } }
@@ -661,13 +796,6 @@ fn callback_record(token: &str, birth: i32) -> Option<Registration> {
     })
 }
 fn menu_shown(token: &str, birth: i32, popup: u64) {
-    let Some(record) = callback_record(token, birth) else {
-        return;
-    };
-    if same(&record).is_err() {
-        retire_view(record.scope.view);
-        return;
-    }
     let first = COMMANDS.with(|registry| {
         let mut registry = registry.borrow_mut();
         let Some(current) = registry
@@ -684,6 +812,17 @@ fn menu_shown(token: &str, birth: i32, popup: u64) {
         true
     });
     if !first {
+        return;
+    }
+    // An earlier cleanup wake may have run before this popup started. It must
+    // remain inspectable now that Cocoa is about to enter its tracking loop.
+    #[cfg(target_os = "macos")]
+    super::native_menu_wake::wake();
+    let Some(record) = callback_record(token, birth) else {
+        return;
+    };
+    if same(&record).is_err() {
+        retire_view(record.scope.view);
         return;
     }
     emit(&record, json!({"type":"menu-shown","popup":popup}));
@@ -970,10 +1109,20 @@ pub(super) fn dispatch(request: u64, operation: &str, args: &Value) -> Result<()
     let mut model = build_menu(&record, popup)?;
     same(&record)?;
     COMMANDS.with(|registry| registry.borrow_mut().begin_popup(&record, popup))?;
+    #[cfg(target_os = "macos")]
+    let tracking = match TrackingGuard::begin(record.birth(), popup) {
+        Ok(tracking) => tracking,
+        Err(error) => {
+            COMMANDS.with(|registry| registry.borrow_mut().close_popup(record.birth(), popup));
+            return Err(error);
+        }
+    };
     // ShowMenu can enter a native nested loop. The admission reply is distinct
     // from MenuWillShow/MenuClosed and does not wait for human interaction.
     reply(request, Value::Null);
     owner.show_menu(Some(&mut model), Some(&screen), MenuAnchorPosition::TOPLEFT);
+    #[cfg(target_os = "macos")]
+    drop(tracking);
     // The pinned CEF implementations invoke MenuWillShow synchronously when a
     // menu starts. A void ShowMenu return without that callback is not proof of
     // visibility. Retire the failed popup and report that distinct outcome.
@@ -1290,6 +1439,111 @@ mod tests {
         assert!(registry
             .admit("other".into(), scope(1), 1, definition())
             .is_ok());
+    }
+    #[test]
+    fn pending_cleanup_waits_for_actual_tracking_and_keeps_all_native_owners() {
+        let mut registry = Registry::default();
+        let token = "a".repeat(32);
+        let record = registry
+            .admit(token.clone(), scope(1), 1, definition())
+            .unwrap();
+        registry.begin_popup(&record, 1).unwrap();
+        let cancel = json!({"v":1,"id":4,"op":"commands.cancel","args":{
+            "registration":token,"scope":record.scope,"popup":1}});
+        assert_eq!(registry.cancel_tracking(Some(&cancel), false), None);
+        registry.tracking = Some((record.birth(), 1));
+        // The tracking marker precedes the admission reply. Only the actual
+        // MenuWillShow makes cancellation eligible; its wake covers early abort.
+        assert_eq!(registry.cancel_tracking(Some(&cancel), false), None);
+        registry.popup.as_mut().unwrap().shown = true;
+        assert_eq!(registry.cancel_tracking(Some(&cancel), false), Some(1));
+        assert_eq!(registry.cancel_tracking(Some(&cancel), false), None);
+        assert!(registry.popup.as_ref().unwrap().cancelled);
+        assert_eq!(registry.registrations.len(), 1);
+        assert!(!registry.registrations[&token].accelerators_removed);
+        assert!(!registry.registrations[&token].retired);
+        assert!(native_modal::reserve(ModalOwner::FileDialog).is_err());
+        assert!(registry.close_popup(record.birth(), 1));
+    }
+    #[test]
+    fn pending_cleanup_rejects_foreign_stale_and_malformed_commands_before_cancelling() {
+        let mut registry = Registry::default();
+        let token = "a".repeat(32);
+        let record = registry
+            .admit(token.clone(), scope(1), 1, definition())
+            .unwrap();
+        registry.begin_popup(&record, 2).unwrap();
+        registry.tracking = Some((record.birth(), 2));
+        registry.popup.as_mut().unwrap().shown = true;
+        let valid = json!({"v":1,"id":4,"op":"commands.cancel","args":{
+            "registration":token,"scope":record.scope,"popup":2}});
+        let mut rejected = vec![
+            json!({"v":1,"id":4,"op":"window.close","args":{"id":1}}),
+            json!({"v":1,"id":0,"op":"quit"}),
+        ];
+        for (field, value) in [
+            ("view", json!(2)),
+            ("session", json!(2)),
+            ("generation", json!(2)),
+            ("document", json!("replacement")),
+            ("mainFrame", json!("other")),
+            ("origin", json!("app://other")),
+            ("extra", json!(true)),
+        ] {
+            let mut changed = valid.clone();
+            changed["args"]["scope"][field] = value;
+            rejected.push(changed);
+        }
+        for (field, value) in [
+            ("registration", json!("b".repeat(32))),
+            ("popup", json!(1)),
+            ("popup", json!("2")),
+            ("extra", json!(true)),
+        ] {
+            let mut changed = valid.clone();
+            changed["args"][field] = value;
+            rejected.push(changed);
+        }
+        let mut invalid_dispose = valid.clone();
+        invalid_dispose["op"] = json!("commands.dispose"); // unexpected popup field
+        rejected.push(invalid_dispose);
+        for command in rejected {
+            assert_eq!(registry.cancel_tracking(Some(&command), false), None);
+            assert!(!registry.popup.as_ref().unwrap().cancelled);
+        }
+        // A stale tracking guard cannot operate on a replacement incarnation.
+        registry.tracking = Some((record.birth() + 1, 2));
+        assert_eq!(registry.cancel_tracking(Some(&valid), false), None);
+        registry.tracking = Some((record.birth(), 2));
+        let dispose = json!({"v":1,"id":5,"op":"commands.dispose","args":{
+            "registration":token,"scope":record.scope}});
+        assert_eq!(registry.cancel_tracking(Some(&dispose), false), Some(1));
+        assert!(registry.close_popup(record.birth(), 2));
+    }
+    #[test]
+    fn only_owned_quit_or_native_retirement_can_cancel_without_a_scoped_cleanup_command() {
+        let mut registry = Registry::default();
+        let token = "a".repeat(32);
+        let record = registry
+            .admit(token.clone(), scope(1), 1, definition())
+            .unwrap();
+        for (popup, quitting, retired, command) in [
+            (1, false, false, Some(json!({"v":1,"id":7,"op":"quit"}))),
+            (2, true, false, None),
+            (3, false, true, None),
+        ] {
+            registry.registrations.get_mut(&token).unwrap().retired = false;
+            registry.begin_popup(&record, popup).unwrap();
+            registry.tracking = Some((record.birth(), popup));
+            registry.popup.as_mut().unwrap().shown = true;
+            assert_eq!(registry.cancel_tracking(None, false), None);
+            registry.registrations.get_mut(&token).unwrap().retired = retired;
+            assert_eq!(
+                registry.cancel_tracking(command.as_ref(), quitting),
+                Some(1)
+            );
+            assert!(registry.close_popup(record.birth(), popup));
+        }
     }
     #[test]
     fn grant_is_distinct_and_exact() {

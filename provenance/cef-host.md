@@ -83,6 +83,18 @@ their implementations were not copied. The driver is limited to four local
 events for an already-authorized fixture popup and does not qualify physical
 input or invoke application command callbacks directly.
 
+The production macOS cancellation wake in `native_menu_wake.rs` is Bunly-authored
+code using the existing pinned `objc2-core-foundation` 0.3.2 dependency. It follows
+Apple's documented `CFRunLoopPerformBlock` copy and `CFRunLoopWakeUp` semantics in
+Cocoa common modes. The pinned Chromium menu runner and `ui/base/cocoa/menu_utils.mm`
+were inspected to keep ordinary CEF task dispatch outside the native menu loop;
+their implementation was not copied. The wake performs only exact owned popup
+cancellation, never general task dispatch or browser/window destruction.
+
+- https://developer.apple.com/documentation/corefoundation/cfrunloopperformblock(_:_:_:)
+- https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/RunLoopManagement/RunLoopManagement.html
+- https://github.com/chromium/chromium/blob/156.0.8078.17/ui/base/cocoa/menu_utils.mm
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

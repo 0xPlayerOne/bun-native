@@ -49,6 +49,10 @@ const failureCodes = {
   'Menu input requires the active visible owner window': 'menu-owner-not-active-visible',
   'Menu owner window number unavailable': 'menu-owner-window-number-unavailable',
   'Menu input event construction failed': 'menu-input-event-construction',
+  'Native menu cleanup admission unavailable': 'menu-cleanup-admission',
+  'Native menu main run loop unavailable': 'menu-main-run-loop-unavailable',
+  'Native menu common run-loop modes unavailable': 'menu-common-modes-unavailable',
+  'Native menu cancellation requires the native main thread': 'menu-cancel-main-thread',
 } as const
 
 export type NativeFailureCode = (typeof failureCodes)[keyof typeof failureCodes] | 'unclassified'
