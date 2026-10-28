@@ -340,6 +340,19 @@ test('regressing native counters are rejected, not repaired into invented progre
   f.stop()
 })
 
+test('discarding native partial state cannot regress a terminal protocol counter', async () => {
+  for (const status of ['completed', 'cancelled', 'failed'] as const) {
+    const f = await fixture()
+    const operation = await f.backend.startDownload(f.view, request)
+    f.progress('in-progress', 8192)
+    f.progress('cancelling', 8192)
+    f.finish(status, 0, status === 'failed' ? 'network' : null)
+    await assert.rejects(operation.completed, /state transition/)
+    await assert.rejects(f.backend.closed, /state transition/)
+    f.stop()
+  }
+})
+
 test('legacy download convenience requires an explicit destination and preserves its result contract', async () => {
   const f = await fixture()
   try {

@@ -71,6 +71,16 @@ data between callbacks. Transfer timeout defaults to 60 seconds and supports
 bound; a missing terminal callback fails the host instead of inventing a
 successful cancellation or retaining ownership indefinitely.
 
+Cancelled and interrupted transfers retain the greatest byte count actually
+observed from CEF, with zero bytes published. The pinned Chromium implementation
+[discards partial state during cancellation](https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_item_impl.cc),
+resetting its stored counter before notifying observers. That reset does not
+undo previously reported transfer progress. A terminal total below the retained
+count is reported as unknown, without inventing a replacement total. Running and
+successful-completion counters are never repaired; byte limits and final file
+size verification continue to use the exact current CEF observation. The SDK
+still rejects any regressing counter received over the native protocol.
+
 The existing `download(view, request)` convenience method remains available. Its
 request now accepts an optional typed `destination`, and the native adapter
 requires it explicitly. It returns the existing `{ status, bytesWritten }`
