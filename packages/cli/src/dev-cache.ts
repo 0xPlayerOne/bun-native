@@ -437,9 +437,15 @@ async function readPrepared(
   key: string,
   signal?: AbortSignal
 ): Promise<CacheReceipt | undefined> {
+  const stat = await lstat(directory).catch((error: unknown) => {
+    // Only the initial absence is a cache miss. A complete host may be
+    // atomically published before this reader handles that observation.
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw new DevelopmentError('CACHE_INTEGRITY', 'Prepared host is incomplete or unreadable')
+  })
+  if (!stat) return undefined
   let source: string
   try {
-    const stat = await lstat(directory)
     if (!stat.isDirectory() || stat.isSymbolicLink())
       throw new DevelopmentError('CACHE_INTEGRITY', 'Invalid prepared host directory')
     const receipt = join(directory, receiptName)
@@ -447,15 +453,7 @@ async function readPrepared(
     if (!receiptStat.isFile() || receiptStat.size > maximumReceiptBytes)
       throw new DevelopmentError('CACHE_INTEGRITY', 'Invalid prepared host receipt')
     source = await readFile(receipt, 'utf8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      // An absent published directory is a miss; an incomplete published directory is corruption.
-      try {
-        await lstat(directory)
-      } catch (missing) {
-        if ((missing as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-      }
-    }
+  } catch {
     throw new DevelopmentError('CACHE_INTEGRITY', 'Prepared host is incomplete or unreadable')
   }
   let receipt: CacheReceipt | undefined
