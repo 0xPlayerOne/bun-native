@@ -96,9 +96,28 @@ parent cache directory. Commands for `native/cef-host` also default `CEF_PATH`
 to `<shared-cache>/cef/<locked-version>`; put the matching contributor CEF
 distribution there or set `CEF_PATH` to override it. Keep run evidence and
 qualification output under each checkout's `.bunly` directory so concurrent
-worktrees cannot overwrite one another. CI continues to use isolated workspaces.
+worktrees cannot overwrite one another. Without an explicit cache or target
+override, CI keeps Cargo's ordinary workspace-local target directory and does not
+inject a per-user CEF path.
 
-`bun scripts/cargo.ts --print-target-dir` prints the active target directory.
+`bun scripts/cargo.ts --print-target-dir` queries Cargo metadata for the M1
+workspace's active target directory. Add
+`--manifest-path native/cef-host/Cargo.toml` to query the CEF workspace. The M1
+qualifiers, packaged probe and hosted terminal fixture use this same lookup;
+they do not compile missing artifacts or fall back to an older checkout binary.
+The CEF bundler selects regular nonempty native siblings beside its own running
+executable, including when a custom Cargo target directory is used.
+
+### Concurrent builds and qualification
+
+A shared Cargo target is a mutable build cache. Cargo fingerprints distinguish
+compilation units, but later builds can replace the stable `release` executable
+names. A path beside the bundler does not establish source provenance, feature
+identity or a consistent snapshot across concurrent builds. Use an exclusive
+`CARGO_TARGET_DIR` for each native source/feature qualification and keep that
+override for its build, assembly and qualifier commands. Build and assemble
+sequentially before admitting another writer to the same target. Existing source,
+artifact identity and input-unchanged qualification checks still apply.
 
 For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 

@@ -49,3 +49,29 @@ test('uses platform cache conventions and rejects relative shared cache override
     cargoEnvironment(['--manifest-path=native/cef-host/Cargo.toml'], {}, 'linux', '/home/dev')
   ).toThrow('A valid locked CEF package version is required for the shared CEF path')
 })
+
+test('CI retains workspace-local Cargo defaults unless an explicit override opts in', () => {
+  for (const platform of ['linux', 'darwin', 'win32'] as const) {
+    const result = cargoEnvironment(
+      ['--manifest-path=native/cef-host/Cargo.toml'],
+      { CI: 'true' },
+      platform
+    )
+    expect(result.targetDir).toBeUndefined()
+    expect(result.env.CARGO_TARGET_DIR).toBeUndefined()
+    expect(result.env.CEF_PATH).toBeUndefined()
+  }
+  expect(cargoEnvironment([], { CI: 'true', CARGO_TARGET_DIR: '/private/target' }).targetDir).toBe(
+    '/private/target'
+  )
+  expect(
+    cargoEnvironment([], { CI: 'true', BUNLY_SHARED_CACHE_DIR: '/explicit/cache' }, 'linux')
+      .targetDir
+  ).toBe('/explicit/cache/cargo-target')
+  expect(cargoEnvironment([], { CI: 'false' }, 'linux', '/home/dev').targetDir).toBe(
+    '/home/dev/.cache/bunly/cargo-target'
+  )
+  expect(cargoEnvironment([], { BUNLY_SHARED_CACHE_DIR: 'C:\\cache' }, 'win32').targetDir).toBe(
+    'C:\\cache\\cargo-target'
+  )
+})

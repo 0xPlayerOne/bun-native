@@ -22,6 +22,39 @@ def cp1252_text_default():
 
 
 class HostedQualificationTests(unittest.TestCase):
+    def test_terminal_fixture_uses_the_queried_cargo_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected = str(Path(directory) / "Unicode é Ω ")
+            with patch.object(hosted.subprocess, "run") as run:
+                run.return_value.stdout = selected + "\n"
+                self.assertEqual(hosted.native_target_directory("/bun"), Path(selected))
+                run.assert_called_once_with(
+                    [
+                        "/bun",
+                        str(hosted.ROOT / "scripts/cargo.ts"),
+                        "--print-target-dir",
+                        "--manifest-path",
+                        str(hosted.ROOT / "native/cef-host/Cargo.toml"),
+                    ],
+                    cwd=hosted.ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    timeout=15,
+                )
+            for value in [
+                "",
+                "target/release",
+                directory + "\nextra-output",
+                directory + "\n\n",
+                directory + "\rextra-output",
+            ]:
+                with self.subTest(value=value), patch.object(hosted.subprocess, "run") as run:
+                    run.return_value.stdout = value
+                    with self.assertRaises(ValueError):
+                        hosted.native_target_directory("/bun")
+
     def test_only_declared_native_architectures(self):
         self.assertEqual(hosted.target("win32", "AMD64"), "win32-x64")
         self.assertEqual(hosted.target("linux", "x86_64"), "linux-x64")

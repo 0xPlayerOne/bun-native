@@ -2,21 +2,15 @@ import assert from 'node:assert/strict'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, basename } from 'node:path'
 import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observation.ts'
-import { cargoEnvironment } from './cargo-config.ts'
+import { nativeHostArtifacts } from './cargo-artifacts.ts'
 const root = resolve(import.meta.dir, '..')
 const out = join(root, '.bunly/qualification')
-const native = join(cargoEnvironment([], process.env).targetDir, 'release')
 await mkdir(out, { recursive: true })
 const target = `${process.platform}-${process.arch}`
 const python = process.env['PYTHON'] ?? (process.platform === 'win32' ? 'python' : 'python3')
-const library =
-  process.platform === 'win32'
-    ? 'bunly_host_probe.dll'
-    : process.platform === 'darwin'
-      ? 'libbunly_host_probe.dylib'
-      : 'libbunly_host_probe.so'
+const native = nativeHostArtifacts(root)
 const addon = join(out, 'probe.node')
-await copyFile(join(native, library), addon)
+await copyFile(native.library, addon)
 const results: Record<string, unknown>[] = []
 async function observe(name: string, command: string[], expectedCrash = false): Promise<void> {
   const file = join(out, `lifecycle-${target}-${name}.json`)
@@ -77,7 +71,7 @@ for (const mode of ['ffi', 'napi'] as const) {
       scenario,
     ])
 }
-const executable = join(native, 'process-soak' + (process.platform === 'win32' ? '.exe' : ''))
+const executable = native.processSoak
 await observe('process-soak', [
   executable,
   process.execPath,

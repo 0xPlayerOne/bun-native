@@ -5,30 +5,24 @@ import { execFileSync } from 'node:child_process'
 import { createTar, sha256, resolveArtifact } from '../packages/artifacts/src/index.ts'
 import type { ArtifactIdentity, ArtifactManifest } from '../packages/artifacts/src/index.ts'
 import { loadNative } from './probes/native-api.ts'
-import { cargoEnvironment } from './cargo-config.ts'
+import { nativeHostArtifacts } from './cargo-artifacts.ts'
 const root = resolve(import.meta.dir, '..')
 const target = `${process.platform}-${process.arch}`
-const native = join(cargoEnvironment([], process.env).targetDir, 'release')
 if (!['linux-x64', 'darwin-arm64', 'win32-x64'].includes(target))
   throw new Error(`Probe target ${target} is not supported`)
 const out = join(root, '.bunly/artifacts', target)
 const symbols = join(out, 'symbols')
 await mkdir(symbols, { recursive: true })
-const lib =
-  process.platform === 'win32'
-    ? 'bunly_host_probe.dll'
-    : process.platform === 'darwin'
-      ? 'libbunly_host_probe.dylib'
-      : 'libbunly_host_probe.so'
+const native = nativeHostArtifacts(root)
 const stage = join(out, 'probe.node')
-await copyFile(join(native, lib), stage)
+await copyFile(native.library, stage)
 if (process.platform === 'linux') {
   execFileSync('objcopy', ['--only-keep-debug', stage, join(symbols, 'probe.debug')])
   execFileSync('objcopy', ['--strip-debug', stage])
 } else if (process.platform === 'darwin') {
   execFileSync('dsymutil', [stage, '-o', join(symbols, 'probe.dSYM')])
   execFileSync('strip', ['-S', stage])
-} else await copyFile(join(native, 'bunly_host_probe.pdb'), join(symbols, 'probe.pdb'))
+} else await copyFile(native.pdb, join(symbols, 'probe.pdb'))
 const bytes = await readFile(stage)
 const archive = createTar([{ path: 'probe.node', bytes }])
 const identity: ArtifactIdentity = {

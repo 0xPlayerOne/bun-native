@@ -93,6 +93,34 @@ def standard_user():
     return os.geteuid() != 0
 
 
+def native_target_directory(bun):
+    result = subprocess.run(
+        [
+            bun,
+            str(ROOT / "scripts/cargo.ts"),
+            "--print-target-dir",
+            "--manifest-path",
+            str(ROOT / "native/cef-host/Cargo.toml"),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=15,
+    )
+    value = result.stdout.removesuffix("\n")
+    if (
+        not value
+        or len(value) > 4096
+        or "\n" in value
+        or "\r" in value
+        or not Path(value).is_absolute()
+    ):
+        raise ValueError("Invalid native Cargo artifact directory")
+    return Path(value)
+
+
 def commands(suite, bun, app, native_source=None):
     if suite not in SUITES:
         raise ValueError("Unknown qualification suite")
@@ -345,6 +373,7 @@ def run(suite):
         app = artifact()
         if suite != "credentials":
             executable_dir = app / "Contents/MacOS" if sys.platform == "darwin" else app.parent
+            native_release = native_target_directory(bun) / "release"
             suffix = ".exe" if sys.platform == "win32" else ""
             code = execute(
                 "terminal-owner",
@@ -356,11 +385,7 @@ def run(suite):
                     "--owner",
                     str(executable_dir / ("bunly-terminal-owner" + suffix)),
                     "--host",
-                    str(
-                        ROOT
-                        / "native/cef-host/target/release"
-                        / ("bunly-terminal-fixture-host" + suffix)
-                    ),
+                    str(native_release / ("bunly-terminal-fixture-host" + suffix)),
                     "--output",
                     str(EVIDENCE / "terminal-owner.json"),
                 ],
