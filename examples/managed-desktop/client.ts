@@ -28,7 +28,7 @@ function deferred<T>() {
   void promise.catch(() => {})
   return { promise, resolve, reject }
 }
-// Do not hold module evaluation open: native transport grants follow OnLoadEnd.
+// Finish module evaluation while the asynchronous native transport handshake runs.
 async function main(): Promise<void> {
   const draft = document.querySelector<HTMLInputElement>('#draft')
   const output = document.querySelector<HTMLElement>('#terminal')

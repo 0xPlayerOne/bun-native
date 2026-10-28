@@ -38,6 +38,7 @@ import {
 } from './evidence.ts'
 import { readManagedFrontendSource } from './frontend-source.ts'
 import { ManagedDiagnostics } from './diagnostics.ts'
+import { managedDocumentReadiness } from './document-readiness.ts'
 import managedRestartFixture from './restart.ts'
 
 function deferred<T>() {
@@ -586,8 +587,10 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
   const stopRpc = backend.serveRpc(managedSchema, handlers, ['app://ui'], ['managed-fixture'], {
     limits: managedRpcLimits,
   })
+  const documentReady = managedDocumentReadiness(backend, 'app://ui/index.html')
   const deadline = setTimeout(() => {
     const error = new Error('FIXTURE_DEADLINE')
+    documentReady.close(error)
     ready.reject(error)
     pageStarted.reject(error)
     terminalReady.reject(error)
@@ -616,7 +619,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
       url: 'app://ui/index.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
-    await pageStarted.promise
+    await Promise.all([pageStarted.promise, documentReady.wait(view)])
     const terminal = await terminalReady.promise
     const authority = await desktop.captureAuthority(view)
     const retainedSession = desktop.registerSession('session', session, {
@@ -692,6 +695,7 @@ export default async function managedDesktopFixture(backend: CefBackend): Promis
     ready.reject(new Error(failureCode))
     console.error('BUNLY_MANAGED_FIXTURE_FAILED', error)
   } finally {
+    documentReady.close()
     cleaningUp = true
     clearTimeout(deadline)
     try {

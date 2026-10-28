@@ -5,7 +5,7 @@ import { restartRpcLimits, restartSchema } from './restart-contract.ts'
 function check(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message)
 }
-// Native grants follow document readiness, so module evaluation must finish first.
+// Transport readiness is separate from native policy readiness at OnLoadEnd.
 async function main(): Promise<void> {
   const form = document.querySelector<HTMLInputElement>('#draft')
   const status = document.querySelector<HTMLElement>('#result')

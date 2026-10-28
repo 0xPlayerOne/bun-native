@@ -35,8 +35,10 @@ The #28 ownership model and #29 mechanism matrix have their own accepted evidenc
 including their declared platform execution. Their earlier model transitions and
 synthetic owner experiments are separate from the 500 actual desktop replacements
 recorded here. The accepted integrated native captures at the historical
-checkpoints below establish macOS arm64 coverage. The final-head platform gates
-and merge receipt are maintained in PR #130, separately from those fixed captures.
+checkpoints below establish macOS arm64 coverage; the later hosted run recorded
+below also qualifies the complete Linux workload and restart. The final-head
+platform gates and merge receipt are maintained in PR #130, separately from those
+fixed captures.
 
 ## Supported lifecycle
 
@@ -173,7 +175,7 @@ uses that directory on Linux. The cold managed-fixture assembly now declares and
 validates the empty directory before the immutable cache inventory is published.
 Warm verification still compares every entry and rejects later additions, file
 changes, links or directory removal; it neither repairs nor excludes this path.
-This correction requires a later native execution to establish qualification.
+The subsequent Linux execution recorded below qualifies this correction.
 
 The Windows fixture also contained a reproduced terminal parser incompatibility:
 the old consumer accepted plain records but rejected the same records wrapped in
@@ -183,7 +185,8 @@ Regressions preserve exact byte counts and checksums while rejecting malformed
 partial records before scrollback can erase them. Additional diagnostics retain
 the failed binding name, renderer error and terminal exit/closure. The hosted
 `DENIED` export lacks the original terminal bytes and renderer error, so this
-proposed causal chain still requires current-head Windows native validation.
+historical causal chain is not reconstructed from the later successful Windows
+soak recorded below.
 
 The macOS artifact is `12774692229`, ZIP SHA-256
 `2b6fad772038cf64b1214247419a9a6fbd5aa931fe0693a5b75339cbd9030311`
@@ -213,6 +216,87 @@ renderer identities. Unsaved form, ephemeral session and login state were
 absent as required by the full-restart boundary. These finite macOS passes do
 not resolve the earlier failures or establish release or comparative performance
 qualification.
+
+### Hosted validation after cache and terminal corrections
+
+[Native CEF workflow 40604917371](https://github.com/0xPlayerOne/bunly/actions/runs/40604917371)
+ran PR head `7b3ab866a53ed2458a6c4a0bfbe3fde2a146ddc2` as clean test merge
+`1d2b890411b835c7ab438011ce37f103564b0548`; both have tree
+`4025f6f0c65d9067078daa14a69c49ad9bf3eddc`. Linux and macOS passed all eleven
+native matrix stages. Windows passed the fixed soak and warm cache verification,
+then failed its distinct controlled restart. The Windows job also exposed a
+separate diagnostic-collection encoding error. The overall workflow remains
+failed; none of its failed observations is promoted by the successful stages.
+
+All three platform soaks completed 500 replacements, 508 renderer receipts and
+1,530 accepted and settled requests, with one retained native PTY and zero
+pending requests at shutdown. Independent acceptance replay matched all 292
+source fingerprints to the exact test merge. Linux and macOS also passed their
+separate restart acceptance; the retained Windows export continues to report
+`passed: false`.
+
+| Platform | Verified outcome                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux    | The empty `extensions` directory was present before publication of the cache inventory. Warm verification and the distinct restart passed. The PTY delivered 45,054 bytes in 1,387 records, including 884 autonomous records; both cumulative hashes were `0dccecc7`. Soak/restart process-stop took 11/6 ms and CEF shutdown took 21/26 ms.                                                                                                                           |
+| macOS    | The soak and distinct restart passed with one positively verified cleanup helper and one removed clone per launch. All six fault trials and all four terminal-load modes also retained positive helper and clone evidence. The PTY delivered 38,454 bytes in 1,187 records, including 684 autonomous records; both cumulative hashes were `6ea5ed4f`. Soak/restart cleanup took 181.637750/174.440042 ms, process-stop took 3/1 ms and CEF shutdown took 131/83 ms.    |
+| Windows  | The soak passed with 48,021 PTY bytes, 1,517 records, 501 acknowledgments and matching `ff3aabde` hashes; ordinary exit was 0. Warm cache verification passed. The restart rejected `view has no ready native document authority` before producing backend, renderer or identity receipts; its one accepted request settled and the backend exited 1. No observer timeout, cancellation, output overflow, orphan or survivor was recorded. Credentials remained gated. |
+
+Linux warm verification reused 1,691,918,428 bytes in 2950.247493 ms; macOS
+reused 427,981,134 bytes in 878.571333 ms; Windows reused 537,249,277 bytes in
+1578.490500 ms. Each recorded one total assembly, zero warm native copies and
+zero warm native compilations. Both accepted restarts applied revision 500,
+shared revision 1 and the edited configuration, settled two requests, obtained
+fresh native and renderer identities, and lacked the old unsaved form, ephemeral
+session and login state. These timings remain descriptive, with performance
+eligibility false.
+
+Artifact and exported-report identities:
+
+- Linux artifact `12780234276`: ZIP 3,609,751 bytes, SHA-256
+  `02ff79b1a5d0ba00842c5b680844ab1b4a8c3f2087619f1441b9838bdf8277d5`.
+  The canonical and run-specific managed exports are byte-identical: 5,919,528
+  bytes, SHA-256 `8e618bcadb790a01fc5f0c11b84955ab733235126fae4657fa476681b9bd822c`.
+- macOS artifact `12780544337`: ZIP 2,292,920 bytes, SHA-256
+  `b20d20fc563bc2e6c2064ed85a043eabd2f84e89513d6abdb90508fd9a6fd534`.
+  The managed export is 1,677,769 bytes, SHA-256
+  `a79df460b3aecb00915bf3e4d3a0bef7f6a08de364f14dc212aa37a5ff79dfe5`.
+- Windows artifact `12781211009`: ZIP 3,095,716 bytes, SHA-256
+  `26df0026b66153c06ba6209aaff67c17770c5e7affd3b84d191be0dab85edbda`.
+  Its canonical managed report copy is 4,991,237 bytes, SHA-256
+  `dab5bc9ff55e4e638e841ecdb2cbe5366c70fb20110392eff28d4a2f44554428`.
+
+The Windows collector failed at `scripts/hosted_cef.py:417` because a default
+CP1252 read rejected byte `0x90` at position 3,851,785 of a UTF-8 report. This
+happened before creating the run-specific alias and before the evidence-directory
+nonce-sanitization pass. The surviving canonical input is therefore an
+**unsanitized hosted JSON copy**, unlike the earlier already-sanitized inputs.
+The [retained Windows archive](../evidence/m6-managed-development/hosted-failures/run-40604917371-windows-managed-development.json.gz)
+applies the repository's nonce sanitizer and workspace-path redaction to that
+exact input. The index records the separate input, expanded and compressed
+identities and the missing alias. Embedded original observation/result hashes
+remain unchanged; unavailable private original serialization is not reconstructed.
+
+The restart correction separates the renderer RPC handshake from native document
+readiness. Native RPC grants can arrive before `OnLoadEnd`, while `policy.scope`
+correctly rejects a view whose navigation is still in progress. Both maintained
+fixtures now wait for their renderer handshake and an exact URL/document-matched
+`view.loaded` receipt before capturing authority. The observer is installed before
+view creation and retains at most four early receipts, covering completion before
+the create call returns. It shares the existing fixture deadline and removes its
+listeners on completion or cancellation. The subsequent native policy call still
+grants or rejects authority; the event itself grants none. Real native-transport
+and RPC regressions reproduce the premature capture before the fix, then verify
+renderer-first ordering, a load receipt coalesced with creation, and the unchanged
+restart deadline. These ordering tests are not a substitute for native CEF
+qualification of the corrected restart.
+
+The collector correction explicitly reads all persisted UTF-8 JSON, log and
+summary inputs as UTF-8. Invalid bytes fail without a lossy replacement rewrite.
+Real-filesystem regressions reproduce both the earlier Unicode mojibake and this
+CP1252 failure under a simulated locale default; malformed UTF-8 reports and
+exports remain rejected and unchanged. The focused collector suite passed 20
+tests and 19 subtests. A later Windows native run must still qualify the restart
+correction and complete the gated stages.
 
 ## Native workload results
 

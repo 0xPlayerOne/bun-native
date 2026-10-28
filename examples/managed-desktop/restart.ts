@@ -10,6 +10,7 @@ import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-gener
 import type { RpcContext, RpcHandlers } from '../../packages/runtime/src/rpc.ts'
 import { ServiceReloadHost } from '../../packages/runtime/src/service-reload.ts'
 import { ManagedDiagnostics } from './diagnostics.ts'
+import { managedDocumentReadiness } from './document-readiness.ts'
 import {
   RESTART_DEADLINE_MS,
   restartBackendReceipt,
@@ -165,8 +166,10 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
     ['managed-restart-fixture'],
     { limits: restartRpcLimits }
   )
+  const documentReady = managedDocumentReadiness(backend, 'app://ui/restart.html')
   const deadline = setTimeout(() => {
     const error = new Error('RESTART_FIXTURE_DEADLINE')
+    documentReady.close(error)
     started.reject(error)
     ready.reject(error)
     completed.reject(error)
@@ -188,7 +191,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
       url: 'app://ui/restart.html',
       trust: { kind: 'application', origin: 'app://ui' },
     })
-    await started.promise
+    await Promise.all([started.promise, documentReady.wait(view)])
     const authority = await desktop.captureAuthority(view)
     const retainedSession = desktop.registerSession('session', session, {
       authority,
@@ -256,6 +259,7 @@ export default async function managedRestartFixture(backend: CefBackend): Promis
     ready.reject(new Error(failureCode))
     console.error('BUNLY_MANAGED_RESTART_FAILED', error)
   } finally {
+    documentReady.close()
     clearTimeout(deadline)
     try {
       await development?.close()

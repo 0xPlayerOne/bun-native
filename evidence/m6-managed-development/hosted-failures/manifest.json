@@ -193,6 +193,55 @@
           }
         }
       ]
+    },
+    {
+      "workflowRun": 40604917371,
+      "workflowUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/40604917371",
+      "sourceCommit": "1d2b890411b835c7ab438011ce37f103564b0548",
+      "pullRequestHead": "7b3ab866a53ed2458a6c4a0bfbe3fde2a146ddc2",
+      "sourceTree": "4025f6f0c65d9067078daa14a69c49ad9bf3eddc",
+      "passed": false,
+      "performanceEligible": false,
+      "releaseApproved": false,
+      "provenance": "The canonical input is an unsanitized hosted JSON copy: collection failed before the nonce-export pass. Its exact artifact/member bytes are identified separately from this locally sanitized retained archive. The repository nonce sanitizer and hosted-workspace redaction are applied without changing failed outcomes or embedded original observation/result hashes. The private original report serialization and its hash were not uploaded; a raw private report identity and the missing run-specific alias are not reconstructed. The source test merge and pull-request head have the same Git tree.",
+      "runs": [
+        {
+          "id": "windows-managed-development",
+          "profile": "native-managed-development-v1",
+          "passed": false,
+          "failureClass": "controlled-restart-before-native-document-ready",
+          "jobId": 122541899126,
+          "artifactId": 12781211009,
+          "artifactZipSha256": "26df0026b66153c06ba6209aaff67c17770c5e7affd3b84d191be0dab85edbda",
+          "artifactZipBytes": 3095716,
+          "inputReport": {
+            "kind": "unsanitized-hosted-json-copy",
+            "member": "managed-development.json",
+            "bytes": 4991237,
+            "sha256": "dab5bc9ff55e4e638e841ecdb2cbe5366c70fb20110392eff28d4a2f44554428"
+          },
+          "archive": "run-40604917371-windows-managed-development.json.gz",
+          "archiveBytes": 168648,
+          "archiveSha256": "f98d232dc64786d6dd537531e8aba8c60f712dbe3794cad9295645520e6e7723",
+          "expandedBytes": 4865980,
+          "expandedSha256": "43a2b58ee99eb296a1292950606d388bebdb361459b5efe0e7492ff7f6f04b51",
+          "redactions": [
+            "fixture-nonces",
+            "hosted-workspace-paths"
+          ],
+          "collectionFailure": {
+            "script": "scripts/hosted_cef.py",
+            "line": 417,
+            "exception": "UnicodeDecodeError",
+            "encoding": "cp1252",
+            "byte": "0x90",
+            "position": 3851785,
+            "runSpecificExportPresent": false,
+            "hostedNonceSanitizationCompleted": false,
+            "limitation": "The collector failed while reading the run report, before creating its run-specific alias and before sanitizing the evidence directory. The canonical hosted JSON copy survived. The retained archive applies the repository nonce sanitizer and workspace-path redaction to that exact copied input; no missing private original or run alias is reconstructed."
+          }
+        }
+      ]
     }
   ]
 }

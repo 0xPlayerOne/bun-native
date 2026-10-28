@@ -16,8 +16,18 @@ schema label; it is not a serialization of browser state or arbitrary globals.
 
 Create and register resources in the stable host, outside the replaceable
 application entry. Capture authority from the current trusted application view
-after its initial document is ready. The following assumes `backend`, `window`,
-`view`, `session`, `terminalService`, and `terminalHandle` are already live:
+after its initial document is ready.
+
+Renderer transport grants can arrive before native `OnLoadEnd`. Wait for the
+native `view.loaded` receipt matching the view's current document and URL, along
+with the application's own readiness signal, before capturing authority. Subscribe
+before creating the view so an early receipt is retained, and cancel the wait and
+subscription through the application's startup deadline. The maintained
+[fixture barrier](../examples/managed-desktop/document-readiness.ts) demonstrates
+this ordering; `captureAuthority` still performs the native policy check afterward.
+
+The following assumes `backend`, `window`, `view`, `session`, `terminalService`,
+and `terminalHandle` are already live:
 
 ```ts
 import { ManagedGenerationOwner } from '../packages/runtime/src/managed-generations.ts'
