@@ -6,6 +6,11 @@ backend-reload feature, or security sandbox. #29 qualifies the replacement
 mechanism; #30 adds prepare/readiness/quiesce/commit orchestration; #31 integrates
 native adapters; #32/#33 add the development host and actual reload soak.
 
+The integrated implementations are documented in [service reload](service-reload.md),
+[managed desktop resources](managed-desktop.md) and [development hosts](development-host.md).
+The model and validation limits below describe the ownership primitive itself;
+native desktop acceptance is a separate workload using those implementations.
+
 ## Stable owner versus replaceable code
 
 The supervised Bun host remains alive and owns `CefBackend`, `TerminalService`,

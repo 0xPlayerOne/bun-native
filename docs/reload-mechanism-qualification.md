@@ -7,6 +7,11 @@ application generations must be replaceable without implicitly restarting that o
 The #28 managed ownership contract remains the authority for adapters, stale callbacks,
 work reservations and explicit cleanup. This qualifier does not implement #30–#33.
 
+The selected Worker/process protocol is implemented by [service reload](service-reload.md).
+Its [desktop adapters](managed-desktop.md) and [development coordinator](development-host.md)
+retain separate integrated acceptance evidence; the experiment results below keep
+their original source, workload and sample boundaries.
+
 ## Reproduce
 
 ```sh

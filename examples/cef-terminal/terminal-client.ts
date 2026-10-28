@@ -4,6 +4,7 @@ import {
   verifyFixedRecordPayloads,
   type ParsedRecord,
 } from './terminal-records.ts'
+import { beginTerminalNegativeControl } from './negative-control.ts'
 import { RpcClient } from '../../packages/client/src/rpc.ts'
 import { waitForCefRpcTransport } from '../../packages/client/src/cef-rpc.ts'
 import { waitForCefStreamTransport } from '../../packages/client/src/cef-streams.ts'
@@ -241,12 +242,19 @@ try {
     console.log('BUNLY_TERMINAL_MAIN_COMPLETE')
   } else if (role === 'navigate' || role === 'overload') {
     await consumers[0]!.wait('ready')
-    consumers[0]!.holdNext = true
-    await control(0, role === 'navigate' ? 'stall' : 'overload')
-    await consumers[0]!.held.promise
-    console.log(
-      role === 'navigate' ? 'BUNLY_TERMINAL_NAVIGATION_PENDING' : 'BUNLY_TERMINAL_OVERLOAD_PENDING'
-    )
+    await beginTerminalNegativeControl(role, {
+      arm: () => {
+        consumers[0]!.holdNext = true
+      },
+      control: (action) => control(0, action),
+      held: consumers[0]!.held.promise,
+      pending: () =>
+        console.log(
+          role === 'navigate'
+            ? 'BUNLY_TERMINAL_NAVIGATION_PENDING'
+            : 'BUNLY_TERMINAL_OVERLOAD_PENDING'
+        ),
+    })
   } else throw new Error('Unknown terminal fixture role')
 } catch (error) {
   console.error(`BUNLY_TERMINAL_FAILED:${error instanceof Error ? error.message : String(error)}`)

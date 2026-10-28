@@ -64,13 +64,36 @@ a stale stored `psutil.Process` object is never sufficient to target a process.
 ### Closing the last-sample race
 
 A helper can launch after the last live descendant sample and be reparented before
-the observer next runs. For a bound clone with no paired helper, the observer performs
-one post-exit scan through libproc. `PROC_RUID_ONLY` restricts the inventory to the
+the observer next runs. An optional resource or sandbox reader can also hold a sample
+open while the root and its cleanup helper exit. After binding the live root's
+provenance, a dedicated waiter observes `Popen.wait()` completion and performs the
+existing recovery pass independently of those resource readers. For a bound clone
+with no paired helper, that pass performs one post-exit scan through libproc.
+`PROC_RUID_ONLY` restricts the inventory to the
 current real user. A fixed 4,097-PID buffer includes one overflow sentinel; more than
 4,096 returned entries rejects the scan before any PID is inspected. At most 4,096
 kernel identities and eight confirming identity reads are made in this recovery
 pass. Normal verification and sampling remain bounded by the existing time/sample
 limits. No broad process-name or command-line inventory is retained.
+
+The waiter records root exit before acquiring the tracker lock. Both the ordinary
+500 ms grace and the qualified three-second window start at that timestamp;
+recovery, sampling and diagnostic callback delays consume those same bounds.
+Tracker operations and the existing callback that receives the mutable tracker are
+serialized, while resource readers run outside that lock. The waiter only publishes
+recovered identity/process pairs. The observing thread joins it before merging those
+pairs into its process inventory, delivering the post-exit callback or reporting
+cleanup. User callbacks never execute on the waiter, and a recovery exception is
+retained as an observer failure with failed cleanup qualification. If recovery had
+already admitted a helper before failing, its freshly revalidated process identity
+is still handed to ordinary failed-run cleanup. A waiter failure while the root is
+live cancels observation through that same cleanup path instead of busy sampling
+until the normal timeout.
+
+This removes the dependency on completion of an ordinary resource sample; it does
+not guarantee observation of every helper. A helper can still disappear before the
+waiter or kernel scan inspects it, and a slow diagnostic callback can delay recovery.
+Such missed evidence remains `not-observed` and cannot qualify a native run.
 
 `PROC_PIDUNIQIDENTIFIERINFO` supplies the process unique ID, original parent unique
 ID, executable UUID and PID version in a fixed 56-byte reply. The original parent
@@ -188,7 +211,10 @@ bun test tests/observed-command.test.ts
 These cover file and namespace substitution, PID reuse, foreign users/executables,
 arbitrary flags, missing completion, bounded prelaunch and current inventories,
 old failed clones followed by a new launch, suffix reuse, callback failure, and a real
-role-only child that must still fail the ordinary orphan policy. On macOS an
+role-only child that must still fail the ordinary orphan policy. Event-controlled
+tests also require recovery while a real root exits inside a blocked resource sample,
+retain recovery-thread failures without qualification, and check cleanup after
+partial recovery and early wait failure. On macOS an
 unprivileged real-process test also verifies retained parent identity after reparenting.
 Earlier issue #88
 failure evidence remains unchanged. M4 renderer identity and authority acceptance

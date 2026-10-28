@@ -79,6 +79,7 @@ const sourcePaths = [
   'native/cef-host/src/terminal_owner_windows.rs',
   'native/cef-host/src/terminal_runtime.rs',
   'examples/cef-terminal/terminal-client.ts',
+  'examples/cef-terminal/negative-control.ts',
   'examples/cef-terminal/terminal-records.ts',
   'examples/cef-terminal/terminal-child.ts',
   'examples/cef-terminal/terminal-contract.ts',

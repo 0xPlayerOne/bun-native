@@ -129,6 +129,7 @@ export class ManagedGenerationOwner {
   readonly #knownGenerations = new WeakSet<ManagedGeneration>()
   readonly #knownResources = new WeakSet<ManagedResource>()
   readonly #work = new Map<ManagedWork, Work>()
+  readonly #idleWaiters = new Map<Deferred<void>, () => void>()
   #candidate: ManagedGeneration | undefined
   #active: ManagedGeneration | undefined
   #state: string | undefined
@@ -344,7 +345,7 @@ export class ManagedGenerationOwner {
     })
   }
   #reserve(work: Work): ManagedWork {
-    if (this.#work.size >= this.#limits.work) fail('CAPACITY')
+    if (this.#work.size + this.#idleWaiters.size >= this.#limits.work) fail('CAPACITY')
     const id = identity<'work'>()
     this.#work.set(id, work)
     return id
@@ -436,6 +437,7 @@ export class ManagedGenerationOwner {
       this.#work.delete(job)
       this.#collect(generation)
       this.#close(resource, r)
+      this.#notifyIdle()
     }
     void Promise.resolve()
       .then(() => {
@@ -474,6 +476,49 @@ export class ManagedGenerationOwner {
         }
       )
     return result.promise
+  }
+  /** Wait for actual adapter settlement, including work whose framework caller was cancelled.
+   * This observes adapter calls only, not arbitrary resource disposal. Waiters share the
+   * bounded work budget and can be aborted without releasing any adapter reservation.
+   */
+  whenIdle(signal?: AbortSignal): Promise<void> {
+    try {
+      return this.#asOwner(() => {
+        this.#open()
+        if (signal !== undefined && !(signal instanceof AbortSignal)) fail('INVALID_ARGUMENT')
+        if (signal?.aborted) fail('RETIRED')
+        if (![...this.#work.values()].some((work) => work.resource !== undefined))
+          return Promise.resolve()
+        if (this.#work.size + this.#idleWaiters.size >= this.#limits.work) fail('CAPACITY')
+        const completion = deferred<void>()
+        const abort = () => {
+          const remove = this.#idleWaiters.get(completion)
+          if (!remove) return
+          remove()
+          this.#idleWaiters.delete(completion)
+          completion.reject(new ManagedError('RETIRED'))
+        }
+        this.#idleWaiters.set(completion, () => signal?.removeEventListener('abort', abort))
+        try {
+          signal?.addEventListener('abort', abort, { once: true })
+        } catch (error) {
+          this.#idleWaiters.delete(completion)
+          throw error
+        }
+        if (signal?.aborted) abort()
+        return completion.promise
+      })
+    } catch (error) {
+      return Promise.reject(error)
+    }
+  }
+  #notifyIdle(): void {
+    for (const work of this.#work.values()) if (work.resource !== undefined) return
+    for (const [completion, remove] of this.#idleWaiters) {
+      remove()
+      this.#idleWaiters.delete(completion)
+      completion.resolve()
+    }
   }
   release(generation: ManagedGeneration, work: ManagedWork): Promise<void> {
     return this.#asOwner(() => {
@@ -588,6 +633,11 @@ export class ManagedGenerationOwner {
     this.#asOwner(() => {
       this.#closed = true
       this.#state = undefined
+      for (const [completion, remove] of this.#idleWaiters) {
+        remove()
+        this.#idleWaiters.delete(completion)
+        completion.reject(new ManagedError('DISPOSED'))
+      }
       for (const id of this.#generations.keys()) this.#retire(id)
       for (const id of this.#resources.keys()) void this.disposeResource(id)
     })
@@ -603,7 +653,7 @@ export class ManagedGenerationOwner {
         0
       ),
       generations: this.#generations.size,
-      work: work.length,
+      work: work.length + this.#idleWaiters.size,
       active: this.#active ? 1 : 0,
       candidate: this.#candidate ? 1 : 0,
       inFlight: work.filter((w) => w.resource !== undefined).length,

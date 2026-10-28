@@ -2,7 +2,7 @@ import { NativeTerminalDriver, type NativeTerminalConfiguration } from './termin
 import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
 import { isAbsolute } from 'node:path'
-import { NativeTransport, type NativeEvent } from './native-transport.ts'
+import { NativeShutdownError, NativeTransport, type NativeEvent } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { parseCefWindowState, type CefWindowState } from './cef-window-state.ts'
 export type { CefWindowState } from './cef-window-state.ts'
@@ -630,6 +630,31 @@ export class CefBackend implements BrowserBackend {
     const token = Object.freeze({ [policyScopeBrand]: true as const })
     this.#policyScopes.set(token, { view, resource, documentId, nativeScope: scope, epoch })
     return token
+  }
+  /** Revalidate a retained scope against the current native document, without granting an OS operation. */
+  async validatePolicyScope(scope: PolicyScope): Promise<void> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    const current = nativePolicyScope(
+      await this.#transport.call('policy.scope', { id: captured.resource.native })
+    )
+    this.#active()
+    this.#capturedPolicyScope(scope)
+    for (const key of ['view', 'session', 'generation', 'mainFrame', 'document', 'origin'] as const)
+      if (current[key] !== captured.nativeScope[key])
+        throw new BunlyError('PERMISSION_DENIED', 'Retained native policy scope changed')
+  }
+  /** Synchronous local revocation fence, including navigation before its native acknowledgment.
+   * This does not replace fresh native validation or grant an operation by itself.
+   */
+  isPolicyScopeLocallyCurrent(scope: PolicyScope): boolean {
+    try {
+      this.#active()
+      this.#capturedPolicyScope(scope)
+      return true
+    } catch {
+      return false
+    }
   }
   /** @internal Contributor fixture only; ordinary native builds reject this command.
    * Requests one fixed native user-activation fixture, never arbitrary evaluation or input.
@@ -1260,7 +1285,23 @@ export class CefBackend implements BrowserBackend {
     this.#disposed = true
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
-    this.#shutdown = Promise.all([rpcClosed, this.#transport.call('quit').then(() => this.closed)])
+    const nativeClosed = this.#transport.diagnostics().closed
+      ? this.closed
+      : this.#transport.call('quit').then(
+          () => this.closed,
+          (error: unknown) => {
+            // Last-window closure may finish the host before a redundant quit is acknowledged.
+            // Only its explicit clean-shutdown cancellation is idempotent, not an RPC failure.
+            if (
+              error instanceof NativeShutdownError &&
+              this.#transport.diagnostics().closed &&
+              this.#transport.failure === null
+            )
+              return this.closed
+            throw error
+          }
+        )
+    this.#shutdown = Promise.all([rpcClosed, nativeClosed])
       .then(() => {})
       .catch((error) => {
         this.#transport.fail(error)

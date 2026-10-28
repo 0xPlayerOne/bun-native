@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import subprocess
 import sys
 import tempfile
 import threading
@@ -22,6 +23,219 @@ spec.loader.exec_module(observer)
 
 
 class ObserverTests(unittest.TestCase):
+    def exit_during_slow_sample(self, recovery_error=False, partial_identity=None):
+        # This substitutes the separately tested clone policy, not the actual
+        # process/wait path. The helper's admissible lifetime is controlled by
+        # events so recovery must run while the resource provider is blocked.
+        with tempfile.TemporaryDirectory() as directory:
+            release = Path(directory) / "exit"
+            sampling = threading.Event()
+            recovered = threading.Event()
+            helper_available = threading.Event()
+            helper_available.set()
+            sample_finished = []
+            recovery_threads = []
+            callback_threads = []
+            root_exit_times = []
+            during_sample = []
+            identity = partial_identity or (2**30 - 1, 2.0)
+            tracker = Mock()
+            tracker.helpers = {}
+            tracker.grant.return_value = True
+            tracker.state.return_value = "exited"
+            tracker.complete.side_effect = lambda _identity: not helper_available.is_set()
+
+            def recover():
+                recovery_threads.append(threading.get_ident())
+                try:
+                    if recovery_error:
+                        raise OSError("controlled recovery failure")
+                    if not helper_available.is_set():
+                        return []
+                    during_sample.append(sampling.is_set() and not sample_finished)
+                    tracker.helpers[identity] = "abc123"
+                    if partial_identity is not None:
+                        raise RuntimeError("controlled failure after admitting an owned helper")
+                    return [(identity, Mock())]
+                finally:
+                    recovered.set()
+
+            tracker.recover_after_exit.side_effect = recover
+            tracker.report.side_effect = lambda elapsed: {
+                "limitMs": 3000,
+                "elapsedMs": elapsed,
+                "passed": True,
+                "qualified": bool(tracker.helpers),
+                "status": "completed" if tracker.helpers else "not-observed",
+                "helpers": [
+                    {
+                        "pid": key[0],
+                        "processExited": partial_identity is None,
+                        "completed": partial_identity is None,
+                    }
+                    for key in tracker.helpers
+                ],
+                "observedClones": 1,
+            }
+
+            class CleanupCallback:
+                def on_root_exit(self, when):
+                    callback_threads.append(threading.get_ident())
+                    root_exit_times.append(when)
+
+                def __call__(self, _tracker):
+                    callback_threads.append(threading.get_ident())
+
+            def slow_sandbox(_pid):
+                if not sampling.is_set():
+                    sampling.set()
+                    release.write_text("exit", encoding="ascii")
+                    # The old observer cannot recover until this provider
+                    # returns, by which point the helper is no longer present.
+                    recovered.wait(1)
+                    helper_available.clear()
+                    sample_finished.append(time.monotonic())
+                return {"provider": "controlled-slow-sample", "active": None}
+
+            code = (
+                "import time,sys; from pathlib import Path\n"
+                "deadline=time.monotonic()+5\n"
+                "while not Path(sys.argv[1]).exists():\n"
+                " if time.monotonic()>deadline: raise RuntimeError('Sampler did not start')\n"
+                " time.sleep(.005)\n"
+            )
+            with (
+                patch.object(observer.sys, "platform", "darwin"),
+                patch("macos_clone_cleanup.for_command", return_value=tracker),
+            ):
+                result = observer.observe(
+                    [sys.executable, "-c", code, str(release)],
+                    timeout=7,
+                    sandbox_reader=slow_sandbox,
+                    cleanup_observer=CleanupCallback(),
+                )
+            self.assertTrue(sampling.is_set())
+            tracker.recover_after_exit.assert_called_once()
+            self.assertEqual(len(recovery_threads), 1)
+            self.assertNotEqual(recovery_threads[0], threading.get_ident())
+            self.assertTrue(callback_threads)
+            self.assertEqual(set(callback_threads), {threading.get_ident()})
+            self.assertEqual(result["exitCode"], 0)
+            self.assertFalse(result["timedOut"])
+            self.assertEqual(
+                result["observedOrphans"], [identity[0]] if partial_identity is not None else []
+            )
+            self.assertEqual(result["cleanupSurvivors"], [])
+            self.assertEqual(result["accounting"]["exitGraceMs"], 500)
+            self.assertEqual(result["postExitCleanup"]["limitMs"], 3000)
+            return result, during_sample, root_exit_times, sample_finished
+
+    def test_root_exit_recovers_helper_while_resource_sampling_is_blocked(self):
+        result, during_sample, root_exit_times, sample_finished = self.exit_during_slow_sample()
+        self.assertEqual(during_sample, [True])
+        self.assertEqual(len(root_exit_times), 1)
+        self.assertLessEqual(root_exit_times[0], sample_finished[0])
+        self.assertFalse(result["cancelled"])
+        self.assertIsNone(result["observerFailure"])
+        self.assertEqual(result["observedProcesses"], 2)
+        self.assertEqual(result["postExitCleanup"]["status"], "completed")
+        self.assertTrue(result["postExitCleanup"]["qualified"])
+
+    def test_recovery_thread_failure_is_joined_and_preserved_without_qualification(self):
+        result, _, _, _ = self.exit_during_slow_sample(recovery_error=True)
+        self.assertTrue(result["cancelled"])
+        self.assertEqual(result["observerFailure"], "cleanup-exit-observer-failed")
+        self.assertEqual(result["postExitCleanup"]["status"], "failed")
+        self.assertFalse(result["postExitCleanup"]["passed"])
+        self.assertFalse(result["postExitCleanup"]["qualified"])
+
+    def test_partial_recovery_failure_preserves_proven_identity_for_owned_cleanup(self):
+        helper = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            identity = (helper.pid, observer.psutil.Process(helper.pid).create_time())
+            result, _, _, _ = self.exit_during_slow_sample(partial_identity=identity)
+            self.assertEqual(result["observedProcesses"], 2)
+            self.assertTrue(result["cancelled"])
+            self.assertEqual(result["observerFailure"], "cleanup-exit-observer-failed")
+            self.assertEqual(result["postExitCleanup"]["status"], "failed")
+            self.assertFalse(result["postExitCleanup"]["qualified"])
+            self.assertNotEqual(helper.wait(timeout=1), 0)
+        finally:
+            if helper.poll() is None:
+                helper.kill()
+            helper.wait(timeout=5)
+
+    def test_waiter_failure_cancels_live_root_without_busy_sampling_until_timeout(self):
+        tracker = Mock()
+        tracker.helpers = {}
+        tracker.report.return_value = {
+            "passed": True,
+            "qualified": False,
+            "status": "not-observed",
+            "helpers": [],
+            "observedClones": 0,
+        }
+        stop = threading.Event()
+        allow_failure = threading.Event()
+        failed_wait = threading.Event()
+        wait_threads = []
+        callbacks = []
+        observing_thread = threading.get_ident()
+        original_spawn = subprocess.Popen
+
+        def spawn(*args, **kwargs):
+            child = original_spawn(*args, **kwargs)
+            original_wait = child.wait
+
+            def wait(timeout=None):
+                if timeout is None and threading.get_ident() != observing_thread:
+                    wait_threads.append(threading.current_thread())
+                    allow_failure.wait(1)
+                    failed_wait.set()
+                    raise OSError("controlled blocking wait failure")
+                return original_wait(timeout=timeout)
+
+            child.wait = wait
+            return child
+
+        def callback(_tracker):
+            callbacks.append(threading.get_ident())
+            if len(callbacks) == 1:
+                allow_failure.set()
+                self.assertTrue(failed_wait.wait(1))
+            elif len(callbacks) >= 3:
+                # Bound the old busy-loop reproduction without waiting for its
+                # full ordinary timeout. Failure must be noticed before this.
+                stop.set()
+
+        with (
+            patch.object(observer.sys, "platform", "darwin"),
+            patch("macos_clone_cleanup.for_command", return_value=tracker),
+            patch.object(observer.subprocess, "Popen", side_effect=spawn),
+        ):
+            result = observer.observe(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                timeout=5,
+                cleanup_observer=callback,
+                stop_event=stop,
+            )
+        self.assertLessEqual(len(callbacks), 2)
+        self.assertFalse(stop.is_set())
+        self.assertEqual(len(wait_threads), 1)
+        self.assertFalse(wait_threads[0].is_alive())
+        self.assertTrue(result["cancelled"])
+        self.assertFalse(result["timedOut"])
+        self.assertEqual(result["observerFailure"], "cleanup-exit-observer-failed")
+        self.assertEqual(result["cleanupSurvivors"], [])
+        self.assertEqual(result["postExitCleanup"]["status"], "failed")
+        self.assertFalse(result["postExitCleanup"]["qualified"])
+        tracker.recover_after_exit.assert_not_called()
+
     def test_nonfinite_time_bounds_are_rejected_before_starting_a_process(self):
         with patch.object(observer.subprocess, "Popen") as spawn:
             for option in ("timeout", "interval"):

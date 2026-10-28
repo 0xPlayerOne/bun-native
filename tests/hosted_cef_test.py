@@ -11,6 +11,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import hosted_cef as hosted
 
 
+def cp1252_text_default():
+    """Use real file decoding with Windows' non-UTF-8 default on every test OS."""
+    read_text = Path.read_text
+
+    def read(path, encoding=None, errors=None):
+        return read_text(path, encoding=encoding or "cp1252", errors=errors)
+
+    return patch.object(Path, "read_text", read)
+
+
 class HostedQualificationTests(unittest.TestCase):
     def test_only_declared_native_architectures(self):
         self.assertEqual(hosted.target("win32", "AMD64"), "win32-x64")
@@ -36,6 +46,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "window-modes",
                 "terminals",
                 "terminal-load",
+                "managed-development",
                 "credentials",
             ],
         )
@@ -121,7 +132,14 @@ class HostedQualificationTests(unittest.TestCase):
                     [
                         row
                         for row in hosted.commands("full", bun, app)
-                        if row[0] not in ("faults", "window-modes", "terminals", "terminal-load")
+                        if row[0]
+                        not in (
+                            "faults",
+                            "window-modes",
+                            "terminals",
+                            "terminal-load",
+                            "managed-development",
+                        )
                     ],
                     m4,
                 )
@@ -256,6 +274,80 @@ class HostedQualificationTests(unittest.TestCase):
             self.assertIn("b" * 64, text)
             self.assertNotIn("not-for-upload", text)
 
+    def test_bundle_path_uses_utf8_under_a_non_utf8_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / ".bunly/cef-bundle"
+            bundle.mkdir(parents=True)
+            app = bundle / "native-café-🐙.exe"
+            app.write_bytes(b"selected fixture")
+            (bundle / "bundle.json").write_bytes(
+                json.dumps({"path": str(app)}, ensure_ascii=False).encode("utf-8")
+            )
+            with patch.object(hosted, "ROOT", root), cp1252_text_default():
+                self.assertEqual(hosted.artifact(), app.resolve(strict=True))
+
+    def test_collection_preserves_utf8_failures_under_a_non_utf8_default(self):
+        # The accent silently became mojibake in older exports; the octopus adds
+        # byte 0x90, which the same CP1252 default cannot decode at all.
+        for message in ("café", "café-🐙"):
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                evidence = root / ".bunly/hosted-evidence"
+                evidence.mkdir(parents=True)
+                report = root / ".bunly/m6/managed-development/run-one/report.json"
+                report.parent.mkdir(parents=True)
+                value = {"passed": False, "failure": message, "path": "nested/unicode-é.txt"}
+                raw = (json.dumps(value, ensure_ascii=False) + "\n").encode("utf-8")
+                report.write_bytes(raw)
+                canonical = evidence / "managed-development.json"
+                canonical.write_bytes(raw)
+                (evidence / "qualification.json").write_bytes(raw)
+                log = evidence / "managed-development.log"
+                log.write_bytes(("failure: " + message + "\n").encode("utf-8"))
+                summary = root / "summary.md"
+                with (
+                    patch.object(hosted, "ROOT", root),
+                    patch.object(hosted, "EVIDENCE", evidence),
+                    patch.dict("os.environ", {"GITHUB_STEP_SUMMARY": str(summary)}),
+                    cp1252_text_default(),
+                ):
+                    hosted.collect()
+                exported = json.loads(canonical.read_text(encoding="utf-8"))
+                collected = json.loads(
+                    (evidence / "managed-development-run-one.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(exported, collected)
+                self.assertFalse(collected["passed"])
+                self.assertEqual(collected["failure"], message)
+                self.assertEqual(collected["path"], value["path"])
+                self.assertEqual(report.read_bytes(), raw)
+                self.assertEqual(log.read_text(encoding="utf-8"), "failure: " + message + "\n")
+                summary_json = summary.read_text(encoding="utf-8").split("```json\n")[1]
+                self.assertEqual(json.loads(summary_json.split("```", 1)[0]), exported)
+
+    def test_collection_rejects_invalid_utf8_without_rewriting_evidence(self):
+        for location in (
+            ".bunly/m6/managed-development/run-one/report.json",
+            ".bunly/hosted-evidence/managed-development.json",
+            ".bunly/hosted-evidence/managed-development.log",
+        ):
+            with self.subTest(location=location), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = root / location
+                path.parent.mkdir(parents=True)
+                original = b'{"passed":false,"failure":"invalid byte: \xff"}\n'
+                path.write_bytes(original)
+                with (
+                    patch.object(hosted, "ROOT", root),
+                    patch.object(hosted, "EVIDENCE", root / ".bunly/hosted-evidence"),
+                    patch.dict("os.environ", {"GITHUB_STEP_SUMMARY": ""}),
+                    cp1252_text_default(),
+                    self.assertRaises(UnicodeDecodeError),
+                ):
+                    hosted.collect()
+                self.assertEqual(path.read_bytes(), original)
+
 
 class EvidenceExportTests(unittest.TestCase):
     def test_explicit_export_is_idempotent_and_keeps_failure_accounting(self):
@@ -285,7 +377,9 @@ class GraphicalTerminalStageTests(unittest.TestCase):
         app = Path("/app")
         commands = hosted.commands("full", "/bun", app)
         names = [name for name, _ in commands]
-        self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
+        self.assertEqual(
+            names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
+        )
         self.assertEqual(
             dict(commands)["terminals"],
             [
@@ -314,7 +408,14 @@ class NativeWindowStageTests(unittest.TestCase):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
                 self.assertEqual(
-                    names[-4:], ["window-modes", "terminals", "terminal-load", "credentials"]
+                    names[-5:],
+                    [
+                        "window-modes",
+                        "terminals",
+                        "terminal-load",
+                        "managed-development",
+                        "credentials",
+                    ],
                 )
                 expected = (
                     [
@@ -355,8 +456,10 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 10)
-                self.assertEqual(names[-3:], ["terminals", "terminal-load", "credentials"])
+                self.assertEqual(len(names), 11)
+                self.assertEqual(
+                    names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
+                )
                 expected = (
                     [
                         sys.executable,
@@ -388,3 +491,38 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
         self.assertEqual(
             hosted.report_directory("terminal-load"), hosted.ROOT / ".bunly/m5/terminal-load"
         )
+
+
+class ManagedDevelopmentStageTests(unittest.TestCase):
+    def test_full_requires_exact_source_and_fresh_managed_report_before_credentials(self):
+        source = "a" * 40
+        for root, app, bun in (
+            (PurePosixPath("/repo"), PurePosixPath("/app"), "/bun"),
+            (PureWindowsPath("C:/repo"), PureWindowsPath("C:/app.exe"), "C:/bun.exe"),
+        ):
+            with self.subTest(path_type=type(app).__name__), patch.object(hosted, "ROOT", root):
+                selected = hosted.commands("full", bun, app, native_source=source)
+                self.assertEqual(
+                    dict(selected)["managed-development"],
+                    [
+                        bun,
+                        str(root / "scripts/qualify-managed-development.ts"),
+                        str(app),
+                        "--native-source=" + source,
+                    ],
+                )
+                self.assertEqual(
+                    hosted.report_directory("managed-development"),
+                    root / ".bunly/m6/managed-development",
+                )
+                rows = [{"name": name, "passed": True} for name, _ in selected[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                rows[-1]["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "managed-development", dict(hosted.commands("m4-acceptance", bun, app))
+                )
+                for invalid in ("HEAD", "main", source + "0", "--no-sandbox"):
+                    with self.assertRaises(ValueError):
+                        hosted.commands("full", bun, app, native_source=invalid)

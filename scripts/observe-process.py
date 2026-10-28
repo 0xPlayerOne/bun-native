@@ -152,6 +152,47 @@ def observe(
         root, root_identity, known = None, None, {}
     if clone_cleanup is not None:
         clone_cleanup.bind(root)
+    clone_lock = threading.RLock()
+    cancel_recovery = threading.Event()
+    exit_observed = threading.Event()
+    exit_observation = {"when": None, "recovered": (), "failure": None}
+
+    def watch_root_exit():
+        try:
+            child.wait()
+            # Capture this before waiting for tracker work or a diagnostic
+            # callback. Neither may extend the ordinary or qualified bounds.
+            exit_observation["when"] = time.monotonic()
+            with clone_lock:
+                if not cancel_recovery.is_set() and not (
+                    stop_event is not None and stop_event.is_set()
+                ):
+                    try:
+                        clone_cleanup.discover_clones()
+                        exit_observation["recovered"] = tuple(clone_cleanup.recover_after_exit())
+                    except Exception:
+                        exit_observation["failure"] = "cleanup-exit-observer-failed"
+                        # A later unexpected failure must not forget helpers
+                        # already admitted by the bounded policy. Revalidate
+                        # those exact identities solely for failed-run cleanup;
+                        # this neither scans for nor grants any new ownership.
+                        for identity in clone_cleanup.helpers:
+                            proc = owned_process(identity)
+                            if proc is not None:
+                                exit_observation["recovered"] += ((identity, proc),)
+        except Exception:
+            # Publish failure on the observing thread after joining; do not
+            # mutate known processes, samples or callback state from here.
+            exit_observation["failure"] = "cleanup-exit-observer-failed"
+        finally:
+            exit_observed.set()
+
+    exit_watcher = None
+    if clone_cleanup is not None:
+        # Reaping and the existing bounded recovery pass must not wait for a
+        # slow resource/sandbox provider to finish an ordinary sample.
+        exit_watcher = threading.Thread(target=watch_root_exit, daemon=True)
+        exit_watcher.start()
     lines, errors, samples, event_times, native_diagnostics = [], [], [], [], []
     native_diagnostic_bytes = 0
     # Optional notifications share the admitted native receipt bounds. They are
@@ -254,17 +295,22 @@ def observe(
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
         if clone_cleanup is not None:
-            clone_cleanup.discover_clones()
-            for identity, proc in list(known.items()):
-                if identity[0] != child.pid:
-                    clone_cleanup.remember(identity, proc)
-            if cleanup_observer is not None:
-                try:
-                    cleanup_observer(clone_cleanup)
-                except Exception:
-                    # A qualification callback cannot strand suspended/owned
-                    # children by escaping the normal bounded cleanup path.
-                    state["observerFailure"] = "cleanup-observer-failed"
+            with clone_lock:
+                clone_cleanup.discover_clones()
+                for identity, proc in list(known.items()):
+                    if identity[0] != child.pid:
+                        clone_cleanup.remember(identity, proc)
+                if cleanup_observer is not None:
+                    try:
+                        # This existing callback receives the mutable tracker;
+                        # serialize it too, but keep all resource readers below
+                        # outside this lock. Callbacks never run on the waiter.
+                        cleanup_observer(clone_cleanup)
+                    except Exception:
+                        # A qualification callback cannot strand suspended/owned
+                        # children by escaping the normal bounded cleanup path.
+                        state["observerFailure"] = "cleanup-observer-failed"
+                        cancel_recovery.set()
         rows = []
         for identity, proc in list(known.items()):
             if not alive(identity, proc):
@@ -342,6 +388,10 @@ def observe(
     # discovery even when the ordinary sample budget is exhausted.
     reserve = min(max_samples, int(3.0 / interval) + 2) if clone_cleanup is not None else 0
     while child.poll() is None:
+        if exit_observed.is_set() and exit_observation["failure"] is not None:
+            state["observerFailure"] = state["observerFailure"] or exit_observation["failure"]
+            cancelled = True
+            break
         if stop_event is not None and stop_event.is_set():
             cancelled = True
             break
@@ -354,8 +404,12 @@ def observe(
         if time.monotonic() - started > timeout or state["overflow"]:
             timed_out = True
             break
-        time.sleep(interval)
+        if exit_watcher is not None:
+            exit_observed.wait(interval)
+        else:
+            time.sleep(interval)
     if timed_out or cancelled:
+        cancel_recovery.set()
         # Discover still-owned descendants once more before interrupting the
         # root. This is bounded sampling, not a claim of kernel process tracking.
         if len(samples) < max_samples:
@@ -371,6 +425,17 @@ def observe(
         child.kill()
         code = child.wait(timeout=5)
     root_exit = time.monotonic()
+    if exit_watcher is not None:
+        # The child is reaped. Finish its one already bounded policy scan before
+        # consuming the publication or inspecting/reporting the mutable tracker.
+        exit_watcher.join()
+        if exit_observation["when"] is not None:
+            root_exit = exit_observation["when"]
+        for identity, proc in exit_observation["recovered"]:
+            known[identity] = proc
+        if exit_observation["failure"] is not None:
+            state["observerFailure"] = state["observerFailure"] or exit_observation["failure"]
+            cancelled = True
     grace = root_exit + 0.5
     if not timed_out and not cancelled and cleanup_observer is not None:
         on_root_exit = getattr(cleanup_observer, "on_root_exit", None)
@@ -383,9 +448,6 @@ def observe(
                 state["observerFailure"] = "cleanup-observer-failed"
                 cancelled = True
     if clone_cleanup is not None and not timed_out and not cancelled:
-        clone_cleanup.discover_clones()
-        for identity, proc in clone_cleanup.recover_after_exit():
-            known[identity] = proc
         # Always take one post-exit observation, including a cleanup child that
         # reparented between the last descendant sample and root exit.
         sample = snapshot("post-exit-cleanup")

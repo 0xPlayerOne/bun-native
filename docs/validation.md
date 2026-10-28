@@ -2,7 +2,7 @@
 
 One local and hosted validation contract, with explicit platform boundaries.
 
-**Scope:** M1–M3 foundation, tooling and repository hygiene.
+**Scope:** Portable and native framework checks, tooling, and repository hygiene.
 **Policy:** Use committed dependency pins; failures and unsupported cases are not passes.
 
 ## Contributor setup
@@ -163,6 +163,25 @@ as qualification; failed attempts remain failures. See
 for identity, cancellation, resource bounds and shutdown behavior.
 
 ## Benchmark and development jobs
+
+Managed backend development adds focused executable tests for the actual
+Worker/process broker, native-resource adapters and cached development sessions:
+
+```sh
+bun test tests/service-reload.test.ts tests/managed-desktop.test.ts tests/dev-host.test.ts tests/dev-host-runtime.test.ts tests/runtime-bundle.test.ts
+bun run qualify:managed-development /absolute/path/to/prebuilt-app --native-source=COMMIT
+bun scripts/qualify-managed-development.ts --verify .bunly/m6/managed-development/run-EXAMPLE/report.json
+```
+
+The native qualifier requires clean committed source, pinned Bun, the contributor
+Python environment, and the full immutable source commit for the already built
+host. It uses one desktop launch for the fixed 500-replacement plan and a separate
+controlled relaunch after successful shutdown. It keeps
+raw workload rows, process observations, exact artifact inventories, failures and
+cleanup receipts. The replay command verifies retained evidence; it does not
+launch another desktop or claim a fresh result. The shared hosted `full` suite
+runs this stage before the credential-provider stage on every declared platform.
+No systems compiler is invoked by an ordinary warmed backend edit.
 
 The separately locked reference dependencies are not installed by root Bun install:
 

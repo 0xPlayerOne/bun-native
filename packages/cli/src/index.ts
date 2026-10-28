@@ -3,13 +3,28 @@ import { CONTRACT_VERSION } from '../../contracts/src/core.ts'
 import { BUILD_PROFILES, PROFILE_CAPABILITY_VERSION } from '../../contracts/src/profiles.ts'
 import { inspectArtifact, resolveArtifact } from '../../artifacts/src/index.ts'
 import type { ResolveOptions } from '../../artifacts/src/index.ts'
+export { DevelopmentError, developmentHostKey, prepareDevelopmentHost } from './dev-cache.ts'
+export type {
+  DevelopmentErrorCode,
+  DevelopmentHostInput,
+  DevelopmentHostIdentity,
+  PreparedDevelopmentHost,
+  PrepareDevelopmentHostOptions,
+} from './dev-cache.ts'
+export { DevelopmentSession } from './dev-host.ts'
+export type {
+  DevelopmentBundle,
+  DevelopmentDiagnostic,
+  DevelopmentChangeResult,
+  DevelopmentSessionOptions,
+} from './dev-host.ts'
 export async function main(args: string[]): Promise<void> {
   if (args[0] === 'doctor') {
     console.log(
       JSON.stringify(
         {
           name: 'Bunly',
-          stage: 'M4 functional acceptance',
+          stage: 'M6 managed development (experimental)',
           bun: process.versions['bun'] ?? null,
           target: `${process.platform}-${process.arch}`,
           frameworkSupport: BUILD_PROFILES.cef.adapters,

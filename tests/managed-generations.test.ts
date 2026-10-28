@@ -199,6 +199,55 @@ test('retirement settles the caller immediately but retains an uncooperative ope
   await flush()
 })
 
+test('idle notification follows actual adapter settlement after caller cancellation', async () => {
+  const owner = new ManagedGenerationOwner(),
+    pending = gate<string>()
+  const resource = owner.register(definition({ invoke: () => pending.promise }))
+  const generation = active(owner, resource)
+  const call = owner.invoke(generation, resource, 'wait', 'null')
+  await flush()
+  let settled = false
+  const idle = owner.whenIdle().then(() => {
+    settled = true
+  })
+  expect(owner.diagnostics().work).toBe(2)
+  owner.detach(generation, resource)
+  await expect(call).rejects.toThrow('RETIRED')
+  await flush()
+  expect(settled).toBe(false)
+  expect(owner.diagnostics().inFlight).toBe(1)
+  pending.resolve('null')
+  await idle
+  expect(settled).toBe(true)
+  expect(owner.diagnostics().work).toBe(0)
+  owner.dispose()
+  await flush()
+})
+
+test('idle observers share bounded work admission and release on abort or owner disposal', async () => {
+  const owner = new ManagedGenerationOwner({ work: 2 }),
+    pending = gate<string>()
+  const resource = owner.register(definition({ invoke: () => pending.promise }))
+  const generation = active(owner, resource)
+  const call = owner.invoke(generation, resource, 'wait', 'null')
+  await flush()
+  const controller = new AbortController()
+  await expect(owner.whenIdle({} as AbortSignal)).rejects.toThrow('INVALID_ARGUMENT')
+  const idle = owner.whenIdle(controller.signal)
+  await expect(owner.whenIdle()).rejects.toThrow('CAPACITY')
+  controller.abort()
+  await expect(idle).rejects.toThrow('RETIRED')
+  expect(owner.diagnostics().work).toBe(1)
+  const disposed = owner.whenIdle()
+  owner.dispose()
+  await expect(disposed).rejects.toThrow('DISPOSED')
+  await expect(call).rejects.toThrow('RETIRED')
+  expect(owner.diagnostics().inFlight).toBe(1)
+  pending.resolve('null')
+  await flush()
+  expect(owner.diagnostics().work).toBe(0)
+})
+
 test('detaching and reattaching cannot revive a pending result from the old attachment', async () => {
   const owner = new ManagedGenerationOwner(),
     pending = gate<string>()

@@ -2,7 +2,20 @@
 
 Current architecture and contributor guides, with historical evidence kept distinct.
 
-**Checkpoint:** M1–M3 complete for the declared acceptance profiles; M4 not yet complete.
+**Checkpoint:** M1–M5 completion records define their declared acceptance profiles.
+[M6 implementation and local qualification](m6-completion.md) records managed
+reload, the actual 500-replacement desktop run, a distinct controlled relaunch and
+the pinned reference comparison. Final validation and merge remain tracked in
+[PR #130](https://github.com/0xPlayerOne/bunly/pull/130).
+
+The [managed development qualification](managed-development-qualification.md)
+defines the native 500-replacement and controlled-relaunch workload. The
+[common edit outcome comparison](managed-comparison.md) records the separately
+pinned Electrobun/Mirin workflow and its measurement limits.
+The [five-run retained manifest](../evidence/m6-managed-development/manifest.json)
+keeps startup, metadata and last-window shutdown failures beside the later accepted
+native and comparison runs; `bun run verify:managed-acceptance` replays them without
+implicit source fetch or a new native launch.
 
 [M4 browser sessions](m4-browser-sessions.md) documents the implemented issue #20
 session surface, its prepared real-native qualifier, and the remaining macOS
@@ -23,17 +36,23 @@ Windows, Linux and macOS cloud tests without local VMs.
 
 ## Accepted milestone records
 
-| Record                                  | Scope                                                    |
-| --------------------------------------- | -------------------------------------------------------- |
-| [M1 completion](m1-completion.md)       | Host decision, native probes and foundational contracts  |
-| [M2 completion](m2-completion.md)       | Local reference baselines and measurement infrastructure |
-| [M3 completion](m3-completion.md)       | Declared native CEF platform and lifecycle acceptance    |
-| [Foundation audit](foundation-audit.md) | Post-M3 hygiene, sync and dependency-security review     |
+| Record                                  | Scope                                                         |
+| --------------------------------------- | ------------------------------------------------------------- |
+| [M1 completion](m1-completion.md)       | Host decision, native probes and foundational contracts       |
+| [M2 completion](m2-completion.md)       | Local reference baselines and measurement infrastructure      |
+| [M3 completion](m3-completion.md)       | Declared native CEF platform and lifecycle acceptance         |
+| [M4 completion](m4-completion.md)       | Native authority, sessions, transport and provider acceptance |
+| [M5 completion](m5-completion.md)       | Native streams, graphical terminals and service supervision   |
+| [Foundation audit](foundation-audit.md) | Post-M3 hygiene, sync and dependency-security review          |
 
 The detailed M2/M3 acceptance reports and `evidence/` retain original source
 identities, failed attempts and qualification boundaries. Completing a milestone
 does not imply production signing, final performance superiority, or platform
 coverage outside its stated profile.
+
+[The M6 record](m6-completion.md) maps the already accepted #28/#29 contracts and
+the #30–#33 implementation to local evidence. PR #130 carries the final-head
+validation and merge record; merge requires all applicable checks.
 
 ## Active technical guides
 
@@ -92,7 +111,10 @@ service supervision and measured load to the declared support boundary.
 replay and measured review envelopes without inventing a release threshold.
 
 [Managed application generations](managed-generations.md) defines the M6 stable-owner
-contract, portable model, failure accounting and remaining native integration boundaries.
+contract, portable model and failure accounting. [Service reload](service-reload.md)
+implements the production generation lifecycle, [managed desktop resources](managed-desktop.md)
+provides native reattachment, and [development hosts](development-host.md) documents
+verified cache reuse and independent source invalidation.
 
 [Native control admission](native-control-admission.md) documents reserved command
 capacity, cancellation/task ownership and the real native saturation fixture.
