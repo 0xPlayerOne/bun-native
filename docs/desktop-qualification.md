@@ -74,3 +74,8 @@ changed fingerprints, incomplete transitions, stale geometry, callback/resource
 leaks, altered artifacts and failed cleanup. Current native CI outcomes belong in
 the relevant PR's acceptance record; these finite functional results confer no
 performance or production-release eligibility.
+
+The [retained window observations](../evidence/m7-desktop/README.md) preserve the
+two initial macOS fixture failures and the subsequent accepted run, with separate
+original/export/archive digests and an offline replay command. Their fixed source
+commits remain distinct from the current-head three-platform merge gates.
