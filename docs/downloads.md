@@ -126,6 +126,12 @@ These are Bunly ownership counts, not a claim about every Chromium internal
 reference. The ordinary process exit, CEF shutdown, and output-drain gates still
 apply.
 
+A newly denied native download callback emits one `bunly.host.download-denied`
+diagnostic with fixed phase and reason labels. It distinguishes missing native
+request admission, revoked authority, rejected network policy, and unavailable
+staging without retaining URLs, destination paths, request secrets, payloads,
+or filesystem exception text. It does not turn a denied transfer into a pass.
+
 ## Destination and filesystem guarantees
 
 Destinations have a single 1–128 character portable ASCII filename. Separators,

@@ -2,6 +2,7 @@
   "bunly.backend.exit",
   "bunly.host.error",
   "bunly.host.failure",
+  "bunly.host.download-denied",
   "bunly.host.download-shutdown",
   "bunly.host.shutdown",
   "bunly.host.shutdown-phase",

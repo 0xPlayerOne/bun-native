@@ -388,7 +388,30 @@ fn bind(view: u64, observation: &Observation, callback: Option<&DownloadItemCall
     drop(previous);
     bound
 }
-fn callback_allowed(view: u64, actual: Option<&Browser>, observation: &Observation) -> bool {
+fn deny_callback(view: u64, phase: &'static str, reason: &'static str) {
+    // One fixed-label receipt per newly denied operation. Never print the URL,
+    // destination, native secret, callback payload, or filesystem error text.
+    let first = STATE.with(|s| {
+        s.borrow()
+            .downloads
+            .entries
+            .get(&view)
+            .is_some_and(|record| record.cancel.is_none() && record.terminal.is_none())
+    });
+    if first {
+        eprintln!(
+            "{}",
+            json!({"event":"bunly.host.download-denied","schema":1,"phase":phase,"reason":reason})
+        );
+    }
+    request_cancel(view, Cancel::Permission);
+}
+fn callback_allowed(
+    view: u64,
+    actual: Option<&Browser>,
+    observation: &Observation,
+    phase: &'static str,
+) -> bool {
     let captured = STATE.with(|s| {
         s.borrow().downloads.entries.get(&view).map(|record| {
             (
@@ -406,13 +429,22 @@ fn callback_allowed(view: u64, actual: Option<&Browser>, observation: &Observati
     if cancelled.is_some() {
         return false;
     }
-    if actual.is_none()
-        || !permit.active()
-        || !permit.admitted()
-        || authorization(&scope, &destination, actual).is_err()
-        || !view_network(view).is_ok_and(|network| network.navigation(&observation.url).is_ok())
+    let denial = if actual.is_none() {
+        Some("browser-missing")
+    } else if !permit.active() {
+        Some("permit-revoked")
+    } else if !permit.admitted() {
+        Some("request-unclaimed")
+    } else if authorization(&scope, &destination, actual).is_err() {
+        Some("authority-rejected")
+    } else if !view_network(view).is_ok_and(|network| network.navigation(&observation.url).is_ok())
     {
-        request_cancel(view, Cancel::Permission);
+        Some("network-rejected")
+    } else {
+        None
+    };
+    if let Some(reason) = denial {
+        deny_callback(view, phase, reason);
         return false;
     }
     if observation.received > maximum || observation.total.is_some_and(|total| total > maximum) {
@@ -430,7 +462,7 @@ fn before(
     let Some(observation) = item.and_then(observe) else {
         return;
     };
-    if !bind(view, &observation, None) || !callback_allowed(view, browser, &observation) {
+    if !bind(view, &observation, None) || !callback_allowed(view, browser, &observation, "before") {
         return;
     }
     let stage = STATE.with(|s| {
@@ -442,7 +474,7 @@ fn before(
         record.staging.take()
     });
     let Some(mut stage) = stage else {
-        request_cancel(view, Cancel::Permission);
+        deny_callback(view, "before", "staging-unavailable");
         return;
     };
     let path = stage.begin().ok().map(|()| stage.path());
@@ -453,15 +485,15 @@ fn before(
         }
     });
     let Some(path) = path else {
-        request_cancel(view, Cancel::Permission);
+        deny_callback(view, "before", "staging-rejected");
         return;
     };
     let Some(callback) = callback else {
-        request_cancel(view, Cancel::Permission);
+        deny_callback(view, "before", "callback-missing");
         return;
     };
     let Some(path) = path.to_str() else {
-        request_cancel(view, Cancel::Permission);
+        deny_callback(view, "before", "path-unrepresentable");
         return;
     };
     callback.cont(Some(&CefString::from(path)), 0);
@@ -485,7 +517,7 @@ fn updated(
         }
         return;
     }
-    let allowed = callback_allowed(view, browser, &observation);
+    let allowed = callback_allowed(view, browser, &observation, "updated");
     if observation.complete || observation.cancelled || observation.interrupted {
         terminal(view, allowed, observation);
     } else {
