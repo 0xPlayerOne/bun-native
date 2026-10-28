@@ -1236,6 +1236,9 @@ wrap_browser_process_handler! {
     impl BrowserProcessHandler {
         fn on_context_initialized(&self) { if currently_on(ThreadId::UI) == 0 { fail("CEF initialized on incorrect thread"); return; }
             if let Err(e) = process::start() { fail(&e); } }
+        fn on_before_child_process_launch(&self, command_line: Option<&mut CommandLine>) {
+            downloads::observe_child_launch(command_line.as_deref());
+        }
         fn on_already_running_app_relaunch(&self, _command_line: Option<&mut CommandLine>, _current_directory: Option<&CefString>) -> i32 {
             eprintln!("{}", json!({"event":"bunly.profile-root-collision","handled":true}));
             1

@@ -24,6 +24,33 @@ CEF/Bun/native-helper binaries are obtained by the contributor build pipeline;
 none are committed as repository source. Public runtime signing/publishing is
 not enabled by this work. Application assembly consumes prebuilt components.
 
+## Download completion diagnostics
+
+The download timeout diagnostics are Bunly-authored. The pinned sources below
+were inspected to identify CEF's existing child-launch callback, Chromium's exact
+quarantine utility subtype, and its position after download-completion gates.
+No upstream implementation was copied. The diagnostic reads only fixed native
+callback fields and counts recognized launches; it does not change Chromium's
+download or Windows Attachment Services behavior.
+
+- https://github.com/chromiumembedded/cef/blob/47dbc1df023e99f006fb9e850a8d83cc19b4fdd9/libcef/browser/chrome/chrome_content_browser_client_cef.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/content/browser/service_host/utility_process_host.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_item_impl.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/public/mojom/quarantine.mojom
+
+## Download staging filename
+
+The private staging target preserves the validated final basename so Chromium
+and Windows Attachment Services receive the intended filename during annotation.
+This Bunly-authored change follows the pinned rename/annotation flow and the
+documented Windows filename and extension policy inputs; no upstream code was
+copied. It does not establish a cause for any historical download timeout.
+
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_file_impl.cc
+- https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/quarantine_win.cc
+- https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
+- https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

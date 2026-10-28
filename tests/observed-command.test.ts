@@ -321,6 +321,40 @@ test('an expected nonzero exit is accepted only when observation and cleanup are
   )
 })
 
+test('download timeout diagnostics remain available independently of a truncated stderr tail', () => {
+  const receipt = JSON.stringify({
+    event: 'bunly.host.download-timeout',
+    schema: 1,
+    before: true,
+    callbackOwned: true,
+    callbackCount: 5,
+    callbackCountSaturated: false,
+    quarantineObservedLaunches: 1,
+    lastCallback: {
+      phase: 'updated',
+      valid: true,
+      inProgress: true,
+      paused: false,
+      complete: false,
+      cancelled: false,
+      interrupted: false,
+      interruptReason: 'none',
+      bytesReceived: 32768,
+      totalBytes: 32768,
+      percentComplete: 100,
+      pathState: 'owned-stage',
+    },
+  })
+  const failed = validateCommandObservation({
+    ...input(),
+    exitCode: 1,
+    stderr: [],
+    nativeDiagnostics: [receipt],
+  })
+  expect(nativeDiagnosticLines(failed)).toEqual([receipt])
+  expect(() => assertCleanCommand(failed)).toThrow()
+})
+
 test('native receipts have independent whole-run bounds and never fall back to truncated tails', () => {
   const receipt = JSON.stringify({ event: 'bunly.host.shutdown', clean: true })
   expect(nativeDiagnosticLines({ stderr: [receipt] })).toEqual([receipt])

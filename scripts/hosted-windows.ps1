@@ -39,8 +39,10 @@ if ($Worker) {
         )
         $privateAcl.AddAccessRule($rule)
     }
-    Set-Acl -LiteralPath $privateTemp -AclObject $privateAcl
-    $actualAcl = Get-Acl -LiteralPath $privateTemp
+    # This worker is the explicit Windows PowerShell/.NET Framework process below.
+    # Use its native ACL APIs without autoloading a module from an inherited PS7 path.
+    [IO.Directory]::SetAccessControl($privateTemp, $privateAcl)
+    $actualAcl = [IO.Directory]::GetAccessControl($privateTemp)
     $actualRules = @($actualAcl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
     if (-not $actualAcl.AreAccessRulesProtected -or
         $actualAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $identity.User.Value -or

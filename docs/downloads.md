@@ -173,6 +173,25 @@ Fixture failure receipts additionally distinguish exact known protocol,
 deadline, and readiness errors with fixed labels. Unknown error messages,
 paths, URLs, stacks, causes, names, and codes are not exported by those receipts.
 
+An operation deadline emits at most one `bunly.host.download-timeout` diagnostic
+before normal cancellation. It records the last valid, exactly bound CEF
+callback's fixed state flags, byte counters, percent complete, callback phase and
+count. `pathState` is only `empty`, `owned-stage`, `other`, or `unavailable`; it
+never contains a pathname. A missing callback is `null`, unknown percentages are
+`null`, and native interruption reasons use a fixed label set. No CEF item is
+retained or polled for this receipt.
+
+`quarantineObservedLaunches` counts exact Chromium quarantine utility launches
+observed anywhere in this application since the operation's admission. A
+saturated/unavailable delta is `null`. The read-only child-launch callback
+recognizes only `type=utility` and
+`utility-sub-type=quarantine.mojom.Quarantine`; it retains neither switch text nor
+argv. In a fixture with one transfer, an observed launch distinguishes entry to
+Chromium's completion/annotation pipeline from earlier transfer gates. It does
+not prove that Windows Attachment Services is blocked, that the service is still
+running, or which transfer caused a launch when operations overlap. The native
+deadline, cancellation, antivirus behavior and cleanup rules remain unchanged.
+
 ## Destination and filesystem guarantees
 
 Destinations have a single 1–128 character portable ASCII filename. Separators,
@@ -190,6 +209,17 @@ temporary file and later moves it to that target; pre-creating a placeholder wou
 cause Chromium's rename-and-uniquify behavior to select a different name. After a
 terminal callback, Bunly opens and verifies the actual regular, single-link file,
 checks its size, flushes it, and publishes it atomically within the pinned root.
+
+The private target keeps the validated destination basename and its exact
+extension. Pinned Chromium
+[annotates the file after naming it](https://github.com/chromium/chromium/blob/156.0.8078.17/components/download/internal/common/download_file_impl.cc)
+so antivirus services see the intended filename. Its Windows implementation
+[passes that path to Attachment Services](https://github.com/chromium/chromium/blob/156.0.8078.17/components/services/quarantine/quarantine_win.cc),
+and [Windows Attachment Manager policies](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager)
+can classify risk by extension. Keeping the final basename inside the private
+directory preserves this policy input through annotation and publication.
+Attachment checks and transfer deadlines remain unchanged.
+
 Chromium applies umask-derived POSIX permissions during its move; a resulting
 0644 file remains contained by the 0700 stage. Before publication, Bunly tightens
 the verified open inode to 0600 with `fchmod`, revalidates the inode/path and mode,
