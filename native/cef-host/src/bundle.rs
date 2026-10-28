@@ -12,7 +12,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !output.is_absolute() {
         return Err("Bundle destination must be absolute".into());
     }
-    let target = root.join("target/release");
+    let target_root = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root.join("target"));
+    let target = target_root.join("release");
     #[cfg(target_os = "macos")]
     let path = cef::build_util::mac::bundle(
         &output,
