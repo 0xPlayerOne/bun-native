@@ -19,6 +19,8 @@ mod clipboard;
 mod downloads;
 #[path = "file_guards.rs"]
 mod file_guards;
+#[path = "native_modal.rs"]
+mod native_modal;
 #[path = "navigation.rs"]
 mod navigation;
 #[path = "shutdown_pending.rs"]
@@ -27,6 +29,8 @@ mod shutdown_pending;
 mod view_close;
 #[path = "view_composition.rs"]
 mod view_composition;
+#[path = "window_commands.rs"]
+mod window_commands;
 #[path = "window_state.rs"]
 mod window_state;
 pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
@@ -34,6 +38,7 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
         &[
             "window.state",
             "window.geometry",
+            "window.commands",
             "clipboard.text",
             "app.lifecycle",
             "view.composition",
@@ -55,6 +60,7 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
         &[
             "window.state",
             "window.geometry",
+            "window.commands",
             "app.lifecycle",
             "view.composition",
             "download.manage",
@@ -230,6 +236,7 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     downloads::cancel_if_revoked(id);
     #[cfg(feature = "browser-actions")]
     browser_actions::invalidate_stale(id);
+    window_commands::retire_view(id);
     let Some(binding) = binding else {
         return;
     };
@@ -1139,11 +1146,13 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     downloads::shutdown_receipt();
     #[cfg(feature = "browser-actions")]
     if !browser_actions::shutdown_ready() { return; }
+    window_commands::verify_shutdown();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
 pub fn release() {
     shutdown_acknowledged();
+    window_commands::release_all();
     #[cfg(feature = "rpc-qualification")]
     crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
@@ -1713,6 +1722,7 @@ fn begin_navigation(
     state.downloads.revoke(view);
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
+    window_commands::retire_view(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1735,6 +1745,7 @@ fn revoke_view(state: &mut HostState, view: u64) {
     state.downloads.revoke(view);
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
+    window_commands::retire_view(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1795,7 +1806,7 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
 fn allowed_during_quit(operation: &str) -> bool {
     matches!(
         operation,
-        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release"
+        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release" | "commands.cancel" | "commands.dispose"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2724,6 +2735,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "clipboard.read" | "clipboard.write" | "clipboard.clear" => {
             clipboard::dispatch(request, operation, args)?;
         }
+        "commands.create" | "commands.show" | "commands.cancel" | "commands.dispose" => {
+            window_commands::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "commands.qualification" | "commands.qualification.snapshot" => {
+            window_commands::dispatch(request, operation, args)?
+        }
         #[cfg(feature = "rpc-qualification")]
         "clipboard.qualification.empty" => clipboard::dispatch(request, operation, args)?,
         "policy.native.check" => {
@@ -2744,8 +2762,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .ok_or("document authority changed during authorization")?;
                 Ok::<_, &str>((scope, grants))
             })?;
-            // Path/executable checks execute without holding STATE. M7 adapters are
-            // intentionally unavailable even when this authorization succeeds.
+            // This M4 diagnostic checks policy without invoking an adapter. Real
+            // operations perform their own execution and result authorization.
             let decision = capability_policy::authorize_native_grants(
                 &grants,
                 &native_request,
@@ -2817,6 +2835,7 @@ wrap_window_delegate! {
     }
     impl PanelDelegate {}
     impl WindowDelegate {
+        fn on_accelerator(&self, _window: Option<&mut Window>, command_id: i32) -> i32 { window_commands::accelerator(self.id, command_id) }
         fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
         fn can_maximize(&self, _window: Option<&mut Window>) -> i32 { 1 }
         fn can_resize(&self, _window: Option<&mut Window>) -> i32 { 1 }
@@ -2864,7 +2883,7 @@ wrap_window_delegate! {
             }
             i32::from(allowed)
         }
-        fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
+        fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); window_commands::window_destroyed(self.id); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
     }
 }
 wrap_browser_view_delegate! {
@@ -2914,6 +2933,7 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             state.downloads.revoke(id);
             #[cfg(feature = "browser-actions")]
             state.browser_actions.revoke(id);
+            window_commands::retire_view(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -3497,17 +3517,23 @@ mod tests {
 mod command_task_lifetime_tests {
     use super::*;
     #[test]
-    fn quitting_admits_id_bound_download_cleanup_without_reopening_native_authority() {
+    fn quitting_admits_owned_cleanup_without_reopening_native_authority() {
         assert!(allowed_during_quit("quit"));
         assert!(allowed_during_quit("download.cancel"));
+        assert!(allowed_during_quit("commands.cancel"));
+        assert!(allowed_during_quit("commands.dispose"));
         for operation in [
             "download.start",
+            "commands.create",
+            "commands.show",
+            "commands.qualification",
             "policy.native.grant",
             "clipboard.write",
             "view.navigate",
             "window.create",
             "session.create",
             "download.cancel.extra",
+            "commands.cancel.extra",
         ] {
             assert!(!allowed_during_quit(operation), "{operation}");
         }

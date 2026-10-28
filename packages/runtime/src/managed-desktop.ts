@@ -4,8 +4,14 @@ import type {
   SessionHandle,
   ViewHandle,
   WindowHandle,
+  WindowCommandsHandle,
+  WindowMenuPoint,
 } from '../../contracts/src/index.ts'
-import { normalizeViewPresentation, validateBounds } from '../../contracts/src/index.ts'
+import {
+  normalizeViewPresentation,
+  validateBounds,
+  validateWindowMenuPoint,
+} from '../../contracts/src/index.ts'
 import { validateClipboardText } from '../../contracts/src/desktop.ts'
 import type { CefBackend, PolicyScope } from './cef.ts'
 import {
@@ -54,6 +60,7 @@ interface EventRecord {
 }
 interface Entry {
   readonly name: string
+  readonly kind: ManagedResourceKind
   readonly authority: Authority
   readonly operations: ReadonlySet<string>
   readonly policy: ((operation: string) => boolean) | undefined
@@ -86,6 +93,7 @@ const operations = {
   terminal: ['identity', 'write', 'resize', 'signal'],
   process: ['state', 'write', 'resize', 'signal'],
   clipboard: ['read-text', 'write-text', 'clear'],
+  commands: ['show', 'cancel'],
 } as const
 const signals = new Set([
   'SIGHUP',
@@ -190,6 +198,14 @@ export class ManagedDesktopResources {
     )
       return false
     try {
+      if (
+        entry.kind === 'commands' &&
+        !this.backend.windowCommandsMatchScope(
+          entry.handle as WindowCommandsHandle,
+          entry.authority.scope
+        )
+      )
+        return false
       if (entry.policy) {
         const result: unknown = entry.policy(operation)
         if (result !== true) {
@@ -252,7 +268,7 @@ export class ManagedDesktopResources {
       invalid()
     const allowed = new Set<string>([
       ...operations[kind],
-      ...(['window', 'view', 'session'].includes(kind) ? lifecycleOperations : []),
+      ...(['window', 'view', 'session', 'commands'].includes(kind) ? lifecycleOperations : []),
     ])
     const selected = new Set<string>()
     for (const operation of policy.operations) {
@@ -312,6 +328,7 @@ export class ManagedDesktopResources {
     })
     entry = {
       name,
+      kind,
       authority,
       handle,
       operations: selected,
@@ -367,6 +384,60 @@ export class ManagedDesktopResources {
       },
       async () => {}
     ).binding.resource
+  }
+  /** Stable owner receives native events; generations consume the bounded authorized journal. */
+  registerWindowCommands(
+    name: string,
+    commands: WindowCommandsHandle,
+    policy: ManagedDesktopPolicy
+  ): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority || !this.backend.windowCommandsMatchScope(commands, authority.scope))
+      throw new ManagedError('DENIED')
+    let stop = () => {}
+    const entry = this.#register(
+      name,
+      'commands',
+      commands,
+      policy,
+      async (operation, input, context) => {
+        if (operation === 'show') {
+          const point = object(input, ['x', 'y']) as unknown as WindowMenuPoint
+          try {
+            validateWindowMenuPoint(point)
+          } catch {
+            invalid()
+          }
+          await this.backend.showWindowMenu(commands, point, { signal: context.signal })
+        } else if (operation === 'cancel') {
+          empty(input)
+          await this.backend.cancelWindowMenu(commands)
+        } else invalid()
+        return null
+      },
+      async () => {
+        stop()
+        await this.backend.disposeWindowCommands(commands)
+      }
+    )
+    try {
+      stop = this.backend.onWindowCommandsEvent(commands, (event) => {
+        if (event.type === 'revoked') {
+          void this.#close(entry)
+          return
+        }
+        if (!this.#current(entry, 'events')) return
+        this.#appendEvent(entry, {
+          sequence: ++entry.eventSequence,
+          type: event.type,
+          state: event,
+        })
+      })
+    } catch (error) {
+      void this.#close(entry)
+      throw error
+    }
+    return entry.binding.resource
   }
   registerWindow(
     name: string,
@@ -603,6 +674,10 @@ export class ManagedDesktopResources {
       ...(event.type === 'window-bounds-changed' ? { bounds: structuredClone(event.bounds) } : {}),
       ...(event.type === 'window-fullscreen-transition' ? { completed: event.completed } : {}),
     }
+    this.#appendEvent(entry, item)
+  }
+  #appendEvent(entry: Entry, item: EventRecord): void {
+    if (entry.closed || entry.eventOverflow || !entry.operations.has('events')) return
     const bytes = Buffer.byteLength(JSON.stringify(item))
     if (entry.events.length >= this.#maxEvents || entry.eventBytes + bytes > this.#maxEventBytes) {
       entry.eventOverflow = true

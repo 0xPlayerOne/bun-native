@@ -11,6 +11,7 @@ import {
 import { Registry } from './registry.ts'
 import { ApplicationLifecycle } from './application-lifecycle.ts'
 import { CefDownloads } from './cef-downloads.ts'
+import { CefWindowCommands } from './cef-window-commands.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -67,6 +68,11 @@ import {
 import type {
   BrowserBackend,
   ClipboardBackend,
+  WindowCommandsBackend,
+  WindowCommandsDefinition,
+  WindowCommandsHandle,
+  WindowCommandsEvent,
+  WindowMenuPoint,
   ApplicationLifecycleBackend,
   ApplicationState,
   ApplicationEvent,
@@ -206,7 +212,12 @@ export type NativeCapabilityGrant =
       readonly arguments: readonly string[]
     }
   | {
-      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+      readonly name:
+        | 'clipboard-read'
+        | 'clipboard-write'
+        | 'dialog-open'
+        | 'dialog-save'
+        | 'window-commands'
     }
   | {
       readonly name:
@@ -226,7 +237,12 @@ export type NativeOperationRequest =
       readonly arguments: readonly string[]
     }
   | {
-      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+      readonly name:
+        | 'clipboard-read'
+        | 'clipboard-write'
+        | 'dialog-open'
+        | 'dialog-save'
+        | 'window-commands'
     }
   | {
       readonly name:
@@ -393,13 +409,15 @@ export class CefBackend
     ApplicationLifecycleBackend,
     ViewCompositionBackend,
     DownloadManagementBackend,
-    BrowserActionsBackend
+    BrowserActionsBackend,
+    WindowCommandsBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
     return this.#descriptor
   }
   readonly #transport: NativeTransport
+  readonly #commands: CefWindowCommands
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
   readonly #downloads: CefDownloads
@@ -470,6 +488,25 @@ export class CefBackend
       this.#listenerErrors++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    this.#commands = new CefWindowCommands(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return {
+          view: captured.view,
+          window: captured.resource.window,
+          id: captured.resource.native,
+          scope: captured.nativeScope,
+        }
+      },
+      () => {
+        this.#active()
+        requireCapability(this.descriptor, 'window.commands')
+      },
+      () => {
+        this.#listenerErrors++
+      }
+    )
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
     void transport.ready.then(
       () => this.#application.ready(transport.desktopCapabilities.includes('app.lifecycle')),
@@ -490,6 +527,7 @@ export class CefBackend
       this.#disposed = true
       this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
+      this.#commands.close()
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -519,6 +557,68 @@ export class CefBackend
   }
   #active(): void {
     if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+  }
+  createWindowCommands(
+    scope: PolicyScope,
+    definition: WindowCommandsDefinition,
+    options?: OperationOptions
+  ): Promise<WindowCommandsHandle> {
+    return this.#commands.create(scope, definition, options)
+  }
+  showWindowMenu(
+    commands: WindowCommandsHandle,
+    point: WindowMenuPoint,
+    options?: OperationOptions
+  ): Promise<void> {
+    return this.#commands.show(commands, point, options)
+  }
+  cancelWindowMenu(commands: WindowCommandsHandle): Promise<void> {
+    return this.#commands.cancel(commands)
+  }
+  onWindowCommandsEvent(
+    commands: WindowCommandsHandle,
+    listener: (event: WindowCommandsEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#commands.onEvent(commands, listener, options)
+  }
+  disposeWindowCommands(commands: WindowCommandsHandle): Promise<void> {
+    return this.#commands.dispose(commands)
+  }
+  /** @internal Used by the stable managed owner, never a renderer capability. */
+  windowCommandsMatchScope(commands: WindowCommandsHandle, scope: PolicyScope): boolean {
+    return this.#commands.matchesScope(commands, scope)
+  }
+  windowCommandsDiagnostics() {
+    return this.#commands.diagnostics()
+  }
+  /** @internal Requires a contributor host built with rpc-qualification. */
+  qualifyWindowCommands(
+    commands: WindowCommandsHandle,
+    action: 'shortcut' | 'select-first',
+    command?: string
+  ): Promise<void> {
+    return this.#commands.qualify(commands, action, command)
+  }
+  /** @internal Counts native-owned registrations; requires the contributor host. */
+  async qualifyWindowCommandsSnapshot(): Promise<{
+    readonly registrations: number
+    readonly shortcuts: number
+    readonly popups: number
+  }> {
+    this.#active()
+    requireCapability(this.descriptor, 'window.commands')
+    const result = await this.#transport.call('commands.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !== 'popups,registrations,shortcuts' ||
+      Object.values(result).some(
+        (value) => !Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > 2048
+      )
+    )
+      throw new Error('Malformed native window command snapshot')
+    return Object.freeze(result) as { registrations: number; shortcuts: number; popups: number }
   }
   whenApplicationReady(options?: OperationOptions): Promise<ApplicationState> {
     return this.#application.whenReady(options)
@@ -1839,6 +1939,7 @@ export class CefBackend
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
+    this.#commands.stop()
     this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
@@ -1867,11 +1968,13 @@ export class CefBackend
     return this.#shutdown
   }
   #event(event: NativeEvent): void {
+    this.#commands.event(event)
     if (event.event === 'app.quitting' && this.descriptor.capabilities.includes('app.lifecycle')) {
       if (event.target !== undefined || !event.data || Object.keys(event.data).length !== 1)
         throw new Error('Malformed native application quitting event')
       // Native-initiated quit fences local calls before application callbacks run.
       this.#disposed = true
+      this.#commands.stop()
       this.#application.quitting(event.data['reason'])
     }
     this.#downloads.event(event)
@@ -1962,6 +2065,7 @@ export class CefBackend
     }
   }
   #retireRpc(view: ViewHandle): void {
+    this.#commands.retireView(view)
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
     this.#streamRetired.add(view)

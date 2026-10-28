@@ -91,6 +91,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
           capabilities: Object.freeze([
             'window.state',
             'window.geometry',
+            'window.commands',
             'app.lifecycle',
             'view.composition',
             'download.manage',

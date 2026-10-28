@@ -166,7 +166,9 @@ mod tests {
                 "credentials.discard",
                 "download.cancel",
                 "browser.action.cancel",
-                "browser.action.release"
+                "browser.action.release",
+                "commands.cancel",
+                "commands.dispose"
             ]
         );
     }

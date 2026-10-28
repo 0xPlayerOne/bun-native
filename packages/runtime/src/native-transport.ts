@@ -3,6 +3,7 @@ import capacity from './native-capacity.json'
 const DESKTOP_CAPABILITIES = Object.freeze([
   'window.state',
   'window.geometry',
+  'window.commands',
   'clipboard.text',
   'app.lifecycle',
   'view.composition',

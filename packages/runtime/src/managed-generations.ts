@@ -15,6 +15,7 @@ export type ManagedResourceKind =
   | 'terminal'
   | 'process'
   | 'clipboard'
+  | 'commands'
 export type ManagedCleanupKind = 'handler' | 'listener' | 'timer' | 'request' | 'state'
 export type ManagedErrorCode =
   | 'INVALID_ARGUMENT'
@@ -196,7 +197,9 @@ export class ManagedGenerationOwner {
       label(schema)
       label(permission)
       if (
-        !['window', 'view', 'session', 'terminal', 'process', 'clipboard'].includes(kind) ||
+        !['window', 'view', 'session', 'terminal', 'process', 'clipboard', 'commands'].includes(
+          kind
+        ) ||
         typeof authorize !== 'function' ||
         typeof invoke !== 'function' ||
         typeof dispose !== 'function'

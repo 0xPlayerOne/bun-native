@@ -87,6 +87,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
         capabilities: [
           'window.state',
           'window.geometry',
+          'window.commands',
           'app.lifecycle',
           'view.composition',
           'download.manage',
