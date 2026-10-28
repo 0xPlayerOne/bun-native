@@ -162,6 +162,12 @@ changes, hidden/nonfocusable focus rejection, forward/reverse view traversal,
 overlay show/hide/close, generation reattachment, stale handles, sibling survival,
 and ordinary shutdown. It emits its structured receipt only after native shutdown.
 
+Run it with `bun run qualify:desktop PREPARED_APP --native-source=COMMIT
+--case=composition`; the [shared runner and replay contract](desktop-qualification.md#view-composition)
+describes source/artifact binding and the hosted stage. A passing receipt requires
+all 28 ordered observations and exact retained identities; an incomplete or
+reordered sequence cannot be promoted to native acceptance.
+
 Portable tests cover malformed geometry/readback, ownership and close races,
 cancellation admission, managed authority, bounded renderer receipts, legacy
 layout behavior, and explicit unsupported backends. Those tests are protocol
