@@ -151,6 +151,10 @@ export default async function qualifyDesktopServices(backend: CefBackend): Promi
         nativeFinal,
         final,
         failure,
+        physicalInputQualified: false,
+        hardwareDpiQualified: false,
+        assistiveTechnologyQualified: false,
+        performanceEligible: false,
       })
     )
   }

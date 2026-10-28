@@ -174,7 +174,7 @@ explicit clear permission and generation-owned listener removal.
 ## Contributor fixture and validation
 
 `examples/desktop-services/fixture.ts` is a bounded native contributor fixture.
-Its clipboard sequence must be launched through an outer qualifier that calls
+The shared `qualify:desktop --case=services` runner launches its clipboard sequence through an outer qualifier that calls
 `requireDisposableClipboardRunner` from
 `scripts/cef-desktop-services-precondition.ts` **before native launch**. The
 precondition requires explicit `--disposable-clipboard` opt-in and a disposable
@@ -207,6 +207,12 @@ Pure Rust tests cover Unicode bounds and the execution/read-result policy gates
 without touching an OS clipboard. Strict Linux native compilation validates the
 ordinary and contributor code paths. Real macOS/Windows compilation and
 disposable native execution remain separately required platform checks.
+
+The [desktop qualification guide](desktop-qualification.md#clipboard-and-application-lifecycle)
+documents the exact launch commands and replay contract. The full hosted native
+suite requires a distinct `desktop-services` report on every platform before
+later credential/provider checks. Unsupported Linux clipboard behavior remains
+separate from executed macOS/Windows clipboard evidence.
 
 ### Native API references
 
