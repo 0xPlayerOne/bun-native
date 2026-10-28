@@ -85,6 +85,7 @@ export function acceptCompositionReceipt(input: unknown) {
   assert.equal(receipt['schema'], 1)
   assert.equal(receipt['passed'], true)
   assert.equal(receipt['failure'], null)
+  assert.equal(receipt['pendingObservation'], null)
   for (const key of [
     'physicalInputQualified',
     'hardwareDpiQualified',

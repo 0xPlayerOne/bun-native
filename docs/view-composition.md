@@ -117,6 +117,13 @@ window activation, and the returned handle does not replace actual focus
 readback. Physical Tab/Shift-Tab, pointer routing, IME, and assistive technology
 require separate desktop qualification.
 
+An explicit focus request also shows the already-visible native overlay to
+activate its widget before requesting browser focus. This matters on macOS,
+where moving the shared Views focus manager alone does not make an overlay's
+native window key. Ordinary bounds updates avoid that activation path so a pane
+resize does not steal a sibling's focus. The fixture checks both native focus and
+authenticated renderer focus/blur observations.
+
 `ManagedDesktopResources.registerView` supports the policy-scoped `presentation`
 and `present` operations alongside existing state/focus/navigation operations.
 Reattaching a view across application generations retains the BrowserView,

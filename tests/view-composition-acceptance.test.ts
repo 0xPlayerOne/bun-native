@@ -116,6 +116,7 @@ function receipt() {
     schema: 1,
     passed: true,
     failure: null,
+    pendingObservation: null,
     physicalInputQualified: false,
     hardwareDpiQualified: false,
     assistiveTechnologyQualified: false,

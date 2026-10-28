@@ -52,6 +52,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
     native: ViewPresentationState
     page: Pick<CompositionPage, 'sequence' | 'width' | 'height' | 'visibility' | 'focused'>
   }[] = []
+  let pendingObservation: (typeof steps)[number] | null = null
   const focusOrder: Pane[] = []
   const checks = {
     hiddenFocusRejected: false,
@@ -176,15 +177,17 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
       const seen = revision
       const state = await backend.viewPresentation(pane(nameOfPane).view, options)
       const page = currentPage(nameOfPane)
+      const { sequence, width, height, visibility, focused } = page
+      pendingObservation = {
+        name,
+        pane: nameOfPane,
+        native: state,
+        page: { sequence, width, height, visibility, focused },
+      }
       if (accepted(state, page)) {
         assert.ok(steps.length < 64)
-        const { sequence, width, height, visibility, focused } = page
-        steps.push({
-          name,
-          pane: nameOfPane,
-          native: state,
-          page: { sequence, width, height, visibility, focused },
-        })
+        steps.push(pendingObservation)
+        pendingObservation = null
         return state
       }
       await wait(seen)
@@ -520,6 +523,7 @@ export default async function qualifyViewComposition(backend: CefBackend): Promi
         ),
       },
       nativeFinal,
+      pendingObservation,
       failure,
       physicalInputQualified: false,
       hardwareDpiQualified: false,
