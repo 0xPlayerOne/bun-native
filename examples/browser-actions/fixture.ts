@@ -318,10 +318,15 @@ export default async function browserActions(backend: CefBackend): Promise<void>
     await backend.disposeView(view)
     await closing
     checks['closeSettled'] = true
-    await backend.closeWindow(window)
+    phase = 'session-release'
     await backend.disposeSession(session)
+    // Keep the empty window alive until native ownership has been observed.
+    // Closing the last window starts host shutdown and ends the private pipe.
+    phase = 'native-settlement'
     nativeSettled = await settled()
     checks['zeroOwners'] = true
+    phase = 'window-close'
+    await backend.closeWindow(window)
   } catch (error) {
     const code = /Browser action failed: ([a-z-]+)/.exec(String(error))?.[1]
     failure = `${phase}:${error instanceof Error ? error.name : 'Error'}${code ? ':' + code : ''}`
