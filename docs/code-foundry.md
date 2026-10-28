@@ -2,8 +2,8 @@
 
 Reproducible repository policy without adding a desktop runtime dependency.
 
-**Package:** `code-foundry@1.48.2`, development-only and exactly locked.
-**Release source:** `0b5374bc59599b53e298bcf461d7727a9938b3ae` (`v1.48.2`).
+**Package:** `code-foundry@1.48.8`, development-only and exactly locked.
+**Release source:** `945e548d1a1de5f6ca6195d245e9d82fc8e4ca63` (`v1.49.0`).
 **Scope:** GitHub layout, generated policy, contributor hooks and CI configuration.
 
 ## Supported commands
@@ -26,7 +26,7 @@ release source and changing the pinned version/SHA together.
 workflow pins, billing predicates and native-aware commit hook. A successful
 upstream doctor alone is not evidence that the custom overlay is intact. The
 pinned upstream doctor emits a tag-format warning for the immutable SHA. The
-SHA was checked against the actual `v1.48.2` release ref; the warning is retained,
+SHA was checked against the actual `v1.49.0` release ref; the warning is retained,
 not hidden, while the doctor exits successfully.
 
 ## Canonical layout
@@ -80,11 +80,10 @@ Only the exact `github.event_name == 'workflow_dispatch'` predicate, accompanied
 by a declared dispatch trigger, is exempt. An OR-expression cannot bypass the
 billing guard. The overlay preserves these policies on every sync.
 
-No publishing feature, production credential, repository visibility change,
-branch-rule change, or automatic-CI resume is part of synchronization. Release
-configuration files remain inert until release features are explicitly enabled.
-CodeQL/Dependency Review and version-update PR policy remain explicit configuration
-choices; this cleanup does not silently enable additional cloud jobs.
+The `release` feature enables automated GitHub release PRs, tags, and release
+records; npm publishing and post-release publication remain disabled. CodeQL and
+Dependency Review are enabled for this public repository. Automatic CI remains
+controlled by the existing repository variable and checked-in billing policy.
 
 ## Verification
 
@@ -96,7 +95,7 @@ retained separately and is not rewritten by synchronization.
 
 ## Formatting after synchronization
 
-The wrapper applies the pinned Oxfmt configuration to Foundry-managed output
+The wrapper applies the pinned Bun formatter configuration to Foundry-managed output
 after the repository overlay. Sync does not reformat application source or
 historical evidence. `bun run format:check` verifies the complete maintained
 source tree and runs as the first step of `bun run check`. See

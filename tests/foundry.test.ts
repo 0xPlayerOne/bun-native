@@ -7,6 +7,7 @@ import {
   FOUNDRY_SOURCE,
   PAUSED_BILLING_GUARD,
   MANUAL_DISPATCH_GUARD,
+  UPSTREAM_RELEASE_BYPASS_GUARD,
   dependabotDirectories,
   guardWorkflow,
   verifyGithubLayout,
@@ -20,7 +21,7 @@ describe('Code Foundry installation', () => {
   test('keeps an exact development-only package and matching released runtime', async () => {
     const pkg = await Bun.file(resolve(root, 'package.json')).json()
     const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
-    expect(pkg.devDependencies['code-foundry']).toBe('1.48.2')
+    expect(pkg.devDependencies['code-foundry']).toBe('1.48.8')
     expect(pkg.dependencies?.['code-foundry']).toBeUndefined()
     expect(config['runtime_ref']).toBe(FOUNDRY_SOURCE)
     expect(config['package_manager']).toBe('bun')
@@ -30,7 +31,7 @@ describe('Code Foundry installation', () => {
   test('keeps publishing opt-in and the existing license intact', async () => {
     const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
     expect(config['npm_publish']).toBe(false)
-    expect(String(config['features']).split(',')).not.toContain('release')
+    expect(String(config['features']).split(',')).toContain('release')
     expect(config['license']).toBe('preserve')
     expect(await readFile(resolve(root, 'LICENSE'), 'utf8')).toStartWith('MIT License')
     const agents = await readFile(resolve(root, 'AGENTS.md'), 'utf8')
@@ -59,6 +60,11 @@ describe('Code Foundry installation', () => {
         } else expect(String(job['if']), `${file}/${name}`).toStartWith(guard)
       }
     }
+  })
+  test('release jobs cannot override the CI billing pause through dispatch input', async () => {
+    const upstream = `name: Release\non:\n  workflow_dispatch:\n    inputs:\n      release-while-paused:\n        type: boolean\njobs:\n  release:\n    if: ${UPSTREAM_RELEASE_BYPASS_GUARD}\n    runs-on: ubuntu-latest\n`
+    expect(guardWorkflow(upstream, true)).toContain(`if: ${PAUSED_BILLING_GUARD}`)
+    expect(guardWorkflow(upstream, true)).not.toContain("inputs['release-while-paused']")
   })
   test('pauses all updater ecosystems and selects actual independent manifest roots', async () => {
     const config = yaml(await readFile(resolve(root, '.github/code-foundry.yml'), 'utf8'))
@@ -126,12 +132,27 @@ describe('Code Foundry overlay', () => {
     expect(guardWorkflow(source)).toBe(source)
   })
   test('changes only updater directories and retains upstream pause controls', () => {
-    const source =
-      'version: 2\nupdates:\n  - package-ecosystem: cargo\n    directory: /\n    open-pull-requests-limit: 0 # paused\n  - package-ecosystem: bun\n    directory: /\n    open-pull-requests-limit: 0 # paused\n'
+    const source = `version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    open-pull-requests-limit: 0 # paused
+  - package-ecosystem: bun
+    directory: /
+    open-pull-requests-limit: 0 # paused
+    ignore:
+      # TypeScript 7 (the native compiler) is supported by the oxlint/oxfmt
+      # toolchain; the tsconfig must use NodeNext or bundler resolution since
+      # legacy node10 resolution was removed. Held with 5.9 until each
+      # repository's tsconfig is verified on 7.`
     const output = dependabotDirectories(source)
     expect(output).toContain('    open-pull-requests-limit: 0 # paused')
     expect(output).not.toContain('    directory: /\n')
     expect(output).toContain('      - /native/cef-host')
+    expect(output).toContain(
+      "TypeScript 7 (the native compiler) is supported by Bun's type checker"
+    )
+    expect(output).not.toContain('oxfmt')
   })
   test('fails closed on upstream template layout changes', () => {
     expect(() =>

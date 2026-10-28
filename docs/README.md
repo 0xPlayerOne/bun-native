@@ -97,7 +97,7 @@ completion reports and issue tracker for present status.
 [Bun-native tooling](bun-tooling.md) documents the qualified checker, bounded file reads,
 concurrent builds, measured results and retained security boundaries.
 
-[Formatting](formatting.md) documents the repository-wide Oxfmt gate and the
+[Formatting](formatting.md) documents the repository-wide Bun formatter gate and the
 separate Python/Rust contributor formatters.
 
 [Protected persistent cookies](session-credentials.md) records the explicit OS-provider policy, admission checks and disposable-runner qualification boundary.

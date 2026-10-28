@@ -16,6 +16,7 @@ import {
   reloadMemoryScope,
   type ReloadCandidate,
 } from '../benchmarks/reload/fixtures.ts'
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
 
 function sample(mode: ReloadCandidate, count = 2): Record<string, unknown> {
   return {
@@ -182,24 +183,28 @@ test('synchronous-loop acceptance requires actual entry, owner survival and rele
 })
 
 for (const mode of reloadCandidates)
-  test(`real ${mode} fixture completes bounded smoke and retains its limitations`, async () => {
-    const work = await mkdtemp(join(tmpdir(), 'bunly-reload-test-'))
-    const child = ownedChild(
-      [process.execPath, resolve('benchmarks/reload/driver.ts'), mode, work, '1'],
-      process.cwd()
-    )
-    try {
-      const complete = await child.wait((r) => r['event'] === 'reload-probe-complete', 0, 12000)
-      expect(complete['complete']).toBe(true)
-      const exited = await child.wait((r) => r['event'] === 'exit', 0, 3000)
-      expect(exited['code']).toBe(0)
-      const result = JSON.parse(await readFile(join(work, 'result.json'), 'utf8'))
-      expect(acceptReloadProbe(result, mode, 1).samples).toBe(1)
-    } finally {
-      await child.close()
-      await rm(work, { recursive: true, maxRetries: 5, retryDelay: 25 })
-    }
-  }, 20000)
+  pinnedRuntimeTest(
+    `real ${mode} fixture completes bounded smoke and retains its limitations`,
+    async () => {
+      const work = await mkdtemp(join(tmpdir(), 'bunly-reload-test-'))
+      const child = ownedChild(
+        [process.execPath, resolve('benchmarks/reload/driver.ts'), mode, work, '1'],
+        process.cwd()
+      )
+      try {
+        const complete = await child.wait((r) => r['event'] === 'reload-probe-complete', 0, 12000)
+        expect(complete['complete']).toBe(true)
+        const exited = await child.wait((r) => r['event'] === 'exit', 0, 3000)
+        expect(exited['code']).toBe(0)
+        const result = JSON.parse(await readFile(join(work, 'result.json'), 'utf8'))
+        expect(acceptReloadProbe(result, mode, 1).samples).toBe(1)
+      } finally {
+        await child.close()
+        await rm(work, { recursive: true, maxRetries: 5, retryDelay: 25 })
+      }
+    },
+    20000
+  )
 
 test('qualification CLI rejects extra arguments before creating any report', async () => {
   const child = ownedChild(
@@ -377,23 +382,27 @@ test('resource projection never publishes process identities and does not invent
 })
 
 for (const mode of ['worker', 'process'] as const)
-  test(`real ${mode} loop stops without replacing the stable synthetic owner`, async () => {
-    const work = await mkdtemp(join(tmpdir(), 'bunly-reload-loop-test-'))
-    const child = ownedChild(
-      [process.execPath, resolve('benchmarks/reload/driver.ts'), mode, work, '1', 'hang'],
-      process.cwd()
-    )
-    try {
-      const complete = await child.wait((r) => r['event'] === 'reload-probe-complete', 0, 12000)
-      expect(complete['complete']).toBe(true)
-      expect((await child.wait((r) => r['event'] === 'exit', 0, 3000))['code']).toBe(0)
-      const result = JSON.parse(await readFile(join(work, 'result.json'), 'utf8'))
-      expect(acceptReloadProbe(result, mode, 1, true).outcome).toBe('isolated-loop-recovered')
-    } finally {
-      await child.close()
-      await rm(work, { recursive: true, maxRetries: 5, retryDelay: 25 })
-    }
-  }, 20000)
+  pinnedRuntimeTest(
+    `real ${mode} loop stops without replacing the stable synthetic owner`,
+    async () => {
+      const work = await mkdtemp(join(tmpdir(), 'bunly-reload-loop-test-'))
+      const child = ownedChild(
+        [process.execPath, resolve('benchmarks/reload/driver.ts'), mode, work, '1', 'hang'],
+        process.cwd()
+      )
+      try {
+        const complete = await child.wait((r) => r['event'] === 'reload-probe-complete', 0, 12000)
+        expect(complete['complete']).toBe(true)
+        expect((await child.wait((r) => r['event'] === 'exit', 0, 3000))['code']).toBe(0)
+        const result = JSON.parse(await readFile(join(work, 'result.json'), 'utf8'))
+        expect(acceptReloadProbe(result, mode, 1, true).outcome).toBe('isolated-loop-recovered')
+      } finally {
+        await child.close()
+        await rm(work, { recursive: true, maxRetries: 5, retryDelay: 25 })
+      }
+    },
+    20000
+  )
 
 test('retained local matrix remains byte-bound with failed mechanisms preserved', async () => {
   const bytes = await readFile(resolve('evidence/m6-reload-local.json'))

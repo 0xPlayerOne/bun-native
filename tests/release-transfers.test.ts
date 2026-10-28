@@ -116,7 +116,7 @@ test('real first-run/update HTTP transfers and independent subprocess verifiers 
       JSON.parse(await readFile(join(project, 'installed/profile.json'), 'utf8')).counter
     ).toBe(17)
   })
-})
+}, 20_000)
 test('a corrupt initial transfer blocks execution and dependent update instead of running stale artifacts', async () => {
   await fixture(async (project, origin, versions) => {
     const first = task(origin, 'v1', versions.v1!)

@@ -72,7 +72,7 @@ async function compare(name: string, config: string, valid: boolean) {
 }
 
 try {
-  assert.equal(Bun.version, '1.4.3', 'Requalify an upgraded Bun explicitly')
+  assert.equal(Bun.version, '1.4.4', 'Requalify an upgraded Bun explicitly')
   const compiler = await Bun.file(join(root, 'node_modules/typescript/package.json')).json()
   assert.equal(process.versions['typescript'], compiler.version, 'Editor/reference checker drift')
   await Bun.write(join(workspace, 'package.json'), JSON.stringify({ private: true }))

@@ -8,6 +8,11 @@ Keep contracts/client browser-safe; run the browser-only typecheck and AST
 boundary tests. IDs are not authority. Native identity and generation must be
 validated at every future IPC boundary. Retain lifecycle and cancellation tests.
 
+Use Bun 1.4.4 for repository tooling and formatting; packaged desktop runtime
+qualification remains pinned to Bun 1.4.3. Formatting uses Bun's built-in
+formatter, JavaScript lint uses Oxlint, Python uses Ruff, and Rust uses rustfmt
+and Clippy.
+
 Commands: `bun install --frozen-lockfile`, `bun run check`,
 `bun run typecheck:browser`, `bun run native:test`, `bun run native:build`,
 `bun run qualify:host`, `bun run artifact:probe`.

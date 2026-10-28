@@ -10,7 +10,8 @@ competitive runtime efficiency are hypotheses to validate, not current performan
 
 ## Run the foundation
 
-Use Bun **1.4.3**. These application-side commands do not invoke a systems compiler:
+Use Bun **1.4.4** for repository tooling and formatting. The qualified packaged desktop runtime
+remains Bun 1.4.3. These application-side commands do not invoke a systems compiler:
 
 ```sh
 bun install --frozen-lockfile
@@ -31,7 +32,8 @@ identified rather than assigned invented zero-cost timings.
 
 ## Formatting
 
-Run `bun run format` to apply Oxfmt and `bun run format:check` to verify it.
+Run `bun run format` to apply Bun's built-in formatter and
+`bun run format:check` to verify it.
 `bun run check` enforces formatting before the other checks. See
 [formatting](docs/formatting.md) for Python/Rust commands and preserved evidence.
 

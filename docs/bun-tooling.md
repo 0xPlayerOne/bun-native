@@ -2,7 +2,8 @@
 
 Measured developer-tool improvements without changing the desktop trust boundary.
 
-**Runtime:** Bun 1.4.3; embedded and reference TypeScript 7.0.2.
+**Measured checker runtime:** Bun 1.4.3; repository formatter/tooling: Bun 1.4.4;
+embedded and reference TypeScript 7.0.2.
 **Scope:** Type checking, package/example builds, boundary inspection, and maintainer file inventories.
 **Evidence:** `evidence/bun-tooling-local.json`. These are descriptive local timings, not controlled M9 performance results.
 
@@ -95,10 +96,10 @@ use multiple cores, and oversubscription is not a reliable optimization.
 
 ## Deliberate non-changes
 
-Bun 1.4.3 has no built-in `lint` or `fmt` command in the tested executable. Keep
-the pinned Oxlint/Oxfmt tools instead of switching to an unqualified canary or
-weakening lint rules. The Rust compiler, CEF version, packaged Bun and root
-lockfile remain unchanged.
+The project retains Oxlint and uses Bun 1.4.4's built-in `fmt` for JavaScript,
+TypeScript, CSS, HTML, JSON, YAML, and Markdown. Bun 1.4.3 remains the qualified
+packaged desktop runtime; native CEF qualification lanes install that version
+after portable repository checks. The Rust compiler and CEF version remain pinned.
 
 The project already uses Bun's bundler, test runner, HTTP server, subprocess and
 YAML APIs in their appropriate places. Native file reads do not justify replacing
