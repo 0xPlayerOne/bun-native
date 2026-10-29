@@ -27,6 +27,26 @@ export function defineApp(config: AppConfig): Readonly<AppConfig> {
     )
   return Object.freeze({ ...config })
 }
+async function cleanupApp(
+  backend: BrowserBackend,
+  session: SessionHandle,
+  window?: WindowHandle
+): Promise<unknown[]> {
+  const failures: unknown[] = []
+  if (window) {
+    try {
+      await backend.closeWindow(window)
+    } catch (error) {
+      failures.push(error)
+    }
+  }
+  try {
+    await backend.disposeSession(session)
+  } catch (error) {
+    failures.push(error)
+  }
+  return failures
+}
 export async function startApp(backend: BrowserBackend, input: AppConfig): Promise<Application> {
   const config = defineApp(input)
   if (backend.descriptor.contractVersion !== CONTRACT_VERSION)
@@ -50,13 +70,15 @@ export async function startApp(backend: BrowserBackend, input: AppConfig): Promi
       view,
       session,
       async dispose() {
-        await backend.closeWindow(handle)
-        await backend.disposeSession(session)
+        const failures = await cleanupApp(backend, session, handle)
+        if (failures.length === 1) throw failures[0]
+        if (failures.length > 1) throw new AggregateError(failures, 'Application cleanup failed')
       },
     })
   } catch (error) {
-    if (window) await backend.closeWindow(window)
-    await backend.disposeSession(session)
+    const failures = await cleanupApp(backend, session, window)
+    if (failures.length)
+      throw new AggregateError([error, ...failures], 'Application startup and cleanup failed')
     throw error
   }
 }
