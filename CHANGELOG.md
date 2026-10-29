@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/0xPlayerOne/bunly/compare/v0.3.0...v0.4.0) (2026-10-29)
+
+
+### Features
+
+* **workbench:** expose scoped native menu and file-dialog controls ([#162](https://github.com/0xPlayerOne/bunly/issues/162)) ([60b89c2](https://github.com/0xPlayerOne/bunly/commit/60b89c2a68b71447ecf12b56bad56c8341f6e70e))
+
 ## [0.3.0](https://github.com/0xPlayerOne/bunly/compare/v0.2.0...v0.3.0) (2026-10-29)
 
 
