@@ -216,8 +216,21 @@ Windows. [PR #184](https://github.com/0xPlayerOne/bunly/pull/184) saves existing
 immutable download inputs after successful native build/tests/assembly/preparation,
 so a later qualification failure can retain those inputs. It changes no runtime
 deadline or acceptance gate, and no elapsed-time saving is claimed.
-Each merge used the normal squash path after current-head required checks
-passed; no protection or deadline was relaxed.
+Further reviewed maintenance is merged in [#180](https://github.com/0xPlayerOne/bunly/pull/180)
+(indexed archive-path collision checks), [#181](https://github.com/0xPlayerOne/bunly/pull/181)
+(reentrant RPC scheduling and cleanup), [#183](https://github.com/0xPlayerOne/bunly/pull/183)
+(prepared-host cleanup error preservation), [#185](https://github.com/0xPlayerOne/bunly/pull/185)
+(asynchronous application lifecycle listener failures), [#186](https://github.com/0xPlayerOne/bunly/pull/186) (terminal scheduler failures),
+[#188](https://github.com/0xPlayerOne/bunly/pull/188) (application rollback error
+preservation), and [#189](https://github.com/0xPlayerOne/bunly/pull/189)
+(asynchronous runtime/window listener failures).
+The terminal change adds `SCHEDULER_FAILED` to public failure unions and includes
+an exhaustive-handler migration example; release 0.6.0 records that breaking
+TypeScript change. Each merge followed current-head required checks and review;
+no protection or deadline was relaxed. These changes do not establish a native
+M7 pass or a measured performance gain. Local watcher failures retained in
+[#179](https://github.com/0xPlayerOne/bunly/issues/179) remain source-attributed;
+later passing runs are not a demonstrated fix for that issue.
 
 The PR #165 diagnostics integration passed the complete portable gate with
 1,490 Bun tests passed and two explicit skips, plus 308 Python tests passed
@@ -233,6 +246,47 @@ actual Linux, macOS and Windows CI. A prior Windows retry failed during
 portable fixture cleanup before native execution. The cleanup fix does not
 establish that the retained native download-completion failure is resolved.
 
+### Final released-main verification
+
+[PR #192](https://github.com/0xPlayerOne/bunly/pull/192) merged the existing public
+status document without importing the separately held result proposals.
+[PR #197](https://github.com/0xPlayerOne/bunly/pull/197) separates the skipped draft
+Electrobun check identity from the required ready-event `electrobun` context.
+The earlier #196 release had successful actual checks and a newer same-name
+skipped check; its historical blocking cause remains unproven. After #197,
+[release PR #198](https://github.com/0xPlayerOne/bunly/pull/198) auto-merged and
+[v0.6.3](https://github.com/0xPlayerOne/bunly/releases/tag/v0.6.3) published.
+Its five protection-required checks and 21 additional reviewed platform contexts
+all passed; some additional contexts completed after the automatic merge.
+No protection settings or checks were bypassed for #192 or #197.
+
+The final local `bun run check:portable` on clean released source
+`21abd9128e60388d431a329073d75d013426778a`, source tree
+`20a8a31296328662cc0b7dbc1f12307dd663021f`, recorded **1,602 passed,
+three skipped and one failed** across 218 Bun test files. The normal native-metafile
+external-dependency watcher case in `tests/dev-host.test.ts` still observed
+adapter value 20 instead of 21 after its existing 15-second deadline. The
+malformed-cross-drive neighbor passed. No retry was performed and this gate
+is not counted as successful.
+
+Formatting, main types, lint and boundaries completed before that failure.
+The short-circuited tail was then executed separately: build, browser types,
+Python formatting/lint, all 310 Python tests and all 23 compiler-qualification
+cases passed. The retained complete-gate log has SHA-256
+`78304628d93ff1f70fefdd8063fcd1ad81470bb8c65da28c455c299eb7db53c2`;
+the separate tail log has SHA-256
+`c8a95bdc20874292b41d738f67278107e34cd4b35bae35d2ca8e234a900e410c`.
+Source remained clean. These are portable development checks, not native or
+physical qualification.
+
+The retained failure lacks watcher-callback, build/reload-stage and final
+session-counter observations. Source review confirms that the external
+dependency-directory watcher is created before startup returns, but it does
+not establish operating-system watcher readiness or a cause. #179 remains open;
+a naturally failing bounded trace of the write, callback, build/reload diagnostics
+and final session counters is needed to distinguish a missed event from later
+build or replacement failure. The existing deadline remains unchanged.
+
 ## Remaining qualification work
 
 ### Windows file-workflow completion
@@ -242,27 +296,32 @@ The historical standard-user failure at `42675aa` in
 received 32,768 bytes but missed the unchanged six-second completion deadline.
 Later attempts preserve that failure and add the following exact observations:
 
-| Public run                                                                   | Exact source                               | Result and qualification limit                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [40898407161](https://github.com/0xPlayerOne/bunly/actions/runs/40898407161) | `9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf` | The first managed download received 32,768 bytes but remained incomplete at the maintained six-second deadline. Failed qualification retained.                                                                                                                                                                                                                                                                                                                     |
-| [40909883589](https://github.com/0xPlayerOne/bunly/actions/runs/40909883589) | `85e18b8257e455fd85733229e6a8704d5642b022` | Exact resource completion succeeded with 32,768 encoded bytes. Safe Browsing was enabled at admission; one application-wide FileUtilService launch and no quarantine launch were observed. The owned item remained in progress at six seconds. These observations establish neither completed inspection nor native download completion.                                                                                                                           |
-| [40914760344](https://github.com/0xPlayerOne/bunly/actions/runs/40914760344) | `1b07548d1f6d700b304a3c9ecef087ca76b60b21` | The diagnostic-only first request completed with a temporary twelve-second allowance; the subsequent 4,194,304-byte replacement completed with its unchanged six-second deadline. Both committed the expected bytes and hashes. The fixture then failed its non-file destination rejection assertion. Per-request elapsed time was not recorded. [PR #174](https://github.com/0xPlayerOne/bunly/pull/174) is closed without merge and excluded from M7 acceptance. |
-| [40923447518](https://github.com/0xPlayerOne/bunly/actions/runs/40923447518) | `84ee013a8a524230fcbfaef6c27d735633f8c47b` | After the #177 correction, all 14 raw scenarios passed with clean host/SDK/temporary cleanup. The first request took 7,203.9946 ms with a diagnostic-only twelve-second allowance; the subsequent replacement took 258.9538 ms with six seconds unchanged. The added timing key deliberately failed the exact-key acceptance parser. [PR #178](https://github.com/0xPlayerOne/bunly/pull/178) is closed without merge and excluded from M7 acceptance.             |
-| [40942788214](https://github.com/0xPlayerOne/bunly/actions/runs/40942788214) | `a2f3368e4a52002a7de3d2f564e5a3f771d381e1` | The maintained merged-main run again missed first-download completion at six seconds despite successful exact-resource completion and 32,768 received bytes. Its other 18 native stages and 254 native library tests passed; the remaining 13 download scenarios did not run. Download/SDK/temporary cleanup settled, while overall host clean shutdown was false.                                                                                                 |
+| Public run                                                                   | Exact source                               | Result and qualification limit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [40898407161](https://github.com/0xPlayerOne/bunly/actions/runs/40898407161) | `9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf` | The first managed download received 32,768 bytes but remained incomplete at the maintained six-second deadline. Failed qualification retained.                                                                                                                                                                                                                                                                                                                                                                               |
+| [40909883589](https://github.com/0xPlayerOne/bunly/actions/runs/40909883589) | `85e18b8257e455fd85733229e6a8704d5642b022` | Exact resource completion succeeded with 32,768 encoded bytes. Safe Browsing was enabled at admission; one application-wide FileUtilService launch and no quarantine launch were observed. The owned item remained in progress at six seconds. These observations establish neither completed inspection nor native download completion.                                                                                                                                                                                     |
+| [40914760344](https://github.com/0xPlayerOne/bunly/actions/runs/40914760344) | `1b07548d1f6d700b304a3c9ecef087ca76b60b21` | The diagnostic-only first request completed with a temporary twelve-second allowance; the subsequent 4,194,304-byte replacement completed with its unchanged six-second deadline. Both committed the expected bytes and hashes. The fixture then failed its non-file destination rejection assertion. Per-request elapsed time was not recorded. [PR #174](https://github.com/0xPlayerOne/bunly/pull/174) is closed without merge and excluded from M7 acceptance.                                                           |
+| [40923447518](https://github.com/0xPlayerOne/bunly/actions/runs/40923447518) | `84ee013a8a524230fcbfaef6c27d735633f8c47b` | After the #177 correction, all 14 raw scenarios passed with clean host/SDK/temporary cleanup. The first request took 7,203.9946 ms with a diagnostic-only twelve-second allowance; the subsequent replacement took 258.9538 ms with six seconds unchanged. The added timing key deliberately failed the exact-key acceptance parser. [PR #178](https://github.com/0xPlayerOne/bunly/pull/178) is closed without merge and excluded from M7 acceptance.                                                                       |
+| [40942788214](https://github.com/0xPlayerOne/bunly/actions/runs/40942788214) | `a2f3368e4a52002a7de3d2f564e5a3f771d381e1` | The maintained merged-main run again missed first-download completion at six seconds despite successful exact-resource completion and 32,768 received bytes. Its other 18 native stages and 254 native library tests passed; the remaining 13 download scenarios did not run. Download/SDK/temporary cleanup settled, while overall host clean shutdown was false.                                                                                                                                                           |
+| [40951126011](https://github.com/0xPlayerOne/bunly/actions/runs/40951126011) | `085d646e058023c927faa146afefab6af0394942` | All 14 raw scenarios and nine checks passed with the first request taking 6,944.6602 ms under a diagnostic-only twelve-second allowance; the instrumented replacement took 302.4213 ms with its six-second deadline unchanged. Fixed post-completion histograms and background-task markers were recorded. The extra diagnostic keys deliberately failed the unchanged strict acceptance schema. [PR #190](https://github.com/0xPlayerOne/bunly/pull/190) remains an unmerged diagnostic and is excluded from M7 acceptance. |
+| [40959005905](https://github.com/0xPlayerOne/bunly/actions/runs/40959005905) | `ae243a352e0e8fa97a1d0013cb5e93013a38eaaf` | The six-counter follow-up again passed all 14 raw scenarios and nine checks. The first request took 6,921.2899 ms under the diagnostic-only twelve-second allowance; the instrumented replacement took 241.8102 ms under six seconds. An application-wide HTTP 400 result and 53 ms loader-duration sample narrow the observed protection path. The unchanged strict schema again excluded the report. #190 is closed without merge.                                                                                         |
+| [40970973932](https://github.com/0xPlayerOne/bunly/actions/runs/40970973932) | `21abd9128e60388d431a329073d75d013426778a` | The final maintained v0.6.3 run again failed the first six-second completion gate after receiving 32,768 bytes; the remaining 13 download cases did not run. The other 18 ordinary stages, terminal ownership and all 254 native library tests passed. Native/SDK ownership and temporary cleanup settled, while overall host clean shutdown remained false. Later credentials did not execute and optional view controls were skipped.                                                                                      |
 
-The three maintained runs and both diagnostic probes remain failed qualifications.
+All runs listed in this table remain failed qualifications.
 Their retained download receipts and artifact hashes are recorded in
 [PR #173](https://github.com/0xPlayerOne/bunly/pull/173),
 [PR #174](https://github.com/0xPlayerOne/bunly/pull/174),
-[PR #178](https://github.com/0xPlayerOne/bunly/pull/178) and
+[PR #178](https://github.com/0xPlayerOne/bunly/pull/178),
+[PR #190](https://github.com/0xPlayerOne/bunly/pull/190) and
 [issue #36](https://github.com/0xPlayerOne/bunly/issues/36).
 A temporary diagnostic allowance does not change the maintained completion gate.
 The #177 corrected native tree is `5bb1444988c7ec2f92d4e4af953a78f94336909b`
-in both newer runs. The timing probe's measurements include admission invocation
-through completion/hash/staging verification; they do not identify the cause of
+in the #178 timing probe and the subsequent maintained run. The timing probe's
+measurements include admission invocation through completion/hash/staging
+verification; they do not identify the cause of
 the first/subsequent difference.
 
-In the maintained merged-main run, the item remained valid and in progress at
+In maintained run 40942788214, the item remained valid and in progress at
 100% received bytes, with six callbacks and an owned staging path. The receipt
 records Safe Browsing enabled, one application-wide FileUtilService launch and
 zero observed quarantine launches. These observations do not establish completed
@@ -282,7 +341,177 @@ its exported download report has SHA-256
 `42d1f8bf208010e0304c7b2d40179addacf60f3aaf4d8d9a16a20f73ea602111`.
 All 68 extracted files, the completed job log and prior failed attempts are retained.
 
-Run the maintained [native CEF workflow](https://github.com/0xPlayerOne/bunly/actions/workflows/cef-runtime.yml)
+### Bounded analysis diagnostic, excluded from acceptance
+
+The #190 run used clean source `085d646e058023c927faa146afefab6af0394942`,
+source tree `4b450fbd1f0acce5ff2194900c63c06a3815ee2c`, and diagnostic native tree
+`ce13469e22370fe4f77df922132798c110d82cbe`. The first request was timed from
+admission through verified completion, bytes/hash and staging checks. Only after
+that measurement did a contributor-only observer request these three fixed,
+application-wide histogram snapshots:
+
+| Histogram                                   | Recorded sample                          | Pinned-source meaning and limit                                                                                                                                                                                             |
+| ------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SBClientDownload.CheckDownloadStats`       | One sample, sum 5, bucket `[5, 6)`       | `REASON_SERVER_PING_FAILED`. This reason can result from a missing URL-loader factory or a failed/non-200 protection-service response; it does not establish a particular network error or that a network request occurred. |
+| `SBClientDownload.ZipArchiveAnalysisResult` | One sample, sum 0, bucket `[0, 1)`       | `kUnknown`: parsing failed without a more specific reason. This is not a valid-archive or clean-inspection result.                                                                                                          |
+| `SBClientDownload.FileAnalysisDuration.Zip` | One sample, sum 480, bucket `[452, 574)` | The recorded ZIP-analysis duration is 480 ms. It is application-wide, not a request-scoped causal trace.                                                                                                                    |
+
+Interpretation uses the pinned Chromium 156.0.8078.17
+[download reason enum](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/download_protection_util.h),
+[request completion code](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/check_client_download_request_base.cc),
+and [archive result enum](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/common/safe_browsing/archive_analyzer_results.h).
+A fixed `FILE_BACKGROUND` marker completed 2,998 ms after its admission; the
+`FILE_USER_VISIBLE` control completed in 0 ms. Posting marker tasks can perturb
+scheduling, and their measurement boundaries differ from the histograms and
+first-download timer. These values must not be added or subtracted to invent a
+causal timeline. They do not establish a Bunly defect, cache state, network
+cause, or performance improvement.
+
+The histogram query completed and its observer registration was released.
+The CEF DevTools agent remains attached until controller destruction, so the
+subsequent replacement timing is instrumented; the first timing preceded this
+attachment. No arbitrary histogram name, CDP command, URL, header, or security
+setting was exposed or changed. The maintained six-second acceptance gate and
+strict report schema remain unchanged.
+
+The run recorded 14 admissions and terminal outcomes: three completions,
+seven cancellations and four expected failures. Native download owners and final
+SDK owners returned to zero, temporary cleanup passed, host shutdown was clean,
+and the observer exited zero with no timeout, overflow, observed orphan or
+cleanup survivor. Windows native library tests passed 254 cases. The complete
+workflow still failed because the report contained the deliberately excluded
+`diagnosticAnalysis` and `diagnosticTiming` keys. Prepared/input artifact-after
+inventories and metadata-after checks were not reached. Source-before and
+source-after were clean and unchanged; no unchanged-binary-after claim is made.
+
+The [artifact 12933495750](https://github.com/0xPlayerOne/bunly/actions/runs/40951126011/artifacts/12933495750)
+ZIP has SHA-256 `ef785ff2e9a91f62841f839677ad9d66b5b556ac94295e8e5483b9371b58ae91`;
+the exported download report has SHA-256
+`89915488dacd6f3cbd5f78b2ece800c5e109d43478c9be0d385cc8134ba933d0`.
+All 68 artifact files are retained. The initial completed-log download failure
+and empty output were preserved separately; the recovered completed log has
+SHA-256 `9a15447e4471ead3fa27367b3151c5d8227154fa23cc52b6fa90f411169f92d2`.
+The workflow saved only its existing verified immutable build inputs before
+qualification, as intended by #184; this is not a measured cache speedup.
+
+### Fixed network-result follow-up, excluded from acceptance
+
+The second #190 run used clean source `ae243a352e0e8fa97a1d0013cb5e93013a38eaaf`,
+source tree `56f90f56cfbb08ef13601b3373f3b9ec6351e3bf`, and diagnostic native
+subtree `5f77431f93ccb5e42ba84329c55442868681abe3`. It adds exactly three fixed
+post-first-completion histogram names to the same bounded query. It changes no
+payload, filename, authority, security setting, marker, maintained deadline or
+acceptance schema. The signed sparse-result parser is separate from the existing
+unsigned parsers and checks bounded counts, samples, ordered unit-width buckets
+and exact weighted sums. Its 11 focused native tests, strict feature-enabled
+Clippy, main/browser types, boundaries, ten download fixture/parser tests and
+signed exporter/exclusion replay passed locally. An initial command selected
+zero tests; that log is retained and is not counted as validation.
+
+| Application-wide histogram                        | Count / sum | Recorded bucket |
+| ------------------------------------------------- | ----------- | --------------- |
+| `SBClientDownload.CheckDownloadStats`             | 1 / 5       | `[5, 6)`        |
+| `SBClientDownload.ZipArchiveAnalysisResult`       | 1 / 0       | `[0, 1)`        |
+| `SBClientDownload.FileAnalysisDuration.Zip`       | 1 / 395 ms  | `[356, 452)`    |
+| `SBClientDownload.DownloadRequestNetworkResult`   | 1 / 400     | `[400, 401)`    |
+| `SBClientDownload.DownloadRequestDuration`        | 1 / 449 ms  | `[449, 533)`    |
+| `SBClientDownload.DownloadRequestNetworkDuration` | 1 / 53 ms   | `[48, 57)`      |
+
+The pinned [sample writer](https://github.com/chromium/chromium/blob/156.0.8078.17/components/safe_browsing/core/common/utils.cc)
+records an HTTP status for a successful loader or `ERR_HTTP_RESPONSE_CODE_FAILURE`,
+and otherwise a negative net error. Sample 400 is therefore an HTTP 400 status,
+not a negative network error. These counters are emitted by the
+[URL-loader completion path](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/check_client_download_request_base.cc),
+not the earlier null-factory return. The snapshot supports reaching that recorded
+path; it remains application-wide and does not prove exact-request ownership,
+identify the responding endpoint, or establish network egress. The request timer
+begins at protection-request object construction, while the network timer begins
+immediately after loader submission and includes local processing and callback
+scheduling. Neither measures the entire first download or wire time alone.
+
+The background marker completed in 3,008 ms; the user-visible control completed
+in 0 ms. The first request took 6,921.2899 ms through completion/hash/staging
+verification, before observer attachment. The subsequent replacement took
+241.8102 ms after attachment. The same marker and retained-DevTools-client
+limitations apply. Differing interval origins and cumulative histogram scope
+prevent reconstructing the missing time by subtraction. The observation does
+not establish a Bunly ownership, startup or network-policy defect.
+
+All 14 raw cases and nine checks passed; all other 18 qualification stages passed.
+There were three completed transfers, seven cancellations and four expected
+failures. All download and final SDK owners returned to zero. Temporary cleanup,
+SDK shutdown and overall host clean shutdown passed. The observer exited zero
+without timeout, cancellation, overflow, observed orphans or cleanup survivors.
+Windows native library tests passed 254 cases; portable checks passed 1,489 Bun
+tests with 12 skips and 269 Python tests with 41 skips. The workflow still failed
+only the unchanged diagnostic-key exclusion. Source-before/source-after and
+source hashes matched; prepared/input artifact-after inventories and metadata-after
+checks remain unobserved. Native embedded attestation, sandbox and physical
+hardware qualification remain unverified.
+
+The [artifact 12936915325](https://github.com/0xPlayerOne/bunly/actions/runs/40959005905/artifacts/12936915325)
+ZIP has SHA-256 `aaa8bb688cbf6e4f9d24993dc4bc76a971fd3c42919a465d88e83b096cfb771e`;
+the exported download report has SHA-256
+`04a165727551fd0cb87c8aebbb9a7d51fa2068eb5d18db71a28efacd0694aeea`;
+the completed job log has SHA-256
+`e0f7f6946f74e59c583dcabe112bdcd05ba62c4263de7482cad25b675aa95570`.
+All 68 artifact files and the completed log are retained, and the prior #190
+run's ZIP/report hashes remain unchanged. PR #190 is closed without merge;
+both diagnostic sources and their failed acceptance receipts remain retained.
+
+### Final released-main Windows verification
+
+The final maintained [Windows/full run 40970973932](https://github.com/0xPlayerOne/bunly/actions/runs/40970973932)
+used clean released source `21abd9128e60388d431a329073d75d013426778a`,
+source tree `20a8a31296328662cc0b7dbc1f12307dd663021f`, and native tree
+`5bb1444988c7ec2f92d4e4af953a78f94336909b`. This source has the maintained
+six-second completion deadline and no #190 probe or diagnostic allowance.
+The workflow failed; **18 of the 19 ordinary native stages passed and
+`file-downloads` alone failed**. Terminal ownership and all 254 native library
+tests passed, including the Windows non-file destination regression. Windows
+portable checks passed 1,594 Bun tests with 12 skips, and 269 Python tests with
+41 skips.
+
+The first download again timed out at the unchanged six-second deadline.
+The exact-resource completion receipt reported success and 32,768 received bytes,
+but the native item remained valid, in progress and incomplete at 100%, with an
+owned staging path, six callbacks observed, and callback ownership retained
+at timeout. Safe Browsing was enabled at admission; one application-wide FileUtilService launch and no quarantine launch
+were observed. These observations do not establish completed inspection or
+native download completion. The failed outcome reported zero committed
+`bytesWritten`; the remaining 13 download scenarios did not execute.
+
+The fixture workload lasted 6,382.4121 ms; this is not a successful-completion
+duration. Native shutdown recorded one admission, one failed outcome and one
+terminal callback. Owned transfers, callbacks, staging handles and deadline
+workers returned to zero. Final SDK windows/views/sessions/listeners and listener
+errors were zero, temporary cleanup and SDK shutdown passed, and the observer
+exited one with no timeout, cancellation, overflow, observed orphan or cleanup
+survivor. Overall host `clean` remained false. Source-before/source-after and
+source hashes matched. Download prepared/input artifact-after inventories and
+metadata-after checks were absent, so unchanged-binary-after is not claimed for
+this failed report.
+
+The subsequent credential test did not execute: its prerequisite requires every
+preceding ordinary native stage to pass. The separate optional view-control CI
+step was skipped. The observed runtime was Bun 1.4.4, CEF 156.0.7 and Chromium
+156.0.8078.17; embedded native-build attestation, sandbox identity and physical
+hardware qualification remain unverified.
+
+[Artifact 12940649781](https://github.com/0xPlayerOne/bunly/actions/runs/40970973932/artifacts/12940649781)
+contains 68 retained files and has ZIP SHA-256
+`02d6c5d63ffed8554f17398c5d25bd9632f0867299aa59879b1b07a1266c2bdf`.
+The exported download report has SHA-256
+`c55564475d5970d436dba7b7a15ea88f40aee3f382ccfc68f42584abd6a3fd48`;
+its two retained copies are identical. The completed job log has SHA-256
+`690d43b7dc951700f88b30c21de08a61fd5c937c5f6861225fee931e205e27f3`.
+This attempt was not retried. The result preserves the prior failed evidence
+and keeps #36 open; no cause or correction for the first-completion delay has
+been established.
+
+### Maintained Windows acceptance run
+
+After an evidence-backed correction, rerun the maintained [native CEF workflow](https://github.com/0xPlayerOne/bunly/actions/workflows/cef-runtime.yml)
 on the final reviewed `main` revision with `platform=windows` and `suite=full`:
 
 ```sh
