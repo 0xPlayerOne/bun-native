@@ -7,7 +7,8 @@ function attach(
   record: ResultRecord,
   counterRef: WeakRef<{ count: number }>
 ): void {
-  void promise.then(
+  void Promise.prototype.then.call(
+    promise,
     () => {
       record.state = 'fulfilled'
       record.count = 0

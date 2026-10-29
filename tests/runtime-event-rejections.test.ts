@@ -47,3 +47,21 @@ test('distinct thenable invocations remain independently assimilated', async () 
   expect(calls).toBe(2)
   expect(counter.count).toBe(2)
 })
+
+test('a native promise with an overridden then still has its rejection observed', async () => {
+  const counter = { count: 0 }
+  const observer = new ListenerResultObserver(counter)
+  let reject!: (error: unknown) => void
+  const promise = new Promise<void>((_resolve, fail) => {
+    reject = fail
+  })
+  // Exercise an application-mutated native promise.
+  // oxlint-disable-next-line unicorn/no-thenable
+  promise.then = (() => {
+    throw new Error('overridden then')
+  }) as typeof promise.then
+  observer.observe(promise)
+  reject(new Error('listener failure'))
+  await flush()
+  expect(counter.count).toBe(1)
+})
