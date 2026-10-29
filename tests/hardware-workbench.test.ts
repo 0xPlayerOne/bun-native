@@ -567,3 +567,50 @@ test('native UI controls use captured scope, dispose menu, and never expose a se
     await f.cleanup()
   }
 })
+
+test('revoked native menu releases its listener and owner; cancelled dialog records only its outcome', async () => {
+  const f = await fixture()
+  const scope = Object.freeze({})
+  const handle = Object.freeze({})
+  let listener: ((event: { type: string }) => void) | undefined
+  let disposed = 0
+  Object.assign(f.backend, {
+    capturePolicyScope: async () => scope,
+    grantNativeCapability: async () => {},
+    createWindowCommands: async () => handle,
+    onWindowCommandsEvent: (_handle: unknown, callback: typeof listener) => {
+      listener = callback
+      return () => {
+        listener = undefined
+      }
+    },
+    showWindowMenu: async () => {
+      queueMicrotask(() => listener?.({ type: 'revoked' }))
+    },
+    disposeWindowCommands: async (actual: unknown) => {
+      assert.equal(actual, handle)
+      disposed++
+    },
+    showOpenFileDialog: async () => ({ status: 'cancelled' }),
+  })
+  try {
+    const controls = await f.channel('app://ui/index.html')
+    assert.equal((await controls.call('command', { action: 'native-menu' }))?.type, 'error')
+    assert.equal(disposed, 1)
+    assert.equal(listener, undefined)
+    assert.equal((await controls.call('command', { action: 'open-dialog' }))?.type, 'success')
+    const snapshot = await controls.call('snapshot', null)
+    assert.equal(snapshot?.type, 'success')
+    if (snapshot?.type === 'success') {
+      const result = parseWorkbenchSnapshot(snapshot.value)
+      assert.ok(
+        result.events.some(
+          (event) =>
+            event.message === 'Native file dialog cancelled; selected paths are not recorded'
+        )
+      )
+    }
+  } finally {
+    await f.cleanup()
+  }
+})
