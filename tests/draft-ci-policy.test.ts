@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test'
 import { readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { guardOpenCodeScan } from '../scripts/sync-foundry.ts'
+import {
+  guardOpenCodeScan,
+  isolateDraftConcurrency,
+  PR_READINESS_SUFFIX,
+} from '../scripts/sync-foundry.ts'
 
 const directory = resolve(import.meta.dir, '../.github/workflows')
 const draftGuard =
@@ -44,6 +48,11 @@ test('Code Foundry draft protection covers every PR CI caller and runner', async
       continue // Lightweight cancellation must run precisely when converted to draft.
     }
     seen.add(file)
+    const concurrency = workflow['concurrency'] as Record<string, unknown>
+    expect(String(concurrency['group']), file).toEndWith(PR_READINESS_SUFFIX)
+    expect(concurrency['cancel-in-progress'], file).toBe(
+      "${{ github.event_name == 'pull_request' }}"
+    )
     expect([...(pr['types'] as string[])].sort(), file).toEqual(
       ['ready_for_review', 'synchronize'].sort()
     )
@@ -104,5 +113,27 @@ test('push, schedule and manual entrypoints remain available outside PR validati
   const jobs = validation['jobs'] as Record<string, Record<string, unknown>>
   expect(String(jobs['validation']!['if'])).toContain(
     "startsWith(github.event.pull_request.head.ref, 'release-please--branches--main')"
+  )
+})
+
+test('draft and ready events use separate stable groups without changing non-PR groups', () => {
+  const source =
+    "on:\n  pull_request:\n  push:\nconcurrency:\n  group: ci-${{ github.ref }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+  const transformed = isolateDraftConcurrency('custom.yml', source)
+  const workflow = Bun.YAML.parse(transformed) as Record<string, unknown>
+  const group = String((workflow['concurrency'] as Record<string, unknown>)['group'])
+  expect(group).toBe('ci-${{ github.ref }}' + PR_READINESS_SUFFIX)
+  expect(isolateDraftConcurrency('custom.yml', transformed)).toBe(transformed)
+  expect(isolateDraftConcurrency('draft-control.yml', source)).toBe(source)
+  expect(isolateDraftConcurrency('manual.yml', source.replace('  pull_request:\n', ''))).toBe(
+    source.replace('  pull_request:\n', '')
+  )
+  expect(() =>
+    isolateDraftConcurrency('bad.yml', source.replace('  group: ci-', '  group: [ci-'))
+  ).toThrow()
+  // GitHub's conditional suffix has no head SHA or action: both ready transitions
+  // and ready synchronize events share the ready group; draft events cannot enter it.
+  expect(PR_READINESS_SUFFIX).toBe(
+    "${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}"
   )
 })

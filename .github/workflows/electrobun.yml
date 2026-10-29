@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: electrobun-${{ github.ref }}
+  group: electrobun-${{ github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   electrobun:
