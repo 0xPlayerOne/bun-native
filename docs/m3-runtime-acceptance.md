@@ -54,7 +54,7 @@ The policy supplies the signed envelope, expected identity, explicit public trus
 
 ## Contributor and acceptance commands
 
-Native contributor builds use Rust 1.91.0 and the committed CEF Cargo lock. They are distinct from consumer app builds. Local Cargo commands use the shared per-user Bunly target cache, and CEF builds default `CEF_PATH` to the versioned CEF subdirectory under that cache. Put the matching contributor distribution there or set `CEF_PATH` to override the location. Set `PYTHON` to the isolated interpreter with the pinned development requirements.
+Native contributor builds use Rust 1.91.0 and the committed CEF Cargo lock. They are distinct from consumer app builds. Local Cargo commands keep each canonical manifest directory's compiled outputs in its own namespace under the per-user Bunly cache; ordinary edits reuse that namespace, while other checkouts cannot supply its local-package outputs. Cargo downloads and CEF distributions remain shared. CEF builds default `CEF_PATH` to the versioned CEF subdirectory under that cache. Put the matching contributor distribution there or set `CEF_PATH` to override the location. An explicit `CARGO_TARGET_DIR` requires exclusive checkout ownership; see [build concurrency and source provenance](validation.md#concurrent-builds-and-qualification). Set `PYTHON` to the isolated interpreter with the pinned development requirements.
 
 ```sh
 bun install --frozen-lockfile

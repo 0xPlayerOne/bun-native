@@ -40,7 +40,7 @@ test('native consumers query Cargo metadata with the same configured target inst
       ['darwin', 'libbunly_host_probe.dylib', ''],
       ['win32', 'bunly_host_probe.dll', '.exe'],
     ] as const) {
-      expect(nativeHostArtifacts(root, {}, platform)).toEqual({
+      expect(nativeHostArtifacts(root, { CARGO_TARGET_DIR: target }, platform)).toEqual({
         library: join(target, 'release', library),
         hostProbe: join(target, 'release', 'bunly-host-probe' + suffix),
         processSoak: join(target, 'release', 'process-soak' + suffix),
@@ -125,14 +125,15 @@ test('missing or partial selected outputs never switch to complete stale checkou
 
 test('missing or malformed artifact metadata fails without falling back to stale release files', () => {
   const spawn = spyOn(Bun, 'spawnSync')
+  const env = { CARGO_TARGET_DIR: resolve('selected-artifacts') }
   try {
     spawn.mockReturnValue(response({}, false))
-    expect(() => nativeHostArtifacts(resolve('workspace'))).toThrow(
+    expect(() => nativeHostArtifacts(resolve('workspace'), env)).toThrow(
       'Cargo metadata could not locate native artifacts'
     )
     for (const value of [null, [], {}, { target_directory: '' }, { target_directory: 'target' }]) {
       spawn.mockReturnValue(response(value))
-      expect(() => nativeHostArtifacts(resolve('workspace'))).toThrow()
+      expect(() => nativeHostArtifacts(resolve('workspace'), env)).toThrow()
     }
   } finally {
     spawn.mockRestore()

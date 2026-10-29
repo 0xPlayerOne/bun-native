@@ -1,13 +1,13 @@
 /** Contributor artifact lookup. Metadata never compiles native code. */
 import { isAbsolute, join } from 'node:path'
-import { cargoEnvironment } from './cargo-config.ts'
+import { cargoTargetEnvironment } from './cargo-config.ts'
 
 export function cargoTargetDirectory(
   manifest: string,
   current: NodeJS.ProcessEnv = process.env
 ): string {
   // Target policy is independent of CEF SDK discovery. Metadata needs no SDK.
-  const { env } = cargoEnvironment([], current)
+  const { env } = cargoTargetEnvironment(manifest, current)
   const result = Bun.spawnSync(
     [
       'cargo',

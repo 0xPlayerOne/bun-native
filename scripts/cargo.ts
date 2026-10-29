@@ -1,4 +1,4 @@
-/** Run local Cargo commands with a target directory shared by Bunly worktrees. */
+/** Run local Cargo commands with persistent outputs isolated by checkout. */
 import { mkdir, readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { cargoEnvironment, cefManifestPath } from './cargo-config.ts'

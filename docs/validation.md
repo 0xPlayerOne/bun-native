@@ -91,10 +91,24 @@ feature fingerprint and never substitutes for an actual CEF build or launch. The
 commit hook selects the correct compiler for each workspace, including changes
 to shared Cargo configuration. Application consumers still use prebuilt binaries.
 
-Local Cargo commands run through `bun scripts/cargo.ts`, which puts Rust build
-outputs in one per-user Bunly cache shared by all checkouts and Git worktrees.
-Set `CARGO_TARGET_DIR` to override it, or `BUNLY_SHARED_CACHE_DIR` to choose the
-parent cache directory. Commands for `native/cef-host` also default `CEF_PATH`
+Local Cargo commands run through `bun scripts/cargo.ts`, which keeps Rust build
+outputs in `<shared-cache>/cargo-target/workspaces/<identity>`. The identity is
+the SHA-256 of the canonical manifest directory, or the command's canonical
+working directory when no manifest is selected. This is the selected manifest
+directory, not a discovered Cargo workspace root: a workspace member manifest
+or a different working directory can select a different namespace from the root
+manifest. Use the same manifest for builds and artifact lookup. Different
+checkouts and native workspaces receive separate outputs; symlink aliases of the
+same directory share them. The identity is a location key, not a source commit or build attestation.
+Ordinary source edits keep the same directory and its compiled dependencies.
+Cargo home, registry/Git downloads and the versioned CEF distribution remain
+shared. Existing unpartitioned outputs are left untouched and are not selected by
+the new default; the first build in each namespace compiles its own outputs.
+
+Set `CARGO_TARGET_DIR` to select an exact target directory, or
+`BUNLY_SHARED_CACHE_DIR` to choose the parent cache directory. Explicit target
+overrides retain Cargo's normal meaning and require exclusive checkout ownership.
+Commands for `native/cef-host` also default `CEF_PATH`
 to `<shared-cache>/cef/<locked-version>`; put the matching contributor CEF
 distribution there or set `CEF_PATH` to override it. Keep run evidence and
 qualification output under each checkout's `.bunly` directory so concurrent
@@ -131,14 +145,38 @@ selection of siblings beside its running executable.
 
 ### Concurrent builds and qualification
 
-A shared Cargo target is a mutable build cache. Cargo fingerprints distinguish
-compilation units, but later builds can replace the stable `release` executable
-names. A path beside the bundler does not establish source provenance, feature
-identity or a consistent snapshot across concurrent builds. Use an exclusive
-`CARGO_TARGET_DIR` for each native source/feature qualification and keep that
-override for its build, assembly and qualifier commands. Build and assemble
-sequentially before admitting another writer to the same target. Existing source,
-artifact identity and input-unchanged qualification checks still apply.
+A Cargo target is a mutable build cache, not a cross-checkout content-addressed
+artifact store. A Rust 1.91.0 reproduction with two copies of the same package
+compiled checkout A's single `alpha_marker` test, then executed that binary for
+checkout B even though B defined two `beta_marker` tests. B's run compiled
+nothing. Sequential leases therefore do not make sharing local-package outputs
+between checkouts valid. The default namespace prevents that reuse; an explicit
+`CARGO_TARGET_DIR` must not be reused by another checkout. Do not treat an old run
+from a shared target as current-source validation without rebuilding and checking
+the actual tests executed.
+
+Within one checkout, later builds can still replace stable `release` executable
+names or select different features. Use an exclusive target for each native
+source/feature qualification and keep that override for its build, assembly and
+qualifier commands. Build and assemble sequentially before admitting another
+writer. A path beside the bundler does not establish source provenance, feature
+identity or a consistent snapshot. Existing source, artifact identity and
+input-unchanged qualification checks still apply; keep the actual native build
+commit rather than relabeling old bytes after a source edit.
+
+The portable target-policy regression checks distinct checkouts, canonical
+aliases and build/metadata agreement without invoking a compiler. With Rust
+1.91.0 installed, run the real offline regression in a newly created, isolated
+temporary cache:
+
+```sh
+BUNLY_CARGO_ISOLATION_NATIVE=1 bun test tests/cargo-worktree-isolation.test.ts
+```
+
+It runs A's single test and B's two different tests, then edits A and verifies its
+new test executes while the unchanged local dependency stays cached. It does not
+use the contributor CEF target or launch a browser. The compiler-free portable
+gate explicitly skips this opt-in native case.
 
 For an explicitly prepared, locally ad-hoc-signed macOS fixture application:
 
