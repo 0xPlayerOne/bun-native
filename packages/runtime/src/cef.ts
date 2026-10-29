@@ -1,3 +1,4 @@
+import { ListenerResultObserver } from './listener-result.ts'
 import { DiagnosticObserverBudget } from './diagnostic-observer.ts'
 import { NativeTerminalDriver, type NativeTerminalConfiguration } from './terminal-owner.ts'
 import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
@@ -415,7 +416,7 @@ function checkedCookie(value: CookieInput): CookieInput {
 function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDescriptor {
   return Object.freeze({
     name: 'cef',
-    version: '0.6.1', // x-release-please-version
+    version: '0.6.2', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
@@ -472,7 +473,7 @@ export class CefBackend
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
   readonly #consoleObserverBudget = new DiagnosticObserverBudget(() => {
-    this.#listenerErrors++
+    this.#listenerErrors.count++
   })
   readonly #consoleSubscriptions = new Map<
     ViewHandle,
@@ -506,7 +507,8 @@ export class CefBackend
   #shutdown: Promise<void> | undefined
   #rpcConfigured = false
   #disposed = false
-  #listenerErrors = 0
+  readonly #listenerErrors = { count: 0 }
+  readonly #eventResults = new ListenerResultObserver(this.#listenerErrors)
   /** Native-owned discovery; caller explicitly accepts the non-detaching profile. */
   async createTerminalDriver(options: {
     readonly profile: 'non-detaching'
@@ -536,7 +538,7 @@ export class CefBackend
     this.#dialogs = new CefFileDialogs(transport)
     this.#programmaticFiles = new CefProgrammaticFiles(transport)
     this.#downloads = new CefDownloads(transport, () => {
-      this.#listenerErrors++
+      this.#listenerErrors.count++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
     this.#applicationLinks = new CefApplicationLinks(
@@ -561,7 +563,7 @@ export class CefBackend
         requireCapability(this.descriptor, 'status.item')
       },
       () => {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     )
     this.#commands = new CefWindowCommands(
@@ -580,7 +582,7 @@ export class CefBackend
         requireCapability(this.descriptor, 'window.commands')
       },
       () => {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     )
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
@@ -1034,9 +1036,9 @@ export class CefBackend
     for (const listener of listeners) {
       if (!this.#listeners.has(listener)) continue
       try {
-        listener(event)
+        this.#eventResults.observe(listener(event))
       } catch {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     }
   }
@@ -1052,9 +1054,9 @@ export class CefBackend
         break
       if (event.type === 'closed') subscription.dispose()
       try {
-        subscription.listener(event)
+        this.#eventResults.observe(subscription.listener(event))
       } catch {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     }
   }
@@ -2051,7 +2053,7 @@ export class CefBackend
         this.#downloads.listenerCount +
         this.#commands.listenerCount +
         this.#statusItems.listenerCount,
-      listenerErrors: this.#listenerErrors + application.listenerErrors,
+      listenerErrors: this.#listenerErrors.count + application.listenerErrors,
     }
   }
   /** Trusted-backend pipe accounting only; not renderer authority or native RSS. */
@@ -2426,7 +2428,7 @@ export class CefBackend
       try {
         observer(event)
       } catch {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     }
   }
