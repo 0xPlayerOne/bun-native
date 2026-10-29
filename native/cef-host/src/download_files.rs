@@ -345,7 +345,16 @@ mod tests {
         fs::write(root.0.join("Report.txt"), b"original").unwrap();
         assert!(Staging::prepare(&root.0, "report.txt", true).is_err());
         fs::create_dir(root.0.join("directory")).unwrap();
-        assert!(Staging::prepare(&root.0, "directory", true).is_err());
+        let failure = Staging::prepare(&root.0, "directory", true)
+            .err()
+            .expect("Directory replacement must be rejected");
+        assert_eq!(
+            failure,
+            "Download replacement requires a regular non-aliased file"
+        );
+        assert!(root.0.join("directory").is_dir());
+        assert_eq!(fs::read(root.0.join("Report.txt")).unwrap(), b"original");
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 2);
     }
     #[test]
     fn a_hard_link_cannot_be_overwritten_as_a_single_owned_destination() {
