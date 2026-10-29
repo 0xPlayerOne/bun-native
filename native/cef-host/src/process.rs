@@ -69,6 +69,21 @@ pub fn emit(value: Value) {
         crate::host::fail("Application event queue unavailable or full");
     }
 }
+pub fn emit_console(value: Value) {
+    let failed = OUTPUT
+        .get()
+        .and_then(|slot| slot.lock().ok())
+        .and_then(|slot| slot.as_ref().map(|tx| tx.try_send_console(value)))
+        .is_some_and(|result| {
+            !matches!(
+                result,
+                Ok(()) | Err(crate::event_queue::AdmissionError::ConsoleDropped)
+            )
+        });
+    if failed && !expected_exit() {
+        crate::host::fail("Application event queue unavailable or full");
+    }
+}
 pub fn output_diagnostics() -> crate::event_queue::Snapshot {
     OUTPUT_MONITOR
         .get()

@@ -18,12 +18,15 @@ const ORDINARY_RECORDS: usize = 192;
 // envelopes; outbound admission must not undercut the existing incoming pool.
 const WIRE_BYTES: usize = 8 * 1024 * 1024;
 const ORDINARY_WIRE_BYTES: usize = 7 * 1024 * 1024;
+const CONSOLE_RECORDS: usize = 16;
+const CONSOLE_WIRE_BYTES: usize = 128 * 1024;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AdmissionError {
     InvalidFrame,
     Capacity,
     Unavailable,
+    ConsoleDropped,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -35,6 +38,9 @@ pub struct Snapshot {
     pub ordinary_wire_bytes: usize,
     pub peak_frames: usize,
     pub peak_wire_bytes: usize,
+    pub console_frames: usize,
+    pub console_wire_bytes: usize,
+    pub console_dropped: u32,
 }
 #[derive(Default)]
 struct Budget {
@@ -44,6 +50,7 @@ struct Permit {
     budget: Arc<Budget>,
     bytes: usize,
     ordinary: bool,
+    console: bool,
 }
 impl Drop for Permit {
     fn drop(&mut self) {
@@ -57,6 +64,10 @@ impl Drop for Permit {
         if self.ordinary {
             state.ordinary_frames -= 1;
             state.ordinary_wire_bytes -= self.bytes;
+        }
+        if self.console {
+            state.console_frames -= 1;
+            state.console_wire_bytes -= self.bytes;
         }
     }
 }
@@ -268,6 +279,12 @@ impl EventSender {
         EventMonitor(self.budget.clone())
     }
     pub fn try_send(&self, value: Value) -> Result<(), AdmissionError> {
+        self.send(value, false)
+    }
+    pub fn try_send_console(&self, value: Value) -> Result<(), AdmissionError> {
+        self.send(value, true)
+    }
+    fn send(&self, value: Value, console: bool) -> Result<(), AdmissionError> {
         let bytes = wire_bytes(&value)?;
         let ordinary = !control(&value, bytes);
         {
@@ -276,12 +293,19 @@ impl EventSender {
                 .state
                 .lock()
                 .map_err(|_| AdmissionError::Unavailable)?;
-            if state.frames >= RECORDS
+            if (console
+                && (state.console_frames >= CONSOLE_RECORDS
+                    || bytes > CONSOLE_WIRE_BYTES - state.console_wire_bytes))
+                || state.frames >= RECORDS
                 || bytes > WIRE_BYTES - state.retained_wire_bytes
                 || (ordinary
                     && (state.ordinary_frames >= ORDINARY_RECORDS
                         || bytes > ORDINARY_WIRE_BYTES - state.ordinary_wire_bytes))
             {
+                if console {
+                    state.console_dropped = state.console_dropped.saturating_add(1);
+                    return Err(AdmissionError::ConsoleDropped);
+                }
                 return Err(AdmissionError::Capacity);
             }
             state.frames += 1;
@@ -289,6 +313,10 @@ impl EventSender {
             if ordinary {
                 state.ordinary_frames += 1;
                 state.ordinary_wire_bytes += bytes;
+            }
+            if console {
+                state.console_frames += 1;
+                state.console_wire_bytes += bytes;
             }
             state.peak_frames = state.peak_frames.max(state.frames);
             state.peak_wire_bytes = state.peak_wire_bytes.max(state.retained_wire_bytes);
@@ -299,6 +327,7 @@ impl EventSender {
                 budget: self.budget.clone(),
                 bytes,
                 ordinary,
+                console,
             },
         };
         // Failed posts own and drop the frame/permit too. No detached reservation.
@@ -337,6 +366,72 @@ mod tests {
         let overhead = wire_bytes(&value).unwrap();
         value["data"]["packet"] = Value::String("x".repeat(bytes - overhead));
         value
+    }
+    fn console(message: &str) -> Value {
+        json!({"v":1,"event":"view.console","target":1,"data":{"message":message}})
+    }
+    #[test]
+    fn console_burst_respects_frame_slice_and_preserves_ordinary_and_control_capacity() {
+        let (tx, rx) = channel();
+        for _ in 0..CONSOLE_RECORDS {
+            tx.try_send_console(console("small")).unwrap();
+        }
+        let active = rx.recv().unwrap();
+        assert_eq!(
+            tx.try_send_console(console("overflow")),
+            Err(AdmissionError::ConsoleDropped)
+        );
+        assert_eq!(tx.snapshot().console_frames, CONSOLE_RECORDS);
+        assert_eq!(tx.snapshot().console_dropped, 1);
+        for id in 0..(ORDINARY_RECORDS - CONSOLE_RECORDS) {
+            tx.try_send(ordinary(id)).unwrap();
+        }
+        assert_eq!(tx.try_send(ordinary(999)), Err(AdmissionError::Capacity));
+        tx.try_send(response(1)).unwrap();
+        tx.try_send(json!({"v":1,"event":"view.closed","target":1,"data":null}))
+            .unwrap();
+        drop(active);
+        drop(rx);
+        empty(&tx);
+        assert_eq!(tx.snapshot().console_frames, 0);
+        assert_eq!(tx.snapshot().console_wire_bytes, 0);
+    }
+    #[test]
+    fn console_byte_slice_is_exact_and_drop_counter_saturates() {
+        let (tx, rx) = channel();
+        let value = console(&"\0".repeat(4096));
+        let bytes = wire_bytes(&value).unwrap();
+        let count = CONSOLE_WIRE_BYTES / bytes;
+        for _ in 0..count {
+            tx.try_send_console(value.clone()).unwrap();
+        }
+        assert_eq!(tx.snapshot().console_wire_bytes, count * bytes);
+        assert_eq!(
+            tx.try_send_console(value.clone()),
+            Err(AdmissionError::ConsoleDropped)
+        );
+        tx.budget.state.lock().unwrap().console_dropped = u32::MAX;
+        assert_eq!(
+            tx.try_send_console(value),
+            Err(AdmissionError::ConsoleDropped)
+        );
+        assert_eq!(tx.snapshot().console_dropped, u32::MAX);
+        drop(rx);
+        empty(&tx);
+    }
+    #[test]
+    fn console_sender_reports_disconnected_and_invalid_frames() {
+        let (tx, rx) = channel();
+        assert_eq!(
+            tx.try_send_console(console(&"x".repeat(FRAME_BYTES))),
+            Err(AdmissionError::InvalidFrame)
+        );
+        drop(rx);
+        assert_eq!(
+            tx.try_send_console(console("message")),
+            Err(AdmissionError::Unavailable)
+        );
+        empty(&tx);
     }
     #[test]
     fn excessive_nesting_is_rejected_before_serialization_and_admission() {
@@ -430,6 +525,11 @@ mod tests {
             tx.try_send(ordinary(id)).unwrap();
         }
         assert_eq!(tx.try_send(ordinary(193)), Err(AdmissionError::Capacity));
+        assert_eq!(
+            tx.try_send_console(console("ordinary-full")),
+            Err(AdmissionError::ConsoleDropped)
+        );
+        assert_eq!(tx.snapshot().console_dropped, 1);
         for id in 1..64 {
             tx.try_send(response(id)).unwrap();
         }
@@ -580,6 +680,9 @@ mod tests {
     #[test]
     fn complete_existing_renderer_packet_pool_fits_after_hex_expansion() {
         let (tx, rx) = channel();
+        for _ in 0..CONSOLE_RECORDS {
+            tx.try_send_console(console("fixture")).unwrap();
+        }
         let packet = "ff".repeat(crate::rpc_authority::MAX_PACKET_BYTES);
         for connection in 1..=crate::rpc_authority::MAX_GLOBAL_PACKETS {
             tx.try_send(json!({"v":1,"event":"rpc.packet","target":connection,
@@ -588,7 +691,7 @@ mod tests {
         }
         assert_eq!(
             tx.snapshot().ordinary_frames,
-            crate::rpc_authority::MAX_GLOBAL_PACKETS
+            crate::rpc_authority::MAX_GLOBAL_PACKETS + CONSOLE_RECORDS
         );
         assert!(tx.snapshot().ordinary_wire_bytes > 2 * crate::rpc_authority::MAX_GLOBAL_BYTES);
         tx.try_send(json!({"v":1,"event":"shutdown"})).unwrap();
