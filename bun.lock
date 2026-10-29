@@ -25,11 +25,11 @@
     },
     "packages/artifacts": {
       "name": "@bunly/artifacts",
-      "version": "0.5.1",
+      "version": "0.5.2",
     },
     "packages/cli": {
       "name": "@bunly/cli",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "dependencies": {
         "@bunly/artifacts": "workspace:*",
         "@bunly/contracts": "workspace:*",
@@ -37,18 +37,18 @@
     },
     "packages/client": {
       "name": "@bunly/client",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "dependencies": {
         "@bunly/contracts": "workspace:*",
       },
     },
     "packages/contracts": {
       "name": "@bunly/contracts",
-      "version": "0.5.1",
+      "version": "0.5.2",
     },
     "packages/runtime": {
       "name": "@bunly/runtime",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "dependencies": {
         "@bunly/contracts": "workspace:*",
       },
