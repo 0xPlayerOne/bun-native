@@ -357,3 +357,34 @@ test('the mock reports desktop capabilities as unsupported instead of inventing 
     await backend.dispose()
   }
 })
+
+test('async window and runtime listener failures are observed after subscriptions retire', async () => {
+  const f = await fixture()
+  let reject!: (reason: unknown) => void
+  const pending = new Promise<void>((_resolve, fail) => {
+    reject = fail
+  })
+  let runtimeDeliveries = 0
+  let windowDeliveries = 0
+  const runtimeOff = f.backend.onEvent(() => {
+    runtimeDeliveries++
+    return pending
+  })
+  const windowOff = f.backend.onWindowEvent(f.window, () => {
+    windowDeliveries++
+    return pending
+  })
+  try {
+    f.send({ v: 1, event: 'window.state-changed', target: 1, data: state })
+    await turn()
+    assert.equal(runtimeDeliveries, 1)
+    assert.equal(windowDeliveries, 1)
+    runtimeOff()
+    windowOff()
+    reject(new Error('listener failed'))
+    await turn()
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+  } finally {
+    await f.stop()
+  }
+})
