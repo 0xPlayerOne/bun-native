@@ -44,6 +44,7 @@ jobs:
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
           python -c 'import os,sys; open(os.environ["GITHUB_ENV"],"a").write("PYTHON="+sys.executable+"\n")'
       - run: bun install --frozen-lockfile
+      - run: bun test tests/session-reset-fixture-cleanup.test.ts tests/session-reset.test.ts
       - run: |
           python tests/process_observer_test.py
       - run: rustup toolchain install 1.85.1 --profile minimal
