@@ -8,6 +8,9 @@ use std::{
     path::PathBuf,
     time::{Duration, Instant},
 };
+#[cfg(feature = "rpc-qualification")]
+#[path = "download_analysis_probe.rs"]
+mod analysis;
 #[path = "download_deadline.rs"]
 mod deadline;
 #[path = "download_diagnostics.rs"]
@@ -91,6 +94,8 @@ pub(super) struct Registry {
     entries: BTreeMap<u64, Record>,
     counts: Counts,
     shutdown_emitted: bool,
+    #[cfg(feature = "rpc-qualification")]
+    analysis: analysis::Registry,
 }
 impl Registry {
     pub fn len(&self) -> usize {
@@ -103,6 +108,8 @@ impl Registry {
         self.entries.contains_key(&view)
     }
     pub fn revoke(&mut self, view: u64) {
+        #[cfg(feature = "rpc-qualification")]
+        self.analysis.revoke(view);
         if let Some(record) = self.entries.get_mut(&view) {
             mark_cancel(record, Cancel::Revoked);
         }
@@ -255,6 +262,8 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
             },
         );
     });
+    #[cfg(feature = "rpc-qualification")]
+    analysis::admitted(input.id, browser.identifier());
     // The short admission reply precedes any progress or synchronous CEF callback.
     reply(request, json!({"id":id}));
     emit(input.id, "starting", None);
@@ -262,6 +271,10 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
     // secret original URL and IO permit bind callbacks to this admitted operation.
     host.start_download(Some(&CefString::from(request_url.as_str())));
     Ok(())
+}
+#[cfg(feature = "rpc-qualification")]
+pub(super) fn qualify_analysis(request: u64, args: &Value) -> Result<(), String> {
+    analysis::query(request, args)
 }
 pub(super) fn cancel(request: u64, args: &Value) -> Result<(), String> {
     let view = number(args, "id")?;
@@ -285,6 +298,8 @@ pub(super) fn cancel(request: u64, args: &Value) -> Result<(), String> {
     Ok(())
 }
 pub(super) fn cancel_if_revoked(view: u64) {
+    #[cfg(feature = "rpc-qualification")]
+    analysis::cancel_if_revoked(view);
     let (callback, notify) = STATE.with(|s| {
         let mut s = s.borrow_mut();
         let Some(record) = s.downloads.entries.get_mut(&view) else {
@@ -733,6 +748,8 @@ fn finish(view: u64) {
     };
     record.access.clear(&record.permit);
     let terminal = record.terminal.expect("terminal download settlement");
+    #[cfg(feature = "rpc-qualification")]
+    analysis::terminal(view, record.id, terminal.status == "completed");
     event(
         "download.progress",
         view,
@@ -821,6 +838,8 @@ static RETIRED: OnceLock<Mutex<Vec<Staging>>> = OnceLock::new();
 /// Runs at the existing UI fence, after all callback methods and context cleanup
 /// have returned. This counts Bunly's owned resources, not Chromium internals.
 pub(super) fn shutdown_receipt() {
+    #[cfg(feature = "rpc-qualification")]
+    analysis::shutdown();
     let receipt = STATE.with(|s| {
         let mut s = s.borrow_mut();
         let registry = &mut s.downloads;
