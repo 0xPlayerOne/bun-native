@@ -101,7 +101,9 @@ function. The signal is optional, but allows a generation-owned cancellation
 scope to retire its callbacks. Registration with an already aborted signal
 fails before retaining the listener. A backend admits at most 128 window
 subscriptions, reports `RESOURCE_IN_USE` at capacity, and returns capacity on
-unsubscribe, abort, window close or backend shutdown.
+unsubscribe, abort, window close or backend shutdown. Callback delivery remains
+synchronous; a thrown error or a rejected returned promise increments the backend
+listener-error diagnostic, even after that subscription retires.
 
 The event union is:
 
