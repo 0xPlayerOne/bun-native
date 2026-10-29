@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.4](https://github.com/0xPlayerOne/bunly/compare/v0.5.3...v0.5.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **downloads:** expose bounded native completion diagnostics ([#173](https://github.com/0xPlayerOne/bunly/issues/173)) ([2bc5bb9](https://github.com/0xPlayerOne/bunly/commit/2bc5bb94123ef99c738729b9749f479fc30a1089))
+
 ## [0.5.3](https://github.com/0xPlayerOne/bunly/compare/v0.5.2...v0.5.3) (2026-10-29)
 
 
