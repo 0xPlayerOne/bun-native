@@ -1,10 +1,30 @@
+type ResultRecord = { count: number; state: 'pending' | 'fulfilled' | 'rejected' }
+
+// Keep the promise reactions outside the observer's method scope so a retained
+// promise cannot capture the observer (and its weak-key table) through `this`.
+function attach(
+  promise: Promise<unknown>,
+  record: ResultRecord,
+  counterRef: WeakRef<{ count: number }>
+): void {
+  void promise.then(
+    () => {
+      record.state = 'fulfilled'
+      record.count = 0
+    },
+    () => {
+      record.state = 'rejected'
+      const counter = counterRef.deref()
+      if (counter) counter.count += record.count
+      record.count = 0
+    }
+  )
+}
+
 /** Observe async listener failures without retaining the listener or its owner. */
 export class ListenerResultObserver {
   readonly #counter: WeakRef<{ count: number }>
-  readonly #pending = new WeakMap<
-    Promise<unknown>,
-    { count: number; state: 'pending' | 'fulfilled' | 'rejected' }
-  >()
+  readonly #pending = new WeakMap<Promise<unknown>, ResultRecord>()
 
   constructor(counter: { count: number }) {
     this.#counter = new WeakRef(counter)
@@ -22,20 +42,8 @@ export class ListenerResultObserver {
       }
       return
     }
-    const record = { count: 1, state: 'pending' as 'pending' | 'fulfilled' | 'rejected' }
+    const record: ResultRecord = { count: 1, state: 'pending' }
     this.#pending.set(promise, record)
-    const counterRef = this.#counter
-    void promise.then(
-      () => {
-        record.state = 'fulfilled'
-        record.count = 0
-      },
-      () => {
-        record.state = 'rejected'
-        const counter = counterRef.deref()
-        if (counter) counter.count += record.count
-        record.count = 0
-      }
-    )
+    attach(promise, record, this.#counter)
   }
 }
