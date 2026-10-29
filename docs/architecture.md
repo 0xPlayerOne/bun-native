@@ -69,6 +69,10 @@ A view belongs to one window and one session. Closing a window disposes its view
 A referenced session cannot be disposed. Backend disposal releases windows,
 views, sessions, and event subscriptions. App startup rolls back created resources
 on failure. Actual native adapters must preserve these observable semantics.
+The `startApp` helper attempts both window and session cleanup in order even if
+one fails. Startup errors are retained with cleanup failures in an
+`AggregateError`; disposal preserves a single error or aggregates multiple
+failures. Backend ownership checks still prevent disposal of an in-use session.
 
 The opt-in [managed generation contract](managed-generations.md) separates stable
 owner adapters from replaceable handlers and tracks retirement without inventing
