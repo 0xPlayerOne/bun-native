@@ -49,6 +49,15 @@ export default async function fileDownloads(backend: CefBackend): Promise<void> 
     sha256: string | null
   }[] = []
   const checks: Record<string, boolean> = {}
+  let firstRequestElapsedMs: number | null = null,
+    replacementRequestElapsedMs: number | null = null
+  // Diagnostic only: admission invocation through verified bytes, hash and stage cleanup.
+  const diagnosticElapsed = (since: number): number | null => {
+    const elapsed = performance.now() - since
+    return Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= DOWNLOAD_WORKLOAD_MS
+      ? elapsed
+      : null
+  }
   let phase = 'setup'
   const failureText = (error: unknown): string => downloadFixtureFailure(phase, error)
   let server: Awaited<ReturnType<typeof downloadFixtureServer>> | undefined,
@@ -281,19 +290,28 @@ export default async function fileDownloads(backend: CefBackend): Promise<void> 
     )
     checks['rootMismatchRejected'] = true
 
-    const small = await tracked(view, 'complete', request('result.bin'))
+    // Diagnostic-only first-request probe; the maintained fixture remains six seconds.
+    const firstRequestStarted = performance.now()
+    const small = await tracked(
+      view,
+      'complete',
+      request('result.bin', '/small.bin', { timeoutMs: 12_000 })
+    )
     assert.equal((await small.complete(server.small)).status, 'completed')
+    firstRequestElapsedMs = diagnosticElapsed(firstRequestStarted)
     const beforeCollision = server.count('/small.bin')
     await assert.rejects(backend.startDownload(view, request('result.bin')), /exists|destination/i)
     assert.equal(hash(readFileSync(join(root, 'result.bin'))), hash(server.small))
     assert.equal(server.count('/small.bin'), beforeCollision)
     checks['duplicatePreserved'] = true
+    const replacementRequestStarted = performance.now()
     const replace = await tracked(
       view,
       'explicit-replace-large',
       request('result.bin', '/large.bin', { destination: destination('result.bin', 'replace') })
     )
     assert.equal((await replace.complete(server.large)).status, 'completed')
+    replacementRequestElapsedMs = diagnosticElapsed(replacementRequestStarted)
     mkdirSync(join(root, 'occupied.bin'), { mode: 0o700 })
     await assert.rejects(
       backend.startDownload(
@@ -507,6 +525,15 @@ export default async function fileDownloads(backend: CefBackend): Promise<void> 
       schema: 1,
       passed: failure === null,
       workloadMs,
+      // The unchanged exact-key acceptance parser intentionally excludes this probe.
+      diagnosticTiming: {
+        schema: 1,
+        diagnosticOnly: true,
+        firstRequestTimeoutMs: 12_000,
+        replacementRequestTimeoutMs: 6_000,
+        firstRequestElapsedMs,
+        replacementRequestElapsedMs,
+      },
       observations: {
         steps,
         checks,
