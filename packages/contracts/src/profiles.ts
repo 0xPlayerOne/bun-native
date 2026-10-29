@@ -91,6 +91,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
           capabilities: Object.freeze([
             'window.state',
             'window.geometry',
+            'window.commands',
             'app.lifecycle',
             'view.composition',
             'download.manage',
@@ -105,6 +106,11 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
           backend: 'cef',
           capabilities: Object.freeze(['clipboard.text'] as const),
           platforms: Object.freeze(['darwin-arm64', 'win32-x64'] as const),
+        }),
+        Object.freeze({
+          backend: 'cef',
+          capabilities: Object.freeze(['dialog.file'] as const),
+          platforms: Object.freeze(['darwin-arm64'] as const),
         }),
       ] as const),
     }),

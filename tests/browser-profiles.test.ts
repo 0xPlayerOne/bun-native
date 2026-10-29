@@ -87,6 +87,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
         capabilities: [
           'window.state',
           'window.geometry',
+          'window.commands',
           'app.lifecycle',
           'view.composition',
           'download.manage',
@@ -102,6 +103,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
         capabilities: ['clipboard.text'],
         platforms: ['darwin-arm64', 'win32-x64'],
       },
+      { backend: 'cef', capabilities: ['dialog.file'], platforms: ['darwin-arm64'] },
     ])
     assert.equal(profileProvidesCapability(cef, 'cef', 'window.lifecycle'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'session.persistent'), true)

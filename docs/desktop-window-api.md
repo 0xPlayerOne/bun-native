@@ -3,8 +3,10 @@
 This is the first implementation increment for issue #34. It implements window
 state, geometry and disposable notifications through the browser-independent
 contract. [Desktop services](desktop-services.md) add scoped text clipboard
-operations and application lifecycle. Menus, tray, general dialogs, shortcuts,
-external URL/deep-link handling and application reopen remain separate #34 work.
+operations and application lifecycle. [Window commands](window-commands.md) add
+menus and local shortcuts; [file dialogs](file-dialogs.md) add scoped macOS selection.
+System menus, tray, general message dialogs, global shortcuts, external URL/deep-link
+handling and application reopen remain separate #34 work.
 This increment does not close that issue or establish physical input, accessibility or display
 qualification for #38.
 

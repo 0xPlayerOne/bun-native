@@ -1,6 +1,7 @@
 //! Admission for the private Bun -> CEF command pipe, not renderer authorization.
 //! Wire bytes stay reserved through the lifetime of the posted task. FIFO dispatch
-//! is unchanged: lifecycle side effects are not reordered to obtain priority.
+//! is unchanged: a macOS menu wake may only request owned popup cancellation;
+//! command dispatch, acknowledgements and lifecycle destruction remain FIFO.
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -39,6 +40,11 @@ fn limits() -> &'static Limits {
         assert!(value.native_ordinary_queued_bytes < value.native_queued_bytes);
         value
     })
+}
+
+#[cfg(any(target_os = "macos", test))]
+pub fn native_request_limit() -> usize {
+    limits().native_requests
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -166,7 +172,10 @@ mod tests {
                 "credentials.discard",
                 "download.cancel",
                 "browser.action.cancel",
-                "browser.action.release"
+                "browser.action.release",
+                "commands.cancel",
+                "commands.dispose",
+                "dialog.cancel"
             ]
         );
     }

@@ -10,7 +10,9 @@ import {
 } from './native-transport.ts'
 import { Registry } from './registry.ts'
 import { ApplicationLifecycle } from './application-lifecycle.ts'
+import { CefFileDialogs } from './cef-dialogs.ts'
 import { CefDownloads } from './cef-downloads.ts'
+import { CefWindowCommands } from './cef-window-commands.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -63,10 +65,20 @@ import {
   normalizeViewPresentation,
   parseViewPresentationState,
   normalizeDownloadRequest,
+  normalizeFileDialog,
 } from '../../contracts/src/index.ts'
 import type {
   BrowserBackend,
   ClipboardBackend,
+  WindowCommandsBackend,
+  WindowCommandsDefinition,
+  WindowCommandsHandle,
+  WindowCommandsEvent,
+  WindowMenuPoint,
+  FileDialogBackend,
+  FileDialogResult,
+  OpenFileDialogOptions,
+  SaveFileDialogOptions,
   ApplicationLifecycleBackend,
   ApplicationState,
   ApplicationEvent,
@@ -206,7 +218,12 @@ export type NativeCapabilityGrant =
       readonly arguments: readonly string[]
     }
   | {
-      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+      readonly name:
+        | 'clipboard-read'
+        | 'clipboard-write'
+        | 'dialog-open'
+        | 'dialog-save'
+        | 'window-commands'
     }
   | {
       readonly name:
@@ -226,7 +243,12 @@ export type NativeOperationRequest =
       readonly arguments: readonly string[]
     }
   | {
-      readonly name: 'clipboard-read' | 'clipboard-write' | 'dialog-open' | 'dialog-save'
+      readonly name:
+        | 'clipboard-read'
+        | 'clipboard-write'
+        | 'dialog-open'
+        | 'dialog-save'
+        | 'window-commands'
     }
   | {
       readonly name:
@@ -390,18 +412,22 @@ export class CefBackend
   implements
     BrowserBackend,
     ClipboardBackend,
+    FileDialogBackend,
     ApplicationLifecycleBackend,
     ViewCompositionBackend,
     DownloadManagementBackend,
-    BrowserActionsBackend
+    BrowserActionsBackend,
+    WindowCommandsBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
     return this.#descriptor
   }
   readonly #transport: NativeTransport
+  readonly #commands: CefWindowCommands
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
+  readonly #dialogs: CefFileDialogs
   readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
@@ -466,10 +492,30 @@ export class CefBackend
   constructor(transport: NativeTransport) {
     this.#transport = transport
     this.#browserActions = new CefBrowserActions(transport)
+    this.#dialogs = new CefFileDialogs(transport)
     this.#downloads = new CefDownloads(transport, () => {
       this.#listenerErrors++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    this.#commands = new CefWindowCommands(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return {
+          view: captured.view,
+          window: captured.resource.window,
+          id: captured.resource.native,
+          scope: captured.nativeScope,
+        }
+      },
+      () => {
+        this.#active()
+        requireCapability(this.descriptor, 'window.commands')
+      },
+      () => {
+        this.#listenerErrors++
+      }
+    )
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
     void transport.ready.then(
       () => this.#application.ready(transport.desktopCapabilities.includes('app.lifecycle')),
@@ -490,6 +536,8 @@ export class CefBackend
       this.#disposed = true
       this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
+      this.#commands.close()
+      this.#dialogs.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -519,6 +567,68 @@ export class CefBackend
   }
   #active(): void {
     if (this.#disposed) throw new BunlyError('DISPOSED', 'CEF backend disposed')
+  }
+  createWindowCommands(
+    scope: PolicyScope,
+    definition: WindowCommandsDefinition,
+    options?: OperationOptions
+  ): Promise<WindowCommandsHandle> {
+    return this.#commands.create(scope, definition, options)
+  }
+  showWindowMenu(
+    commands: WindowCommandsHandle,
+    point: WindowMenuPoint,
+    options?: OperationOptions
+  ): Promise<void> {
+    return this.#commands.show(commands, point, options)
+  }
+  cancelWindowMenu(commands: WindowCommandsHandle): Promise<void> {
+    return this.#commands.cancel(commands)
+  }
+  onWindowCommandsEvent(
+    commands: WindowCommandsHandle,
+    listener: (event: WindowCommandsEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#commands.onEvent(commands, listener, options)
+  }
+  disposeWindowCommands(commands: WindowCommandsHandle): Promise<void> {
+    return this.#commands.dispose(commands)
+  }
+  /** @internal Used by the stable managed owner, never a renderer capability. */
+  windowCommandsMatchScope(commands: WindowCommandsHandle, scope: PolicyScope): boolean {
+    return this.#commands.matchesScope(commands, scope)
+  }
+  windowCommandsDiagnostics() {
+    return this.#commands.diagnostics()
+  }
+  /** @internal Requires a contributor host built with rpc-qualification. */
+  qualifyWindowCommands(
+    commands: WindowCommandsHandle,
+    action: 'shortcut' | 'select-first',
+    command?: string
+  ): Promise<void> {
+    return this.#commands.qualify(commands, action, command)
+  }
+  /** @internal Counts native-owned registrations; requires the contributor host. */
+  async qualifyWindowCommandsSnapshot(): Promise<{
+    readonly registrations: number
+    readonly shortcuts: number
+    readonly popups: number
+  }> {
+    this.#active()
+    requireCapability(this.descriptor, 'window.commands')
+    const result = await this.#transport.call('commands.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !== 'popups,registrations,shortcuts' ||
+      Object.values(result).some(
+        (value) => !Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > 2048
+      )
+    )
+      throw new Error('Malformed native window command snapshot')
+    return Object.freeze(result) as { registrations: number; shortcuts: number; popups: number }
   }
   whenApplicationReady(options?: OperationOptions): Promise<ApplicationState> {
     return this.#application.whenReady(options)
@@ -611,6 +721,60 @@ export class CefBackend
     const result = await this.#clipboard(scope, 'clipboard.qualification.empty', undefined, options)
     if (typeof result !== 'boolean') throw new Error('Malformed native clipboard preflight receipt')
     return result
+  }
+  async #fileDialog(
+    scope: PolicyScope,
+    kind: 'open' | 'save',
+    dialog: OpenFileDialogOptions | SaveFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    requireCapability(this.descriptor, 'dialog.file')
+    const settings = normalizeFileDialog(kind, dialog)
+    try {
+      return await this.#dialogs.show(
+        captured.resource.native,
+        { ...captured.nativeScope },
+        kind,
+        settings,
+        () => {
+          this.#active()
+          this.#capturedPolicyScope(scope)
+        },
+        options?.signal
+      )
+    } catch (error) {
+      if (error instanceof Error) {
+        for (const code of [
+          'PERMISSION_DENIED',
+          'UNSUPPORTED_CAPABILITY',
+          'INVALID_ARGUMENT',
+          'RESOURCE_IN_USE',
+        ] as const)
+          if (error.message.startsWith(`${code}:`)) throw new BunlyError(code, error.message)
+      }
+      throw error
+    }
+  }
+  showOpenFileDialog(
+    scope: PolicyScope,
+    dialog: OpenFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    return this.#fileDialog(scope, 'open', dialog, options)
+  }
+  showSaveFileDialog(
+    scope: PolicyScope,
+    dialog: SaveFileDialogOptions,
+    options?: OperationOptions
+  ): Promise<FileDialogResult> {
+    return this.#fileDialog(scope, 'save', dialog, options)
+  }
+  /** @internal Bounded metadata only; ordinary hosts reject this contributor operation. */
+  async qualifyFileDialogState(): Promise<unknown> {
+    this.#active()
+    return this.#transport.call('dialog.qualification.state', {})
   }
   #createdId(value: unknown): number {
     try {
@@ -1604,7 +1768,8 @@ export class CefBackend
         this.#windowSubscriptionCount +
         application.listeners +
         application.readyWaiters +
-        this.#downloads.listenerCount,
+        this.#downloads.listenerCount +
+        this.#commands.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
@@ -1839,6 +2004,7 @@ export class CefBackend
     if (this.#shutdown) return this.#shutdown
     if (this.#disposed) return this.closed
     this.#disposed = true
+    this.#commands.stop()
     this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
@@ -1867,15 +2033,18 @@ export class CefBackend
     return this.#shutdown
   }
   #event(event: NativeEvent): void {
+    this.#commands.event(event)
     if (event.event === 'app.quitting' && this.descriptor.capabilities.includes('app.lifecycle')) {
       if (event.target !== undefined || !event.data || Object.keys(event.data).length !== 1)
         throw new Error('Malformed native application quitting event')
       // Native-initiated quit fences local calls before application callbacks run.
       this.#disposed = true
+      this.#commands.stop()
       this.#application.quitting(event.data['reason'])
     }
     this.#downloads.event(event)
     this.#browserActions.event(event)
+    this.#dialogs.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
@@ -1962,6 +2131,7 @@ export class CefBackend
     }
   }
   #retireRpc(view: ViewHandle): void {
+    this.#commands.retireView(view)
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
     this.#streamRetired.add(view)
