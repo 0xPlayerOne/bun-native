@@ -17,9 +17,10 @@ operator. It does not close #34–#38 or qualify a production release.
 
 The [text status-item facet](status-items.md) supplies a macOS adapter and an exact
 source fixture for four creations, two AppKit action callbacks and zero remaining
-native owners. It has no retained native qualification result yet; Windows and
-Linux explicitly report unsupported status items. Physical input, status-bar
-appearance and assistive technology remain separate observations.
+native owners. The bounded macOS synthetic-input fixture passed; [PR #142](https://github.com/0xPlayerOne/bunly/pull/142)
+records the exact source and native artifact attribution, including earlier failed
+attempts. Windows and Linux explicitly report unsupported status items. Physical
+input, status-bar appearance and assistive technology remain separate observations.
 
 The historical native teardown watchdog remains tracked by
 [#124](https://github.com/0xPlayerOne/bunly/issues/124). A later passing control run
