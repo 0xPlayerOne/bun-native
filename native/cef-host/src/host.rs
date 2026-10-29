@@ -238,10 +238,11 @@ fn view_close_pending(state: &HostState, view: u64) -> bool {
     pending
 }
 fn any_close_pending(state: &HostState) -> bool {
-    !dialogs::is_empty() || state
-        .views
-        .keys()
-        .any(|view| view_close_pending(state, *view))
+    !dialogs::is_empty()
+        || state
+            .views
+            .keys()
+            .any(|view| view_close_pending(state, *view))
 }
 fn programmatic_file_diagnostics(state: &HostState) -> Value {
     #[cfg(feature = "programmatic-files")]
@@ -3556,6 +3557,12 @@ mod tests {
             }
             assert_eq!(caps.contains(&"dialog.file"), dialogs);
             assert_eq!(caps.contains(&"clipboard.text"), clipboard);
+            for feature in ["view.file-input", "view.file-drop"] {
+                assert_eq!(
+                    caps.contains(&feature),
+                    cfg!(feature = "programmatic-files")
+                );
+            }
             #[cfg(feature = "browser-actions")]
             for required in [
                 "view.snapshot",
