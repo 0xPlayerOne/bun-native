@@ -5,6 +5,7 @@ export const CAPABILITIES = [
   'window.state',
   'window.geometry',
   'window.commands',
+  'status.item',
   'clipboard.text',
   'dialog.file',
   'app.lifecycle',

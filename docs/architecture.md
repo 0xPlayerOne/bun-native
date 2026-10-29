@@ -78,6 +78,12 @@ quiescence, atomic handler publication and actual isolate retirement.
 sessions, terminals and managed processes after validating current document and
 policy authority. The terminal writer and native child stay with the stable owner.
 
+The macOS [text status-item facet](status-items.md) follows the same ownership
+boundary. A distinct native document grant permits one bounded item per view;
+the stable owner retains it across managed generations and journals actual action
+callbacks. Native status-bar removal precedes callback-owner release, including
+the ordinary quit fence. Other platforms report the facet as unsupported.
+
 [Development sessions](development-host.md) reuse a verified prepared host and
 bundle backend changes with Bun. Frontend tooling keeps its independent HMR
 connection; shared edits notify both paths. An incompatible configuration, native

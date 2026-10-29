@@ -42,8 +42,26 @@ import {
   acceptFileDialogs,
   acceptDialogsReport,
 } from './dialogs-acceptance.ts'
+import {
+  STATUS_PROFILE,
+  statusSourceSelectors,
+  acceptStatusItems,
+  acceptStatusReport,
+} from './status-acceptance.ts'
 
 const profiles = {
+  status: {
+    profile: STATUS_PROFILE,
+    sourceSelectors: statusSourceSelectors,
+    fixture: 'examples/status-items',
+    browserEntry: null,
+    directory: 'status-items',
+    title: 'Status Items',
+    workloadLimitation:
+      'Four macOS text status items and two actual AppKit performClick callbacks; Windows/Linux explicitly unsupported. No tray menus, icons, keepalive or physical-input claim.',
+    acceptObservation: acceptStatusItems,
+    acceptReport: acceptStatusReport,
+  },
   windows: {
     profile: DESKTOP_PROFILE,
     sourceSelectors: desktopSourceSelectors,
@@ -138,6 +156,7 @@ export function desktopProfile(name = 'windows') {
       name === 'downloads' ||
       name === 'parent-close' ||
       name === 'commands' ||
+      name === 'status' ||
       name === 'dialogs',
     'Unknown desktop qualification case'
   )
