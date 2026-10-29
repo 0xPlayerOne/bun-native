@@ -2500,6 +2500,47 @@ test('a throwing settled-diagnostic clock cannot reject detached handler work', 
   }
 })
 
+test('a throwing started-diagnostic clock does not suppress the handler', async () => {
+  const env = await environment()
+  const { right } = pair()
+  const clock = new Clock()
+  const now = clock.now.bind(clock)
+  let reads = 0,
+    calls = 0
+  clock.now = () => {
+    if (++reads === 4) throw new Error('diagnostic clock')
+    return now()
+  }
+  const contract = defineRpc({ echo: procedure(text, text) })
+  const server = new RpcServer(
+    contract,
+    {
+      echo: {
+        capability: 'echo',
+        handle: () => {
+          calls++
+          return 'done'
+        },
+      },
+    },
+    env.lease(),
+    right,
+    { scheduler: clock, onDiagnostic: () => {} }
+  )
+  right.message?.(
+    encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+  )
+  await flush()
+  expect(calls).toBe(1)
+  expect(right.packets.map((p) => decodeRpc(p, limits))).toEqual([
+    expect.objectContaining({ type: 'success', id: 1 }),
+  ])
+  expect(server.diagnostics().executing).toBe(0)
+  expect(env.authority.diagnostics().executing).toBe(0)
+  expect(clock.timers.size).toBe(0)
+  server.close()
+})
+
 test('a reentrant diagnostic observer can close the server without releasing an unsettled handler', async () => {
   const done = deferred<string>()
   let close: () => void = () => {}
