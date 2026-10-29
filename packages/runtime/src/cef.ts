@@ -1,3 +1,4 @@
+import { DiagnosticObserverBudget } from './diagnostic-observer.ts'
 import { NativeTerminalDriver, type NativeTerminalConfiguration } from './terminal-owner.ts'
 import { TerminalService, type TerminalServiceOptions } from './terminal.ts'
 import { qualifyCookieProvider } from './credential-proof.ts'
@@ -93,6 +94,7 @@ import type {
   ApplicationEvent,
   PolicyScope,
   BackendDescriptor,
+  RendererConsoleBackend,
   Diagnostics,
   WindowHandle,
   ViewHandle,
@@ -424,6 +426,7 @@ function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDe
 /** Native-owned windows and sessions. This module is never imported by renderer code. */
 export class CefBackend
   implements
+    RendererConsoleBackend,
     BrowserBackend,
     ClipboardBackend,
     FileDialogBackend,
@@ -456,6 +459,9 @@ export class CefBackend
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
+  readonly #consoleObserverBudget = new DiagnosticObserverBudget(() => {
+    this.#listenerErrors++
+  })
   readonly #consoleSubscriptions = new Map<
     ViewHandle,
     Set<{ listener: (message: string) => void; dispose(): void; active: boolean }>
@@ -2287,11 +2293,7 @@ export class CefBackend
         throw new Error('Malformed native console event')
       for (const subscription of Array.from(this.#consoleSubscriptions.get(view) ?? [])) {
         if (!subscription.active || this.#disposed || this.#closing.has(view)) continue
-        try {
-          subscription.listener(event.data['message'])
-        } catch {
-          this.#listenerErrors++
-        }
+        this.#consoleObserverBudget.invoke(subscription.listener, event.data['message'])
       }
     }
     if (event.event === 'window.closed' && window) this.#dropWindow(window)

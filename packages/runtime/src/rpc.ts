@@ -1,3 +1,4 @@
+import { DiagnosticObserverBudget } from './diagnostic-observer.ts'
 import {
   RpcError,
   defineRpc,
@@ -68,6 +69,7 @@ export class RpcServer<S extends RpcSchema> {
   readonly #revoked: () => void
   readonly #onDiagnostic: RpcServerOptions['onDiagnostic']
   readonly #diagnosticQueue: RpcDiagnostic[] = []
+  readonly #observerBudget = new DiagnosticObserverBudget()
   #diagnosticScheduled = false
   #sequence = 0
   #closed = false
@@ -139,11 +141,7 @@ export class RpcServer<S extends RpcSchema> {
       this.#diagnosticScheduled = false
       const pending = this.#diagnosticQueue.splice(0)
       for (const event of pending) {
-        try {
-          this.#onDiagnostic?.(event)
-        } catch {
-          /* Observers do not alter RPC ownership. */
-        }
+        if (this.#onDiagnostic) this.#observerBudget.invoke(this.#onDiagnostic, event)
       }
     })
   }

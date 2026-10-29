@@ -86,9 +86,13 @@ for explicitly requested messages. It checks the opaque live view handle and rem
 listeners on unsubscribe, abort, view close or backend shutdown. The observation
 continues across navigation for that view; the native event carries only a bounded
 message, not severity, source position, document or origin. It must not be used as
-authority. The mock backend returns an unsupported capability error. Messages are
+authority. Existing native hosts forward console messages over their private pipe even
+without this subscription; the generic native observer can also receive them. The
+subscription and bundle collection are opt-in, while native forwarding is not.
+The mock backend returns an unsupported capability error. Messages are
 raw application data; callers must select and redact them before retaining or
-sharing a bundle.
+sharing a bundle. Console callbacks also contain thrown or rejected errors and
+drop new callback invocations when 128 asynchronous results remain outstanding.
 
 `RpcServerOptions.onDiagnostic` opts in to fixed per-handler `started` and `settled`
 records with a bounded elapsed time and a fixed outcome. It contains no method,
@@ -96,8 +100,9 @@ request ID, input, output, arbitrary exception or stack. `settled` occurs only
 when the handler actually releases its execution slot, including after cancellation;
 `success` indicates a validated handler result submitted for delivery, not a
 client receipt. Pre-admission rejections have no handler record. Callbacks are
-queued outside dispatch, exceptions are ignored, and a full 128-record queue drops
-new observations. These are best-effort diagnostic observations, not an audit log.
+queued outside dispatch; thrown and rejected errors are contained. A full
+128-record queue or 128 outstanding asynchronous callback results drops new
+observations. These are best-effort diagnostic observations, not an audit log.
 `CefBackend.serveRpc` and `serveLoopbackRpc` pass this option to their servers.
 Neither observer automatically adds records to the collector or opens an endpoint.
 

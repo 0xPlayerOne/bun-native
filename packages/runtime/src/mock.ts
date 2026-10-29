@@ -9,6 +9,7 @@ import {
 } from '../../contracts/src/index.ts'
 import type {
   BackendDescriptor,
+  RendererConsoleBackend,
   Bounds,
   BrowserBackend,
   ClipboardBackend,
@@ -60,6 +61,7 @@ interface ViewRecord {
 /** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
 export class MockBackend
   implements
+    RendererConsoleBackend,
     BrowserBackend,
     ClipboardBackend,
     ApplicationLifecycleBackend,

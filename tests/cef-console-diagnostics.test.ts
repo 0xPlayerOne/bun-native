@@ -28,7 +28,7 @@ test('console observation is opt-in, opaque-view scoped, bounded and retired wit
     assert.throws(() => backend.onViewConsole({ ...view }, () => {}))
     const abort = new AbortController()
     backend.onViewConsole(view, (message) => messages.push(message), { signal: abort.signal })
-    backend.onViewConsole(view, () => {
+    backend.onViewConsole(view, async () => {
       throw new Error('listener failure')
     })
     peer.send({ v: 1, event: 'view.console', target: 3, data: { message: 'hello' } })

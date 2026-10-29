@@ -1427,7 +1427,7 @@ test('RPC diagnostic callbacks observe actual cancellation settlement without re
   const { client, server } = await setup(
     { work: { capability: 'work', handle: () => done.promise } },
     {
-      onDiagnostic: (event) => {
+      onDiagnostic: async (event) => {
         events.push(event)
         throw new Error('observer failure')
       },
