@@ -33,6 +33,9 @@ export class ListenerResultObserver {
 
   observe(value: unknown): void {
     if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return
+    // Both Promise.resolve and intrinsic then may consult a native promise's
+    // constructor/species. A hostile accessor can prevent observation; the
+    // dispatcher's catch counts the observation failure, not its rejection.
     const promise = Promise.resolve(value)
     const prior = this.#pending.get(promise)
     if (prior) {

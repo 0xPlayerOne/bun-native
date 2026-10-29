@@ -65,3 +65,25 @@ test('a native promise with an overridden then still has its rejection observed'
   await flush()
   expect(counter.count).toBe(1)
 })
+
+test('a rejected native promise with a throwing constructor getter cannot be observed intrinsically', async () => {
+  const module = new URL('../packages/runtime/src/mock.ts', import.meta.url).href
+  const script = `
+    import { MockBackend } from ${JSON.stringify(module)}
+    const failures = []
+    process.on('unhandledRejection', error => failures.push(error.message))
+    const backend = new MockBackend()
+    const promise = Promise.reject(new Error('original rejection'))
+    Object.defineProperty(promise, 'constructor', { get() { throw new Error('constructor failure') } })
+    backend.onEvent(() => promise)
+    await backend.createSession({ persistence: 'ephemeral', partition: 'probe' })
+    await Bun.sleep(20)
+    console.log(JSON.stringify({ errors: backend.diagnostics().listenerErrors, failures }))
+  `
+  const child = Bun.spawn([process.execPath, '-e', script], { stdout: 'pipe', stderr: 'pipe' })
+  const output = await new Response(child.stdout).text()
+  const stderr = await new Response(child.stderr).text()
+  expect(await child.exited).toBe(0)
+  expect(stderr).toBe('')
+  expect(JSON.parse(output)).toEqual({ errors: 1, failures: ['original rejection'] })
+})
