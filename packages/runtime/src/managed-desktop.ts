@@ -6,11 +6,15 @@ import type {
   WindowHandle,
   WindowCommandsHandle,
   WindowMenuPoint,
+  StatusItemHandle,
+  ApplicationLinkReader,
+  ApplicationLinkBatch,
 } from '../../contracts/src/index.ts'
 import {
   normalizeViewPresentation,
   validateBounds,
   validateWindowMenuPoint,
+  normalizeStatusItem,
 } from '../../contracts/src/index.ts'
 import { validateClipboardText } from '../../contracts/src/desktop.ts'
 import { normalizeFileDialog } from '../../contracts/src/dialogs.ts'
@@ -95,6 +99,8 @@ const operations = {
   process: ['state', 'write', 'resize', 'signal'],
   clipboard: ['read-text', 'write-text', 'clear'],
   commands: ['show', 'cancel'],
+  'status-item': ['update'],
+  'application-links': [],
   dialog: ['open', 'save'],
 } as const
 const signals = new Set([
@@ -208,6 +214,22 @@ export class ManagedDesktopResources {
         )
       )
         return false
+      if (
+        entry.kind === 'status-item' &&
+        !this.backend.statusItemMatchesScope(
+          entry.handle as StatusItemHandle,
+          entry.authority.scope
+        )
+      )
+        return false
+      if (
+        entry.kind === 'application-links' &&
+        !this.backend.applicationLinkReaderMatchesScope(
+          entry.handle as ApplicationLinkReader,
+          entry.authority.scope
+        )
+      )
+        return false
       if (entry.policy) {
         const result: unknown = entry.policy(operation)
         if (result !== true) {
@@ -254,7 +276,8 @@ export class ManagedDesktopResources {
       input: string,
       context: ManagedCallContext
     ) => unknown | Promise<unknown>,
-    dispose: () => Promise<void>
+    dispose: () => Promise<void>,
+    refreshEvents?: () => Promise<void>
   ): Entry {
     if (this.#closed) throw new ManagedError('DISPOSED')
     if (!/^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$/.test(name) || this.#entries.has(name)) invalid()
@@ -270,7 +293,11 @@ export class ManagedDesktopResources {
       invalid()
     const allowed = new Set<string>([
       ...operations[kind],
-      ...(['window', 'view', 'session', 'commands'].includes(kind) ? lifecycleOperations : []),
+      ...(['window', 'view', 'session', 'commands', 'status-item', 'application-links'].includes(
+        kind
+      )
+        ? lifecycleOperations
+        : []),
     ])
     const selected = new Set<string>()
     for (const operation of policy.operations) {
@@ -293,6 +320,11 @@ export class ManagedDesktopResources {
         if (operation === 'events') {
           empty(input)
           if (entry.eventOverflow) throw new ManagedError('CAPACITY')
+          if (refreshEvents) {
+            await refreshEvents()
+            if (!this.#current(entry, operation)) throw new ManagedError('DENIED')
+            if (!context.isCurrent() || context.signal.aborted) throw new ManagedError('RETIRED')
+          }
           const events = entry.events.map((event) => structuredClone(event))
           if (events.length)
             entry.lastRead = { generation: context.generation, sequence: events.at(-1)!.sequence }
@@ -439,6 +471,127 @@ export class ManagedDesktopResources {
       void this.#close(entry)
       throw error
     }
+    return entry.binding.resource
+  }
+  /** The stable owner retains the item; generations consume its bounded click journal. */
+  registerStatusItem(
+    name: string,
+    item: StatusItemHandle,
+    policy: ManagedDesktopPolicy
+  ): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority || !this.backend.statusItemMatchesScope(item, authority.scope))
+      throw new ManagedError('DENIED')
+    let stop = () => {}
+    const entry = this.#register(
+      name,
+      'status-item',
+      item,
+      policy,
+      async (operation, input) => {
+        if (operation !== 'update') invalid()
+        let definition
+        try {
+          definition = normalizeStatusItem(JSON.parse(input))
+        } catch {
+          invalid()
+        }
+        await this.backend.updateStatusItem(item, definition)
+        return null
+      },
+      async () => {
+        stop()
+        await this.backend.disposeStatusItem(item)
+      }
+    )
+    try {
+      stop = this.backend.onStatusItemEvent(item, (event) => {
+        if (event.type === 'revoked') {
+          void this.#close(entry)
+          return
+        }
+        if (!this.#current(entry, 'events')) return
+        this.#appendEvent(entry, {
+          sequence: ++entry.eventSequence,
+          type: event.type,
+          state: event,
+        })
+      })
+    } catch (error) {
+      void this.#close(entry)
+      throw error
+    }
+    return entry.binding.resource
+  }
+  /** Native delivery transfers into the stable host journal before native ACK.
+   * Worker retirement never owns that transfer and cannot erase its result.
+   */
+  registerApplicationLinks(
+    name: string,
+    reader: ApplicationLinkReader,
+    policy: ManagedDesktopPolicy
+  ): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority || !this.backend.applicationLinkReaderMatchesScope(reader, authority.scope))
+      throw new ManagedError('DENIED')
+    let entry!: Entry
+    let pending: Promise<void> | undefined
+    let pendingBatch: ApplicationLinkBatch | undefined
+    const refresh = (): Promise<void> => {
+      if (pending) return pending
+      pending = (async () => {
+        if (pendingBatch) {
+          await this.backend.acknowledgeApplicationLinks(reader, pendingBatch)
+          pendingBatch = undefined
+        }
+        const batch = await this.backend.readApplicationLinks(reader)
+        if (!this.#current(entry, 'events')) throw new ManagedError('DENIED')
+        const additions: EventRecord[] = batch.links.map((link, index) => ({
+          sequence: entry.eventSequence + index + 1,
+          type: 'link',
+          state: link,
+        }))
+        if (batch.overflow)
+          additions.push({
+            sequence: entry.eventSequence + additions.length + 1,
+            type: 'overflow',
+            state: { dropped: batch.overflow },
+          })
+        const bytes = additions.reduce(
+          (total, event) => total + Buffer.byteLength(JSON.stringify(event)),
+          0
+        )
+        if (
+          entry.events.length + additions.length > this.#maxEvents ||
+          entry.eventBytes + bytes > this.#maxEventBytes ||
+          !Number.isSafeInteger(entry.eventSequence + additions.length)
+        )
+          throw new ManagedError('CAPACITY')
+        // Commit the whole read before the destructive native ACK. If ACK fails,
+        // keep its authentic receipt and retry it before reading another batch.
+        entry.events.push(...additions)
+        entry.eventBytes += bytes
+        entry.eventSequence += additions.length
+        pendingBatch = batch
+        await this.backend.acknowledgeApplicationLinks(reader, batch)
+        pendingBatch = undefined
+      })().finally(() => {
+        pending = undefined
+      })
+      return pending
+    }
+    entry = this.#register(
+      name,
+      'application-links',
+      reader,
+      policy,
+      () => invalid(),
+      async () => {
+        await this.backend.disposeApplicationLinkReader(reader)
+        pendingBatch = undefined
+      },
+      refresh
+    )
     return entry.binding.resource
   }
   /** A generation owns each pending selection and cancels it before retiring. */

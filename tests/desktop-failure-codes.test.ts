@@ -37,6 +37,15 @@ test('desktop summaries recognize only fixed fixture labels, including current d
     classifyDesktopFixtureFailure('downloads', 'complete: Error [windows-root-shared-writer]'),
     { phase: 'complete', name: 'Error', code: null, category: 'windows-root-shared-writer' }
   )
+  assert.deepEqual(
+    classifyDesktopFixtureFailure('status', 'owned-click: Error [native-event-identity]'),
+    {
+      phase: 'owned-click',
+      name: 'Error',
+      code: null,
+      category: 'native-event-identity',
+    }
+  )
   assert.deepEqual(classifyDesktopFixtureFailure('commands', 'shortcut'), {
     ...unknown,
     phase: 'shortcut',
@@ -79,6 +88,42 @@ test('desktop summaries recognize only fixed fixture labels, including current d
   })
 })
 
+test('link policy failure phases retain a fixed step without exposing error text', () => {
+  for (const phase of ['policy-grant', 'policy-create', 'policy-forged', 'policy-duplicate']) {
+    const formatted = formatDesktopFixtureFailure('links', phase, new Error('/private/example'))
+    assert.deepEqual(classifyDesktopFixtureFailure('links', formatted), {
+      phase,
+      name: 'Error',
+      code: null,
+      category: 'unclassified',
+    })
+    assert.ok(!formatted.includes('/private/example'))
+  }
+})
+
+test('status managed failure phases retain a fixed step without exposing error text', () => {
+  for (const phase of [
+    'managed-authority',
+    'managed-prepare',
+    'managed-click',
+    'managed-read',
+    'managed-replace',
+    'managed-retired',
+    'managed-replay',
+    'managed-ack',
+    'managed-close',
+  ]) {
+    const formatted = formatDesktopFixtureFailure('status', phase, new Error('/private/example'))
+    assert.deepEqual(classifyDesktopFixtureFailure('status', formatted), {
+      phase,
+      name: 'Error',
+      code: null,
+      category: 'unclassified',
+    })
+    assert.ok(!formatted.includes('/private/example'))
+  }
+})
+
 test('fixture label parsing cannot export paths, messages, unknown fields or known-label prefixes', () => {
   const known = 'shortcut: Error [observation-order]'
   for (const input of [
@@ -112,6 +157,14 @@ test('fixture label parsing cannot export paths, messages, unknown fields or kno
 })
 
 test('fixture formatting uses exact source categories and suppresses arbitrary error metadata', () => {
+  assert.equal(
+    formatDesktopFixtureFailure('status', 'quit', new Error('Status item fixture deadline')),
+    'quit: Error [workload-deadline]'
+  )
+  assert.deepEqual(
+    classifyDesktopFixtureFailure('status', 'quit: Error [workload-deadline]\n/private/fixture'),
+    unknown
+  )
   assert.equal(
     formatDesktopFixtureFailure(
       'commands',

@@ -42,8 +42,44 @@ import {
   acceptFileDialogs,
   acceptDialogsReport,
 } from './dialogs-acceptance.ts'
+import {
+  STATUS_PROFILE,
+  statusSourceSelectors,
+  acceptStatusItems,
+  acceptStatusReport,
+} from './status-acceptance.ts'
+import {
+  LINKS_PROFILE,
+  linksSourceSelectors,
+  acceptApplicationLinks,
+  acceptApplicationLinksReport,
+} from './links-acceptance.ts'
 
 const profiles = {
+  links: {
+    profile: LINKS_PROFILE,
+    sourceSelectors: linksSourceSelectors,
+    fixture: 'examples/application-links',
+    browserEntry: null,
+    directory: 'application-links',
+    title: 'Application Links',
+    workloadLimitation:
+      'Three controlled startup arguments, exact route and document authority, acknowledged delivery across managed generations, and native reader/delegate cleanup. OS registration, live OS URL delivery, browser launch and second-instance forwarding remain unqualified.',
+    acceptObservation: acceptApplicationLinks,
+    acceptReport: acceptApplicationLinksReport,
+  },
+  status: {
+    profile: STATUS_PROFILE,
+    sourceSelectors: statusSourceSelectors,
+    fixture: 'examples/status-items',
+    browserEntry: null,
+    directory: 'status-items',
+    title: 'Status Items',
+    workloadLimitation:
+      'Four macOS text status items and two actual AppKit performClick callbacks; Windows/Linux explicitly unsupported. No tray menus, icons, keepalive or physical-input claim.',
+    acceptObservation: acceptStatusItems,
+    acceptReport: acceptStatusReport,
+  },
   windows: {
     profile: DESKTOP_PROFILE,
     sourceSelectors: desktopSourceSelectors,
@@ -138,6 +174,8 @@ export function desktopProfile(name = 'windows') {
       name === 'downloads' ||
       name === 'parent-close' ||
       name === 'commands' ||
+      name === 'status' ||
+      name === 'links' ||
       name === 'dialogs',
     'Unknown desktop qualification case'
   )

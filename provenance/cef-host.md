@@ -51,6 +51,18 @@ copied. It does not establish a cause for any historical download timeout.
 - https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
 - https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
 
+The application-link adapters are Bunly-authored. The macOS adapter uses the
+pinned objc2 AppKit/Foundation declarations for an owned application delegate and
+`NSWorkspace.openURL`. The Windows adapter uses the pinned windows-sys declarations
+for `ShellExecuteExW` and balanced COM initialization. No upstream implementation
+was copied. Neither adapter installs OS URL registration, chooses a browser,
+expands shell text, or claims successful page navigation.
+
+API references: Apple's [application URL delegate](<https://developer.apple.com/documentation/appkit/nsapplicationdelegate/application(_:open:)>)
+and [NSWorkspace](https://developer.apple.com/documentation/appkit/nsworkspace),
+and Microsoft's [ShellExecuteExW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecuteexw)
+and [SHELLEXECUTEINFOW flags](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfow).
+
 ## Parent-window close references
 
 The guarded close batch and overlay reattachment in Bunly's host are authored
@@ -94,6 +106,13 @@ cancellation, never general task dispatch or browser/window destruction.
 - https://developer.apple.com/documentation/corefoundation/cfrunloopperformblock(_:_:_:)
 - https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/RunLoopManagement/RunLoopManagement.html
 - https://github.com/chromium/chromium/blob/156.0.8078.17/ui/base/cocoa/menu_utils.mm
+
+The text status-item adapter in `native/cef-host/src/status_items_macos.rs` is
+Bunly-authored code using pinned `objc2-app-kit` 0.3.2 declarations and Apple's
+documented `NSStatusBar`, `NSStatusItem` and `NSControl` APIs. It copies no upstream
+implementation. The retained action target holds a weak Rust callback owner;
+actual status-bar removal precedes owner release. Contributor `performClick`
+input exercises AppKit target-action dispatch and makes no physical-input claim.
 
 ## Cookie-provider format references
 

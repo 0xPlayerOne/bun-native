@@ -21,6 +21,10 @@ import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/prof
 import { summarizeDesktopFailures } from '../benchmarks/desktop/failure-codes.ts'
 import { prepareManagedRuntimeLayout } from './qualify-managed-development.ts'
 import { requireDisposableClipboardRunner } from './cef-desktop-services-precondition.ts'
+import {
+  applicationLinkManifest,
+  applicationLinkStartupInputs,
+} from '../examples/application-links/contract.ts'
 
 const root = resolve(import.meta.dir, '..')
 const mac = process.platform === 'darwin'
@@ -97,7 +101,7 @@ async function qualify(input: readonly string[]): Promise<void> {
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services|downloads|parent-close|commands|dialogs] [--disposable-clipboard], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|services|downloads|commands|dialogs|status|links|parent-close] [--disposable-clipboard], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
@@ -183,6 +187,15 @@ async function qualify(input: readonly string[]): Promise<void> {
     assert.equal(runtime['development_origin'], undefined)
     assert.equal(runtime['bun_version'], '1.4.4')
     assert.equal(runtime['cef_version'], '156.0.7')
+    if (profile.directory === 'application-links') {
+      assert.equal(
+        runtime['application_links'],
+        undefined,
+        'Base artifact already declares application link routes'
+      )
+      runtime['application_links'] = applicationLinkManifest
+      await writeFile(join(resources, 'runtime.json'), JSON.stringify(runtime) + '\n')
+    }
     const backend = join(resources, 'backend')
     await rm(backend, { recursive: true, force: true })
     await mkdir(backend)
@@ -308,12 +321,20 @@ async function qualify(input: readonly string[]): Promise<void> {
     report['runtimeIdentity'] = cefIdentityFromObservation(identity, libraryHash)
     const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(source))
     assert.equal(relative(app, executable).split('\\').join('/'), hostPath)
-    observation = await observedCommand([executable], {
-      cwd: work,
-      output: join(work, 'trial.process.json'),
-      timeoutMs: DESKTOP_OBSERVER_MS,
-      env: { BUNLY_CACHE_DIR: join(work, 'cache'), BUNLY_BENCH_SANDBOX: '1' },
-    }).result
+    observation = await observedCommand(
+      [
+        executable,
+        ...(profile.directory === 'application-links'
+          ? applicationLinkStartupInputs.map((url) => '--bunly-link=' + url)
+          : []),
+      ],
+      {
+        cwd: work,
+        output: join(work, 'trial.process.json'),
+        timeoutMs: DESKTOP_OBSERVER_MS,
+        env: { BUNLY_CACHE_DIR: join(work, 'cache'), BUNLY_BENCH_SANDBOX: '1' },
+      }
+    ).result
     report['observation'] = observation
     report['acceptance'] = profile.acceptObservation(observation)
     report['preparedArtifactAfter'] = await inventory(app)

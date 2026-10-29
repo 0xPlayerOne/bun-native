@@ -50,8 +50,9 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition`, `desktop-services`,
-`file-downloads`, `view-parent-close`, `window-commands`, and `file-dialogs` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition`,
+`desktop-services`, `file-downloads`, `window-commands`, `file-dialogs`,
+`status-items`, `view-parent-close` and `application-links` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
@@ -225,3 +226,29 @@ retain their fixed 25-second and 45-second limits. Uploads, native file-input
 selection and OS file drops remain unavailable; this case does not qualify their
 behavior or claim physical input, hardware displays, assistive technology,
 antivirus or performance support. See [scoped native downloads](downloads.md).
+
+## Text status items
+
+The `status` case covers the bounded macOS text status-item adapter:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=status
+```
+
+The contributor host includes `rpc-qualification`. Its fixture requires four
+actual creations, two AppKit `performClick` action callbacks, an exact document
+grant, a text update, managed-generation journal replay, and native removal after
+explicit disposal, view closure and quit. Every native item, target delegate and
+weak callback owner must be released before process-stop begins. The SDK must
+also report zero items and listeners after native shutdown. No action event or
+native removal receipt is supplied by a simulated backend.
+
+Windows and Linux run explicit unsupported-capability checks. Linux uses the
+disposable display wrapper's `--desktop --desktop-case=status` option. Reports
+use `.bunly/m7/status-items/run-*/report.json` with profile
+`native-status-items-v1`; offline verification applies the existing exact-source,
+artifact, output-drain, process-cleanup and shutdown gates. The full hosted suite
+requires this case before credential/provider work without changing the M4-only
+suite or its deadlines. Physical status-bar input, appearance, icons, menus,
+application keepalive, assistive technology and performance remain unqualified.
+See [text status items](status-items.md) for the public API and ownership limits.

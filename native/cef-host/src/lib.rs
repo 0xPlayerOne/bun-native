@@ -21,6 +21,7 @@ mod mac;
 mod network_policy;
 mod policy;
 mod process;
+mod programmatic_file_gate;
 #[cfg(feature = "rpc-qualification")]
 mod renderer_fault;
 mod renderer_rpc;
@@ -66,7 +67,11 @@ struct Config {
     #[serde(default)]
     development_browser_actions: bool,
     #[serde(default)]
+    development_programmatic_files: bool,
+    #[serde(default)]
     qualification_profile: deadlines::DeadlineProfile,
+    #[serde(default)]
+    application_links: Option<host::application_links::Manifest>,
 }
 pub fn browser_app() -> App {
     host::BunlyApp::new()
@@ -170,6 +175,11 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         cfg!(feature = "browser-actions"),
         dev_origin.is_some(),
         config.development_browser_actions,
+    )?;
+    programmatic_file_gate::validate(
+        cfg!(feature = "programmatic-files"),
+        dev_origin.is_some(),
+        config.development_programmatic_files,
     )?;
     let asset_service = scheme::load(resources.join("public"))?;
     #[cfg(target_os = "macos")]
@@ -291,6 +301,9 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     .emit();
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
+    host::application_links::configure(config.application_links, std::env::args())?;
+    #[cfg(target_os = "macos")]
+    let _link_delegate = host::application_links::install_delegate()?;
     let mut settings = Settings {
         no_sandbox: 0,
         command_line_args_disabled: 1,

@@ -10,6 +10,8 @@ use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicBool, Ordering},
 };
+#[path = "application_links.rs"]
+pub(crate) mod application_links;
 #[cfg(feature = "browser-actions")]
 #[path = "browser_actions.rs"]
 mod browser_actions;
@@ -30,8 +32,13 @@ mod native_menu_wake;
 mod native_modal;
 #[path = "navigation.rs"]
 mod navigation;
+#[cfg(feature = "programmatic-files")]
+#[path = "programmatic_files.rs"]
+mod programmatic_files;
 #[path = "shutdown_pending.rs"]
 mod shutdown_pending;
+#[path = "status_items.rs"]
+mod status_items;
 #[path = "view_close.rs"]
 mod view_close;
 #[path = "view_composition.rs"]
@@ -55,9 +62,16 @@ fn desktop_capabilities_for(
             "window.commands",
             "clipboard.text",
             "app.lifecycle",
+            "app.links",
+            "app.open-url",
             "view.composition",
             "download.manage",
             "dialog.file",
+            "status.item",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -78,8 +92,14 @@ fn desktop_capabilities_for(
             "window.commands",
             "clipboard.text",
             "app.lifecycle",
+            "app.links",
+            "app.open-url",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -99,8 +119,13 @@ fn desktop_capabilities_for(
             "window.geometry",
             "window.commands",
             "app.lifecycle",
+            "app.links",
             "view.composition",
             "download.manage",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-input",
+            #[cfg(feature = "programmatic-files")]
+            "view.file-drop",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -139,6 +164,7 @@ struct ViewRecord {
     overlay: Option<OverlayController>,
     placement: Option<view_composition::Placement>,
     browser: Option<Browser>,
+    browser_id: Option<i32>,
     window: u64,
     session: u64,
     create: u64,
@@ -178,20 +204,57 @@ struct HostState {
     downloads: downloads::Registry,
     #[cfg(feature = "browser-actions")]
     browser_actions: browser_actions::Registry,
+    #[cfg(feature = "programmatic-files")]
+    programmatic_files: programmatic_files::Registry,
 }
 #[path = "credential_callbacks.rs"]
 mod credential_callbacks;
 
 thread_local! { static STATE: RefCell<HostState> = RefCell::new(HostState::default()); }
-#[cfg(feature = "browser-actions")]
+#[cfg(any(feature = "browser-actions", feature = "programmatic-files"))]
 fn view_control_available(state: &HostState, view: u64, reservation: usize) -> bool {
-    !state.browser_actions.contains(view)
-        && state.browser_actions.len() < 8
-        && state
-            .browser_actions
-            .reserved_bytes()
+    let (mut occupied, mut operations, mut bytes) = (false, 0_usize, 0_usize);
+    #[cfg(feature = "browser-actions")]
+    {
+        occupied |= state.browser_actions.contains(view);
+        operations += state.browser_actions.len();
+        bytes += state.browser_actions.reserved_bytes();
+    }
+    #[cfg(feature = "programmatic-files")]
+    {
+        occupied |= state.programmatic_files.contains(view);
+        operations += state.programmatic_files.len();
+        bytes += state.programmatic_files.reserved_bytes();
+    }
+    !occupied
+        && operations < 8
+        && bytes
             .checked_add(reservation)
-            .is_some_and(|bytes| bytes <= 8 * 1024 * 1024)
+            .is_some_and(|total| total <= 8 * 1024 * 1024)
+}
+fn view_close_pending(state: &HostState, view: u64) -> bool {
+    let pending = state.downloads.contains(view) || dialogs::contains(view);
+    #[cfg(feature = "programmatic-files")]
+    let pending = pending || state.programmatic_files.blocks_close(view);
+    pending
+}
+fn any_close_pending(state: &HostState) -> bool {
+    !dialogs::is_empty()
+        || state
+            .views
+            .keys()
+            .any(|view| view_close_pending(state, *view))
+}
+fn programmatic_file_diagnostics(state: &HostState) -> Value {
+    #[cfg(feature = "programmatic-files")]
+    {
+        state.programmatic_files.diagnostics()
+    }
+    #[cfg(not(feature = "programmatic-files"))]
+    {
+        let _ = state;
+        json!({"operations":0,"registrations":0,"callbacks":0,"privateControllers":0,"objectGroups":0,"chunkBytes":0,"reservedBytes":0,"deadlineWorkers":0,"admitted":0,"prepared":0,"committed":0,"dispatched":0,"completed":0,"released":0})
+    }
 }
 fn browser_action_diagnostics(state: &HostState) -> Value {
     #[cfg(feature = "browser-actions")]
@@ -274,6 +337,10 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     #[cfg(feature = "browser-actions")]
     browser_actions::invalidate_stale(id);
     window_commands::retire_view(id);
+    status_items::retire_view(id);
+    application_links::retire_view(id);
+    #[cfg(feature = "programmatic-files")]
+    programmatic_files::invalidate_stale(id);
     let Some(binding) = binding else {
         return;
     };
@@ -959,7 +1026,7 @@ fn quit_on_ui(reason: &'static str) {
     for (id, revoked) in revocations {
         revoke_renderer(id, revoked);
     }
-    if !dialogs::is_empty() || STATE.with(|s| !s.borrow().downloads.is_empty()) {
+    if STATE.with(|s| any_close_pending(&s.borrow())) {
         // CEF stops download callbacks once a browser is destroyed, but lets its
         // transfer continue. Retain all owners until actual cancellation settles.
         return;
@@ -1194,7 +1261,12 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     #[cfg(feature = "browser-actions")]
     if !browser_actions::shutdown_ready() { return; }
     window_commands::verify_shutdown();
+    status_items::release_all();
+    status_items::shutdown_receipt();
+    application_links::shutdown();
     dialogs::shutdown_receipt();
+    #[cfg(feature = "programmatic-files")]
+    if !programmatic_files::shutdown_ready() { return; }
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
@@ -1204,6 +1276,9 @@ pub fn release() {
     dialogs::stop();
     shutdown_acknowledged();
     window_commands::release_all();
+    status_items::release_all();
+    status_items::shutdown_receipt();
+    application_links::shutdown();
     #[cfg(feature = "rpc-qualification")]
     crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
@@ -1581,12 +1656,15 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         Ok::<_, &str>(record.rpc.revoke())
     })?;
     revoke_renderer(id, revoked);
-    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
         return Ok(());
     }
     destroy_disposed_view(id)
 }
 fn destroy_disposed_view(id: u64) -> Result<(), String> {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
+        return Ok(());
+    }
     let (window, view, overlay, revoked) = STATE.with(|state| {
         let mut state = state.borrow_mut();
         let record = state.views.get(&id).ok_or("INVALID_HANDLE: view")?;
@@ -1639,8 +1717,8 @@ fn destroy_disposed_view(id: u64) -> Result<(), String> {
     }
     Ok(())
 }
-fn resume_after_download(id: u64) {
-    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+fn resume_after_owned_operation(id: u64) {
+    if STATE.with(|s| view_close_pending(&s.borrow(), id)) {
         return;
     }
     if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) {
@@ -1650,7 +1728,7 @@ fn resume_after_download(id: u64) {
     if QUITTING.load(Ordering::SeqCst) {
         let owners = STATE.with(|s| {
             let state = s.borrow();
-            (state.downloads.is_empty() && dialogs::is_empty()).then(|| {
+            (!any_close_pending(&state)).then(|| {
                 (
                     state
                         .windows
@@ -1786,7 +1864,11 @@ fn begin_navigation(
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    status_items::retire_view(view);
+    application_links::retire_view(view);
     dialogs::revoke(view);
+    #[cfg(feature = "programmatic-files")]
+    state.programmatic_files.revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1810,7 +1892,30 @@ fn revoke_view(state: &mut HostState, view: u64) {
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    status_items::retire_view(view);
+    application_links::retire_view(view);
     dialogs::revoke(view);
+    #[cfg(feature = "programmatic-files")]
+    state.programmatic_files.revoke(view);
+}
+
+/// Only the browser currently registered for this view may retire its authority.
+/// Stale and missing identities leave the current view and all its owners intact.
+fn retire_closed_browser(
+    state: &mut HostState,
+    view: u64,
+    browser: Option<i32>,
+) -> Option<(ViewRecord, bool)> {
+    let browser = browser?;
+    if state.views.get(&view)?.browser_id != Some(browser) {
+        return None;
+    }
+    let download_pending = state.downloads.contains(view);
+    revoke_view(state, view);
+    state
+        .views
+        .remove(&view)
+        .map(|record| (record, download_pending))
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1878,6 +1983,9 @@ fn allowed_during_quit(operation: &str) -> bool {
             | "commands.cancel"
             | "commands.dispose"
             | "dialog.cancel"
+            | "status.dispose"
+            | "links.dispose"
+            | "file.interaction.cancel"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2285,6 +2393,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         overlay: None,
                         placement: placement.clone(),
                         browser: None,
+                        browser_id: None,
                         window: owner,
                         session,
                         create: request,
@@ -2390,6 +2499,14 @@ fn dispatch(command: &Value) -> Result<(), String> {
             }
         }
         "view.dispose" => dispose_view(number(args, "id")?, request)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.prepare" => programmatic_files::prepare(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.write" => programmatic_files::write(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.commit" => programmatic_files::commit(request, args)?,
+        #[cfg(feature = "programmatic-files")]
+        "file.interaction.cancel" => programmatic_files::cancel(request, args)?,
         #[cfg(feature = "browser-actions")]
         "browser.action.start" => browser_actions::start(request, args)?,
         #[cfg(feature = "browser-actions")]
@@ -2813,6 +2930,20 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "commands.create" | "commands.show" | "commands.cancel" | "commands.dispose" => {
             window_commands::dispatch(request, operation, args)?;
         }
+        "status.create" | "status.update" | "status.dispose" => {
+            status_items::dispatch(request, operation, args)?;
+        }
+        "links.create" | "links.read" | "links.ack" | "links.dispose" | "app.open.url" => {
+            application_links::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "links.qualification.snapshot" => {
+            application_links::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "status.qualification.click" | "status.qualification.snapshot" => {
+            status_items::dispatch(request, operation, args)?;
+        }
         #[cfg(feature = "rpc-qualification")]
         "commands.qualification" | "commands.qualification.snapshot" => {
             window_commands::dispatch(request, operation, args)?
@@ -2884,7 +3015,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
             reply(request, Value::Null);
         }
         "diagnostics" => {
-            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"browserActions":browser_action_diagnostics(&s),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
+            let value = STATE.with(|s| { let s = s.borrow(); json!({"windows":s.windows.len(),"views":s.views.len(),"sessions":s.sessions.values().filter(|record| !record.internal_credential).count(),"persistentSessions":s.sessions.values().filter(|record| record.persistent && !record.internal_credential).count(),"credentialProbeContexts":s.sessions.values().filter(|record|record.internal_credential).count(),"credentialProviderReady":s.credential_ready,"downloads":s.downloads.len(),"browserActions":browser_action_diagnostics(&s),"programmaticFiles":programmatic_file_diagnostics(&s),"pending":command_budget().snapshot().requests.saturating_sub(1),"commandAdmission":command_budget().snapshot(),"outputAdmission":process::output_diagnostics(),"deadlineProfile":crate::deadlines::current().name(),"rpcBindings":s.views.values().filter(|view| view.rpc.binding().is_some()).count(),"rpcIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Rpc)).sum::<usize>(),"streamIncomingBytes":s.views.values().map(|view| view.rpc.incoming_bytes_lane(rpc_authority::Lane::Stream)).sum::<usize>(),"streamDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Stream),"streamDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Stream),"rpcDeliveryPackets":s.rpc_deliveries.len_lane(rpc_authority::Lane::Rpc),"rpcDeliveryBytes":s.rpc_deliveries.bytes_lane(rpc_authority::Lane::Rpc),"nativeDeliveryPackets":s.rpc_deliveries.len(),"nativeDeliveryBytes":s.rpc_deliveries.bytes()}) });
             #[cfg(feature = "rpc-qualification")]
             let value = {
                 let mut value = value;
@@ -2938,7 +3069,7 @@ wrap_window_delegate! {
                 revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
-                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || dialogs::contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let pending = view_ids.iter().any(|id| view_close_pending(&s, *id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
                 let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
                 (browsers, pending, revocations)
             });
@@ -3009,7 +3140,11 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             #[cfg(feature = "browser-actions")]
             state.browser_actions.revoke(id);
             window_commands::retire_view(id);
+            status_items::retire_view(id);
+            application_links::retire_view(id);
             dialogs::revoke(id);
+            #[cfg(feature = "programmatic-files")]
+            state.programmatic_files.revoke(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -3043,6 +3178,7 @@ wrap_life_span_handler! {
             let Some(browser) = browser else { return; };
             let replacement_url = browser.main_frame().map(|frame| CefString::from(&frame.url()).to_string()).unwrap_or_default();
             let owned_browser = browser.clone();
+            let browser_id = browser.identifier();
             let (action, replacement_error) = STATE.with(|s| { let mut s = s.borrow_mut();
                 let closing = QUITTING.load(Ordering::SeqCst) || s.views.get(&self.id).is_none_or(|r| {
                     r.close.is_some() || s.windows.get(&r.window).is_none_or(|w| w.closing.is_some())
@@ -3051,7 +3187,7 @@ wrap_life_span_handler! {
                 let replacement_error = if replacement {
                     begin_navigation(&mut s, self.id, &replacement_url).err()
                 } else { None };
-                let action = s.views.get_mut(&self.id).map(|r| { r.browser = Some(owned_browser); let request = r.create; r.create = 0; (request, closing || replacement_error.is_some()) });
+                let action = s.views.get_mut(&self.id).map(|r| { r.browser = Some(owned_browser); r.browser_id = Some(browser_id); let request = r.create; r.create = 0; (request, closing || replacement_error.is_some()) });
                 (action, replacement_error)
             });
             if let Some(message) = replacement_error { fail(message); }
@@ -3065,13 +3201,21 @@ wrap_life_span_handler! {
                 }
             }
         }
-        fn on_before_close(&self, _browser: Option<&mut Browser>) {
+        fn on_before_close(&self, browser: Option<&mut Browser>) {
             shutdown_pending::record(shutdown_pending::Point::BrowserBeforeClose);
+            let Some(browser) = browser else {
+                fail("Native browser close missing browser identity");
+                return;
+            };
+            let browser_id = browser.identifier();
             #[cfg(feature = "browser-actions")]
-            browser_actions::before_close(self.id, _browser);
-            if STATE.with(|s| s.borrow().downloads.contains(self.id)) { fail("Browser closed with an unsettled native download"); }
-            let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
-            if let Some(mut record) = record {
+            browser_actions::before_close(self.id, Some(browser));
+            #[cfg(feature = "programmatic-files")]
+            programmatic_files::before_close(self.id, Some(browser));
+            let record = STATE.with(|s| retire_closed_browser(&mut s.borrow_mut(), self.id, Some(browser_id)));
+            let Some((mut record, download_pending)) = record else { return; };
+            if download_pending { fail("Browser closed with an unsettled native download"); }
+            {
                 revoke_renderer(self.id, record.rpc.revoke());
                 if record.create != 0 { error(record.create, "View closed before creation completed"); }
                 for request in record.navigate.cancel() { error(request, "Navigation cancelled by close"); }
@@ -3392,6 +3536,37 @@ mod tests {
     use super::*;
 
     #[test]
+    fn desktop_capabilities_preserve_commands_with_platform_services() {
+        let capabilities = desktop_capabilities();
+        for capability in [
+            "window.state",
+            "window.geometry",
+            "window.commands",
+            "app.lifecycle",
+            "app.links",
+            "view.composition",
+            "download.manage",
+        ] {
+            assert!(capabilities.contains(&capability), "{capability}");
+        }
+        assert_eq!(
+            capabilities.contains(&"clipboard.text"),
+            clipboard::SUPPORTED
+        );
+        assert_eq!(capabilities.contains(&"dialog.file"), dialogs::SUPPORTED);
+        assert_eq!(
+            capabilities.contains(&"status.item"),
+            status_items::SUPPORTED
+        );
+        assert_eq!(
+            capabilities.contains(&"app.open-url"),
+            cfg!(any(target_os = "macos", target_os = "windows"))
+        );
+        let unique: std::collections::BTreeSet<_> = capabilities.iter().collect();
+        assert_eq!(capabilities.len(), unique.len());
+    }
+
+    #[test]
     fn desktop_capabilities_preserve_shared_facets_with_dialogs() {
         for (dialogs, clipboard) in [(false, false), (false, true), (true, true)] {
             let caps = desktop_capabilities_for(dialogs, clipboard);
@@ -3410,6 +3585,12 @@ mod tests {
             }
             assert_eq!(caps.contains(&"dialog.file"), dialogs);
             assert_eq!(caps.contains(&"clipboard.text"), clipboard);
+            for feature in ["view.file-input", "view.file-drop"] {
+                assert_eq!(
+                    caps.contains(&feature),
+                    cfg!(feature = "programmatic-files")
+                );
+            }
             #[cfg(feature = "browser-actions")]
             for required in [
                 "view.snapshot",
@@ -3482,6 +3663,7 @@ mod tests {
                 overlay: None,
                 placement: None,
                 browser: None,
+                browser_id: None,
                 window,
                 session: 3,
                 create: 0,
@@ -3505,6 +3687,34 @@ mod tests {
             .grant_native(&scope, capability_policy::NativeCapability::ClipboardRead)
             .unwrap();
         (state, scope)
+    }
+
+    #[test]
+    fn stale_or_missing_browser_close_keeps_replacement_view_and_authority() {
+        let (mut state, scope) = state_with_view(7, 11);
+        // OnAfterCreated can replace the browser while the view ID stays stable.
+        state.views.get_mut(&7).unwrap().browser_id = Some(101);
+        state.views.get_mut(&7).unwrap().browser_id = Some(202);
+
+        for callback in [Some(101), None] {
+            assert!(retire_closed_browser(&mut state, 7, callback).is_none());
+            assert_eq!(state.views.get(&7).unwrap().browser_id, Some(202));
+            assert_eq!(state.policy.current_scope(7), Some(scope.clone()));
+            assert_eq!(
+                state.policy.authorize_native(
+                    &scope,
+                    &capability_policy::NativeRequest::ClipboardRead,
+                    capability_policy::AdapterAvailability::Available,
+                ),
+                capability_policy::GateDecision::Authorized
+            );
+        }
+        let (closed, download_pending) = retire_closed_browser(&mut state, 7, Some(202)).unwrap();
+        assert_eq!(closed.browser_id, Some(202));
+        assert!(!download_pending);
+        assert!(!state.views.contains_key(&7));
+        assert!(state.policy.current_scope(7).is_none());
+        assert!(retire_closed_browser(&mut state, 7, Some(202)).is_none());
     }
 
     #[test]
@@ -3652,9 +3862,18 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("download.cancel"));
         assert!(allowed_during_quit("commands.cancel"));
         assert!(allowed_during_quit("commands.dispose"));
+        assert!(allowed_during_quit("status.dispose"));
+        assert!(allowed_during_quit("links.dispose"));
+        assert!(allowed_during_quit("dialog.cancel"));
+        assert!(allowed_during_quit("file.interaction.cancel"));
         for operation in [
             "download.start",
             "commands.create",
+            "status.create",
+            "links.ack",
+            "links.create",
+            "status.update",
+            "status.qualification.click",
             "commands.show",
             "commands.qualification",
             "policy.native.grant",
@@ -3664,6 +3883,10 @@ mod command_task_lifetime_tests {
             "session.create",
             "download.cancel.extra",
             "commands.cancel.extra",
+            "file.interaction.prepare",
+            "file.interaction.write",
+            "file.interaction.commit",
+            "file.interaction.cancel.extra",
         ] {
             assert!(!allowed_during_quit(operation), "{operation}");
         }

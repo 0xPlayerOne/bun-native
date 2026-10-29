@@ -13,6 +13,16 @@ import { ApplicationLifecycle } from './application-lifecycle.ts'
 import { CefFileDialogs } from './cef-dialogs.ts'
 import { CefDownloads } from './cef-downloads.ts'
 import { CefWindowCommands } from './cef-window-commands.ts'
+import { CefStatusItems } from './cef-status-items.ts'
+import { CefApplicationLinks } from './cef-application-links.ts'
+import { CefProgrammaticFiles } from './cef-programmatic-files.ts'
+import { viewControlBudget } from './cef-view-control-budget.ts'
+import {
+  isFileInteractionElementId,
+  type ProgrammaticFilesBackend,
+  type FileInteractionRequest,
+  type FileInteractionOperation,
+} from '../../contracts/src/programmatic-files.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -75,6 +85,13 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  ApplicationLinksBackend,
+  ApplicationLinkReader,
+  ApplicationLinkBatch,
+  StatusItemBackend,
+  StatusItemDefinition,
+  StatusItemHandle,
+  StatusItemEvent,
   FileDialogBackend,
   FileDialogResult,
   OpenFileDialogOptions,
@@ -224,6 +241,8 @@ export type NativeCapabilityGrant =
         | 'dialog-open'
         | 'dialog-save'
         | 'window-commands'
+        | 'status-item'
+        | 'application-links'
     }
   | {
       readonly name:
@@ -233,6 +252,7 @@ export type NativeCapabilityGrant =
         | 'browser-input'
     }
   | { readonly name: 'browser-evaluate'; readonly expression: string }
+  | { readonly name: 'file-input' | 'file-drop'; readonly elementId: string }
   | { readonly name: 'external-url'; readonly origins: readonly string[] }
 
 export type NativeOperationRequest =
@@ -249,6 +269,8 @@ export type NativeOperationRequest =
         | 'dialog-open'
         | 'dialog-save'
         | 'window-commands'
+        | 'status-item'
+        | 'application-links'
     }
   | {
       readonly name:
@@ -258,6 +280,7 @@ export type NativeOperationRequest =
         | 'browser-input'
     }
   | { readonly name: 'browser-evaluate'; readonly expression: string }
+  | { readonly name: 'file-input' | 'file-drop'; readonly elementId: string }
   | { readonly name: 'external-url'; readonly url: string }
 
 export type BrowserPermissionCapability =
@@ -390,7 +413,7 @@ function checkedCookie(value: CookieInput): CookieInput {
 function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDescriptor {
   return Object.freeze({
     name: 'cef',
-    version: '0.1.4', // x-release-please-version
+    version: '0.2.0', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
@@ -417,7 +440,10 @@ export class CefBackend
     ViewCompositionBackend,
     DownloadManagementBackend,
     BrowserActionsBackend,
-    WindowCommandsBackend
+    WindowCommandsBackend,
+    StatusItemBackend,
+    ApplicationLinksBackend,
+    ProgrammaticFilesBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -425,9 +451,12 @@ export class CefBackend
   }
   readonly #transport: NativeTransport
   readonly #commands: CefWindowCommands
+  readonly #statusItems: CefStatusItems
+  readonly #applicationLinks: CefApplicationLinks
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
   readonly #dialogs: CefFileDialogs
+  readonly #programmaticFiles: CefProgrammaticFiles
   readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
@@ -493,10 +522,36 @@ export class CefBackend
     this.#transport = transport
     this.#browserActions = new CefBrowserActions(transport)
     this.#dialogs = new CefFileDialogs(transport)
+    this.#programmaticFiles = new CefProgrammaticFiles(transport)
     this.#downloads = new CefDownloads(transport, () => {
       this.#listenerErrors++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    this.#applicationLinks = new CefApplicationLinks(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return { view: captured.view, scope: captured.nativeScope }
+      },
+      (kind) => {
+        this.#active()
+        requireCapability(this.descriptor, kind === 'inbound' ? 'app.links' : 'app.open-url')
+      }
+    )
+    this.#statusItems = new CefStatusItems(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return { view: captured.view, id: captured.resource.native, scope: captured.nativeScope }
+      },
+      () => {
+        this.#active()
+        requireCapability(this.descriptor, 'status.item')
+      },
+      () => {
+        this.#listenerErrors++
+      }
+    )
     this.#commands = new CefWindowCommands(
       transport,
       (scope) => {
@@ -537,7 +592,10 @@ export class CefBackend
       this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
       this.#commands.close()
+      this.#statusItems.close()
+      this.#applicationLinks.close()
       this.#dialogs.close(transport.failure ?? new NativeShutdownError())
+      this.#programmaticFiles.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -574,6 +632,145 @@ export class CefBackend
     options?: OperationOptions
   ): Promise<WindowCommandsHandle> {
     return this.#commands.create(scope, definition, options)
+  }
+  createApplicationLinkReader(
+    scope: PolicyScope,
+    options?: OperationOptions
+  ): Promise<ApplicationLinkReader> {
+    return this.#applicationLinks.create(scope, options)
+  }
+  readApplicationLinks(reader: ApplicationLinkReader): Promise<ApplicationLinkBatch> {
+    return this.#applicationLinks.read(reader)
+  }
+  acknowledgeApplicationLinks(
+    reader: ApplicationLinkReader,
+    batch: ApplicationLinkBatch
+  ): Promise<void> {
+    return this.#applicationLinks.acknowledge(reader, batch)
+  }
+  disposeApplicationLinkReader(reader: ApplicationLinkReader): Promise<void> {
+    return this.#applicationLinks.dispose(reader)
+  }
+  openExternalUrl(scope: PolicyScope, url: string): Promise<void> {
+    return this.#applicationLinks.open(scope, url)
+  }
+  /** @internal Stable managed owner; native handles never enter application generations. */
+  applicationLinkReaderMatchesScope(reader: ApplicationLinkReader, scope: PolicyScope): boolean {
+    return this.#applicationLinks.matchesScope(reader, scope)
+  }
+  applicationLinkDiagnostics() {
+    return this.#applicationLinks.diagnostics()
+  }
+  /** @internal Bounded counts only. This does not attest live OS URL delivery. */
+  async qualifyApplicationLinkSnapshot(): Promise<
+    Readonly<
+      Record<
+        | 'readers'
+        | 'queued'
+        | 'bytes'
+        | 'overflow'
+        | 'startup'
+        | 'macos'
+        | 'rejected'
+        | 'acknowledged'
+        | 'delegates',
+        number
+      >
+    >
+  > {
+    this.#active()
+    const result = await this.#transport.call('links.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !==
+        'acknowledged,bytes,delegates,macos,overflow,queued,readers,rejected,startup' ||
+      Object.values(result).some((value) => !Number.isSafeInteger(value) || Number(value) < 0)
+    )
+      throw new Error('Malformed native application link snapshot')
+    return Object.freeze(result) as Readonly<
+      Record<
+        | 'readers'
+        | 'queued'
+        | 'bytes'
+        | 'overflow'
+        | 'startup'
+        | 'macos'
+        | 'rejected'
+        | 'acknowledged'
+        | 'delegates',
+        number
+      >
+    >
+  }
+  createStatusItem(
+    scope: PolicyScope,
+    definition: StatusItemDefinition,
+    options?: OperationOptions
+  ): Promise<StatusItemHandle> {
+    return this.#statusItems.create(scope, definition, options)
+  }
+  updateStatusItem(item: StatusItemHandle, definition: StatusItemDefinition): Promise<void> {
+    return this.#statusItems.update(item, definition)
+  }
+  onStatusItemEvent(
+    item: StatusItemHandle,
+    listener: (event: StatusItemEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#statusItems.onEvent(item, listener, options)
+  }
+  disposeStatusItem(item: StatusItemHandle): Promise<void> {
+    return this.#statusItems.dispose(item)
+  }
+  /** @internal Stable managed-owner authorization; never renderer authority. */
+  statusItemMatchesScope(item: StatusItemHandle, scope: PolicyScope): boolean {
+    return this.#statusItems.matchesScope(item, scope)
+  }
+  statusItemDiagnostics() {
+    return this.#statusItems.diagnostics()
+  }
+  /** @internal Requires a contributor host and its real AppKit target-action path. */
+  qualifyStatusItemClick(item: StatusItemHandle): Promise<void> {
+    return this.#statusItems.qualify(item)
+  }
+  /** @internal Read-only native ownership counts, including unsupported platforms. */
+  async qualifyStatusItemSnapshot(): Promise<{
+    readonly supported: boolean
+    readonly items: number
+    readonly delegates: number
+    readonly weakOwners: number
+    readonly created: number
+    readonly removed: number
+    readonly clicks: number
+  }> {
+    this.#active()
+    const result = await this.#transport.call('status.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !==
+        'clicks,created,delegates,items,removed,supported,weakOwners' ||
+      !('supported' in result) ||
+      typeof result.supported !== 'boolean' ||
+      Object.entries(result).some(
+        ([key, value]) =>
+          key !== 'supported' &&
+          (!Number.isSafeInteger(value) ||
+            Number(value) < 0 ||
+            Number(value) > Number.MAX_SAFE_INTEGER)
+      )
+    )
+      throw new Error('Malformed native status item snapshot')
+    return Object.freeze(result) as {
+      supported: boolean
+      items: number
+      delegates: number
+      weakOwners: number
+      created: number
+      removed: number
+      clicks: number
+    }
   }
   showWindowMenu(
     commands: WindowCommandsHandle,
@@ -1137,7 +1334,14 @@ export class CefBackend
     this.#active()
     const captured = this.#capturedPolicyScope(scope)
     let prepared = capability
-    if (capability.name.startsWith('browser-')) {
+    if (capability.name === 'file-input' || capability.name === 'file-drop') {
+      if (
+        Object.keys(capability).sort().join(',') !== 'elementId,name' ||
+        !isFileInteractionElementId(capability.elementId)
+      )
+        throw new BunlyError('INVALID_ARGUMENT', 'A file grant requires one exact element ID')
+      prepared = { name: capability.name, elementId: capability.elementId }
+    } else if (capability.name.startsWith('browser-')) {
       const expected = capability.name === 'browser-evaluate' ? ['name', 'expression'] : ['name']
       if (
         Object.keys(capability).length !== expected.length ||
@@ -1532,6 +1736,36 @@ export class CefBackend
       }
     })
   }
+  prepareFileInteraction(
+    scope: PolicyScope,
+    request: FileInteractionRequest,
+    options?: OperationOptions
+  ): Promise<FileInteractionOperation> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    if (request?.kind !== 'file-input' && request?.kind !== 'file-drop')
+      throw new BunlyError('INVALID_ARGUMENT', 'Unknown file interaction')
+    requireCapability(
+      this.descriptor,
+      request.kind === 'file-input' ? 'view.file-input' : 'view.file-drop'
+    )
+    // No await precedes the shared reservation and intrinsic byte inspection.
+    return this.#programmaticFiles.prepare(
+      captured.resource.native,
+      { ...captured.nativeScope },
+      request,
+      () => {
+        this.#active()
+        this.#capturedPolicyScope(scope)
+      },
+      options?.signal
+    )
+  }
+  /** Operation-owned bytes only; caller buffers, exposed Files and CEF internals
+   * are not an RSS or garbage-collection claim. */
+  viewControlDiagnostics(): Readonly<{ operations: number; bytes: number }> {
+    return viewControlBudget(this.#transport).diagnostics()
+  }
   async #browserAction(
     view: ViewHandle,
     action: NativeBrowserAction,
@@ -1769,7 +2003,8 @@ export class CefBackend
         application.listeners +
         application.readyWaiters +
         this.#downloads.listenerCount +
-        this.#commands.listenerCount,
+        this.#commands.listenerCount +
+        this.#statusItems.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
@@ -2005,6 +2240,8 @@ export class CefBackend
     if (this.#disposed) return this.closed
     this.#disposed = true
     this.#commands.stop()
+    this.#statusItems.stop()
+    this.#applicationLinks.stop()
     this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
@@ -2034,17 +2271,21 @@ export class CefBackend
   }
   #event(event: NativeEvent): void {
     this.#commands.event(event)
+    this.#statusItems.event(event)
     if (event.event === 'app.quitting' && this.descriptor.capabilities.includes('app.lifecycle')) {
       if (event.target !== undefined || !event.data || Object.keys(event.data).length !== 1)
         throw new Error('Malformed native application quitting event')
       // Native-initiated quit fences local calls before application callbacks run.
       this.#disposed = true
       this.#commands.stop()
+      this.#statusItems.stop()
+      this.#applicationLinks.stop()
       this.#application.quitting(event.data['reason'])
     }
     this.#downloads.event(event)
     this.#browserActions.event(event)
     this.#dialogs.event(event)
+    this.#programmaticFiles.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
@@ -2132,6 +2373,8 @@ export class CefBackend
   }
   #retireRpc(view: ViewHandle): void {
     this.#commands.retireView(view)
+    this.#statusItems.retireView(view)
+    this.#applicationLinks.retireView(view)
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
     this.#streamRetired.add(view)

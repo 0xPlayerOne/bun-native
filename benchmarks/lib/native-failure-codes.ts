@@ -1,6 +1,11 @@
 /** Fixed source labels only. This diagnostic has no file, process or network access. */
 const failureCodes = {
   'Native identity exhausted': 'native-identity-exhausted',
+  'Status item event identity exhausted': 'status-event-identity-exhausted',
+  'Status item callback count exhausted': 'status-callback-count-exhausted',
+  'Status item cleanup unavailable': 'status-cleanup-unavailable',
+  'Status item native removal failed': 'status-native-removal-failed',
+  'Native status items remain owned at shutdown': 'status-shutdown-ownership',
   'Native command admission unavailable': 'native-command-admission-unavailable',
   'CEF command dispatch unavailable': 'cef-command-dispatch-unavailable',
   'Native shutdown acknowledgement deadline exceeded': 'native-shutdown-deadline',

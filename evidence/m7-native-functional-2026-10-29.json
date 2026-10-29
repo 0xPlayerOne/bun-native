@@ -1,0 +1,229 @@
+{
+  "schema": 1,
+  "record": "m7-selected-native-functional-qualification-summary",
+  "recordedAt": "2026-10-29",
+  "selection": "Selected public-safe summary of the final programmatic-files and browser-actions Linux fixture runs. This is not a complete, independently replayable qualification report. The raw reports were left untouched and are identified only by SHA-256. Raw process arguments, process samples, machine-local paths, nonces, and payloads are omitted.",
+  "target": "linux-x64",
+  "toolchain": {
+    "developerBun": "1.4.4",
+    "packagedBun": "1.4.4"
+  },
+  "cefIdentity": {
+    "source": "exported-api",
+    "version": "156.0.7",
+    "chromiumVersion": "156.0.8078.17",
+    "sha256": "d6ae34b71b65685b9fc84f24b53214cdb71a17ceecca0034c3a95a9d4358d86f",
+    "sandbox": "unverified"
+  },
+  "limitations": [
+    "Functional native fixture evidence is for Linux x64 only; it does not qualify Windows or macOS.",
+    "The CEF sandbox identity is unverified, and the reports do not include an embedded native build attestation.",
+    "Programmatic file interactions use synthetic DOM input and drop events. The receipt marks OS file-picker qualification and physical OS-file drag/drop false; rollback is not guaranteed.",
+    "Browser input is synthetic; trusted or physical input is not qualified. The reported accessibility capability does not qualify assistive technology.",
+    "No physical hardware, IME, display-scale/DPI, multi-monitor, GPU, suspend/resume, or performance qualification is claimed.",
+    "No process RSS bound or performance improvement is claimed."
+  ],
+  "runs": [
+    {
+      "capability": "programmatic-files",
+      "source": {
+        "commit": "fd75339d1c7f4944c14e9db87af309723aab8961",
+        "tree": "d820c289edd942c844e473eba7c46d2c31227094",
+        "clean": true,
+        "hashesUnchanged": true
+      },
+      "nativeBuild": {
+        "declaredSourceCommit": "718598a55fac90c997cf650879439a79fc46ef31",
+        "nativeCefHostTree": "faef4e6612afed868de53398333734590e900a7f",
+        "embeddedBuildAttestation": false
+      },
+      "result": {
+        "passed": true,
+        "inputsUnchanged": true,
+        "rawReportSha256": "39bf52879a80287eae278501f081531bc56b0e248459bb1c825f74255b420283"
+      },
+      "profiles": [
+        {
+          "name": "enabled",
+          "expectedExit": 0,
+          "actualExit": 0,
+          "passed": true,
+          "acceptedOutcome": "programmatic-files native receipt"
+        },
+        {
+          "name": "feature-disabled",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "native feature-disabled startup rejection"
+        },
+        {
+          "name": "ordinary",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "expected ordinary-profile gate rejection"
+        },
+        {
+          "name": "manifest-denied",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "expected manifest-denied gate rejection"
+        }
+      ],
+      "enabledReceipt": {
+        "passed": true,
+        "checksPassed": [
+          "exactGrantDenial",
+          "fiveUploads",
+          "mimeAndHashes",
+          "cookiePartitions",
+          "oneMiBBoundary",
+          "syntheticInputAndDrop",
+          "cancelBeforeCommit",
+          "reloadRevokesGrant",
+          "navigationSettled",
+          "closeSettled",
+          "partialExposureReported",
+          "zeroOwners"
+        ],
+        "synthetic": true,
+        "osPickerQualified": false,
+        "physicalDropQualified": false,
+        "rollbackGuaranteed": false,
+        "performanceEligible": false
+      },
+      "settledOwners": {
+        "native": {
+          "operations": 0,
+          "registrations": 0,
+          "callbacks": 0,
+          "privateControllers": 0,
+          "objectGroups": 0,
+          "chunkBytes": 0,
+          "reservedBytes": 0,
+          "deadlineWorkers": 0
+        },
+        "sdk": {
+          "operations": 0,
+          "bytes": 0
+        },
+        "final": {
+          "windows": 0,
+          "views": 0,
+          "sessions": 0,
+          "listeners": 0,
+          "listenerErrors": 0
+        }
+      },
+      "processCleanup": {
+        "runnerPassed": true,
+        "disposableDisplayCleanup": true,
+        "timedOutProfiles": 0,
+        "cancelledProfiles": 0,
+        "outputOverflowProfiles": 0,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0
+      }
+    },
+    {
+      "capability": "browser-actions",
+      "source": {
+        "commit": "718598a55fac90c997cf650879439a79fc46ef31",
+        "tree": "d890d1e028ff1cb0798e8c618c2400f6b60d7ba5",
+        "clean": true,
+        "hashesUnchanged": true
+      },
+      "nativeBuild": {
+        "declaredSourceCommit": "718598a55fac90c997cf650879439a79fc46ef31",
+        "nativeCefHostTree": "faef4e6612afed868de53398333734590e900a7f",
+        "embeddedBuildAttestation": false
+      },
+      "result": {
+        "passed": true,
+        "inputsUnchanged": true,
+        "rawReportSha256": "d5b88ac4ce028a3b61cccaeede25c0f9d1e2940aebe801bd51cb2165c8bf50c1"
+      },
+      "profiles": [
+        {
+          "name": "enabled",
+          "expectedExit": 0,
+          "actualExit": 0,
+          "passed": true,
+          "acceptedOutcome": "browser-actions native receipt"
+        },
+        {
+          "name": "feature-disabled",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "native feature-disabled startup rejection"
+        },
+        {
+          "name": "ordinary",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "expected ordinary-profile gate rejection"
+        },
+        {
+          "name": "manifest-denied",
+          "expectedExit": 78,
+          "actualExit": 78,
+          "passed": true,
+          "acceptedOutcome": "expected manifest-denied gate rejection"
+        }
+      ],
+      "enabledReceipt": {
+        "passed": true,
+        "checksPassed": [
+          "ungrantedDenied",
+          "png",
+          "approvedEvaluation",
+          "boundedObservations",
+          "syntheticInput",
+          "beforeinputRevalidated",
+          "crossOriginFrameDenied",
+          "oversizedResultsDenied",
+          "otherSessionDenied",
+          "cancellationSettled",
+          "navigationRevoked",
+          "closeSettled",
+          "zeroOwners"
+        ],
+        "accessibility": "supported",
+        "syntheticInput": true,
+        "trustedInputQualified": false,
+        "performanceEligible": false
+      },
+      "settledOwners": {
+        "native": {
+          "operations": 0,
+          "registrations": 0,
+          "callbacks": 0,
+          "byteLeases": 0,
+          "ownedBytes": 0,
+          "reservedBytes": 0,
+          "deadlineWorkers": 0
+        },
+        "final": {
+          "windows": 0,
+          "views": 0,
+          "sessions": 0,
+          "listeners": 0,
+          "listenerErrors": 0
+        }
+      },
+      "processCleanup": {
+        "runnerPassed": true,
+        "disposableDisplayCleanup": true,
+        "timedOutProfiles": 0,
+        "cancelledProfiles": 0,
+        "outputOverflowProfiles": 0,
+        "observedOrphanCount": 0,
+        "cleanupSurvivorCount": 0
+      }
+    }
+  ]
+}

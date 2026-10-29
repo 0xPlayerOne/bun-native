@@ -78,6 +78,18 @@ quiescence, atomic handler publication and actual isolate retirement.
 sessions, terminals and managed processes after validating current document and
 policy authority. The terminal writer and native child stay with the stable owner.
 
+The macOS [text status-item facet](status-items.md) follows the same ownership
+boundary. A distinct native document grant permits one bounded item per view;
+the stable owner retains it across managed generations and journals actual action
+callbacks. Native status-bar removal precedes callback-owner release, including
+the ordinary quit fence. Other platforms report the facet as unsupported.
+
+The [application-link inbox](application-links.md) has a single exact-document
+reader and a bounded native queue. Managed delivery first transfers a complete
+snapshot into the stable host journal, then acknowledges native ownership.
+Generation retirement cannot discard that transfer. External HTTPS submission
+uses a distinct exact-origin grant and is never automatically replayed.
+
 [Development sessions](development-host.md) reuse a verified prepared host and
 bundle backend changes with Bun. Frontend tooling keeps its independent HMR
 connection; shared edits notify both paths. An incompatible configuration, native
@@ -121,8 +133,10 @@ final callback authorization and owned native cleanup. The additive M7
 for explicit destinations, real CEF progress and cancellation, and bounded
 file/owner cleanup. [Native file dialogs](file-dialogs.md) use separate scoped
 grants and share the native modal reservation with window menus. Selecting a path
-grants no file access. General filesystem/process adapters, upload, and OS-file
-drops remain separate work; no browser action creates their authority.
+grants no file access. The separately gated [programmatic file facet](programmatic-files.md)
+stages trusted application bytes for exact document-approved file inputs and synthetic
+DOM drops; it grants no disk path access or application trust. General filesystem and
+process adapters and physical file drops remain separate work.
 
 ## Browser independence
 

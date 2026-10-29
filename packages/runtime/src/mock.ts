@@ -17,6 +17,13 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  ApplicationLinksBackend,
+  ApplicationLinkReader,
+  ApplicationLinkBatch,
+  StatusItemBackend,
+  StatusItemDefinition,
+  StatusItemHandle,
+  StatusItemEvent,
   ApplicationLifecycleBackend,
   ApplicationState,
   ApplicationEvent,
@@ -52,11 +59,17 @@ interface ViewRecord {
 }
 /** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
 export class MockBackend
-  implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend, WindowCommandsBackend
+  implements
+    BrowserBackend,
+    ClipboardBackend,
+    ApplicationLifecycleBackend,
+    WindowCommandsBackend,
+    StatusItemBackend,
+    ApplicationLinksBackend
 {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
-    version: '0.1.4', // x-release-please-version
+    version: '0.2.0', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
@@ -70,7 +83,7 @@ export class MockBackend
   #disposed = false
   #listenerErrors = 0
   #desktopUnavailable(
-    capability: 'clipboard.text' | 'app.lifecycle' | 'window.commands',
+    capability: 'clipboard.text' | 'app.lifecycle' | 'window.commands' | 'status.item',
     options?: OperationOptions
   ): never {
     this.#active()
@@ -80,6 +93,50 @@ export class MockBackend
   }
   async readClipboardText(_scope: PolicyScope, options?: OperationOptions): Promise<string | null> {
     return this.#desktopUnavailable('clipboard.text', options)
+  }
+  async createApplicationLinkReader(
+    _scope: PolicyScope,
+    _options?: OperationOptions
+  ): Promise<ApplicationLinkReader> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async readApplicationLinks(_reader: ApplicationLinkReader): Promise<ApplicationLinkBatch> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async acknowledgeApplicationLinks(
+    _reader: ApplicationLinkReader,
+    _batch: ApplicationLinkBatch
+  ): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async disposeApplicationLinkReader(_reader: ApplicationLinkReader): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async openExternalUrl(_scope: PolicyScope, _url: string): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock external URLs are unavailable')
+  }
+  async createStatusItem(
+    _scope: PolicyScope,
+    _definition: StatusItemDefinition,
+    options?: OperationOptions
+  ): Promise<StatusItemHandle> {
+    return this.#desktopUnavailable('status.item', options)
+  }
+  async updateStatusItem(
+    _item: StatusItemHandle,
+    _definition: StatusItemDefinition
+  ): Promise<void> {
+    this.#desktopUnavailable('status.item')
+  }
+  onStatusItemEvent(
+    _item: StatusItemHandle,
+    _listener: (event: StatusItemEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#desktopUnavailable('status.item', options)
+  }
+  async disposeStatusItem(_item: StatusItemHandle): Promise<void> {
+    this.#desktopUnavailable('status.item')
   }
   async writeClipboardText(
     _scope: PolicyScope,

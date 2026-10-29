@@ -49,3 +49,5 @@ jobs:
         run: |
           cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,cef/dox
           cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions,cef/dox
+          cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,programmatic-files,cef/dox
+          cargo +1.91.0 check --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions,programmatic-files,cef/dox

@@ -35,6 +35,14 @@ impl PreparedDocumentScope {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeCapability {
+    FileInput {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
+    FileDrop {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
     BrowserSnapshot,
     BrowserObserveDom,
     BrowserObserveAccessibility,
@@ -57,6 +65,8 @@ pub enum NativeCapability {
     ClipboardRead,
     ClipboardWrite,
     WindowCommands,
+    StatusItem,
+    ApplicationLinks,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -120,6 +130,14 @@ struct BrowserGrant {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "name", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum NativeRequest {
+    FileInput {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
+    FileDrop {
+        #[serde(rename = "elementId")]
+        element_id: String,
+    },
     BrowserSnapshot,
     BrowserObserveDom,
     BrowserObserveAccessibility,
@@ -142,6 +160,8 @@ pub enum NativeRequest {
     ClipboardRead,
     ClipboardWrite,
     WindowCommands,
+    StatusItem,
+    ApplicationLinks,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -404,10 +424,30 @@ pub fn decode_document_scope(value: serde_json::Value) -> Result<DocumentScope, 
     Ok(scope)
 }
 
+pub fn file_element_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value.as_bytes()[0].is_ascii_alphabetic()
+        && value
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+}
+
 pub fn prepare_native_capability(
     capability: NativeCapability,
 ) -> Result<PreparedNativeCapability, &'static str> {
     let capability = match capability {
+        capability @ (NativeCapability::FileInput { .. } | NativeCapability::FileDrop { .. }) => {
+            let element = match &capability {
+                NativeCapability::FileInput { element_id }
+                | NativeCapability::FileDrop { element_id } => element_id,
+                _ => unreachable!(),
+            };
+            if !file_element_id(element) {
+                return Err("file interaction requires one exact element ID");
+            }
+            capability
+        }
         NativeCapability::BrowserEvaluate { expression } => {
             if expression.is_empty() || expression.len() > 4096 || expression.contains('\0') {
                 return Err("browser evaluation source is empty or oversized");
@@ -459,6 +499,8 @@ pub fn decode_native_capability(
             ("file-read", &["root"]),
             ("file-write", &["root"]),
             ("process-execute", &["executable", "arguments"]),
+            ("file-input", &["elementId"]),
+            ("file-drop", &["elementId"]),
             ("browser-snapshot", &[]),
             ("browser-observe-dom", &[]),
             ("browser-observe-accessibility", &[]),
@@ -467,6 +509,8 @@ pub fn decode_native_capability(
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("window-commands", &[]),
+            ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["origins"]),
@@ -483,6 +527,8 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("file-read", &["path"]),
             ("file-write", &["path"]),
             ("process-execute", &["executable", "arguments"]),
+            ("file-input", &["elementId"]),
+            ("file-drop", &["elementId"]),
             ("browser-snapshot", &[]),
             ("browser-observe-dom", &[]),
             ("browser-observe-accessibility", &[]),
@@ -491,6 +537,8 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("window-commands", &[]),
+            ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["url"]),
@@ -556,6 +604,18 @@ pub(crate) fn download_root(
 
 fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
     match (grant, request) {
+        (
+            NativeCapability::FileInput {
+                element_id: granted,
+            },
+            NativeRequest::FileInput { element_id },
+        )
+        | (
+            NativeCapability::FileDrop {
+                element_id: granted,
+            },
+            NativeRequest::FileDrop { element_id },
+        ) => file_element_id(element_id) && granted == element_id,
         (NativeCapability::BrowserSnapshot, NativeRequest::BrowserSnapshot)
         | (NativeCapability::BrowserObserveDom, NativeRequest::BrowserObserveDom)
         | (
@@ -600,6 +660,8 @@ fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
         (NativeCapability::ClipboardRead, NativeRequest::ClipboardRead)
         | (NativeCapability::ClipboardWrite, NativeRequest::ClipboardWrite)
         | (NativeCapability::WindowCommands, NativeRequest::WindowCommands)
+        | (NativeCapability::StatusItem, NativeRequest::StatusItem)
+        | (NativeCapability::ApplicationLinks, NativeRequest::ApplicationLinks)
         | (NativeCapability::DialogOpen, NativeRequest::DialogOpen)
         | (NativeCapability::DialogSave, NativeRequest::DialogSave) => true,
         (NativeCapability::ExternalUrl { origins }, NativeRequest::ExternalUrl { url }) => {
@@ -901,6 +963,98 @@ mod tests {
         }
     }
     #[test]
+    fn file_interactions_require_separate_exact_element_and_document_grants() {
+        let mut policy = Policy::default();
+        let live = scope(1, 2, 3, "https://remote.invalid");
+        policy.install_document(live.clone()).unwrap();
+        let input = NativeRequest::FileInput {
+            element_id: "upload".into(),
+        };
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(
+                &live,
+                NativeCapability::FileInput {
+                    element_id: "upload".into(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Authorized
+        );
+        for denied in [
+            NativeRequest::FileDrop {
+                element_id: "upload".into(),
+            },
+            NativeRequest::FileInput {
+                element_id: "other".into(),
+            },
+            NativeRequest::FileInput {
+                element_id: "upload\n".into(),
+            },
+            NativeRequest::FileRead {
+                path: "upload".into(),
+            },
+            NativeRequest::BrowserInput,
+        ] {
+            assert_eq!(
+                policy.authorize_native(&live, &denied, AdapterAvailability::Available),
+                GateDecision::Denied
+            );
+        }
+        assert_eq!(
+            policy.authorize_native(
+                &scope(1, 9, 3, "https://remote.invalid"),
+                &input,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy.navigation_started(1);
+        assert_eq!(
+            policy.authorize_native(&live, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+        let replacement = scope(1, 2, 4, "https://remote.invalid");
+        policy.install_document(replacement.clone()).unwrap();
+        assert_eq!(
+            policy.authorize_native(&replacement, &input, AdapterAvailability::Available),
+            GateDecision::Denied
+        );
+    }
+    #[test]
+    fn file_grants_reject_paths_selectors_aliases_and_additional_wire_fields() {
+        for name in ["file-input", "file-drop"] {
+            let capability =
+                decode_native_capability(serde_json::json!({"name":name,"elementId":"upload"}))
+                    .unwrap();
+            assert!(prepare_native_capability(capability).is_ok());
+            for extra in ["path", "frame", "script", "element_id"] {
+                let mut invalid = serde_json::json!({"name":name,"elementId":"upload"});
+                invalid[extra] = serde_json::json!("unexpected");
+                assert!(decode_native_capability(invalid).is_err());
+            }
+        }
+        for element in [
+            "",
+            "#upload",
+            "input[type=file]",
+            "upload\n",
+            "a b",
+            "1upload",
+            "../path",
+        ] {
+            assert!(prepare_native_capability(NativeCapability::FileInput {
+                element_id: element.into()
+            })
+            .is_err());
+        }
+    }
+    #[test]
     fn browser_actions_require_the_exact_native_document_session_and_expression() {
         let mut policy = Policy::default();
         let live = scope(1, 2, 3, "https://remote.invalid");
@@ -1006,6 +1160,130 @@ mod tests {
             }
         }
         panic!("capability fixture collision limit exceeded")
+    }
+
+    #[test]
+    fn link_reading_has_a_distinct_document_grant_from_external_submission() {
+        let mut policy = Policy::default();
+        let live = scope(4, 8, 2, "app://ui");
+        policy.install_document(live.clone()).unwrap();
+        policy
+            .grant_native(
+                &live,
+                NativeCapability::ExternalUrl {
+                    origins: ["https://example.com".into()].into_iter().collect(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(&live, NativeCapability::ApplicationLinks)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Authorized
+        );
+        for foreign in [
+            scope(5, 8, 2, "app://ui"),
+            scope(4, 9, 2, "app://ui"),
+            scope(4, 8, 1, "app://ui"),
+        ] {
+            assert_eq!(
+                policy.authorize_native(
+                    &foreign,
+                    &NativeRequest::ApplicationLinks,
+                    AdapterAvailability::Available
+                ),
+                GateDecision::Denied
+            );
+        }
+        policy.navigation_started(live.view);
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert_eq!(
+            decode_native_capability(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeCapability::ApplicationLinks
+        );
+        assert_eq!(
+            decode_native_request(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeRequest::ApplicationLinks
+        );
+        assert!(decode_native_capability(
+            serde_json::json!({"name":"application-links","route":"untrusted"})
+        )
+        .is_err());
+        assert!(decode_native_request(
+            serde_json::json!({"name":"application-links","route":"untrusted"})
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn status_item_grant_is_distinct_and_revokes_with_its_exact_document() {
+        let mut policy = Policy::default();
+        let live = scope(4, 8, 2, "app://ui");
+        policy.install_document(live.clone()).unwrap();
+        policy
+            .grant_native(&live, NativeCapability::WindowCommands)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(&live, NativeCapability::StatusItem)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Authorized
+        );
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Unavailable
+            ),
+            GateDecision::Unavailable
+        );
+        policy.navigation_started(live.view);
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert!(decode_native_capability(
+            serde_json::json!({"name":"status-item","title":"not-a-grant"})
+        )
+        .is_err());
+        assert!(decode_native_request(serde_json::json!({"name":"status-item","view":4})).is_err());
     }
 
     #[test]

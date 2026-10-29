@@ -89,6 +89,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
           'window.geometry',
           'window.commands',
           'app.lifecycle',
+          'app.links',
           'view.composition',
           'download.manage',
           'session.persistent',
@@ -100,10 +101,10 @@ describe('explicit build profiles with versioned capability metadata', () => {
       },
       {
         backend: 'cef',
-        capabilities: ['clipboard.text'],
+        capabilities: ['clipboard.text', 'app.open-url'],
         platforms: ['darwin-arm64', 'win32-x64'],
       },
-      { backend: 'cef', capabilities: ['dialog.file'], platforms: ['darwin-arm64'] },
+      { backend: 'cef', capabilities: ['dialog.file', 'status.item'], platforms: ['darwin-arm64'] },
     ])
     assert.equal(profileProvidesCapability(cef, 'cef', 'window.lifecycle'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'session.persistent'), true)
@@ -112,6 +113,13 @@ describe('explicit build profiles with versioned capability metadata', () => {
     assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'linux-x64'), false)
     assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'darwin-arm64'), true)
     assert.equal(profileProvidesCapability(cef, 'cef', 'clipboard.text', 'win32-x64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'status.item', 'darwin-arm64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'status.item', 'win32-x64'), false)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'status.item', 'linux-x64'), false)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'app.links', 'linux-x64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'app.open-url', 'darwin-arm64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'app.open-url', 'win32-x64'), true)
+    assert.equal(profileProvidesCapability(cef, 'cef', 'app.open-url', 'linux-x64'), false)
     assert.throws(() => capabilityMetadataFor(cef, 'wkwebview'), hasCode('INVALID_ARGUMENT'))
   })
 

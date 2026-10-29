@@ -169,6 +169,8 @@ class HostedQualificationTests(unittest.TestCase):
                 "view-parent-close",
                 "window-commands",
                 "file-dialogs",
+                "status-items",
+                "application-links",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -268,6 +270,8 @@ class HostedQualificationTests(unittest.TestCase):
                             "view-parent-close",
                             "window-commands",
                             "file-dialogs",
+                            "status-items",
+                            "application-links",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -590,7 +594,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 18)
+                self.assertEqual(len(names), 20)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -663,6 +667,62 @@ class ManagedDevelopmentStageTests(unittest.TestCase):
 
 
 class DesktopStageTests(unittest.TestCase):
+    def test_status_requires_exact_source_and_owned_shutdown_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("status-items"), 1)
+                self.assertEqual(names.index("status-items"), names.index("file-dialogs") + 1)
+                self.assertEqual(
+                    dict(selected)["status-items"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=status" if system == "linux" else "--case=status",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["status-items"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "status-items")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "status-items", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("status-items"), hosted.ROOT / ".bunly/m7/status-items"
+        )
+
+    def test_status_collection_keeps_failed_and_unsupported_reports_without_fixture_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = root / ".bunly/hosted-evidence"
+            for status in ("failed", "unsupported"):
+                report = root / ".bunly/m7/status-items" / ("run-" + status) / "report.json"
+                report.parent.mkdir(parents=True)
+                report.write_text(json.dumps({"passed": status == "unsupported", "status": status}))
+                (report.parent / "fixture.json").write_text('{"private":"not-for-upload"}')
+            with (
+                patch.object(hosted, "ROOT", root),
+                patch.object(hosted, "EVIDENCE", evidence),
+                patch.dict("os.environ", {"GITHUB_STEP_SUMMARY": ""}),
+            ):
+                hosted.collect()
+            self.assertEqual(
+                {path.name for path in evidence.iterdir()},
+                {"status-items-run-failed.json", "status-items-run-unsupported.json"},
+            )
+            self.assertFalse(
+                json.loads((evidence / "status-items-run-failed.json").read_text())["passed"]
+            )
+            self.assertEqual(
+                json.loads((evidence / "status-items-run-unsupported.json").read_text())["status"],
+                "unsupported",
+            )
+
     def test_window_commands_requires_native_callbacks_and_owned_shutdown_before_providers(self):
         source = "a" * 40
         app = Path("/app")
@@ -807,6 +867,33 @@ class DesktopStageTests(unittest.TestCase):
                 )
         self.assertEqual(
             hosted.report_directory("desktop-services"), hosted.ROOT / ".bunly/m7/desktop-services"
+        )
+
+    def test_application_links_require_their_own_current_source_receipt_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("application-links"), 1)
+                self.assertEqual(names.index("application-links"), names.index("status-items") + 1)
+                self.assertEqual(
+                    dict(selected)["application-links"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=links" if system == "linux" else "--case=links",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["application-links"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "application-links")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+        self.assertEqual(
+            hosted.report_directory("application-links"),
+            hosted.ROOT / ".bunly/m7/application-links",
         )
 
     def test_parent_close_requires_live_native_receipts_before_providers(self):
