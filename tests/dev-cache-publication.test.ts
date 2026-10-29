@@ -117,3 +117,70 @@ test('stage cleanup failure retains the assembly error and still releases the ow
     await fs.rm(root, { recursive: true, force: true })
   }
 })
+
+test('both cleanup failures are reported with the original failure', async () => {
+  const root = await fs.mkdtemp(join(tmpdir(), 'bunly-cache-cleanup-both-'))
+  try {
+    const { options, prepared } = await fixture(root)
+    await fs.rm(prepared.directory, { recursive: true })
+    const primary = new Error('assembly failed')
+    const stageFailure = new Error('stage cleanup failed')
+    const lockFailure = new Error('lock cleanup failed')
+    const remove = fs.rm
+    const attempts: string[] = []
+    const spy = spyOn(fs, 'rm').mockImplementation((async (path, opts) => {
+      if (typeof path === 'string' && basename(path).startsWith('.stage-')) {
+        attempts.push('stage')
+        throw stageFailure
+      }
+      if (typeof path === 'string' && path === `${prepared.directory}.lock`) {
+        attempts.push('lock')
+        throw lockFailure
+      }
+      return remove(path, opts)
+    }) as typeof fs.rm)
+    try {
+      const failure = await prepareDevelopmentHost({
+        ...options,
+        assemble: async () => {
+          throw primary
+        },
+      }).catch((error: unknown) => error)
+      expect(failure).toBeInstanceOf(AggregateError)
+      expect((failure as AggregateError).errors).toEqual([primary, stageFailure, lockFailure])
+      expect(attempts).toEqual(['stage', 'lock'])
+      expect(await fs.readdir(options.cacheRoot)).toContain(`${prepared.key}.lock`)
+    } finally {
+      spy.mockRestore()
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
+
+test('a cleanup failure after publication is reported and the published cache remains verifiable', async () => {
+  const root = await fs.mkdtemp(join(tmpdir(), 'bunly-cache-cleanup-published-'))
+  try {
+    const { options, prepared } = await fixture(root)
+    await fs.rm(prepared.directory, { recursive: true })
+    const cleanup = new Error('stage cleanup failed')
+    const remove = fs.rm
+    const spy = spyOn(fs, 'rm').mockImplementation((async (path, opts) => {
+      if (typeof path === 'string' && basename(path).startsWith('.stage-')) throw cleanup
+      return remove(path, opts)
+    }) as typeof fs.rm)
+    try {
+      const failure = await prepareDevelopmentHost(options).catch((error: unknown) => error)
+      expect(failure).toBeInstanceOf(AggregateError)
+      expect((failure as AggregateError).errors).toEqual([cleanup])
+      expect(await fs.readdir(options.cacheRoot)).not.toContain(`${prepared.key}.lock`)
+    } finally {
+      spy.mockRestore()
+    }
+    const recovered = await prepareDevelopmentHost(options)
+    expect(recovered.cacheHit).toBe(true)
+    expect(await fs.readFile(recovered.entrypoint, 'utf8')).toBe('complete')
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
