@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: kernel-${{ github.ref }}
+  group: kernel-${{ github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   kernel:
