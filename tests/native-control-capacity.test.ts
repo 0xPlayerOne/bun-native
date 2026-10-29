@@ -64,6 +64,29 @@ test('status disposal can use reserved capacity while ordinary requests are satu
   }
 })
 
+test('link reader disposal can use reserved capacity while acknowledgments remain ordinary', async () => {
+  const peer = await nativePeer()
+  const pending = Array.from({ length: capacity.ordinaryRequests }, () =>
+    peer.transport.call('view.create')
+  )
+  const settled = Promise.allSettled(pending)
+  try {
+    await denied(peer.transport.call('links.ack'))
+    const disposal = peer.transport.call('links.dispose', {
+      registration: 'link-registration',
+      incarnation: 1,
+      scope: { view: 1, document: 1, context: 1, generation: 1 },
+    })
+    assert.equal(peer.transport.diagnostics().ordinaryRequests, capacity.ordinaryRequests)
+    assert.equal(peer.transport.diagnostics().controlAdmissionsUnderPressure, 1)
+    peer.reply(peer.commands.at(-1)!)
+    await disposal
+  } finally {
+    await peer.stop()
+    await settled
+  }
+})
+
 test('cancellation cannot recycle ordinary capacity before native acknowledgment', async () => {
   const peer = await nativePeer()
   try {

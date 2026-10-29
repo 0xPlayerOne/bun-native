@@ -67,6 +67,8 @@ struct Config {
     development_browser_actions: bool,
     #[serde(default)]
     qualification_profile: deadlines::DeadlineProfile,
+    #[serde(default)]
+    application_links: Option<host::application_links::Manifest>,
 }
 pub fn browser_app() -> App {
     host::BunlyApp::new()
@@ -291,6 +293,9 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     .emit();
     #[cfg(target_os = "macos")]
     let _application = mac::setup();
+    host::application_links::configure(config.application_links, std::env::args())?;
+    #[cfg(target_os = "macos")]
+    let _link_delegate = host::application_links::install_delegate()?;
     let mut settings = Settings {
         no_sandbox: 0,
         command_line_args_disabled: 1,

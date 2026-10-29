@@ -22,6 +22,14 @@ records the exact source and native artifact attribution, including earlier fail
 attempts. Windows and Linux explicitly report unsupported status items. Physical
 input, status-bar appearance and assistive technology remain separate observations.
 
+The [application-link adapter](application-links.md) adds bounded startup inputs on
+all three CEF targets, a macOS live URL delegate, and macOS/Windows HTTPS submission
+source. Its bounded startup/authority/replay/cleanup fixture passed on macOS;
+[PR #145](https://github.com/0xPlayerOne/bunly/pull/145) records the exact source,
+native artifact and earlier failed attempts. Live OS URL delivery, successful
+browser launch, handler registration, second-instance forwarding and app reopen
+remain unqualified; this does not pass the E1 hardware/workbench case.
+
 The historical native teardown watchdog remains tracked by
 [#124](https://github.com/0xPlayerOne/bunly/issues/124). A later passing control run
 does not erase a failure or establish that either reliability investigation is

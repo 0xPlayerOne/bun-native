@@ -5,6 +5,24 @@ import type { CommandObservation } from '../lib/observed-command.ts'
 // Literal inventories keep this helper portable to a branch without every
 // desktop fixture. None of the optional fixture modules is imported or run.
 const fixtures = {
+  links: {
+    profile: 'native-application-links-v1',
+    event: 'bunly.native.application-links',
+    phases: [
+      'ready',
+      'policy',
+      'policy-grant',
+      'policy-create',
+      'policy-forged',
+      'policy-duplicate',
+      'read-ack',
+      'managed',
+      'external-policy',
+      'navigation',
+      'quit',
+      'cleanup',
+    ],
+  },
   status: {
     profile: 'native-status-items-v1',
     event: 'bunly.native.status-items',
@@ -116,6 +134,10 @@ const codes = [
   'ERR_ASSERTION',
 ] as const
 const errorCategories = {
+  'Application link fixture deadline': 'workload-deadline',
+  'Host closed before application link fixture completed': 'host-closed',
+  'Malformed native application link receipt': 'native-receipt',
+  'Malformed native application link snapshot': 'native-snapshot',
   'Status item fixture deadline': 'workload-deadline',
   'Host closed before status fixture completed': 'host-closed',
   'Malformed native status item receipt': 'native-receipt',

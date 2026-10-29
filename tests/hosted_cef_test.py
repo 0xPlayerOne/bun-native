@@ -170,6 +170,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "window-commands",
                 "file-dialogs",
                 "status-items",
+                "application-links",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -270,6 +271,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "window-commands",
                             "file-dialogs",
                             "status-items",
+                            "application-links",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -592,7 +594,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 19)
+                self.assertEqual(len(names), 20)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -865,6 +867,33 @@ class DesktopStageTests(unittest.TestCase):
                 )
         self.assertEqual(
             hosted.report_directory("desktop-services"), hosted.ROOT / ".bunly/m7/desktop-services"
+        )
+
+    def test_application_links_require_their_own_current_source_receipt_before_providers(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("application-links"), 1)
+                self.assertEqual(names.index("application-links"), names.index("status-items") + 1)
+                self.assertEqual(
+                    dict(selected)["application-links"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=links" if system == "linux" else "--case=links",
+                    ],
+                )
+                self.assertNotIn("--disposable-clipboard", dict(selected)["application-links"])
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "application-links")["passed"] = False
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+        self.assertEqual(
+            hosted.report_directory("application-links"),
+            hosted.ROOT / ".bunly/m7/application-links",
         )
 
     def test_parent_close_requires_live_native_receipts_before_providers(self):

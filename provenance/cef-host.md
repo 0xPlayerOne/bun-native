@@ -51,6 +51,18 @@ copied. It does not establish a cause for any historical download timeout.
 - https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iattachmentexecute-setlocalpath
 - https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-attachmentmanager
 
+The application-link adapters are Bunly-authored. The macOS adapter uses the
+pinned objc2 AppKit/Foundation declarations for an owned application delegate and
+`NSWorkspace.openURL`. The Windows adapter uses the pinned windows-sys declarations
+for `ShellExecuteExW` and balanced COM initialization. No upstream implementation
+was copied. Neither adapter installs OS URL registration, chooses a browser,
+expands shell text, or claims successful page navigation.
+
+API references: Apple's [application URL delegate](<https://developer.apple.com/documentation/appkit/nsapplicationdelegate/application(_:open:)>)
+and [NSWorkspace](https://developer.apple.com/documentation/appkit/nsworkspace),
+and Microsoft's [ShellExecuteExW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecuteexw)
+and [SHELLEXECUTEINFOW flags](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfow).
+
 ## Parent-window close references
 
 The guarded close batch and overlay reattachment in Bunly's host are authored

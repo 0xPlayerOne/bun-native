@@ -8,6 +8,8 @@ const DESKTOP_CAPABILITIES = Object.freeze([
   'clipboard.text',
   'dialog.file',
   'app.lifecycle',
+  'app.links',
+  'app.open-url',
   'view.composition',
   'download.manage',
   'view.snapshot',
