@@ -58,8 +58,10 @@ Workflow permissions remain `contents: read`; checkout credentials are not
 persisted. No secrets, public release uploads, package publication, remote
 interactive access, self-hosted runner, sandbox-disabling flag, or trusted
 certificate is involved. Action versions and the Bun/Rust/CEF inputs are pinned.
-Only successful native runs save the dependency/browser download cache; this
-manual cache is separate from the existing automatic lane.
+The manual lane saves dependency/browser download inputs after the native
+build, tests, assembly and preparation succeed, before runtime qualification.
+Later qualification failures retain those inputs without counting as qualification
+passes. This manual cache is separate from the existing automatic lane.
 
 ## Windows privilege boundary
 
