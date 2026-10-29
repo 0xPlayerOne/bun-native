@@ -4,6 +4,7 @@ import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { ManagedDesktopResources } from '../../packages/runtime/src/managed-desktop.ts'
 import { ManagedGenerationOwner } from '../../packages/runtime/src/managed-generations.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
+import { dialogNavigationReadiness } from '../file-dialogs/readiness.ts'
 import { formatDesktopFixtureFailure } from '../../benchmarks/desktop/failure-codes.ts'
 import { applicationLinkChecks, applicationLinkStartupInputs } from './contract.ts'
 
@@ -240,10 +241,13 @@ export default async function qualifyApplicationLinks(backend: CefBackend): Prom
     stage = 'navigation'
     const retired = await bounded(backend.createApplicationLinkReader(scope))
     const nextUrl = 'app://ui/index.html?generation=next'
-    const nextReady = managedDocumentReadiness(backend, nextUrl)
-    readiness.push(nextReady)
-    await bounded(backend.navigate(view, nextUrl))
-    await bounded(nextReady.wait(view))
+    const nextReady = dialogNavigationReadiness(backend, view, nextUrl)
+    try {
+      await bounded(backend.navigate(view, nextUrl))
+      await bounded(nextReady.wait())
+    } finally {
+      nextReady.close()
+    }
     await bounded(assert.rejects(backend.readApplicationLinks(retired), hasCode('DISPOSED')))
     await bounded(backend.disposeApplicationLinkReader(retired))
     assert.equal((await bounded(backend.qualifyApplicationLinkSnapshot())).readers, 0)
