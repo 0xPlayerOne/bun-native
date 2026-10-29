@@ -40,6 +40,10 @@ browser bundle. Client parsing is convenience, not security: the server checks
 authority, independently parses input, and validates output before responding.
 Output validation also runs on the client. Parsers are synchronous, trusted code;
 they may throw but must not perform unbounded work or return promises.
+Starting another call on the same client synchronously from its input parser or
+serialization is rejected with `OVERLOADED`; schedule it after the current call
+has returned instead. This keeps request IDs in delivery order and preserves the
+pending-call limit.
 
 Application and parser exception text is never sent to a renderer. Wire errors
 contain a known code and bounded generic message, without stack traces, private

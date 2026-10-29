@@ -588,6 +588,36 @@ describe('RPC client and server', () => {
     await p
     expect(await client.call('echo', 'y')).toBe('y')
   })
+  test('reentrant input parsing cannot exceed the pending quota', async () => {
+    const { left } = pair()
+    let nested: Promise<unknown> | undefined
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        if (value === 'outer') nested = client.call('echo', 'inner')
+        return text(value)
+      }, text),
+    })
+    const client = new RpcClient(contract, left, { limits: { maxPending: 1 } })
+    const outer = result(client.call('echo', 'outer'))
+    expect(client.diagnostics().pending).toBe(1)
+    expect((await result(nested!)).code).toBe('OVERLOADED')
+    expect(decodeRpc(left.packets[0]!, limits)).toMatchObject({ type: 'request', id: 1 })
+    client.close()
+    await outer
+  })
+  test('input parsing cannot enqueue a request after closing the client', async () => {
+    const { left } = pair()
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        client.close()
+        return text(value)
+      }, text),
+    })
+    const client = new RpcClient(contract, left)
+    expect((await result(client.call('echo', 'outer'))).code).toBe('DISCONNECTED')
+    expect(client.diagnostics().pending).toBe(0)
+    expect(left.packets).toHaveLength(0)
+  })
   test('duplicate and late responses are ignored without unbounded tombstones', async () => {
     const { client, left, right } = await setup()
     expect(await client.call('echo', 'x')).toBe('x')

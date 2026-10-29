@@ -32,6 +32,7 @@ export class RpcClient<S extends RpcSchema> {
   readonly #channel: RpcChannel
   readonly #pending = new Map<number, Pending>()
   #sequence = 0
+  #preparing = false
   #closed: RpcError | undefined
   readonly closed: Promise<RpcError>
   constructor(schema: S, transport: RpcTransport, options: RpcClientOptions = {}) {
@@ -60,6 +61,11 @@ export class RpcClient<S extends RpcSchema> {
   }
   #call(method: string, input: unknown, options: RpcCallOptions): Promise<unknown> {
     if (this.#closed) return Promise.reject(this.#closed)
+    // Input parsers and serialization can run application code synchronously.
+    // A nested admission would send a later ID before this request and could
+    // exceed the pending limit before this request has reserved its slot.
+    if (this.#preparing)
+      return Promise.reject(new RpcError('OVERLOADED', 'RPC request preparation is in progress'))
     if (options.signal?.aborted)
       return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
     const definition = Object.hasOwn(this.#schema, method) ? this.#schema[method] : undefined
@@ -72,6 +78,7 @@ export class RpcClient<S extends RpcSchema> {
     const id = ++this.#sequence,
       deadline = this.#clock.now() + timeoutMs
     let packet: Uint8Array
+    this.#preparing = true
     try {
       packet = encodeRpc(
         { type: 'request', id, method, timeoutMs, value: definition.input(input) },
@@ -81,7 +88,12 @@ export class RpcClient<S extends RpcSchema> {
       return Promise.reject(
         new RpcError('BAD_REQUEST', 'RPC input validation or serialization failed')
       )
+    } finally {
+      this.#preparing = false
     }
+    if (this.#closed) return Promise.reject(this.#closed)
+    if (options.signal?.aborted)
+      return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
     return new Promise((resolve, reject) => {
       const pending: Pending = {
         resolve,
