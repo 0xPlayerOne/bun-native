@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/0xPlayerOne/bunly/compare/v0.1.4...v0.2.0) (2026-10-29)
+
+
+### Features
+
+* **desktop:** add scoped application links and HTTPS submission ([#145](https://github.com/0xPlayerOne/bunly/issues/145)) ([3fc7ae0](https://github.com/0xPlayerOne/bunly/commit/3fc7ae0105bbdadb89ebf94049dff52857e36d8a))
+* **desktop:** add scoped native macOS status items ([#142](https://github.com/0xPlayerOne/bunly/issues/142)) ([2815596](https://github.com/0xPlayerOne/bunly/commit/2815596ff63cddec224b51cf53a3ab2ddd8b9d24))
+
 ## [0.1.4](https://github.com/0xPlayerOne/bunly/compare/v0.1.3...v0.1.4) (2026-10-29)
 
 
