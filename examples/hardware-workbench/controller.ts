@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os'
 import {
   requireCapability,
   type SessionHandle,
@@ -481,6 +482,66 @@ export class HardwareWorkbench {
             break
         }
         break
+      case 'native-menu': {
+        const scope = await this.backend.capturePolicyScope(this.#controls!.view)
+        check()
+        await this.backend.grantNativeCapability(scope, { name: 'window-commands' })
+        check()
+        const commands = await this.backend.createWindowCommands(
+          scope,
+          {
+            commands: [{ id: 'fixture', label: 'Fixture action' }],
+            menu: [{ type: 'command', command: 'fixture' }],
+          },
+          options
+        )
+        try {
+          check()
+          const finished = Promise.withResolvers<void>()
+          void finished.promise.catch(() => {})
+          const abort = () => finished.reject(new Error('Menu operation cancelled'))
+          const remove = this.backend.onWindowCommandsEvent(commands, (event) => {
+            if (event.type === 'command') {
+              try {
+                check()
+                this.#log('Native menu fixture action selected')
+              } catch {
+                finished.reject(new Error('Native menu owner changed'))
+              }
+            }
+            if (event.type === 'menu-closed') finished.resolve()
+            if (event.type === 'menu-failed' || event.type === 'revoked')
+              finished.reject(new Error('Native menu unavailable or revoked'))
+          })
+          signal.addEventListener('abort', abort, { once: true })
+          try {
+            signal.throwIfAborted()
+            await this.backend.showWindowMenu(commands, { x: 30, y: 100 }, options)
+            await finished.promise
+            check()
+          } finally {
+            signal.removeEventListener('abort', abort)
+            remove()
+          }
+        } finally {
+          await this.backend.disposeWindowCommands(commands)
+        }
+        break
+      }
+      case 'open-dialog': {
+        const scope = await this.backend.capturePolicyScope(this.#controls!.view)
+        check()
+        await this.backend.grantNativeCapability(scope, { name: 'dialog-open' })
+        check()
+        const result = await this.backend.showOpenFileDialog(
+          scope,
+          { directory: tmpdir(), title: 'Workbench: choose a controlled fixture or cancel' },
+          options
+        )
+        check()
+        this.#log(`Native file dialog ${result.status}; selected paths are not recorded`)
+        break
+      }
       case 'quit':
         this.#phase = 'closing'
         this.#log('Operator requested final window close')
