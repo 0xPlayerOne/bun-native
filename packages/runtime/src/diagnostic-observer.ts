@@ -11,7 +11,17 @@ export class DiagnosticObserverBudget {
       this.onError()
       return
     }
-    if (result === undefined) return
+    try {
+      if (
+        result === null ||
+        (typeof result !== 'object' && typeof result !== 'function') ||
+        typeof (result as { then?: unknown }).then !== 'function'
+      )
+        return
+    } catch {
+      this.onError()
+      return
+    }
     this.#pending++
     void Promise.resolve(result).then(
       () => {

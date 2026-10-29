@@ -28,6 +28,8 @@ export const CAPABILITIES = [
   'view.evaluate',
   'view.input',
   'view.input.synthetic',
+  'view.file-input',
+  'view.file-drop',
   'view.observe-dom',
   'view.observe-accessibility',
   'backend.extensions',

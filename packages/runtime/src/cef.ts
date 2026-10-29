@@ -16,6 +16,14 @@ import { CefDownloads } from './cef-downloads.ts'
 import { CefWindowCommands } from './cef-window-commands.ts'
 import { CefStatusItems } from './cef-status-items.ts'
 import { CefApplicationLinks } from './cef-application-links.ts'
+import { CefProgrammaticFiles } from './cef-programmatic-files.ts'
+import { viewControlBudget } from './cef-view-control-budget.ts'
+import {
+  isFileInteractionElementId,
+  type ProgrammaticFilesBackend,
+  type FileInteractionRequest,
+  type FileInteractionOperation,
+} from '../../contracts/src/programmatic-files.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -246,6 +254,7 @@ export type NativeCapabilityGrant =
         | 'browser-input'
     }
   | { readonly name: 'browser-evaluate'; readonly expression: string }
+  | { readonly name: 'file-input' | 'file-drop'; readonly elementId: string }
   | { readonly name: 'external-url'; readonly origins: readonly string[] }
 
 export type NativeOperationRequest =
@@ -273,6 +282,7 @@ export type NativeOperationRequest =
         | 'browser-input'
     }
   | { readonly name: 'browser-evaluate'; readonly expression: string }
+  | { readonly name: 'file-input' | 'file-drop'; readonly elementId: string }
   | { readonly name: 'external-url'; readonly url: string }
 
 export type BrowserPermissionCapability =
@@ -436,7 +446,8 @@ export class CefBackend
     BrowserActionsBackend,
     WindowCommandsBackend,
     StatusItemBackend,
-    ApplicationLinksBackend
+    ApplicationLinksBackend,
+    ProgrammaticFilesBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -449,6 +460,7 @@ export class CefBackend
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
   readonly #dialogs: CefFileDialogs
+  readonly #programmaticFiles: CefProgrammaticFiles
   readonly #downloads: CefDownloads
   readonly #registry = new Registry()
   // Native IDs are lookup keys only; public operations still validate opaque registry handles.
@@ -522,6 +534,7 @@ export class CefBackend
     this.#transport = transport
     this.#browserActions = new CefBrowserActions(transport)
     this.#dialogs = new CefFileDialogs(transport)
+    this.#programmaticFiles = new CefProgrammaticFiles(transport)
     this.#downloads = new CefDownloads(transport, () => {
       this.#listenerErrors++
     })
@@ -594,6 +607,7 @@ export class CefBackend
       this.#statusItems.close()
       this.#applicationLinks.close()
       this.#dialogs.close(transport.failure ?? new NativeShutdownError())
+      this.#programmaticFiles.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
       for (const kind of ['view', 'window', 'session'] as const)
@@ -1334,7 +1348,14 @@ export class CefBackend
     this.#active()
     const captured = this.#capturedPolicyScope(scope)
     let prepared = capability
-    if (capability.name.startsWith('browser-')) {
+    if (capability.name === 'file-input' || capability.name === 'file-drop') {
+      if (
+        Object.keys(capability).sort().join(',') !== 'elementId,name' ||
+        !isFileInteractionElementId(capability.elementId)
+      )
+        throw new BunlyError('INVALID_ARGUMENT', 'A file grant requires one exact element ID')
+      prepared = { name: capability.name, elementId: capability.elementId }
+    } else if (capability.name.startsWith('browser-')) {
       const expected = capability.name === 'browser-evaluate' ? ['name', 'expression'] : ['name']
       if (
         Object.keys(capability).length !== expected.length ||
@@ -1729,6 +1750,36 @@ export class CefBackend
         this.#emit({ type: 'disposed', resource: session })
       }
     })
+  }
+  prepareFileInteraction(
+    scope: PolicyScope,
+    request: FileInteractionRequest,
+    options?: OperationOptions
+  ): Promise<FileInteractionOperation> {
+    this.#active()
+    const captured = this.#capturedPolicyScope(scope)
+    if (request?.kind !== 'file-input' && request?.kind !== 'file-drop')
+      throw new BunlyError('INVALID_ARGUMENT', 'Unknown file interaction')
+    requireCapability(
+      this.descriptor,
+      request.kind === 'file-input' ? 'view.file-input' : 'view.file-drop'
+    )
+    // No await precedes the shared reservation and intrinsic byte inspection.
+    return this.#programmaticFiles.prepare(
+      captured.resource.native,
+      { ...captured.nativeScope },
+      request,
+      () => {
+        this.#active()
+        this.#capturedPolicyScope(scope)
+      },
+      options?.signal
+    )
+  }
+  /** Operation-owned bytes only; caller buffers, exposed Files and CEF internals
+   * are not an RSS or garbage-collection claim. */
+  viewControlDiagnostics(): Readonly<{ operations: number; bytes: number }> {
+    return viewControlBudget(this.#transport).diagnostics()
   }
   async #browserAction(
     view: ViewHandle,
@@ -2280,6 +2331,7 @@ export class CefBackend
     this.#downloads.event(event)
     this.#browserActions.event(event)
     this.#dialogs.event(event)
+    this.#programmaticFiles.event(event)
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined

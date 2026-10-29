@@ -336,3 +336,5 @@ export {
 } from './stream-wire.ts'
 export type { StreamErrorCode } from './stream-wire.ts'
 export * from './browser-actions.ts'
+
+export * from './programmatic-files.ts'
