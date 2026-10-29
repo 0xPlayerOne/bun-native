@@ -45,6 +45,10 @@ Every prepared file, directory and contained relative symlink is inventoried;
 reuse compares that complete inventory, including file bytes and executable modes
 where supported. Corruption or an extra file fails closed instead of silently
 reassembling over an in-use host. A stale lock is not removed automatically.
+After a handled preparation failure, stage and lock removal are attempted
+independently. Cleanup errors are reported together with the original failure;
+an unsuccessful stage removal can leave a private staging directory, and an
+unsuccessful lock removal can require explicit investigation before retrying.
 
 An inventory rejection remains `CACHE_INTEGRITY`. Its optional `cacheIntegrity`
 diagnostic records bounded expected and actual relative-path metadata from the
