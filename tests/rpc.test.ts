@@ -1892,7 +1892,10 @@ describe('RPC final boundary review', () => {
       if (cancelDuringSetup) throw new Error('private scheduler cleanup failure')
     }
     right.message?.(
-      encodeRpc({ type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'cancel' }, limits)
+      encodeRpc(
+        { type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'cancel' },
+        limits
+      )
     )
     await flush()
     const responses = right.packets.map((packet) => decodeRpc(packet, limits))
