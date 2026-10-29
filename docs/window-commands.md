@@ -9,18 +9,18 @@ Issue #34 remains open for its other desktop services and platform qualification
 
 ## Availability
 
-| Backend / platform                          | Implementation                                                             | Qualification in this increment                                                   |
-| ------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| CEF / macOS arm64                           | Native CEF popup and accelerator primitives                                | Pending real execution; physical keyboard and accessibility traversal unqualified |
-| CEF / Linux x64                             | Native CEF popup and accelerator primitives; existing X11 host requirement | Actual CEF compile and pure Rust tests; native menu/input execution pending       |
-| CEF / Windows x64                           | Native CEF popup and accelerator primitives                                | MSVC target API check passed; real native build/execution pending                 |
-| Legacy ABI 1 host without `window.commands` | Explicit `UNSUPPORTED_CAPABILITY`                                          | Protocol regression covered                                                       |
-| Mock and system webview profiles            | Explicit unsupported capability                                            | No fabricated menu or OS input observations                                       |
+| Backend / platform                          | Implementation                                                             | Qualification in this increment                                     |
+| ------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| CEF / macOS arm64                           | Native CEF popup and accelerator primitives                                | Synthetic native menu fixture passed at historical source `efe4db3` |
+| CEF / Linux x64                             | Native CEF popup and accelerator primitives; existing X11 host requirement | Synthetic native menu fixture passed at integrated source `ef6c3ca` |
+| CEF / Windows x64                           | Native CEF popup and accelerator primitives                                | MSVC target API check passed; real native build/execution pending   |
+| Legacy ABI 1 host without `window.commands` | Explicit `UNSUPPORTED_CAPABILITY`                                          | Protocol regression covered                                         |
+| Mock and system webview profiles            | Explicit unsupported capability                                            | No fabricated menu or OS input observations                         |
 
 The runtime advertises this facet only when the native version-1 desktop
 capability receipt contains `window.commands`. ABI 1 is retained; older host
 readiness does not authorize new methods. The profile metadata describes an
-implementation extension, not completed platform qualification.
+implementation extension; qualification is limited to the executed source and workload below.
 
 ## Registration and policy
 
@@ -231,6 +231,22 @@ event targets that owned window number; no delayed block or system-wide input is
 used. Cocoa's native menu tracking disables nested application tasks, so a queued
 CEF task cannot drive that loop. Linux and Windows retain their CEF task and
 `Window.SendKeyPress` path. Shortcut input also uses that CEF testing API.
+
+The macOS fixture passed at source `efe4db365e653425ffb0463683c265bb80ad7b67`;
+[PR #139](https://github.com/0xPlayerOne/bunly/pull/139) records the actual menu,
+shortcut and cleanup observations. That is historical-source evidence, not a
+current-head execution.
+
+On Linux x64, a standard-user Xvfb/Openbox run passed at source
+`ef6c3cadf901321e03c29f5649662e1fa2430cf7`, with native tree
+`287b418ed4e7dba5df106276baa2f1da3e71c596` and a host built with
+`packaging,rpc-qualification`. The retained report SHA-256 is
+`206a3ef3643953d3538b64e449b0f54ee0995c54d8e13d2193dd154b2d48b645`.
+It recorded seven expected events, three popup openings, two selections, one
+cancellation and one disposal, with native ownership released. The observations
+are `syntheticNativeInput: true` and `physicalInputQualified: false`. The published integration
+commit `823c66d` has the same source tree as `ef6c3ca`; this run is not a later
+current-head execution. Windows native execution remains unqualified.
 
 These paths never directly invoke the application delegate or fabricate a
 callback: actual `ExecuteCommand` and `MenuClosed` callbacks remain required.
