@@ -94,6 +94,7 @@ export interface TerminalProcessExit {
     | 'DEADLINE_EXCEEDED'
     | 'TERMINATION_DENIED'
     | 'SUPERVISION_FAILED'
+    | 'SCHEDULER_FAILED'
     | null
 }
 
@@ -102,7 +103,7 @@ export interface TerminalClosure {
   readonly observed: boolean
   /** Bun PTY lifecycle status, not the subprocess exit code. Status 1 is not clean EOF. */
   readonly status: number | null
-  readonly failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED' | null
+  readonly failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED' | 'SCHEDULER_FAILED' | null
 }
 
 export interface TerminalObservation {
@@ -275,6 +276,8 @@ interface Resource {
   driverFailure: boolean
   removeLifetimeAbort: () => void
   lifecycleTimer?: unknown
+  lifecycleTimerSet?: boolean
+  lifecycleTimerInstalled?: boolean
   closeTask?: Promise<TerminalCloseResult>
   closePending: boolean
   closeSignal?: NodeJS.Signals
@@ -943,7 +946,10 @@ export class TerminalService {
     )
   }
 
-  #settleTerminalFailure(resource: Resource, failure: 'SPAWN_FAILED' | 'DEADLINE_EXCEEDED'): void {
+  #settleTerminalFailure(
+    resource: Resource,
+    failure: NonNullable<TerminalClosure['failure']>
+  ): void {
     if (resource.terminalSettled) return
     resource.terminalSettled = true
     resource.terminalClose.resolve(
@@ -1046,8 +1052,9 @@ export class TerminalService {
     resource.closeTask = observation.promise
     resource.closePending = true
     resource.closeSignal = signal
-    const deadline = this.#clock.now() + timeout
+    let deadline: number
     let timer: unknown
+    let timerSet = false
     const snapshot = () =>
       Object.freeze({
         processExited: resource.processObserved,
@@ -1058,14 +1065,33 @@ export class TerminalService {
     const finish = () => {
       if (!resource.closePending) return
       resource.closePending = false
-      if (timer !== undefined) this.#clock.clear(timer)
+      if (timerSet) {
+        timerSet = false
+        try {
+          this.#clock.clear(timer)
+        } catch {
+          // Scheduler cleanup must not prevent reporting the observed state.
+        }
+      }
       observation.resolve(snapshot())
+    }
+    const schedulerFailure = () => {
+      if (!resource.closePending) return
+      this.#cancelResource(resource, 'SIGKILL')
+      // A failed clock is not a deadline or proof of process/PTY release.
+      finish()
     }
     const expire = () => {
       if (!resource.closePending) return
-      const remaining = deadline - this.#clock.now()
-      if (remaining > 0) {
-        timer = this.#clock.set(remaining, expire)
+      try {
+        const remaining = deadline - this.#clock.now()
+        if (remaining > 0) {
+          timer = this.#clock.set(remaining, expire)
+          timerSet = true
+          return
+        }
+      } catch {
+        schedulerFailure()
         return
       }
       this.#cancelResource(resource, 'SIGKILL')
@@ -1076,39 +1102,102 @@ export class TerminalService {
       finish()
       return resource.closeTask
     }
-    timer = this.#clock.set(timeout, expire)
+    try {
+      deadline = this.#clock.now() + timeout
+      timer = this.#clock.set(timeout, expire)
+      timerSet = true
+    } catch {
+      schedulerFailure()
+      return resource.closeTask
+    }
     void resource.released.promise.then(() => {
-      if (this.#clock.now() >= deadline) expire()
-      else finish()
+      try {
+        if (this.#clock.now() >= deadline) expire()
+        else finish()
+      } catch {
+        schedulerFailure()
+      }
     })
     this.#cancelResource(resource, signal)
     return resource.closeTask
   }
 
+  #clearLifecycleTimer(resource: Resource): void {
+    if (!resource.lifecycleTimerSet) return
+    resource.lifecycleTimerSet = false
+    const timer = resource.lifecycleTimer
+    const installed = resource.lifecycleTimerInstalled
+    resource.lifecycleTimer = undefined
+    resource.lifecycleTimerInstalled = false
+    if (!installed) return
+    try {
+      this.#clock.clear(timer)
+    } catch {
+      // Observed lifecycle and resource cleanup do not depend on timer cancellation.
+    }
+  }
+
   #updateLifecycleDeadline(resource: Resource): void {
     if (resource.processReleased && resource.terminalReleased) {
-      if (resource.lifecycleTimer !== undefined) this.#clock.clear(resource.lifecycleTimer)
-      resource.lifecycleTimer = undefined
+      this.#clearLifecycleTimer(resource)
       return
     }
     if (
       resource.state === 'disposed' ||
-      resource.lifecycleTimer !== undefined ||
+      resource.lifecycleTimerSet ||
       resource.closePending ||
       (!resource.processReleased && !resource.terminalReleased)
     )
       return
-    const deadline = this.#clock.now() + this.#limits.closeTimeoutMs
-    const expire = () => {
-      const remaining = deadline - this.#clock.now()
-      if (remaining > 0) {
-        resource.lifecycleTimer = this.#clock.set(remaining, expire)
+    // Reserve before calling the scheduler, which may synchronously reenter.
+    resource.lifecycleTimerSet = true
+    const failed = () => {
+      resource.lifecycleTimerSet = false
+      resource.lifecycleTimer = undefined
+      resource.lifecycleTimerInstalled = false
+      // Failure to schedule is not a deadline expiry or a release observation.
+      // Keep the PTY and output alive so the natural tail can still arrive.
+      if (!resource.processReleased) this.#settleProcessFailure(resource, 'SCHEDULER_FAILED')
+      if (!resource.terminalReleased) this.#settleTerminalFailure(resource, 'SCHEDULER_FAILED')
+      this.#collect(resource)
+    }
+    const schedule = (delay: number, callback: () => void) => {
+      const timer = this.#clock.set(delay, callback)
+      if (!resource.lifecycleTimerSet) {
+        try {
+          this.#clock.clear(timer)
+        } catch {
+          // A stale timer checks the reservation before doing anything.
+        }
         return
       }
-      resource.lifecycleTimer = undefined
-      this.#expireLifecycle(resource)
+      resource.lifecycleTimer = timer
+      resource.lifecycleTimerInstalled = true
     }
-    resource.lifecycleTimer = this.#clock.set(this.#limits.closeTimeoutMs, expire)
+    try {
+      const deadline = this.#clock.now() + this.#limits.closeTimeoutMs
+      if (!resource.lifecycleTimerSet) return
+      const expire = () => {
+        if (!resource.lifecycleTimerSet) return
+        try {
+          const remaining = deadline - this.#clock.now()
+          if (!resource.lifecycleTimerSet) return
+          if (remaining > 0) {
+            schedule(remaining, expire)
+            return
+          }
+          resource.lifecycleTimerSet = false
+          resource.lifecycleTimer = undefined
+          resource.lifecycleTimerInstalled = false
+          this.#expireLifecycle(resource)
+        } catch {
+          failed()
+        }
+      }
+      schedule(this.#limits.closeTimeoutMs, expire)
+    } catch {
+      failed()
+    }
   }
 
   #expireLifecycle(resource: Resource): void {
@@ -1146,8 +1235,7 @@ export class TerminalService {
     resource.capacityReleased = true
     resource.state = 'disposed'
     this.#live.delete(resource)
-    if (resource.lifecycleTimer !== undefined) this.#clock.clear(resource.lifecycleTimer)
-    resource.lifecycleTimer = undefined
+    this.#clearLifecycleTimer(resource)
     resource.removeLifetimeAbort()
     resource.driver = undefined
     resource.source = undefined

@@ -108,8 +108,34 @@ closure arrives, the deadline requests `SIGKILL`; if only process exit arrives, 
 service requests PTY close and cancels undrainable output at the deadline. A missing
 callback resolves that observation with `observed: false` and
 `failure: "DEADLINE_EXCEEDED"`, while the corresponding ownership reservation stays
-charged. No timer invents process exit, PTY closure, output drain or release, and no
-idle lifecycle poll is installed.
+charged. If the scheduler fails while establishing or maintaining that deadline, the missing
+observation instead resolves with `failure: "SCHEDULER_FAILED"`. No forced stop or
+output cancellation is inferred from that scheduler failure: actual callbacks still
+release ownership, and a natural-exit output tail can still drain. No timer invents
+process exit, PTY closure, output drain or release, and no idle lifecycle poll is installed.
+
+### Migrating exhaustive failure handling
+
+`SCHEDULER_FAILED` is a new member of both the exported `TerminalProcessExit.failure`
+and `TerminalClosure.failure` unions. Existing exhaustive TypeScript switches and
+`Record` mappings need a case for it. Treat it as an unavailable lifecycle deadline,
+not an observed exit, PTY closure, or elapsed deadline. Continue to use `released`
+for actual ownership release. For example:
+
+```ts
+import type { TerminalClosure } from '@bunly/runtime'
+
+const closureFailureLabels: Record<NonNullable<TerminalClosure['failure']>, string> = {
+  SPAWN_FAILED: 'spawn failed',
+  DEADLINE_EXCEEDED: 'deadline expired',
+  SCHEDULER_FAILED: 'lifecycle deadline unavailable',
+}
+```
+
+`TerminalProcessExit.failure` also has `TERMINATION_DENIED` and `SUPERVISION_FAILED`;
+retain those cases when adding the new one. This is a source compatibility change
+for exhaustive consumers and must be released as a breaking change under the
+repository's Conventional Commits release convention.
 
 Bun documents that `onExit` may run before `Bun.spawn` returns. The service therefore
 establishes the resource and callbacks first, records early output/exit/PTY-close
@@ -138,6 +164,10 @@ returns the same in-flight or completed aggregate observation on every call. At 
 deadline the service does not fabricate exit, PTY close, drain or release. An
 uncooperative writer or driver therefore remains in diagnostics and retains
 admission. Throwing stop methods are recorded without leaking their error strings.
+If an injected close scheduler throws, the service requests `SIGKILL` and returns
+the currently observed close snapshot. It does not report deadline expiry or
+pretend that process or PTY callbacks occurred; ownership remains charged until
+actual release is observed.
 
 ## Disconnect and replay policy
 
