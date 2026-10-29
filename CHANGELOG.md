@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/0xPlayerOne/bunly/compare/v0.5.1...v0.5.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **m7:** avoid unused overlay observation polling ([#170](https://github.com/0xPlayerOne/bunly/issues/170)) ([7c75a6a](https://github.com/0xPlayerOne/bunly/commit/7c75a6a177bb904a5903151b23e664d4ea87afd1))
+
 ## [0.5.1](https://github.com/0xPlayerOne/bunly/compare/v0.5.0...v0.5.1) (2026-10-29)
 
 
