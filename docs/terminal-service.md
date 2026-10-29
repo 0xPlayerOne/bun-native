@@ -114,6 +114,29 @@ output cancellation is inferred from that scheduler failure: actual callbacks st
 release ownership, and a natural-exit output tail can still drain. No timer invents
 process exit, PTY closure, output drain or release, and no idle lifecycle poll is installed.
 
+### Migrating exhaustive failure handling
+
+`SCHEDULER_FAILED` is a new member of both the exported `TerminalProcessExit.failure`
+and `TerminalClosure.failure` unions. Existing exhaustive TypeScript switches and
+`Record` mappings need a case for it. Treat it as an unavailable lifecycle deadline,
+not an observed exit, PTY closure, or elapsed deadline. Continue to use `released`
+for actual ownership release. For example:
+
+```ts
+import type { TerminalClosure } from '@bunly/runtime'
+
+const closureFailureLabels: Record<NonNullable<TerminalClosure['failure']>, string> = {
+  SPAWN_FAILED: 'spawn failed',
+  DEADLINE_EXCEEDED: 'deadline expired',
+  SCHEDULER_FAILED: 'lifecycle deadline unavailable',
+}
+```
+
+`TerminalProcessExit.failure` also has `TERMINATION_DENIED` and `SUPERVISION_FAILED`;
+retain those cases when adding the new one. This is a source compatibility change
+for exhaustive consumers and must be released as a breaking change under the
+repository's Conventional Commits release convention.
+
 Bun documents that `onExit` may run before `Bun.spawn` returns. The service therefore
 establishes the resource and callbacks first, records early output/exit/PTY-close
 events, and attaches the returned driver afterward. Cancellation or timeout during
