@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/0xPlayerOne/bunly/compare/v0.4.1...v0.5.0) (2026-10-29)
+
+
+### Features
+
+* **runtime:** add bounded opt-in diagnostics observers ([#161](https://github.com/0xPlayerOne/bunly/issues/161)) ([1392a30](https://github.com/0xPlayerOne/bunly/commit/1392a302350723d3a9eca56aa4c614ba389d6c93))
+
 ## [0.4.1](https://github.com/0xPlayerOne/bunly/compare/v0.4.0...v0.4.1) (2026-10-29)
 
 
