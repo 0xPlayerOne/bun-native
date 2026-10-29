@@ -170,6 +170,11 @@ rewrite or automatic fallback is included. Memory, GPU residency, latency, and
 resize-throughput differences have not been benchmarked; the functional fixture
 is explicitly ineligible for performance comparisons.
 
+The separate [composition resource protocol](composition-measurement.md) supplies
+an executable descriptive windowed-CEF CPU/RSS baseline with fixed idle, resize,
+overlay and close/reopen phases. It keeps GPU measurements, OSR comparisons and
+physical input/IME/accessibility qualification separate and open.
+
 The implementation follows the pinned upstream contracts at CEF `47dbc1d`:
 [CefWindow](https://github.com/chromiumembedded/cef/blob/47dbc1d/include/views/cef_window.h),
 [CefOverlayController](https://github.com/chromiumembedded/cef/blob/47dbc1d/include/views/cef_overlay_controller.h),

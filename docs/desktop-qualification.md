@@ -227,6 +227,17 @@ selection and OS file drops remain unavailable; this case does not qualify their
 behavior or claim physical input, hardware displays, assistive technology,
 antivirus or performance support. See [scoped native downloads](downloads.md).
 
+## Descriptive composition resources
+
+The explicit `--case=composition-profile` case uses the same prebuilt/source,
+runtime-identity, immutable-artifact, shutdown and cleanup gates. It records
+fixed windowed-CEF idle, pane resize, overlay and close/reopen phases with sampled
+CPU/RSS and native API/readback durations. It is separate from the functional
+`composition` case and is not added to the full hosted functional suite.
+See [the measurement protocol](composition-measurement.md) for the exact workload,
+independent trial procedure, clock/counter limits, GPU-trace requirements and
+physical qualification boundaries. `performanceEligible` remains false.
+
 ## Text status items
 
 The `status` case covers the bounded macOS text status-item adapter:

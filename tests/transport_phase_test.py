@@ -14,6 +14,20 @@ spec.loader.exec_module(observer)
 
 
 class PhaseMarkerTests(unittest.TestCase):
+    def test_composition_phases_are_exact_stderr_diagnostics(self):
+        for name in ("warmup", "idle", "resize", "overlay", "recreate", "recovery", "complete"):
+            phase = f"composition-{name}"
+            value = {"event": "bunly.composition.phase", "schema": 1, "phase": phase}
+            self.assertEqual(observer.phase_marker(value, False), phase)
+            self.assertIsNone(observer.phase_marker(value, True))
+            self.assertIsNone(observer.phase_marker({**value, "schema": True}, False))
+            self.assertIsNone(observer.phase_marker({**value, "passed": True}, False))
+        self.assertIsNone(
+            observer.phase_marker(
+                {"event": "bunly.composition.phase", "schema": 1, "phase": "unknown"}, False
+            )
+        )
+
     def test_terminal_load_phases_are_diagnostics_not_authority(self):
         for phase in ("warmup", "ramp", "sustained", "recovery"):
             value = {"event": "bunly.terminal-load.phase", "schema": 1, "phase": phase}
