@@ -1,7 +1,7 @@
 name: M5 Bun PTY and bounded stream sources
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [synchronize, ready_for_review]
 permissions:
   contents: read
 concurrency:
