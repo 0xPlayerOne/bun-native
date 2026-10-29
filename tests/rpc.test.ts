@@ -1285,6 +1285,98 @@ describe('native-known view authority policy', () => {
 })
 
 describe('bounded writer and actual MessagePort transport', () => {
+  test('scheduler clear failure cannot prevent channel settlement', async () => {
+    const clock = new Clock()
+    const clear = clock.clear.bind(clock)
+    clock.clear = (timer) => {
+      clear(timer)
+      throw new Error('private scheduler failure')
+    }
+    const { left } = pair()
+    const channel = new RpcChannel(
+      left,
+      limits,
+      clock,
+      () => {},
+      () => {}
+    )
+    channel.start()
+    await channel.send(Uint8Array.of(1))
+    channel.close()
+    expect(channel.diagnostics()).toMatchObject({ queuedBytes: 0, queuedFrames: 0, closed: true })
+    expect(clock.timers.size).toBe(0)
+  })
+  test('transport subscribe and cleanup failures settle the channel', async () => {
+    const clock = new Clock()
+    let closed = 0
+    const failing: RpcTransport = {
+      subscribe: () => {
+        throw new Error('private')
+      },
+      send: () => {},
+      close: () => {
+        closed++
+        throw new Error('private')
+      },
+    }
+    const first = new RpcChannel(
+      failing,
+      limits,
+      clock,
+      () => {},
+      () => {}
+    )
+    first.start()
+    expect((await first.closed).code).toBe('DISCONNECTED')
+    expect(closed).toBe(1)
+    const cleanup: RpcTransport = {
+      subscribe: () => () => {
+        throw new Error('private')
+      },
+      send: () => {},
+      close: () => {
+        closed++
+      },
+    }
+    const second = new RpcChannel(
+      cleanup,
+      limits,
+      clock,
+      () => {},
+      () => {}
+    )
+    second.start()
+    second.close()
+    expect((await second.closed).code).toBe('DISCONNECTED')
+    expect(closed).toBe(2)
+    expect(second.diagnostics()).toMatchObject({ queuedBytes: 0, queuedFrames: 0, closed: true })
+    expect(clock.timers.size).toBe(0)
+  })
+  test('transport send can close synchronously without retaining queued ownership', async () => {
+    const clock = new Clock()
+    let sends = 0
+    const transport: RpcTransport = {
+      subscribe: () => () => {},
+      send: () => {
+        sends++
+        channel.close()
+      },
+      close: () => {},
+    }
+    const channel = new RpcChannel(
+      transport,
+      limits,
+      clock,
+      () => {},
+      () => {}
+    )
+    channel.start()
+    expect((await result(channel.send(Uint8Array.of(1)))).code).toBe('DISCONNECTED')
+    await flush()
+    expect(sends).toBe(1)
+    expect(channel.diagnostics()).toMatchObject({ queuedBytes: 0, queuedFrames: 0, closed: true })
+    expect(clock.timers.size).toBe(0)
+  })
   test('stalled writes keep in-flight bytes counted and close on drain deadline', async () => {
     const clock = new Clock(),
       { left } = pair()
@@ -1707,6 +1799,141 @@ describe('execution budgets survive connection replacement', () => {
 })
 
 describe('RPC final boundary review', () => {
+  for (const action of ['cancel', 'close', 'throw'] as const) {
+    test(`client output parser ${action} cannot settle success or retain its call`, async () => {
+      const { left } = pair()
+      const clock = new Clock()
+      const controller = new AbortController()
+      const contract = defineRpc({
+        echo: procedure(text, (value: unknown) => {
+          if (action === 'cancel') controller.abort()
+          if (action === 'close') client.close()
+          if (action === 'throw') throw new Error('private parser failure')
+          return text(value)
+        }),
+      })
+      const client = new RpcClient(contract, left, { scheduler: clock })
+      const call = result(client.call('echo', 'x', { signal: controller.signal }))
+      left.message?.(encodeRpc({ type: 'success', id: 1, value: 'x' }, limits))
+      expect((await call).code).toBe(
+        action === 'cancel' ? 'CANCELLED' : action === 'close' ? 'DISCONNECTED' : 'PROTOCOL_ERROR'
+      )
+      await flush()
+      expect(client.diagnostics().pending).toBe(0)
+      client.close()
+      expect(clock.timers.size).toBe(0)
+    })
+  }
+  for (const action of ['nested', 'close', 'revoke', 'throw'] as const) {
+    test(`initial backend authority callback ${action} preserves admission`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      let parsed = 0,
+        handled = 0
+      const contract = defineRpc({
+        echo: procedure((value: unknown) => {
+          parsed++
+          return text(value)
+        }, text),
+      })
+      const server = new RpcServer(
+        contract,
+        {
+          echo: {
+            capability: 'echo',
+            handle: () => {
+              handled++
+              return 'done'
+            },
+          },
+        },
+        env.lease(),
+        right,
+        { scheduler: clock, limits: { maxHandlers: 1 } }
+      )
+      const original = env.backend.state.bind(env.backend)
+      const spy = spyOn(env.backend, 'state').mockImplementation((view) => {
+        spy.mockRestore()
+        const state = original(view)
+        if (action === 'nested')
+          right.message?.(
+            encodeRpc(
+              { type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'nested' },
+              limits
+            )
+          )
+        if (action === 'close') server.close()
+        if (action === 'revoke') env.authority.revoke(env.view)
+        if (action === 'throw') throw new Error('private backend detail')
+        return state
+      })
+      cleanups.push(() => spy.mockRestore())
+      right.message?.(
+        encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+      )
+      await flush()
+      const packets = right.packets.map((packet) => decodeRpc(packet, limits))
+      if (action === 'nested') {
+        expect(parsed).toBe(1)
+        expect(handled).toBe(1)
+        expect(packets).toHaveLength(2)
+        expect(packets).toContainEqual(
+          expect.objectContaining({ type: 'error', id: 2, code: 'OVERLOADED' })
+        )
+        expect(packets).toContainEqual(expect.objectContaining({ type: 'success', id: 1 }))
+      } else {
+        expect(parsed).toBe(0)
+        expect(handled).toBe(0)
+        expect(packets).toHaveLength(action === 'throw' ? 1 : 0)
+        if (action === 'throw')
+          expect(packets[0]).toMatchObject({ type: 'error', id: 1, code: 'REVOKED' })
+      }
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      server.close()
+    })
+  }
+  for (const action of ['cancel', 'close', 'revoke', 'throw'] as const) {
+    test(`server output parser ${action} settles at most once and releases work`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      const contract = defineRpc({
+        echo: procedure(text, (value: unknown) => {
+          if (action === 'cancel') right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+          if (action === 'close') server.close()
+          if (action === 'revoke') env.authority.revoke(env.view)
+          if (action === 'throw') throw new Error('private parser detail')
+          return text(value)
+        }),
+      })
+      const server = new RpcServer(
+        contract,
+        { echo: { capability: 'echo', handle: () => 'done' } },
+        env.lease(),
+        right,
+        { scheduler: clock }
+      )
+      right.message?.(
+        encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+      )
+      await flush()
+      const packets = right.packets.map((p) => decodeRpc(p, limits))
+      expect(packets).toHaveLength(action === 'cancel' || action === 'throw' ? 1 : 0)
+      if (action === 'cancel' || action === 'throw')
+        expect(packets[0]).toMatchObject({
+          type: 'error',
+          id: 1,
+          code: action === 'cancel' ? 'CANCELLED' : 'INTERNAL',
+        })
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      server.close()
+    })
+  }
   test('server retains cancellation during initial backend authority check', async () => {
     const env = await environment()
     const { right } = pair()
@@ -1783,7 +2010,7 @@ describe('RPC final boundary review', () => {
       expect(clock.timers.size).toBe(0)
     })
   }
-  for (const source of ['clock', 'backend'] as const) {
+  for (const source of ['clock', 'backend', 'backend-session'] as const) {
     for (const action of ['cancel', 'close', 'revoke'] as const) {
       test(`server stops before output parsing when ${source} reenters with ${action}`, async () => {
         const env = await environment()
@@ -1814,13 +2041,22 @@ describe('RPC final boundary review', () => {
                     trigger()
                     return now()
                   }
-                } else {
+                } else if (source === 'backend') {
                   const original = env.backend.state.bind(env.backend)
                   const spy = spyOn(env.backend, 'state').mockImplementation((view) => {
                     spy.mockRestore()
                     const state = original(view)
                     trigger()
                     return state
+                  })
+                  cleanups.push(() => spy.mockRestore())
+                } else {
+                  const original = env.backend.session.bind(env.backend)
+                  const spy = spyOn(env.backend, 'session').mockImplementation((view) => {
+                    spy.mockRestore()
+                    const session = original(view)
+                    trigger()
+                    return session
                   })
                   cleanups.push(() => spy.mockRestore())
                 }
