@@ -85,6 +85,7 @@ describe('explicit build profiles with versioned capability metadata', () => {
       {
         backend: 'cef',
         capabilities: [
+          'view.console',
           'window.state',
           'window.geometry',
           'window.commands',

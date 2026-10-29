@@ -21,9 +21,9 @@ feature-disabled binary also exits 78. No environment variable enables control.
 
 The normal feature-disabled, non-opted-in production profile remains supported.
 Its ordinary native suite runs before the first feature build in the qualification
-sequence. Existing source-mapped application errors, renderer log forwarding,
-RPC/reload diagnostics and diagnostic redaction remain separate features; see
-[Bun development tooling](bun-tooling.md).
+sequence. The separate bounded diagnostic collector accepts application-supplied records;
+opt-in console and RPC observers do not automatically add records to it. See
+[diagnostics](m37-browser-actions.md#diagnostics).
 
 ## Public API and capabilities
 

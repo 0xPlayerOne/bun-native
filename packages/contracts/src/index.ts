@@ -167,6 +167,14 @@ export interface Diagnostics {
   readonly listeners: number
   readonly listenerErrors: number
 }
+/** Optional, view-scoped renderer console messages. No document or origin authority is implied. */
+export interface RendererConsoleBackend {
+  onViewConsole(
+    view: ViewHandle,
+    listener: (message: string) => void,
+    options?: OperationOptions
+  ): () => void
+}
 export interface BrowserBackend {
   readonly descriptor: BackendDescriptor
   createSession(options: SessionOptions): Promise<SessionHandle>

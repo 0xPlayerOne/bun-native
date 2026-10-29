@@ -89,6 +89,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
         Object.freeze({
           backend: 'cef',
           capabilities: Object.freeze([
+            'view.console',
             'window.state',
             'window.geometry',
             'window.commands',

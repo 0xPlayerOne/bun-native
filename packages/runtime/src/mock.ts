@@ -9,6 +9,7 @@ import {
 } from '../../contracts/src/index.ts'
 import type {
   BackendDescriptor,
+  RendererConsoleBackend,
   Bounds,
   BrowserBackend,
   ClipboardBackend,
@@ -60,6 +61,7 @@ interface ViewRecord {
 /** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
 export class MockBackend
   implements
+    RendererConsoleBackend,
     BrowserBackend,
     ClipboardBackend,
     ApplicationLifecycleBackend,
@@ -344,6 +346,16 @@ export class MockBackend
     options?: OperationOptions
   ): Promise<Bounds> {
     return this.#windowUnavailable(window, 'window.geometry', options)
+  }
+  onViewConsole(
+    view: ViewHandle,
+    _listener: (message: string) => void,
+    options?: OperationOptions
+  ): () => void {
+    this.#registry.get(view, 'view')
+    options?.signal?.throwIfAborted()
+    requireCapability(this.descriptor, 'view.console')
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Console observation unavailable')
   }
   onWindowEvent(
     window: WindowHandle,
