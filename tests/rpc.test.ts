@@ -1815,6 +1815,87 @@ describe('authority teardown reentrancy', () => {
 })
 
 describe('notification-driven RPC quiescence', () => {
+  test('idle timer installation can reenter and shares the reserved waiter', async () => {
+    const work = deferred<string>()
+    const { client, server, clock } = await setup({
+      work: { capability: 'work', handle: () => work.promise },
+    })
+    const call = client.call('work', 'x')
+    await flush()
+    const set = clock.set.bind(clock)
+    let inner: Promise<void> | undefined
+    clock.set = (delay, callback) => {
+      inner = server.whenIdle()
+      return set(delay, callback)
+    }
+    const outer = server.whenIdle()
+    expect(inner).toBe(outer)
+    work.resolve('done')
+    await call
+    await outer
+    expect(clock.timers.size).toBe(0)
+  })
+  for (const failure of ['now', 'set', 'close'] as const) {
+    test(`idle waiter settles when scheduler ${failure} interrupts installation`, async () => {
+      const work = deferred<string>()
+      const { client, server, clock } = await setup({
+        work: { capability: 'work', handle: () => work.promise },
+      })
+      const call = result(client.call('work', 'x'))
+      await flush()
+      if (failure === 'now')
+        clock.now = () => {
+          throw new Error('scheduler')
+        }
+      if (failure === 'set')
+        clock.set = () => {
+          throw new Error('scheduler')
+        }
+      if (failure === 'close') {
+        const set = clock.set.bind(clock)
+        clock.set = (delay, callback) => {
+          server.close()
+          return set(delay, callback)
+        }
+      }
+      const idle = result(server.whenIdle())
+      expect((await idle).code).toBe(failure === 'close' ? 'DISCONNECTED' : 'INTERNAL')
+      work.resolve('done')
+      await call
+      await flush()
+      expect(server.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+    })
+  }
+  test('reentrant scheduler calls share an idle waiter and release its timer', async () => {
+    const work = deferred<string>()
+    const { client, server, clock } = await setup({
+      work: { capability: 'work', handle: () => work.promise },
+    })
+    const call = client.call('work', 'x')
+    await flush()
+    const now = clock.now.bind(clock)
+    let inner: Promise<void> | undefined
+    let entered = false
+    clock.now = () => {
+      if (!entered) {
+        entered = true
+        inner = server.whenIdle()
+      }
+      return now()
+    }
+    const outer = server.whenIdle()
+    let settled = false
+    void inner!.then(() => {
+      settled = true
+    })
+    work.resolve('done')
+    await call
+    await outer
+    await flush()
+    expect(settled).toBe(true)
+    expect(clock.timers.size).toBe(0)
+  })
   test('handler/client completion cannot replace the actual adapter reply receipt', async () => {
     const f = await setup(),
       held = deferred<void>()

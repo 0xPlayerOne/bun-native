@@ -82,6 +82,7 @@ export class RpcServer<S extends RpcSchema> {
         resolve(): void
         reject(error: RpcError): void
         timer: unknown
+        timerSet: boolean
         deadline: number
       }
     | undefined
@@ -376,21 +377,58 @@ export class RpcServer<S extends RpcSchema> {
       reject = no
     })
     void promise.catch(() => {})
-    const deadline = this.#clock.now() + this.#limits.sendTimeoutMs
-    const timer = this.#clock.set(this.#limits.sendTimeoutMs, () =>
-      this.#settleIdle(new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded'))
-    )
-    this.#idleWaiter = { promise, resolve, reject, timer, deadline }
+    const waiter = {
+      promise,
+      resolve,
+      reject,
+      timer: undefined as unknown,
+      timerSet: false,
+      deadline: Infinity,
+    }
+    this.#idleWaiter = waiter
+    try {
+      waiter.deadline = this.#clock.now() + this.#limits.sendTimeoutMs
+      if (this.#idleWaiter !== waiter) return promise
+      const timer = this.#clock.set(this.#limits.sendTimeoutMs, () =>
+        this.#settleIdle(new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded'))
+      )
+      if (this.#idleWaiter !== waiter) {
+        try {
+          this.#clock.clear(timer)
+        } catch {
+          /* Continue after settlement. */
+        }
+        return promise
+      }
+      waiter.timer = timer
+      waiter.timerSet = true
+    } catch {
+      if (this.#idleWaiter === waiter)
+        this.#settleIdle(new RpcError('INTERNAL', 'RPC idle timer failed'))
+    }
     return promise
   }
   #settleIdle(error?: RpcError): void {
     const waiter = this.#idleWaiter
     if (!waiter) return
-    if (!error && this.#clock.now() >= waiter.deadline)
-      error = new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded')
+    if (!error) {
+      try {
+        if (this.#clock.now() >= waiter.deadline)
+          error = new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded')
+      } catch {
+        error = new RpcError('INTERNAL', 'RPC idle clock failed')
+      }
+      if (this.#idleWaiter !== waiter) return
+    }
     if (!error && (this.#jobs.size || this.#parsing.size || this.#pendingReplies)) return
     this.#idleWaiter = undefined
-    this.#clock.clear(waiter.timer)
+    if (waiter.timerSet) {
+      try {
+        this.#clock.clear(waiter.timer)
+      } catch {
+        /* Continue settlement. */
+      }
+    }
     if (error) waiter.reject(error)
     else waiter.resolve()
   }
