@@ -472,6 +472,7 @@ pub fn decode_native_capability(
             ("clipboard-write", &[]),
             ("window-commands", &[]),
             ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["origins"]),
@@ -497,6 +498,7 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("clipboard-write", &[]),
             ("window-commands", &[]),
             ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["url"]),
@@ -1071,7 +1073,19 @@ mod tests {
             ),
             GateDecision::Denied
         );
+        assert_eq!(
+            decode_native_capability(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeCapability::ApplicationLinks
+        );
+        assert_eq!(
+            decode_native_request(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeRequest::ApplicationLinks
+        );
         assert!(decode_native_capability(
+            serde_json::json!({"name":"application-links","route":"untrusted"})
+        )
+        .is_err());
+        assert!(decode_native_request(
             serde_json::json!({"name":"application-links","route":"untrusted"})
         )
         .is_err());
