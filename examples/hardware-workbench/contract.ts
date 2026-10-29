@@ -32,7 +32,7 @@ export type WorkbenchCommand =
   | { readonly action: 'overlay'; readonly state: 'open' | 'hidden' | 'closed' }
   | { readonly action: 'window'; readonly operation: (typeof windowActions)[number] }
   | { readonly action: 'resize-window'; readonly size: 'compact' | 'regular' | 'large' }
-  | { readonly action: 'dismiss-overlay' | 'quit' }
+  | { readonly action: 'dismiss-overlay' | 'quit' | 'native-menu' | 'open-dialog' }
 
 export function object(value: unknown, keys: readonly string[]): Record<string, unknown> {
   if (
@@ -108,6 +108,8 @@ export function parseWorkbenchCommand(input: unknown): WorkbenchCommand {
       return Object.freeze({ action, size: member(row['size'], ['compact', 'regular', 'large']) })
     }
     case 'dismiss-overlay':
+    case 'native-menu':
+    case 'open-dialog':
     case 'quit':
       object(input, ['action'])
       return Object.freeze({ action })

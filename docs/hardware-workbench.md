@@ -213,25 +213,30 @@ No physical execution is recorded by adding or preparing this workbench. Every
 available case starts **not run**. Unsupported cases remain **unsupported**,
 with a reason. Partial steps cannot pass a complete matrix case.
 
-| Case | Available workbench steps                                                                                                         | Separate or unsupported steps                                                                                              |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| K1   | Physical forward/reverse traversal, focus indication, hidden/clipped/nonfocusable/closed panes, restoration.                      | API focus receipts alone cannot pass keyboard traversal.                                                                   |
-| K2   | Pointer routing, clipped edges, native overlay ordering, pane/window resizing, overlay closure.                                   | Transparent composition and click-through regions are unsupported.                                                         |
-| I1   | Multilingual fields and local composition observations in controls, both previews and overlay; focus/resize/minimize transitions. | Record the actual IME/layout and candidate UI. Backend replacement is not driven by this workbench.                        |
-| T1   | Controlled text selection by keyboard/pointer; visible selection length.                                                          | Clipboard reads, writes, grants and permission tests are unsupported here. Selection alone cannot pass T1.                 |
-| D1   | Native window movement, resizing, maximize/fullscreen/restore on operator-supplied displays.                                      | Physical display topology, scaling changes and reconnect behavior require equipment. Renderer scale alone is insufficient. |
-| A1   | Native HTML controls, labels, focus styling, remote previews and nonmodal overlay.                                                | Actual VoiceOver/Narrator/Orca observations remain not run. Native menus/dialogs are absent.                               |
-| L1   | Native state/events, renderer visibility, local numbered output and backend heartbeat while changing desktop state.               | This does not replace terminal-load acceptance or resolve #129.                                                            |
-| L2   | Long-lived application permits deliberate machine suspend/resume.                                                                 | No automated suspension. Record power state, sleep duration and recovery independently.                                    |
-| F1   | Unsupported in this workbench.                                                                                                    | Use the maintained renderer/GPU fault qualifier; hardware GPU transitions remain a distinct manual result.                 |
-| E1   | Unsupported in this workbench.                                                                                                    | No deep-link registration, OS dispatch or app-reopen adapter is included.                                                  |
-| M1   | Unsupported in this workbench.                                                                                                    | No native menu/shortcut/status item, OS dialog/file picker, or backend replacement during native UI.                       |
-| C1   | Individual preview disposal/reopen, surviving sibling use, final-window close and explicit quit.                                  | Exact-head native shutdown and process/helper cleanup evidence still come from the full finite native suite.               |
+| Case | Available workbench steps                                                                                                         | Separate or unsupported steps                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| K1   | Physical forward/reverse traversal, focus indication, hidden/clipped/nonfocusable/closed panes, restoration.                      | API focus receipts alone cannot pass keyboard traversal.                                                                           |
+| K2   | Pointer routing, clipped edges, native overlay ordering, pane/window resizing, overlay closure.                                   | Transparent composition and click-through regions are unsupported.                                                                 |
+| I1   | Multilingual fields and local composition observations in controls, both previews and overlay; focus/resize/minimize transitions. | Record the actual IME/layout and candidate UI. Backend replacement is not driven by this workbench.                                |
+| T1   | Controlled text selection by keyboard/pointer; visible selection length.                                                          | Clipboard reads, writes, grants and permission tests are unsupported here. Selection alone cannot pass T1.                         |
+| D1   | Native window movement, resizing, maximize/fullscreen/restore on operator-supplied displays.                                      | Physical display topology, scaling changes and reconnect behavior require equipment. Renderer scale alone is insufficient.         |
+| A1   | Native HTML controls, labels, focus styling, remote previews and nonmodal overlay.                                                | Actual VoiceOver/Narrator/Orca observations remain not run. Native popup and macOS open-dialog steps require operator observation. |
+| L1   | Native state/events, renderer visibility, local numbered output and backend heartbeat while changing desktop state.               | This does not replace terminal-load acceptance or resolve #129.                                                                    |
+| L2   | Long-lived application permits deliberate machine suspend/resume.                                                                 | No automated suspension. Record power state, sleep duration and recovery independently.                                            |
+| F1   | Unsupported in this workbench.                                                                                                    | Use the maintained renderer/GPU fault qualifier; hardware GPU transitions remain a distinct manual result.                         |
+| E1   | Unsupported in this workbench.                                                                                                    | No deep-link registration, OS dispatch or app-reopen adapter is included.                                                          |
+| M1   | Native popup menu and macOS open-file panel can be exercised explicitly.                                                          | Shortcuts, status items, backend replacement and Linux/Windows file dialogs are unsupported here.                                  |
+| C1   | Individual preview disposal/reopen, surviving sibling use, final-window close and explicit quit.                                  | Exact-head native shutdown and process/helper cleanup evidence still come from the full finite native suite.                       |
 
-The workbench does not import the desktop-services, download, menu, status-item,
-dialog or browser-actions adapters. Adding those controls later requires their own
-explicit authorization, current-owner checks and evidence. An absent adapter is
-never represented as a successful cancellation or no-op.
+The controls view can open a fixed native popup and, on supported macOS hosts,
+a native open-file panel. Both use a freshly captured document scope and exact
+native grant; the popup registration is disposed after native closure or failure.
+The dialog starts in the temporary directory and records only whether it was
+selected or cancelled, never the path. Selection grants no file access. The RPC
+request expires after 60 seconds and cancellation requests native cleanup.
+Clipboard operations are omitted because ordinary hosts lack a safe preflight
+for preserving unknown clipboard formats. No manual result is inferred from an
+operation receipt.
 
 ## Equipment and evidence record flow
 
