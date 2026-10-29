@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/0xPlayerOne/bunly/compare/v0.6.0...v0.6.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** preserve application rollback failures ([#188](https://github.com/0xPlayerOne/bunly/issues/188)) ([5ba03c2](https://github.com/0xPlayerOne/bunly/commit/5ba03c2e12183ab9291c3dcb52ce68188456ee4d))
+
 ## [0.6.0](https://github.com/0xPlayerOne/bunly/compare/v0.5.8...v0.6.0) (2026-10-29)
 
 
