@@ -14,6 +14,12 @@ opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
 [Window commands](window-commands.md) add scoped native popup menus and local
 shortcuts. [File dialogs](file-dialogs.md) describe the separate macOS selection
 facet, shared modal ownership, cancel-only qualification, and unsupported targets.
+[Text status items](status-items.md) add a distinct macOS document grant and stable
+managed ownership, with AppKit action callbacks and actual removal receipts.
+[Application links](application-links.md) describe the bounded startup-input inbox,
+exact native document grants, managed acknowledged replay and separate HTTPS
+submission adapters. Live OS delivery and external-browser launch are unqualified.
+
 The [interactive hardware workbench](hardware-workbench.md) supplies a maintained
 native target for operator input, display, accessibility and lifecycle work.
 It prepares an explicit prebuilt without launching it and keeps manual results

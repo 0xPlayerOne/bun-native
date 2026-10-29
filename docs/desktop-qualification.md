@@ -50,8 +50,9 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition`, `desktop-services`,
-`file-downloads`, `view-parent-close`, `window-commands`, and `file-dialogs` stages before the existing
+The full hosted native matrix includes `desktop`, `view-composition`,
+`desktop-services`, `file-downloads`, `window-commands`, `file-dialogs`,
+`status-items`, `view-parent-close` and `application-links` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
 must pass before credential/provider qualification can proceed. The existing
 M4-only suite remains unchanged.
