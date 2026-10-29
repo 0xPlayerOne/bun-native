@@ -188,6 +188,16 @@ describe('restricted archive format', () => {
     ])
       assert.throws(() => readTar(archive(...paths)), hasCode('UNSAFE_ARCHIVE'))
     assert.equal(readTar(archive('a/b', 'a/c')).length, 2)
+    const directory = Buffer.from(entry('a'))
+    directory[156] = 53
+    directory.fill(32, 148, 156)
+    const sum = directory.reduce((total, byte) => total + byte, 0)
+    directory.set(Buffer.from(sum.toString(8).padStart(6, '0') + '\0 '), 148)
+    for (const entries of [
+      [directory, entry('a/b')],
+      [entry('a/b'), directory],
+    ])
+      assert.equal(readTar(Buffer.concat([...entries, Buffer.alloc(1024)])).length, 1)
   })
 })
 describe('verified artifact cache', () => {
