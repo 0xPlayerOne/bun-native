@@ -13,7 +13,7 @@ import {
   requireNativeShutdown,
 } from '../benchmarks/foundation/native-shutdown.ts'
 
-if (Bun.version !== '1.4.3') throw new Error('Use the pinned Bun 1.4.3')
+if (Bun.version !== '1.4.4') throw new Error('Use the pinned Bun 1.4.4')
 const argument = process.argv[2]
 if (!argument || process.argv.length !== 3)
   throw new Error('Usage: bun scripts/qualify-cef-sessions.ts PREPARED_APP')

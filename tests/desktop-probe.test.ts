@@ -28,7 +28,7 @@ function host(probe: DesktopProbe): DesktopHost {
     pid: 12,
     framework: 'fixture',
     frameworkVersion: '1',
-    runtimeVersion: '1.4.3',
+    runtimeVersion: '1.4.4',
     engineVersion: null,
     sandbox: 'unverified',
   }

@@ -34,7 +34,7 @@ The prepared-app qualification is `bun run qualify:cef-rpc -- <app>`.
 
 ## Earlier portable increment validation boundary
 
-Local environment: Linux x64, Bun `1.4.3+c6da4a4d3`. Toolchain dependencies come
+Local environment: Linux x64, Bun (version redacted). Toolchain dependencies come
 from the hash-verified offline contributor snapshot retained from PR #63. The new
 files and the directly imported contracts/client/runtime entry points, mock and
 registry are checked against the merged repository's content identities before
@@ -73,7 +73,7 @@ Prepared-app acceptance requires exact RPC evidence, independent server validati
 backend-started cancellation, navigation/close-in-flight, return-to-origin denial
 and bounded resources, as well as the original smoke and clean shutdown contract.
 
-Local review validation uses Bun 1.4.3, Rust 1.91.0, the installed Python environment,
+Local review validation uses Bun (version redacted), Rust 1.91.0, the installed Python environment,
 and the retained CEF distribution validated by pinned cef-rs revision
 `163744c8286d5f593d89202c7807751a7898db28`. Real CEF linking, Rust tests/Clippy,
 focused portable tests, strict/browser typechecking and compiler-free application

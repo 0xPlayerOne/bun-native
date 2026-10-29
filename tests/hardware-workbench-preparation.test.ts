@@ -14,7 +14,7 @@ import {
 } from '../scripts/hardware-workbench.ts'
 
 const root = resolve(import.meta.dir, '..')
-const runtime = { schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' }
+const runtime = { schema: 1, protocol: 1, bun_version: '1.4.4', cef_version: '156.0.7' }
 const target = `${process.platform}-${process.arch}` as 'linux-x64' | 'darwin-arm64' | 'win32-x64'
 const commitPattern = 'a'.repeat(40)
 
@@ -63,7 +63,7 @@ test('preparation rejects widened deadlines, credentials, development origins an
     {},
     { ...runtime, schema: 2 },
     { ...runtime, protocol: '1' },
-    { ...runtime, bun_version: '1.4.4' },
+    { ...runtime, bun_version: '1.4.5' },
     { ...runtime, cef_version: 'other' },
     { ...runtime, development_origin: 'http://127.0.0.1:8000' },
     { ...runtime, credential_policy: null },

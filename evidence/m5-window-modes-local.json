@@ -4,7 +4,7 @@
   "issue": 27,
   "implementationCommit": "288d34f755d82f1c6db9524c42fc3a54398e03a0",
   "target": "darwin-arm64",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "runtimeIdentity": {
     "event": "cef-binary-identity",
     "schema": 1,

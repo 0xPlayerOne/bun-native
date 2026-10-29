@@ -94,7 +94,7 @@ async function cacheFixture(parent: string) {
       version: '0.1.0',
       abi: 1,
       target: 'darwin-arm64',
-      bun: '1.4.3',
+      bun: '1.4.4',
       cef: '156.0.7',
       chromium: '156.0.8078.17',
       cefRs: 'b'.repeat(40),
@@ -108,7 +108,7 @@ async function cacheFixture(parent: string) {
       [
         'resources/runtime.json',
         Buffer.from(
-          JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
+          JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.4', cef_version: '156.0.7' })
         ),
       ],
       ['LICENSE', Buffer.from('Synthetic fixture only, not a distributed runtime.')],

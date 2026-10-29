@@ -7,7 +7,7 @@ contract or a fake transport test does not establish OS behavior.
 
 ## Window controls
 
-With pinned Bun 1.4.3, a clean checkout and an already prepared CEF 156.0.7 host:
+With pinned Bun 1.4.4, a clean checkout and an already prepared CEF 156.0.7 host:
 
 ```sh
 bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT

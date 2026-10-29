@@ -19,7 +19,7 @@ assert.equal(
   2,
   'Qualifier owns a fixed 20-generation plan and exclusive output'
 )
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 const before = sourceIdentity(root)
 assert.equal(before.clean, true, 'Clean committed source is required')
 const sources = reloadSourcePaths

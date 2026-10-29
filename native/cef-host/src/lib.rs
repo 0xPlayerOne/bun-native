@@ -137,7 +137,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     let config: Config = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
     if config.schema != 1
         || config.protocol != 1
-        || config.bun_version != "1.4.3"
+        || config.bun_version != "1.4.4"
         || config.cef_version != "156.0.7"
     {
         return Err("Runtime/ABI manifest mismatch".into());

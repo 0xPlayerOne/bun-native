@@ -83,7 +83,7 @@ async function qualify(args: readonly string[]) {
     4,
     'Use PREBUILT_APP --native-source=COMMIT --reference-root=INSTALLED_REPOSITORY --mirin-lock=SHA256, or --verify REPORT'
   )
-  assert.equal(Bun.version, '1.4.3')
+  assert.equal(Bun.version, '1.4.4')
   assert.ok(process.getuid?.() !== 0, 'Native comparison requires a standard user')
   assert.equal(process.platform, 'darwin')
   assert.equal(process.arch, 'arm64')

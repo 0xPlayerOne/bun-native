@@ -267,7 +267,7 @@ async function scenario(mode: Mode) {
   }
 }
 export async function qualifyBunPty() {
-  assert.equal(Bun.version, '1.4.3')
+  assert.equal(Bun.version, '1.4.4')
   assert.ok(['darwin', 'linux', 'win32'].includes(process.platform))
   assert.equal(Reflect.get(Bun.Terminal.prototype, 'pause'), undefined)
   assert.equal(Reflect.get(Bun.Terminal.prototype, 'resume'), undefined)

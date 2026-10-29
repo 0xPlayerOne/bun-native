@@ -12,12 +12,12 @@
     "memoryGiB": 64,
     "display": "Screen Sharing Virtual Display 1920x1080 @60Hz",
     "power": "AC at setup; not continuously monitored",
-    "bun": "1.4.3+c6da4a4d3",
+    "bun": "VERSION_REDACTED",
     "python": "3.11.15",
     "psutil": "7.0.0",
     "playwright": "1.57.0"
   },
-  "redaction": "Home/checkout paths replaced. Ephemeral 48-hex fixture values are consistently pseudonymized; timing, outcome and stable content hashes are retained. Stored bytes differ from original reports.",
+  "redaction": "Home/checkout paths replaced; Bun runtime version identifiers are redacted; ephemeral fixture values are consistently pseudonymized; timing, outcomes, and original source digests are retained. Stored report bytes differ from originals.",
   "limitations": [
     "Source contained authored uncommitted changes during these runs; original source fields retained, not upgraded to clean.",
     "Local smoke on a virtual display, not calibrated controlled performance.",
@@ -29,49 +29,49 @@
       "id": "frontend",
       "file": "frontend.json.gz",
       "originalSha256": "a02476fbdf1fdf64c0c03dc94d0c9d8d4aadda50c0fe852bec771af675c13f96",
-      "redactedSha256": "5e6e78b6237c51846acf1b5f57a65cbed66313e11cfbaf5b4c23f9ccd0a4a26d",
-      "storedSha256": "ef219fb55273a8d3320c6640766ed2283e82c8c96939b14747600860c7286351",
-      "bytes": 1091
+      "redactedSha256": "da1c52c2b6c584ec44a91339254b6c73d9d1261fb6a3fdaa51acada4d56dd91b",
+      "storedSha256": "a791e458000637f967c28e47b08190cf4a5141916e788e67746d8b4a882fe568",
+      "bytes": 1107
     },
     {
       "id": "electron-edits",
       "file": "electron-edits.json.gz",
       "originalSha256": "1f7215401eba9c8a7865be293b3c2cdd7f143afcd414e401525309afaa73109b",
-      "redactedSha256": "9edf54d789d5e801186bbb6adf9277226888a7bf0c90d5fe9f0dcca35d6452d5",
-      "storedSha256": "a9a845052fe9314439e38e59bb0fadc8ac7a5b8944deb9e7806e2688e17dadf3",
-      "bytes": 27977
+      "redactedSha256": "baac18850769ac963b2358c43b7103a7f59372378784892545b61aeee401d08b",
+      "storedSha256": "f548356ba682607262a26e023ec74cee67a94ae64d08f65f34627e95b571845a",
+      "bytes": 27997
     },
     {
       "id": "electrobun-edits",
       "file": "electrobun-edits.json.gz",
       "originalSha256": "2400c2470f990a2ba415c74efa052a2e930bda0247c6980be93018e4d5e0033a",
-      "redactedSha256": "827cfd4bc0bebded9a1adf22aa5f9560b8423ae829e1f9443ae91a31b5df992b",
-      "storedSha256": "427799244e053e6c90e8fe96dd8e3527b440927e8a78a2840fe526e7ee2e89b7",
-      "bytes": 95079
+      "redactedSha256": "671ae2df8e63cfe1ae762cf56501c161615ec698f3a18ae63cd7f09115567c66",
+      "storedSha256": "fc0a7ed4b54f302803272720e425d2f4a6145cad35f9a361f6162c4bc7549e13",
+      "bytes": 95095
     },
     {
       "id": "mirin-edits",
       "file": "mirin-edits.json.gz",
       "originalSha256": "787c483be2a400838cf6582826845130c0eb9b3989768a88abcb372f0a21c9b9",
-      "redactedSha256": "e9540910895f181dbe7d4973ff75336ee1a02e9032acff07f81d61f984b9e64b",
-      "storedSha256": "62589c1fb842c198d42b1a446365719d0e6ecae58b8947b27c372ed3fc89a913",
-      "bytes": 22498
+      "redactedSha256": "53b7bbf480f59899a72c2b3983357fa36c4e55df7e191901e201529803830463",
+      "storedSha256": "7ec443c05afe83d1965ce1615d8cd7d573e754f956a748b03f1dd0e925c3bbbd",
+      "bytes": 22534
     },
     {
       "id": "butter-source-edits",
       "file": "butter-source-edits.json.gz",
       "originalSha256": "aad43cce3c87738fa130c74707ac77861710fb68744c3853bdd02872f5f0425f",
-      "redactedSha256": "d723581f6862895bf26f1dcd95389f840b3c5d99a41da5685b2881eebee1494e",
-      "storedSha256": "25e5cfcd2ffba7caa0f85fe95a411abd9047b1b4489f5e5210252f0963198af7",
-      "bytes": 22870
+      "redactedSha256": "178f9b6cb363d63f7470fe9c9d70eed06b9f19880ca775976a9a98df7ba3b1fa",
+      "storedSha256": "c7005fca05dd66d9b3893078957eac6cd95fdb633d3b1ecd0c692044c81b97bc",
+      "bytes": 22926
     },
     {
       "id": "mirin-release",
       "file": "mirin-release.json.gz",
       "originalSha256": "1eadefe729b343419a683cdef3daaf11cbcf88401a0ed88e47b99ffb038708e1",
-      "redactedSha256": "712a41e7bb93e8a173e2c77dc7cdd08854563d42b024c49621862515c7539c91",
-      "storedSha256": "8e02e24118cc422d82ff94bf3474ca2370e2274922d500fe26a52d7f1fbeb35d",
-      "bytes": 25223
+      "redactedSha256": "13b19891af9394e40ee245ff42194c944bbf78ea2b7e91a9e898f8376e22e934",
+      "storedSha256": "9bbab08a3b0d6b062ee9abd5de62023a3f0a45df1e29990afeee77703742ebfe",
+      "bytes": 25241
     },
     {
       "id": "electron-baseline",
@@ -93,41 +93,41 @@
       "id": "development",
       "file": "development.json.gz",
       "originalSha256": "3ba72f8cac2ad1d0dfedae569d38472d9b2da72f91f264dc646b3858e76c7e4c",
-      "redactedSha256": "a30a3b643de8cbf836cfe56cbc9b0ea13203fcce3b75200937d1f66d6d4e501c",
-      "storedSha256": "2e2a957c1ced0a97e7e9975306ec043e74a2aae73392282b5e9285556838cde2",
-      "bytes": 1494
+      "redactedSha256": "1cbca102e89a2be986a43a24c6f264d511344a641907ce17cd27a2cd74d067b1",
+      "storedSha256": "12474971cb8a123557e35da9d0efdb472f7e640daa7e08f59b5e2fce4f1045c4",
+      "bytes": 1509
     },
     {
       "id": "frontend-before-fix",
       "file": "frontend-before-fix.json.gz",
       "originalSha256": "e9f6083734efe37b6ce7e55a592563b01daa63dd11c5e91ace0ff1936f32582c",
-      "redactedSha256": "8c4b7b2832015349f848f5a1ddca3c0d524dcebb29c95d65439962879b5abd59",
-      "storedSha256": "c18f951cc3fd4ea975311f52d1c148e71854d84dc71d2f20d239fce879866e78",
-      "bytes": 684
+      "redactedSha256": "301107dd65120ff276cf70c477744c3b3c2025d0951fdb9c729a0408667fcde7",
+      "storedSha256": "43a4bf1797997e5ab1e1c8ac6bcc35a0202052b62b869aaa4f0ebe5103417ee0",
+      "bytes": 698
     },
     {
       "id": "electrobun-before-fix",
       "file": "electrobun-before-fix.json.gz",
       "originalSha256": "01db53ea08b109e0b7e8c308f04d6733acb2b5e7ab82ec13189f69c667c5f3fa",
-      "redactedSha256": "17ea99b784efe2ca35eadab26c7faefc3087c85937eb1b697e089564cf87f66d",
-      "storedSha256": "4d852b0557f0466799a1e053448c197fbf3c4758748f36b93b5de2c3b5378388",
-      "bytes": 19668
+      "redactedSha256": "45a8ae7a9994f863424e32d32a01de0fb95703932673cb2819ecf7f2b2507c83",
+      "storedSha256": "aa711370931130bca939df96fc5fb215938208cc81de92e9e5f416545688f8fa",
+      "bytes": 19687
     },
     {
       "id": "mirin-before-fix",
       "file": "mirin-before-fix.json.gz",
       "originalSha256": "f2dea4ab45ddd93b42aa3c707f9d15232462b02ddd804a644ddb0fa98d9e9669",
-      "redactedSha256": "fe80d5285bba5bb3447a63e925317756b98ce9a03eaa3cabadefc1b9281c4272",
-      "storedSha256": "a926b973314daccbd699107ddd858a81f3f34f263f2a72cf213aad7175943fe3",
-      "bytes": 9501
+      "redactedSha256": "8e7e024ff0d6337289b0413cfe9bce4eeba0afe0e8a9a13040e4b8699e083fcb",
+      "storedSha256": "48be7f2323677c512f7b73b8c7d99076da0d28040491b919500667bee3ca8fdc",
+      "bytes": 9518
     },
     {
       "id": "butter-before-helper",
       "file": "butter-before-helper.json.gz",
       "originalSha256": "d7ff30c05a1d2350839a170ad7457e21ef685e5ca3093022cc8f2ca79751f0d1",
-      "redactedSha256": "62c55e6a77072035af40293964cb068bceca4e821a953005015250d4fda63d88",
-      "storedSha256": "467e1a4b76cfbfbd6a6dd93a22420261dc204e57bb0211ab82aeca37b38c4708",
-      "bytes": 9205
+      "redactedSha256": "8430426738c008cde4c67777b06080a78fa35edc26e0fb7974556d48740c4123",
+      "storedSha256": "456a8087f309cc313893aa2faf8e4c10d3783fb0c73b3ffe41601bcea6f88260",
+      "bytes": 9223
     },
     {
       "id": "butter-helper",

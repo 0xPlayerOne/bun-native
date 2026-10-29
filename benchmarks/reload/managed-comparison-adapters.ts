@@ -233,7 +233,7 @@ export async function runComparisonAdapter(
         string,
         unknown
       >
-      assert.equal(runtime['bun_version'], '1.4.3')
+      assert.equal(runtime['bun_version'], '1.4.4')
       assert.equal(runtime['cef_version'], '156.0.7')
       assert.equal(runtime['protocol'], 1)
       assert.equal(runtime['development_origin'], undefined)

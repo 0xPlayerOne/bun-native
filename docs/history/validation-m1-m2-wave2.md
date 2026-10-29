@@ -43,7 +43,7 @@ profile behavior and completion transport prevent direct performance comparison.
 ## Failures found and addressed
 
 - Generated Windows projects in the system temp directory were rejected by
-  Bun 1.4.3's watcher as outside the project. Adding cwd and a package manifest
+  the historical Bun runtime's watcher as outside the project. Adding cwd and a package manifest
   alone did not resolve the observed failure. Generating the private fixture on
   the checkout volume passes. Failure evidence:
   https://github.com/0xPlayerOne/bunly/actions/runs/39000777587

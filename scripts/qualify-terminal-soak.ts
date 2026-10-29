@@ -1,7 +1,7 @@
 /** Maintained long-horizon qualification using the same renderer/source work. */
 import assert from 'node:assert/strict'
 const [adapter, ...args] = process.argv.slice(2)
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 assert.ok(
   adapter === 'cef' || adapter === 'electron',
   'Use qualify-terminal-soak cef PREPARED_APP --functional | electron --functional'

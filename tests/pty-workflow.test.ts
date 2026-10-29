@@ -13,7 +13,7 @@ test('PTY qualification keeps pinned targets, standard-user Windows execution an
   expect(workflow.jobs.pty.strategy.matrix.os).toEqual(['ubuntu-24.04', 'macos-15', 'windows-2022'])
   expect(workflow.jobs.pty.if).toContain("vars.CI_BILLING_PAUSED == 'false'")
   expect(workflow.jobs.pty.if).toContain('draft == false')
-  expect(source).toContain('bun-version: 1.4.3')
+  expect(source).toContain('bun-version: 1.4.4')
   expect(source).toContain('hosted-windows.ps1 -Suite pty')
   expect(source).toContain('path: .bunly/pty-evidence/qualification.json')
   expect(source).not.toContain('self-hosted')

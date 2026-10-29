@@ -1,7 +1,7 @@
 /** Explicit native-window-state profile; historical visible/hidden profiles stay unchanged. */
 import assert from 'node:assert/strict'
 const [adapter, ...args] = process.argv.slice(2)
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 assert.ok(
   adapter === 'cef' || adapter === 'electron',
   'Use qualify-terminal-window-load cef PREPARED_APP --functional | electron --functional'

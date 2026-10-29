@@ -126,7 +126,7 @@ async function qualify(args: readonly string[]): Promise<void> {
     3,
     'Use qualify-browser-actions ORDINARY_APP_DIRECTORY FEATURE_APP_DIRECTORY --native-source=COMMIT'
   )
-  assert.equal(Bun.version, '1.4.3')
+  assert.equal(Bun.version, '1.4.4')
   assert.ok(
     process.platform === 'win32' || process.getuid?.() !== 0,
     'Actual CEF qualification requires a standard user'
@@ -236,7 +236,7 @@ async function qualify(args: readonly string[]): Promise<void> {
         string,
         unknown
       >
-      assert.equal(runtime['bun_version'], '1.4.3')
+      assert.equal(runtime['bun_version'], '1.4.4')
       assert.equal(runtime['cef_version'], '156.0.7')
       delete runtime['development_origin']
       if (profile !== 'ordinary') runtime['development_origin'] = 'http://127.0.0.1:54381'

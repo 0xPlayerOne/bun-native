@@ -64,7 +64,7 @@ limit, browser sandbox, native deadline, or signature requirement was relaxed.
 ## Paired local measurements
 
 One warmup and eight measured repetitions alternated old/new order on the same
-Mac with Bun 1.4.3. The protocol fixture used 32 windows and 128 views, matching the
+Mac with Bun (version redacted). The protocol fixture used 32 windows and 128 views, matching the
 native host's declared caps. These use protocol peers, not CEF rendering. Cache
 measurements use a synthetic authenticated offline cache with one 64 MiB file;
 they exclude installation and network transfer. No quiet-machine or thermal gate

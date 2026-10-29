@@ -52,7 +52,7 @@ so a soak cannot be reported as a standard-profile launch.
 
 ## Maintained acceptance
 
-The automatic/manual `full` native suite adds `terminal-load` after the original
+The manually dispatched `full` native suite adds `terminal-load` after the original
 graphical terminal/service stage and before credential fixtures. On Linux it
 reuses the owned disposable Xvfb/Openbox runner, never an existing desktop.
 Each of the four mode trials must pass; missing/incorrect state, omitted phase

@@ -81,7 +81,7 @@ function run(): BenchmarkRun {
         version: '1',
         sourceCommit,
         runtime: 'Bun',
-        runtimeVersion: '1.4.3',
+        runtimeVersion: '1.4.4',
         engine: 'cef',
         engineVersion: '100',
         securityProfile: 'sandbox-verified',

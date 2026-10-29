@@ -332,7 +332,7 @@ function reportFixture() {
     profile: MANAGED_PROFILE,
     passed: true,
     target: 'linux-x64',
-    bun: '1.4.3',
+    bun: '1.4.4',
     observerTimeoutMs: MANAGED_OBSERVER_MS,
     successfulReplacementPlan: 500,
     launchPlan: 1,
@@ -381,16 +381,16 @@ function reportFixture() {
     },
     restart: restart.report,
     bundledBun: {
-      version: '1.4.3',
+      version: '1.4.4',
       path: 'resources/bun',
       sha256: 'c'.repeat(64),
       observationSha256: 'b'.repeat(64),
       observationContentSha256: managedObservationContentSha256({
         ...workload.observation,
-        stdoutTail: ['1.4.3'],
+        stdoutTail: ['1.4.4'],
         nativeDiagnostics: [],
       }),
-      observation: { ...workload.observation, stdoutTail: ['1.4.3'], nativeDiagnostics: [] },
+      observation: { ...workload.observation, stdoutTail: ['1.4.4'], nativeDiagnostics: [] },
     },
     trials: [
       {

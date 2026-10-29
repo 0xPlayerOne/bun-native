@@ -37,7 +37,7 @@ two warmups and ten measured trials per candidate, with alternating order. All
 24 completed their exact workload and ordered shutdown, with verified macOS
 helper/clone completion. Harness hashes and input/prepared inventories remained
 unchanged. The independently probed runtime was CEF 154.0.34 / Chromium
-154.0.8037.98 on macOS arm64, with Bun 1.4.3. Sandbox configuration was preserved;
+154.0.8037.98 on macOS arm64, with Bun (version redacted). Sandbox configuration was preserved;
 the binary identity probe itself reports sandbox attestation as unverified.
 
 The following numbers are **whole-workload means**, not per-call latency. Brackets
@@ -154,7 +154,7 @@ bun run qualify:cef-transports -- PREPARED_APP --samples 10 --warmups 2
 bun run qualify:cef-transports -- PREPARED_APP --native-only --samples 5 --warmups 1
 ```
 
-The automatic three-platform RPC workflow requires both functional candidates as
+The manually dispatched three-platform RPC qualification requires both functional candidates as
 well as RPC/session, native browser policy and network suites. Compilation and
 local macOS runs do not substitute for final-head Linux/Windows execution. Hosted
 functional results are not quiet performance distributions. Further production

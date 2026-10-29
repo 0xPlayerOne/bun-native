@@ -20,7 +20,7 @@ const root = resolve(import.meta.dir, '..')
 const args = process.argv.slice(2)
 const functional = args.length === 1 && args[0] === '--functional'
 const options = functional ? { samples: 1, warmups: 0, output: '' } : profileOptions(args, '')
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 assert.equal(options.output, '')
 const before = sourceIdentity(root)
 if (!functional) assert.ok(before.clean, 'Profile requires clean source')

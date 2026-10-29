@@ -145,7 +145,7 @@ no caller-supplied expression, public debugging port or page-callable test API.
 Ordinary host builds exclude the command. The exact popup-denial receipt is still
 required; neither a JavaScript `null` result nor an unobserved callback suffices.
 
-The ordinary three-platform RPC workflow also runs this policy fixture. The
+The manually dispatched three-platform RPC qualification also runs this policy fixture. The
 wrapper requires its exact schema-3 record, zero requests at the forbidden
 server, normal process exit and all ordered native teardown phases. Source hashes
 and the input artifact are checked across the run. A missing callback, duplicate
@@ -173,7 +173,7 @@ tracked M4 work; this increment does not silently complete them.
 
 ## Local implementation checkpoint
 
-The implementation pass ran pinned Bun 1.4.3 and Rust 1.91.0 against the existing
+The implementation pass ran pinned Bun runtime (version redacted) and Rust 1.91.0 against the existing
 CEF 154.0.34 distribution. `check:portable` passed 679 Bun tests and 200 Python
 tests; `check:foundation` passed 139 overlapping Bun tests. `check:ci:native`
 passed both workspaces, including 93 CEF tests, strict Clippy and release builds.

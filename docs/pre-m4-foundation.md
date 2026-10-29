@@ -145,7 +145,7 @@ CEF app under concurrent full, range, HEAD and conditional asset requests, inclu
 fresh/reused profile startup and idle/active synthetic input-to-frame observations.
 See [foundation performance](foundation-performance.md) for the methodology.
 
-The preserved portable profile used Bun 1.4.3 and clean source
+The preserved portable profile used Bun (version redacted) and clean source
 `dcd204b4c42e161ffe5ba158f2cc287633727eb6`, with 15 measured samples and two
 warmups. All six workloads passed. Full verification of the synthetic 64 MiB
 cache had a 313.634 ms mean and a bootstrap mean 95% interval of
@@ -392,7 +392,7 @@ Direct workflow actions were checked against upstream release commits and their
 
 The existing setup-bun pin already supported Node 24. The pinned Foundry release
 and its reusable workflows stay unchanged. The application continues to use
-Bun 1.4.3; Node 24 here is the Actions implementation runtime. Billing guards,
+Bun (version redacted); Node 24 here is the Actions implementation runtime. Billing guards,
 draft requirements, trigger conditions and hosted-run authorization are unchanged.
 Local workflow syntax validation is not hosted execution.
 

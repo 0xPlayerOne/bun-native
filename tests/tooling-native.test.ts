@@ -155,7 +155,7 @@ test('tooling entrypoints use native checking without changing runtime/editor pi
     'bun --check --tsconfig-override tsconfig.browser.json'
   )
   expect(pkg.devDependencies.typescript).toBe(process.versions['typescript'])
-  expect(pkg.engines.bun).toBe('1.4.3')
+  expect(pkg.engines.bun).toBe('1.4.4')
 })
 
 test('profile builds retain honest scope and invalidate stale manifests on failure', async () => {

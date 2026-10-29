@@ -31,9 +31,12 @@ runtime and executes the complete prebuilt startup/rejection/lifecycle matrix.
 policy, both functional transports, complete offline reset and real OS-provider
 qualification, in that order. Provider setup cannot run after an earlier failed
 stage. `full` includes all of M4 acceptance plus the four native fault cases and
-explicit OS isolation evidence, with provider provisioning kept last. Both are restricted to disposable hosted workers;
-never spoof their guard on a personal credential store. The automatic PR lane now selects
-`full`, including faults, from this same command map. See [suite/export semantics](native-acceptance-tooling.md).
+explicit OS isolation evidence, with provider provisioning kept last. Both are
+restricted to disposable hosted workers; never spoof their guard on a personal
+credential store. Full native qualification is available only through this
+explicit dispatch workflow. The PR CEF API checks compile against the documented
+CEF surface without claiming that a packaged browser runtime passed. See
+[suite/export semantics](native-acceptance-tooling.md).
 
 Each platform has a 60-minute job ceiling and the native execution step has a
 20-minute ceiling. There are no automatic retries or slower deadline fallbacks.
@@ -48,8 +51,8 @@ application with its separate compiler-free checks.
 `workflow_dispatch` can run the two manual-only jobs without changing that variable.
 Foundry's overlay preserves only the exact manual-event predicate, and requires
 a declared dispatch trigger. An OR expression cannot bypass its ordinary pause
-guard. Automatic jobs never run as a side effect of manual dispatch, and draft
-PRs do not start the automatic native matrix.
+guard. Manual dispatch runs only the selected qualification jobs; pull requests
+do not start the full native matrix.
 
 Workflow permissions remain `contents: read`; checkout credentials are not
 persisted. No secrets, public release uploads, package publication, remote

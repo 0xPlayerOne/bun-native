@@ -88,7 +88,7 @@ function archiveFixture() {
       sha256: hash('private original parser fixture'),
     },
     passed: false,
-    redactions: ['fixture-nonces'],
+    redactions: ['fixture-nonces', 'runtime-version'],
     failureClass: 'public-asset-rejection-before-ui',
   }
   return { entry, encoded, compressed, expanded, report: decodeExportedNativeReport(encoded) }
@@ -125,12 +125,12 @@ function manifestFixture(): Record<string, unknown> {
         profile: MANAGED_COMPARISON_PROFILE,
         passed: true,
         failureClass: undefined,
-        redactions: ['fixture-nonces', 'local-paths'],
+        redactions: ['fixture-nonces', 'local-paths', 'runtime-version'],
       }),
       entry('last-window-quit-failure', {
         source: sources.shutdown,
         failureClass: 'normal-shutdown-raced-redundant-quit',
-        redactions: ['fixture-nonces', 'local-paths'],
+        redactions: ['fixture-nonces', 'local-paths', 'runtime-version'],
       }),
     ],
   }
@@ -298,7 +298,7 @@ test('completed500 workload cannot hide the retained nonzero last-window shutdow
     archive: 'last-window-quit-failure.json.gz',
     source: sources.shutdown,
     failureClass: 'normal-shutdown-raced-redundant-quit',
-    redactions: ['fixture-nonces', 'local-paths'],
+    redactions: ['fixture-nonces', 'local-paths', 'runtime-version'],
   })
   const trial = list(report['trials'])[0]!,
     observation = object(trial['observation'])

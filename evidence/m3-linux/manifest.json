@@ -41,9 +41,9 @@
       "name": "environment",
       "path": "environment.json.gz",
       "originalSha256": "67061dee0529056c1c59bf9a7897058d706489a51c2ed703f3de087f89fd10b0",
-      "redactedSha256": "67061dee0529056c1c59bf9a7897058d706489a51c2ed703f3de087f89fd10b0",
-      "storedSha256": "faceeb87cdfb709a3ce6f54a2877ecefbbac23b165ab780e13ff0e4732568dc9",
-      "uncompressedBytes": 3996
+      "redactedSha256": "64de81e2a9c4decd96ee91e14f903f6c77f31430c862b80427cf72fefd4affa0",
+      "storedSha256": "220cf144df08131bcd694d1e2b3c8c8935ff7d857af8596fcdac98bc4df02dd4",
+      "uncompressedBytes": 4018
     }
   ],
   "executionSources": [

@@ -24,7 +24,7 @@ impl Handshake {
             .get("args")
             .and_then(Value::as_object)
             .ok_or("Invalid Bun handshake arguments")?;
-        if args.len() != 1 || args.get("bun").and_then(Value::as_str) != Some("1.4.3") {
+        if args.len() != 1 || args.get("bun").and_then(Value::as_str) != Some("1.4.4") {
             return Err("Packaged Bun version mismatch");
         }
         self.completed = true;
@@ -40,10 +40,10 @@ mod tests {
     fn negotiation_requires_the_exact_first_message_and_version() {
         for value in [
             json!({"id":1,"op":"window.create","args":{}}),
-            json!({"id":2,"op":"hello","args":{"bun":"1.4.3"}}),
+            json!({"id":2,"op":"hello","args":{"bun":"1.4.4"}}),
             json!({"id":1,"op":"hello","args":null}),
             json!({"id":1,"op":"hello","args":{"bun":"1.4.0"}}),
-            json!({"id":1,"op":"hello","args":{"bun":"1.4.3","extra":true}}),
+            json!({"id":1,"op":"hello","args":{"bun":"1.4.4","extra":true}}),
         ] {
             assert!(Handshake::default().accept(&value).is_err());
         }
@@ -52,7 +52,7 @@ mod tests {
     fn valid_handshake_needs_no_gui_dispatch_and_cannot_be_replayed() {
         let mut state = Handshake::default();
         assert_eq!(
-            state.accept(&json!({"id":1,"op":"hello","args":{"bun":"1.4.3"}})),
+            state.accept(&json!({"id":1,"op":"hello","args":{"bun":"1.4.4"}})),
             Ok(true)
         );
         assert_eq!(
@@ -60,7 +60,7 @@ mod tests {
             Ok(false)
         );
         assert_eq!(
-            state.accept(&json!({"id":3,"op":"hello","args":{"bun":"1.4.3"}})),
+            state.accept(&json!({"id":3,"op":"hello","args":{"bun":"1.4.4"}})),
             Err("Duplicate Bun handshake")
         );
     }

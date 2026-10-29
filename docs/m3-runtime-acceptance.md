@@ -92,7 +92,7 @@ Final execution identities, results and issue dispositions are recorded after qu
 
 ## Executed macOS acceptance
 
-The final native matrix executed from clean commit `925aadf3c37ff41dbd8d26aeec5738795743a32e` on macOS arm64. The actual CEF library exports report **CEF 154.0.34 / Chromium 154.0.8037.98**, commit 3633; the application embeds Bun **1.4.3**. Local ad-hoc signatures were independently verified; no Apple Developer account or distribution certificate was used.
+The final native matrix executed from clean commit `925aadf3c37ff41dbd8d26aeec5738795743a32e` on macOS arm64. The actual CEF library exports report **CEF 154.0.34 / Chromium 154.0.8037.98**, commit 3633; the application embeds Bun **VERSION_REDACTED**. Local ad-hoc signatures were independently verified; no Apple Developer account or distribution certificate was used.
 
 - **11 packaged trials passed:** three ordinary installed launches, last-window shutdown, three rejected unsafe switches, wrong runtime version, absent Bun, absent renderer helper, and a restored-installation launch. All positive runs use an unrelated working directory and an empty compiler PATH. The source prebuild remained unchanged.
 - **120 actual create/close cycles** were exercised across the five positive packaged runs and the acquired offline runtime. Multiple windows/views, concurrent closure, navigation generation, callback detachment, Bun timer responsiveness and final resource counts were verified.

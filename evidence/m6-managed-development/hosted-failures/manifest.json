@@ -27,10 +27,10 @@
         "sha256": "a45d8e923af4b2a534dbf36f4e3202279b5a92ed6823cc078995c7c82c637dda"
       },
       "archive": "run-40584770106-linux-managed-development.json.gz",
-      "archiveBytes": 146198,
-      "archiveSha256": "dd2cc4a2b2d21fbadedda3e825c084b4a6a6462ea250f2a71ae3e3474e78c6f8",
-      "expandedBytes": 5363771,
-      "expandedSha256": "a45d8e923af4b2a534dbf36f4e3202279b5a92ed6823cc078995c7c82c637dda",
+      "archiveBytes": 146230,
+      "archiveSha256": "fb124e29f5dba1905d338cb32b2772ae34b2e4e48b9ce74149a64942d5828d55",
+      "expandedBytes": 5363804,
+      "expandedSha256": "2d53145b57b7d32ff217cd41aa12d589cdd046198efb7389cd7384560ea414b6",
       "redactions": [
         "fixture-nonces"
       ]
@@ -51,10 +51,10 @@
         "sha256": "95d79c5e9f70f0ef7bf2becb606dba9f764a4efc8803e58fd3f93bb4890e19a7"
       },
       "archive": "run-40584770106-macos-managed-development.json.gz",
-      "archiveBytes": 119111,
-      "archiveSha256": "4b67db4997aac33069cde3bdb5ab553d2331dd099825b91131182872496a1c06",
-      "expandedBytes": 1778036,
-      "expandedSha256": "95d79c5e9f70f0ef7bf2becb606dba9f764a4efc8803e58fd3f93bb4890e19a7",
+      "archiveBytes": 119142,
+      "archiveSha256": "869cc8c87e4c3af29dc68eaf25347a161b04f76c56fc4d2bc620ec119c8fbf65",
+      "expandedBytes": 1778069,
+      "expandedSha256": "ab757ce27b7ed34ad1e11787f94af5c198b2e3937617f39c0afe2fac9525cac6",
       "redactions": [
         "fixture-nonces"
       ]
@@ -99,10 +99,10 @@
         "sha256": "7abc40420912f3ec3e3ca3fe13bd4d82477a3a5da57c7cc3df31dd83e41eba41"
       },
       "archive": "run-40584770106-windows-managed-development.json.gz",
-      "archiveBytes": 73029,
-      "archiveSha256": "efb649f47c25a9d87c5a7ab6e0eaab6c49367d7197bd6a5d1a3cef9578c9b9fe",
-      "expandedBytes": 621797,
-      "expandedSha256": "106ecbf2f56b43be803cd295d42713d11b05fe0a4fb3f6fb3e85814525ea9e32",
+      "archiveBytes": 73062,
+      "archiveSha256": "76a0a6170f528ff67e1ca565467450dd4bcec74c68056dfd4cc553125977bda0",
+      "expandedBytes": 621830,
+      "expandedSha256": "24af9a18ed8218cd5558d6c256a6d47d0599309b799c366461d3031b8edd6a28",
       "redactions": [
         "fixture-nonces",
         "hosted-workspace-paths"
@@ -112,10 +112,10 @@
         "inputBytes": 621833,
         "inputSha256": "f88b2fcd834140e87534129e5ce8f0ca09644ffdf7f62d6dce1f1db84f497cf9",
         "archive": "run-40584770106-windows-run-export.json.gz",
-        "archiveBytes": 73035,
-        "archiveSha256": "72f17fce29346aa33f56b6e41f9b119da7b24e8f1e9d39f26a97314e5ddea27e",
-        "expandedBytes": 621809,
-        "expandedSha256": "80fb6e9a285027f4d4af758f3ff426828c98dfc1f74cec1caf13c9af51a769eb",
+        "archiveBytes": 73070,
+        "archiveSha256": "adbec75afb660b3c65a9d5e726cdca751d362f52606f68d6910593e0cbd64766",
+        "expandedBytes": 621842,
+        "expandedSha256": "5b88432800320017434eb26d660d07bfcf133025472a53e08049da626805516f",
         "difference": "Only two inventory path strings differ: inputArtifact.entries[247].path and inputArtifactAfter.entries[247].path encode unicode-é.txt as unicode-Ã©.txt in this run-specific export. Outcomes and all other parsed fields agree; both exports are retained."
       }
     }
@@ -148,10 +148,10 @@
             "sha256": "526ae6228064c38a1e09327281061232a16231e14480a0e8c5d3278afbf1133e"
           },
           "archive": "run-40590492356-linux-managed-development.json.gz",
-          "archiveBytes": 171569,
-          "archiveSha256": "76309c2fc808779321083c54b50054d2dfb5dd050f7036a9a4ef303f77f9fa63",
-          "expandedBytes": 5707587,
-          "expandedSha256": "526ae6228064c38a1e09327281061232a16231e14480a0e8c5d3278afbf1133e",
+          "archiveBytes": 171609,
+          "archiveSha256": "504086496245cb71933ef5fcaa57e75954929edd57e19c4a35eba0872b10a32d",
+          "expandedBytes": 5707620,
+          "expandedSha256": "f0a52dc6cfb31fd870ea3a3f62c312861ebda547cfad7486ad799f85b15462cd",
           "redactions": [
             "fixture-nonces"
           ]
@@ -172,10 +172,10 @@
             "sha256": "bdb63633f99ac9b2701a722043ef795b6e5a2721ca8092de06ce10c8fd0d9754"
           },
           "archive": "run-40590492356-windows-managed-development.json.gz",
-          "archiveBytes": 73260,
-          "archiveSha256": "7376403b544d1401e3324450fef351f3f566b7dfbade5be3ff84780f7697e90f",
-          "expandedBytes": 622235,
-          "expandedSha256": "a95d003563e34fa8bd5727f7f7a065bde47bb9b4fa172c794a006067a119f5d6",
+          "archiveBytes": 73290,
+          "archiveSha256": "48e70a72d5057e1dfafe18aef599992bb98e6e2caa0b99fcf69697138a0defd5",
+          "expandedBytes": 622268,
+          "expandedSha256": "0e351c7a1912bdf897c38fa512d2bca01ab4f852ff9530a695b6d7cbfd6416c4",
           "redactions": [
             "fixture-nonces",
             "hosted-workspace-paths"
@@ -185,10 +185,10 @@
             "inputBytes": 622271,
             "inputSha256": "3c80d62f974e93e1c768ade3e9bd0bf879d7df68109cb9aff3a1a411fb2029ca",
             "archive": "run-40590492356-windows-run-export.json.gz",
-            "archiveBytes": 73266,
-            "archiveSha256": "bad969770fc0f7a74268c0e2bf7478ca3750d5ba977b1aab15b3cd6da9e3112b",
-            "expandedBytes": 622247,
-            "expandedSha256": "c118201077809d17dec0c258bcb256f0714710cc655d922bdef5d75db5fb2b59",
+            "archiveBytes": 73296,
+            "archiveSha256": "7c4aa5cc8fd9279b36800aae851ae424f96c5709b298dc434b0fcbfe102d485e",
+            "expandedBytes": 622280,
+            "expandedSha256": "36e9b390caa3e91ec4aabc95c2c25c36298097f1d86e89f84960943500143438",
             "difference": "Only two inventory path strings differ: inputArtifact.entries[247].path and inputArtifactAfter.entries[247].path encode unicode-é.txt as unicode-Ã©.txt in this run-specific export. Outcomes and all other parsed fields agree; both exports are retained."
           }
         }
@@ -221,10 +221,10 @@
             "sha256": "dab5bc9ff55e4e638e841ecdb2cbe5366c70fb20110392eff28d4a2f44554428"
           },
           "archive": "run-40604917371-windows-managed-development.json.gz",
-          "archiveBytes": 168648,
-          "archiveSha256": "f98d232dc64786d6dd537531e8aba8c60f712dbe3794cad9295645520e6e7723",
-          "expandedBytes": 4865980,
-          "expandedSha256": "43a2b58ee99eb296a1292950606d388bebdb361459b5efe0e7492ff7f6f04b51",
+          "archiveBytes": 168686,
+          "archiveSha256": "98593ba7e866b29425e2fc1881e82f9b04aa5448e9a2d9e76d8c81016fbadf12",
+          "expandedBytes": 4866013,
+          "expandedSha256": "72223da2e2ed5977cf013ece52c968ea484f988ef8da3dba468483e479d867dc",
           "redactions": [
             "fixture-nonces",
             "hosted-workspace-paths"
@@ -270,10 +270,10 @@
             "sha256": "40fb19caa9355b803f78731127cba370ed71537a7276681b6dcdc8aea145175b"
           },
           "archive": "run-40608284146-linux-terminals.json.gz",
-          "archiveBytes": 67329,
-          "archiveSha256": "7cfcb7d403a4ddbf68db08becdb130c8b9931093cbca9e3761aedb6c7086137b",
-          "expandedBytes": 4648326,
-          "expandedSha256": "3468c91d329ff2309591bbfbb0b7bc92b97458b0962fe430534348ef2aa6e88d",
+          "archiveBytes": 67349,
+          "archiveSha256": "c949d4226f610762e6d4de73982cba6d38aa9a98504212640353be18e7c03502",
+          "expandedBytes": 4648337,
+          "expandedSha256": "4d3e15a9040c54a5727b04a7adacc3d9e15f541de90a8824dbee5757cbed1eeb",
           "redactions": [
             "fixture-nonces",
             "hosted-workspace-paths"

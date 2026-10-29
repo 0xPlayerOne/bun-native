@@ -126,7 +126,7 @@ export function validateWorkbenchRuntime(input: unknown): void {
   )
   assert.equal(runtime['schema'], 1)
   assert.equal(runtime['protocol'], 1)
-  assert.equal(runtime['bun_version'], '1.4.3')
+  assert.equal(runtime['bun_version'], '1.4.4')
   assert.equal(runtime['cef_version'], '156.0.7')
   assert.ok(runtime['maintenance_protocol'] === undefined || runtime['maintenance_protocol'] === 1)
   assert.ok(
@@ -293,7 +293,7 @@ export async function prepareHardwareWorkbench(
   input: string,
   nativeSource: string
 ): Promise<string> {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use pinned Bun 1.4.4')
   assert.match(nativeSource, /^[a-f0-9]{40}$/, 'Explicit full native build commit required')
   const target = currentTarget(),
     layout = paths(target)
@@ -346,7 +346,7 @@ export async function prepareHardwareWorkbench(
         embeddedBuildAttestation: false,
       },
       developerBun: Bun.version,
-      packagedBun: { declared: '1.4.3', observed: null },
+      packagedBun: { declared: '1.4.4', observed: null },
       cef: { declared: '156.0.7', exportedIdentity: null },
       application: layout.application,
       hostPath: layout.host,

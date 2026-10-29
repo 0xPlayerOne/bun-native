@@ -1,6 +1,6 @@
 # Reload mechanism qualification
 
-**Issue:** #29. **Runtime:** pinned Bun 1.4.3. **Scope:** executable mechanism
+**Issue:** #29. **Runtime:** pinned Bun runtime (version redacted). **Scope:** executable mechanism
 experiments, not a production loader or native desktop persistence acceptance.
 The stable supervised Bun process retains the desktop owner and its process leases;
 application generations must be replaceable without implicitly restarting that owner.
@@ -90,7 +90,7 @@ across an isolate/process boundary as though those objects were authorization.
 ## Local result and proposed M6 mechanism
 
 The committed [macOS arm64 matrix](../evidence/m6-reload-local.json) was executed
-on clean `6e4fd3b713a97dc9a5facf66ca95ba3fc7e309ff`, Bun 1.4.3, on October 27, 2026. Its report is 115,783 bytes, SHA-256
+on clean `6e4fd3b713a97dc9a5facf66ca95ba3fc7e309ff`, Bun (version redacted), on October 27, 2026. Its report is 115,783 bytes, SHA-256
 `7dc2131c66de06262c1a8cb2ae99c460b2d6c5d043e61ff88de79a0543f0e78e`.
 It contains 80 repeated generation observations and four distinct loop controls,
 not 80 native backend replacements or independent performance launches.
@@ -146,7 +146,7 @@ view/session/document permissions at attachment and every managed operation.
 ## Primary API references
 
 The current upstream documentation describes experimental APIs and may be newer than
-the pinned executable. Availability and semantics are tested on Bun 1.4.3; a current
+the pinned executable. Availability and semantics are tested on Bun (version redacted); a current
 webpage alone is not evidence that that pinned version supports an operation.
 
 - [ModuleGraph guide](https://bun.sh/docs/runtime/module-graph)

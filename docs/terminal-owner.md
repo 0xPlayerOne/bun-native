@@ -42,7 +42,7 @@ The graphical terminal fixture now exercises this native driver.
 
 ## Unix ownership and host loss
 
-Pinned Bun 1.4.3 owns PTY creation and reaping of the executable passed to
+Pinned Bun 1.4.4 owns PTY creation and reaping of the executable passed to
 `Bun.spawn`. Its API cannot adopt a native-created PTY or transfer the child's wait
 identity. Registering a numeric PID afterward races reaping, especially on macOS.
 Therefore one bounded native guard per admitted PTY retains the real command's

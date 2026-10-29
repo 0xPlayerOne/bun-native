@@ -9,7 +9,7 @@
   "target": "darwin-arm64",
   "cef": "156.0.7",
   "chromium": "156.0.8078.17",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "cefRust": "1.91.0",
   "report": {
     "bytes": 365333,

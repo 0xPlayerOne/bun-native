@@ -35,7 +35,7 @@ an active uncooperative writer retains its source reservation until it settles.
 The owner must implement `stopSource` for exactly the owned resource; failure to
 stop is retained diagnostically. No PID/name-based global termination is added.
 
-The maintained `qualify:bun-pty` runs the pinned Bun 1.4.3 against a fixed child
+The maintained `qualify:bun-pty` runs the pinned Bun runtime (version redacted) against a fixed child
 that never launches shells or descendants. It exercises a real TTY, input, resize,
 64 ordered Unicode records, terminal closure independently of child exit, and a
 MessageChannel stream consumer backed by the actual xterm headless parser. A paused consumer must withhold acknowledgments
@@ -44,7 +44,7 @@ must equal the consumed stream byte count/hash. Cancellation and source overload
 are expected nonzero-exit controls, not clean-shutdown passes. Every scenario must
 return all three budget pools to zero. There is no retry-to-green.
 
-Bun 1.4.3's terminal surface is checked for absent pause/resume APIs. The selected
+the historical Bun runtime's terminal surface is checked for absent pause/resume APIs. The selected
 current policy is bounded buffering followed by explicit controlled failure, not
 a claim that waiting on a callback automatically slows the PTY producer. A later
 qualified source-pressure mechanism may improve this without changing lossless
@@ -185,7 +185,7 @@ disconnect-stop with no replay, scrollback store, reconnect, or hidden retry. Se
 [runtime terminal service](terminal-service.md) for the state and limit contract.
 
 A controlled fake driver covers races, deadlines and retained ownership. A fixed
-repository child under pinned Bun 1.4.3 covers real input, resize, split/invalid
+repository child under pinned Bun runtime (version redacted) covers real input, resize, split/invalid
 bytes, nonzero exit, close and headless-xterm ACK/hash behavior. This portable core
 still does not supply the renderer ACK/authority lane, graphical terminal behavior,
 detached-descendant supervision, Windows jobs, managed backend replacement or M6

@@ -29,7 +29,7 @@ export function capture(shift = 0): TerminalProfileCapture {
         modes: TERMINAL_MODES,
       },
       runtime: {
-        bun: '1.4.3',
+        bun: '1.4.4',
         cef: '156.0.7',
         chromium: '156.0.8078.17',
         engineSha256: hex(2),

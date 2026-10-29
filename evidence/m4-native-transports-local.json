@@ -8,7 +8,7 @@
   },
   "nativeSourceTree": "132e4c18c17641230a6ad34e2715b835da75b407",
   "target": "darwin-arm64",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "cefRust": "1.91.0",
   "runtimeIdentity": {
     "event": "cef-binary-identity",

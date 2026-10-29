@@ -14,7 +14,7 @@ if ((name !== 'mirin' && name !== 'butter') || !destination)
   throw new Error(
     'Usage: bun scripts/bootstrap-reference-baselines.ts mirin|butter <new-private-directory>'
   )
-if (Bun.version !== '1.4.3') throw new Error('Use the pinned Bun 1.4.3 executable')
+if (Bun.version !== '1.4.4') throw new Error('Use the pinned Bun 1.4.4 executable')
 if (process.platform !== 'darwin' || process.arch !== 'arm64')
   throw new Error('This pinned reference preparation targets macOS arm64')
 const project = resolve(destination)

@@ -4,7 +4,7 @@
   "sourceCommit": "eb3abbe8f58613be7311481f390109257f05c4dd",
   "nativeSourceTree": "85459fe75a3505fc6aeaed196199553c00db6387",
   "toolchain": {
-    "bun": "1.4.3",
+    "bun": "VERSION_REDACTED",
     "cefRust": "1.91.0",
     "target": "darwin-arm64"
   },

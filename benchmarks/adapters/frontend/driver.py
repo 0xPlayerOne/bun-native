@@ -264,7 +264,7 @@ def main() -> int:
                             (directory / "revision.ts").write_text(
                                 "export const revision = ;\n", encoding="utf-8"
                             )
-                            # Bun 1.4.3 prints parser failures without emitting bun:error.
+                            # Bun 1.4.4 prints parser failures without emitting bun:error.
                             # Keep the real invalid edit and require its fresh diagnostic.
                             row["compilerDiagnostic"] = process.wait_compile_error(error_cursor)
                             failed = observe(3)

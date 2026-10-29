@@ -17,7 +17,7 @@ hide/show/minimize/restore. It adds no sleep, repeated mutation, longer deadline
 synthetic visibility. The prebuilt native source was `84e8589` in all three runs;
 only the TypeScript fixture and its validator changed. The runner verified the
 matching native source tree, actual CEF 156.0.7 / Chromium 156.0.8078.17 exports,
-Bun 1.4.3, runtime files and file metadata. This remains a declared build source
+Bun (version redacted), runtime files and file metadata. This remains a declared build source
 with artifact inventories, not embedded build attestation.
 
 The native run was macOS arm64. Its observed device-pixel ratio of 2 is a browser

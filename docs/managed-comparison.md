@@ -4,7 +4,7 @@
 
 This macOS arm64 qualification executes a current shared browser workbench in
 Bunly, Electrobun 2.0.3-beta.26, and Mirin 0.1.0-alpha.26. It requires the pinned
-Bun 1.4.3 driver, the existing pinned reference installations, a cached Hutch
+Bun 1.4.4 driver, the existing pinned reference installations, a cached Hutch
 home, and an explicitly selected prebuilt Bunly app with an identical native
 source tree. It does not build Bunly native code. Run from a clean committed
 checkout as a standard user. The installed reference repository is an input;

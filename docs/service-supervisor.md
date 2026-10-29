@@ -124,7 +124,7 @@ Dispose does not dispose the shared TerminalService or unrelated children.
 ## Maintained qualification
 
 `bun run qualify:services` runs deterministic scheduler/driver regressions and real
-pinned Bun 1.4.3 PTYs. The fixed child uses explicit environment and argv, readiness
+pinned Bun 1.4.4 PTYs. The fixed child uses explicit environment and argv, readiness
 output and explicit fixture input. Three successive nonzero generations verify
 fresh identities, disposal before replacement, exact output hashes from driver
 callbacks through consumer acknowledgments, and clean held ownership. An

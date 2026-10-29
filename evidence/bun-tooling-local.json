@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "baselineCommit": "11d98e2fd69a043f494df859a92aba9a2d1e0adf",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "typescript": "7.0.2",
   "platform": "darwin-arm64",
   "classification": "local-development-not-controlled",
@@ -83,7 +83,7 @@
   },
   "inventory": {
     "classification": "paired-local-synthetic-not-controlled",
-    "bun": "1.4.3",
+    "bun": "VERSION_REDACTED",
     "platform": "darwin",
     "arch": "arm64",
     "warmups": 1,
@@ -113,7 +113,7 @@
   },
   "checkerQualification": {
     "schema": 1,
-    "bun": "1.4.3",
+    "bun": "VERSION_REDACTED",
     "typescript": "7.0.2",
     "passed": true,
     "cases": [

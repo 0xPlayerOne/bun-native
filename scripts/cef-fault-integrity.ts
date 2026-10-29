@@ -7,8 +7,8 @@ import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 
 const root = resolve(import.meta.dir, '..')
 const input = process.argv[2]
-if (process.argv.length !== 3 || !input || Bun.version !== '1.4.3')
-  throw new Error('Use pinned Bun 1.4.3 and one explicit native artifact directory')
+if (process.argv.length !== 3 || !input || Bun.version !== '1.4.4')
+  throw new Error('Use pinned Bun 1.4.4 and one explicit native artifact directory')
 const paths = [
   'scripts/qualify-cef-faults.py',
   'scripts/cef-fault-integrity.ts',

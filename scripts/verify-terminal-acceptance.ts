@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { gunzipSync } from 'node:zlib'
 import type { ObservationSample } from '../benchmarks/lib/observation.ts'
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 const root = resolve(import.meta.dir, '..'),
   base = join(root, 'evidence/m5-terminal-acceptance')
 const sha = (data: Uint8Array | string) => createHash('sha256').update(data).digest('hex')

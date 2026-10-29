@@ -16,7 +16,7 @@ release or all-platform qualification.
 
 ## Run and replay
 
-Use a clean committed checkout, pinned Bun 1.4.3, the contributor Python
+Use a clean committed checkout, pinned Bun 1.4.4, the contributor Python
 environment, and a standard user account. Select an already built native app
 whose entire `native/cef-host` source tree matches the current checkout:
 

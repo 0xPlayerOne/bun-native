@@ -373,7 +373,7 @@ def run(suite, selected_native_target=None):
         if not bun:
             raise ValueError("Pinned Bun executable is missing")
         version = subprocess.check_output([bun, "--version"], text=True, timeout=10).strip()
-        if version != "1.4.3":
+        if version != "1.4.4":
             raise ValueError("Unexpected Bun version")
         source = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, timeout=10

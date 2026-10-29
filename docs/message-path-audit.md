@@ -65,7 +65,7 @@ byte decoder. No unvalidated packet or caller-supplied object enters that path.
 
 ## Descriptive paired measurements
 
-Same-process measurements used Bun 1.4.3 on macOS arm64, one warmup and eight
+Same-process measurements used Bun (version redacted) on macOS arm64, one warmup and eight
 measured repetitions in alternating old/new order. Native tests use protocol
 peers; JSON tests use the same pre-encoded bytes. There is no quiet-machine or
 thermal qualification, no timing threshold in unit tests, and no CEF rendering,

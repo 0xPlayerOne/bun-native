@@ -81,7 +81,7 @@ platform claim; unsupported filesystems fail instead of silently switching modes
 
 ## Executed validation
 
-On Linux x64 with actual Bun `1.4.3+c6da4a4d3` and Python/psutil 7.2.2:
+On Linux x64 with actual Bun (version redacted) and Python/psutil 7.2.2:
 
 - `bun test tests/artifact-transfer.test.ts tests/release-transfers.test.ts tests/release-workflow.test.ts`:
   **37 passed**, comprising 20 new transfer/integration cases and 17 unchanged

@@ -96,7 +96,7 @@ export function validateTerminalCapture(input: unknown): TerminalProfileCapture 
   assert.equal(workload['maxBatchBytes'], 32768)
   assert.equal(workload['maxCallbacksPerBatch'], 256)
   const runtime = object(context['runtime'])
-  assert.equal(runtime['bun'], '1.4.3')
+  assert.equal(runtime['bun'], '1.4.4')
   assert.equal(runtime['cef'], '156.0.7')
   assert.equal(runtime['chromium'], '156.0.8078.17')
   digest(runtime['engineSha256'])

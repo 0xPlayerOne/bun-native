@@ -12,7 +12,7 @@
     "sameHostWorkerAndSubprocessQualification": "success",
     "portableBenchmarksAndSandboxedElectronSubset": "success"
   },
-  "pins": {"bun":"1.4.3","rust":"1.85.1","typescript":"7.0.2","electron":"44.8.0","xterm":"5.5.0","psutil":"7.0.0"},
+  "pins": {"bun":"VERSION_REDACTED","rust":"1.85.1","typescript":"7.0.2","electron":"44.8.0","xterm":"5.5.0","psutil":"7.0.0"},
   "rawEvidence": "Workflow artifacts and logs; artifact retention is finite and noted by GitHub. Regenerate from the pinned commit rather than treating missing raw files as verified measurements.",
   "laterChanges": "This checkpoint precedes the dedicated Electron renderer-crash scenario and refined frame metric naming. The PR records the final tested head separately.",
   "notEstablished": ["kernel wakeup counts", "controlled desktop performance rankings", "complete Electrobun/Mirin/Butter baselines", "Bunly CEF window", "real PTYs", "managed backend reload"]

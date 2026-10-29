@@ -160,7 +160,7 @@ def fixture(target="linux-x64"):
             "target": target,
             "standardUser": True,
             "emulated": True,
-            "bunVersion": "1.4.3",
+            "bunVersion": "1.4.4",
         },
     }
 
@@ -249,6 +249,9 @@ class PlatformEvidenceTests(unittest.TestCase):
             report["environment"][key] = value
             with self.assertRaises(ValueError):
                 validate("linux-x64", "emulated-functional", report)
+        redacted_history = fixture()
+        redacted_history["environment"]["bunVersion"] = "VERSION_REDACTED"
+        self.assertTrue(validate("linux-x64", "emulated-functional", redacted_history)["passed"])
         with self.assertRaises(ValueError):
             validate("linux-x64", "standard", fixture())
 

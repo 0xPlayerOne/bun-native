@@ -23,7 +23,7 @@ const identity: CefRuntimeIdentity = {
   version: '0.1.0',
   abi: 1,
   target: 'darwin-arm64',
-  bun: '1.4.3',
+  bun: '1.4.4',
   cef: '156.0.7',
   chromium: '156.0.8078.17',
   cefRs: 'a'.repeat(40),
@@ -47,7 +47,7 @@ function fixture(extra?: { path: string; bytes: Buffer }) {
     {
       path: 'resources/runtime.json',
       bytes: Buffer.from(
-        JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
+        JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.4', cef_version: '156.0.7' })
       ),
     },
     { path: 'LICENSE', bytes: Buffer.from('fixture-only-not-a-browser') },
@@ -366,7 +366,7 @@ for (const grant of [
           JSON.stringify({
             schema: 1,
             protocol: 1,
-            bun_version: '1.4.3',
+            bun_version: '1.4.4',
             cef_version: '156.0.7',
             ...grant,
           })

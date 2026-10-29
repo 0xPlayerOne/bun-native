@@ -9,7 +9,7 @@
   "previousVersion": "44.8.0",
   "currentVersion": "44.9.3",
   "upstreamCommit": "c542df1ecbc2c2978e8f53f8c7baf602404d166f",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "runtimeIdentity": {
     "id": "electron",
     "framework": "electron",

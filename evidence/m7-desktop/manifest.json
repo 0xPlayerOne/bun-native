@@ -12,10 +12,10 @@
         "bytes": 771110,
         "sha256": "bc2896a19b0806d787fd842afc7e2e817b41faf8fffe40d8b5b16026c33733db"
       },
-      "archiveBytes": 63335,
-      "archiveSha256": "645aeab9314872f61bc0f6edb93d074f2df5c827edc9f60c215ccd1e83ea9331",
-      "expandedBytes": 771195,
-      "expandedSha256": "7ff4ee574ad1ee6b8d85cfcfe25cbf50ff905f63d81cc6c9024047661f815367",
+      "archiveBytes": 63373,
+      "archiveSha256": "3ac9b1118b7a6551cc77c18f8c244e71af43a167d5725fe719f6031af77ac2ae",
+      "expandedBytes": 771228,
+      "expandedSha256": "241a52b124f62cbb21b37d21bfdaab4486ca0a40179ff977d0f5e45057408b80",
       "redactions": [
         "fixture-nonces",
         "workspace-prefix",
@@ -32,10 +32,10 @@
         "bytes": 2212990,
         "sha256": "17e3f84d024cb2735def9feb9735572408cdeed1299ed0f23bec6526be13bd5a"
       },
-      "archiveBytes": 83358,
-      "archiveSha256": "285af5acd91a412e02774f227e602ba0c017613cc2ef352ac97abd6c23e46bb7",
-      "expandedBytes": 2213073,
-      "expandedSha256": "c871b5337bc40510cb3db3936a85a9c349657de8a6e4270fe39561bc0638f84d",
+      "archiveBytes": 83395,
+      "archiveSha256": "fc2975f39a9f60074aed091c11b32e052b110a9930d85513a56cb909f9b069aa",
+      "expandedBytes": 2213106,
+      "expandedSha256": "9ef03a2731952a368c3e77c6810cf7cbccc6d90186e957f5464c84ed59c2b0a4",
       "redactions": [
         "fixture-nonces",
         "workspace-prefix",
@@ -52,10 +52,10 @@
         "bytes": 1026570,
         "sha256": "6b6395b3c1db55c6e2c8cf2c21e86fdcc2882573ce9cac551f281306380fb3eb"
       },
-      "archiveBytes": 82399,
-      "archiveSha256": "128448c75ee28a3c135a9bc26e9424a4479e929432e76738661d6ee8ea837fe0",
-      "expandedBytes": 1026694,
-      "expandedSha256": "bdb72fa7831543ebac9a47bbe962f796a4ae79888bb9b05bcf633f131c87148b",
+      "archiveBytes": 82435,
+      "archiveSha256": "a0ed7109fdd42f9fa11da63e64139cbd918143e57ebb63de4afdfd210fff00a9",
+      "expandedBytes": 1026727,
+      "expandedSha256": "2de78eb61e0f8b57b6d55612144b66105ec3b186bf03ce146e3a43c7fdecd10c",
       "redactions": [
         "fixture-nonces",
         "workspace-prefix",

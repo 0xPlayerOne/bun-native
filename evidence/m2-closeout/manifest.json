@@ -6,16 +6,16 @@
       "name": "webkit-initial",
       "path": "webkit-initial.json.gz",
       "originalSha256": "79e9ebd3d2a3471a7f15bf57c6abcfde6d601fb91c15d5899936d228f828c367",
-      "redactedSha256": "09d4a647a2efee5e9e18cb35c1ee157334a3256af9ca307282b898f04779d679",
-      "storedSha256": "05bef270e7a785e907610a2ee7c30f4ef916d75658d5a49048d513f6da7edc22",
+      "redactedSha256": "04af9edad6f75b8f1cd2fe99407bab13dc58e351a49a6f15f96ef48216b1680f",
+      "storedSha256": "c0c890beee4df1be678f03ae399917c4754f5ae607f5457f7fa634e0d55fad4b",
       "uncompressedBytes": 6147089
     },
     {
       "name": "webkit-qualified",
       "path": "webkit-qualified.json.gz",
       "originalSha256": "79ea5131b3ef3596df8f54e86ad348fef3751bf36f74d8608ed268ffbd8bb01d",
-      "redactedSha256": "a6e7ab2954eb050492c4b1e3e2201246168e3b118e9bf44c3cc5ba5f55d65ea5",
-      "storedSha256": "a860a01b3a7da623d7229bbe74b3acdf6a85bb9eca3e69c6bf169116cd67a83b",
+      "redactedSha256": "6d5134fe1090a36a7090dfb068fecf8d7af4d15e3f810e7547f953083236c8e1",
+      "storedSha256": "5cf38b8c4911c65026e1f42a35a94ed94caad750d0bbdfc9a11448fdabc56040",
       "uncompressedBytes": 7415190
     },
     {

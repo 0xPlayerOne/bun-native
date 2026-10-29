@@ -22,7 +22,7 @@ const root = resolve(import.meta.dir, '..')
 const python = process.env['PYTHON'] ?? 'python3'
 const templates = join(root, 'benchmarks/fixtures/desktop-edit')
 const repetitions = Number(process.argv[2] ?? 3)
-if (Bun.version !== '1.4.3') throw new Error('Use the pinned Bun 1.4.3 for this profile')
+if (Bun.version !== '1.4.4') throw new Error('Use the pinned Bun 1.4.4 for this profile')
 if (process.platform !== 'darwin' || process.arch !== 'arm64')
   throw new Error('This qualified wrapper profile requires macOS arm64')
 if (

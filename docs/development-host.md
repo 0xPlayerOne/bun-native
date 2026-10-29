@@ -3,7 +3,7 @@
 Issue #32 adds two executable operations: content-addressed prepared-host reuse,
 and a bounded application edit loop. The native desktop owner remains stable;
 only the supported application generation is replaced. The implementation uses
-pinned Bun 1.4.3 for bundling and the selected generation broker for lifecycle
+pinned Bun 1.4.4 for bundling and the selected generation broker for lifecycle
 transitions. It adds no resolver, dependency manager, native compiler invocation,
 or per-service process.
 

@@ -2,7 +2,7 @@
 
 ## Bunly development setup
 
-Use the pinned Bun 1.4.3 and `bun install --frozen-lockfile`. Run
+Use the pinned Bun 1.4.4 and `bun install --frozen-lockfile`. Run
 `bun run check` and `bun run typecheck:browser` for the application-side code;
 these do not invoke a systems compiler. The process-observer tests need Python:
 create/activate `.venv`, install `requirements.txt`, and set `PYTHON` to that

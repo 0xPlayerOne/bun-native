@@ -26,14 +26,14 @@
       "path": "adhoc-signing.json.gz",
       "sha256": "3e0ea5aa804df64621a93bfa6ca14cf26ca534a858f24c2686faa463ce6dcfdb",
       "storedSha256": "f5a79f192aae78e6a8d28c1eaec259f7fee795f1bf4a7d30f98fd04335c7081c",
-      "bytes": 10099
+      "bytes": 1360
     },
     {
       "name": "preflight",
       "path": "preflight.json.gz",
       "sha256": "18daa8e37e36ca03b2ff02ec9fe522601d84fe1adb5c328e84e7955636a96efb",
       "storedSha256": "4790a585e6e1fc57f958f9ec2c766f96ebf3574b3ae23051080706aa65404b98",
-      "bytes": 1534
+      "bytes": 579
     }
   ],
   "summary": {
@@ -64,7 +64,11 @@
       "remainingOwner": "#44",
       "reason": "The noise-control mechanism and local baselines are accepted for M2; successful quiet matched comparisons remain required before publishing advantages",
       "quietPreflightPassed": false,
-      "cpuSamples": [32.0, 34.7, 25.0]
+      "cpuSamples": [
+        32.0,
+        34.7,
+        25.0
+      ]
     }
   ],
   "postRunEnvironment": {

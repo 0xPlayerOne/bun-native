@@ -100,7 +100,7 @@ process-observer traces and cannot establish comparable performance.
 
 ## Validation boundary
 
-Bun 1.4.3 from the previously authenticated offline toolchain was used locally.
+Bun (version redacted) from the previously authenticated offline toolchain was used locally.
 The saved increment was based on `5a7be9162c039bd8ec512eadd5eafe788def4496`. Its touched M2 modules were reconciled with merged main `1f22cff6d9be40a08b38a3012e61df5f051da9e0`.
 The surrounding local baseline is an older retained source snapshot; its 68 tests
 plus the new tests are not the complete latest-main test suite.

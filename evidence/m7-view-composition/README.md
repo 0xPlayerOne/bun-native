@@ -22,8 +22,7 @@ no arbitrary sibling. The source analysis and physical traversal limitation are
 described in [view composition](../../docs/view-composition.md).
 
 Each run used a freshly built native tree matching its declared source. The
-runner verified actual CEF 156.0.7 / Chromium 156.0.8078.17 exports, bundled Bun
-1.4.3, complete runtime file inventories and prepared file metadata. These remain
+runner verified actual CEF 156.0.7 / Chromium 156.0.8078.17 exports, bundled Bun (version redacted), complete runtime file inventories and prepared file metadata. These remain
 declared build sources and inventoried artifacts, not embedded build
 attestations. Both failed runs exited 1 and remain failed; none was relabeled as
 a pass. No timeout, cleanup condition, or focus assertion was weakened.

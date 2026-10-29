@@ -132,7 +132,7 @@ verified cache reuse and independent source invalidation.
 capacity, cancellation/task ownership and the real native saturation fixture.
 
 [Native fault qualification](cef-fault-qualification.md) defines actual readiness,
-expected failure/cleanup receipts and the automatic seven-stage native gate.
+expected failure/cleanup receipts and the manually dispatched seven-stage native gate.
 
 [Native output admission](native-output-admission.md) documents bounded reverse
 pipe ownership, reserved control capacity and active-writer accounting.

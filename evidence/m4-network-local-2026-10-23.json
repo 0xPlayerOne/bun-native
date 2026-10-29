@@ -6,7 +6,7 @@
   "sourceCommit": "d9d2f3ae52f16493ac48375216ec86721961a05d",
   "sourceTree": "a0cd86778b96628a38a7113639e31a8d642cc2aa",
   "nativeSourceTree": "fae1cf0965de6a75ce07eb6665e2b77bf1cf701f",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "rust": "1.91.0",
   "cefRsRevision": "163744c8286d5f593d89202c7807751a7898db28",
   "cefVersion": "154.0.34",

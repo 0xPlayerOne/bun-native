@@ -13,7 +13,7 @@ export function acceptBunPty(input: unknown): void {
   assert.equal(report['schema'], 1)
   assert.equal(report['classification'], 'real-bun-pty-to-portable-stream-functional')
   assert.equal(report['passed'], true)
-  assert.equal(report['bun'], '1.4.3')
+  assert.equal(report['bun'], '1.4.4')
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(String(report['target'])))
   assert.deepEqual(report['sourcePauseResume'], {
     available: false,

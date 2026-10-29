@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { capture } from './fixtures/terminal-review-capture.ts'
 
 const command = fileURLToPath(new URL('../scripts/review-terminal-regression.ts', import.meta.url))
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 async function run(args: string[]): Promise<number | null> {
   const child = Bun.spawn([process.execPath, command, ...args], {
     stdout: 'ignore',
