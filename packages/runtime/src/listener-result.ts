@@ -48,6 +48,13 @@ export class ListenerResultObserver {
     }
     const record: ResultRecord = { count: 1, state: 'pending' }
     this.#pending.set(promise, record)
-    attach(promise, record, this.#counter)
+    try {
+      attach(promise, record, this.#counter)
+    } catch (error) {
+      // A failing species lookup installed no reaction; do not leave a false
+      // pending record that masks subsequent observation failures.
+      this.#pending.delete(promise)
+      throw error
+    }
   }
 }

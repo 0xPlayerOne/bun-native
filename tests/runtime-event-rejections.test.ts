@@ -87,3 +87,29 @@ test('a rejected native promise with a throwing constructor getter cannot be obs
   expect(stderr).toBe('')
   expect(JSON.parse(output)).toEqual({ errors: 1, failures: ['original rejection'] })
 })
+
+test('a failing species lookup does not leave a phantom pending observation', () => {
+  const counter = { count: 0 }
+  const observer = new ListenerResultObserver(counter)
+  const promise = new Promise<void>(() => {})
+  const poisoned = new Proxy(Promise, {
+    get(target, property, receiver) {
+      if (property === Symbol.species) throw new Error('species failure')
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  // Promise.resolve returns the input only when its constructor is Promise.
+  // Poison species on Promise only around this synchronous probe, and restore it.
+  const original = Object.getOwnPropertyDescriptor(Promise, Symbol.species)!
+  try {
+    Object.defineProperty(Promise, Symbol.species, {
+      configurable: true,
+      get: () => poisoned[Symbol.species],
+    })
+    expect(() => observer.observe(promise)).toThrow('species failure')
+    expect(() => observer.observe(promise)).toThrow('species failure')
+    expect(counter.count).toBe(0)
+  } finally {
+    Object.defineProperty(Promise, Symbol.species, original)
+  }
+})
