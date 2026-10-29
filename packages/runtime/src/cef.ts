@@ -415,7 +415,7 @@ function checkedCookie(value: CookieInput): CookieInput {
 function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDescriptor {
   return Object.freeze({
     name: 'cef',
-    version: '0.5.0', // x-release-please-version
+    version: '0.5.1', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([

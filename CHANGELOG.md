@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/0xPlayerOne/bunly/compare/v0.5.0...v0.5.1) (2026-10-29)
+
+
+### Documentation
+
+* **m7:** consolidate desktop capabilities and qualification evidence ([#159](https://github.com/0xPlayerOne/bunly/issues/159)) ([c39f207](https://github.com/0xPlayerOne/bunly/commit/c39f207f6134a60d2a3d1173b36d04fa1e2203f4))
+
 ## [0.5.0](https://github.com/0xPlayerOne/bunly/compare/v0.4.1...v0.5.0) (2026-10-29)
 
 
