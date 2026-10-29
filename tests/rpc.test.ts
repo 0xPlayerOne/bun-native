@@ -1707,6 +1707,82 @@ describe('execution budgets survive connection replacement', () => {
 })
 
 describe('RPC final boundary review', () => {
+  for (const action of [
+    'cancel',
+    'close',
+    'revoke',
+    'deadline',
+    'scheduler-cancel',
+    'none',
+  ] as const) {
+    test(`server output serialization observes reentrant ${action} before success`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      const observations: import('../packages/runtime/src/rpc.ts').RpcDiagnostic[] = []
+      let invoked = false
+      const output = new Proxy(
+        { ok: true },
+        {
+          getPrototypeOf(target) {
+            if (!invoked) {
+              invoked = true
+              if (action === 'cancel') right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+              if (action === 'close') server.close()
+              if (action === 'revoke') env.authority.revoke(env.view)
+              if (action === 'deadline') clock.advance(1000, false)
+              if (action === 'scheduler-cancel') {
+                const now = clock.now.bind(clock)
+                clock.now = () => {
+                  clock.now = now
+                  right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+                  return now()
+                }
+              }
+            }
+            return Reflect.getPrototypeOf(target)
+          },
+        }
+      )
+      const contract = defineRpc({ echo: procedure(text, (v: unknown) => v) })
+      const server = new RpcServer(
+        contract,
+        { echo: { capability: 'echo', handle: () => output } },
+        env.lease(),
+        right,
+        { scheduler: clock, onDiagnostic: (event) => observations.push(event) }
+      )
+      right.message?.(
+        encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+      )
+      await flush()
+      const packets = right.packets.map((packet) => decodeRpc(packet, limits))
+      if (action === 'cancel' || action === 'scheduler-cancel' || action === 'deadline') {
+        expect(packets).toHaveLength(1)
+        expect(packets[0]).toMatchObject({
+          type: 'error',
+          id: 1,
+          code: action === 'deadline' ? 'DEADLINE_EXCEEDED' : 'CANCELLED',
+        })
+      } else if (action === 'none') {
+        expect(packets).toHaveLength(1)
+        expect(packets[0]).toMatchObject({ type: 'success', id: 1, value: { ok: true } })
+      } else expect(packets).toHaveLength(0)
+      expect(observations.find((event) => event.stage === 'settled')?.outcome).toBe(
+        action === 'cancel' || action === 'scheduler-cancel'
+          ? 'cancelled'
+          : action === 'deadline'
+            ? 'deadline'
+            : action === 'none'
+              ? 'success'
+              : 'disconnected'
+      )
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      server.close()
+    })
+  }
   test('client output parsing cannot return success after the monotonic deadline', async () => {
     const clock = new Clock(),
       endpoints = pair()
