@@ -167,3 +167,16 @@ export type {
   ManagedDesktopPolicy,
   ManagedDesktopBinding,
 } from './managed-desktop.ts'
+
+export {
+  collectDiagnosticBundle,
+  redactDiagnosticValue,
+  renderSourceMappedFrame,
+} from './diagnostics.ts'
+export type {
+  DiagnosticBundle,
+  DiagnosticFrame,
+  DiagnosticPolicy,
+  DiagnosticRecord,
+  DiagnosticSourceMap,
+} from './diagnostics.ts'

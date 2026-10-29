@@ -1,42 +1,16 @@
 # M37 — portable browser actions and secure diagnostics
 
-**Scope:** issue #37. A portable, engine-neutral API for observing and controlling
-approved browser views, with the engine-specific details (CEF, CDP) isolated in the
-adapter. The raw CDP surface stays an engine-specific debug extension; it is not the
-public SDK's only browser-control interface.
+**Scope:** issue #37. The public browser-action contracts and the CEF adapter
+are described in [Browser actions](browser-actions.md). The native adapter offers
+bounded screenshot, approved evaluation, DOM and accessibility observation, and
+synthetic input with document-scoped grants. Its optional development feature
+requires both a loopback development origin and an explicit installed manifest
+opt-in; the ordinary production profile does not advertise those actions. Raw CDP
+is an internal implementation detail and no public debug endpoint is opened.
 
-**Status:** the browser dispatcher is an unexported prototype exercised with an
-injected test adapter. The CEF backend still reports screenshot, evaluation and
-input as unsupported. Its string target descriptors and caller-provided context
-are not a substitute for native-bound authority. The standalone diagnostic
-collector below is implemented and tested, but it is not wired to a browser
-adapter or a public debug endpoint. Issue #37 remains open.
-
-## Capabilities
-
-| Action               | Capability           | Requirement                                                             |
-| -------------------- | -------------------- | ----------------------------------------------------------------------- |
-| `navigate`           | `navigate`           | the target origin must be the view's authorized origin                  |
-| `screenshot`         | `screenshot`         | bounded by the policy's maximum size                                    |
-| `snapshot`           | `snapshot`           | debug surface: opt-in, authenticated, off in packaged production builds |
-| `evaluate`           | `evaluate`           | debug surface, and only an **approved** expression                      |
-| `observe-dom`        | `observe-dom`        | observation only                                                        |
-| `accessibility-tree` | `accessibility-tree` | observation only                                                        |
-| `input`              | `input`              | the view must allow the input capability                                |
-
-A capability the embedder does not implement, or that the view does not allow, is the
-explicit `unsupported-capability` error. It is never a silent no-op and never a
-pretended CDP compatibility.
-
-## The binding rule
-
-Every action is bound to an authorized `(viewId, sessionId)` pair and to the epoch the
-host last observed. A request for another session is `unauthorized-target`; a request
-for a superseded epoch is `stale-target`; a navigation that does not advance the
-epoch is `navigation-race`; a navigation that leaves the authorized origin is
-`cross-origin-frame`. Remote content therefore never gains application-native
-authority by being controlled: the authority comes from the host's authorization, not
-from the page.
+The earlier dispatcher in `browser-actions.ts` is an unexported test prototype;
+its caller-supplied target and context are not native authority and it does not
+describe the CEF adapter. Issue #37 remains open for its remaining criteria.
 
 ## Diagnostics
 
@@ -92,16 +66,23 @@ by Bun (version redacted). They use `findEntry` deliberately: the pinned runtime
 does not implement the documented Node one-based argument/result shape. There is
 no custom resolver, new source-map dependency or invented fallback position.
 
-## Debug endpoints
+## Collection and unavailable capabilities
 
-The debug-only actions (`evaluate`, `snapshot`) require the debug surface to be
-enabled, the caller to be authenticated, and the build not to be a packaged production
-build. A packaged production build refuses them with `diagnostics-disabled`
-whatever the caller asks for.
+Import the collector and its types from `@bunly/runtime`. Applications explicitly
+select records to collect; the collector does not automatically subscribe to Bun
+errors, renderer logs, RPC, or reload events. `ServiceReloadHost` already offers
+an optional `onDiagnostic` callback. Callers can adapt its event, stage and
+optional detail into a `DiagnosticRecord` with `kind: 'reload-stage'` and a
+selected `message`. Its local `detail` may contain sensitive application information, so callers should
+select what they include and review the redacted bundle before sharing it.
+Existing reload error details can be source-mapped by the reload pipeline; the
+collector maps an explicitly supplied frame only when given the matching map.
+`renderSourceMappedFrame` returns a raw mapped frame without redaction; use the
+collector or apply appropriate redaction before sharing it.
+It does not discover or read source maps. Renderer log forwarding and RPC-stage
+collection are not implemented by this collector.
 
-## Unavailable capabilities
-
-Documented explicitly: no cross-origin observation, no unapproved evaluation, no
-screenshot above the bounded size, and no debug surface in a packaged production
-build. A future webview adapter is not expected to pretend full CDP compatibility —
-it declares the capabilities it implements, and the rest stay named errors.
+The CEF adapter's development gates, native authority checks, supported operations,
+limits and qualification procedure are documented in [Browser actions](browser-actions.md).
+An unimplemented adapter capability returns an explicit error. Physical input,
+child-frame control and a public CDP or debug server are not provided.
