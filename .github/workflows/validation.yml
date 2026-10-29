@@ -29,11 +29,11 @@ jobs:
     # allocate a validation runner.
     if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
-      mode: ${{ steps.classify.outputs.mode }}
+      mode: ${{ steps.tier.outputs.mode }}
     steps:
       # The runtime classifies policy from the consumer repository's config.
       # Keep this checkout before the isolated runtime checkout below.
@@ -61,6 +61,23 @@ jobs:
           FOUNDRY_BASE_REF: ${{ github.event.pull_request.base.ref }}
           FOUNDRY_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: node "$RUNNER_TEMP/code-foundry/src/runtime.mjs" validation mode >> "$GITHUB_OUTPUT"
+      - name: Checkout release history
+        if: steps.classify.outputs.mode == 'release'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Validate generated release diff
+        if: steps.classify.outputs.mode == 'release'
+        env:
+          FOUNDRY_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          FOUNDRY_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          FOUNDRY_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          FOUNDRY_REPOSITORY: ${{ github.repository }}
+        run: node "$RUNNER_TEMP/code-foundry/src/runtime.mjs" validation release_diff
+      - name: Select the five-minute PR tier
+        id: tier
+        run: echo "mode=fast" >> "$GITHUB_OUTPUT"
 
   # The stable aggregate check name is the caller job name plus the
   # orchestrator gate job name: "Validation / Gate". Keep both names fixed.

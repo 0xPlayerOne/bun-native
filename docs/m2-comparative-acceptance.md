@@ -136,12 +136,12 @@ All observations below were executed from clean commit `effe77bceea0b1cc9e96a211
 
 ### Engine and security cohorts
 
-| Reference                | Actual runtime | Actual browser build         | Treatment                                                                                                   |
-| ------------------------ | -------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| electron 44.8.0          | 24.22.0        | chromium 152.0.7977.167      | Node disabled, context isolation and renderer preload sandbox attestation; retain native sample transitions |
-| electrobun 2.0.3-beta.26 | 1.4.0          | chromium 147.0.7727.118      | CEF plus RPC-disabled page profile; observed Seatbelt presence is not policy equivalence                    |
-| mirin 0.1.0-alpha.26     | VERSION_REDACTED          | chromium 148.0.7778.218      | CEF prebuilt + explicit ad-hoc signing; retain sampled native security state                                |
-| butter 1.6.3             | VERSION_REDACTED          | system-webkit 21624.5.1.11.3 | Separate source/helper-primed system-webview profile; do not claim full XPC process accounting              |
+| Reference                | Actual runtime   | Actual browser build         | Treatment                                                                                                   |
+| ------------------------ | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| electron 44.8.0          | 24.22.0          | chromium 152.0.7977.167      | Node disabled, context isolation and renderer preload sandbox attestation; retain native sample transitions |
+| electrobun 2.0.3-beta.26 | 1.4.0            | chromium 147.0.7727.118      | CEF plus RPC-disabled page profile; observed Seatbelt presence is not policy equivalence                    |
+| mirin 0.1.0-alpha.26     | VERSION_REDACTED | chromium 148.0.7778.218      | CEF prebuilt + explicit ad-hoc signing; retain sampled native security state                                |
+| butter 1.6.3             | VERSION_REDACTED | system-webkit 21624.5.1.11.3 | Separate source/helper-primed system-webview profile; do not claim full XPC process accounting              |
 
 The three Chromium versions are different, and the security profiles are not interchangeable. The resulting equivalent-engine/security cohorts contain one reference each. The accepted output is a set of reproducible per-profile baselines, not invented cross-framework speedup percentages. The original strict comparison API and provisional performance budgets are unchanged.
 

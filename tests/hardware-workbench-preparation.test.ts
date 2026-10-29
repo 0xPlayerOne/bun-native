@@ -63,7 +63,7 @@ test('preparation rejects widened deadlines, credentials, development origins an
     {},
     { ...runtime, schema: 2 },
     { ...runtime, protocol: '1' },
-    { ...runtime, bun_version: '1.4.4' },
+    { ...runtime, bun_version: '1.4.5' },
     { ...runtime, cef_version: 'other' },
     { ...runtime, development_origin: 'http://127.0.0.1:8000' },
     { ...runtime, credential_policy: null },

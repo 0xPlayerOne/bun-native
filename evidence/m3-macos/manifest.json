@@ -35,7 +35,7 @@
       "originalSha256": "6d42a338c9e3e5678a7069d05f71cdc9629cbd78d82de8adb59ef70fdb128887",
       "redactedSha256": "b459ecb3f54df0c0c70c7481019e0cc0457b96f96ec3bfb479662707e812a3b8",
       "storedSha256": "de330484f6341569cf3515f1d71ce019648f061b09f5e162f209b3d3dc27218e",
-      "uncompressedBytes": 300328
+      "uncompressedBytes": 300339
     },
     {
       "name": "storage",

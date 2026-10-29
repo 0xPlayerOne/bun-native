@@ -99,8 +99,8 @@ Use the maintained local portable and native checks documented in
 `qualify:cef-transports` and `qualify:cef-session-reset` operate on explicit
 prepared contributor artifacts. `qualify:cef-credentials` additionally requires
 an unprivileged **disposable GitHub-hosted runner**; it must not be enabled by
-spoofing that environment on a personal machine. The automatic native workflow
-runs the declared suites on all three platforms. Synthetic SQLite/provider tests
+spoofing that environment on a personal machine. The manually dispatched native workflow
+runs the declared suites on selected platforms. Synthetic SQLite/provider tests
 are not OS-provider evidence, and replaying retained reports is not new execution.
 
 The earlier CEF 154 transport distributions remain version-scoped historical

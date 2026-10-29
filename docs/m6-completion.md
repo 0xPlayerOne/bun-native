@@ -463,10 +463,10 @@ the changed backend response, the form and cumulative transcript check, xterm's
 write callback and two animation frames. All frameworks serve identical browser
 assets and numbered bytes.
 
-| Framework                | Observed edit lifecycle                                              | Three measured edit durations, ms     | Actual Bun / CEF / Chromium       |
-| ------------------------ | -------------------------------------------------------------------- | ------------------------------------- | --------------------------------- |
+| Framework                | Observed edit lifecycle                                              | Three measured edit durations, ms     | Actual Bun / CEF / Chromium                  |
+| ------------------------ | -------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------- |
 | Bunly                    | Retained native desktop and renderer; Worker replacement             | 86.376333, 49.902333, 81.642667       | VERSION_REDACTED / 156.0.7 / 156.0.8078.17   |
-| Electrobun 2.0.3-beta.26 | Official build, process relaunch and browser-owned state restoration | 8116.537541, 6832.988125, 2300.215125 | 1.4.0 / 147.0.10 / 147.0.7727.118 |
+| Electrobun 2.0.3-beta.26 | Official build, process relaunch and browser-owned state restoration | 8116.537541, 6832.988125, 2300.215125 | 1.4.0 / 147.0.10 / 147.0.7727.118            |
 | Mirin 0.1.0-alpha.26     | Official build, process relaunch and browser-owned state restoration | 2216.705916, 2202.000583, 2281.571291 | VERSION_REDACTED / 148.0.10 / 148.0.7778.218 |
 
 The reference pages receive a form seed only on the initial launch. Subsequent

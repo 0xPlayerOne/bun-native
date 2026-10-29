@@ -24,7 +24,7 @@ jobs:
           - os: windows-2022
             target: win32-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 5 || 15 }}
     defaults:
       run:
         shell: bash

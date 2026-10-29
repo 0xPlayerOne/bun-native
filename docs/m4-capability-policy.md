@@ -145,7 +145,7 @@ no caller-supplied expression, public debugging port or page-callable test API.
 Ordinary host builds exclude the command. The exact popup-denial receipt is still
 required; neither a JavaScript `null` result nor an unobserved callback suffices.
 
-The ordinary three-platform RPC workflow also runs this policy fixture. The
+The manually dispatched three-platform RPC qualification also runs this policy fixture. The
 wrapper requires its exact schema-3 record, zero requests at the forbidden
 server, normal process exit and all ordered native teardown phases. Source hashes
 and the input artifact are checked across the run. A missing callback, duplicate

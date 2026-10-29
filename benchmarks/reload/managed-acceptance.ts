@@ -679,12 +679,17 @@ export function acceptManagedDevelopmentWorkload(
   })
 }
 
-export function acceptManagedDevelopmentReport(input: unknown) {
+export function acceptManagedDevelopmentReport(
+  input: unknown,
+  options: { allowRedactedRuntime?: boolean } = {}
+) {
   const report = record(input, 'Missing managed development report')
   assert.equal(report['schema'], 1)
   assert.equal(report['profile'], MANAGED_PROFILE)
   assert.equal(report['passed'], true)
-  assert.equal(report['bun'], '1.4.4')
+  if (options.allowRedactedRuntime === true)
+    assert.ok(['1.4.4', 'VERSION_REDACTED'].includes(String(report['bun'])))
+  else assert.equal(report['bun'], '1.4.4')
   assert.equal(report['observerTimeoutMs'], MANAGED_OBSERVER_MS)
   assert.equal(report['successfulReplacementPlan'], MANAGED_PLAN.replacements)
   assert.equal(report['launchPlan'], 1)
@@ -832,7 +837,9 @@ export function acceptManagedDevelopmentReport(input: unknown) {
       assert.match(String(entry[field]), /^[0-9]{1,24}$/)
   }
   const bun = record(report['bundledBun'], 'Missing actual bundled Bun version observation')
-  assert.equal(bun['version'], '1.4.4')
+  if (options.allowRedactedRuntime === true)
+    assert.ok(['1.4.4', 'VERSION_REDACTED'].includes(String(bun['version'])))
+  else assert.equal(bun['version'], '1.4.4')
   checksum(bun['sha256'], 'Missing bundled Bun hash')
   checksum(bun['observationSha256'], 'Missing bundled Bun observation hash')
   assert.equal(
@@ -851,7 +858,11 @@ export function acceptManagedDevelopmentReport(input: unknown) {
   )
   const bunObservation = validateCommandObservation(bun['observation'])
   assertCleanCommand(bunObservation)
-  assert.deepEqual(bunObservation.stdoutTail, ['1.4.4'])
+  assert.deepEqual(bunObservation.stdoutTail, [
+    options.allowRedactedRuntime === true && bun['version'] === 'VERSION_REDACTED'
+      ? 'VERSION_REDACTED'
+      : '1.4.4',
+  ])
   const trials = report['trials']
   assert.ok(
     Array.isArray(trials) && trials.length === 1,

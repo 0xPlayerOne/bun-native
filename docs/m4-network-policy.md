@@ -103,7 +103,7 @@ success must include the exact versioned case list, normal backend exit and the
 complete ordered teardown sequence. Generic smoke success cannot substitute.
 Raw reports are written on failures, input artifacts are unchanged, and generated
 TLS keys stay inside the private run directory, outside Git and hosted exports.
-The ordinary three-platform RPC workflow also runs this network suite.
+The manually dispatched three-platform RPC qualification also runs this network suite.
 
 ## Upstream interfaces
 

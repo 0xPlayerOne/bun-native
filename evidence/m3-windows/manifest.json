@@ -46,7 +46,7 @@
       "originalSha256": "c5d95ac70c91f084875dd6c9166d11e6871255f10cbdea185ac173f1def61117",
       "redactedSha256": "f6cdbffb57407d75739c197991196cd7e3cdd079dead314ea219a2631e8ddca7",
       "storedSha256": "45123726a12126979b21435a3990e566700f6cf8f47f5707a46a2004c1a93e51",
-      "uncompressedBytes": 295
+      "uncompressedBytes": 306
     }
   ],
   "executionSources": {

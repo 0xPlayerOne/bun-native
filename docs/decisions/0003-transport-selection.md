@@ -154,7 +154,7 @@ bun run qualify:cef-transports -- PREPARED_APP --samples 10 --warmups 2
 bun run qualify:cef-transports -- PREPARED_APP --native-only --samples 5 --warmups 1
 ```
 
-The automatic three-platform RPC workflow requires both functional candidates as
+The manually dispatched three-platform RPC qualification requires both functional candidates as
 well as RPC/session, native browser policy and network suites. Compilation and
 local macOS runs do not substitute for final-head Linux/Windows execution. Hosted
 functional results are not quiet performance distributions. Further production

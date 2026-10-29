@@ -104,7 +104,7 @@ acceptance still requires the current head's hosted execution.
 
 ## Maintained full-acceptance stage
 
-The automatic and manual `full` suite executes the graphical `terminals` stage
+The manually dispatched `full` suite executes the graphical `terminals` stage
 after native faults and before disposable credential-provider setup. It collects
 its own bounded report family. The six-stage M4 suite stays unchanged. A failed
 graphical stage prevents provider setup rather than being counted as a pass.

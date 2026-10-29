@@ -19,7 +19,8 @@
       },
       "passed": false,
       "redactions": [
-        "fixture-nonces"
+        "fixture-nonces",
+        "runtime-version"
       ],
       "failureClass": "public-asset-rejection-before-ui"
     },
@@ -38,7 +39,8 @@
       },
       "passed": false,
       "redactions": [
-        "fixture-nonces"
+        "fixture-nonces",
+        "runtime-version"
       ],
       "failureClass": "prepared-host-status-time-mismatch"
     },
@@ -58,7 +60,8 @@
       "passed": true,
       "redactions": [
         "fixture-nonces",
-        "local-paths"
+        "local-paths",
+        "runtime-version"
       ]
     },
     {
@@ -77,7 +80,8 @@
       "passed": false,
       "redactions": [
         "fixture-nonces",
-        "local-paths"
+        "local-paths",
+        "runtime-version"
       ],
       "failureClass": "normal-shutdown-raced-redundant-quit"
     },
@@ -85,10 +89,10 @@
       "id": "native-managed-acceptance",
       "profile": "native-managed-development-v1",
       "archive": "native-managed-acceptance.json.gz",
-      "archiveSha256": "84f13bec50f2d1b710aeae383fefeac3216a42972be58781c944acece876d5ed",
-      "archiveBytes": 164913,
-      "expandedSha256": "b6d884831f1571132f83c6bf29454814755f44848a52031e89a86dedd0d1e220",
-      "expandedBytes": 1867307,
+      "archiveSha256": "bd2c457ae24b3bfebf47c921ee959908eb6e39642ac215f8f347aa0f2210c0ba",
+      "archiveBytes": 170712,
+      "expandedSha256": "7180561696b7c0572fa0f5a3ddba261bfb340545f6aeb187dc64034c11695a57",
+      "expandedBytes": 1867346,
       "source": "96ce3fc2754c4e34e065bb58c9f183ac5abc7462",
       "reportOriginal": {
         "sha256": "6f0bb55dbfc969e7510a2a45f654c46b5233f79d24d9a6321b99cc3370432cfa",
@@ -96,7 +100,8 @@
       },
       "passed": true,
       "redactions": [
-        "fixture-nonces"
+        "fixture-nonces",
+        "runtime-version"
       ]
     }
   ]

@@ -13,7 +13,8 @@ export function acceptReloadProbe(
   input: unknown,
   expectedMode: ReloadCandidate,
   samples: number,
-  hang = false
+  hang = false,
+  options: { allowRedactedRuntime?: boolean } = {}
 ) {
   assert.ok(reloadCandidates.includes(expectedMode))
   assert.ok(Number.isSafeInteger(samples) && samples >= 1 && samples <= 100)
@@ -21,7 +22,9 @@ export function acceptReloadProbe(
   assert.equal(value['schema'], 1)
   assert.equal(value['profile'], 'reload-mechanisms-v1')
   assert.equal(value['mode'], expectedMode)
-  assert.equal(value['bun'], '1.4.4')
+  if (options.allowRedactedRuntime === true)
+    assert.ok(['1.4.4', 'VERSION_REDACTED'].includes(String(value['bun'])))
+  else assert.equal(value['bun'], '1.4.4')
   assert.equal(value['complete'], true)
   assert.equal(value['failureType'], undefined)
   assert.equal(value['hang'], hang)
@@ -146,13 +149,18 @@ export const reloadSourcePaths = [
   'package.json',
   'bun.lock',
 ] as const
-export function acceptReloadMatrix(input: unknown) {
+export function acceptReloadMatrix(
+  input: unknown,
+  options: { allowRedactedRuntime?: boolean } = {}
+) {
   const report = object(input)
   assert.equal(report['schema'], 1)
   assert.equal(report['profile'], 'reload-mechanisms-matrix-v1')
   assert.equal(report['passed'], true)
   assert.equal(report['failureType'], undefined)
-  assert.equal(report['bun'], '1.4.4')
+  if (options.allowRedactedRuntime === true)
+    assert.ok(['1.4.4', 'VERSION_REDACTED'].includes(String(report['bun'])))
+  else assert.equal(report['bun'], '1.4.4')
   assert.equal(report['samples'], 20)
   assert.equal(report['selection'], 'not-a-production-loader-selection')
   const source = object(report['sourceBefore'])
@@ -260,7 +268,7 @@ export function acceptReloadMatrix(input: unknown) {
       )
       if (!hang) assert.deepEqual(row['summary'], reloadProbeSummary(result))
       assert.equal(`${result['platform']}-${result['arch']}`, report['target'])
-      const accepted = acceptReloadProbe(result, mode, 20, hang)
+      const accepted = acceptReloadProbe(result, mode, 20, hang, options)
       assert.deepEqual(row['acceptance'], accepted)
       outcomes.push(accepted)
     }

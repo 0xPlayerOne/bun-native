@@ -64,11 +64,11 @@ The controller and project toolchain use the explicit Bun (version redacted) exe
 (`c6da4a4d3`), not the machine's different default Bun. Python 3.11.15, psutil
 7.0.0 and Playwright 1.57.0 are installed in the private `.bunly` environment.
 
-| Reference                | Observed runtime/browser                                                 |
-| ------------------------ | ------------------------------------------------------------------------ |
+| Reference                | Observed runtime/browser                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------- |
 | Frontend fixture         | Bun (version redacted); Chrome for Testing 143.0.7499.4                               |
-| Electron 44.8.0          | Node 24.22.0; Chromium 152.0.7977.167                                    |
-| Electrobun 2.0.3-beta.26 | Packaged Bun 1.4.0; CEF 147.0.10 / Chromium 147.0.7727.118               |
+| Electron 44.8.0          | Node 24.22.0; Chromium 152.0.7977.167                                                 |
+| Electrobun 2.0.3-beta.26 | Packaged Bun 1.4.0; CEF 147.0.10 / Chromium 147.0.7727.118                            |
 | Mirin 0.1.0-alpha.26     | Bun (version redacted); CEF 148.0.10 / Chromium 148.0.7778.218                        |
 | Butter source 1.6.3      | Bun (version redacted); WKWebView. Exact WebKit runtime identity remains unqualified. |
 

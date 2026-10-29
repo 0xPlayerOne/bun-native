@@ -15,7 +15,10 @@ const record = (value: unknown): Record<string, unknown> => {
   assert.ok(value && typeof value === 'object' && !Array.isArray(value))
   return value as Record<string, unknown>
 }
-export function acceptManagedComparisonReport(input: unknown) {
+export function acceptManagedComparisonReport(
+  input: unknown,
+  options: { allowRedactedRuntime?: boolean } = {}
+) {
   const report = record(input)
   assert.equal(report['schema'], 1)
   assert.equal(report['profile'], MANAGED_COMPARISON_PROFILE)
@@ -23,7 +26,9 @@ export function acceptManagedComparisonReport(input: unknown) {
   assert.equal(report['performanceEligible'], false)
   assert.equal(report['runClass'], 'local-smoke')
   assert.equal(report['target'], 'darwin-arm64')
-  assert.equal(report['bun'], '1.4.4')
+  if (options.allowRedactedRuntime === true)
+    assert.ok(['1.4.4', 'VERSION_REDACTED'].includes(String(report['bun'])))
+  else assert.equal(report['bun'], '1.4.4')
   assert.deepEqual(report['plan'], COMPARISON_PLAN)
   const before = record(report['sourceBefore'])
   assert.equal(before['clean'], true)
@@ -97,7 +102,8 @@ export function acceptManagedComparisonReport(input: unknown) {
     assert.ok(Array.isArray(framework['rows']))
     const acceptance = acceptComparisonRows(
       name as ComparisonFramework,
-      framework['rows'] as ComparisonRow[]
+      framework['rows'] as ComparisonRow[],
+      options
     )
     if (framework['acceptance'] !== null) assert.deepEqual(framework['acceptance'], acceptance)
     const commands = framework['commands']
