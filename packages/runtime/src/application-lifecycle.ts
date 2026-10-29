@@ -138,7 +138,11 @@ export class ApplicationLifecycle {
       if (!subscription.active) continue
       if (event.type === 'closed') subscription.dispose()
       try {
-        subscription.listener(event)
+        // Lifecycle has at most three transitions and 64 listeners per transition.
+        // Observe returned thenables without allowing their failures to escape.
+        void Promise.resolve(subscription.listener(event)).catch(() => {
+          this.#listenerErrors++
+        })
       } catch {
         this.#listenerErrors++
       }

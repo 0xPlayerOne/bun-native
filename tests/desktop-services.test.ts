@@ -372,6 +372,44 @@ test('readiness waiters and lifecycle subscriptions are bounded, abortable and g
   assert.equal(lifecycle.diagnostics().listenerErrors, 1)
 })
 
+test('application lifecycle isolates asynchronous listener and thenable failures', async () => {
+  const lifecycle = new ApplicationLifecycle()
+  lifecycle.ready(true)
+  lifecycle.subscribe(async () => {
+    throw new Error('private asynchronous listener failure')
+  })
+  // An intentionally malformed thenable exercises failure isolation.
+  // oxlint-disable-next-line unicorn/no-thenable
+  const thenable = Object.defineProperty({}, 'then', {
+    get() {
+      throw new Error('private thenable failure')
+    },
+  })
+  lifecycle.subscribe(() => thenable)
+  lifecycle.closed(false)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(lifecycle.diagnostics().listeners, 0)
+  assert.equal(lifecycle.diagnostics().listenerErrors, 2)
+})
+
+test('all bounded lifecycle deliveries observe asynchronous rejection after closure', async () => {
+  const lifecycle = new ApplicationLifecycle()
+  lifecycle.ready(true)
+  let calls = 0
+  for (let i = 0; i < 64; i++)
+    lifecycle.subscribe(async () => {
+      calls++
+      throw new Error('listener failure')
+    })
+  lifecycle.requested()
+  lifecycle.quitting('requested')
+  lifecycle.closed(false)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(calls, 192)
+  assert.equal(lifecycle.diagnostics().listenerErrors, 192)
+  assert.equal(lifecycle.diagnostics().listeners, 0)
+})
+
 test('legacy hosts and mock implementations report lifecycle and clipboard as unsupported', async () => {
   const peer = await nativePeer({ desktopCapabilities: undefined })
   const backend = new CefBackend(peer.transport)
