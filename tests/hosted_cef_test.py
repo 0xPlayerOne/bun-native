@@ -170,7 +170,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "window-commands",
                 "file-dialogs",
                 "status-items",
-                                "application-links",
+                "application-links",
                 "window-modes",
                 "terminals",
                 "terminal-load",
@@ -271,7 +271,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "window-commands",
                             "file-dialogs",
                             "status-items",
-                                                        "application-links",
+                            "application-links",
                             "window-modes",
                             "terminals",
                             "terminal-load",
@@ -877,9 +877,7 @@ class DesktopStageTests(unittest.TestCase):
                 selected = hosted.commands("full", "/bun", app, native_source=source)
                 names = [name for name, _ in selected]
                 self.assertEqual(names.count("application-links"), 1)
-                self.assertEqual(
-                    names.index("application-links"), names.index("status-items") + 1
-                )
+                self.assertEqual(names.index("application-links"), names.index("status-items") + 1)
                 self.assertEqual(
                     dict(selected)["application-links"],
                     [
