@@ -81,7 +81,17 @@ by a declared dispatch trigger, is exempt. An OR-expression cannot bypass the
 billing guard. The overlay preserves these policies on every sync.
 
 The `release` feature enables automated GitHub release PRs, tags, and release
-records; npm publishing and post-release publication remain disabled. CodeQL and
+records. Bunly uses one root framework release and `v`-prefixed tag; its five SDK
+package versions and public backend descriptor versions move together. Benchmark
+fixtures, examples and native Cargo crates are not separate release components;
+crate versions and native protocol identities remain independent. The initial
+manifest baseline `0.0.0` and initial version `0.1.0` bootstrap the first
+release; the baseline is not a claim of an existing tag. The 0.x releases are
+experimental and do not establish production qualification.
+Review the generated version PR and its changelog before its first merge.
+The runtime release workflow reconciles the Bun workspace lockfile; verify that
+step and all required checks on the generated PR. npm publishing and post-release
+publication remain disabled. CodeQL and
 Dependency Review are enabled for this public repository. Automatic CI remains
 controlled by the existing repository variable and checked-in billing policy.
 
