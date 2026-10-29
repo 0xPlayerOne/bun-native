@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/0xPlayerOne/bunly/compare/v0.6.1...v0.6.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** observe asynchronous event listener failures ([#189](https://github.com/0xPlayerOne/bunly/issues/189)) ([5c2c04e](https://github.com/0xPlayerOne/bunly/commit/5c2c04e8301bce731d2514125d19c29b50e8f3de))
+
 ## [0.6.1](https://github.com/0xPlayerOne/bunly/compare/v0.6.0...v0.6.1) (2026-10-29)
 
 
