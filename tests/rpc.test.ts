@@ -146,7 +146,12 @@ async function environment() {
 }
 async function setup(
   overrides: Partial<RpcHandlers<typeof schema>> = {},
-  options: { limits?: Partial<RpcLimits>; capabilities?: string[]; scheduler?: Clock } = {}
+  options: {
+    limits?: Partial<RpcLimits>
+    capabilities?: string[]
+    scheduler?: Clock
+    onDiagnostic?: (event: import('../packages/runtime/src/rpc.ts').RpcDiagnostic) => void
+  } = {}
 ) {
   const env = await environment()
   const { left, right } = pair()
@@ -157,7 +162,11 @@ async function setup(
     bytes: { capability: 'bytes', handle: (input) => input },
     ...overrides,
   }
-  const config = { scheduler: clock, ...(options.limits ? { limits: options.limits } : {}) }
+  const config = {
+    scheduler: clock,
+    ...(options.limits ? { limits: options.limits } : {}),
+    ...(options.onDiagnostic ? { onDiagnostic: options.onDiagnostic } : {}),
+  }
   const server = new RpcServer(schema, handlers, env.lease(options.capabilities), right, config)
   const client = new RpcClient(schema, left, config)
   cleanups.push(() => {
@@ -1410,4 +1419,56 @@ test('a delayed idle timer cannot turn late reply completion into successful qui
   expect((await idle).code).toBe('DEADLINE_EXCEEDED')
   expect(f.server.diagnostics().queuedBytes).toBe(0)
   expect(f.clock.timers.size).toBe(0)
+})
+
+test('RPC diagnostic callbacks observe actual cancellation settlement without request data and cannot disrupt ownership', async () => {
+  const done = deferred<string>()
+  const events: import('../packages/runtime/src/rpc.ts').RpcDiagnostic[] = []
+  const { client, server } = await setup(
+    { work: { capability: 'work', handle: () => done.promise } },
+    {
+      onDiagnostic: (event) => {
+        events.push(event)
+        throw new Error('observer failure')
+      },
+    }
+  )
+  const controller = new AbortController()
+  const pending = result(client.call('work', 'private payload', { signal: controller.signal }))
+  await flush()
+  controller.abort()
+  await flush()
+  expect((await pending).code).toBe('CANCELLED')
+  expect(server.diagnostics().cancelledExecuting).toBe(1)
+  expect(events.map((event) => event.stage)).toEqual(['started'])
+  done.resolve('late secret')
+  await flush()
+  expect(server.diagnostics().executing).toBe(0)
+  expect(events.map(({ stage, outcome }) => [stage, outcome])).toEqual([
+    ['started', 'pending'],
+    ['settled', 'cancelled'],
+  ])
+  expect(JSON.stringify(events)).not.toContain('private')
+  expect(JSON.stringify(events)).not.toContain('secret')
+})
+
+test('a reentrant diagnostic observer can close the server without releasing an unsettled handler', async () => {
+  const done = deferred<string>()
+  let close: () => void = () => {}
+  const { client, server } = await setup(
+    { work: { capability: 'work', handle: () => done.promise } },
+    {
+      onDiagnostic: (event) => {
+        if (event.stage === 'started') close()
+      },
+    }
+  )
+  close = () => server.close()
+  const pending = result(client.call('work', 'x'))
+  await flush()
+  expect((await pending).code).toBe('DISCONNECTED')
+  expect(server.diagnostics().cancelledExecuting).toBe(1)
+  done.resolve('late')
+  await flush()
+  expect(server.diagnostics().executing).toBe(0)
 })

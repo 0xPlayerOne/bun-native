@@ -79,8 +79,27 @@ Existing reload error details can be source-mapped by the reload pipeline; the
 collector maps an explicitly supplied frame only when given the matching map.
 `renderSourceMappedFrame` returns a raw mapped frame without redaction; use the
 collector or apply appropriate redaction before sharing it.
-It does not discover or read source maps. Renderer log forwarding and RPC-stage
-collection are not implemented by this collector.
+It does not discover or read source maps.
+
+CEF advertises `view.console` and exposes `onViewConsole(view, listener, { signal })`
+for explicitly requested messages. It checks the opaque live view handle and removes
+listeners on unsubscribe, abort, view close or backend shutdown. The observation
+continues across navigation for that view; the native event carries only a bounded
+message, not severity, source position, document or origin. It must not be used as
+authority. The mock backend returns an unsupported capability error. Messages are
+raw application data; callers must select and redact them before retaining or
+sharing a bundle.
+
+`RpcServerOptions.onDiagnostic` opts in to fixed per-handler `started` and `settled`
+records with a bounded elapsed time and a fixed outcome. It contains no method,
+request ID, input, output, arbitrary exception or stack. `settled` occurs only
+when the handler actually releases its execution slot, including after cancellation;
+`success` indicates a validated handler result submitted for delivery, not a
+client receipt. Pre-admission rejections have no handler record. Callbacks are
+queued outside dispatch, exceptions are ignored, and a full 128-record queue drops
+new observations. These are best-effort diagnostic observations, not an audit log.
+`CefBackend.serveRpc` and `serveLoopbackRpc` pass this option to their servers.
+Neither observer automatically adds records to the collector or opens an endpoint.
 
 The CEF adapter's development gates, native authority checks, supported operations,
 limits and qualification procedure are documented in [Browser actions](browser-actions.md).

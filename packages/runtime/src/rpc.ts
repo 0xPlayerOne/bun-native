@@ -31,15 +31,24 @@ export type RpcHandlers<S extends RpcSchema> = {
     ) => RpcOutput<S[K]> | Promise<RpcOutput<S[K]>>
   }
 }
+export interface RpcDiagnostic {
+  readonly stage: 'started' | 'settled'
+  readonly outcome: 'pending' | 'success' | 'error' | 'cancelled' | 'deadline' | 'disconnected'
+  readonly elapsedMs: number
+}
 export interface RpcServerOptions {
   readonly limits?: Partial<RpcLimits>
   readonly scheduler?: RpcScheduler
+  /** Optional fixed-metadata observations; no method, identifiers or payloads are included. */
+  readonly onDiagnostic?: (event: RpcDiagnostic) => void
 }
 interface Job {
   readonly release: () => void
   readonly id: number
   readonly controller: AbortController
   readonly deadline: number
+  readonly started: number
+  outcome: RpcDiagnostic['outcome']
   timer: unknown
   replied: boolean
 }
@@ -57,6 +66,9 @@ export class RpcServer<S extends RpcSchema> {
   readonly #guard: RpcAuthorityGuard
   readonly #channel: RpcChannel
   readonly #revoked: () => void
+  readonly #onDiagnostic: RpcServerOptions['onDiagnostic']
+  readonly #diagnosticQueue: RpcDiagnostic[] = []
+  #diagnosticScheduled = false
   #sequence = 0
   #closed = false
   #pendingReplies = 0
@@ -91,6 +103,9 @@ export class RpcServer<S extends RpcSchema> {
         handle: handler.handle as (input: unknown, context: RpcContext) => unknown,
       })
     }
+    if (options.onDiagnostic !== undefined && typeof options.onDiagnostic !== 'function')
+      throw new TypeError('Invalid RPC diagnostic observer')
+    this.#onDiagnostic = options.onDiagnostic
     this.#limits = rpcLimits(options.limits)
     this.#clock = options.scheduler ?? rpcScheduler
     this.#guard = claimRpcAuthority(lease)
@@ -107,6 +122,30 @@ export class RpcServer<S extends RpcSchema> {
     this.#guard.signal.addEventListener('abort', this.#revoked, { once: true })
     this.#channel.start()
     if (this.#guard.signal.aborted) this.#revoked()
+  }
+  #diagnostic(job: Job, stage: RpcDiagnostic['stage'], outcome: RpcDiagnostic['outcome']): void {
+    if (!this.#onDiagnostic || this.#diagnosticQueue.length >= 128) return
+    const elapsed = this.#clock.now() - job.started
+    this.#diagnosticQueue.push(
+      Object.freeze({
+        stage,
+        outcome,
+        elapsedMs: Number.isFinite(elapsed) ? Math.max(0, Math.min(600000, elapsed)) : 0,
+      })
+    )
+    if (this.#diagnosticScheduled) return
+    this.#diagnosticScheduled = true
+    queueMicrotask(() => {
+      this.#diagnosticScheduled = false
+      const pending = this.#diagnosticQueue.splice(0)
+      for (const event of pending) {
+        try {
+          this.#onDiagnostic?.(event)
+        } catch {
+          /* Observers do not alter RPC ownership. */
+        }
+      }
+    })
   }
   #receive(packet: Uint8Array): void {
     const message = decodeRpc(packet, this.#limits)
@@ -161,6 +200,8 @@ export class RpcServer<S extends RpcSchema> {
       id: message.id,
       controller: new AbortController(),
       deadline,
+      started: this.#clock.now(),
+      outcome: 'error',
       timer: undefined,
       replied: false,
     }
@@ -168,6 +209,7 @@ export class RpcServer<S extends RpcSchema> {
     job.timer = this.#clock.set(Math.max(0, deadline - this.#clock.now()), () =>
       this.#cancel(job, 'DEADLINE_EXCEEDED')
     )
+    this.#diagnostic(job, 'started', 'pending')
     void this.#run(job, route, input)
   }
   async #run(job: Job, route: Route, input: unknown): Promise<void> {
@@ -196,6 +238,7 @@ export class RpcServer<S extends RpcSchema> {
       this.#guard.check(route.capability)
       const packet = encodeRpc({ type: 'success', id: job.id, value: output }, this.#limits)
       job.replied = true
+      job.outcome = 'success'
       this.#clock.clear(job.timer)
       this.#send(packet, () => {
         this.#guard.check(route.capability)
@@ -213,11 +256,13 @@ export class RpcServer<S extends RpcSchema> {
       this.#jobs.delete(job.id)
       job.release()
       this.#settleIdle()
+      this.#diagnostic(job, 'settled', job.outcome)
     }
   }
   #cancel(job: Job, code: 'CANCELLED' | 'DEADLINE_EXCEEDED'): void {
     if (job.replied) return
     job.replied = true
+    job.outcome = code === 'CANCELLED' ? 'cancelled' : 'deadline'
     this.#clock.clear(job.timer)
     job.controller.abort(
       new RpcError(code, code === 'CANCELLED' ? 'RPC call cancelled' : 'RPC deadline exceeded')
@@ -254,6 +299,7 @@ export class RpcServer<S extends RpcSchema> {
     this.#settleIdle(reason)
     this.#guard.signal.removeEventListener('abort', this.#revoked)
     for (const job of this.#jobs.values()) {
+      if (!job.replied) job.outcome = 'disconnected'
       job.replied = true
       this.#clock.clear(job.timer)
       job.controller.abort(reason)

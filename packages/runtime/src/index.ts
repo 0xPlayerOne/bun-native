@@ -62,7 +62,7 @@ export async function startApp(backend: BrowserBackend, input: AppConfig): Promi
 }
 
 export { RpcServer } from './rpc.ts'
-export type { RpcContext, RpcHandlers, RpcServerOptions } from './rpc.ts'
+export type { RpcContext, RpcHandlers, RpcServerOptions, RpcDiagnostic } from './rpc.ts'
 export { RpcLoopbackServer } from './rpc-loopback.ts'
 export type {
   RpcLoopbackConnection,

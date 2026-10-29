@@ -410,6 +410,7 @@ function descriptor(capabilities: readonly NativeDesktopCapability[]): BackendDe
       'window.lifecycle',
       ...capabilities,
       'view.navigate',
+      'view.console',
       'session.ephemeral',
       'session.persistent',
       'session.cookies',
@@ -455,6 +456,11 @@ export class CefBackend
   readonly #observers = new Set<(event: NativeEvent) => void>()
   readonly #closing = new WeakMap<Handle<ResourceKind>, Promise<void>>()
   readonly #policyScopes = new WeakMap<PolicyScope, PolicyScopeRecord>()
+  readonly #consoleSubscriptions = new Map<
+    ViewHandle,
+    Set<{ listener: (message: string) => void; dispose(): void; active: boolean }>
+  >()
+  #consoleSubscriptionCount = 0
   readonly #windowSubscriptions = new Map<WindowHandle, Set<WindowSubscription>>()
   #windowSubscriptionCount = 0
   readonly #policyEpochs = new WeakMap<ViewHandle, number>()
@@ -593,6 +599,8 @@ export class CefBackend
       this.#native.clear()
       this.#listeners.clear()
       for (const subscriptions of this.#windowSubscriptions.values())
+        for (const subscription of subscriptions) subscription.dispose()
+      for (const subscriptions of this.#consoleSubscriptions.values())
         for (const subscription of subscriptions) subscription.dispose()
       this.#observers.clear()
       this.#partitions.clear()
@@ -1691,6 +1699,7 @@ export class CefBackend
   #dropView(view: ViewHandle): void {
     if (this.#registry.isDisposed(view, 'view')) return
     this.#retireRpc(view)
+    for (const subscription of this.#consoleSubscriptions.get(view) ?? []) subscription.dispose()
     const { native, window, session } = this.#registry.get<'view', ViewResource>(view, 'view')
     this.#registry.dispose(view, 'view')
     this.#native.delete(native)
@@ -1932,6 +1941,36 @@ export class CefBackend
       this.#listeners.delete(listener)
     }
   }
+  onViewConsole(
+    view: ViewHandle,
+    listener: (message: string) => void,
+    options?: OperationOptions
+  ): () => void {
+    this.#active()
+    this.#liveView(view)
+    requireCapability(this.descriptor, 'view.console')
+    options?.signal?.throwIfAborted()
+    if (typeof listener !== 'function')
+      throw new BunlyError('INVALID_ARGUMENT', 'Invalid console listener')
+    if (this.#consoleSubscriptionCount >= 128)
+      throw new BunlyError('RESOURCE_IN_USE', 'Console listener capacity exceeded')
+    const subscriptions = this.#consoleSubscriptions.get(view) ?? new Set()
+    const signal = options?.signal
+    const dispose = () => {
+      if (!subscription.active) return
+      subscription.active = false
+      subscriptions.delete(subscription)
+      this.#consoleSubscriptionCount--
+      if (!subscriptions.size) this.#consoleSubscriptions.delete(view)
+      signal?.removeEventListener('abort', dispose)
+    }
+    const subscription = { listener, dispose, active: true }
+    subscriptions.add(subscription)
+    this.#consoleSubscriptions.set(view, subscriptions)
+    this.#consoleSubscriptionCount++
+    signal?.addEventListener('abort', dispose, { once: true })
+    return dispose
+  }
   observe(listener: (event: NativeEvent) => void): () => void {
     this.#active()
     this.#observers.add(listener)
@@ -1949,6 +1988,7 @@ export class CefBackend
         this.#listeners.size +
         this.#observers.size +
         this.#windowSubscriptionCount +
+        this.#consoleSubscriptionCount +
         application.listeners +
         application.readyWaiters +
         this.#downloads.listenerCount +
@@ -2237,6 +2277,23 @@ export class CefBackend
     const handle = event.target === undefined ? undefined : this.#native.get(event.target)
     const window = handle?.kind === 'window' ? (handle as WindowHandle) : undefined
     const view = handle?.kind === 'view' ? (handle as ViewHandle) : undefined
+    if (view && event.event === 'view.console' && !this.#disposed && !this.#closing.has(view)) {
+      if (
+        !event.data ||
+        Object.keys(event.data).join(',') !== 'message' ||
+        typeof event.data['message'] !== 'string' ||
+        Buffer.byteLength(event.data['message'], 'utf8') > 4096
+      )
+        throw new Error('Malformed native console event')
+      for (const subscription of Array.from(this.#consoleSubscriptions.get(view) ?? [])) {
+        if (!subscription.active || this.#disposed || this.#closing.has(view)) continue
+        try {
+          subscription.listener(event.data['message'])
+        } catch {
+          this.#listenerErrors++
+        }
+      }
+    }
     if (event.event === 'window.closed' && window) this.#dropWindow(window)
     else if (
       window &&

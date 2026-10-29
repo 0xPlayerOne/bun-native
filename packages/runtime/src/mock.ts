@@ -345,6 +345,16 @@ export class MockBackend
   ): Promise<Bounds> {
     return this.#windowUnavailable(window, 'window.geometry', options)
   }
+  onViewConsole(
+    view: ViewHandle,
+    _listener: (message: string) => void,
+    options?: OperationOptions
+  ): () => void {
+    this.#registry.get(view, 'view')
+    options?.signal?.throwIfAborted()
+    requireCapability(this.descriptor, 'view.console')
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Console observation unavailable')
+  }
   onWindowEvent(
     window: WindowHandle,
     _listener: (event: WindowEvent) => void,
