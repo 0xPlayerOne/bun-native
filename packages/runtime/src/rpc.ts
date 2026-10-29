@@ -211,9 +211,24 @@ export class RpcServer<S extends RpcSchema> {
       }
       try {
         this.#guard.check(route.capability)
+      } catch (error) {
+        this.#error(message.id, error instanceof RpcError ? error.code : 'REVOKED')
+        return
+      }
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
+        return
+      }
+      try {
         release = this.#guard.acquire()
       } catch (error) {
         this.#error(message.id, error instanceof RpcError ? error.code : 'REVOKED')
+        return
+      }
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
         return
       }
       const started = this.#clock.now()

@@ -90,10 +90,11 @@ export class RpcClient<S extends RpcSchema> {
       return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
     let packet: Uint8Array
     try {
-      packet = encodeRpc(
-        { type: 'request', id, method, timeoutMs, value: definition.input(input) },
-        this.#limits
-      )
+      const parsed = definition.input(input)
+      if (this.#closed) return Promise.reject(this.#closed)
+      if (options.signal?.aborted)
+        return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
+      packet = encodeRpc({ type: 'request', id, method, timeoutMs, value: parsed }, this.#limits)
     } catch {
       return Promise.reject(
         new RpcError('BAD_REQUEST', 'RPC input validation or serialization failed')

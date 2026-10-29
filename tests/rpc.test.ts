@@ -1799,6 +1799,83 @@ describe('execution budgets survive connection replacement', () => {
 })
 
 describe('RPC final boundary review', () => {
+  test('server input authority cancellation prevents the later acquire callback', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const clock = new Clock()
+    let checks = 0,
+      handled = 0
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        const original = env.backend.state.bind(env.backend)
+        const spy = spyOn(env.backend, 'state').mockImplementation((view) => {
+          checks++
+          if (checks === 1) right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+          return original(view)
+        })
+        cleanups.push(() => spy.mockRestore())
+        return text(value)
+      }, text),
+    })
+    const server = new RpcServer(
+      contract,
+      {
+        echo: {
+          capability: 'echo',
+          handle: () => {
+            handled++
+            return 'done'
+          },
+        },
+      },
+      env.lease(),
+      right,
+      { scheduler: clock }
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+    )
+    await flush()
+    expect(checks).toBe(1)
+    expect(handled).toBe(0)
+    expect(right.packets.map((p) => decodeRpc(p, limits))).toEqual([
+      expect.objectContaining({ type: 'error', id: 1, code: 'CANCELLED' }),
+    ])
+    expect(env.authority.diagnostics().executing).toBe(0)
+    server.close()
+  })
+  for (const action of ['cancel', 'close'] as const) {
+    test(`client input parser ${action} prevents subsequent serialization`, async () => {
+      const { left } = pair()
+      const clock = new Clock()
+      const controller = new AbortController()
+      let serialized = 0
+      const output = new Proxy(
+        { ok: true },
+        {
+          getPrototypeOf(target) {
+            serialized++
+            return Reflect.getPrototypeOf(target)
+          },
+        }
+      )
+      const contract = defineRpc({
+        echo: procedure(() => {
+          if (action === 'cancel') controller.abort()
+          else client.close()
+          return output
+        }, text),
+      })
+      const client = new RpcClient(contract, left, { scheduler: clock })
+      const call = result(client.call('echo', { ok: true }, { signal: controller.signal }))
+      expect((await call).code).toBe(action === 'cancel' ? 'CANCELLED' : 'DISCONNECTED')
+      expect(serialized).toBe(0)
+      expect(left.packets).toHaveLength(0)
+      expect(client.diagnostics().pending).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      client.close()
+    })
+  }
   for (const source of ['clock', 'backend'] as const) {
     test(`server stops before output serialization when ${source} reentrantly cancels`, async () => {
       const env = await environment()
