@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/0xPlayerOne/bunly/compare/v0.1.0...v0.1.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **build:** isolate Cargo outputs by manifest directory ([#149](https://github.com/0xPlayerOne/bunly/issues/149)) ([dead07d](https://github.com/0xPlayerOne/bunly/commit/dead07dd2ae5ec63de5580f0342cb707b64371a3))
+
 ## 0.1.0 (2026-10-29)
 
 
