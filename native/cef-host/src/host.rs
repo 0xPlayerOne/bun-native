@@ -32,10 +32,10 @@ mod native_modal;
 mod navigation;
 #[path = "shutdown_pending.rs"]
 mod shutdown_pending;
-#[path = "view_close.rs"]
-mod view_close;
 #[path = "status_items.rs"]
 mod status_items;
+#[path = "view_close.rs"]
+mod view_close;
 #[path = "view_composition.rs"]
 mod view_composition;
 #[path = "window_commands.rs"]
@@ -3434,6 +3434,9 @@ mod tests {
         );
         let unique: std::collections::BTreeSet<_> = capabilities.iter().collect();
         assert_eq!(capabilities.len(), unique.len());
+    }
+
+    #[test]
     fn desktop_capabilities_preserve_shared_facets_with_dialogs() {
         for (dialogs, clipboard) in [(false, false), (false, true), (true, true)] {
             let caps = desktop_capabilities_for(dialogs, clipboard);
