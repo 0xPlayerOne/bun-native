@@ -176,6 +176,29 @@ describe('restricted archive format', () => {
       assert.throws(() => readTar(tar), hasCode('UNSAFE_ARCHIVE'))
     }
   })
+  it('rejects colliding paths and file ancestors in either archive order', () => {
+    const entry = (path: string) => createTar([{ path, bytes: new Uint8Array() }]).subarray(0, 512)
+    const archive = (...paths: string[]) => Buffer.concat([...paths.map(entry), Buffer.alloc(1024)])
+    for (const paths of [
+      ['a', 'A'],
+      ['a', 'A/b'],
+      ['a/b', 'A'],
+      ['a/b/c', 'a/b'],
+      ['café', 'cafe\u0301/child'],
+    ])
+      assert.throws(() => readTar(archive(...paths)), hasCode('UNSAFE_ARCHIVE'))
+    assert.equal(readTar(archive('a/b', 'a/c')).length, 2)
+    const directory = Buffer.from(entry('a'))
+    directory[156] = 53
+    directory.fill(32, 148, 156)
+    const sum = directory.reduce((total, byte) => total + byte, 0)
+    directory.set(Buffer.from(sum.toString(8).padStart(6, '0') + '\0 '), 148)
+    for (const entries of [
+      [directory, entry('a/b')],
+      [entry('a/b'), directory],
+    ])
+      assert.equal(readTar(Buffer.concat([...entries, Buffer.alloc(1024)])).length, 1)
+  })
 })
 describe('verified artifact cache', () => {
   it('downloads once and verifies offline reuse', async () =>
