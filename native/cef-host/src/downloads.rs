@@ -222,6 +222,7 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
         }
     };
     let request_url = permit.request_url().to_owned();
+    let safe_browsing_enabled = diagnostics::safe_browsing_enabled(&host);
     STATE.with(|s| {
         let mut s = s.borrow_mut();
         s.downloads.counts.admitted += 1;
@@ -246,7 +247,11 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
                 settlement: None,
                 terminal: None,
                 last_progress: None,
-                diagnostics: diagnostics::Trace::new(diagnostics::QUARANTINE_LAUNCHES.count()),
+                diagnostics: diagnostics::Trace::new(
+                    diagnostics::QUARANTINE_LAUNCHES.count(),
+                    diagnostics::FILE_UTIL_LAUNCHES.count(),
+                    safe_browsing_enabled,
+                ),
             },
         );
     });
@@ -772,8 +777,10 @@ fn expired(view: u64, id: u64, serial: u64, phase: u8) {
                 }
                 record.diagnostics.timeout(
                     diagnostics::QUARANTINE_LAUNCHES.count(),
+                    diagnostics::FILE_UTIL_LAUNCHES.count(),
                     record.before,
                     record.callback.is_some(),
+                    record.permit.resource_completion(),
                 )
             });
             if let Some(diagnostic) = diagnostic {
@@ -804,6 +811,7 @@ pub(super) fn observe_child_launch(command_line: Option<&CommandLine>) {
         64,
     );
     diagnostics::QUARANTINE_LAUNCHES.observe(process_type.as_deref(), subtype.as_deref());
+    diagnostics::FILE_UTIL_LAUNCHES.observe(process_type.as_deref(), subtype.as_deref());
 }
 wrap_task! {
     struct DownloadClosedTask { view: u64 }
@@ -945,7 +953,11 @@ mod tests {
                 settlement: None,
                 terminal: None,
                 last_progress: None,
-                diagnostics: diagnostics::Trace::new(diagnostics::QUARANTINE_LAUNCHES.count()),
+                diagnostics: diagnostics::Trace::new(
+                    diagnostics::QUARANTINE_LAUNCHES.count(),
+                    diagnostics::FILE_UTIL_LAUNCHES.count(),
+                    None,
+                ),
             };
             STATE.with(|state| {
                 let mut state = state.borrow_mut();
@@ -999,8 +1011,10 @@ mod tests {
                 .diagnostics
                 .timeout(
                     diagnostics::QUARANTINE_LAUNCHES.count(),
+                    diagnostics::FILE_UTIL_LAUNCHES.count(),
                     record.before,
                     record.callback.is_some(),
+                    record.permit.resource_completion(),
                 )
                 .unwrap();
             assert_eq!(diagnostic["callbackCount"], 2);
