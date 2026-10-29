@@ -62,6 +62,7 @@ interface Route {
 export class RpcServer<S extends RpcSchema> {
   readonly #routes = new Map<string, Route>()
   readonly #jobs = new Map<number, Job>()
+  readonly #parsing = new Map<number, { cancelled: boolean }>()
   readonly #limits: RpcLimits
   readonly #clock: RpcScheduler
   readonly #guard: RpcAuthorityGuard
@@ -148,6 +149,8 @@ export class RpcServer<S extends RpcSchema> {
   #receive(packet: Uint8Array): void {
     const message = decodeRpc(packet, this.#limits)
     if (message.type === 'cancel') {
+      const parsing = this.#parsing.get(message.id)
+      if (parsing) parsing.cancelled = true
       const job = this.#jobs.get(message.id)
       if (job && !job.replied) this.#cancel(job, 'CANCELLED')
       return
@@ -167,22 +170,25 @@ export class RpcServer<S extends RpcSchema> {
       this.#error(message.id, error instanceof RpcError ? error.code : 'FORBIDDEN')
       return
     }
-    if (this.#jobs.size >= this.#limits.maxHandlers) {
+    if (this.#jobs.size + this.#parsing.size >= this.#limits.maxHandlers) {
       this.#error(message.id, 'OVERLOADED')
       return
     }
     const deadline = this.#clock.now() + message.timeoutMs
     let input: unknown
+    const parsing = { cancelled: false }
+    this.#parsing.set(message.id, parsing)
     try {
       input = route.parseInput(message.value)
     } catch {
       this.#error(message.id, 'BAD_REQUEST')
       return
+    } finally {
+      this.#parsing.delete(message.id)
     }
-    // Parsing may synchronously close this connection or deliver another request.
     if (this.#closed) return
-    if (this.#jobs.size >= this.#limits.maxHandlers) {
-      this.#error(message.id, 'OVERLOADED')
+    if (parsing.cancelled) {
+      this.#error(message.id, 'CANCELLED')
       return
     }
     // Parsers are trusted application code but may synchronously revoke a grant.
@@ -316,7 +322,7 @@ export class RpcServer<S extends RpcSchema> {
    */
   whenIdle(): Promise<void> {
     if (this.#closed) return Promise.reject(new RpcError('DISCONNECTED', 'RPC server closed'))
-    if (!this.#jobs.size && !this.#pendingReplies) return Promise.resolve()
+    if (!this.#jobs.size && !this.#parsing.size && !this.#pendingReplies) return Promise.resolve()
     if (this.#idleWaiter) return this.#idleWaiter.promise
     let resolve!: () => void, reject!: (error: RpcError) => void
     const promise = new Promise<void>((yes, no) => {
@@ -336,7 +342,7 @@ export class RpcServer<S extends RpcSchema> {
     if (!waiter) return
     if (!error && this.#clock.now() >= waiter.deadline)
       error = new RpcError('DEADLINE_EXCEEDED', 'RPC idle deadline exceeded')
-    if (!error && (this.#jobs.size || this.#pendingReplies)) return
+    if (!error && (this.#jobs.size || this.#parsing.size || this.#pendingReplies)) return
     this.#idleWaiter = undefined
     this.#clock.clear(waiter.timer)
     if (error) waiter.reject(error)

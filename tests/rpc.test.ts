@@ -685,7 +685,7 @@ describe('RPC client and server', () => {
     expect(server.diagnostics().executing).toBe(1)
     expect(decodeRpc(right.packets[0]!, limits)).toMatchObject({
       type: 'error',
-      id: 1,
+      id: 2,
       code: 'OVERLOADED',
     })
     done.resolve('done')
@@ -721,6 +721,71 @@ describe('RPC client and server', () => {
     )
     expect(calls).toBe(0)
     expect(server.diagnostics().executing).toBe(0)
+  })
+  test('server input parsing observes cancellation delivered reentrantly', async () => {
+    const env = await environment()
+    const { right } = pair()
+    let calls = 0
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+        return text(value)
+      }, text),
+    })
+    const server = new RpcServer(
+      contract,
+      {
+        echo: {
+          capability: 'echo',
+          handle: () => {
+            calls++
+            return 'done'
+          },
+        },
+      },
+      env.lease(),
+      right
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    expect(calls).toBe(0)
+    expect(decodeRpc(right.packets[0]!, limits)).toMatchObject({
+      type: 'error',
+      id: 1,
+      code: 'CANCELLED',
+    })
+    server.close()
+  })
+  test('server idle wait includes admitted input parsing and subsequent handler', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const done = deferred<string>()
+    let idle: Promise<void> | undefined
+    let settled = false
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        idle = server.whenIdle().then(() => {
+          settled = true
+        })
+        return text(value)
+      }, text),
+    })
+    const server = new RpcServer(
+      contract,
+      { echo: { capability: 'echo', handle: () => done.promise } },
+      env.lease(),
+      right
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    await flush()
+    expect(settled).toBe(false)
+    done.resolve('done')
+    await idle
+    expect(settled).toBe(true)
+    server.close()
   })
   test('duplicate and late responses are ignored without unbounded tombstones', async () => {
     const { client, left, right } = await setup()
