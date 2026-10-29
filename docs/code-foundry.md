@@ -80,6 +80,17 @@ Only the exact `github.event_name == 'workflow_dispatch'` predicate, accompanied
 by a declared dispatch trigger, is exempt. An OR-expression cannot bypass the
 billing guard. The overlay preserves these policies on every sync.
 
+Code Foundry Draft Guard converts ordinary pull requests opened or reopened in
+ready state to draft; an explicit Ready for review transition starts PR CI.
+Bunly's custom PR checks follow the same `ready_for_review` and `synchronize`
+triggers and require a ready PR at the job boundary. The optional OpenCode scan
+also checks readiness independently of its detection job. The lightweight Draft
+Guard and Draft Control jobs still run to enforce draft state and cancel earlier
+runs. Release Please heads are excluded from ordinary Draft Guard and their
+release workflow manages the readiness transition; a ready release PR receives
+the same required checks. Push, scheduled and manual workflows retain their
+existing triggers. The sync wrapper reapplies the scanner gate after generation.
+
 The `release` feature enables automated GitHub release PRs, tags, and release
 records. Bunly uses one root framework release and `v`-prefixed tag; its five SDK
 package versions and public backend descriptor versions move together. Benchmark

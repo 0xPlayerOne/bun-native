@@ -1,7 +1,7 @@
 name: M6 reload mechanism qualification
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [synchronize, ready_for_review]
 permissions:
   contents: read
 concurrency:

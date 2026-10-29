@@ -1,7 +1,7 @@
 name: M2 workbench and benchmark qualification
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [synchronize, ready_for_review]
   workflow_dispatch:
 permissions:
   contents: read

@@ -62,6 +62,7 @@ jobs:
     needs: detect
     if: >-
       vars.CI_BILLING_PAUSED == 'false' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       needs.detect.outputs.enabled == 'true' &&
       needs.detect.outputs.token == 'true'
     uses: 0xPlayerOne/opencode-security/.github/workflows/opencode-security.yml@137698ef3545204af8fad00fc8bd64d663c8122e # main

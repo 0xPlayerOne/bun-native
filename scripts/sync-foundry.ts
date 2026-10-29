@@ -261,6 +261,20 @@ async function checkedConfig(root: string): Promise<Record<string, unknown>> {
   return config
 }
 
+/** Apply Code Foundry's draft protection to the optional reusable scanner. */
+export function guardOpenCodeScan(source: string): string {
+  const previous = `      needs.detect.outputs.enabled == 'true' &&\n      needs.detect.outputs.token == 'true'`
+  const guarded = `      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&\n${previous}`
+  if (source.includes(guarded)) return source
+  if (source.split(previous).length !== 2) throw new Error('Unexpected OpenCode scan condition')
+  return source.replace(previous, guarded)
+}
+
+function applyWorkflowOverlay(name: string, source: string, paused: boolean): string {
+  const guarded = pinFoundryWorkflow(guardWorkflow(source, paused))
+  return name === 'opencode-security.yml' ? guardOpenCodeScan(guarded) : guarded
+}
+
 /** Read-only validation of the repository overlay, in addition to upstream doctor. */
 export async function verifyFoundryState(root: string): Promise<void> {
   await verifyGithubLayout(root)
@@ -268,7 +282,7 @@ export async function verifyFoundryState(root: string): Promise<void> {
   const workflows = resolve(root, '.github/workflows')
   for (const name of (await readdir(workflows)).filter((name) => /\.ya?ml$/.test(name))) {
     const text = await readFile(resolve(workflows, name), 'utf8')
-    if (pinFoundryWorkflow(guardWorkflow(text, config['billing_paused'] as boolean)) !== text)
+    if (applyWorkflowOverlay(name, text, config['billing_paused'] as boolean) !== text)
       throw new Error(`Foundry overlay drift: ${name}; run bun run foundry:sync`)
   }
   const hook = await readFile(resolve(root, '.githooks/pre-commit'), 'utf8')
@@ -305,7 +319,7 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   for (const name of (await readdir(workflows)).filter((name) => /\.ya?ml$/.test(name)).sort()) {
     const file = resolve(workflows, name)
     const before = await readFile(file, 'utf8')
-    const after = pinFoundryWorkflow(guardWorkflow(before, config['billing_paused'] as boolean))
+    const after = applyWorkflowOverlay(name, before, config['billing_paused'] as boolean)
     if (before !== after) await writeFile(file, after)
   }
   const hook = resolve(root, '.githooks/pre-commit')
