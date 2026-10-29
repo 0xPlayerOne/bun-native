@@ -194,8 +194,68 @@ test('fresh summaries preserve duplicate failure evidence without returning whol
         code: null,
         category: 'activation-deadline',
       },
+      commandObservations: { status: 'observed', events: ['unclassified'] },
     })),
   })
+  assert.equal(JSON.stringify(summary).includes(privateValue), false)
+})
+
+test('command diagnostics preserve a bounded callback sequence using only fixed event kinds', () => {
+  const privateValue = '/private/example/command?secret=fixture-only'
+  const events = [
+    { type: 'command', source: 'shortcut', command: privateValue, sequence: privateValue },
+    { type: 'menu-shown', privateValue },
+    { type: 'menu-closed', privateValue },
+    { type: 'menu-closed', privateValue },
+    { type: 'command', source: 'menu', command: privateValue },
+    { type: 'menu-failed', privateValue },
+    { type: 'revoked', privateValue },
+    { type: 'command', source: privateValue },
+    { type: privateValue },
+    privateValue,
+    null,
+  ]
+  const receipt = (observations: unknown) => ({
+    event: 'bunly.native.window-commands',
+    passed: false,
+    failure: 'selected-menu: Error [observation-order]',
+    observations,
+  })
+  const summary = summarizeDesktopFailures(
+    'native-window-commands-v1',
+    observed([
+      receipt(events),
+      receipt(Array.from({ length: 32 }, () => ({ type: 'menu-shown' }))),
+      receipt(Array.from({ length: 33 }, () => ({ type: 'menu-shown' }))),
+      receipt(privateValue),
+      receipt([]),
+    ])
+  )
+  assert.deepEqual(
+    summary.fixtureFailures.map((entry) => entry.commandObservations),
+    [
+      {
+        status: 'observed',
+        events: [
+          'command-shortcut',
+          'menu-shown',
+          'menu-closed',
+          'menu-closed',
+          'command-menu',
+          'menu-failed',
+          'revoked',
+          'unclassified',
+          'unclassified',
+          'unclassified',
+          'unclassified',
+        ],
+      },
+      { status: 'observed', events: Array(32).fill('menu-shown') },
+      { status: 'unavailable', events: [] },
+      { status: 'unavailable', events: [] },
+      { status: 'observed', events: [] },
+    ]
+  )
   assert.equal(JSON.stringify(summary).includes(privateValue), false)
 })
 

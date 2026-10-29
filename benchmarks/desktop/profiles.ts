@@ -29,6 +29,19 @@ import {
   acceptParentClose,
   acceptParentCloseReport,
 } from './parent-close-acceptance.ts'
+import {
+  COMMANDS_PROFILE,
+  commandsSourceSelectors,
+  acceptWindowCommands,
+  acceptCommandsReport,
+} from './commands-acceptance.ts'
+
+import {
+  DIALOGS_PROFILE,
+  dialogsSourceSelectors,
+  acceptFileDialogs,
+  acceptDialogsReport,
+} from './dialogs-acceptance.ts'
 
 const profiles = {
   windows: {
@@ -67,6 +80,18 @@ const profiles = {
     acceptObservation: acceptDesktopServices,
     acceptReport: acceptServicesReport,
   },
+  dialogs: {
+    profile: DIALOGS_PROFILE,
+    sourceSelectors: dialogsSourceSelectors,
+    fixture: 'examples/file-dialogs',
+    browserEntry: null,
+    directory: 'file-dialogs',
+    title: 'File Dialogs',
+    workloadLimitation:
+      'Six actual macOS panel cancellations; Windows/Linux explicitly unsupported. No file selection, upload, physical input or assistive-technology claim.',
+    acceptObservation: acceptFileDialogs,
+    acceptReport: acceptDialogsReport,
+  },
   downloads: {
     profile: DOWNLOADS_PROFILE,
     sourceSelectors: downloadsSourceSelectors,
@@ -91,6 +116,18 @@ const profiles = {
     acceptObservation: acceptParentClose,
     acceptReport: acceptParentCloseReport,
   },
+  commands: {
+    profile: COMMANDS_PROFILE,
+    sourceSelectors: commandsSourceSelectors,
+    fixture: 'examples/window-commands',
+    browserEntry: null,
+    directory: 'window-commands',
+    title: 'Window Commands',
+    workloadLimitation:
+      'Actual native popup and window-local shortcut callbacks driven by contributor-only synthetic native input; physical input, system menus and global shortcuts remain unqualified.',
+    acceptObservation: acceptWindowCommands,
+    acceptReport: acceptCommandsReport,
+  },
 } as const
 
 export function desktopProfile(name = 'windows') {
@@ -99,7 +136,9 @@ export function desktopProfile(name = 'windows') {
       name === 'composition' ||
       name === 'services' ||
       name === 'downloads' ||
-      name === 'parent-close',
+      name === 'parent-close' ||
+      name === 'commands' ||
+      name === 'dialogs',
     'Unknown desktop qualification case'
   )
   return profiles[name]

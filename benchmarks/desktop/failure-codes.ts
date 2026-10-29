@@ -209,6 +209,35 @@ export function formatDesktopFixtureFailure(
   return `${phase(fixture, currentPhase) ?? 'unknown-phase'}: ${name}${code ? ` (${code})` : ''} [${category}]`
 }
 
+/** Fixed event kinds only: command IDs, sequence values and extra fields stay private. */
+function commandObservationSummary(value: unknown) {
+  if (!Array.isArray(value) || value.length > 32)
+    return { status: 'unavailable', events: [] } as const
+  const events = value.map((item: unknown) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return 'unclassified'
+    const event = item as Record<string, unknown>
+    switch (event['type']) {
+      case 'command':
+        return event['source'] === 'menu'
+          ? 'command-menu'
+          : event['source'] === 'shortcut'
+            ? 'command-shortcut'
+            : 'unclassified'
+      case 'menu-shown':
+        return 'menu-shown'
+      case 'menu-closed':
+        return 'menu-closed'
+      case 'menu-failed':
+        return 'menu-failed'
+      case 'revoked':
+        return 'revoked'
+      default:
+        return 'unclassified'
+    }
+  })
+  return { status: 'observed', events } as const
+}
+
 /** Diagnostic only: never changes acceptance or reads a retained report. */
 export function summarizeDesktopFailures(profile: string, observation?: CommandObservation) {
   const empty = { nativeFailures: [], fixtureFailures: [] } as const
@@ -231,6 +260,9 @@ export function summarizeDesktopFailures(profile: string, observation?: CommandO
                 event['passed'] === true && event['failure'] === null
                   ? null
                   : classifyDesktopFixtureFailure(fixture, event['failure']),
+              ...(fixture === 'commands'
+                ? { commandObservations: commandObservationSummary(event['observations']) }
+                : {}),
             }))
     return { status: 'observed', nativeFailures, fixtureFailures } as const
   } catch {

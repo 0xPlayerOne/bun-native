@@ -11,6 +11,9 @@ progress; [desktop window APIs](desktop-window-api.md) and the
 [native desktop qualifier](desktop-qualification.md) describe its first increment.
 [Native view composition](view-composition.md) describes the next increment's
 opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
+[Window commands](window-commands.md) add scoped native popup menus and local
+shortcuts. [File dialogs](file-dialogs.md) describe the separate macOS selection
+facet, shared modal ownership, cancel-only qualification, and unsupported targets.
 The [interactive hardware workbench](hardware-workbench.md) supplies a maintained
 native target for operator input, display, accessibility and lifecycle work.
 It prepares an explicit prebuilt without launching it and keeps manual results

@@ -15,10 +15,19 @@ use std::{
 mod browser_actions;
 #[path = "clipboard.rs"]
 mod clipboard;
+#[path = "command_envelope.rs"]
+mod command_envelope;
+#[path = "dialogs.rs"]
+mod dialogs;
 #[path = "downloads.rs"]
 mod downloads;
 #[path = "file_guards.rs"]
 mod file_guards;
+#[cfg(target_os = "macos")]
+#[path = "native_menu_wake.rs"]
+mod native_menu_wake;
+#[path = "native_modal.rs"]
+mod native_modal;
 #[path = "navigation.rs"]
 mod navigation;
 #[path = "shutdown_pending.rs"]
@@ -27,13 +36,46 @@ mod shutdown_pending;
 mod view_close;
 #[path = "view_composition.rs"]
 mod view_composition;
+#[path = "window_commands.rs"]
+mod window_commands;
 #[path = "window_state.rs"]
 mod window_state;
 pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
-    if clipboard::SUPPORTED {
+    desktop_capabilities_for(dialogs::SUPPORTED, clipboard::SUPPORTED)
+}
+
+fn desktop_capabilities_for(
+    dialogs_supported: bool,
+    clipboard_supported: bool,
+) -> &'static [&'static str] {
+    if dialogs_supported {
         &[
             "window.state",
             "window.geometry",
+            "window.commands",
+            "clipboard.text",
+            "app.lifecycle",
+            "view.composition",
+            "download.manage",
+            "dialog.file",
+            #[cfg(feature = "browser-actions")]
+            "view.snapshot",
+            #[cfg(feature = "browser-actions")]
+            "view.evaluate",
+            #[cfg(feature = "browser-actions")]
+            "view.input",
+            #[cfg(feature = "browser-actions")]
+            "view.input.synthetic",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-dom",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-accessibility",
+        ]
+    } else if clipboard_supported {
+        &[
+            "window.state",
+            "window.geometry",
+            "window.commands",
             "clipboard.text",
             "app.lifecycle",
             "view.composition",
@@ -55,6 +97,7 @@ pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
         &[
             "window.state",
             "window.geometry",
+            "window.commands",
             "app.lifecycle",
             "view.composition",
             "download.manage",
@@ -230,6 +273,7 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     downloads::cancel_if_revoked(id);
     #[cfg(feature = "browser-actions")]
     browser_actions::invalidate_stale(id);
+    window_commands::retire_view(id);
     let Some(binding) = binding else {
         return;
     };
@@ -815,13 +859,19 @@ pub fn enqueue(value: Value, frame_bytes: usize) {
             return;
         }
     };
-    let mut task = CommandTask::new(value, permit);
+    let command = Arc::new(command_envelope::CommandEnvelope::new(value, permit));
+    let mut task = CommandTask::new(command.clone());
     if post_task(ThreadId::UI, Some(&mut task)) == 0 {
         fail("CEF command dispatch unavailable");
+    } else {
+        #[cfg(target_os = "macos")]
+        native_menu_wake::track(&command);
     }
 }
 pub fn request_quit() {
     RPC_STOPPED.store(true, Ordering::SeqCst);
+    #[cfg(target_os = "macos")]
+    native_menu_wake::request_quit();
     let mut task = QuitTask::new();
     post_task(ThreadId::UI, Some(&mut task));
 }
@@ -909,7 +959,7 @@ fn quit_on_ui(reason: &'static str) {
     for (id, revoked) in revocations {
         revoke_renderer(id, revoked);
     }
-    if STATE.with(|s| !s.borrow().downloads.is_empty()) {
+    if !dialogs::is_empty() || STATE.with(|s| !s.borrow().downloads.is_empty()) {
         // CEF stops download callbacks once a browser is destroyed, but lets its
         // transfer continue. Retain all owners until actual cancellation settles.
         return;
@@ -931,6 +981,10 @@ fn close_quitting_owners(windows: Vec<Window>, browsers: Vec<Browser>) {
 }
 fn finish_on_ui() {
     bound_shutdown();
+    if !dialogs::is_empty() {
+        observe_quitting("last-window");
+        return;
+    }
     if FINALIZING.swap(true, Ordering::SeqCst) {
         return;
     }
@@ -1139,11 +1193,17 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     downloads::shutdown_receipt();
     #[cfg(feature = "browser-actions")]
     if !browser_actions::shutdown_ready() { return; }
+    window_commands::verify_shutdown();
+    dialogs::shutdown_receipt();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
 } } }
 pub fn release() {
+    #[cfg(target_os = "macos")]
+    native_menu_wake::stop();
+    dialogs::stop();
     shutdown_acknowledged();
+    window_commands::release_all();
     #[cfg(feature = "rpc-qualification")]
     crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
@@ -1217,15 +1277,20 @@ fn issue_navigation(id: u64, request: navigation::Request) {
     }
 }
 wrap_task! {
-    struct CommandTask { value: Value, _permit: Arc<crate::command_budget::CommandPermit> }
+    struct CommandTask { command: Arc<command_envelope::CommandEnvelope> }
     impl Task {
         fn execute(&self) {
-            let id = self.value.get("id").and_then(Value::as_u64).unwrap_or(0);
-            if let Err(e) = dispatch(&self.value) { error(id, &e); }
+            let Some(value) = self.command.claim() else { return; };
+            let id = value.get("id").and_then(Value::as_u64).unwrap_or(0);
+            if let Err(e) = dispatch(value) { error(id, &e); }
         }
     }
 }
-wrap_task! { struct QuitTask; impl Task { fn execute(&self) { quit_on_ui("native"); } } }
+wrap_task! { struct QuitTask; impl Task { fn execute(&self) {
+    #[cfg(target_os = "macos")]
+    native_menu_wake::quit_dispatched();
+    quit_on_ui("native");
+} } }
 wrap_app! {
     pub struct BunlyApp;
     impl App {
@@ -1516,7 +1581,7 @@ fn dispose_view(id: u64, request: u64) -> Result<(), String> {
         Ok::<_, &str>(record.rpc.revoke())
     })?;
     revoke_renderer(id, revoked);
-    if STATE.with(|s| s.borrow().downloads.contains(id)) {
+    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
         return Ok(());
     }
     destroy_disposed_view(id)
@@ -1575,10 +1640,17 @@ fn destroy_disposed_view(id: u64) -> Result<(), String> {
     Ok(())
 }
 fn resume_after_download(id: u64) {
+    if dialogs::contains(id) || STATE.with(|s| s.borrow().downloads.contains(id)) {
+        return;
+    }
+    if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) {
+        finish_on_ui();
+        return;
+    }
     if QUITTING.load(Ordering::SeqCst) {
         let owners = STATE.with(|s| {
             let state = s.borrow();
-            state.downloads.is_empty().then(|| {
+            (state.downloads.is_empty() && dialogs::is_empty()).then(|| {
                 (
                     state
                         .windows
@@ -1713,6 +1785,8 @@ fn begin_navigation(
     state.downloads.revoke(view);
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
+    window_commands::retire_view(view);
+    dialogs::revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
     record.expected_document_url = expected_url.to_owned();
@@ -1735,6 +1809,8 @@ fn revoke_view(state: &mut HostState, view: u64) {
     state.downloads.revoke(view);
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
+    window_commands::retire_view(view);
+    dialogs::revoke(view);
 }
 
 fn revoke_all_views(state: &mut HostState) {
@@ -1795,7 +1871,13 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
 fn allowed_during_quit(operation: &str) -> bool {
     matches!(
         operation,
-        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release"
+        "quit"
+            | "download.cancel"
+            | "browser.action.cancel"
+            | "browser.action.release"
+            | "commands.cancel"
+            | "commands.dispose"
+            | "dialog.cancel"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2318,6 +2400,10 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "browser.action.release" => browser_actions::release(request, args)?,
         "download.start" => downloads::start(request, args)?,
         "download.cancel" => downloads::cancel(request, args)?,
+        "dialog.show" => dialogs::start(request, args)?,
+        "dialog.cancel" => dialogs::cancel(request, args)?,
+        #[cfg(feature = "rpc-qualification")]
+        "dialog.qualification.state" => dialogs::qualification(request, args)?,
         "view.presentation" | "view.present" => {
             view_composition::dispatch(request, operation, args)?
         }
@@ -2724,6 +2810,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "clipboard.read" | "clipboard.write" | "clipboard.clear" => {
             clipboard::dispatch(request, operation, args)?;
         }
+        "commands.create" | "commands.show" | "commands.cancel" | "commands.dispose" => {
+            window_commands::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "commands.qualification" | "commands.qualification.snapshot" => {
+            window_commands::dispatch(request, operation, args)?
+        }
         #[cfg(feature = "rpc-qualification")]
         "clipboard.qualification.empty" => clipboard::dispatch(request, operation, args)?,
         "policy.native.check" => {
@@ -2744,8 +2837,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
                     .ok_or("document authority changed during authorization")?;
                 Ok::<_, &str>((scope, grants))
             })?;
-            // Path/executable checks execute without holding STATE. M7 adapters are
-            // intentionally unavailable even when this authorization succeeds.
+            // This M4 diagnostic checks policy without invoking an adapter. Real
+            // operations perform their own execution and result authorization.
             let decision = capability_policy::authorize_native_grants(
                 &grants,
                 &native_request,
@@ -2817,6 +2910,7 @@ wrap_window_delegate! {
     }
     impl PanelDelegate {}
     impl WindowDelegate {
+        fn on_accelerator(&self, _window: Option<&mut Window>, command_id: i32) -> i32 { window_commands::accelerator(self.id, command_id) }
         fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
         fn can_maximize(&self, _window: Option<&mut Window>) -> i32 { 1 }
         fn can_resize(&self, _window: Option<&mut Window>) -> i32 { 1 }
@@ -2844,7 +2938,7 @@ wrap_window_delegate! {
                 revoke_window(&mut s, self.id);
                 let view_ids = s.views.iter().filter_map(|(id, view)| (view.window == self.id).then_some(*id)).collect::<Vec<_>>();
                 let browsers = view_ids.iter().filter_map(|id| s.views.get(id)?.browser.clone()).collect::<Vec<_>>();
-                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
+                let pending = view_ids.iter().any(|id| s.downloads.contains(*id) || dialogs::contains(*id) || s.views.get(id).is_some_and(|view| view.browser.is_none()));
                 let revocations = view_ids.into_iter().filter_map(|id| s.views.get_mut(&id).map(|view| (id, view.rpc.revoke()))).collect::<Vec<_>>();
                 (browsers, pending, revocations)
             });
@@ -2864,7 +2958,7 @@ wrap_window_delegate! {
             }
             i32::from(allowed)
         }
-        fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
+        fn on_window_destroyed(&self, _window: Option<&mut Window>) { shutdown_pending::record(shutdown_pending::Point::WindowDestroyed); let removed = STATE.with(|s| s.borrow_mut().windows.remove(&self.id)); window_commands::window_destroyed(self.id); if let Some(record) = removed { if let Some(request) = record.closing.filter(|r| *r != 0) { reply(request, Value::Null); } } event("window.closed", self.id, Value::Null); if STATE.with(|s| s.borrow().windows.is_empty() && s.borrow().views.is_empty()) { finish_on_ui(); } }
     }
 }
 wrap_browser_view_delegate! {
@@ -2914,6 +3008,8 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             state.downloads.revoke(id);
             #[cfg(feature = "browser-actions")]
             state.browser_actions.revoke(id);
+            window_commands::retire_view(id);
+            dialogs::revoke(id);
         }
     });
     let revoked = STATE.with(|s| {
@@ -3296,6 +3392,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn desktop_capabilities_preserve_shared_facets_with_dialogs() {
+        for (dialogs, clipboard) in [(false, false), (false, true), (true, true)] {
+            let caps = desktop_capabilities_for(dialogs, clipboard);
+            for required in [
+                "window.state",
+                "window.geometry",
+                "window.commands",
+                "app.lifecycle",
+                "view.composition",
+                "download.manage",
+            ] {
+                assert!(
+                    caps.contains(&required),
+                    "missing {required} for dialogs={dialogs}, clipboard={clipboard}"
+                );
+            }
+            assert_eq!(caps.contains(&"dialog.file"), dialogs);
+            assert_eq!(caps.contains(&"clipboard.text"), clipboard);
+            #[cfg(feature = "browser-actions")]
+            for required in [
+                "view.snapshot",
+                "view.evaluate",
+                "view.input",
+                "view.input.synthetic",
+                "view.observe-dom",
+                "view.observe-accessibility",
+            ] {
+                assert!(
+                    caps.contains(&required),
+                    "missing {required} for dialogs={dialogs}, clipboard={clipboard}"
+                );
+            }
+            #[cfg(not(feature = "browser-actions"))]
+            for absent in [
+                "view.snapshot",
+                "view.evaluate",
+                "view.input",
+                "view.input.synthetic",
+                "view.observe-dom",
+                "view.observe-accessibility",
+            ] {
+                assert!(
+                    !caps.contains(&absent),
+                    "unexpected {absent} without browser-actions"
+                );
+            }
+            assert_eq!(
+                caps.len(),
+                caps.iter().collect::<std::collections::BTreeSet<_>>().len()
+            );
+        }
+    }
+
+    #[test]
     fn media_permission_bits_are_portable_and_unknown_bits_fail_closed() {
         use capability_policy::BrowserCapability::{Camera, DisplayCapture, Microphone};
         assert_eq!(media_capabilities(0), None);
@@ -3497,17 +3647,23 @@ mod tests {
 mod command_task_lifetime_tests {
     use super::*;
     #[test]
-    fn quitting_admits_id_bound_download_cleanup_without_reopening_native_authority() {
+    fn quitting_admits_owned_cleanup_without_reopening_native_authority() {
         assert!(allowed_during_quit("quit"));
         assert!(allowed_during_quit("download.cancel"));
+        assert!(allowed_during_quit("commands.cancel"));
+        assert!(allowed_during_quit("commands.dispose"));
         for operation in [
             "download.start",
+            "commands.create",
+            "commands.show",
+            "commands.qualification",
             "policy.native.grant",
             "clipboard.write",
             "view.navigate",
             "window.create",
             "session.create",
             "download.cancel.extra",
+            "commands.cancel.extra",
         ] {
             assert!(!allowed_during_quit(operation), "{operation}");
         }
@@ -3516,7 +3672,11 @@ mod command_task_lifetime_tests {
     fn discarded_cef_task_releases_admission_only_with_its_last_native_reference() {
         let budget = Arc::new(crate::command_budget::CommandBudget::default());
         let permit = budget.reserve("view.create", 128).unwrap();
-        let task = CommandTask::new(json!({"v":1,"id":1,"op":"view.create"}), permit);
+        let command = Arc::new(command_envelope::CommandEnvelope::new(
+            json!({"v":1,"id":1,"op":"view.create"}),
+            permit,
+        ));
+        let task = CommandTask::new(command);
         let posted_reference = task.clone();
         drop(task);
         assert_eq!(budget.snapshot().requests, 1);
