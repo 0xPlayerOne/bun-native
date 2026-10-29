@@ -279,6 +279,14 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
   // Reject malformed destinations before the upstream initializer writes anything.
   await inspectGithubPaths(root)
   await checkedConfig(root)
+  // Bunly owns the fast PR validation caller; upstream sync may overwrite it.
+  const validation = resolve(root, '.github/workflows/validation.yml')
+  const validationBefore = await readFile(validation, 'utf8').catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined
+      throw error
+    }
+  )
   const cli = resolve(root, 'node_modules/code-foundry/src/cli.mjs')
   await access(cli)
   const child = Bun.spawn([process.execPath, cli, mode, '--target', root], {
@@ -286,7 +294,9 @@ export async function syncFoundry(root: string, mode: 'init' | 'sync' = 'sync'):
     stdout: 'inherit',
     stderr: 'inherit',
   })
-  if ((await child.exited) !== 0) throw new Error('Code Foundry synchronization failed')
+  const exit = await child.exited
+  if (validationBefore !== undefined) await writeFile(validation, validationBefore)
+  if (exit !== 0) throw new Error('Code Foundry synchronization failed')
   const config = await checkedConfig(root)
   const dependabot = resolve(root, '.github/dependabot.yml')
   await writeFile(dependabot, dependabotDirectories(await readFile(dependabot, 'utf8')))
