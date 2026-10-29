@@ -77,6 +77,10 @@ completed final-head validation and squash-merge record.
 
 ## Active technical guides
 
+[M7 implementation and evidence status](m7-status.md) consolidates the
+per-platform capability matrix, issue #34–#38 coverage and physical
+qualification gaps without treating unrun hardware cases as passes.
+
 [Browser actions](browser-actions.md) and
 [programmatic file interactions](programmatic-files.md) describe the separately
 gated development view-control facets, their native ownership bounds and actual
