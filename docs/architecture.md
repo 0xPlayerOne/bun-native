@@ -84,6 +84,12 @@ the stable owner retains it across managed generations and journals actual actio
 callbacks. Native status-bar removal precedes callback-owner release, including
 the ordinary quit fence. Other platforms report the facet as unsupported.
 
+The [application-link inbox](application-links.md) has a single exact-document
+reader and a bounded native queue. Managed delivery first transfers a complete
+snapshot into the stable host journal, then acknowledges native ownership.
+Generation retirement cannot discard that transfer. External HTTPS submission
+uses a distinct exact-origin grant and is never automatically replayed.
+
 [Development sessions](development-host.md) reuse a verified prepared host and
 bundle backend changes with Bun. Frontend tooling keeps its independent HMR
 connection; shared edits notify both paths. An incompatible configuration, native

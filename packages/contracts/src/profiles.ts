@@ -93,6 +93,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
             'window.geometry',
             'window.commands',
             'app.lifecycle',
+            'app.links',
             'view.composition',
             'download.manage',
             'session.persistent',
@@ -104,7 +105,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
         }),
         Object.freeze({
           backend: 'cef',
-          capabilities: Object.freeze(['clipboard.text'] as const),
+          capabilities: Object.freeze(['clipboard.text', 'app.open-url'] as const),
           platforms: Object.freeze(['darwin-arm64', 'win32-x64'] as const),
         }),
         Object.freeze({

@@ -48,8 +48,26 @@ import {
   acceptStatusItems,
   acceptStatusReport,
 } from './status-acceptance.ts'
+import {
+  LINKS_PROFILE,
+  linksSourceSelectors,
+  acceptApplicationLinks,
+  acceptApplicationLinksReport,
+} from './links-acceptance.ts'
 
 const profiles = {
+  links: {
+    profile: LINKS_PROFILE,
+    sourceSelectors: linksSourceSelectors,
+    fixture: 'examples/application-links',
+    browserEntry: null,
+    directory: 'application-links',
+    title: 'Application Links',
+    workloadLimitation:
+      'Three controlled startup arguments, exact route and document authority, acknowledged delivery across managed generations, and native reader/delegate cleanup. OS registration, live OS URL delivery, browser launch and second-instance forwarding remain unqualified.',
+    acceptObservation: acceptApplicationLinks,
+    acceptReport: acceptApplicationLinksReport,
+  },
   status: {
     profile: STATUS_PROFILE,
     sourceSelectors: statusSourceSelectors,
@@ -157,6 +175,7 @@ export function desktopProfile(name = 'windows') {
       name === 'parent-close' ||
       name === 'commands' ||
       name === 'status' ||
+      name === 'links' ||
       name === 'dialogs',
     'Unknown desktop qualification case'
   )

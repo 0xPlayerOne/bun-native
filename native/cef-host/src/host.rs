@@ -10,6 +10,8 @@ use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicBool, Ordering},
 };
+#[path = "application_links.rs"]
+pub(crate) mod application_links;
 #[cfg(feature = "browser-actions")]
 #[path = "browser_actions.rs"]
 mod browser_actions;
@@ -57,6 +59,8 @@ fn desktop_capabilities_for(
             "window.commands",
             "clipboard.text",
             "app.lifecycle",
+            "app.links",
+            "app.open-url",
             "view.composition",
             "download.manage",
             "dialog.file",
@@ -81,6 +85,8 @@ fn desktop_capabilities_for(
             "window.commands",
             "clipboard.text",
             "app.lifecycle",
+            "app.links",
+            "app.open-url",
             "view.composition",
             "download.manage",
             #[cfg(feature = "browser-actions")]
@@ -102,6 +108,7 @@ fn desktop_capabilities_for(
             "window.geometry",
             "window.commands",
             "app.lifecycle",
+            "app.links",
             "view.composition",
             "download.manage",
             #[cfg(feature = "browser-actions")]
@@ -278,6 +285,7 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     browser_actions::invalidate_stale(id);
     window_commands::retire_view(id);
     status_items::retire_view(id);
+    application_links::retire_view(id);
     let Some(binding) = binding else {
         return;
     };
@@ -1200,6 +1208,7 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     window_commands::verify_shutdown();
     status_items::release_all();
     status_items::shutdown_receipt();
+    application_links::shutdown();
     dialogs::shutdown_receipt();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
@@ -1212,6 +1221,7 @@ pub fn release() {
     window_commands::release_all();
     status_items::release_all();
     status_items::shutdown_receipt();
+    application_links::shutdown();
     #[cfg(feature = "rpc-qualification")]
     crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
@@ -1795,6 +1805,7 @@ fn begin_navigation(
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
     status_items::retire_view(view);
+    application_links::retire_view(view);
     dialogs::revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
@@ -1820,6 +1831,7 @@ fn revoke_view(state: &mut HostState, view: u64) {
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
     status_items::retire_view(view);
+    application_links::retire_view(view);
     dialogs::revoke(view);
 }
 
@@ -1889,6 +1901,7 @@ fn allowed_during_quit(operation: &str) -> bool {
             | "commands.dispose"
             | "dialog.cancel"
             | "status.dispose"
+            | "links.dispose"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2827,6 +2840,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "status.create" | "status.update" | "status.dispose" => {
             status_items::dispatch(request, operation, args)?;
         }
+        "links.create" | "links.read" | "links.ack" | "links.dispose" | "app.open.url" => {
+            application_links::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "links.qualification.snapshot" => {
+            application_links::dispatch(request, operation, args)?;
+        }
         #[cfg(feature = "rpc-qualification")]
         "status.qualification.click" | "status.qualification.snapshot" => {
             status_items::dispatch(request, operation, args)?;
@@ -3028,6 +3048,7 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             state.browser_actions.revoke(id);
             window_commands::retire_view(id);
             status_items::retire_view(id);
+            application_links::retire_view(id);
             dialogs::revoke(id);
         }
     });
@@ -3418,6 +3439,7 @@ mod tests {
             "window.geometry",
             "window.commands",
             "app.lifecycle",
+            "app.links",
             "view.composition",
             "download.manage",
         ] {
@@ -3431,6 +3453,10 @@ mod tests {
         assert_eq!(
             capabilities.contains(&"status.item"),
             status_items::SUPPORTED
+        );
+        assert_eq!(
+            capabilities.contains(&"app.open-url"),
+            cfg!(any(target_os = "macos", target_os = "windows"))
         );
         let unique: std::collections::BTreeSet<_> = capabilities.iter().collect();
         assert_eq!(capabilities.len(), unique.len());
@@ -3698,11 +3724,14 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("commands.cancel"));
         assert!(allowed_during_quit("commands.dispose"));
         assert!(allowed_during_quit("status.dispose"));
+        assert!(allowed_during_quit("links.dispose"));
         assert!(allowed_during_quit("dialog.cancel"));
         for operation in [
             "download.start",
             "commands.create",
             "status.create",
+            "links.ack",
+            "links.create",
             "status.update",
             "status.qualification.click",
             "commands.show",

@@ -9,6 +9,8 @@ export const CAPABILITIES = [
   'clipboard.text',
   'dialog.file',
   'app.lifecycle',
+  'app.links',
+  'app.open-url',
   'view.navigate',
   'view.composition',
   'session.ephemeral',

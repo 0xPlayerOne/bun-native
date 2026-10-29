@@ -20,6 +20,24 @@ test('native transport correlates responses and releases resources after clean s
   assert.ok(peer.input.destroyed)
   assert.ok(peer.output.destroyed)
 })
+test('global link shutdown is accepted and a zero event target remains invalid', async () => {
+  const peer = await nativePeer()
+  try {
+    let seen = false
+    peer.transport.onEvent((event) => {
+      if (event.event === 'links.shutdown') seen = true
+    })
+    peer.send({ v: 1, event: 'links.shutdown', data: { readers: 0, queued: 0 } })
+    await turn()
+    assert.equal(seen, true)
+    assert.equal(peer.transport.failure, null)
+    peer.send({ v: 1, event: 'links.shutdown', target: 0, data: {} })
+    await peer.transport.closed
+    assert.match(String(peer.transport.failure), /Invalid native event/)
+  } finally {
+    await peer.stop()
+  }
+})
 test('synchronous native write failure rejects all requests and destroys inherited pipes', async () => {
   const input = new PassThrough()
   const output = new Writable({

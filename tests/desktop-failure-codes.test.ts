@@ -88,6 +88,19 @@ test('desktop summaries recognize only fixed fixture labels, including current d
   })
 })
 
+test('link policy failure phases retain a fixed step without exposing error text', () => {
+  for (const phase of ['policy-grant', 'policy-create', 'policy-forged', 'policy-duplicate']) {
+    const formatted = formatDesktopFixtureFailure('links', phase, new Error('/private/example'))
+    assert.deepEqual(classifyDesktopFixtureFailure('links', formatted), {
+      phase,
+      name: 'Error',
+      code: null,
+      category: 'unclassified',
+    })
+    assert.ok(!formatted.includes('/private/example'))
+  }
+})
+
 test('status managed failure phases retain a fixed step without exposing error text', () => {
   for (const phase of [
     'managed-authority',

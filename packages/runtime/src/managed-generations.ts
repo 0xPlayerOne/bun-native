@@ -17,6 +17,7 @@ export type ManagedResourceKind =
   | 'clipboard'
   | 'commands'
   | 'status-item'
+  | 'application-links'
   | 'dialog'
 export type ManagedCleanupKind = 'handler' | 'listener' | 'timer' | 'request' | 'state'
 export type ManagedErrorCode =
@@ -208,6 +209,7 @@ export class ManagedGenerationOwner {
           'clipboard',
           'commands',
           'status-item',
+          'application-links',
           'dialog',
         ].includes(kind) ||
         typeof authorize !== 'function' ||

@@ -17,6 +17,9 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  ApplicationLinksBackend,
+  ApplicationLinkReader,
+  ApplicationLinkBatch,
   StatusItemBackend,
   StatusItemDefinition,
   StatusItemHandle,
@@ -61,7 +64,8 @@ export class MockBackend
     ClipboardBackend,
     ApplicationLifecycleBackend,
     WindowCommandsBackend,
-    StatusItemBackend
+    StatusItemBackend,
+    ApplicationLinksBackend
 {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
@@ -89,6 +93,27 @@ export class MockBackend
   }
   async readClipboardText(_scope: PolicyScope, options?: OperationOptions): Promise<string | null> {
     return this.#desktopUnavailable('clipboard.text', options)
+  }
+  async createApplicationLinkReader(
+    _scope: PolicyScope,
+    _options?: OperationOptions
+  ): Promise<ApplicationLinkReader> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async readApplicationLinks(_reader: ApplicationLinkReader): Promise<ApplicationLinkBatch> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async acknowledgeApplicationLinks(
+    _reader: ApplicationLinkReader,
+    _batch: ApplicationLinkBatch
+  ): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async disposeApplicationLinkReader(_reader: ApplicationLinkReader): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock application links are unavailable')
+  }
+  async openExternalUrl(_scope: PolicyScope, _url: string): Promise<void> {
+    throw new BunlyError('UNSUPPORTED_CAPABILITY', 'Mock external URLs are unavailable')
   }
   async createStatusItem(
     _scope: PolicyScope,

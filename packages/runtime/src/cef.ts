@@ -14,6 +14,7 @@ import { CefFileDialogs } from './cef-dialogs.ts'
 import { CefDownloads } from './cef-downloads.ts'
 import { CefWindowCommands } from './cef-window-commands.ts'
 import { CefStatusItems } from './cef-status-items.ts'
+import { CefApplicationLinks } from './cef-application-links.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -76,6 +77,9 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  ApplicationLinksBackend,
+  ApplicationLinkReader,
+  ApplicationLinkBatch,
   StatusItemBackend,
   StatusItemDefinition,
   StatusItemHandle,
@@ -230,6 +234,7 @@ export type NativeCapabilityGrant =
         | 'dialog-save'
         | 'window-commands'
         | 'status-item'
+        | 'application-links'
     }
   | {
       readonly name:
@@ -256,6 +261,7 @@ export type NativeOperationRequest =
         | 'dialog-save'
         | 'window-commands'
         | 'status-item'
+        | 'application-links'
     }
   | {
       readonly name:
@@ -425,7 +431,8 @@ export class CefBackend
     DownloadManagementBackend,
     BrowserActionsBackend,
     WindowCommandsBackend,
-    StatusItemBackend
+    StatusItemBackend,
+    ApplicationLinksBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -434,6 +441,7 @@ export class CefBackend
   readonly #transport: NativeTransport
   readonly #commands: CefWindowCommands
   readonly #statusItems: CefStatusItems
+  readonly #applicationLinks: CefApplicationLinks
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
   readonly #dialogs: CefFileDialogs
@@ -506,6 +514,17 @@ export class CefBackend
       this.#listenerErrors++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    this.#applicationLinks = new CefApplicationLinks(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return { view: captured.view, scope: captured.nativeScope }
+      },
+      (kind) => {
+        this.#active()
+        requireCapability(this.descriptor, kind === 'inbound' ? 'app.links' : 'app.open-url')
+      }
+    )
     this.#statusItems = new CefStatusItems(
       transport,
       (scope) => {
@@ -561,6 +580,7 @@ export class CefBackend
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
       this.#commands.close()
       this.#statusItems.close()
+      this.#applicationLinks.close()
       this.#dialogs.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
@@ -598,6 +618,76 @@ export class CefBackend
     options?: OperationOptions
   ): Promise<WindowCommandsHandle> {
     return this.#commands.create(scope, definition, options)
+  }
+  createApplicationLinkReader(
+    scope: PolicyScope,
+    options?: OperationOptions
+  ): Promise<ApplicationLinkReader> {
+    return this.#applicationLinks.create(scope, options)
+  }
+  readApplicationLinks(reader: ApplicationLinkReader): Promise<ApplicationLinkBatch> {
+    return this.#applicationLinks.read(reader)
+  }
+  acknowledgeApplicationLinks(
+    reader: ApplicationLinkReader,
+    batch: ApplicationLinkBatch
+  ): Promise<void> {
+    return this.#applicationLinks.acknowledge(reader, batch)
+  }
+  disposeApplicationLinkReader(reader: ApplicationLinkReader): Promise<void> {
+    return this.#applicationLinks.dispose(reader)
+  }
+  openExternalUrl(scope: PolicyScope, url: string): Promise<void> {
+    return this.#applicationLinks.open(scope, url)
+  }
+  /** @internal Stable managed owner; native handles never enter application generations. */
+  applicationLinkReaderMatchesScope(reader: ApplicationLinkReader, scope: PolicyScope): boolean {
+    return this.#applicationLinks.matchesScope(reader, scope)
+  }
+  applicationLinkDiagnostics() {
+    return this.#applicationLinks.diagnostics()
+  }
+  /** @internal Bounded counts only. This does not attest live OS URL delivery. */
+  async qualifyApplicationLinkSnapshot(): Promise<
+    Readonly<
+      Record<
+        | 'readers'
+        | 'queued'
+        | 'bytes'
+        | 'overflow'
+        | 'startup'
+        | 'macos'
+        | 'rejected'
+        | 'acknowledged'
+        | 'delegates',
+        number
+      >
+    >
+  > {
+    this.#active()
+    const result = await this.#transport.call('links.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !==
+        'acknowledged,bytes,delegates,macos,overflow,queued,readers,rejected,startup' ||
+      Object.values(result).some((value) => !Number.isSafeInteger(value) || Number(value) < 0)
+    )
+      throw new Error('Malformed native application link snapshot')
+    return Object.freeze(result) as Readonly<
+      Record<
+        | 'readers'
+        | 'queued'
+        | 'bytes'
+        | 'overflow'
+        | 'startup'
+        | 'macos'
+        | 'rejected'
+        | 'acknowledged'
+        | 'delegates',
+        number
+      >
+    >
   }
   createStatusItem(
     scope: PolicyScope,
@@ -2100,6 +2190,7 @@ export class CefBackend
     this.#disposed = true
     this.#commands.stop()
     this.#statusItems.stop()
+    this.#applicationLinks.stop()
     this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
@@ -2137,6 +2228,7 @@ export class CefBackend
       this.#disposed = true
       this.#commands.stop()
       this.#statusItems.stop()
+      this.#applicationLinks.stop()
       this.#application.quitting(event.data['reason'])
     }
     this.#downloads.event(event)
@@ -2230,6 +2322,7 @@ export class CefBackend
   #retireRpc(view: ViewHandle): void {
     this.#commands.retireView(view)
     this.#statusItems.retireView(view)
+    this.#applicationLinks.retireView(view)
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
     this.#streamRetired.add(view)

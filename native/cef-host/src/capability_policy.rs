@@ -58,6 +58,7 @@ pub enum NativeCapability {
     ClipboardWrite,
     WindowCommands,
     StatusItem,
+    ApplicationLinks,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -144,6 +145,7 @@ pub enum NativeRequest {
     ClipboardWrite,
     WindowCommands,
     StatusItem,
+    ApplicationLinks,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -470,6 +472,7 @@ pub fn decode_native_capability(
             ("clipboard-write", &[]),
             ("window-commands", &[]),
             ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["origins"]),
@@ -495,6 +498,7 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("clipboard-write", &[]),
             ("window-commands", &[]),
             ("status-item", &[]),
+            ("application-links", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["url"]),
@@ -605,6 +609,7 @@ fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
         | (NativeCapability::ClipboardWrite, NativeRequest::ClipboardWrite)
         | (NativeCapability::WindowCommands, NativeRequest::WindowCommands)
         | (NativeCapability::StatusItem, NativeRequest::StatusItem)
+        | (NativeCapability::ApplicationLinks, NativeRequest::ApplicationLinks)
         | (NativeCapability::DialogOpen, NativeRequest::DialogOpen)
         | (NativeCapability::DialogSave, NativeRequest::DialogSave) => true,
         (NativeCapability::ExternalUrl { origins }, NativeRequest::ExternalUrl { url }) => {
@@ -1011,6 +1016,79 @@ mod tests {
             }
         }
         panic!("capability fixture collision limit exceeded")
+    }
+
+    #[test]
+    fn link_reading_has_a_distinct_document_grant_from_external_submission() {
+        let mut policy = Policy::default();
+        let live = scope(4, 8, 2, "app://ui");
+        policy.install_document(live.clone()).unwrap();
+        policy
+            .grant_native(
+                &live,
+                NativeCapability::ExternalUrl {
+                    origins: ["https://example.com".into()].into_iter().collect(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(&live, NativeCapability::ApplicationLinks)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Authorized
+        );
+        for foreign in [
+            scope(5, 8, 2, "app://ui"),
+            scope(4, 9, 2, "app://ui"),
+            scope(4, 8, 1, "app://ui"),
+        ] {
+            assert_eq!(
+                policy.authorize_native(
+                    &foreign,
+                    &NativeRequest::ApplicationLinks,
+                    AdapterAvailability::Available
+                ),
+                GateDecision::Denied
+            );
+        }
+        policy.navigation_started(live.view);
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::ApplicationLinks,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert_eq!(
+            decode_native_capability(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeCapability::ApplicationLinks
+        );
+        assert_eq!(
+            decode_native_request(serde_json::json!({"name":"application-links"})).unwrap(),
+            NativeRequest::ApplicationLinks
+        );
+        assert!(decode_native_capability(
+            serde_json::json!({"name":"application-links","route":"untrusted"})
+        )
+        .is_err());
+        assert!(decode_native_request(
+            serde_json::json!({"name":"application-links","route":"untrusted"})
+        )
+        .is_err());
     }
 
     #[test]
