@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/0xPlayerOne/bunly/compare/v0.1.1...v0.1.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ci:** apply Code Foundry draft protection to PR checks ([#153](https://github.com/0xPlayerOne/bunly/issues/153)) ([775f162](https://github.com/0xPlayerOne/bunly/commit/775f162d2bdfea5f22a0675b9aa5acfd2480fbe7))
+
 ## [0.1.1](https://github.com/0xPlayerOne/bunly/compare/v0.1.0...v0.1.1) (2026-10-29)
 
 
