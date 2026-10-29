@@ -173,6 +173,29 @@ test('phase markers require exact order, completeness and schema', () => {
   assert.throws(() => compositionResourceSamples(shifted), 'Stdout cannot supply a phase marker')
 })
 
+test('declared phase span must fit the observer lifetime, including inter-phase gaps', () => {
+  const compressed = fixture()
+  compressed.observation.elapsedMs = 3000
+  for (const sample of compressed.observation.samples) sample.elapsedMs /= 10
+  assert.throws(
+    () => acceptCompositionResources(compressed.observation),
+    /phase span exceeds observed process lifetime/
+  )
+  const gap = fixture()
+  for (const phase of gap.receipt.phases.slice(1)) {
+    phase.startedMs += 10_000
+    phase.endedMs += 10_000
+  }
+  const receiptIndex = gap.observation.stderr.findIndex(
+    (line) => JSON.parse(line).event === 'bunly.native.composition-profile'
+  )
+  gap.observation.stderr[receiptIndex] = JSON.stringify(gap.receipt)
+  assert.throws(
+    () => acceptCompositionResources(gap.observation),
+    /phase span exceeds observed process lifetime/
+  )
+})
+
 test('CPU accounting uses PID plus birth and exposes unobserved birth/exit intervals', () => {
   const { observation } = fixture()
   const sample = observation.samples[3]!

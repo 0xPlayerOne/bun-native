@@ -67,9 +67,11 @@ controlled workload is distinct from the interactive hardware workbench.
 | Recreate | 4 seconds     | Four cycles at 1-second scheduled intervals. Each disposes the overlay and left pane/session, reloads a new left pane/session, recreates the hidden overlay, and verifies the surviving right pane. |
 | Recovery | 4 seconds     | Both content panes remain visible; no more lifecycle operations.                                                                                                                                    |
 
-The schedule uses a monotonic application clock. Each operation is awaited;
-operations never overlap to catch up. If an operation takes longer than its
-scheduled interval, the actual phase duration grows and is retained. The workload
+The schedule uses a monotonic application clock. Operations execute sequentially
+at or after their scheduled times. An overdue operation starts after the preceding
+operation finishes; later operations may catch up within the declared dwell.
+The phase duration grows only when work exceeds that dwell. Actual phase and
+per-operation durations are retained. The workload
 does not discard slow operations, extend native deadlines or declare omitted
 operations successful. A single attempt contains 22 seconds of minimum phase
 dwell plus setup/cleanup and any overrun.

@@ -221,6 +221,13 @@ export function acceptCompositionResources(input: unknown) {
     'bunly.native.composition-profile',
     acceptCompositionResourceReceipt
   )
+  const observation = validateCommandObservation(input)
+  // Epochs differ, but the entire application phase span must fit inside the
+  // observed process lifetime. Include readback gaps between phases as well.
+  assert.ok(
+    phases.at(-1)!.endedMs <= observation.elapsedMs,
+    'Composition phase span exceeds observed process lifetime'
+  )
   return {
     classification: 'descriptive-windowed-cef-resources',
     phases: phases.map((phase) => ({
