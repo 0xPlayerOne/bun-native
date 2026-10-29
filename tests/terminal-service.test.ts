@@ -1217,3 +1217,37 @@ test('throwing lifecycle timer clear cannot interrupt actual release', async () 
   clock.advance(5000)
   expect(service.diagnostics().terminals).toBe(0)
 })
+
+test('lifecycle timer installation tolerates synchronous PTY closure and an undefined handle', async () => {
+  class ReentrantClock extends Clock {
+    duringSet: (() => void) | undefined
+    lifecycleClears = 0
+    override set(delay: number, callback: () => void): number {
+      if (this.duringSet) {
+        const action = this.duringSet
+        this.duringSet = undefined
+        action()
+        super.set(delay, callback)
+        return undefined as unknown as number
+      }
+      return super.set(delay, callback)
+    }
+    override clear(timer: unknown) {
+      if (timer === undefined) this.lifecycleClears++
+      super.clear(timer)
+    }
+  }
+  const clock = new ReentrantClock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const child = driver.processes[0]!
+  clock.duringSet = () => child.observer.terminalClosed(0)
+  child.observer.processExited({ exitCode: 0, signalCode: null, waitError: false })
+  await observation.released
+  expect(clock.lifecycleClears).toBe(1)
+  expect(service.diagnostics().terminals).toBe(0)
+  clock.advance(5000)
+  expect(service.diagnostics().terminals).toBe(0)
+})
