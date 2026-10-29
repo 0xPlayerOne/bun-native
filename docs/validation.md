@@ -71,19 +71,48 @@ must leave no tracked changes and preserve the formatting gate.
 
 ### Generated release PRs with skipped validation
 
-If a generated version PR is ready but has only skipped validation for its
-current commit, inspect the commit and workflow runs before retrying. Investigate
-any actual failed check separately. The existing
-`Release / Version` job in `Code Foundry Release` owns recovery: rerunning that
-job lets its generated-PR normalization recheck the stable head and issue the
-required `ready_for_review` transition for missing, cancelled or skipped validation.
-It preserves an active or successful validation owner and refuses to erase a
-failed validation result. Release PR draft state remains workflow-owned;
-normal required checks and branch protection still gate the merge.
+If a generated version PR's **Code Foundry Validation** owner is missing,
+cancelled or skipped for its current head, inspect that head and its workflow
+runs first. Investigate an actual failed, timed-out or action-required owner
+separately; this recovery does not clear those results. When the `Release / Version`
+job in `Code Foundry Release` validates its configured auto-merge credentials,
+rerunning that job lets its generated-PR normalization recheck the stable PR
+identity and perform the required `ready_for_review` transition for a missing,
+cancelled, skipped or neutral validation owner. It preserves the selected Code Foundry Validation owner when active or
+successful, and stops when that selected owner failed.
 
-This recovery was exercised for PR #167 after its first readiness transition
-left only skipped checks. The maintained normalization is in the
+The release workflow owns generated release PR draft and readiness transitions
+in the automated path. Without validated auto-merge credentials, it leaves the
+PR in draft and reports that manual readiness is required; follow that documented
+manual-release path rather than using this retry as a manual draft toggle. Once
+ready, normal required checks and branch protection still gate auto-merge.
+
+This recovery was exercised for PR #167 after its initial ready transition left
+only skipped checks: [Code Foundry Release recovery run 40827861430](https://github.com/0xPlayerOne/bunly/actions/runs/40827861430).
+The maintained normalization is in the
 [pinned release workflow](https://github.com/0xPlayerOne/code-foundry/blob/945e548d1a1de5f6ca6195d245e9d82fc8e4ca63/.github/workflows/release.yml).
+
+A late draft-snapshot run can also become the selected validation owner after
+a successful Ready-event run on the same commit. The pinned normalization
+selects the matching validation workflow with the highest **workflow run ID**;
+a later rerun attempt or check-run ID does not change that ordering. Inspect
+the complete exact-head run list and wait for draft-snapshot runs to settle.
+If the selected owner is skipped, the same workflow-owned recovery above
+applies even when an older Ready run succeeded.
+
+PR #168 exposed this ordering: Ready Validation run `40829670014` succeeded,
+but later draft-snapshot run `40829670111` was skipped. Targeted reruns of
+[Validation](https://github.com/0xPlayerOne/bunly/actions/runs/40829670014),
+[workbench/portable qualification](https://github.com/0xPlayerOne/bunly/actions/runs/40829669190)
+and [Electrobun qualification](https://github.com/0xPlayerOne/bunly/actions/runs/40829669195)
+produced successful required check contexts without clearing the blocked merge
+state. Those attempts remain recorded; successful check refresh alone was not
+accepted as recovery. The current main-push
+[Release / Version job](https://github.com/0xPlayerOne/bunly/actions/runs/40829588715)
+was rerun so the maintained normalizer could recheck the stable PR and its
+selected owner, then create a fresh readiness event. Fresh validation passed
+all 26 required checks and PR #168 auto-merged as `5c5507f` (0.5.0). Normal
+required checks and clean mergeability remain necessary for every merge.
 
 ## Native framework checks
 

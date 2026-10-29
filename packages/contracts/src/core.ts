@@ -12,6 +12,7 @@ export const CAPABILITIES = [
   'app.links',
   'app.open-url',
   'view.navigate',
+  'view.console',
   'view.composition',
   'session.ephemeral',
   'session.persistent',
