@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/0xPlayerOne/bunly/compare/v0.1.2...v0.1.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **release:** create version pull requests as drafts ([#155](https://github.com/0xPlayerOne/bunly/issues/155)) ([6f4b2ca](https://github.com/0xPlayerOne/bunly/commit/6f4b2ca50efc09fc482fbbbc18352dc1a62431ff))
+
 ## [0.1.2](https://github.com/0xPlayerOne/bunly/compare/v0.1.1...v0.1.2) (2026-10-29)
 
 
