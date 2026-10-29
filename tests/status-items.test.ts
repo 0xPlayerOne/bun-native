@@ -399,6 +399,7 @@ test('managed status items survive generations while click journals require a cu
     owner.attach(second, resource, bindings['status']!.schema)
     owner.commit(second, '{}')
     const secondScope = owner.scope(second)
+    assert.throws(() => owner.scope(first), /RETIRED/)
     await assert.rejects(firstScope.invoke(resource, 'ack-events', '{"through":1}'), /RETIRED/)
     await assert.rejects(
       secondScope.invoke(resource, 'ack-events', '{"through":1}'),

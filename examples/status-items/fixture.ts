@@ -213,12 +213,15 @@ export default async function qualifyStatusItems(backend: CefBackend): Promise<v
       const first = owner.begin('status:1', ['status'])
       owner.attach(first, resource, bindings['status']!.schema)
       owner.commit(first, '{}')
+      const firstScope = owner.scope(first)
       stage = 'managed-click'
       await bounded(backend.qualifyStatusItemClick(managed))
       stage = 'managed-read'
-      const events = JSON.parse(
-        await bounded(owner.scope(first).invoke(resource, 'events', 'null'))
-      ) as { type: string; sequence: number; state: { type: string } }[]
+      const events = JSON.parse(await bounded(firstScope.invoke(resource, 'events', 'null'))) as {
+        type: string
+        sequence: number
+        state: { type: string }
+      }[]
       assert.equal(events.length, 1)
       assert.equal(events[0]?.type, 'click')
       assert.equal(events[0]?.state.type, 'click')
@@ -229,10 +232,7 @@ export default async function qualifyStatusItems(backend: CefBackend): Promise<v
       owner.commit(second, '{}')
       stage = 'managed-retired'
       await bounded(
-        assert.rejects(
-          owner.scope(first).invoke(resource, 'ack-events', '{"through":1}'),
-          /RETIRED/
-        )
+        assert.rejects(firstScope.invoke(resource, 'ack-events', '{"through":1}'), /RETIRED/)
       )
       stage = 'managed-replay'
       assert.deepEqual(
