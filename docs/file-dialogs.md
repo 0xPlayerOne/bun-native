@@ -7,17 +7,18 @@ capability. A renderer never receives this API or its native scope token.
 
 ## Current platform scope
 
-| Platform    | Implementation                                               | Native qualification                                       |
-| ----------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
-| macOS ARM64 | Owned `NSOpenPanel` / `NSSavePanel` sheets, single selection | Pending actual native execution of the cancel-only fixture |
-| Windows x64 | Explicit `UNSUPPORTED_CAPABILITY`                            | No dialog implementation claim                             |
-| Linux x64   | Explicit `UNSUPPORTED_CAPABILITY`                            | No dialog implementation claim                             |
+| Platform    | Implementation                                               | Native qualification                                                                      |
+| ----------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| macOS ARM64 | Owned `NSOpenPanel` / `NSSavePanel` sheets, single selection | Cancel/revocation fixture passed at historical source `efe4db3`; selection is unqualified |
+| Windows x64 | Explicit `UNSUPPORTED_CAPABILITY`                            | No dialog implementation claim                                                            |
+| Linux x64   | Explicit `UNSUPPORTED_CAPABILITY`                            | No dialog implementation claim                                                            |
 
 Mock and system-webview backends do not advertise the facet. The existing
 window, clipboard, lifecycle, download and composition capabilities retain their
-own platform matrices. This increment does not finish issue [#34](https://github.com/0xPlayerOne/bunly/issues/34)
-or file-input/drag-and-drop issue [#36](https://github.com/0xPlayerOne/bunly/issues/36).
-Native cancellation qualification will not qualify user selection, physical
+own platform matrices; the combined desktop scope is in the [M7 capability map](m7-status.md).
+File-input and drag/drop operations use the separate [programmatic-files contract](programmatic-files.md)
+tracked by [#36](https://github.com/0xPlayerOne/bunly/issues/36).
+Native cancellation qualification does not qualify user selection, physical
 keyboard behavior, assistive technology, or file-input uploads.
 
 ## Application API
@@ -154,7 +155,14 @@ outcome.
 The hosted `full` suite runs this profile after downloads on every declared
 target and collects both failed and unsupported reports. The exact-source,
 artifact and shutdown gates remain prerequisites for later provider checks.
-Real native execution remains required before marking macOS qualified.
+The actual macOS cancel/revocation fixture passed at source
+`efe4db365e653425ffb0463683c265bb80ad7b67`, as recorded in
+[PR #139](https://github.com/0xPlayerOne/bunly/pull/139). Six admitted panels
+produced six native callbacks: three cancellations and three revocation failures.
+No file was selected; native panel owners were released and the observed process
+and backend shut down cleanly. This is historical-source evidence, not a claim
+that the current head was executed.
+
 Separate disposable integration tests must validate selection
 of only owned temporary files and independent reads/writes; this cancel-only
 profile makes no selection-correctness claim. Windows `IFileDialog` and a Linux
