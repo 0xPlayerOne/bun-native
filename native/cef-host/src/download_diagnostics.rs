@@ -1,7 +1,12 @@
 //! Timeout evidence only: fixed callback state and application-level launch
-//! counts. No CEF item, path, URL, command line or callback owner is retained.
+//! counts plus exact-request completion. No CEF item, path, URL, command line
+//! or callback owner is retained.
 use super::{CallbackPhase, Observation};
-use cef::DownloadInterruptReason;
+use crate::download_access::RequestCompletion;
+use cef::{
+    currently_on, BrowserHost, CefString, DownloadInterruptReason, ImplBrowserHost,
+    ImplPreferenceManager, ImplValue, ThreadId, ValueType,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::{
@@ -9,25 +14,45 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-pub(super) struct LaunchCounter(AtomicU32);
+pub(super) struct LaunchCounter {
+    count: AtomicU32,
+    subtype: &'static str,
+}
 impl LaunchCounter {
-    pub const fn new() -> Self {
-        Self(AtomicU32::new(0))
+    pub const fn new(subtype: &'static str) -> Self {
+        Self {
+            count: AtomicU32::new(0),
+            subtype,
+        }
     }
     pub fn observe(&self, process_type: Option<&str>, subtype: Option<&str>) {
-        if process_type == Some("utility") && subtype == Some("quarantine.mojom.Quarantine") {
+        if process_type == Some("utility") && subtype == Some(self.subtype) {
             let _ = self
-                .0
+                .count
                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
                     Some(count.saturating_add(1))
                 });
         }
     }
     pub fn count(&self) -> u32 {
-        self.0.load(Ordering::Relaxed)
+        self.count.load(Ordering::Relaxed)
     }
 }
-pub(super) static QUARANTINE_LAUNCHES: LaunchCounter = LaunchCounter::new();
+pub(super) static QUARANTINE_LAUNCHES: LaunchCounter =
+    LaunchCounter::new("quarantine.mojom.Quarantine");
+pub(super) static FILE_UTIL_LAUNCHES: LaunchCounter =
+    LaunchCounter::new("chrome.mojom.FileUtilService");
+
+/// A fixed read of the exact browser context, before admission and outside STATE.
+/// An absent/non-boolean preference or wrong-thread call remains unobserved.
+pub(super) fn safe_browsing_enabled(host: &BrowserHost) -> Option<bool> {
+    if currently_on(ThreadId::UI) == 0 {
+        return None;
+    }
+    let context = host.request_context()?;
+    let preference = context.preference(Some(&CefString::from("safebrowsing.enabled")))?;
+    (preference.get_type() == ValueType::BOOL).then(|| preference.bool() != 0)
+}
 
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -64,14 +89,22 @@ pub(super) struct Trace {
     callbacks: u32,
     last: Option<CallbackSnapshot>,
     quarantine_baseline: u32,
+    file_util_baseline: u32,
+    safe_browsing_enabled: Option<bool>,
     reported: bool,
 }
 impl Trace {
-    pub fn new(quarantine_baseline: u32) -> Self {
+    pub fn new(
+        quarantine_baseline: u32,
+        file_util_baseline: u32,
+        safe_browsing_enabled: Option<bool>,
+    ) -> Self {
         Self {
             callbacks: 0,
             last: None,
             quarantine_baseline,
+            file_util_baseline,
+            safe_browsing_enabled,
             reported: false,
         }
     }
@@ -112,17 +145,21 @@ impl Trace {
     pub fn timeout(
         &mut self,
         quarantine_launches: u32,
+        file_util_launches: u32,
         before: bool,
         callback_owned: bool,
+        request_completion: Option<RequestCompletion>,
     ) -> Option<Value> {
         if std::mem::replace(&mut self.reported, true) {
             return None;
         }
         // Saturation or a future counter reset is unknown, never a fabricated
         // zero. This application-wide delta does not identify one transfer.
-        let launches = (quarantine_launches != u32::MAX)
-            .then(|| quarantine_launches.checked_sub(self.quarantine_baseline))
-            .flatten();
+        let delta = |current: u32, baseline: u32| {
+            (current != u32::MAX)
+                .then(|| current.checked_sub(baseline))
+                .flatten()
+        };
         Some(json!({
             "event":"bunly.host.download-timeout",
             "schema":1,
@@ -131,7 +168,10 @@ impl Trace {
             "callbackCount":self.callbacks,
             "callbackCountSaturated":self.callbacks == u32::MAX,
             "lastCallback":self.last,
-            "quarantineObservedLaunches":launches,
+            "requestCompletion":request_completion,
+            "safeBrowsingEnabledAtAdmission":self.safe_browsing_enabled,
+            "quarantineObservedLaunches":delta(quarantine_launches, self.quarantine_baseline),
+            "fileUtilityObservedLaunches":delta(file_util_launches, self.file_util_baseline),
         }))
     }
 }
@@ -139,6 +179,7 @@ impl Trace {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::download_access::RequestCompletionStatus;
 
     fn observation() -> Observation {
         Observation {
@@ -159,7 +200,7 @@ mod tests {
     }
     #[test]
     fn timeout_receipt_keeps_only_finite_last_callback_state_and_emits_once() {
-        let mut trace = Trace::new(7);
+        let mut trace = Trace::new(7, 3, Some(true));
         let mut item = observation();
         item.path.clear();
         item.received = 0;
@@ -175,9 +216,18 @@ mod tests {
             &item,
             Some(Path::new("/private/download/stage/payload")),
         );
-        let receipt = trace.timeout(8, true, true).unwrap();
+        let completion = RequestCompletion::new(RequestCompletionStatus::Success, 32768);
+        let receipt = trace.timeout(8, 4, true, true, Some(completion)).unwrap();
         assert_eq!(receipt["callbackCount"], 2);
         assert_eq!(receipt["quarantineObservedLaunches"], 1);
+        assert_eq!(receipt["fileUtilityObservedLaunches"], 1);
+        assert_eq!(receipt["safeBrowsingEnabledAtAdmission"], true);
+        assert_eq!(
+            receipt["requestCompletion"],
+            json!({
+                "status":"success","receivedContentLength":32768
+            })
+        );
         assert_eq!(
             receipt["lastCallback"],
             json!({
@@ -192,11 +242,11 @@ mod tests {
         for private in ["private", "secret", "credential", "321", "payload"] {
             assert!(!encoded.contains(private));
         }
-        assert!(trace.timeout(9, true, true).is_none());
+        assert!(trace.timeout(9, 3, true, true, None).is_none());
     }
     #[test]
     fn snapshots_preserve_raw_callback_changes_without_inventing_progress_or_paths() {
-        let mut trace = Trace::new(0);
+        let mut trace = Trace::new(0, 0, None);
         let mut item = observation();
         item.percent_complete = 101;
         item.in_progress = false;
@@ -208,7 +258,7 @@ mod tests {
             &item,
             Some(Path::new("/a/different/owned-stage")),
         );
-        let receipt = trace.timeout(0, true, false).unwrap();
+        let receipt = trace.timeout(0, 3, true, false, None).unwrap();
         assert_eq!(receipt["lastCallback"]["pathState"], "other");
         assert_eq!(receipt["lastCallback"]["percentComplete"], Value::Null);
         assert_eq!(receipt["lastCallback"]["inProgress"], false);
@@ -218,19 +268,62 @@ mod tests {
             receipt["lastCallback"]["interruptReason"],
             "file-access-denied"
         );
-        let mut empty = Trace::new(4);
-        let receipt = empty.timeout(4, false, false).unwrap();
+        let mut empty = Trace::new(4, 2, None);
+        let receipt = empty.timeout(4, 3, false, false, None).unwrap();
         assert_eq!(receipt["lastCallback"], Value::Null);
         assert_eq!(receipt["quarantineObservedLaunches"], 0);
-        let mut unavailable = Trace::new(u32::MAX);
+        assert_eq!(receipt["fileUtilityObservedLaunches"], 1);
+        assert_eq!(receipt["safeBrowsingEnabledAtAdmission"], Value::Null);
+        assert_eq!(receipt["requestCompletion"], Value::Null);
+        let mut unavailable = Trace::new(u32::MAX, u32::MAX, None);
         assert_eq!(
-            unavailable.timeout(u32::MAX, true, true).unwrap()["quarantineObservedLaunches"],
+            unavailable
+                .timeout(u32::MAX, u32::MAX, true, true, None)
+                .unwrap()["quarantineObservedLaunches"],
             Value::Null
         );
     }
     #[test]
+    fn completion_and_context_metadata_preserve_unknown_and_disabled_values() {
+        let mut trace = Trace::new(3, 7, Some(false));
+        let completion = RequestCompletion::new(RequestCompletionStatus::Failed, -1);
+        let receipt = trace
+            .timeout(2, u32::MAX, false, false, Some(completion))
+            .unwrap();
+        assert_eq!(receipt["quarantineObservedLaunches"], Value::Null);
+        assert_eq!(receipt["fileUtilityObservedLaunches"], Value::Null);
+        assert_eq!(receipt["safeBrowsingEnabledAtAdmission"], false);
+        assert_eq!(
+            receipt["requestCompletion"],
+            json!({
+                "status":"failed","receivedContentLength":null
+            })
+        );
+        assert_eq!(receipt["lastCallback"], Value::Null);
+    }
+    #[test]
+    fn file_utility_counter_is_independent_and_matches_only_its_fixed_subtype() {
+        let quarantine = LaunchCounter::new("quarantine.mojom.Quarantine");
+        let file_util = LaunchCounter::new("chrome.mojom.FileUtilService");
+        for (process_type, subtype) in [
+            (Some("utility"), Some("quarantine.mojom.Quarantine")),
+            (Some("renderer"), Some("chrome.mojom.FileUtilService")),
+            (Some("utility"), Some("chrome.mojom.FileUtilService.extra")),
+            (Some("utility"), None),
+        ] {
+            file_util.observe(process_type, subtype);
+        }
+        assert_eq!(file_util.count(), 0);
+        file_util.observe(Some("utility"), Some("chrome.mojom.FileUtilService"));
+        assert_eq!(file_util.count(), 1);
+        assert_eq!(quarantine.count(), 0);
+        file_util.count.store(u32::MAX, Ordering::Relaxed);
+        file_util.observe(Some("utility"), Some("chrome.mojom.FileUtilService"));
+        assert_eq!(file_util.count(), u32::MAX);
+    }
+    #[test]
     fn quarantine_counter_requires_the_exact_native_utility_type_and_never_wraps() {
-        let counter = LaunchCounter::new();
+        let counter = LaunchCounter::new("quarantine.mojom.Quarantine");
         for (process_type, subtype) in [
             (None, Some("quarantine.mojom.Quarantine")),
             (Some("renderer"), Some("quarantine.mojom.Quarantine")),
@@ -252,7 +345,7 @@ mod tests {
             }
         });
         assert_eq!(counter.count(), 128);
-        counter.0.store(u32::MAX, Ordering::Relaxed);
+        counter.count.store(u32::MAX, Ordering::Relaxed);
         counter.observe(Some("utility"), Some("quarantine.mojom.Quarantine"));
         assert_eq!(counter.count(), u32::MAX);
     }

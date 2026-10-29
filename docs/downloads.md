@@ -182,6 +182,25 @@ never contains a pathname. A missing callback is `null`, unknown percentages are
 `null`, and native interruption reasons use a fixed label set. No CEF item is
 retained or polled for this receipt.
 
+`requestCompletion` is either `null` (not observed) or the first resource-load
+completion for the current exact request lease. It contains only the fixed
+`success`, `failed`, `cancelled` or `unknown` status and a nullable
+`receivedContentLength` counter. The IO callback checks the native operation,
+request identifier (including zero), redirect epoch, secret-tagged URL and live
+network policy; stale, foreign and revoked leases cannot populate this snapshot.
+Redirects clear the previous hop's observation. Negative or out-of-bound byte
+counts remain `null`. The receipt is copied before timeout cancellation, so a
+later cancellation cannot become evidence of earlier network completion.
+Pinned CEF reports encoded body bytes here; they need not equal decoded download
+bytes. HTTP completion does not prove the destination file has drained or that
+Chromium's download/safety checks have completed.
+
+`safeBrowsingEnabledAtAdmission` is a read-only boolean snapshot of the exact
+browser request context's `safebrowsing.enabled` preference on the UI thread,
+before admission. An absent or non-boolean preference is `null`. It records the
+preference, not whether any particular check ran or succeeded; no preference is
+changed.
+
 `quarantineObservedLaunches` counts exact Chromium quarantine utility launches
 observed anywhere in this application since the operation's admission. A
 saturated/unavailable delta is `null`. The read-only child-launch callback
@@ -192,6 +211,15 @@ Chromium's completion/annotation pipeline from earlier transfer gates. It does
 not prove that Windows Attachment Services is blocked, that the service is still
 running, or which transfer caused a launch when operations overlap. The native
 deadline, cancellation, antivirus behavior and cleanup rules remain unchanged.
+
+`fileUtilityObservedLaunches` independently counts the exact
+`type=utility`, `utility-sub-type=chrome.mojom.FileUtilService` launches since
+admission, with the same saturation and overlap limits. Pinned Chromium's
+[download file analyzer](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/file_analyzer.cc)
+uses the [file utility service](https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/file_util_service.cc)
+for ZIP inspection. An observed launch does not prove the service belongs to
+this transfer or that archive/security inspection succeeded. Zero launches do
+not rule out earlier safety-check work.
 
 ## Destination and filesystem guarantees
 

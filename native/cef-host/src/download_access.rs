@@ -2,13 +2,38 @@
 //! operation; an epoch and one-shot expected hop bind each request handler.
 //! Chromium's ResourceDownloader uses request ID 0. It is an opaque value, not
 //! authority or an unclaimed sentinel. UI revocation remains independent.
-use crate::network_policy::NetworkPolicy;
+use crate::{network_policy::NetworkPolicy, rpc_protocol as wire};
+use serde::Serialize;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
 
 const MAX_URL: usize = 4096;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum RequestCompletionStatus {
+    Success,
+    Failed,
+    Cancelled,
+    Unknown,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RequestCompletion {
+    status: RequestCompletionStatus,
+    received_content_length: Option<u64>,
+}
+impl RequestCompletion {
+    pub fn new(status: RequestCompletionStatus, received_content_length: i64) -> Self {
+        Self {
+            status,
+            received_content_length: u64::try_from(received_content_length)
+                .ok()
+                .filter(|value| *value <= wire::MAX_ID),
+        }
+    }
+}
 #[derive(Default)]
 pub(crate) struct Access(Mutex<Option<Arc<Permit>>>);
 pub(crate) enum RequestPolicy {
@@ -26,6 +51,7 @@ struct RequestState {
     // Exactly one current or pending hop. A redirect retires the old epoch
     // before publishing its expected continuation under this same mutex.
     hop: Hop,
+    resource_completion: Option<RequestCompletion>,
 }
 pub(crate) struct Permit {
     request_url: String,
@@ -114,6 +140,7 @@ impl Permit {
                     url: request_url.clone(),
                     claimed: false,
                 },
+                resource_completion: None,
             }),
             request_url,
             fragment,
@@ -129,6 +156,9 @@ impl Permit {
     }
     pub fn admitted(&self) -> bool {
         self.state.lock().unwrap().request.is_some()
+    }
+    pub fn resource_completion(&self) -> Option<RequestCompletion> {
+        self.state.lock().unwrap().resource_completion
     }
     pub fn revoke(&self) {
         self.active.store(false, Ordering::Release);
@@ -177,6 +207,26 @@ impl RequestLease {
             && network.navigation(url).is_ok()
             && http_url(url).is_some()
     }
+    /// Observe only the first completion of this exact current hop. This is
+    /// diagnostic state, never a download terminal receipt or new authority.
+    pub fn observe_resource_completion(
+        &self,
+        url: &str,
+        identifier: u64,
+        network: &NetworkPolicy,
+        status: RequestCompletionStatus,
+        received_content_length: i64,
+    ) {
+        let mut state = self.permit.state.lock().unwrap();
+        if self.matches(&state, url, identifier)
+            && network.navigation(url).is_ok()
+            && http_url(url).is_some()
+            && state.resource_completion.is_none()
+        {
+            state.resource_completion =
+                Some(RequestCompletion::new(status, received_content_length));
+        }
+    }
     pub fn deny(&self) {
         self.permit.deny();
     }
@@ -208,6 +258,7 @@ impl RequestLease {
             url: url.clone(),
             claimed: false,
         };
+        state.resource_completion = None;
         Some(url)
     }
 }
@@ -248,6 +299,185 @@ mod tests {
             panic!("Exact native hop was not admitted");
         };
         lease
+    }
+    #[test]
+    fn resource_completion_is_exact_bound_finite_and_first_observation_only() {
+        for identifier in [0, 17] {
+            let access = Access::default();
+            let permit = Permit::new("https://download.test/private?credential=secret").unwrap();
+            access.install(permit.clone()).unwrap();
+            let lease = owner(&access, permit.request_url(), identifier, false);
+            assert_eq!(permit.resource_completion(), None);
+            for (url, id) in [
+                (
+                    "https://download.test/private?credential=secret".to_owned(),
+                    identifier,
+                ),
+                (
+                    format!("https://download.test/other#{}", permit.fragment),
+                    identifier,
+                ),
+                (permit.request_url().to_owned(), identifier + 1),
+            ] {
+                lease.observe_resource_completion(
+                    &url,
+                    id,
+                    &network(),
+                    RequestCompletionStatus::Success,
+                    32768,
+                );
+                assert_eq!(permit.resource_completion(), None);
+            }
+            lease.observe_resource_completion(
+                permit.request_url(),
+                identifier,
+                &network(),
+                RequestCompletionStatus::Success,
+                32768,
+            );
+            let completion = permit.resource_completion().unwrap();
+            assert_eq!(
+                serde_json::to_value(completion).unwrap(),
+                json!({
+                    "status":"success","receivedContentLength":32768
+                })
+            );
+            lease.observe_resource_completion(
+                permit.request_url(),
+                identifier,
+                &network(),
+                RequestCompletionStatus::Failed,
+                0,
+            );
+            assert_eq!(permit.resource_completion(), Some(completion));
+            assert!(permit.active());
+            assert!(!permit.denied());
+            assert!(lease.allows(permit.request_url(), identifier, &network()));
+            let encoded = serde_json::to_string(&completion).unwrap();
+            for private in [
+                "download.test",
+                "private",
+                "credential",
+                "secret",
+                &permit.fragment,
+            ] {
+                assert!(!encoded.contains(private));
+            }
+        }
+    }
+    #[test]
+    fn resource_completion_cannot_cross_redirect_epochs_even_for_the_same_url() {
+        let access = Access::default();
+        let permit = Permit::new("https://download.test/file").unwrap();
+        access.install(permit.clone()).unwrap();
+        let first = owner(&access, permit.request_url(), 0, false);
+        first.observe_resource_completion(
+            permit.request_url(),
+            0,
+            &network(),
+            RequestCompletionStatus::Success,
+            10,
+        );
+        assert!(permit.resource_completion().is_some());
+        let target = first
+            .redirect(
+                permit.request_url(),
+                0,
+                "https://cdn.test/final",
+                &network(),
+            )
+            .unwrap();
+        assert_eq!(permit.resource_completion(), None);
+        let second = owner(&access, &target, 0, false);
+        first.observe_resource_completion(
+            &target,
+            0,
+            &network(),
+            RequestCompletionStatus::Success,
+            20,
+        );
+        assert_eq!(permit.resource_completion(), None);
+        let same = second.redirect(&target, 0, &target, &network()).unwrap();
+        let third = owner(&access, &same, 0, false);
+        second.observe_resource_completion(
+            &same,
+            0,
+            &network(),
+            RequestCompletionStatus::Success,
+            30,
+        );
+        assert_eq!(permit.resource_completion(), None);
+        third.observe_resource_completion(
+            &same,
+            0,
+            &network(),
+            RequestCompletionStatus::Success,
+            40,
+        );
+        assert_eq!(
+            permit.resource_completion(),
+            Some(RequestCompletion::new(RequestCompletionStatus::Success, 40,))
+        );
+    }
+    #[test]
+    fn revoked_or_retired_completion_cannot_populate_or_replace_another_owner() {
+        for retire_network in [false, true] {
+            let access = Access::default();
+            let permit = Permit::new("https://download.test/file").unwrap();
+            access.install(permit.clone()).unwrap();
+            let lease = owner(&access, permit.request_url(), 0, false);
+            let policy = network();
+            if retire_network {
+                policy.retire();
+            } else {
+                permit.revoke();
+            }
+            lease.observe_resource_completion(
+                permit.request_url(),
+                0,
+                &policy,
+                RequestCompletionStatus::Success,
+                32768,
+            );
+            assert_eq!(permit.resource_completion(), None);
+            access.clear(&permit);
+            let replacement = Permit::new("https://download.test/file").unwrap();
+            access.install(replacement.clone()).unwrap();
+            let _current = owner(&access, replacement.request_url(), 0, false);
+            lease.observe_resource_completion(
+                replacement.request_url(),
+                0,
+                &network(),
+                RequestCompletionStatus::Success,
+                32768,
+            );
+            assert_eq!(replacement.resource_completion(), None);
+            assert!(replacement.active());
+        }
+    }
+    #[test]
+    fn resource_completion_preserves_zero_unknown_and_bounded_raw_lengths() {
+        for (status, label) in [
+            (RequestCompletionStatus::Success, "success"),
+            (RequestCompletionStatus::Failed, "failed"),
+            (RequestCompletionStatus::Cancelled, "cancelled"),
+            (RequestCompletionStatus::Unknown, "unknown"),
+        ] {
+            for (raw, expected) in [
+                (-1, None),
+                (0, Some(0)),
+                (32768, Some(32768)),
+                (wire::MAX_ID as i64, Some(wire::MAX_ID)),
+                (wire::MAX_ID as i64 + 1, None),
+                (i64::MAX, None),
+            ] {
+                let value = serde_json::to_value(RequestCompletion::new(status, raw)).unwrap();
+                assert_eq!(
+                    value,
+                    json!({"status":label,"receivedContentLength":expected})
+                );
+            }
+        }
     }
     #[test]
     fn native_zero_request_id_claims_only_the_secret_once_independent_of_advisory_flag() {
