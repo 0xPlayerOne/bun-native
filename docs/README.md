@@ -77,6 +77,12 @@ completed final-head validation and squash-merge record.
 
 ## Active technical guides
 
+[Browser actions](browser-actions.md) and
+[programmatic file interactions](programmatic-files.md) describe the separately
+gated development view-control facets, their native ownership bounds and actual
+GUI qualification requirements. [Downloads](downloads.md) covers the existing
+backend-owned transfer pipeline and safe destination policy.
+
 [Packaged origin](packaged-origin.md), [artifact acquisition](artifact-acquisition.md),
 [RPC](rpc.md), [streams](streams.md), [native CEF streams](native-streams.md), and
 [provenance](provenance.md) describe their implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and

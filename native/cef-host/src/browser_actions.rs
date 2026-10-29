@@ -423,7 +423,7 @@ pub(super) fn release(request: u64, args: &Value) -> Result<(), String> {
     reply(request, Value::Null);
     Ok(())
 }
-pub(super) fn before_close(view: u64, browser: Option<&mut Browser>) {
+pub(super) fn before_close(view: u64, browser: Option<&Browser>) {
     let id = STATE.with(|s| {
         s.borrow()
             .browser_actions
