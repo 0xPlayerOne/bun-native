@@ -100,8 +100,12 @@ manifest baseline `0.0.0` and initial version `0.1.0` bootstrap the first
 release; the baseline is not a claim of an existing tag. The 0.x releases are
 experimental and do not establish production qualification.
 Review the generated version PR and its changelog before its first merge.
-The runtime release workflow reconciles the Bun workspace lockfile; verify that
-step and all required checks on the generated PR. npm publishing and post-release
+Release Please opens each new version PR as a draft. The release workflow then
+synchronizes the Bun workspace lockfile before Code Foundry manages readiness;
+with a validated automation token it can mark the updated PR ready for review.
+The PR draft setting is separate from GitHub release visibility. Existing ready
+PR updates still receive synchronize validation. Verify the lockfile sync and all
+required checks on the generated PR. npm publishing and post-release
 publication remain disabled. CodeQL and
 Dependency Review are enabled for this public repository. Automatic CI remains
 controlled by the existing repository variable and checked-in billing policy.
