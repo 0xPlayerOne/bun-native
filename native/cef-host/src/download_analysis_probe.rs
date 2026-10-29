@@ -2,15 +2,25 @@
 //! This probe is not an acceptance path and must not be merged. Posting marker
 //! tasks can perturb scheduling. Histogram snapshots are application-wide.
 //! CEF 47dbc1d exposes the read-only Browser.getHistogram protocol operation;
-//! Chromium 156.0.8078.17 records these three histograms in the browser process.
+//! Chromium 156.0.8078.17 records these fixed histograms in the browser process.
 use super::*;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
 
-const HISTOGRAMS: [&str; 3] = [
+const HISTOGRAMS: [&str; 6] = [
     "SBClientDownload.CheckDownloadStats",
     "SBClientDownload.ZipArchiveAnalysisResult",
     "SBClientDownload.FileAnalysisDuration.Zip",
+    "SBClientDownload.DownloadRequestNetworkResult",
+    "SBClientDownload.DownloadRequestDuration",
+    "SBClientDownload.DownloadRequestNetworkDuration",
 ];
+const NETWORK_RESULT_INDEX: usize = 3;
+// Pinned net/base/net_error_list.h defines errors down to -906. HTTP parsing
+// accepts nonnegative status numbers through i32::MAX, including nonstandard ones.
+// https://github.com/chromium/chromium/blob/156.0.8078.17/net/base/net_error_list.h
+// https://github.com/chromium/chromium/blob/156.0.8078.17/net/http/http_response_headers.cc#L154-L174
+const MIN_NETWORK_ERROR: i64 = -906;
+const MAX_NETWORK_RESULT: i64 = i32::MAX as i64;
 const MAX_JSON_BYTES: usize = 16 * 1024;
 const MAX_BUCKETS: usize = 64;
 const MAX_INTEGER: u64 = 9_007_199_254_740_991;
@@ -109,7 +119,7 @@ struct Query {
     request: u64,
     registration: Option<Registration>,
     index: usize,
-    histograms: [Option<Value>; 3],
+    histograms: [Option<Value>; HISTOGRAMS.len()],
     flight: Flight,
     queued: bool,
 }
@@ -507,7 +517,10 @@ fn finish(download: u64, status: &'static str) {
         "histograms":{
             "checkReasons":query.histograms[0],
             "zipAnalysisResults":query.histograms[1],
-            "zipAnalysisDuration":query.histograms[2]
+            "zipAnalysisDuration":query.histograms[2],
+            "requestNetworkResult":query.histograms[3],
+            "requestDuration":query.histograms[4],
+            "requestNetworkDuration":query.histograms[5]
         },
         "observerReleased":true
     });
@@ -562,6 +575,9 @@ fn accept_histogram(raw: &[u8], index: usize) -> Option<Value> {
     if histogram.len() != 4 || histogram.get("name")?.as_str()? != HISTOGRAMS[index] {
         return None;
     }
+    if index == NETWORK_RESULT_INDEX {
+        return accept_network_histogram(histogram);
+    }
     let count = histogram.get("count")?.as_u64()?;
     let sum = histogram.get("sum")?.as_u64()?;
     if count > MAX_INTEGER || sum > MAX_INTEGER {
@@ -612,6 +628,58 @@ fn accept_histogram(raw: &[u8], index: usize) -> Option<Value> {
     Some(json!({"count":count,"sum":sum,"buckets":fixed}))
 }
 
+// RecordHttpResponseOrErrorCode stores the HTTP status for OK or
+// ERR_HTTP_RESPONSE_CODE_FAILURE, and otherwise the negative net error.
+// https://github.com/chromium/chromium/blob/156.0.8078.17/components/safe_browsing/core/common/utils.cc#L137-L145
+// Sparse buckets are exactly [sample, sample + 1), including i32::MAX + 1.
+// https://github.com/chromium/chromium/blob/156.0.8078.17/base/metrics/sample_map_iterator.h#L55-L61
+// Keep this signed path separate from all existing unsigned histogram parsing.
+fn accept_network_histogram(histogram: &serde_json::Map<String, Value>) -> Option<Value> {
+    let count = histogram.get("count")?.as_u64()?;
+    let sum = histogram.get("sum")?.as_i64()?;
+    let maximum_sum = MAX_INTEGER as i64;
+    if count > MAX_INTEGER || !(-maximum_sum..=maximum_sum).contains(&sum) {
+        return None;
+    }
+    let buckets = histogram.get("buckets")?.as_array()?;
+    if buckets.len() > MAX_BUCKETS {
+        return None;
+    }
+    let mut total = 0_u64;
+    let mut previous_high = None;
+    let mut weighted_sum = 0_i128;
+    let mut fixed = Vec::with_capacity(buckets.len());
+    for bucket in buckets {
+        let bucket = bucket.as_object()?;
+        if bucket.len() != 3 {
+            return None;
+        }
+        let low = bucket.get("low")?.as_i64()?;
+        let high = bucket.get("high")?.as_i64()?;
+        let entries = bucket.get("count")?.as_u64()?;
+        if !(MIN_NETWORK_ERROR..=MAX_NETWORK_RESULT).contains(&low)
+            || high != low.checked_add(1)?
+            || previous_high.is_some_and(|previous| low < previous)
+            || entries == 0
+            || entries > MAX_INTEGER
+        {
+            return None;
+        }
+        total = total.checked_add(entries)?;
+        if total > MAX_INTEGER {
+            return None;
+        }
+        weighted_sum =
+            weighted_sum.checked_add(i128::from(low).checked_mul(i128::from(entries))?)?;
+        previous_high = Some(high);
+        fixed.push(json!({"low":low,"high":high,"count":entries}));
+    }
+    if total != count || weighted_sum != i128::from(sum) {
+        return None;
+    }
+    Some(json!({"count":count,"sum":sum,"buckets":fixed}))
+}
+
 wrap_dev_tools_message_observer! {
     struct AnalysisObserver { download: u64 }
     impl DevToolsMessageObserver {
@@ -650,6 +718,10 @@ mod tests {
     }
     fn accepted(value: &Value, index: usize) -> Option<Value> {
         accept_histogram(&serde_json::to_vec(value).unwrap(), index)
+    }
+    fn network_histogram(low: i64, high: i64, count: u64, sum: i64) -> Value {
+        json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],"count":count,"sum":sum,
+            "buckets":[{"low":low,"high":high,"count":count}]}})
     }
 
     #[test]
@@ -716,6 +788,126 @@ mod tests {
             (0..=MAX_BUCKETS).map(|n| json!({"low":n,"high":n+1,"count":1})).collect::<Vec<_>>()
         }});
         assert!(accepted(&value, 2).is_none());
+    }
+
+    #[test]
+    fn accepts_signed_network_errors_http_statuses_and_exact_mixed_sum() {
+        // Encoding: components/safe_browsing/core/common/utils.cc:137-145 at
+        // Chromium 156.0.8078.17; -105 is NAME_NOT_RESOLVED, 503 is HTTP status.
+        for sample in [-906, -105, -1, 0, 200, 503, i64::from(i32::MAX)] {
+            let value = network_histogram(sample, sample + 1, 1, sample);
+            assert!(accepted(&value, NETWORK_RESULT_INDEX).is_some());
+        }
+        let mixed = json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],
+        "count":3,"sum":293,"buckets":[
+            {"low":-105,"high":-104,"count":2},
+            {"low":503,"high":504,"count":1}
+        ]}});
+        let parsed = accepted(&mixed, NETWORK_RESULT_INDEX).unwrap();
+        assert_eq!(parsed["sum"], 293);
+        assert_eq!(parsed["buckets"][0]["low"], -105);
+        let empty = json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],
+            "count":0,"sum":0,"buckets":[]}});
+        assert!(accepted(&empty, NETWORK_RESULT_INDEX).is_some());
+    }
+
+    #[test]
+    fn rejects_out_of_bounds_network_samples_and_unsafe_numbers() {
+        for (low, high, count, sum) in [
+            (-907, -906, 1, -907),
+            (-105, -103, 1, -105),
+            (i64::from(i32::MAX) + 1, i64::from(i32::MAX) + 2, 1, 0),
+            (-105, -104, 0, 0),
+            (-105, -104, MAX_INTEGER + 1, -105),
+            (-105, -104, 1, -104),
+            (503, 504, 1, 504),
+        ] {
+            assert!(accepted(
+                &network_histogram(low, high, count, sum),
+                NETWORK_RESULT_INDEX
+            )
+            .is_none());
+        }
+        for sum in [-(MAX_INTEGER as i64) - 1, MAX_INTEGER as i64 + 1] {
+            let value = network_histogram(-105, -104, 1, sum);
+            assert!(accepted(&value, NETWORK_RESULT_INDEX).is_none());
+        }
+        let value = network_histogram(-105, -104, 1, -105);
+        for invalid in [json!(-1), json!(1.5), Value::Null] {
+            let mut changed = value.clone();
+            changed["histogram"]["buckets"][0]["count"] = invalid;
+            assert!(accepted(&changed, NETWORK_RESULT_INDEX).is_none());
+        }
+        let mut changed = value.clone();
+        changed["histogram"]["sum"] = json!(-105.5);
+        assert!(accepted(&changed, NETWORK_RESULT_INDEX).is_none());
+        changed = value;
+        changed["histogram"]["buckets"][0]["rawError"] = json!("private");
+        assert!(accepted(&changed, NETWORK_RESULT_INDEX).is_none());
+    }
+
+    #[test]
+    fn rejects_network_overlap_count_mismatch_and_arithmetic_overflow() {
+        let mut value = network_histogram(-105, -104, 1, -105);
+        value["histogram"]["count"] = json!(2);
+        assert!(accepted(&value, NETWORK_RESULT_INDEX).is_none());
+        value["histogram"]["buckets"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"low":-105,"high":-104,"count":1}));
+        value["histogram"]["sum"] = json!(-210);
+        assert!(accepted(&value, NETWORK_RESULT_INDEX).is_none());
+        let reversed = json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],
+        "count":2,"sum":398,"buckets":[
+            {"low":503,"high":504,"count":1},
+            {"low":-105,"high":-104,"count":1}
+        ]}});
+        assert!(accepted(&reversed, NETWORK_RESULT_INDEX).is_none());
+        // The weighted product exceeds i64; checked i128 must reject the forged
+        // safe-sized sum without overflowing. Count aggregation is bounded too.
+        let huge = network_histogram(
+            i64::from(i32::MAX),
+            i64::from(i32::MAX) + 1,
+            MAX_INTEGER,
+            MAX_INTEGER as i64,
+        );
+        assert!(accepted(&huge, NETWORK_RESULT_INDEX).is_none());
+        let count_overflow = json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],
+        "count":MAX_INTEGER,"sum":0,"buckets":[
+            {"low":-1,"high":0,"count":MAX_INTEGER},
+            {"low":1,"high":2,"count":1}
+        ]}});
+        assert!(accepted(&count_overflow, NETWORK_RESULT_INDEX).is_none());
+        let too_many = json!({"histogram":{"name":HISTOGRAMS[NETWORK_RESULT_INDEX],
+            "count":MAX_BUCKETS+1,"sum":(0..=MAX_BUCKETS).sum::<usize>(),"buckets":
+            (0..=MAX_BUCKETS).map(|n| json!({"low":n,"high":n+1,"count":1})).collect::<Vec<_>>()
+        }});
+        assert!(accepted(&too_many, NETWORK_RESULT_INDEX).is_none());
+    }
+
+    #[test]
+    fn keeps_all_other_histograms_unsigned_and_durations_bounded() {
+        // Both new timers are emitted only by OnURLLoaderComplete. Total starts
+        // at object construction; network starts after URL-loader submission.
+        // https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/check_client_download_request_base.h#L231-L233
+        // https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/check_client_download_request_base.cc#L529-L533
+        // https://github.com/chromium/chromium/blob/156.0.8078.17/chrome/browser/safe_browsing/download_protection/check_client_download_request_base.cc#L654-L678
+        for index in [0, 1, 2, 4, 5] {
+            let mut value = network_histogram(-105, -104, 1, -105);
+            value["histogram"]["name"] = json!(HISTOGRAMS[index]);
+            assert!(accepted(&value, index).is_none());
+            value = histogram(index, 0, 1, 1, 0);
+            value["histogram"]["sum"] = json!(-1);
+            assert!(accepted(&value, index).is_none());
+        }
+        for index in [4, 5] {
+            assert!(accepted(&histogram(index, 452, 574, 1, 480), index).is_some());
+            assert!(accepted(&histogram(index, 0, 1, 1, 0), index).is_some());
+            assert!(accepted(&histogram(index, 452, 574, 1, 574), index).is_none());
+            assert!(accepted(&histogram(index, 0, i32::MAX as u64 + 1, 1, 0), index).is_none());
+        }
+        assert!(accepted(&network_histogram(-105, -104, 1, -105), 4).is_none());
+        assert!(accept_histogram(&vec![b' '; MAX_JSON_BYTES + 1], NETWORK_RESULT_INDEX).is_none());
     }
 
     #[test]
