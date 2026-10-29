@@ -41,7 +41,7 @@ NATIVE_DIAGNOSTIC_EVENTS = frozenset(
 def phase_marker(item, stdout):
     """Diagnostics only: native transport fixtures have no protocol stdout.
 
-    Stderr accepts one exact versioned marker and three fixed phase names. It
+    Stderr accepts exact versioned markers and fixed phase names. It
     cannot supply native success, process ownership, or authority evidence.
     """
     if not isinstance(item, dict):
@@ -64,6 +64,24 @@ def phase_marker(item, stdout):
         and type(item.get("schema")) is int
         and item["schema"] == 1
         and item.get("phase") in ("warmup", "ramp", "sustained", "recovery")
+    ):
+        return item["phase"]
+    if (
+        not stdout
+        and set(item) == {"event", "schema", "phase"}
+        and item.get("event") == "bunly.composition.phase"
+        and type(item.get("schema")) is int
+        and item["schema"] == 1
+        and item.get("phase")
+        in (
+            "composition-warmup",
+            "composition-idle",
+            "composition-resize",
+            "composition-overlay",
+            "composition-recreate",
+            "composition-recovery",
+            "composition-complete",
+        )
     ):
         return item["phase"]
     return None
