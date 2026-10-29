@@ -45,7 +45,8 @@ drop.addEventListener('drop',event=>{event.preventDefault();send(event.dataTrans
 </script>`
 
 /** Bun's multipart parser infers File.type from the filename on some versions.
- * Inspect the actual first part header so acceptance measures the wire MIME. */
+ * The controlled fixture appends its file first. Inspect that part header so
+ * acceptance measures the wire MIME and rejects ambiguous headers. */
 async function uploadedWireMime(request: Request, name: UploadCase): Promise<string> {
   const contentType = request.headers.get('content-type') ?? ''
   const boundary = /^multipart\/form-data;\s*boundary=([A-Za-z0-9'()+_,.=:?-]{1,70})$/i.exec(

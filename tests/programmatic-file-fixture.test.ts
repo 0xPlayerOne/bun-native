@@ -185,7 +185,10 @@ test('upload peer records the multipart media type instead of inferring it from 
       ['isolated', 'image/png'],
     ] as const) {
       const data = new FormData()
-      data.append('file', new File(['sample'], `${name}.bin`, { type }))
+      const bytes = new TextEncoder().encode(
+        'sample\r\nContent-Type: application/octet-stream\r\n\r\n'
+      )
+      data.append('file', new File([bytes], `${name}.bin`, { type }))
       data.append('kind', 'file-input')
       data.append('trusted', 'false')
       const response = await fetch(server.origin + '/upload/' + name, {
@@ -194,8 +197,38 @@ test('upload peer records the multipart media type instead of inferring it from 
         body: data,
       })
       assert.equal(response.status, 200)
-      assert.equal((await server.receipt(name)).mime, type)
+      const observed = await server.receipt(name)
+      assert.equal(observed.mime, type)
+      assert.equal(observed.sha256, createHash('sha256').update(bytes).digest('hex'))
     }
+  } finally {
+    await server.stop()
+  }
+})
+
+test('upload peer rejects duplicate file media headers', async () => {
+  const server = fileFixtureServer()
+  try {
+    const body = [
+      '--fixture',
+      'Content-Disposition: form-data; name="file"; filename="text.bin"',
+      'Content-Type: text/plain',
+      'Content-Type: application/octet-stream',
+      '',
+      'fixture text',
+      '--fixture--',
+      '',
+    ].join('\r\n')
+    const response = await fetch(server.origin + '/upload/text', {
+      method: 'POST',
+      headers: {
+        'content-type': 'multipart/form-data; boundary=fixture',
+        cookie: 'partition=alpha',
+      },
+      body,
+    })
+    assert.equal(response.status, 400)
+    assert.deepEqual(server.snapshot().uploads, [])
   } finally {
     await server.stop()
   }
