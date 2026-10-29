@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.5](https://github.com/0xPlayerOne/bunly/compare/v0.5.4...v0.5.5) (2026-10-29)
+
+
+### Bug Fixes
+
+* **downloads:** reject Windows non-file destinations consistently ([#177](https://github.com/0xPlayerOne/bunly/issues/177)) ([a2f3368](https://github.com/0xPlayerOne/bunly/commit/a2f3368e4a52002a7de3d2f564e5a3f771d381e1))
+
 ## [0.5.4](https://github.com/0xPlayerOne/bunly/compare/v0.5.3...v0.5.4) (2026-10-29)
 
 
