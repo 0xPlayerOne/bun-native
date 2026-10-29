@@ -108,8 +108,11 @@ closure arrives, the deadline requests `SIGKILL`; if only process exit arrives, 
 service requests PTY close and cancels undrainable output at the deadline. A missing
 callback resolves that observation with `observed: false` and
 `failure: "DEADLINE_EXCEEDED"`, while the corresponding ownership reservation stays
-charged. No timer invents process exit, PTY closure, output drain or release, and no
-idle lifecycle poll is installed.
+charged. If the scheduler fails while establishing or maintaining that deadline, the missing
+observation instead resolves with `failure: "SCHEDULER_FAILED"`. No forced stop or
+output cancellation is inferred from that scheduler failure: actual callbacks still
+release ownership, and a natural-exit output tail can still drain. No timer invents
+process exit, PTY closure, output drain or release, and no idle lifecycle poll is installed.
 
 Bun documents that `onExit` may run before `Bun.spawn` returns. The service therefore
 establishes the resource and callbacks first, records early output/exit/PTY-close
