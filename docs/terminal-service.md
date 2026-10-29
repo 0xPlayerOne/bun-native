@@ -138,6 +138,10 @@ returns the same in-flight or completed aggregate observation on every call. At 
 deadline the service does not fabricate exit, PTY close, drain or release. An
 uncooperative writer or driver therefore remains in diagnostics and retains
 admission. Throwing stop methods are recorded without leaking their error strings.
+If an injected close scheduler throws, the service requests `SIGKILL` and returns
+the currently observed close snapshot. It does not report deadline expiry or
+pretend that process or PTY callbacks occurred; ownership remains charged until
+actual release is observed.
 
 ## Disconnect and replay policy
 

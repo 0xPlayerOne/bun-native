@@ -197,6 +197,74 @@ test('disposal attempts every terminal if scheduler setup fails', async () => {
   expect(clock.timers.size).toBe(0)
 })
 
+test('close timer installation may reentrantly escalate without downgrading termination', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const set = clock.set.bind(clock)
+  let nested: Promise<unknown> | undefined
+  clock.set = (delay, callback) => {
+    clock.set = set
+    nested = service.cancel(handle)
+    return set(delay, callback)
+  }
+  const close = service.close(handle)
+  expect(nested).toBe(close)
+  expect((await close).released).toBe(true)
+  expect(driver.processes[0]!.signals).toEqual(['SIGKILL'])
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('close still reports actual release if clearing its timer throws', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const clear = clock.clear.bind(clock)
+  clock.clear = (timer) => {
+    clear(timer)
+    throw new Error('scheduler failed')
+  }
+  expect((await service.close(handle)).released).toBe(true)
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('an early close timer that cannot rearm reports unobserved state without inventing expiry', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock, limits: { closeTimeoutMs: 10 } })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const process = driver.processes[0]!
+  process.autoStop = false
+  const close = service.close(handle)
+  const timer = [...clock.timers.entries()][0]!
+  clock.timers.delete(timer[0])
+  clock.elapse(5)
+  const set = clock.set.bind(clock)
+  clock.set = () => {
+    throw new Error('scheduler failed')
+  }
+  timer[1].callback()
+  expect((await close).released).toBe(false)
+  expect(process.signals).toEqual(['SIGTERM', 'SIGKILL'])
+  let processSettled = false
+  void observation.processExited.then(() => {
+    processSettled = true
+  })
+  await flush()
+  expect(processSettled).toBe(false)
+  expect(service.diagnostics().terminals).toBe(1)
+  clock.set = set
+  process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+  process.observer.terminalClosed(0)
+  await observation.released
+  expect(clock.timers.size).toBe(0)
+})
+
 test('admission establishes opaque ownership before touching the writer or driver', async () => {
   const driver = new FakeDriver()
   const owner = {}
