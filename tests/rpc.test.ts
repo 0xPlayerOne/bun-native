@@ -855,6 +855,27 @@ describe('RPC client and server', () => {
     expect(env.authority.diagnostics().executing).toBe(0)
     expect(clock.timers.size).toBe(0)
   })
+  test('channel timer clearing may reentrantly close without double-releasing bytes', async () => {
+    const { left } = pair()
+    const clock = new Clock()
+    const clear = clock.clear.bind(clock)
+    const channel = new RpcChannel(
+      left,
+      limits,
+      clock,
+      () => {},
+      () => {}
+    )
+    clock.clear = (timer) => {
+      channel.close()
+      clear(timer)
+    }
+    channel.start()
+    const sending = result(channel.send(Uint8Array.of(1)))
+    expect((await sending).code).toBe('DISCONNECTED')
+    expect(channel.diagnostics()).toMatchObject({ closed: true, queuedBytes: 0, queuedFrames: 0 })
+    expect(clock.timers.size).toBe(0)
+  })
   test('input parsing cannot enqueue a request after closing the client', async () => {
     const { left } = pair()
     const contract = defineRpc({

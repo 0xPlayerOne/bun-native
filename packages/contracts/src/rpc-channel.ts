@@ -158,6 +158,8 @@ export class RpcChannel {
   #finish(item: Outgoing, error?: RpcError): void {
     if (this.#active !== item) return
     this.#clearTimer()
+    // A scheduler may synchronously close the channel while clearing its timer.
+    if (this.#active !== item) return
     this.#bytes -= item.bytes
     this.#active = undefined
     item.removeAbort()
