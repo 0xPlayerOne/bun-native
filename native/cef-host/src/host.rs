@@ -1901,6 +1901,7 @@ fn allowed_during_quit(operation: &str) -> bool {
             | "commands.dispose"
             | "dialog.cancel"
             | "status.dispose"
+            | "links.dispose"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -3723,11 +3724,14 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("commands.cancel"));
         assert!(allowed_during_quit("commands.dispose"));
         assert!(allowed_during_quit("status.dispose"));
+        assert!(allowed_during_quit("links.dispose"));
         assert!(allowed_during_quit("dialog.cancel"));
         for operation in [
             "download.start",
             "commands.create",
             "status.create",
+            "links.ack",
+            "links.create",
             "status.update",
             "status.qualification.click",
             "commands.show",

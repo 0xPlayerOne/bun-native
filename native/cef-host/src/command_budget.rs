@@ -176,7 +176,8 @@ mod tests {
                 "commands.cancel",
                 "commands.dispose",
                 "dialog.cancel",
-                "status.dispose"
+                "status.dispose",
+                "links.dispose"
             ]
         );
     }
@@ -248,6 +249,22 @@ mod tests {
             .collect();
         assert!(budget.reserve("status.update", 64).is_err());
         let disposal = budget.reserve("status.dispose", 128).unwrap();
+        assert_eq!(
+            budget.snapshot().ordinary_requests,
+            limits().native_ordinary_requests
+        );
+        drop(disposal);
+        drop(ordinary);
+        empty(&budget);
+    }
+    #[test]
+    fn link_reader_disposal_retains_reserved_capacity_under_ordinary_saturation() {
+        let budget = Arc::new(CommandBudget::default());
+        let ordinary: Vec<_> = (0..limits().native_ordinary_requests)
+            .map(|_| budget.reserve("view.create", 64).unwrap())
+            .collect();
+        assert!(budget.reserve("links.ack", 64).is_err());
+        let disposal = budget.reserve("links.dispose", 128).unwrap();
         assert_eq!(
             budget.snapshot().ordinary_requests,
             limits().native_ordinary_requests

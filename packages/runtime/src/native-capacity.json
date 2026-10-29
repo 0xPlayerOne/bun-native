@@ -22,7 +22,8 @@
     "commands.cancel",
     "commands.dispose",
     "dialog.cancel",
-    "status.dispose"
+    "status.dispose",
+    "links.dispose"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,
