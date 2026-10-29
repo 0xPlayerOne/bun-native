@@ -618,6 +618,44 @@ describe('RPC client and server', () => {
     expect(client.diagnostics().pending).toBe(0)
     expect(left.packets).toHaveLength(0)
   })
+  test('serialization reentrancy is refused before it can reorder requests', async () => {
+    const { left } = pair()
+    let nested: Promise<unknown> | undefined
+    const contract = defineRpc({ echo: procedure((value: unknown) => value, text) })
+    const client = new RpcClient(contract, left)
+    const value = new Proxy(
+      { value: 'outer' },
+      {
+        getPrototypeOf(target) {
+          nested ??= client.call('echo', 'inner')
+          return Reflect.getPrototypeOf(target)
+        },
+      }
+    )
+    const outer = result(client.call('echo', value))
+    expect((await result(nested!)).code).toBe('OVERLOADED')
+    expect(decodeRpc(left.packets[0]!, limits)).toMatchObject({ type: 'request', id: 1 })
+    expect(client.diagnostics().pending).toBe(1)
+    client.close()
+    await outer
+  })
+  test('input parsing cannot enqueue a request after cancellation', async () => {
+    const { left } = pair()
+    const controller = new AbortController()
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        controller.abort()
+        return text(value)
+      }, text),
+    })
+    const client = new RpcClient(contract, left)
+    expect((await result(client.call('echo', 'outer', { signal: controller.signal }))).code).toBe(
+      'CANCELLED'
+    )
+    expect(client.diagnostics().pending).toBe(0)
+    expect(left.packets).toHaveLength(0)
+    client.close()
+  })
   test('server rechecks handler capacity after reentrant input parsing', async () => {
     const env = await environment()
     const { right } = pair()
