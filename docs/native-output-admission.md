@@ -19,6 +19,7 @@ reservation observable without keeping the channel open.
 | Retained frames, including active writer       | 256                                      | 192                              |
 | Serialized wire-equivalent bytes, including LF | 8 MiB                                    | 7 MiB                            |
 | Individual frame                               | 64 KiB including LF                      | Same                             |
+| Console subset of ordinary traffic             | 16 frames and 128 KiB                    | Shared with ordinary traffic     |
 | Eligibility for reserved capacity              | Exact control/reply shape, at most 1 KiB | No reserved-capacity eligibility |
 
 The ordinary byte budget accommodates all 128 existing 24-KiB renderer packets
@@ -41,9 +42,12 @@ native event kind by adding metadata to its payload.
 
 FIFO is preserved: reserved admission does not move shutdown or disposal ahead of
 previously accepted frames. The single writer still blocks on notification when
-idle, with no new timer, worker, poll or busy loop. Saturation fails explicitly
-through the existing host failure path; there is no silent dropping/coalescing,
-pretended success or unbounded backlog. Reserved headroom is finite, not a
+idle, with no new timer, worker, poll or busy loop. Ordinary and control saturation fails explicitly through the existing host failure
+path. Console events are best effort: at their subset limit or overall saturation,
+only that console event is dropped. A saturating `consoleDropped` counter and
+current console frame/byte reservations are available in internal output diagnostics.
+The console reservation includes the active writer until actual flush. This does
+not alter delivery order for admitted frames or suppress a disconnected pipe failure. Reserved headroom is finite, not a
 promise that control can always be admitted or interrupt a blocked OS write.
 
 ## Encoding and accounting
