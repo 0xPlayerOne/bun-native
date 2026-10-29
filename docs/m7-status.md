@@ -444,8 +444,8 @@ portable checks passed 1,594 Bun tests with 12 skips, and 269 Python tests with
 The first download again timed out at the unchanged six-second deadline.
 The exact-resource completion receipt reported success and 32,768 received bytes,
 but the native item remained valid, in progress and incomplete at 100%, with an
-owned staging path and six owned callbacks. Safe Browsing was enabled at
-admission; one application-wide FileUtilService launch and no quarantine launch
+owned staging path, six callbacks observed, and callback ownership retained
+at timeout. Safe Browsing was enabled at admission; one application-wide FileUtilService launch and no quarantine launch
 were observed. These observations do not establish completed inspection or
 native download completion. The failed outcome reported zero committed
 `bytesWritten`; the remaining 13 download scenarios did not execute.
