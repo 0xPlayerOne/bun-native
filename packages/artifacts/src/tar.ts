@@ -24,6 +24,8 @@ export function readTar(bytes: Uint8Array): TarFile[] {
     throw new ArtifactError('BAD_ARCHIVE', 'Invalid archive size')
   const files: TarFile[] = []
   const names = new Map<string, 'file' | 'directory'>()
+  // Prefixes with at least one previously seen descendant, including implicit directories.
+  const ancestors = new Set<string>()
   let offset = 0
   let terminated = false
   while (offset + 512 <= bytes.length) {
@@ -47,15 +49,17 @@ export function readTar(bytes: Uint8Array): TarFile[] {
     const path = safeRelativePath(type === 53 ? raw.replace(/\/$/, '') : raw)
     const key = path.toLowerCase().normalize('NFC')
     const kind = type === 53 ? 'directory' : 'file'
+    const prefixes: string[] = []
+    for (let slash = key.indexOf('/'); slash !== -1; slash = key.indexOf('/', slash + 1))
+      prefixes.push(key.slice(0, slash))
     if (
       names.has(key) ||
-      [...names].some(
-        ([n, k]) =>
-          (key.startsWith(n + '/') && k === 'file') || (kind === 'file' && n.startsWith(key + '/'))
-      )
+      prefixes.some((prefix) => names.get(prefix) === 'file') ||
+      (kind === 'file' && ancestors.has(key))
     )
       throw new ArtifactError('UNSAFE_ARCHIVE', 'Conflicting archive entries')
     names.set(key, kind)
+    for (const prefix of prefixes) ancestors.add(prefix)
     if (names.size > 2048) throw new ArtifactError('BAD_ARCHIVE', 'Too many archive entries')
     const size = octal(h.subarray(124, 136))
     if (
