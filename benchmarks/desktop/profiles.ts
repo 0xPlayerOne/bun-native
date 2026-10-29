@@ -55,7 +55,26 @@ import {
   acceptApplicationLinksReport,
 } from './links-acceptance.ts'
 
+import {
+  COMPOSITION_RESOURCE_PROFILE,
+  compositionResourceSourceSelectors,
+  acceptCompositionResources,
+  acceptCompositionResourceReport,
+} from './composition-profile.ts'
+
 const profiles = {
+  'composition-profile': {
+    profile: COMPOSITION_RESOURCE_PROFILE,
+    sourceSelectors: compositionResourceSourceSelectors,
+    fixture: 'examples/composition-profile',
+    browserEntry: null,
+    directory: 'composition-profile',
+    title: 'Composition Resource Profile',
+    workloadLimitation:
+      'Fixed API-driven windowed-CEF phases with sampled CPU/RSS and operation/readback round trips. No GPU utilization, physical input, presentation latency, OSR comparison or performance qualification.',
+    acceptObservation: acceptCompositionResources,
+    acceptReport: acceptCompositionResourceReport,
+  },
   links: {
     profile: LINKS_PROFILE,
     sourceSelectors: linksSourceSelectors,
@@ -170,6 +189,7 @@ export function desktopProfile(name = 'windows') {
   assert.ok(
     name === 'windows' ||
       name === 'composition' ||
+      name === 'composition-profile' ||
       name === 'services' ||
       name === 'downloads' ||
       name === 'parent-close' ||

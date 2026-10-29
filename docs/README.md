@@ -11,6 +11,9 @@ progress; [desktop window APIs](desktop-window-api.md) and the
 [native desktop qualifier](desktop-qualification.md) describe its first increment.
 [Native view composition](view-composition.md) describes the next increment's
 opt-in panes, clipping, focus, overlay path and remaining desktop qualification.
+[Composition resource measurements](composition-measurement.md) define a fixed
+windowed-CEF CPU/RSS baseline, independent trials and the separate GPU/physical
+evidence required for a renderer decision.
 [Window commands](window-commands.md) add scoped native popup menus and local
 shortcuts. [File dialogs](file-dialogs.md) describe the separate macOS selection
 facet, shared modal ownership, cancel-only qualification, and unsupported targets.
