@@ -57,6 +57,7 @@ pub enum NativeCapability {
     ClipboardRead,
     ClipboardWrite,
     WindowCommands,
+    StatusItem,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -142,6 +143,7 @@ pub enum NativeRequest {
     ClipboardRead,
     ClipboardWrite,
     WindowCommands,
+    StatusItem,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -467,6 +469,7 @@ pub fn decode_native_capability(
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("window-commands", &[]),
+            ("status-item", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["origins"]),
@@ -491,6 +494,7 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
             ("window-commands", &[]),
+            ("status-item", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["url"]),
@@ -600,6 +604,7 @@ fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
         (NativeCapability::ClipboardRead, NativeRequest::ClipboardRead)
         | (NativeCapability::ClipboardWrite, NativeRequest::ClipboardWrite)
         | (NativeCapability::WindowCommands, NativeRequest::WindowCommands)
+        | (NativeCapability::StatusItem, NativeRequest::StatusItem)
         | (NativeCapability::DialogOpen, NativeRequest::DialogOpen)
         | (NativeCapability::DialogSave, NativeRequest::DialogSave) => true,
         (NativeCapability::ExternalUrl { origins }, NativeRequest::ExternalUrl { url }) => {
@@ -1006,6 +1011,57 @@ mod tests {
             }
         }
         panic!("capability fixture collision limit exceeded")
+    }
+
+    #[test]
+    fn status_item_grant_is_distinct_and_revokes_with_its_exact_document() {
+        let mut policy = Policy::default();
+        let live = scope(4, 8, 2, "app://ui");
+        policy.install_document(live.clone()).unwrap();
+        policy
+            .grant_native(&live, NativeCapability::WindowCommands)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        policy
+            .grant_native(&live, NativeCapability::StatusItem)
+            .unwrap();
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Authorized
+        );
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Unavailable
+            ),
+            GateDecision::Unavailable
+        );
+        policy.navigation_started(live.view);
+        assert_eq!(
+            policy.authorize_native(
+                &live,
+                &NativeRequest::StatusItem,
+                AdapterAvailability::Available
+            ),
+            GateDecision::Denied
+        );
+        assert!(decode_native_capability(
+            serde_json::json!({"name":"status-item","title":"not-a-grant"})
+        )
+        .is_err());
+        assert!(decode_native_request(serde_json::json!({"name":"status-item","view":4})).is_err());
     }
 
     #[test]

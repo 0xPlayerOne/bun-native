@@ -109,7 +109,7 @@ export const BUILD_PROFILES: Readonly<Record<BuildProfileId, BuildProfile>> = Ob
         }),
         Object.freeze({
           backend: 'cef',
-          capabilities: Object.freeze(['dialog.file'] as const),
+          capabilities: Object.freeze(['dialog.file', 'status.item'] as const),
           platforms: Object.freeze(['darwin-arm64'] as const),
         }),
       ] as const),

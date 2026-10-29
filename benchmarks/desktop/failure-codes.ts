@@ -5,6 +5,31 @@ import type { CommandObservation } from '../lib/observed-command.ts'
 // Literal inventories keep this helper portable to a branch without every
 // desktop fixture. None of the optional fixture modules is imported or run.
 const fixtures = {
+  status: {
+    profile: 'native-status-items-v1',
+    event: 'bunly.native.status-items',
+    phases: [
+      'ready',
+      'capability',
+      'policy',
+      'owned-click',
+      'update',
+      'managed',
+      'managed-authority',
+      'managed-prepare',
+      'managed-click',
+      'managed-read',
+      'managed-replace',
+      'managed-retired',
+      'managed-replay',
+      'managed-ack',
+      'managed-close',
+      'view-close',
+      'quit',
+      'cleanup',
+      'shutdown-receipt',
+    ],
+  },
   commands: {
     profile: 'native-window-commands-v1',
     event: 'bunly.native.window-commands',
@@ -91,6 +116,12 @@ const codes = [
   'ERR_ASSERTION',
 ] as const
 const errorCategories = {
+  'Status item fixture deadline': 'workload-deadline',
+  'Host closed before status fixture completed': 'host-closed',
+  'Malformed native status item receipt': 'native-receipt',
+  'Malformed native status item event': 'native-event',
+  'Invalid native status item event identity or order': 'native-event-identity',
+  'Malformed native status item snapshot': 'native-snapshot',
   'Unknown or mismatched native download operation': 'native-identity',
   'Invalid native download progress': 'native-progress',
   'Invalid native download state transition': 'native-transition',

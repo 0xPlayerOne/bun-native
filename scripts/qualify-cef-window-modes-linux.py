@@ -58,6 +58,7 @@ def main() -> int:
             "parent-close",
             "commands",
             "dialogs",
+            "status",
         ),
     )
     parser.add_argument("--native-source")

@@ -4,6 +4,7 @@ import { BunlyError, type WindowCommandsEvent } from '../packages/contracts/src/
 import type { CefBackend } from '../packages/runtime/src/cef.ts'
 import windowCommands from '../examples/window-commands/fixture.ts'
 import fileDialogs from '../examples/file-dialogs/fixture.ts'
+import statusItems from '../examples/status-items/fixture.ts'
 import { classifyDesktopFixtureFailure } from '../benchmarks/desktop/failure-codes.ts'
 import { acceptWindowCommandsReceipt } from '../benchmarks/desktop/commands-acceptance.ts'
 
@@ -23,8 +24,43 @@ function rejectedBackend(error: unknown, cleanupError?: unknown): CefBackend {
       if (cleanupError) throw cleanupError
     },
     diagnostics: () => ({ windows: 0, views: 0, sessions: 0, listeners: 0, listenerErrors: 0 }),
+    statusItemDiagnostics: () => ({ items: 0, listeners: 0 }),
   } as unknown as CefBackend
 }
+
+test('status fixture retains bounded first failure without exposing native text or paths', async () => {
+  const privateMessage = '/private/status-title?token=fixture-only'
+  const lines: unknown[][] = []
+  const output = spyOn(console, 'error').mockImplementation((...values: unknown[]) => {
+    lines.push(values)
+  })
+  try {
+    await assert.rejects(
+      statusItems(
+        rejectedBackend(
+          new BunlyError('PERMISSION_DENIED', privateMessage),
+          new Error(privateMessage)
+        )
+      ),
+      /ready: BunlyError \(PERMISSION_DENIED\) \[unclassified\]/
+    )
+  } finally {
+    output.mockRestore()
+  }
+  assert.equal(lines.length, 1)
+  const receipt = JSON.parse(String(lines[0]![0])) as Record<string, unknown>
+  assert.equal(receipt['event'], 'bunly.native.status-items')
+  assert.equal(receipt['passed'], false)
+  assert.equal(receipt['shutdowns'], 0)
+  assert.equal(receipt['shutdown'], null)
+  assert.deepEqual(classifyDesktopFixtureFailure('status', receipt['failure']), {
+    phase: 'ready',
+    name: 'BunlyError',
+    code: 'PERMISSION_DENIED',
+    category: 'unclassified',
+  })
+  assert.equal(JSON.stringify(lines).includes(privateMessage), false)
+})
 
 test('commands fixture retains its first classified failure when cleanup also fails', async () => {
   const privateMessage = '/private/example/commands?secret=fixture-only'
