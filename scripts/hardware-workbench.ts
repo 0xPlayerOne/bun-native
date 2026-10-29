@@ -293,7 +293,7 @@ export async function prepareHardwareWorkbench(
   input: string,
   nativeSource: string
 ): Promise<string> {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use developer Bun 1.4.4')
   assert.match(nativeSource, /^[a-f0-9]{40}$/, 'Explicit full native build commit required')
   const target = currentTarget(),
     layout = paths(target)

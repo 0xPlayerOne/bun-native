@@ -14,9 +14,10 @@ and the web-only comparison workbench keep their existing purposes.
 
 ## Prepare an explicit prebuilt
 
-Use Bun **1.4.3**, a clean committed checkout, and a native app already built for
-the same `native/cef-host` source tree. `COMMIT` must be the full 40-character
-commit used to build the selected native app. The object must already exist in
+Use developer Bun **1.4.4**, a clean committed checkout, and a native app already
+built for the same `native/cef-host` source tree. The selected app must declare
+the separately pinned packaged Bun **1.4.3** in its runtime manifest. `COMMIT`
+must be the full 40-character commit used to build the selected native app. The object must already exist in
 the local Git database. Preparation never fetches source, acquires a native
 runtime, or invokes Cargo, Rust, Clang or a native bundler.
 
