@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.6](https://github.com/0xPlayerOne/bunly/compare/v0.5.5...v0.5.6) (2026-10-29)
+
+
+### Performance
+
+* **artifacts:** bound archive path conflict checks ([#180](https://github.com/0xPlayerOne/bunly/issues/180)) ([65249aa](https://github.com/0xPlayerOne/bunly/commit/65249aa3e55374435808a619a798533919bb4def))
+
+
+### Maintenance
+
+* **ci:** retain native download inputs before qualification ([#184](https://github.com/0xPlayerOne/bunly/issues/184)) ([f27d34a](https://github.com/0xPlayerOne/bunly/commit/f27d34a201d64a6b7a9039ecd3fbcc10ac174c4b))
+
 ## [0.5.5](https://github.com/0xPlayerOne/bunly/compare/v0.5.4...v0.5.5) (2026-10-29)
 
 
