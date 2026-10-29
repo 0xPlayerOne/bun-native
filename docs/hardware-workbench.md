@@ -201,9 +201,10 @@ Each page shows its own focus, visibility, viewport, scale, selection length and
 IME event state. A backend heartbeat and the latest 48 window/application
 observations remain bounded; older events are counted as discarded. Each preview
 retains at most 40 numbered output rows and each local input log at most 12
-events. Pause periodic native observations while reading with assistive
-technology; an explicit refresh remains available. These are live aids to
-observation, not exhaustive retained evidence,
+events. Only the controls document requests native snapshots; the overlay
+does not poll or refresh those readbacks after dismissal. Pause periodic native
+observations while reading with assistive technology; an explicit refresh remains
+available. These are live aids to observation, not exhaustive retained evidence,
 performance measurements or proof of released GPU resources. Normal renderer
 background throttling remains enabled.
 
@@ -276,7 +277,8 @@ qualification.
 ## Portable validation
 
 ```sh
-bun test tests/hardware-workbench.test.ts tests/hardware-workbench-preparation.test.ts
+bun test tests/hardware-workbench-client.test.ts tests/hardware-workbench.test.ts \
+  tests/hardware-workbench-preparation.test.ts
 bun run typecheck
 bun run typecheck:browser
 bun run boundaries
@@ -285,8 +287,9 @@ bun run check:portable
 
 Portable tests exercise strict command validation, current native RPC authority,
 overlay restrictions, remote-session rejection, revocation during pending work,
-fixed loopback routes, prebuilt/source/metadata boundaries, and the separate
-launch opt-in. A preparation test uses deliberately inert host, Bun and CEF files
+fixed loopback routes, controls-only snapshot polling and renderer teardown,
+prebuilt/source/metadata boundaries, and the separate launch opt-in. A preparation
+test uses deliberately inert host, Bun and CEF files
 to prove that bundling and verification do not execute them. It builds the actual
 Bun and browser assets. The inert-binary preparation test is inapplicable to
 macOS ad-hoc signing; real native Mac preparation/launch must be observed there.
