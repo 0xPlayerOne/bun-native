@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/0xPlayerOne/bunly/compare/v0.1.3...v0.1.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ci:** isolate draft runs and preserve benchmark failures ([#157](https://github.com/0xPlayerOne/bunly/issues/157)) ([49f3e08](https://github.com/0xPlayerOne/bunly/commit/49f3e0885942226d7ea89faeb999bb61bbecfc7e))
+
 ## [0.1.3](https://github.com/0xPlayerOne/bunly/compare/v0.1.2...v0.1.3) (2026-10-29)
 
 
