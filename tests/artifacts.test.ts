@@ -176,6 +176,18 @@ describe('restricted archive format', () => {
       assert.throws(() => readTar(tar), hasCode('UNSAFE_ARCHIVE'))
     }
   })
+  it('rejects colliding paths and file ancestors in either archive order', () => {
+    const entry = (path: string) => createTar([{ path, bytes: new Uint8Array() }]).subarray(0, 512)
+    const archive = (...paths: string[]) => Buffer.concat([...paths.map(entry), Buffer.alloc(1024)])
+    for (const paths of [
+      ['a', 'A'],
+      ['a', 'A/b'],
+      ['a/b', 'A'],
+      ['a/b/c', 'a/b'],
+    ])
+      assert.throws(() => readTar(archive(...paths)), hasCode('UNSAFE_ARCHIVE'))
+    assert.equal(readTar(archive('a/b', 'a/c')).length, 2)
+  })
 })
 describe('verified artifact cache', () => {
   it('downloads once and verifies offline reuse', async () =>
