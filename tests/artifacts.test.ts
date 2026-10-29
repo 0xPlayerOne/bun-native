@@ -184,6 +184,7 @@ describe('restricted archive format', () => {
       ['a', 'A/b'],
       ['a/b', 'A'],
       ['a/b/c', 'a/b'],
+      ['café', 'cafe\u0301/child'],
     ])
       assert.throws(() => readTar(archive(...paths)), hasCode('UNSAFE_ARCHIVE'))
     assert.equal(readTar(archive('a/b', 'a/c')).length, 2)
