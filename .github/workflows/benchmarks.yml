@@ -8,7 +8,7 @@ permissions:
 env:
   PYTHON: python
 concurrency:
-  group: benchmarks-${{ github.ref }}
+  group: benchmarks-${{ github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   portable:

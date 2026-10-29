@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: cef-typecheck-${{ github.ref }}
+  group: cef-typecheck-${{ github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   check:

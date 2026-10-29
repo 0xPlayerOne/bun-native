@@ -127,3 +127,27 @@ test('inventory identifies seeded payload duplication without calling it RAM', a
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('Electrobun retains oversized failure evidence while the result remains failed', async () => {
+  const { recordElectrobunFailure } = await import('../benchmarks/adapters/electrobun/failure.ts')
+  const directory = await mkdtemp(join(tmpdir(), 'bunly-electrobun-failure-'))
+  try {
+    const details = 'orphan observation ' + 'x'.repeat(10_000)
+    const failed = await recordElectrobunFailure(directory, 'stream', 0, false, new Error(details))
+    const file = failed.reason.match(/electrobun-failure-[a-f0-9-]+\.json$/)?.[0]
+    assert.ok(file)
+    const evidence = JSON.parse(await Bun.file(join(directory, file)).text())
+    assert.equal(evidence.error, 'Error: ' + details)
+    assert.deepEqual([evidence.scenario, evidence.trial, evidence.warmup], ['stream', 0, false])
+    const run = fixture()
+    failed.variant = 'a'
+    run.trials[0] = failed
+    assert.equal(validateRun(run).trials[0]!.status, 'failed')
+    assert.equal(run.trials[0]!.correctness.passed, false)
+    assert.deepEqual(run.trials[0]!.metrics, {})
+    assert.equal(reportRun(run)[0]!.failed, 1)
+    assert.equal(reportRun(run)[0]!.eligibleForPerformanceClaim, false)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})

@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: m6-reload-${{ github.event_name }}-${{ github.ref }}
+  group: m6-reload-${{ github.event_name }}-${{ github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   reload:
