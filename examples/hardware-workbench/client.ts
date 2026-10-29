@@ -56,7 +56,8 @@ async function main(): Promise<void> {
     }
   }
   async function refresh(): Promise<void> {
-    if (stopped || busy || reading) return
+    // Only controls render native observations; the overlay owns dismissal alone.
+    if (overlay || stopped || busy || reading) return
     reading = true
     try {
       render(await client.call('snapshot', null))
@@ -187,7 +188,8 @@ async function main(): Promise<void> {
     },
     { once: true }
   )
-  await poll()
+  if (overlay) message('Connected. Manual hardware cases remain not run.')
+  else await poll()
 }
 void main().catch(() => {
   document.querySelector<HTMLElement>('#connection')!.textContent =
