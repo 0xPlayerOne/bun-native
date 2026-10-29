@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.8](https://github.com/0xPlayerOne/bunly/compare/v0.5.7...v0.5.8) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** isolate application lifecycle listener rejections ([#185](https://github.com/0xPlayerOne/bunly/issues/185)) ([26b3869](https://github.com/0xPlayerOne/bunly/commit/26b3869f3c6b6ab7dffcb77062d3aca75c54bf60))
+
 ## [0.5.7](https://github.com/0xPlayerOne/bunly/compare/v0.5.6...v0.5.7) (2026-10-29)
 
 
