@@ -201,17 +201,21 @@ export default async function qualifyStatusItems(backend: CefBackend): Promise<v
 
       stage = 'managed'
       const managed = await bounded(backend.createStatusItem(scope, { title: 'Bunly 2' }))
+      stage = 'managed-authority'
       const authority = await bounded(desktop.captureAuthority(view))
       const resource = desktop.registerStatusItem('status', managed, {
         authority,
         permission: 'status',
         operations: ['events', 'ack-events'],
       })
+      stage = 'managed-prepare'
       const bindings = await bounded(desktop.prepare())
       const first = owner.begin('status:1', ['status'])
       owner.attach(first, resource, bindings['status']!.schema)
       owner.commit(first, '{}')
+      stage = 'managed-click'
       await bounded(backend.qualifyStatusItemClick(managed))
+      stage = 'managed-read'
       const events = JSON.parse(
         await bounded(owner.scope(first).invoke(resource, 'events', 'null'))
       ) as { type: string; sequence: number; state: { type: string } }[]
@@ -219,21 +223,26 @@ export default async function qualifyStatusItems(backend: CefBackend): Promise<v
       assert.equal(events[0]?.type, 'click')
       assert.equal(events[0]?.state.type, 'click')
       callbacks++
+      stage = 'managed-replace'
       const second = owner.begin('status:1', ['status'])
       owner.attach(second, resource, bindings['status']!.schema)
       owner.commit(second, '{}')
+      stage = 'managed-retired'
       await bounded(
         assert.rejects(
           owner.scope(first).invoke(resource, 'ack-events', '{"through":1}'),
           /RETIRED/
         )
       )
+      stage = 'managed-replay'
       assert.deepEqual(
         JSON.parse(await bounded(owner.scope(second).invoke(resource, 'events', 'null'))),
         events
       )
+      stage = 'managed-ack'
       await bounded(owner.scope(second).invoke(resource, 'ack-events', '{"through":1}'))
       assert.equal(desktop.diagnostics().queuedEvents, 0)
+      stage = 'managed-close'
       await bounded(desktop.close('status'))
       await assertOwners(2, 2, 0)
       checks['managedJournalRetained'] = true
