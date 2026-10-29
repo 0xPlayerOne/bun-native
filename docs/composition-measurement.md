@@ -147,6 +147,27 @@ input. Until both implementations and those records exist, report a windowed-onl
 baseline and keep the comparative and physical criteria open. This command alone
 does not close #35 or qualify M7.
 
+## Retained local baseline
+
+The [2026-10-29 retained cohort](../evidence/m7-composition/README.md) contains
+one designated warmup and three recorded trials, all accepted at application
+source `6349e7527220a44fc75356090210fa9eebd656e9` with matching native tree
+`287b418ed4e7dba5df106276baa2f1da3e71c596`. The evidence directory includes
+sanitized replayable reports, separate original/export/archive hashes,
+per-trial phase resource and API-duration summaries, and replay commands.
+
+A separate partial Metal System Trace retains exact target-process GPU
+intervals and allocated Metal device memory observations, excluded from the
+ordinary CPU/RSS cohort. It does not qualify GPU utilization, resident GPU
+memory, full-workload GPU cost or physical display behavior.
+
+The equipment was a Mac14,5 / Apple M2 Max / 64 GiB on AC power, macOS 26.7.1
+build 25G241, using a Screen Sharing Virtual Display. No physical panel,
+quiet-machine or thermal qualification was established. All results remain
+descriptive; GPU utilization, physical input, IME, assistive technology and a
+matched OSR comparison remain unqualified. The static-page cohort does not
+measure a before/after benefit from the interactive workbench overlay change.
+
 ## Portable validation
 
 ```sh

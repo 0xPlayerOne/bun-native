@@ -1,0 +1,971 @@
+{
+  "schema": 1,
+  "profile": "descriptive-windowed-composition-v1",
+  "cohort": "macos-virtual-display-2026-10-29",
+  "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+  "sourceTree": "d9c4501b957564173ae4b865fc1f973f561aeb93",
+  "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+  "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+  "embeddedBuildAttestation": false,
+  "startedAt": "2026-10-29T16:26:07.763560+00:00",
+  "completedAt": "2026-10-29T16:27:56.068327+00:00",
+  "driverManifestOriginal": {
+    "bytes": 8446,
+    "sha256": "75c89da5e5fffc3978d4682c99b33182e46ba54aa9e14f073c815c5ee3d6e49f"
+  },
+  "equipmentCapturedAt": "2026-10-29T16:19:16.399086+00:00",
+  "equipment": {
+    "model": "Mac14,5",
+    "cpu": "Apple M2 Max",
+    "memoryBytes": 68719476736,
+    "os": "macOS 26.7.1",
+    "osBuild": "25G241",
+    "arch": "arm64",
+    "power": "AC power",
+    "display": "Screen Sharing Virtual Display",
+    "backingPixels": [
+      3840,
+      2160
+    ],
+    "logicalPixels": [
+      1920,
+      1080
+    ],
+    "refreshHz": 60,
+    "physicalPanelObserved": false,
+    "quietMachineGate": false,
+    "thermalGate": false,
+    "thermalCondition": "unobserved",
+    "gpuMeasured": false,
+    "performanceEligible": false,
+    "coldStartCohort": false,
+    "notes": [
+      "Separate immutable private app/cache per attempt; operating-system disk caches are not cleared.",
+      "Connected virtual desktop; no physical-display, IME, input, or screen-reader qualification.",
+      "No concurrent Bunly build/test is intentionally scheduled during this cohort; unrelated machine activity is uncontrolled.",
+      "These static-page measurements do not quantify the interactive hardware-workbench overlay optimization."
+    ]
+  },
+  "designatedOrder": [
+    "warmup",
+    "recorded-1",
+    "recorded-2",
+    "recorded-3"
+  ],
+  "allAttemptsPassed": true,
+  "warmupAttemptCount": 1,
+  "recordedAttemptCount": 3,
+  "gpuMeasured": false,
+  "physicalInputQualified": false,
+  "assistiveTechnologyQualified": false,
+  "hardwareDpiQualified": false,
+  "performanceEligible": false,
+  "sanitization": {
+    "exporter": "scripts/export_native_evidence.py",
+    "exporterSource": "6349e7527220a44fc75356090210fa9eebd656e9",
+    "redactions": [
+      "fixture-nonces",
+      "composition-worktree-prefix",
+      "native-build-worktree-prefix",
+      "developer-checkout-prefix",
+      "home-prefix"
+    ],
+    "correlation": "not-retained",
+    "outcomesAndMeasurementFieldsPreserved": true
+  },
+  "runs": [
+    {
+      "id": "warmup",
+      "role": "warmup",
+      "archive": "warmup.json.gz",
+      "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+      "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+      "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+      "passed": true,
+      "startedAt": "2026-10-29T16:26:07.821584+00:00",
+      "finishedAt": "2026-10-29T16:26:35.019025+00:00",
+      "driverElapsedSeconds": 27.196871625026688,
+      "observerElapsedMs": 23151.0649160482,
+      "loadAverageBefore": [
+        10.9130859375,
+        10.81982421875,
+        9.1181640625
+      ],
+      "loadAverageAfter": [
+        10.9423828125,
+        10.8994140625,
+        9.20849609375
+      ],
+      "reportOriginal": {
+        "bytes": 2818512,
+        "sha256": "89a6c3782bc86d1c25e88dfbbfe9661ba23e026e5cbbb0fd21be2af587bf634d"
+      },
+      "archiveBytes": 125968,
+      "archiveSha256": "c6c6821c298312d4206670eaa5c03e75a92d05d1fbb90c92feb10c10871b69c3",
+      "expandedBytes": 2818641,
+      "expandedSha256": "56739d30bd68131108a62f06eea18e1285d87a53806228736225b7821c8fc028",
+      "inputHostSha256": "e71a3157936346d385c39aedcdfd480301da3e862aa97c113a237b587c5456f4",
+      "preparedHostSha256": "44b2e6fd08e11112368f74dbcff8e04a34712d07295c42309f8a04f8f46f4e56",
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "cleanup": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "cleanupSurvivors": [],
+        "observedOrphans": []
+      },
+      "summary": {
+        "classification": "descriptive-windowed-cef-resources",
+        "phases": [
+          {
+            "name": "warmup",
+            "elapsedMs": 2001.806709,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "idle",
+            "elapsedMs": 4001.417666,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "resize",
+            "elapsedMs": 4001.765125,
+            "operationRoundTripMs": {
+              "count": 40,
+              "median": 5.9709170000000995,
+              "p95": 8.958844050001241,
+              "max": 9.84729200000038
+            }
+          },
+          {
+            "name": "overlay",
+            "elapsedMs": 4001.063250000001,
+            "operationRoundTripMs": {
+              "count": 16,
+              "median": 6.6363124999998035,
+              "p95": 23.59069800000134,
+              "max": 27.52454100000068
+            }
+          },
+          {
+            "name": "recreate",
+            "elapsedMs": 4002.203666999998,
+            "operationRoundTripMs": {
+              "count": 4,
+              "median": 190.47614599999906,
+              "p95": 193.62944194999955,
+              "max": 193.9947919999995
+            }
+          },
+          {
+            "name": "recovery",
+            "elapsedMs": 4001.5546659999964,
+            "operationRoundTripMs": null
+          }
+        ],
+        "resources": [
+          {
+            "phase": "warmup",
+            "sampleCount": 46,
+            "sampledSpanMs": 1955.7634580414742,
+            "maxSampleGapMs": 46.31054191850126,
+            "sampledCpuSeconds": 0.19361247000000004,
+            "matchedProcessIntervals": 405,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 46,
+              "median": 798982144,
+              "p95": 929021952,
+              "max": 929021952
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "idle",
+            "sampleCount": 87,
+            "sampledSpanMs": 3941.687374841422,
+            "maxSampleGapMs": 74.84750007279217,
+            "sampledCpuSeconds": 0.12618365399999995,
+            "matchedProcessIntervals": 774,
+            "unmatchedProcessIntervals": 4,
+            "treeRssBytes": {
+              "count": 87,
+              "median": 929333248,
+              "p95": 934046924.8,
+              "max": 992542720
+            },
+            "peakObservedProcesses": 10
+          },
+          {
+            "phase": "resize",
+            "sampleCount": 90,
+            "sampledSpanMs": 3982.365292031318,
+            "maxSampleGapMs": 50.91474996879697,
+            "sampledCpuSeconds": 0.34423432399999987,
+            "matchedProcessIntervals": 801,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 90,
+              "median": 940048384,
+              "p95": 943516057.6,
+              "max": 944406528
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "overlay",
+            "sampleCount": 90,
+            "sampledSpanMs": 3950.853208079934,
+            "maxSampleGapMs": 83.05958285927773,
+            "sampledCpuSeconds": 0.17155786600000006,
+            "matchedProcessIntervals": 801,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 90,
+              "median": 942850048,
+              "p95": 943964160,
+              "max": 944095232
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recreate",
+            "sampleCount": 90,
+            "sampledSpanMs": 3928.6704170517623,
+            "maxSampleGapMs": 47.9674581438303,
+            "sampledCpuSeconds": 0.8618115319999996,
+            "matchedProcessIntervals": 766,
+            "unmatchedProcessIntervals": 29,
+            "treeRssBytes": {
+              "count": 90,
+              "median": 939409408,
+              "p95": 940130304,
+              "max": 940130304
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recovery",
+            "sampleCount": 87,
+            "sampledSpanMs": 3998.4603330958635,
+            "maxSampleGapMs": 74.53679200261831,
+            "sampledCpuSeconds": 0.03553104800000017,
+            "matchedProcessIntervals": 773,
+            "unmatchedProcessIntervals": 1,
+            "treeRssBytes": {
+              "count": 87,
+              "median": 934772736,
+              "p95": 939507712,
+              "max": 939507712
+            },
+            "peakObservedProcesses": 9
+          }
+        ],
+        "gpuMeasured": false,
+        "physicalInputQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      }
+    },
+    {
+      "id": "recorded-1",
+      "role": "recorded",
+      "archive": "recorded-1.json.gz",
+      "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+      "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+      "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+      "passed": true,
+      "startedAt": "2026-10-29T16:26:35.144207+00:00",
+      "finishedAt": "2026-10-29T16:27:02.139539+00:00",
+      "driverElapsedSeconds": 26.99475987511687,
+      "observerElapsedMs": 23239.71562483348,
+      "loadAverageBefore": [
+        10.9423828125,
+        10.8994140625,
+        9.20849609375
+      ],
+      "loadAverageAfter": [
+        12.24609375,
+        11.2744140625,
+        9.39599609375
+      ],
+      "reportOriginal": {
+        "bytes": 2764164,
+        "sha256": "a2ed66be4220292dd17b96b35c02080a2810250a8282db49e5084c2c1efd8009"
+      },
+      "archiveBytes": 120648,
+      "archiveSha256": "31b33b910c7292f2cff6c292d286228ce88cce7365b34d326b465433a3f98cca",
+      "expandedBytes": 2764293,
+      "expandedSha256": "784abd84c14253d50fed1e1e600e5a997889dac739af9f1feee2f7b1dcbff49e",
+      "inputHostSha256": "e71a3157936346d385c39aedcdfd480301da3e862aa97c113a237b587c5456f4",
+      "preparedHostSha256": "44b2e6fd08e11112368f74dbcff8e04a34712d07295c42309f8a04f8f46f4e56",
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "cleanup": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "cleanupSurvivors": [],
+        "observedOrphans": []
+      },
+      "summary": {
+        "classification": "descriptive-windowed-cef-resources",
+        "phases": [
+          {
+            "name": "warmup",
+            "elapsedMs": 2002.5543749999997,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "idle",
+            "elapsedMs": 4001.5602500000005,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "resize",
+            "elapsedMs": 4001.2985419999995,
+            "operationRoundTripMs": {
+              "count": 40,
+              "median": 4.633645500000057,
+              "p95": 11.217837800000506,
+              "max": 12.00341599999956
+            }
+          },
+          {
+            "name": "overlay",
+            "elapsedMs": 4002.0045840000002,
+            "operationRoundTripMs": {
+              "count": 16,
+              "median": 8.454062499999964,
+              "p95": 21.77962450000041,
+              "max": 23.459499999999025
+            }
+          },
+          {
+            "name": "recreate",
+            "elapsedMs": 4002.611791000003,
+            "operationRoundTripMs": {
+              "count": 4,
+              "median": 195.12900000000081,
+              "p95": 206.73880449999905,
+              "max": 208.74704199999906
+            }
+          },
+          {
+            "name": "recovery",
+            "elapsedMs": 4001.486832999999,
+            "operationRoundTripMs": null
+          }
+        ],
+        "resources": [
+          {
+            "phase": "warmup",
+            "sampleCount": 46,
+            "sampledSpanMs": 1953.3344169612974,
+            "maxSampleGapMs": 47.38825000822544,
+            "sampledCpuSeconds": 0.18224375899999992,
+            "matchedProcessIntervals": 405,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 46,
+              "median": 793706496,
+              "p95": 925085696,
+              "max": 925089792
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "idle",
+            "sampleCount": 84,
+            "sampledSpanMs": 3969.303417019546,
+            "maxSampleGapMs": 51.932582864537835,
+            "sampledCpuSeconds": 0.10409806000000006,
+            "matchedProcessIntervals": 747,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 84,
+              "median": 924368896,
+              "p95": 928989184,
+              "max": 928989184
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "resize",
+            "sampleCount": 83,
+            "sampledSpanMs": 3930.1398750394583,
+            "maxSampleGapMs": 50.597333116456866,
+            "sampledCpuSeconds": 0.3558008640000004,
+            "matchedProcessIntervals": 738,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 83,
+              "median": 935542784,
+              "p95": 938652467.2,
+              "max": 939524096
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "overlay",
+            "sampleCount": 93,
+            "sampledSpanMs": 3971.513999858871,
+            "maxSampleGapMs": 49.99070893973112,
+            "sampledCpuSeconds": 0.15166405200000008,
+            "matchedProcessIntervals": 828,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 93,
+              "median": 944095232,
+              "p95": 944996352,
+              "max": 945143808
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recreate",
+            "sampleCount": 90,
+            "sampledSpanMs": 3973.8454578910023,
+            "maxSampleGapMs": 50.80020800232887,
+            "sampledCpuSeconds": 0.8031629009999999,
+            "matchedProcessIntervals": 762,
+            "unmatchedProcessIntervals": 29,
+            "treeRssBytes": {
+              "count": 90,
+              "median": 941588480,
+              "p95": 944029696,
+              "max": 944046080
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recovery",
+            "sampleCount": 82,
+            "sampledSpanMs": 3943.1421670597047,
+            "maxSampleGapMs": 87.4227499589324,
+            "sampledCpuSeconds": 0.030077694000000016,
+            "matchedProcessIntervals": 729,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 82,
+              "median": 939393024,
+              "p95": 944111616,
+              "max": 944111616
+            },
+            "peakObservedProcesses": 9
+          }
+        ],
+        "gpuMeasured": false,
+        "physicalInputQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      }
+    },
+    {
+      "id": "recorded-2",
+      "role": "recorded",
+      "archive": "recorded-2.json.gz",
+      "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+      "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+      "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+      "passed": true,
+      "startedAt": "2026-10-29T16:27:02.262165+00:00",
+      "finishedAt": "2026-10-29T16:27:29.043257+00:00",
+      "driverElapsedSeconds": 26.780521666863933,
+      "observerElapsedMs": 23185.47458294779,
+      "loadAverageBefore": [
+        12.24609375,
+        11.2744140625,
+        9.39599609375
+      ],
+      "loadAverageAfter": [
+        10.61669921875,
+        10.962890625,
+        9.34619140625
+      ],
+      "reportOriginal": {
+        "bytes": 2788960,
+        "sha256": "17bb282f779d21b88bd5055fe46202399eeeb5742b250e5556a7d1f604184ef3"
+      },
+      "archiveBytes": 123272,
+      "archiveSha256": "413e3081c533d3a50bd18f150644447b1e7b4be792ad238ace30b009748c7d17",
+      "expandedBytes": 2789087,
+      "expandedSha256": "545c1d8781c3b2f258ce61a4c5be5c22d1ef7eafaded5f98a21ce7e1070e9287",
+      "inputHostSha256": "e71a3157936346d385c39aedcdfd480301da3e862aa97c113a237b587c5456f4",
+      "preparedHostSha256": "44b2e6fd08e11112368f74dbcff8e04a34712d07295c42309f8a04f8f46f4e56",
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "cleanup": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "cleanupSurvivors": [],
+        "observedOrphans": []
+      },
+      "summary": {
+        "classification": "descriptive-windowed-cef-resources",
+        "phases": [
+          {
+            "name": "warmup",
+            "elapsedMs": 2002.3090420000003,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "idle",
+            "elapsedMs": 4001.5565410000004,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "resize",
+            "elapsedMs": 4000.319584,
+            "operationRoundTripMs": {
+              "count": 40,
+              "median": 1.5416880000002493,
+              "p95": 4.826964600000338,
+              "max": 5.614707999999155
+            }
+          },
+          {
+            "name": "overlay",
+            "elapsedMs": 4001.0906670000004,
+            "operationRoundTripMs": {
+              "count": 16,
+              "median": 9.501062499999534,
+              "p95": 22.835676999999578,
+              "max": 23.37433299999975
+            }
+          },
+          {
+            "name": "recreate",
+            "elapsedMs": 4001.8930420000015,
+            "operationRoundTripMs": {
+              "count": 4,
+              "median": 195.65727099999822,
+              "p95": 197.60203755000038,
+              "max": 197.83687500000087
+            }
+          },
+          {
+            "name": "recovery",
+            "elapsedMs": 4001.452000000001,
+            "operationRoundTripMs": null
+          }
+        ],
+        "resources": [
+          {
+            "phase": "warmup",
+            "sampleCount": 47,
+            "sampledSpanMs": 1976.9297919701785,
+            "maxSampleGapMs": 48.571416875347495,
+            "sampledCpuSeconds": 0.18917426200000007,
+            "matchedProcessIntervals": 414,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 47,
+              "median": 795099136,
+              "p95": 925073408,
+              "max": 925089792
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "idle",
+            "sampleCount": 83,
+            "sampledSpanMs": 3957.0352910086513,
+            "maxSampleGapMs": 64.66379179619253,
+            "sampledCpuSeconds": 0.12954071700000008,
+            "matchedProcessIntervals": 738,
+            "unmatchedProcessIntervals": 2,
+            "treeRssBytes": {
+              "count": 83,
+              "median": 924467200,
+              "p95": 928989184,
+              "max": 952991744
+            },
+            "peakObservedProcesses": 10
+          },
+          {
+            "phase": "resize",
+            "sampleCount": 84,
+            "sampledSpanMs": 3939.284540945664,
+            "maxSampleGapMs": 50.779958022758365,
+            "sampledCpuSeconds": 0.3782485160000001,
+            "matchedProcessIntervals": 747,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 84,
+              "median": 935510016,
+              "p95": 938868736,
+              "max": 939507712
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "overlay",
+            "sampleCount": 93,
+            "sampledSpanMs": 3961.5275419782847,
+            "maxSampleGapMs": 49.20091689564288,
+            "sampledCpuSeconds": 0.15663994200000003,
+            "matchedProcessIntervals": 828,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 93,
+              "median": 938000384,
+              "p95": 939334041.6,
+              "max": 939360256
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recreate",
+            "sampleCount": 91,
+            "sampledSpanMs": 3952.8415841050446,
+            "maxSampleGapMs": 49.691792111843824,
+            "sampledCpuSeconds": 0.7909389699999992,
+            "matchedProcessIntervals": 772,
+            "unmatchedProcessIntervals": 29,
+            "treeRssBytes": {
+              "count": 91,
+              "median": 935378944,
+              "p95": 936615936,
+              "max": 936673280
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recovery",
+            "sampleCount": 84,
+            "sampledSpanMs": 3984.889875166118,
+            "maxSampleGapMs": 54.424708941951394,
+            "sampledCpuSeconds": 0.053686862000000016,
+            "matchedProcessIntervals": 747,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 84,
+              "median": 931430400,
+              "p95": 936067072,
+              "max": 936067072
+            },
+            "peakObservedProcesses": 9
+          }
+        ],
+        "gpuMeasured": false,
+        "physicalInputQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      }
+    },
+    {
+      "id": "recorded-3",
+      "role": "recorded",
+      "archive": "recorded-3.json.gz",
+      "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+      "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+      "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+      "passed": true,
+      "startedAt": "2026-10-29T16:27:29.166290+00:00",
+      "finishedAt": "2026-10-29T16:27:55.996634+00:00",
+      "driverElapsedSeconds": 26.829695124877617,
+      "observerElapsedMs": 23123.795290943235,
+      "loadAverageBefore": [
+        10.61669921875,
+        10.962890625,
+        9.34619140625
+      ],
+      "loadAverageAfter": [
+        8.68212890625,
+        10.4951171875,
+        9.22412109375
+      ],
+      "reportOriginal": {
+        "bytes": 2771899,
+        "sha256": "f44d1b6b906692d01c942a203c0d6e56c4f5c553c881e104bd07ae286b45dc5d"
+      },
+      "archiveBytes": 125591,
+      "archiveSha256": "73f76edc7598b3e756eb4bfac2dcc65d6fac44ad4d39fef539938572887a714d",
+      "expandedBytes": 2772027,
+      "expandedSha256": "f6ecf9dda4de2a7ba66dbd3630b4eb0946c926910b12f5d4104ea7a9e021be75",
+      "inputHostSha256": "e71a3157936346d385c39aedcdfd480301da3e862aa97c113a237b587c5456f4",
+      "preparedHostSha256": "44b2e6fd08e11112368f74dbcff8e04a34712d07295c42309f8a04f8f46f4e56",
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceAndArtifactsUnchanged": true,
+      "cleanup": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "cleanupSurvivors": [],
+        "observedOrphans": []
+      },
+      "summary": {
+        "classification": "descriptive-windowed-cef-resources",
+        "phases": [
+          {
+            "name": "warmup",
+            "elapsedMs": 2002.5418329999998,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "idle",
+            "elapsedMs": 4001.563542,
+            "operationRoundTripMs": null
+          },
+          {
+            "name": "resize",
+            "elapsedMs": 4001.2510840000004,
+            "operationRoundTripMs": {
+              "count": 40,
+              "median": 2.729936999999609,
+              "p95": 5.585889250000263,
+              "max": 24.55908399999953
+            }
+          },
+          {
+            "name": "overlay",
+            "elapsedMs": 4001.105292,
+            "operationRoundTripMs": {
+              "count": 16,
+              "median": 4.500353999999788,
+              "p95": 17.383333500000845,
+              "max": 17.69995800000106
+            }
+          },
+          {
+            "name": "recreate",
+            "elapsedMs": 4002.1644589999996,
+            "operationRoundTripMs": {
+              "count": 4,
+              "median": 195.7322919999997,
+              "p95": 263.93545809999773,
+              "max": 274.63033299999734
+            }
+          },
+          {
+            "name": "recovery",
+            "elapsedMs": 4001.412583000001,
+            "operationRoundTripMs": null
+          }
+        ],
+        "resources": [
+          {
+            "phase": "warmup",
+            "sampleCount": 46,
+            "sampledSpanMs": 1975.1472079660743,
+            "maxSampleGapMs": 48.15950011834502,
+            "sampledCpuSeconds": 0.19541590500000008,
+            "matchedProcessIntervals": 405,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 46,
+              "median": 796737536,
+              "p95": 926646272,
+              "max": 926646272
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "idle",
+            "sampleCount": 83,
+            "sampledSpanMs": 3959.314791020006,
+            "maxSampleGapMs": 109.64262508787215,
+            "sampledCpuSeconds": 0.13666024899999996,
+            "matchedProcessIntervals": 738,
+            "unmatchedProcessIntervals": 4,
+            "treeRssBytes": {
+              "count": 83,
+              "median": 926351360,
+              "p95": 930856960,
+              "max": 990560256
+            },
+            "peakObservedProcesses": 10
+          },
+          {
+            "phase": "resize",
+            "sampleCount": 82,
+            "sampledSpanMs": 3944.087749812752,
+            "maxSampleGapMs": 74.04412515461445,
+            "sampledCpuSeconds": 0.4212074730000001,
+            "matchedProcessIntervals": 729,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 82,
+              "median": 937205760,
+              "p95": 940949504,
+              "max": 941801472
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "overlay",
+            "sampleCount": 94,
+            "sampledSpanMs": 3958.870542002842,
+            "maxSampleGapMs": 49.285583198070526,
+            "sampledCpuSeconds": 0.1632585459999999,
+            "matchedProcessIntervals": 837,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 94,
+              "median": 939646976,
+              "p95": 940687360,
+              "max": 940703744
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recreate",
+            "sampleCount": 89,
+            "sampledSpanMs": 3942.8046660032123,
+            "maxSampleGapMs": 73.2990000396967,
+            "sampledCpuSeconds": 0.8661723949999998,
+            "matchedProcessIntervals": 754,
+            "unmatchedProcessIntervals": 30,
+            "treeRssBytes": {
+              "count": 89,
+              "median": 937115648,
+              "p95": 938537779.2,
+              "max": 938557440
+            },
+            "peakObservedProcesses": 9
+          },
+          {
+            "phase": "recovery",
+            "sampleCount": 84,
+            "sampledSpanMs": 3982.714124955237,
+            "maxSampleGapMs": 52.995959063991904,
+            "sampledCpuSeconds": 0.061301788000000065,
+            "matchedProcessIntervals": 747,
+            "unmatchedProcessIntervals": 0,
+            "treeRssBytes": {
+              "count": 84,
+              "median": 932831232,
+              "p95": 937492480,
+              "max": 937492480
+            },
+            "peakObservedProcesses": 9
+          }
+        ],
+        "gpuMeasured": false,
+        "physicalInputQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      }
+    }
+  ],
+  "limitations": [
+    "Windowed CEF only; no OSR implementation or matched comparison was measured.",
+    "Virtual-display session; physical panel, input, IME, assistive technology, hardware DPI and multi-monitor behavior remain unqualified.",
+    "Uncontrolled background machine activity; no quiet-machine or thermal gate, and no cold-start cohort.",
+    "Sampled CPU sums cover only adjacent same-PID-and-creation-time intervals within each phase; process churn and phase boundaries leave unobserved CPU.",
+    "RSS is a sum of process resident sets and can double-count shared pages; it is not GPU memory.",
+    "API round-trip durations include native readback and do not measure painting, frame presentation or physical input latency.",
+    "GPU-process CPU is not GPU utilization; no GPU result is claimed by this cohort.",
+    "Declared native source is cross-checked against its Git tree; there is no embedded build attestation, and runtime sandbox identity remains unverified.",
+    "These static-page trials do not quantify the separate interactive hardware-workbench overlay optimization."
+  ],
+  "supplementalGpu": {
+    "classification": "single-instrumented-windowed-cef-gpu-observation",
+    "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+    "includedInCpuRssCohort": false,
+    "performanceEligible": false,
+    "gpuUtilizationQualified": false,
+    "gpuResidentMemoryQualified": false,
+    "summary": {
+      "file": "gpu-summary.json",
+      "bytes": 3965,
+      "sha256": "21df26e2530527f67d2e07194003f7bb6ed8047fd260858d134abe0aa6db4cfb"
+    },
+    "targetEvents": {
+      "id": "gpu-target-events",
+      "archive": "gpu-target-events.json.gz",
+      "archiveBytes": 9018,
+      "archiveSha256": "211bc1770521d54aac182e9a00b7493ccf415bd6b133d3227245b24aea04b3a3",
+      "expandedBytes": 115688,
+      "expandedSha256": "db96552819250c7ec7f74540238fcb71433001a5c725f2f981861e6247d0a597"
+    },
+    "nativeReport": {
+      "id": "gpu-instrumented-native",
+      "archive": "gpu-instrumented-native.json.gz",
+      "archiveBytes": 124686,
+      "archiveSha256": "5652b1074385e29c754139d482e106c3ff403435611704a8575cc1e2993fc1da",
+      "expandedBytes": 2814744,
+      "expandedSha256": "c3b28e01efb40507ad79698818162a7cc5ad470d5e7a110b30190e7273e40633",
+      "source": "6349e7527220a44fc75356090210fa9eebd656e9",
+      "nativeSource": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+      "nativeTree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+      "passed": true,
+      "includedInCpuRssCohort": false,
+      "performanceEligible": false,
+      "reportOriginal": {
+        "bytes": 2814616,
+        "sha256": "91b4161040ebb101a9a286b270baa1f078aa7b77c8265a8f5e1d4341db060d9f"
+      },
+      "inputHostSha256": "e71a3157936346d385c39aedcdfd480301da3e862aa97c113a237b587c5456f4",
+      "preparedHostSha256": "44b2e6fd08e11112368f74dbcff8e04a34712d07295c42309f8a04f8f46f4e56"
+    },
+    "privacy": "Only allowlisted target events and summary are retained. Raw trace, XML, TOC, environment and other-process records remain private."
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "classification": "single-instrumented-windowed-cef-gpu-observation",
+  "measurementSource": "6349e7527220a44fc75356090210fa9eebd656e9",
+  "nativeSource": {
+    "declaredCommit": "9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf",
+    "tree": "287b418ed4e7dba5df106276baa2f1da3e71c596",
+    "embeddedBuildAttestation": false
+  },
+  "nativeReportSha256": "91b4161040ebb101a9a286b270baa1f078aa7b77c8265a8f5e1d4341db060d9f",
+  "nativePassed": true,
+  "sourceUnchanged": true,
+  "artifactsUnchanged": true,
+  "cleanup": {
+    "postExitPassed": true,
+    "survivorCount": 0,
+    "orphanCount": 0
+  },
+  "tool": {
+    "name": "xctrace",
+    "version": "27.0 (27A266a)",
+    "template": "Metal System Trace",
+    "requestedTimeLimitSeconds": 15,
+    "mode": "Deferred",
+    "counterSet": null,
+    "shaderTimeline": "disabled"
+  },
+  "capture": {
+    "start": "2026-10-29T12:28:53.998-04:00",
+    "end": "2026-10-29T12:29:10.079-04:00",
+    "durationSeconds": 16.080359
+  },
+  "target": {
+    "pid": 40485,
+    "creationTime": 1793291331.618769,
+    "role": "gpu-process"
+  },
+  "attribution": {
+    "method": "live descendant GPU-role PID and birth identity matched to native observer; exact process PID in trace records",
+    "nativeSamplesMatchingTarget": 507,
+    "gpuRowsInspected": 50883,
+    "gpuRowsAttributed": 504,
+    "gpuRowsExcluded": 50379,
+    "allocationRowsInspected": 238,
+    "allocationRowsAttributed": 238
+  },
+  "gpuIntervalDefinition": "Metal System Trace metal-gpu-intervals: attributed start/duration/channel/state events, in nanoseconds relative to trace start.",
+  "gpuIntervals": {
+    "states": {
+      "Active": 504
+    },
+    "byChannel": [
+      {
+        "channel": "Compute",
+        "records": 28,
+        "activeIntervalUnionNs": 543875
+      },
+      {
+        "channel": "Fragment",
+        "records": 240,
+        "activeIntervalUnionNs": 5693048
+      },
+      {
+        "channel": "Vertex",
+        "records": 236,
+        "activeIntervalUnionNs": 3943084
+      }
+    ],
+    "firstStartNs": 4587504375,
+    "lastEndNs": 15625339000
+  },
+  "allocationDefinition": "Metal System Trace metal-current-allocated-size: MTLDevice.currentAllocatedSize, total allocated Metal device memory reported for the app; not resident GPU memory or total process/device footprint.",
+  "metalAllocatedSize": {
+    "records": 238,
+    "minimumBytes": 8830976,
+    "maximumBytes": 40714240,
+    "firstObservedStartNs": 1843782458,
+    "lastObservedEndNs": 16080358982
+  },
+  "retention": {
+    "targetEventsSha256": "db96552819250c7ec7f74540238fcb71433001a5c725f2f981861e6247d0a597",
+    "targetEventsBytes": 115688,
+    "rawGpuXmlSha256": "50cfe779be08ab541f2dc163d5714bab3c2396ed61b4931e7267e15fa8e5bdb7",
+    "rawAllocationXmlSha256": "2a98be479f08f1e0a10c09a2780b2452de6f2fb133367002243f0937c4c120de",
+    "privateTraceInventorySha256": "d3ff898455297e50e827e930a82cb04fb70d7c73d9b2f0dc0f9d23fe81339776",
+    "privateTraceFileCount": 574,
+    "privateTraceBytes": 150795166
+  },
+  "includedInCpuRssCohort": false,
+  "performanceEligible": false,
+  "gpuUtilizationQualified": false,
+  "gpuResidentMemoryQualified": false,
+  "physicalInputQualified": false,
+  "limitations": [
+    "One instrumented attempt, outside the four ordinary cohort attempts; discovery and tracing overhead is unquantified.",
+    "Only records for the live native GPU process are retained; other processes and raw trace environment/device metadata remain private.",
+    "Nested intervals and concurrent GPU channels overlap. Per-channel unions are observed coverage, not summed device utilization or total renderer work.",
+    "Capture is partial and does not establish final GPU-memory release, complete display-pipeline cost, or frame/presentation latency.",
+    "No hardware counter set or shader timeline was enabled.",
+    "Virtual-display session; no physical display, input, IME, screen reader, OSR comparison, quiet-machine or thermal qualification."
+  ]
+}
