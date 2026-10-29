@@ -23,7 +23,8 @@
     "commands.dispose",
     "dialog.cancel",
     "status.dispose",
-    "links.dispose"
+    "links.dispose",
+    "file.interaction.cancel"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,

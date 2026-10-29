@@ -133,8 +133,10 @@ final callback authorization and owned native cleanup. The additive M7
 for explicit destinations, real CEF progress and cancellation, and bounded
 file/owner cleanup. [Native file dialogs](file-dialogs.md) use separate scoped
 grants and share the native modal reservation with window menus. Selecting a path
-grants no file access. General filesystem/process adapters, upload, and OS-file
-drops remain separate work; no browser action creates their authority.
+grants no file access. The separately gated [programmatic file facet](programmatic-files.md)
+stages trusted application bytes for exact document-approved file inputs and synthetic
+DOM drops; it grants no disk path access or application trust. General filesystem and
+process adapters and physical file drops remain separate work.
 
 ## Browser independence
 
