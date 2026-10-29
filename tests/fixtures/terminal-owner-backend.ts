@@ -6,7 +6,7 @@ import { TerminalService } from '../../packages/runtime/src/terminal.ts'
 import { NativeTerminalDriver } from '../../packages/runtime/src/terminal-owner.ts'
 
 const [owner, python] = process.argv.slice(2)
-if (!owner || !python || Bun.version !== '1.4.3')
+if (!owner || !python || Bun.version !== '1.4.4')
   throw new Error('Pinned owner fixture arguments required')
 let finish!: (value: StreamOutcome) => void
 const output = new OwnerTerminalConsumer((record) => {

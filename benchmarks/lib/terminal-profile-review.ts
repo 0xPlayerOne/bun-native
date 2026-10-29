@@ -43,7 +43,7 @@ export async function captureTerminalProfile(path: string): Promise<TerminalProf
     'Use the explicit isolated window-profile review command'
   )
   assert.deepEqual(report['workload'], LOAD)
-  assert.equal(report['bun'], '1.4.3')
+  assert.equal(report['bun'], '1.4.4')
   assert.equal(report['terminalOwnership'], 'native-non-detaching')
   assert.equal(report['inputArtifactUnchanged'], true)
   assert.equal(report['preparedArtifactUnchanged'], true)
@@ -156,7 +156,7 @@ export async function captureTerminalProfile(path: string): Promise<TerminalProf
     context: {
       workload: LOAD,
       runtime: {
-        bun: '1.4.3',
+        bun: '1.4.4',
         cef: identity['cefVersion'],
         chromium: identity['chromiumVersion'],
         engineSha256: identity['sha256'],

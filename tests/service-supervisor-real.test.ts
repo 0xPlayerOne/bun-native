@@ -50,11 +50,11 @@ const launch = (mode: string) => ({
   maxOutputBytes: 16 * 1024,
 })
 const finish = new TextEncoder().encode('finish\n')
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 pinnedRuntimeTest(
   'pinned real PTYs restart failing generations only after exact output and release, preserving unrelated child',
   async () => {
-    expect(Bun.version).toBe('1.4.3')
+    expect(Bun.version).toBe('1.4.4')
     const delegate = new BunTerminalDriver()
     const captures: { hash: ReturnType<typeof createHash>; bytes: number }[] = []
     const service = new TerminalService({

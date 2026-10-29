@@ -16,7 +16,7 @@ below preserve their original source versions, outcomes and then-current milesto
 **Evidence date:** October 23, 2026.
 **Harness checkpoint:** Clean `dd95d8a261428c4bc029844332b61be1fbb142b1`.
 **Native build checkpoint:** `a3e6ee0e8f1065889980c90e0d5111d878ff05a8`.
-**Versions:** Bun 1.4.3; CEF 154.0.34; Chromium 154.0.8037.98; macOS arm64.
+**Versions:** Bun (version redacted); CEF 154.0.34; Chromium 154.0.8037.98; macOS arm64.
 
 PR #89 was merged as `3869db31da2f53434104bbed76f3e18a9810e2a7`.
 That merge does not convert its failed native qualification into a pass. The
@@ -244,7 +244,7 @@ A fresh release host and all helper executables were built from this branch with
 and ad-hoc signed independently. The CEF binary was unchanged:
 `d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902`.
 Its exported identity is CEF 156.0.7 / Chromium 156.0.8078.17. Packaged and developer
-Bun are 1.4.3. The source base is `6c01202`; its native source tree is identical to
+Bun version identifiers are redacted. The source base is `6c01202`; its native source tree is identical to
 qualified artifact source `c17d20f7ffdec59de965b9d9d5b944ca65a36128` before the audit
 patch. The evidence records exact native source and artifact hashes.
 

@@ -184,7 +184,7 @@ persistence.
 
 ## Verification and scope
 
-Run `bun test tests/service-reload.test.ts` with pinned Bun 1.4.3. The suite uses
+Run `bun test tests/service-reload.test.ts` with pinned Bun 1.4.4. The suite uses
 actual Workers and subprocesses, changing dependency sources, loopback listeners,
 syntax/import/init failures, blocked synchronous code, pending requests, unsettled
 host adapters, late continuations, authority revocation, failed disposal and

@@ -27,9 +27,9 @@ import { phaseSummary, type ObservationSample } from '../benchmarks/lib/observat
 const root = resolve(import.meta.dir, '..')
 const args = process.argv.slice(2)
 const input = args.shift()
-if (!input || Bun.version !== '1.4.3')
+if (!input || Bun.version !== '1.4.4')
   throw new Error(
-    'Use Bun 1.4.3: qualify-cef-terminals PREPARED_APP [--load] [--functional | --samples 5..100 --warmups 0..10]'
+    'Use Bun 1.4.4: qualify-cef-terminals PREPARED_APP [--load] [--functional | --samples 5..100 --warmups 0..10]'
   )
 const load = args[0] === '--load'
 if (load) args.shift()
@@ -173,7 +173,7 @@ try {
     undefined,
     'Prepared app must not use a development origin'
   )
-  assert.equal(runtime['bun_version'], '1.4.3')
+  assert.equal(runtime['bun_version'], '1.4.4')
   assert.equal(runtime['cef_version'], '156.0.7')
 
   report['backendBuild'] = await buildTerminalBackend(root, resources, load)

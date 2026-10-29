@@ -79,7 +79,7 @@ async function qualify(work: string, volume: string) {
   }
   await writeFile(
     join(payload, 'resources/runtime.json'),
-    JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' })
+    JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.4', cef_version: '156.0.7' })
   )
   await writeFile(join(payload, 'LICENSE'), 'Synthetic storage qualification only')
   await writeFile(join(payload, 'large.bin'), Buffer.alloc(16 * 1024 * 1024, 81))
@@ -88,7 +88,7 @@ async function qualify(work: string, volume: string) {
     version: '0.1.0-dev.0',
     abi: 1,
     target: 'darwin-arm64',
-    bun: '1.4.3',
+    bun: '1.4.4',
     cef: '156.0.7',
     chromium: '156.0.8078.17',
     cefRs: 'a46b48c6221f99414a5c6b37ff86491772f9b0a2',

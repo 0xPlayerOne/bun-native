@@ -1,7 +1,7 @@
 # Graphical native terminal qualification
 
 This increment adds the first maintained end-to-end qualifier for an actual
-prepared CEF host, pinned Bun 1.4.3 PTYs, the independent native binary stream
+prepared CEF host, pinned Bun runtime (version redacted) PTYs, the independent native binary stream
 lane, and graphical `@xterm/xterm` 5.5.0 consumption. It advances the functional
 and concurrent-load portions of #24 and #27; it does not close either issue.
 

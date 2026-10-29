@@ -61,7 +61,7 @@ async function hostAndPage(probe: WorkbenchDesktopProbe): Promise<void> {
       pid: 1,
       framework: 'fixture',
       frameworkVersion: '1',
-      runtimeVersion: '1.4.3',
+      runtimeVersion: '1.4.4',
       engineVersion: null,
       sandbox: 'unverified',
     }),

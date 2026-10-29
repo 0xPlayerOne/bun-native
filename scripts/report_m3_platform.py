@@ -262,7 +262,7 @@ def validate(target, profile, reports, *, expected_identity=("154.0.34", "154.0.
         environment.get("target") == target and environment.get("standardUser") is True,
         "Missing unprivileged native environment",
     )
-    require(environment.get("bunVersion") == "1.4.3", "Wrong native Bun runtime")
+    require(environment.get("bunVersion") == "1.4.4", "Wrong native Bun runtime")
     require(
         environment.get("emulated") is (profile == "emulated-functional"), "Emulation not declared"
     )

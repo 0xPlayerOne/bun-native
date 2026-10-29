@@ -7,7 +7,7 @@ import {
   terminalReviewEnvelope,
 } from '../benchmarks/lib/terminal-regression.ts'
 const [operation, first, second, output] = process.argv.slice(2)
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 assert.ok(
   operation === 'capture' || operation === 'envelope' || operation === 'compare',
   'Use review-terminal-regression capture REPORT OUTPUT | envelope CAPTURE OUTPUT | compare BASELINE CANDIDATE OUTPUT'

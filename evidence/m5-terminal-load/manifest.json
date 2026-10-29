@@ -63,7 +63,7 @@
     "source": "exported-api",
     "sandbox": "unverified"
   },
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "target": "darwin-arm64",
   "nativeInputSource": "c17d20f7ffdec59de965b9d9d5b944ca65a36128 (immutable prepared CEF 156 application; JS-only qualification bundles)",
   "samplesPerMode": 5,
@@ -434,12 +434,12 @@
     }
   ],
   "archive": {
-    "bytes": 3525219,
-    "sha256": "02d83fd450111c5fc7dbb75e382e4e746e60f85574f363a977bff7e17356c15e"
+    "bytes": 3525347,
+    "sha256": "36a11a011d37edc1711651d793449e9eae4e5f985106a17986ccf3f986694046"
   },
   "expanded": {
     "bytes": 75013076,
-    "sha256": "af8cdde89220659467f4e05498df7690abf500bd211f4bd939d786ba89cf490f"
+    "sha256": "4ad0394c1425a647c7f05e7ca95524ec011ba396eb72048204e351143a9b4b00"
   },
   "historicalRunsRetained": [
     "run-47dWOi",

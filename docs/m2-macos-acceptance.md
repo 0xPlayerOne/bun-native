@@ -60,17 +60,17 @@ Apple M2 Max, 64 GB, macOS 26.7.1 (25G241), arm64. The observed display was a
 Screen Sharing Virtual Display at 1920 x 1080 / 60 Hz. AC power was observed at
 setup; it was not monitored continuously. Other user workloads were not stopped.
 
-The controller and project toolchain use the explicit Bun 1.4.3 executable
+The controller and project toolchain use the explicit Bun (version redacted) executable
 (`c6da4a4d3`), not the machine's different default Bun. Python 3.11.15, psutil
 7.0.0 and Playwright 1.57.0 are installed in the private `.bunly` environment.
 
 | Reference                | Observed runtime/browser                                                 |
 | ------------------------ | ------------------------------------------------------------------------ |
-| Frontend fixture         | Bun 1.4.3; Chrome for Testing 143.0.7499.4                               |
+| Frontend fixture         | Bun (version redacted); Chrome for Testing 143.0.7499.4                               |
 | Electron 44.8.0          | Node 24.22.0; Chromium 152.0.7977.167                                    |
 | Electrobun 2.0.3-beta.26 | Packaged Bun 1.4.0; CEF 147.0.10 / Chromium 147.0.7727.118               |
-| Mirin 0.1.0-alpha.26     | Bun 1.4.3; CEF 148.0.10 / Chromium 148.0.7778.218                        |
-| Butter source 1.6.3      | Bun 1.4.3; WKWebView. Exact WebKit runtime identity remains unqualified. |
+| Mirin 0.1.0-alpha.26     | Bun (version redacted); CEF 148.0.10 / Chromium 148.0.7778.218                        |
+| Butter source 1.6.3      | Bun (version redacted); WKWebView. Exact WebKit runtime identity remains unqualified. |
 
 CEF identities come from the hash-checked native library exports, not a reduced
 user-agent string. Different browser versions, security profiles and packaging
@@ -78,7 +78,7 @@ boundaries prevent treating these as an equivalent performance comparison.
 
 ## Defects found by actual execution
 
-1. Bun 1.4.3 printed the intentional parser rejection but did not deliver the
+1. Bun (version redacted) printed the intentional parser rejection but did not deliver the
    expected `bun:error` callback in this fixture. The collector now requires a
    fresh, bounded, source-attributed server diagnostic and still checks that the
    last usable document survives. The unused callback registration was removed.
@@ -110,7 +110,7 @@ repository's Oxfmt and Ruff conventions. Formatting accounts for part of the dif
 
 The pinned `butterframework@1.6.3` registry lookup returned 404. Instead, a clean
 checkout of `wess/butter` at `a735ddf2eac8f4fe4a98370fc4ccf4373db797d9`
-was packed with Bun 1.4.3 and `--ignore-scripts`. No competitor source was patched.
+was packed with Bun (version redacted) and `--ignore-scripts`. No competitor source was patched.
 The private installation selected that local tarball and retained its exact lock.
 
 The first compile failed because `semhelper.dylib` was absent. Running the pinned
@@ -131,8 +131,8 @@ the exact source commit before installing. No tarball is added to Bunly's runtim
 
 Use the exact Bun executable for installations, including nested directories.
 The first Mirin resolution inherited Bun 1.4.2 from a directory-changing shell;
-its unchanged lock was then successfully installed frozen with Bun 1.4.3. The
-recorded desktop/release controller runs use Bun 1.4.3. Neither global Bun nor
+its unchanged lock was then successfully installed frozen with Bun (version redacted). The
+recorded desktop/release controller runs use Bun (version redacted). Neither global Bun nor
 machine-wide package-manager settings were changed.
 
 ## Read-only sandbox observations

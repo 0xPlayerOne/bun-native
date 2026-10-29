@@ -24,9 +24,9 @@ import { distribution, profileOptions } from '../benchmarks/foundation/statistic
 const root = resolve(import.meta.dir, '..'),
   args = process.argv.slice(2),
   input = args.shift()
-if (!input || Bun.version !== '1.4.3')
+if (!input || Bun.version !== '1.4.4')
   throw new Error(
-    'Use Bun 1.4.3: qualify-cef-transports PREPARED_APP [--native-only] [--functional | --samples 5..100 --warmups 0..10]'
+    'Use Bun 1.4.4: qualify-cef-transports PREPARED_APP [--native-only] [--functional | --samples 5..100 --warmups 0..10]'
   )
 const nativeOnly = args.includes('--native-only')
 if (nativeOnly) args.splice(args.indexOf('--native-only'), 1)

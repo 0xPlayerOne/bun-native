@@ -62,7 +62,7 @@ private-directory/cooperative-lock threat model.
 
 ## Retained checkpoint and completed final acceptance
 
-The pinned engine is CEF 156.0.7 / Chromium 156.0.8078.17 with Bun 1.4.3.
+The pinned engine is CEF 156.0.7 / Chromium 156.0.8078.17 with Bun (version redacted).
 The [sanitized checkpoint record](../evidence/m4-credential-checkpoints.json)
 retains the actual three-platform result at implementation head
 `b566a4c6d7f46c4f9071ca9ca06898f08b62880c`, tested merge source

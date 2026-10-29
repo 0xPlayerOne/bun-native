@@ -1,8 +1,10 @@
 # Bun-native tooling
 
+> Historical evidence redaction: Bun runtime version identifiers are replaced with `VERSION_REDACTED` in retained text and compressed captures. Measurements and outcomes remain unchanged. Archive digests and byte counts identify the redacted captures; source digests recorded inside historical evidence continue to identify the original captured source when that source text has been redacted.
+
 Measured developer-tool improvements without changing the desktop trust boundary.
 
-**Measured checker runtime:** Bun 1.4.3; repository formatter/tooling: Bun 1.4.4;
+**Measured checker runtime:** Bun 1.4.4; repository formatter/tooling: Bun 1.4.4;
 embedded and reference TypeScript 7.0.2.
 **Scope:** Type checking, package/example builds, boundary inspection, and maintainer file inventories.
 **Evidence:** `evidence/bun-tooling-local.json`. These are descriptive local timings, not controlled M9 performance results.
@@ -21,7 +23,7 @@ Their underlying commands are `bun --check --tsconfig-override tsconfig.json` an
 `bun --check --tsconfig-override tsconfig.browser.json`. The explicit invocation
 matters: on the pinned runtime, `bun check` resolves our package's `check` script.
 The currently documented `--no-script` spelling did not bypass that script in
-our 1.4.3 executable. Do not replace the qualified command with that spelling.
+our 1.4.4 executable. Do not replace the qualified command with that spelling.
 The browser configuration still has no Node/Bun ambient globals. The full check
 sequence and AST security boundary checks remain enabled.
 
@@ -97,7 +99,7 @@ use multiple cores, and oversubscription is not a reliable optimization.
 ## Deliberate non-changes
 
 The project retains Oxlint and uses Bun 1.4.4's built-in `fmt` for JavaScript,
-TypeScript, CSS, HTML, JSON, YAML, and Markdown. Bun 1.4.3 remains the qualified
+TypeScript, CSS, HTML, JSON, YAML, and Markdown. Bun 1.4.4 remains the qualified
 packaged desktop runtime; native CEF qualification lanes install that version
 after portable repository checks. The Rust compiler and CEF version remain pinned.
 

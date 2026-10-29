@@ -3,7 +3,7 @@ import { test, expect } from 'bun:test'
 import { acceptBunPty } from '../benchmarks/pty/acceptance.ts'
 import { qualifyBunPty } from '../benchmarks/pty/qualification.ts'
 
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 pinnedRuntimeTest(
   'real pinned Bun PTY input, resize, output drain and bounded stream failures',
   async () => {

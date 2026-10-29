@@ -14,7 +14,7 @@ import {
 } from '../scripts/hardware-workbench.ts'
 
 const root = resolve(import.meta.dir, '..')
-const runtime = { schema: 1, protocol: 1, bun_version: '1.4.3', cef_version: '156.0.7' }
+const runtime = { schema: 1, protocol: 1, bun_version: '1.4.4', cef_version: '156.0.7' }
 const target = `${process.platform}-${process.arch}` as 'linux-x64' | 'darwin-arm64' | 'win32-x64'
 const commitPattern = 'a'.repeat(40)
 

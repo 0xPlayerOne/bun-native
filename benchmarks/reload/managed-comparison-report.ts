@@ -23,7 +23,7 @@ export function acceptManagedComparisonReport(input: unknown) {
   assert.equal(report['performanceEligible'], false)
   assert.equal(report['runClass'], 'local-smoke')
   assert.equal(report['target'], 'darwin-arm64')
-  assert.equal(report['bun'], '1.4.3')
+  assert.equal(report['bun'], '1.4.4')
   assert.deepEqual(report['plan'], COMPARISON_PLAN)
   const before = record(report['sourceBefore'])
   assert.equal(before['clean'], true)

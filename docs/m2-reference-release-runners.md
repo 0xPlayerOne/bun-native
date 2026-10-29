@@ -19,7 +19,7 @@ select a different browser. All data is from private generated local fixtures.
 
 `benchmarks/adapters/references/*.package.json` describe separate contributor-only
 depots. On a network-enabled qualification machine, copy the chosen manifest to a
-new private directory and resolve it with Bun 1.4.3. Inspect the resulting `bun.lock`
+new private directory and resolve it with Bun (version redacted). Inspect the resulting `bun.lock`
 and transitive graph, retain it, compute its SHA-256, and use frozen installation
 for subsequent trials. No lockfile is invented from unavailable registry metadata.
 The manifests are not added to the root workspaces or Bunly's runtime payload.

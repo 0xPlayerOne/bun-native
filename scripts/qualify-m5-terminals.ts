@@ -7,7 +7,7 @@ import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 const root = resolve(import.meta.dir, '..')
 const [app, ...options] = process.argv.slice(2)
 assert.ok(app, 'Use qualify-m5-terminals PREPARED_APP --functional | --samples N --warmups N')
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 const source = sourceIdentity(root)
 assert.ok(source.clean, 'Combined acceptance requires clean committed source')
 const parent = join(root, '.bunly/m5/combined-terminals')

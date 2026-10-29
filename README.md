@@ -11,7 +11,7 @@ competitive runtime efficiency are hypotheses to validate, not current performan
 ## Run the foundation
 
 Use Bun **1.4.4** for repository tooling and formatting. The qualified packaged desktop runtime
-remains Bun 1.4.3. These application-side commands do not invoke a systems compiler:
+remains Bun 1.4.4. These application-side commands do not invoke a systems compiler:
 
 ```sh
 bun install --frozen-lockfile

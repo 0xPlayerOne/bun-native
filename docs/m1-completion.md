@@ -4,7 +4,7 @@ Feasibility evidence and a final host selection, not desktop release certificati
 
 **Scope:** M1 issues #2–#7; last outstanding work #5.
 **Decision:** [ADR 0002](decisions/0002-host-qualification.md).
-**Selected host:** Prebuilt Rust GUI owner plus one supervised Bun 1.4.3 process.
+**Selected host:** Prebuilt Rust GUI owner plus one supervised Bun (version redacted) process.
 
 ## Acceptance mapping
 
@@ -54,7 +54,7 @@ On Linux x64 with the supplied, hash-verified offline tools:
 - New evidence-reducer regression tests and the existing kernel-counter tests pass.
 - The standard-library-only native host probe builds and its three unit tests pass
   with recovered Rust 1.91.0, `--locked --offline`.
-- Local Bun 1.4.3 lifecycle recheck passes normal/hung FFI and Node-API Workers,
+- Local Bun (version redacted) lifecycle recheck passes normal/hung FFI and Node-API Workers,
   the 28-generation process soak, and observed native-process abort. This recheck
   uses local Python/psutil 7.2.2; the preserved cross-platform evidence uses
   psutil 7.0.0. They are not combined into performance estimates.

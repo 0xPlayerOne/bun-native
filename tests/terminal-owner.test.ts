@@ -8,7 +8,7 @@ import {
 } from '../packages/runtime/src/terminal-owner.ts'
 import type { TerminalDriverObserver } from '../packages/runtime/src/terminal.ts'
 
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 const python = realpathSync(process.env['PYTHON'] ?? Bun.which('python3')!)
 const bytes = await Bun.file(python).bytes()
 const fd = process.platform === 'win32' ? -1 : openSync('/dev/null', 'r')

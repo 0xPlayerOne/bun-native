@@ -120,7 +120,7 @@ and [resource request handler](https://cef-builds.spotifycdn.com/docs/154.0/clas
 
 Committed implementation `d9d2f3ae52f16493ac48375216ec86721961a05d` passed the
 real network, RPC/session and browser-policy qualifiers on macOS arm64 with
-Bun 1.4.3 and the existing CEF 154.0.34 distribution. The network suite recorded
+Bun (version redacted) and the existing CEF 154.0.34 distribution. The network suite recorded
 two hostile cross-origin frames, two service-worker runs, four allowed data
 requests, and zero forbidden, wrong-session or untrusted-TLS application requests.
 Ordinary public HTTPS navigation and exact native certificate-denial evidence

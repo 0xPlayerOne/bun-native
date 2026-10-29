@@ -16,14 +16,14 @@ import {
   reloadMemoryScope,
   type ReloadCandidate,
 } from '../benchmarks/reload/fixtures.ts'
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 
 function sample(mode: ReloadCandidate, count = 2): Record<string, unknown> {
   return {
     schema: 1,
     profile: 'reload-mechanisms-v1',
     mode,
-    bun: '1.4.3',
+    bun: '1.4.4',
     platform: 'linux',
     arch: 'x64',
     complete: true,
@@ -223,7 +223,7 @@ function matrix(): Record<string, unknown> {
     schema: 1,
     profile: 'reload-mechanisms-matrix-v1',
     passed: true,
-    bun: '1.4.3',
+    bun: '1.4.4',
     samples: 20,
     selection: 'not-a-production-loader-selection',
     target: 'linux-x64',

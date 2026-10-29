@@ -160,7 +160,7 @@ def fixture(target="linux-x64"):
             "target": target,
             "standardUser": True,
             "emulated": True,
-            "bunVersion": "1.4.3",
+            "bunVersion": "1.4.4",
         },
     }
 

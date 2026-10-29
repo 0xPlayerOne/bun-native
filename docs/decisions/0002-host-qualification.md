@@ -20,7 +20,7 @@ Keep Node-API/Worker and C-ABI/FFI/Worker hosts as tested alternatives, not ship
 requirements or an automatic fallback after failure. Any later switch requires
 an explicit ADR and equivalent application-level lifecycle/performance results.
 Do not create one process per service/window, embed undocumented Bun internals,
-or maintain a Bun fork. Bun 1.4.3 is the qualified runtime. The host-probe C ABI
+or maintain a Bun fork. Bun (version redacted) is the qualified runtime. The host-probe C ABI
 and native-control protocol are version 1 but are distinct interfaces; changes
 must retain explicit version checks rather than assuming Rust source compatibility.
 
@@ -46,7 +46,7 @@ The following later completed runs supply the closeout's retained measurements:
   Windows recorded an unavailable provider, not a zero reading.
 
 Those runs exercised head `a68c7dfe8ace8b3e1bb5245f1eafe817c15aba33` through GitHub's
-merge commit `b7097320d2726e0aa2a7da03ef0ff8ab15d4cf14`, with Bun 1.4.3 and probe
+merge commit `b7097320d2726e0aa2a7da03ef0ff8ab15d4cf14`, with Bun (version redacted) and probe
 compiler Rust 1.85.1. Six artifact SHA-256 values, original JSON member hashes,
 targets and environment records are retained. The reducer independently checks
 process exits/orphans, the full fault/generation matrix, and recomputes kernel

@@ -46,7 +46,7 @@ identified in `evidence/m3-hosted-runs.json`.
 
 Windows acceptance ran under a new standard local account. Native browser samples
 include low-integrity restricted/AppContainer tokens and job membership. The
-actual CEF export is 154.0.34 / Chromium 154.0.8037.98, and bundled Bun is 1.4.3.
+actual CEF export is 154.0.34 / Chromium 154.0.8037.98, and bundled Bun runtime version is redacted.
 No Apple account, production certificate, local x64 emulation or persistent
 cloud machine was required. The workflow removes its temporary Windows account
 and GitHub disposes of each hosted job environment.

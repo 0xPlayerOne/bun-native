@@ -45,7 +45,7 @@ parent tree is not treated as owning a Launch Services process.
 
 ## Reproduction
 
-Use the existing exact Bun 1.4.3 and isolated Python environments from the benchmark
+Use the existing exact Bun (version redacted) and isolated Python environments from the benchmark
 guide. The contained Butter source/helper-primed installation must already have
 been prepared by `scripts/bootstrap-reference-baselines.ts` with its committed lock.
 The runner refuses a different platform or runtime package; it does not install a
@@ -116,7 +116,7 @@ source commit rather than relabeled as the final implementation.
 | 1                |      36 |                4932.7 |                                277544960 |
 | 2                |      33 |                4786.3 |                                280412160 |
 
-The final profile recorded Butter source 1.6.3, actual Bun 1.4.3, macOS build
+The final profile recorded Butter source 1.6.3, actual Bun (version redacted), macOS build
 25G241 and system WebKit 21624.5.1.11.3. The installed WebKit manifest is not a
 per-process loaded-library attestation. Native responsibility and coalition
 checks establish the resource association described above, not security-policy

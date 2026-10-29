@@ -3,7 +3,7 @@
 Frozen dependency inputs from the October 19, 2026 workbench acceptance run.
 
 `mirin.bun.lock` pairs with `../mirin.package.json`. Copy both to a new private
-installation and name them `bun.lock` and `package.json`. Use Bun 1.4.3 with
+installation and name them `bun.lock` and `package.json`. Use Bun (version redacted) with
 `install --frozen-lockfile --ignore-scripts --linker=hoisted --backend=copyfile`.
 The linker/backend are explicit measurement-profile choices, not upstream defaults.
 

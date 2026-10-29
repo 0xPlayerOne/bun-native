@@ -638,7 +638,7 @@ export class DevelopmentSession {
         }
         if (dependencies.size === 0)
           throw new DevelopmentError('BUILD_FAILED', 'Bun did not report filesystem inputs')
-        // Metafile keys are display paths. Bun 1.4.3 can emit non-resolvable
+        // Metafile keys are display paths. Bun 1.4.4 can emit non-resolvable
         // cross-drive keys on Windows; only actual file loads define watchers.
         await this.#trackDependencies([...dependencies])
         this.#diagnostic(

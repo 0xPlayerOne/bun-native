@@ -173,7 +173,7 @@ tracked M4 work; this increment does not silently complete them.
 
 ## Local implementation checkpoint
 
-The implementation pass ran pinned Bun 1.4.3 and Rust 1.91.0 against the existing
+The implementation pass ran pinned Bun runtime (version redacted) and Rust 1.91.0 against the existing
 CEF 154.0.34 distribution. `check:portable` passed 679 Bun tests and 200 Python
 tests; `check:foundation` passed 139 overlapping Bun tests. `check:ci:native`
 passed both workspaces, including 93 CEF tests, strict Clippy and release builds.

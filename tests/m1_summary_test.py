@@ -77,7 +77,7 @@ def add_kernel(report, target):
 def fixtures(directory, mutate=None):
     inputs = {
         "schema": 1,
-        "bun": "1.4.3",
+        "bun": "1.4.4",
         "testedHeadCommit": "head",
         "testedMergeCommit": "merge",
         "nativeProbeCompiler": "1.85.1",
@@ -89,7 +89,7 @@ def fixtures(directory, mutate=None):
             summary = {
                 "schema": 1,
                 "target": target,
-                "bun": "1.4.3",
+                "bun": "1.4.4",
                 "commit": "merge",
                 "results": [],
                 "passed": True,

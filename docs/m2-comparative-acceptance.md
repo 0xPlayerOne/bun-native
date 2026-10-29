@@ -7,7 +7,7 @@ Actual reference workflows, bounded idle accounting, and trusted browser input.
 
 ## Reproduction
 
-Use the repository's exact Bun 1.4.3 executable and its frozen root lock. Set `PYTHON`
+Use the repository's exact Bun (version redacted) executable and its frozen root lock. Set `PYTHON`
 to the isolated environment installed from `requirements-dev.txt` and the optional
 frontend requirements. Do not substitute the machine's default Bun after `cd`.
 
@@ -140,8 +140,8 @@ All observations below were executed from clean commit `effe77bceea0b1cc9e96a211
 | ------------------------ | -------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | electron 44.8.0          | 24.22.0        | chromium 152.0.7977.167      | Node disabled, context isolation and renderer preload sandbox attestation; retain native sample transitions |
 | electrobun 2.0.3-beta.26 | 1.4.0          | chromium 147.0.7727.118      | CEF plus RPC-disabled page profile; observed Seatbelt presence is not policy equivalence                    |
-| mirin 0.1.0-alpha.26     | 1.4.3          | chromium 148.0.7778.218      | CEF prebuilt + explicit ad-hoc signing; retain sampled native security state                                |
-| butter 1.6.3             | 1.4.3          | system-webkit 21624.5.1.11.3 | Separate source/helper-primed system-webview profile; do not claim full XPC process accounting              |
+| mirin 0.1.0-alpha.26     | VERSION_REDACTED          | chromium 148.0.7778.218      | CEF prebuilt + explicit ad-hoc signing; retain sampled native security state                                |
+| butter 1.6.3             | VERSION_REDACTED          | system-webkit 21624.5.1.11.3 | Separate source/helper-primed system-webview profile; do not claim full XPC process accounting              |
 
 The three Chromium versions are different, and the security profiles are not interchangeable. The resulting equivalent-engine/security cohorts contain one reference each. The accepted output is a set of reproducible per-profile baselines, not invented cross-framework speedup percentages. The original strict comparison API and provisional performance budgets are unchanged.
 
@@ -157,7 +157,7 @@ The trusted-input driver passed four independent contexts: **480 actual trusted 
 
 - Both reference preparations reproduced in fresh directories with frozen locks. Butter’s source tarball also reproduced the exact reviewed hash; its helper compilation is retained as part of the source profile rather than omitted.
 
-- Pinned Mirin `packages/mirin/src/native.ts` polls native events with `setInterval(drain, 8)`. Pinned Butter `src/cli/compile.ts` generates a `setTimeout(poll, 16)` IPC loop and embeds/extracts native/asset bytes. These are source observations, not proof that these timers alone caused any measured idle cost. Electrobun’s actual packaged Bun remains 1.4.0 although the controller is Bun 1.4.3.
+- Pinned Mirin `packages/mirin/src/native.ts` polls native events with `setInterval(drain, 8)`. Pinned Butter `src/cli/compile.ts` generates a `setTimeout(poll, 16)` IPC loop and embeds/extracts native/asset bytes. These are source observations, not proof that these timers alone caused any measured idle cost. Electrobun’s actual packaged Bun remains 1.4.0 although the controller is Bun (version redacted).
 
 - The extra local collector found a pass-propagation gap: a successful nested adapter result could have hidden a later idle-reducer failure. Its final gate now also requires no collector failure and complete native idle observations. All 16 preserved trials independently pass the stricter gate, so none was retroactively relabeled.
 

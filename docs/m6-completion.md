@@ -375,7 +375,7 @@ comparative performance advantage.
 
 ## Native workload results
 
-The accepted archive records Bun 1.4.3 with CEF 156.0.7 / Chromium 156.0.8078.17
+The accepted archive records Bun (version redacted) with CEF 156.0.7 / Chromium 156.0.8078.17
 on macOS arm64. The selected prebuilt's declared native source is
 `de8cfc995de828e3b636fe77edbf79d113172cb5`, with matching current native source
 tree and actual artifact inventories. The declaration is not embedded build
@@ -465,9 +465,9 @@ assets and numbered bytes.
 
 | Framework                | Observed edit lifecycle                                              | Three measured edit durations, ms     | Actual Bun / CEF / Chromium       |
 | ------------------------ | -------------------------------------------------------------------- | ------------------------------------- | --------------------------------- |
-| Bunly                    | Retained native desktop and renderer; Worker replacement             | 86.376333, 49.902333, 81.642667       | 1.4.3 / 156.0.7 / 156.0.8078.17   |
+| Bunly                    | Retained native desktop and renderer; Worker replacement             | 86.376333, 49.902333, 81.642667       | VERSION_REDACTED / 156.0.7 / 156.0.8078.17   |
 | Electrobun 2.0.3-beta.26 | Official build, process relaunch and browser-owned state restoration | 8116.537541, 6832.988125, 2300.215125 | 1.4.0 / 147.0.10 / 147.0.7727.118 |
-| Mirin 0.1.0-alpha.26     | Official build, process relaunch and browser-owned state restoration | 2216.705916, 2202.000583, 2281.571291 | 1.4.3 / 148.0.10 / 148.0.7778.218 |
+| Mirin 0.1.0-alpha.26     | Official build, process relaunch and browser-owned state restoration | 2216.705916, 2202.000583, 2281.571291 | VERSION_REDACTED / 148.0.10 / 148.0.7778.218 |
 
 The reference pages receive a form seed only on the initial launch. Subsequent
 documents restore the actual preceding form, revision and transcript from their

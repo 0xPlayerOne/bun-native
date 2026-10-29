@@ -35,7 +35,7 @@ export async function developmentScenario(
       correctness: { passed: false, details: 'No desktop behavior simulated' },
       metrics: {},
     }
-  // Keep generated projects on the checkout volume. Bun 1.4.3's Windows
+  // Keep generated projects on the checkout volume. Bun 1.4.4's Windows
   // watcher rejected the system-temp project despite explicit cwd/PWD.
   // No application source is edited: only this newly created private fixture.
   const parent = join(root, '.bunly/edit-fixtures')

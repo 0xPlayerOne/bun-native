@@ -599,7 +599,7 @@ export async function verifyManagedRetainedEvidence(
   }
 }
 if (import.meta.main) {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use pinned Bun 1.4.4')
   assert.ok(process.argv.length <= 3, 'Use verify-managed-acceptance.ts [EVIDENCE_DIRECTORY]')
   console.log(
     JSON.stringify(

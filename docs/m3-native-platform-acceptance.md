@@ -79,7 +79,7 @@ result is substituted for executing the guest application.
 | Development-origin isolation | The real allowed origin and redirect load successfully. The forbidden server receives zero requests from the tested redirects, subframes, scripts and fetches.                                                                                                                         |
 | Process faults               | Backend exit, backend exit with a pipe-retaining descendant, renderer termination, and GPU termination/recovery all passed. A fresh private receipt binds GPU recovery to an actual injected termination.                                                                              |
 | Browser isolation            | Positive runs retain native seccomp, no-new-privileges, zero-effective-capability and PID-namespace observations for isolated descendants. These are sampled observations, not continuous attestation of every helper.                                                                 |
-| Browser/runtime identity     | Actual exported CEF 154.0.34 / Chromium 154.0.8037.98, commit 3633; bundled Bun 1.4.3. The binary-version probe does not itself establish sandbox state.                                                                                                                               |
+| Browser/runtime identity     | Actual exported CEF 154.0.34 / Chromium 154.0.8037.98, commit 3633; bundled Bun (version redacted). The binary-version probe does not itself establish sandbox state.                                                                                                                               |
 
 Linux CEF's forked children can retain `--type=zygote` in their argument vector.
 The fault fixture now distinguishes the pinned renderer/GPU thread signatures
@@ -124,7 +124,7 @@ export PYTHON=/absolute/venv/bin/python
 export BUNLY_BENCH_SANDBOX=1
 xvfb-run -a dbus-run-session -- bun scripts/qualify-cef-prebuilt.ts /absolute/runtime/bunly_host --emulated-functional
 xvfb-run -a dbus-run-session -- bun scripts/qualify-cef-development.ts /absolute/runtime/bunly_host --emulated-functional
-xvfb-run -a dbus-run-session -- "$PYTHON" scripts/qualify-cef-faults.py /absolute/runtime/bunly_host --bun /absolute/bun-1.4.3 --emulated-functional
+xvfb-run -a dbus-run-session -- "$PYTHON" scripts/qualify-cef-faults.py /absolute/runtime/bunly_host --bun /absolute/bun-VERSION_REDACTED --emulated-functional
 ```
 
 Use the standard profile by omitting the flag on suitable native hardware;
@@ -183,7 +183,7 @@ membership for isolated renderer, GPU and utility processes; this is sampled
 isolation evidence, not continuous attestation of every subprocess.
 
 The exact exported native identity is CEF 154.0.34 / Chromium 154.0.8037.98,
-commit 3633, with bundled Bun 1.4.3. Successful exits have no timeouts, surviving
+commit 3633, with bundled Bun (version redacted). Successful exits have no timeouts, surviving
 orphans or forced backend exit being accepted as success. These runs use the
 **standard** deadlines, not the emulated-functional extension.
 

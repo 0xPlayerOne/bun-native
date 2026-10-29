@@ -8,7 +8,7 @@ import { qualifyBunPty } from '../benchmarks/pty/qualification.ts'
 
 const root = resolve(import.meta.dir, '..')
 assert.equal(process.argv.length, 2)
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 if (process.platform === 'win32') {
   const check = Bun.spawnSync([
     process.env['PYTHON'] ?? 'python',

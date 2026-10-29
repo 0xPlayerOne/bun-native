@@ -88,7 +88,7 @@ foreign-file or unmapped input preserves the captured frame. Redaction is applie
 after mapping so original source paths receive the same privacy treatment.
 
 The tests include a two-source map with known coordinates and a real map produced
-by Bun 1.4.3. They use `findEntry` deliberately: the pinned runtime's `findOrigin`
+by Bun (version redacted). They use `findEntry` deliberately: the pinned runtime's `findOrigin`
 does not implement the documented Node one-based argument/result shape. There is
 no custom resolver, new source-map dependency or invented fallback position.
 

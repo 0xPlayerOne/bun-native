@@ -65,7 +65,7 @@ This uses the published `electrobun@2.0.3-beta.26` bootstrap, pinned Hutch
 assembly are timed separately. Tool caches and the generated application live in
 `.bunly/benchmarks`. The framework downloads its own Bun; developer Bun does not
 select the runtime inside that application. The qualified artifact reports Bun
-1.4.0, even though the benchmark driver uses Bun 1.4.3.
+1.4.0, even though the benchmark driver uses Bun (version redacted).
 
 The configuration explicitly chooses a Bun main process, CEF and no WGPU module.
 This is a recorded tuned profile. It does not involve compiling native framework
@@ -109,7 +109,7 @@ disk state, not preservation of arbitrary memory or a still-running shell.
 
 The generated projects are private, disposable directories under
 `.bunly/edit-fixtures`, on the checkout volume. Earlier Windows runs under the
-system temp directory failed with Bun 1.4.3 reporting that project files were
+system temp directory failed with Bun (version redacted) reporting that project files were
 outside the watch root, even with explicit cwd. The workspace-local path passes;
 this is a harness setup workaround, not an upstream Bun fix. Those failed runs
 remain linked in `docs/validation-m1-m2-wave2.md`.

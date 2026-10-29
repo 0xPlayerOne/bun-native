@@ -44,8 +44,8 @@
       "name": "environment",
       "path": "environment.json.gz",
       "originalSha256": "c5d95ac70c91f084875dd6c9166d11e6871255f10cbdea185ac173f1def61117",
-      "redactedSha256": "c5d95ac70c91f084875dd6c9166d11e6871255f10cbdea185ac173f1def61117",
-      "storedSha256": "694319e5426894921bac052fc8357e977f73d67543172b9fc143821cb379caeb",
+      "redactedSha256": "f6cdbffb57407d75739c197991196cd7e3cdd079dead314ea219a2631e8ddca7",
+      "storedSha256": "45123726a12126979b21435a3990e566700f6cf8f47f5707a46a2004c1a93e51",
       "uncompressedBytes": 295
     }
   ],
@@ -94,7 +94,7 @@
       "sha256": "dd633ea924439338c8b746a48d7ebdba7d279f1a253115719e20ad4f61fe3092",
       "gitBlob": "1eb2f7c3dc5e82908212252131fed09ff10f9071"
     },
-    "examples/cef/public/nested/unicode-\u00e9.txt": {
+    "examples/cef/public/nested/unicode-é.txt": {
       "sha256": "dd059d250bf8b256d5865491409d6b1a6cf2d85c4b3f4c8e75f2dbe478075735",
       "gitBlob": "bbb216a1cc1d2115b2773009a34f4e3359b9606f"
     },

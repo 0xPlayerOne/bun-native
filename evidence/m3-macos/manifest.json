@@ -33,8 +33,8 @@
       "name": "acquisition",
       "path": "acquisition.json.gz",
       "originalSha256": "6d42a338c9e3e5678a7069d05f71cdc9629cbd78d82de8adb59ef70fdb128887",
-      "redactedSha256": "a2db17cfc30d18fed1e0c3e30f7e7a43a2ce3944fbd1b57d3fb25fa53fdfe26c",
-      "storedSha256": "156170d0476d775ee0ac607ef625e07b47ed443d099734936a9cf9615dc9ead0",
+      "redactedSha256": "b459ecb3f54df0c0c70c7481019e0cc0457b96f96ec3bfb479662707e812a3b8",
+      "storedSha256": "de330484f6341569cf3515f1d71ce019648f061b09f5e162f209b3d3dc27218e",
       "uncompressedBytes": 300328
     },
     {
@@ -91,7 +91,7 @@
       "sha256": "5d2eb782fe3a645dbf5bdf2d765a254438962649c9c892811408cb50e04a5be4",
       "gitBlob": "eab39ce89ca4e5ad3014211ebd8a6934a857c93e"
     },
-    "examples/cef/public/nested/unicode-\u00e9.txt": {
+    "examples/cef/public/nested/unicode-é.txt": {
       "sha256": "dd059d250bf8b256d5865491409d6b1a6cf2d85c4b3f4c8e75f2dbe478075735",
       "gitBlob": "bbb216a1cc1d2115b2773009a34f4e3359b9606f"
     },

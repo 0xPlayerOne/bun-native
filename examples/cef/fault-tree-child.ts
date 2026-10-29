@@ -1,7 +1,7 @@
 import { treeObservationGate } from './fault-tree-notification.ts'
 /** Fixed private descendant fixture, never an application process launcher. */
 const nonce = process.env['BUNLY_CEF_FAULT_NONCE'] ?? ''
-if (Bun.version !== '1.4.3' || !/^[a-f0-9]{48}$/.test(nonce))
+if (Bun.version !== '1.4.4' || !/^[a-f0-9]{48}$/.test(nonce))
   throw new Error('Explicit pinned native fault fixture required')
 const server = Bun.serve({
   hostname: '127.0.0.1',
