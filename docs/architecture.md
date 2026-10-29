@@ -119,9 +119,10 @@ bind native popup menus and local accelerators to the same exact scope, with
 final callback authorization and owned native cleanup. The additive M7
 [native download adapter](downloads.md) uses the same [M4 capability policy](m4-capability-policy.md)
 for explicit destinations, real CEF progress and cancellation, and bounded
-file/owner cleanup. General filesystem/process adapters, dialogs, file selection,
-upload, and OS-file drops remain separate work; no browser action creates their
-authority.
+file/owner cleanup. [Native file dialogs](file-dialogs.md) use separate scoped
+grants and share the native modal reservation with window menus. Selecting a path
+grants no file access. General filesystem/process adapters, upload, and OS-file
+drops remain separate work; no browser action creates their authority.
 
 ## Browser independence
 
