@@ -281,7 +281,12 @@ export default async function fileDownloads(backend: CefBackend): Promise<void> 
     )
     checks['rootMismatchRejected'] = true
 
-    const small = await tracked(view, 'complete', request('result.bin'))
+    // Diagnostic-only timing probe: the following large replacement retains 6s.
+    const small = await tracked(
+      view,
+      'complete',
+      request('result.bin', '/small.bin', { timeoutMs: 12_000 })
+    )
     assert.equal((await small.complete(server.small)).status, 'completed')
     const beforeCollision = server.count('/small.bin')
     await assert.rejects(backend.startDownload(view, request('result.bin')), /exists|destination/i)
