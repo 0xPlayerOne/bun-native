@@ -200,6 +200,41 @@ test('abort before admission retains the sole slot through cancellation ack unti
   }
 })
 
+test('coalesced admission and dismissal publish the exact native dialog identity first', async () => {
+  const f = await fixture()
+  try {
+    f.intercept((command) => {
+      if (command.op !== 'dialog.show') return false
+      f.input.write(
+        [
+          { v: 1, id: command.id, ok: true, value: { id: 101 } },
+          {
+            v: 1,
+            event: 'dialog.finished',
+            target: 3,
+            data: { id: 101, status: 'cancelled', path: null, error: null },
+          },
+        ]
+          .map((frame) => JSON.stringify(frame) + '\n')
+          .join('')
+      )
+      return true
+    })
+    assert.deepEqual(await f.backend.showOpenFileDialog(f.scope, dialog), {
+      status: 'cancelled',
+    })
+    assert.equal(f.transport.failure, null)
+    assert.equal(f.transport.diagnostics().requests, 0)
+    f.intercept(undefined)
+    const next = f.backend.showOpenFileDialog(f.scope, dialog)
+    await turn()
+    f.finish('cancelled')
+    assert.deepEqual(await next, { status: 'cancelled' })
+  } finally {
+    await f.stop()
+  }
+})
+
 test('a selection arriving after abort is discarded while the native terminal event still frees ownership', async () => {
   const f = await fixture()
   try {
