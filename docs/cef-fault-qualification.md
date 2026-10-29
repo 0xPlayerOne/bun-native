@@ -48,9 +48,9 @@ contract is observed. macOS retains verified versus unobserved helper samples;
 at least one verified helper completion is required within the fixed suite, and
 all actual cleanup failures are fatal. No sampling retries are added.
 
-## Automatic and manual execution
+## Manual execution
 
-The automatic three-platform native job now uses the existing `full` selection:
+The full native qualification is manually dispatched and uses the existing `full` selection:
 RPC/prebuilt, browser policy, network, paired functional transports, offline
 storage reset, process faults, then protected credentials. Manual `full` uses
 the identical map. The narrower six-stage `m4-acceptance` remains available.

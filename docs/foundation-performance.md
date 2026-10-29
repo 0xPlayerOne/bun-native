@@ -33,7 +33,7 @@ bun run profile:foundation --samples 15 --warmups 2 --output .bunly/profiles/fou
 bun run profile:foundation:cpu
 ```
 
-Use the pinned Bun 1.4.3. The CPU command asks Bun to write both machine-readable
+Use the pinned Bun 1.4.4. The CPU command asks Bun to write both machine-readable
 and Markdown CPU profiles into `.bunly/profiles`; the measured program runs in
 Bun. CPU profiling changes timing, so compare runs with equivalent options.
 

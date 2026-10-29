@@ -6,7 +6,7 @@ visible/hidden modes, and a pinned Electron load addon. It retains failed trials
 and has no performance ratio or calibrated wall-clock budget.
 
 ```sh
-# Bun 1.4.3; PYTHON points at the existing psutil environment.
+# Bun (version redacted); PYTHON points at the existing psutil environment.
 # Optional BUNLY_ELECTRON_EXECUTABLE selects an existing Electron 44.9.3 binary.
 bun scripts/qualify-m5-terminals.ts PREPARED_APP --functional
 bun scripts/qualify-m5-terminals.ts PREPARED_APP --samples 5 --warmups 1
@@ -101,7 +101,7 @@ receipts verify sandboxing/context isolation; the page checks Node globals are
 absent. Permissions and new windows are denied. No dependency, pin, browser
 flag or background-throttling setting changed.
 
-The topology is **Electron Node main + one Bun 1.4.3 controller + two real Bun
+The topology is **Electron Node main + one Bun (version redacted) controller + two real Bun
 PTY children**. This isolates renderer/transport behavior with equal Bun PTY
 producers; it is not ordinary Electron with a Node PTY backend. The addon shares
 the exact producer, 700 batches × 32 records × two terminals, phase cadence,
@@ -153,7 +153,7 @@ not independent population p95/p99 guarantees; failed trials are not discarded.
 
 ## Validation and remaining gates
 
-Pinned Bun 1.4.3: `check:portable` passed 870 Bun tests (one Windows-only skip),
+Pinned Bun (version redacted): `check:portable` passed 870 Bun tests (one Windows-only skip),
 229 Python tests, formatting/lint, strict/browser/reference types, AST boundaries,
 compiler-free builds and checker qualification. `check:foundation` passed 145
 overlapping tests. `check:workflows`, `foundry:doctor`, normal hooks and complete

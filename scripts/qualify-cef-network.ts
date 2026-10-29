@@ -8,7 +8,7 @@ import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 import { observedCommand, assertCleanCommand } from '../benchmarks/lib/observed-command.ts'
 import { acceptNativeNetwork } from '../benchmarks/lib/cef-network-acceptance.ts'
 
-if (Bun.version !== '1.4.3') throw new Error('Use pinned Bun 1.4.3')
+if (Bun.version !== '1.4.4') throw new Error('Use pinned Bun 1.4.4')
 const argument = process.argv[2]
 if (!argument || process.argv.length !== 3)
   throw new Error('Usage: bun scripts/qualify-cef-network.ts PREPARED_APP')

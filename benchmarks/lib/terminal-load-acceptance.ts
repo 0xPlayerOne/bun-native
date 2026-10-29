@@ -136,7 +136,7 @@ export function acceptLoadRows(
   }
   if (host === 'electron') {
     const electron = object(final['electron'])
-    assert.equal(electron['controllerBun'], '1.4.3')
+    assert.equal(electron['controllerBun'], '1.4.4')
     const state = object(electron['nativeState'])
     if (!windowed) {
       assert.equal(state['visible'], selected === 'visible')

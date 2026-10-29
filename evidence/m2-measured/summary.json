@@ -212,7 +212,7 @@
         "identity": {
           "framework": "Mirin",
           "version": "0.1.0-alpha.26",
-          "runtimeVersion": "1.4.3",
+          "runtimeVersion": "VERSION_REDACTED",
           "engine": "chromium",
           "engineVersion": "148.0.7778.218"
         },
@@ -317,7 +317,7 @@
         "identity": {
           "framework": "Butter",
           "version": "1.6.3",
-          "runtimeVersion": "1.4.3",
+          "runtimeVersion": "VERSION_REDACTED",
           "engine": "system-webkit",
           "engineVersion": "21624.5.1.11.3"
         },

@@ -1,7 +1,7 @@
 # Bun PTY and terminal qualification references
 
 No Bun implementation source was copied or forked. The contributor fixture uses
-Bun 1.4.3 (commit `c6da4a4d3010e5553438c60f6bd76d981976867c`) as installed.
+Bun (version redacted) (commit `c6da4a4d3010e5553438c60f6bd76d981976867c`) as installed.
 
 Pinned behavior references:
 

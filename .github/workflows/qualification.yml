@@ -24,7 +24,7 @@ jobs:
           - os: windows-2022
             target: win32-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 12
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 5 || 12 }}
     defaults:
       run:
         shell: bash
@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0; node24
         with:
           python-version: '3.11'

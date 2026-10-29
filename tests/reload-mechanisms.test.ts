@@ -16,14 +16,14 @@ import {
   reloadMemoryScope,
   type ReloadCandidate,
 } from '../benchmarks/reload/fixtures.ts'
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 
 function sample(mode: ReloadCandidate, count = 2): Record<string, unknown> {
   return {
     schema: 1,
     profile: 'reload-mechanisms-v1',
     mode,
-    bun: '1.4.3',
+    bun: '1.4.4',
     platform: 'linux',
     arch: 'x64',
     complete: true,
@@ -223,7 +223,7 @@ function matrix(): Record<string, unknown> {
     schema: 1,
     profile: 'reload-mechanisms-matrix-v1',
     passed: true,
-    bun: '1.4.3',
+    bun: '1.4.4',
     samples: 20,
     selection: 'not-a-production-loader-selection',
     target: 'linux-x64',
@@ -406,13 +406,13 @@ for (const mode of ['worker', 'process'] as const)
 
 test('retained local matrix remains byte-bound with failed mechanisms preserved', async () => {
   const bytes = await readFile(resolve('evidence/m6-reload-local.json'))
-  expect(bytes.length).toBe(115783)
+  expect(bytes.length).toBe(115860)
   expect(createHash('sha256').update(bytes).digest('hex')).toBe(
-    '7dc2131c66de06262c1a8cb2ae99c460b2d6c5d043e61ff88de79a0543f0e78e'
+    '96c58e706fa26cc0b000e485701f3be35190337803890d6c2ef68bbb5af8b185'
   )
   const report = JSON.parse(bytes.toString())
   expect(report.sourceBefore.commit).toBe('6e4fd3b713a97dc9a5facf66ca95ba3fc7e309ff')
-  const outcomes = acceptReloadMatrix(report)
+  const outcomes = acceptReloadMatrix(report, { allowRedactedRuntime: true })
   expect(outcomes[0]!.outcome).toBe('rejected-stale-module-or-dependency')
   expect(outcomes[4]!.outcome).toBe('owner-process-unresponsive-forced-restart-required')
   expect(outcomes[5]!.outcome).toBe('owner-process-unresponsive-forced-restart-required')

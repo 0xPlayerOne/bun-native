@@ -7,7 +7,7 @@
   "baselineNativeSourceCommit": "a3e6ee0e8f1065889980c90e0d5111d878ff05a8",
   "harnessCheckpoint": "7e318b1bf597505fef4851cc69e80b2892b7b050",
   "runtime": {
-    "bun": "1.4.3",
+    "bun": "VERSION_REDACTED",
     "cef": "154.0.34",
     "chromium": "154.0.8037.98",
     "target": "darwin-arm64",

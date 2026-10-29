@@ -40,7 +40,7 @@ beforeAll(async () => {
     JSON.stringify({
       schema: 1,
       protocol: 1,
-      bun_version: '1.4.3',
+      bun_version: '1.4.4',
       cef_version: 'fixture',
       maintenance_protocol: 1,
     })
@@ -90,7 +90,7 @@ test('offline reset validates explicit intent before starting native maintenance
 test('older runtime metadata is rejected before a maintenance flag can start its app', async () => {
   const before = await readFile(config)
   try {
-    await writeFile(config, JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.3' }))
+    await writeFile(config, JSON.stringify({ schema: 1, protocol: 1, bun_version: '1.4.4' }))
     await assert.rejects(resetPersistentSessionStorage(options()), {
       code: 'UNSUPPORTED_CAPABILITY',
     })

@@ -35,7 +35,7 @@ M8 work.
 ## Host decision
 
 The accepted baseline is a prebuilt Rust GUI/main-thread owner with **one supervised
-Bun 1.4.3 subprocess** for application TypeScript. This formalizes the initial CEF
+Bun 1.4.4 subprocess** for application TypeScript. This formalizes the initial CEF
 host's existing arrangement, without introducing a Tauri dependency or native
 compilation into application builds. Bounded asynchronous IPC keeps native
 operations on their owner thread. Host resources and service handlers have

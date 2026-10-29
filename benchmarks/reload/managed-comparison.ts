@@ -75,7 +75,8 @@ const uuid = (value: unknown) =>
 export function comparisonHost(
   input: unknown,
   framework: ComparisonFramework,
-  revision: number
+  revision: number,
+  options: { allowRedactedRuntime?: boolean } = {}
 ): ComparisonHost {
   const value = object(input)
   fields(value, [
@@ -95,8 +96,9 @@ export function comparisonHost(
   assert.equal(value['framework'], framework)
   assert.equal(value['version'], COMPARISON_VERSIONS[framework])
   assert.ok(
-    typeof value['runtimeVersion'] === 'string' &&
-      /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(value['runtimeVersion'])
+    (typeof value['runtimeVersion'] === 'string' &&
+      /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(value['runtimeVersion'])) ||
+      (options.allowRedactedRuntime === true && value['runtimeVersion'] === 'VERSION_REDACTED')
   )
   assert.ok(Number.isSafeInteger(value['pid']) && Number(value['pid']) > 0)
   uuid(value['instance'])
@@ -143,7 +145,8 @@ export function comparisonRenderer(input: unknown, revision: number): Comparison
 }
 export function acceptComparisonRows(
   framework: ComparisonFramework,
-  rows: readonly ComparisonRow[]
+  rows: readonly ComparisonRow[],
+  options: { allowRedactedRuntime?: boolean } = {}
 ) {
   assert.equal(
     rows.length,
@@ -170,7 +173,7 @@ export function acceptComparisonRows(
     )
     assert.ok(row.observation)
     const current = {
-      host: comparisonHost(row.observation.host, framework, revision),
+      host: comparisonHost(row.observation.host, framework, revision, options),
       renderer: comparisonRenderer(row.observation.renderer, revision),
     }
     if (!previous)

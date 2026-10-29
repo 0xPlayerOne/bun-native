@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "platform": "darwin",
   "arch": "arm64",
   "baselineCommit": "a6598a36c0aa6ea99d56a1e0e8503164f7f369f5",

@@ -11,8 +11,8 @@ import { acceptWindowModes } from '../benchmarks/lib/cef-window-acceptance.ts'
 const root = resolve(import.meta.dir, '..')
 const args = process.argv.slice(2)
 const input = args.shift()
-if (!input || args.length || Bun.version !== '1.4.3')
-  throw new Error('Use Bun 1.4.3: qualify-cef-window-modes PREPARED_APP')
+if (!input || args.length || Bun.version !== '1.4.4')
+  throw new Error('Use Bun 1.4.4: qualify-cef-window-modes PREPARED_APP')
 const mac = process.platform === 'darwin'
 const source = resolve(input)
 const inputRoot = mac ? source : dirname(source)
@@ -83,7 +83,7 @@ try {
     undefined,
     'Prepared app must not use a development origin'
   )
-  assert.equal(runtime['bun_version'], '1.4.3')
+  assert.equal(runtime['bun_version'], '1.4.4')
   assert.equal(runtime['cef_version'], '156.0.7')
 
   const bootstrap = await Bun.build({

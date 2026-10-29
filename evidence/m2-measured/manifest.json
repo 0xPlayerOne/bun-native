@@ -96,16 +96,16 @@
       "name": "matrix",
       "file": "matrix.json.gz",
       "originalSha256": "b31e052203b8ced377ec441d86a5f5dc55db63aa96f6ed159df839c472431bbc",
-      "redactedSha256": "b0ac68a35740b8ee9de35ebae2b47cac5e8eaf458b09a9b5afc719bf104803d4",
-      "storedSha256": "836b60caa69818abff3acbd53df81bd55e084fd87cf70a8b0d6d717669c095ff",
+      "redactedSha256": "934f450800c38cf4e5cd0b4d30a77ed39b10d7e26cd671d993131b87aa853d92",
+      "storedSha256": "9ed54824f43c7ca9b4587106b0fff4a5ead6bbfeb93bdb57aa84edd69ff73cb9",
       "classification": "clean-committed-source; condition-monitored-not-controlled"
     },
     {
       "name": "installed-0",
       "file": "installed-0.json.gz",
       "originalSha256": "15cf0a225b381b255e95c7d78e09bc4797e8478b3e8a685924d03aba157e645d",
-      "redactedSha256": "b2f03ab3a0faf33ae6ef41e2b24af67368139abcf3102247d168fc86e7d5723f",
-      "storedSha256": "70c4498bd83184760cdc13a57976b2fc7f07c5b73e82f1458865fe17172f0383",
+      "redactedSha256": "ee1e4b6f861496eb5ae8837fd4f74d13aa39d10758591905b7866af32d28e510",
+      "storedSha256": "b9dae87775fa7c78f4d51b879ec5621ce7f38c39c84d178cef2ac34e94c6fd1a",
       "classification": "warmup"
     },
     {
@@ -120,8 +120,8 @@
       "name": "installed-1",
       "file": "installed-1.json.gz",
       "originalSha256": "4c984d43427cf335fa4b7220238a6fbd64c82eb1d9be3492c311dbc47277c1c1",
-      "redactedSha256": "412cacd9ffcbfdd6e397c3691625d137426ea840f0222b7aee3c685562912f51",
-      "storedSha256": "d7c8f9dd7d1dbed8a6736653b62c0ccb7fe8c4dadc1cdaec27e95597840c055e",
+      "redactedSha256": "22316fc2e37f98bb67d5e917c30fa44169a7f579a20fd02671f94fbdd2bc38d0",
+      "storedSha256": "732d9e52e34e2b829f285d9919a1418c5c12e182b9091b3bacfbb4f9a14ceac6",
       "classification": "measured-local-smoke"
     },
     {
@@ -136,8 +136,8 @@
       "name": "installed-2",
       "file": "installed-2.json.gz",
       "originalSha256": "968c1f4f3a9bb07bd7c41a86927b364dc641573be7c72d4205ec7fab1dcfbc99",
-      "redactedSha256": "1ce92f55d908340db3b226bb770d7ab3eede1a5fe9d486ed05a5e51fd5ee6575",
-      "storedSha256": "2c1973bbd8d357964775dd41a0c5af89b02a6ce71eccb9ecad5408199feb1716",
+      "redactedSha256": "024225cf71471f27b0601bafa92665b99f18ff2692986dd343faf697b793d82e",
+      "storedSha256": "f7f118cfab5ed251d5146a886db8d70e47e7f889435e8725cc406f6afc1aa43c",
       "classification": "measured-local-smoke"
     },
     {
@@ -152,8 +152,8 @@
       "name": "installed-3",
       "file": "installed-3.json.gz",
       "originalSha256": "f6867ddc39074fcb9eb7e6ac1b4442616f43ccc6d678d525c56029ac0acc709a",
-      "redactedSha256": "ff4c4e11e1359364d5a172e1c3a2934b0846da1288aadc97de4a3b3ca112f63b",
-      "storedSha256": "4964d99ef125d80325cc2d447374d0bb703f6b58e2a75e32d59d3ccbc7549b8c",
+      "redactedSha256": "52c81d763f73049d4c063b85e77f9bc4d3f9371edc344a82188a9f7928e8905c",
+      "storedSha256": "8b66c98c063b096aa3b886a3b502ec79979e9a9fa9125210957708b0337ab0f7",
       "classification": "measured-local-smoke"
     },
     {
@@ -168,40 +168,40 @@
       "name": "latency",
       "file": "latency.json.gz",
       "originalSha256": "ea99a602ade86332cf40ccf1d935d95dd15ab8f817fa979fe3b37d1305cb9bfc",
-      "redactedSha256": "e22f9179c96b04c5ee8f1304b2d85c413952a1d01d160e08bfa743248cf10652",
-      "storedSha256": "5642c63fdd70fa156616f7e2896c549ac9955d30cfe7ba5972ce9082a253fcaf",
+      "redactedSha256": "3a1a6b8a093f2b3429a0c22cb8cb2d60a413d810c19fca7ff81a1a16704846be",
+      "storedSha256": "bbb30a0fa36958222184d28966674c8c87d8ad41355b2e0cdfcdf628cbe46955",
       "classification": "trusted-Chromium-input-and-xterm-callbacks; local-smoke"
     },
     {
       "name": "latency-csp-failure",
       "file": "latency-csp-failure.json.gz",
       "originalSha256": "6ba7bdea99c458a5ab00577f472eefed4faf032d1f5a8b2f68011f2a5e1da792",
-      "redactedSha256": "d85c1bf7084d7d24b1f842b04713fd0c446f7d251ba71670e5f834b340ea20c8",
-      "storedSha256": "a09c68260b96d8afe8d521e35a202902807b57efe4b08437f83eaa1a99f72521",
+      "redactedSha256": "98eff4d1d85c689f4989d01f85e0c9ed375df42fb88b27c6f8570e30d1aa5faa",
+      "storedSha256": "d46823007d9d4b035ad1c89354c748aee90d03b6a2a020bbf2d7c840680a554b",
       "classification": "initial-failure-retained; no-CSP-relaxation"
     },
     {
       "name": "reproduce-mirin",
       "file": "reproduce-mirin.json.gz",
       "originalSha256": "5af1902629da56bbe14531b2fa4a98071fd51166204ab19542246bcfb0be2322",
-      "redactedSha256": "f3da6dc10fec957fd304848d1e80c37ee7b0ed615519e108f4c4e31cf8e78ad3",
-      "storedSha256": "dd54823ac97cd784ef112f8505050d8731296bdfbea6a4806912c294de1e5cf3",
+      "redactedSha256": "6be03ba8533e567071a61b48f13ceac5a9b6f267066e0b9e002810f5779bb9cd",
+      "storedSha256": "ad0604594771e0399fbeef0504ae96747e6d4fc694eba06f9ed2a71d8b7c7863",
       "classification": "fresh-isolated-frozen-preparation-on-same-machine"
     },
     {
       "name": "reproduce-butter",
       "file": "reproduce-butter.json.gz",
       "originalSha256": "e2ac146d872e1a4bf3517b2d659275710474e02c051778f70265366e4e7f7498",
-      "redactedSha256": "eb0a0958f58864e8208baeed11361b815f33ccab0eaf0d6d6f14ec53430ac1cd",
-      "storedSha256": "b6c3a168848fbf5f66b167dcbcda447071819411b0cee49abdad5cafb7801651",
+      "redactedSha256": "bf20dba06ce1330677ecb0d62e895eec24d24e418a62093d405ad98ea69b1be4",
+      "storedSha256": "db5f9be3c9d47372289d591b82b64999ff115dd37e5ad21aef1abc705bc169f6",
       "classification": "fresh-isolated-frozen-preparation-on-same-machine"
     },
     {
       "name": "reproduce-mirin-app",
       "file": "reproduce-mirin-app.json.gz",
       "originalSha256": "cb1685e2c808c96f8571a139e8928ca57153edd41d93d8dc0cf3299092cac8f3",
-      "redactedSha256": "593f48abf8a294e777bf6720852c17e2998954423a0b0e5d6b966eb9393023df",
-      "storedSha256": "f9f8d7035348cf4500e90b2c0cb7ddf7aaa260b675942ccfa9dd87db542af88d",
+      "redactedSha256": "1fa960b696d6f11baf277ec542c13728a9a482579175a663f02ea5c04a84a71c",
+      "storedSha256": "50b2734c1c1637c22e007aba6a4e0e3f91639c6fce5a06d493e30239940f1c11",
       "classification": "actual fresh-isolated-install desktop replay on same physical Mac",
       "executionSourceCommit": "3d4f1bb862f16820897dc946a4154cb4c54cbca3"
     },
@@ -209,8 +209,8 @@
       "name": "reproduce-butter-app",
       "file": "reproduce-butter-app.json.gz",
       "originalSha256": "f58b24fc743d1888a45a1428d98fb20495c9c258cb9487885ed8a767ac5fe80a",
-      "redactedSha256": "db71ac813248d44351b03e1cdfeadc63696eeda44902549e4ed862818c02c521",
-      "storedSha256": "b41ad54ebb25487f8dc46f77d2256360f43c111744f6bfb07b0bcec69c74fbf1",
+      "redactedSha256": "be0f551d5a54acf6a64fc684867967929d3687a2a481fe69ccd793a33ba53f40",
+      "storedSha256": "e8d03f8e27174e9330c0719b90275ab5049ea668d5b2a24e61f31c7626a48403",
       "classification": "actual fresh-isolated-install desktop replay on same physical Mac",
       "executionSourceCommit": "3d4f1bb862f16820897dc946a4154cb4c54cbca3"
     }

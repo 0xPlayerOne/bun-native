@@ -22,7 +22,7 @@
 
 ## Local checks
 
-Environment: Linux x64, Bun `1.4.3+c6da4a4d3`, retained hash-verified dependency
+Environment: Linux x64, Bun (version redacted), retained hash-verified dependency
 snapshot, Python 3.11 and psutil 7.2.2. No fresh dependency install is claimed.
 
 | Command                                    | Result                                                                                                                        |

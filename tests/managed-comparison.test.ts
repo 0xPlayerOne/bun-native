@@ -28,7 +28,7 @@ function host(framework: ComparisonFramework, revision = 0): ComparisonHost {
     instance: randomUUID(),
     pid: 100,
     version: COMPARISON_VERSIONS[framework],
-    runtimeVersion: '1.4.3',
+    runtimeVersion: '1.4.4',
     identities:
       framework === 'bunly'
         ? { window: randomUUID(), view: randomUUID(), session: randomUUID() }
@@ -489,7 +489,7 @@ function reportFixture(): Record<string, unknown> {
     performanceEligible: false,
     runClass: 'local-smoke',
     target: 'darwin-arm64',
-    bun: '1.4.3',
+    bun: '1.4.4',
     plan: COMPARISON_PLAN,
     sourceBefore: source,
     sourceAfter: source,

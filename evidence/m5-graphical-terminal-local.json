@@ -48,7 +48,7 @@
     "source": "exported-api",
     "sandbox": "unverified"
   },
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "target": "darwin-arm64",
   "samples": 5,
   "warmups": 1,

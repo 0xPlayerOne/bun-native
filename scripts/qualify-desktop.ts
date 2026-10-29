@@ -88,7 +88,7 @@ async function verify(filename: string): Promise<void> {
 }
 
 async function qualify(input: readonly string[]): Promise<void> {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use pinned Bun 1.4.4')
   const args = [...input]
   const flag = args.findIndex((argument) => argument.startsWith('--case='))
   const profile = desktopProfile(flag < 0 ? 'windows' : args.splice(flag, 1)[0]!.slice(7))
@@ -181,7 +181,7 @@ async function qualify(input: readonly string[]): Promise<void> {
       unknown
     >
     assert.equal(runtime['development_origin'], undefined)
-    assert.equal(runtime['bun_version'], '1.4.3')
+    assert.equal(runtime['bun_version'], '1.4.4')
     assert.equal(runtime['cef_version'], '156.0.7')
     const backend = join(resources, 'backend')
     await rm(backend, { recursive: true, force: true })
@@ -277,9 +277,9 @@ async function qualify(input: readonly string[]): Promise<void> {
       env: { PATH: '' },
     }).result
     assertCleanCommand(bunObservation)
-    assert.deepEqual(bunObservation.stdoutTail, ['1.4.3'])
+    assert.deepEqual(bunObservation.stdoutTail, ['1.4.4'])
     report['bundledBun'] = {
-      version: '1.4.3',
+      version: '1.4.4',
       path: bunPath,
       sha256: prepared.entries.find((entry) => entry.path === bunPath)?.sha256,
       observation: bunObservation,

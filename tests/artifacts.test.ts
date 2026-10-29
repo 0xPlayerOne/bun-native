@@ -26,7 +26,7 @@ const identity: ArtifactIdentity = {
   abi: 1,
   backend: 'none',
   target: 'linux-x64',
-  bun: '1.4.3',
+  bun: '1.4.4',
   nativeToolchain: 'rust-1.85.1',
   cef: null,
 }

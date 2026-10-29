@@ -276,11 +276,12 @@ class HostedQualificationTests(unittest.TestCase):
                 self.assertTrue(m4[0][1][1].endswith("qualify-cef-rpc.ts"))
                 self.assertEqual(m4[-1][0], "credentials")
 
-    def test_automatic_and_manual_workflows_use_full_with_faults_before_providers(self):
+    def test_full_qualification_is_explicitly_manual_and_keeps_faults_before_providers(self):
         workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
+        self.assertNotIn("  pull_request:", workflow)
         self.assertIn("options: [portable, smoke, full, m4-acceptance]", workflow)
-        self.assertIn("run --suite full", workflow)
-        self.assertIn("-Suite full", workflow)
+        self.assertIn('hosted_cef.py run --suite "$QUALIFICATION_SUITE"', workflow)
+        self.assertIn("-Suite $env:QUALIFICATION_SUITE", workflow)
         self.assertNotIn("run --suite rpc", workflow)
         windows = (hosted.ROOT / "scripts/hosted-windows.ps1").read_text()
         self.assertIn("'m4-acceptance'", windows)
@@ -575,7 +576,7 @@ class NativeWindowStageTests(unittest.TestCase):
             hosted.report_directory("window-modes"), hosted.ROOT / ".bunly/m5/window-modes"
         )
         workflow = (hosted.ROOT / ".github/workflows/cef-runtime.yml").read_text()
-        self.assertEqual(workflow.count("libgbm1 xvfb dbus-x11 openbox"), 2)
+        self.assertEqual(workflow.count("libgbm1 xvfb dbus-x11 openbox"), 1)
 
 
 class NativeTerminalLoadStageTests(unittest.TestCase):

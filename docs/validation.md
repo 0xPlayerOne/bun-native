@@ -8,7 +8,7 @@ One local and hosted validation contract, with explicit platform boundaries.
 ## Contributor setup
 
 Use Bun 1.4.4 for repository tooling and Python 3.11. The qualified packaged
-desktop runtime remains pinned to Bun 1.4.3. On macOS/Linux:
+desktop runtime remains pinned to Bun 1.4.4. On macOS/Linux:
 
 ```sh
 bun install --frozen-lockfile
@@ -55,14 +55,15 @@ bun run foundry:doctor
 bun run check:ci
 ```
 
-`check:ci` executes the actual installed Code Foundry audit, then browser-only
-checking, AST boundaries, checker equivalence and workflow syntax/ShellCheck.
-It is not merely a dry-run plan. `format`, `lint`, `type_check`, `build` and
-`unit` are required Foundry capabilities. Its discovered E2E tests are reported
-separately; they are not proof of a native browser or controlled performance.
-Unimplemented integration, smoke, eval and performance categories remain
-explicitly inapplicable in Foundry. Dedicated native/benchmark workflows below
-supply their own actual acceptance rather than no-op package scripts.
+The pull-request Code Foundry gate uses the `fast` tier: format, lint,
+type-check, build and unit checks run before the `Validation / Gate` status is
+reported. Release Please pull requests still validate the generated release diff
+in the required `Mode` check. The scheduled/manual Code Foundry Audit continues to
+run the full audit tier, and default-branch CodeQL remains enabled for public code
+scanning. Local `check:ci` executes the actual installed audit, then browser-only
+checking, AST boundaries, checker equivalence and workflow syntax/ShellCheck; it
+is not merely a dry-run plan. Foundry integration, E2E, smoke, eval and performance
+coverage remains separate from the PR's five-minute required gate.
 
 The application edit loop does not run Foundry, both compilers, or native builds
 on every change. Commit hooks remain staged-file-aware. Repeated Foundry syncs
@@ -229,8 +230,8 @@ host. It uses one desktop launch for the fixed 500-replacement plan and a separa
 controlled relaunch after successful shutdown. It keeps
 raw workload rows, process observations, exact artifact inventories, failures and
 cleanup receipts. The replay command verifies retained evidence; it does not
-launch another desktop or claim a fresh result. The shared hosted `full` suite
-runs this stage before the credential-provider stage on every declared platform.
+launch another desktop or claim a fresh result. The manually dispatched hosted `full` suite
+runs this stage before the credential-provider stage on every selected platform.
 No systems compiler is invoked by an ordinary warmed backend edit.
 
 The separately locked reference dependencies are not installed by root Bun install:
@@ -291,8 +292,8 @@ root collisions, controlled interrupted shutdown/restart and invalid paths.
 Do not overwrite previously executed fixtures, share their profiles or count
 expected interruption as a clean shutdown. Neither suite enables production
 credentials, disables sandboxing or resolves an intermittent teardown failure by
-repeating until green. The automatic RPC lane retains the combined ephemeral
-session/authority checks on every supported platform.
+repeating until green. The manually dispatched full RPC qualification retains the combined ephemeral
+session/authority checks on each selected platform.
 
 ## Native transport qualification
 
@@ -300,7 +301,7 @@ Build the explicit contributor artifact with `packaging,rpc-qualification`.
 `qualify:cef-transports -- PREPARED_APP --functional` executes both narrow CEF
 candidates with identical structured/binary/cancellation work, actual fixed CPU
 throttling, navigation revocation, service disconnect, native socket-owner proof,
-and ordered teardown. The ordinary three-platform RPC workflow requires this
+and ordered teardown. The manually dispatched three-platform RPC qualification requires this
 pair alongside RPC/session, browser-policy and network qualification. A functional
 pair is not a performance distribution.
 
@@ -323,8 +324,8 @@ introduced. See ADR 0003 and the retained evidence for the final selection.
 ## Offline session-reset qualification
 
 `bun run qualify:cef-session-reset -- PREPARED_APP` exercises actual persistent
-browser stores and native offline maintenance. The automatic three-platform RPC
-lane includes it. Its controlled interruption is a negative control, while seed,
+browser stores and native offline maintenance. The manually dispatched three-platform RPC
+qualification includes it. Its controlled interruption is a negative control, while seed,
 restart, lock-hold, fenced-open and post-reset verification launches require normal
 backend exit and ordered teardown. It uses private marked test roots only; no
 production accounts or user profiles are accessed. See

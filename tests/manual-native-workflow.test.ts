@@ -6,7 +6,10 @@ import { guardWorkflow, MANUAL_DISPATCH_GUARD } from '../scripts/sync-foundry.ts
 const path = resolve(import.meta.dir, '../.github/workflows/cef-runtime.yml')
 const source = await readFile(path, 'utf8')
 const workflow = Bun.YAML.parse(source) as {
-  on: { workflow_dispatch: { inputs: Record<string, { options: string[]; default: string }> } }
+  on: {
+    pull_request?: unknown
+    workflow_dispatch: { inputs: Record<string, { options: string[]; default: string }> }
+  }
   permissions: Record<string, string>
   jobs: Record<
     string,
@@ -37,14 +40,11 @@ test('manual platform choices stay on bounded standard hosted runners', () => {
   expect(source).not.toContain('secrets.')
 })
 
-test('manual dispatch survives Foundry sync without unpausing automatic CI', () => {
+test('full native qualification is manual-only and survives Foundry sync', () => {
+  expect(workflow.on.pull_request).toBeUndefined()
+  expect(Object.keys(workflow.jobs)).toEqual(['manual-plan', 'manual-native'])
   expect(guardWorkflow(source, true)).toBe(source)
   expect(guardWorkflow(guardWorkflow(source, false), true)).toBe(source)
-  for (const name of ['cef']) {
-    expect(workflow.jobs[name]!.if).toContain("vars.CI_BILLING_PAUSED == 'false'")
-    expect(workflow.jobs[name]!.if).toContain("github.event_name == 'pull_request'")
-    expect(workflow.jobs[name]!.if).toContain('draft == false')
-  }
 })
 
 test('manual exception rejects absent dispatch and expressions with additional events', () => {

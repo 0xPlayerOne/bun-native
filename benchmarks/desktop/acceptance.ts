@@ -322,7 +322,7 @@ export function acceptDesktopEvidence<T>(
   assert.equal(report['schema'], 1)
   assert.equal(report['profile'], profile)
   assert.equal(report['passed'], true)
-  assert.equal(report['bun'], '1.4.3')
+  assert.equal(report['bun'], '1.4.4')
   assert.equal(report['observerTimeoutMs'], DESKTOP_OBSERVER_MS)
   assert.equal(report['performanceEligible'], false)
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(String(report['target'])))
@@ -410,8 +410,8 @@ export function acceptDesktopEvidence<T>(
   assert.equal(bun['path'], bunPath)
   assert.equal(bun['sha256'], file(prepared, bunPath).sha256)
   if (!mac) assert.equal(file(selected, bunPath).sha256, file(prepared, bunPath).sha256)
-  assert.equal(bun['version'], '1.4.3')
-  assert.deepEqual(observedPlatform(bun['observation'], target, 30_000).stdoutTail, ['1.4.3'])
+  assert.equal(bun['version'], '1.4.4')
+  assert.deepEqual(observedPlatform(bun['observation'], target, 30_000).stdoutTail, ['1.4.4'])
   const observation = observedPlatform(report['observation'], target, DESKTOP_OBSERVER_MS)
   if (mac) {
     assert.equal(

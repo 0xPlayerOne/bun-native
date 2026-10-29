@@ -19,7 +19,7 @@ if (
   throw new Error(
     'Credential-provider qualification is restricted to disposable GitHub-hosted runners'
   )
-if (Bun.version !== '1.4.3' || process.argv.length !== 3)
+if (Bun.version !== '1.4.4' || process.argv.length !== 3)
   throw new Error('Use pinned Bun: qualify-cef-credentials PREPARED_APP')
 const root = resolve(import.meta.dir, '..')
 assert.equal(await realpath(process.env['GITHUB_WORKSPACE'] ?? ''), await realpath(root))

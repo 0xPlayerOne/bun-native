@@ -65,7 +65,7 @@ decoding, replay buffer, scrollback store or reconnect loop. Windows ConPTY may
 transform output before Bun invokes the callback; byte counts and hashes begin at
 that callback and end at the acknowledged consumer.
 
-Bun 1.4.3 exposes no terminal pause/resume API. If callback-source byte or chunk
+Bun 1.4.4 exposes no terminal pause/resume API. If callback-source byte or chunk
 capacity is exhausted, the stream reports `OVERLOADED`, cancels the writer, and
 signals and closes that exact owned producer. Bytes are never silently discarded.
 A peer disconnect or consumer failure uses the same exact-resource fail-stop path.
@@ -155,7 +155,7 @@ intrinsic input slots, shared/detached/forged views, transfer-detach accounting,
 partial input, delayed timer execution, document-lifetime revocation, rapid resize,
 peer disconnect, output overflow, throwing stops, nonzero exit, partial lifecycle
 deadlines, ConPTY-safe callback ordering, coalesced cleanup and reservations retained
-by uncooperative or unknown owners. A fixed repository child under pinned Bun 1.4.3
+by uncooperative or unknown owners. A fixed repository child under pinned Bun 1.4.4
 exercises a real PTY, explicit environment, Unicode input, resize, split/invalid byte
 output, nonzero exit, PTY closure, acknowledged byte hashes and explicit close
 through the headless xterm consumer.

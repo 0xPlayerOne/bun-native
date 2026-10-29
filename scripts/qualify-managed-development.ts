@@ -195,7 +195,7 @@ async function verify(path: string): Promise<void> {
 }
 
 async function qualify(args: readonly string[]): Promise<void> {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use pinned Bun 1.4.4')
   assert.equal(
     args.length,
     2,
@@ -287,7 +287,7 @@ async function qualify(args: readonly string[]): Promise<void> {
       undefined,
       'Use a packaged prebuilt host without an implicit development origin'
     )
-    assert.equal(runtime['bun_version'], '1.4.3')
+    assert.equal(runtime['bun_version'], '1.4.4')
     assert.equal(runtime['cef_version'], '156.0.7')
     assert.equal(runtime['protocol'], 1)
     const hostEntry = inputInventory.entries.find(
@@ -415,9 +415,9 @@ async function qualify(args: readonly string[]): Promise<void> {
       env: { PATH: '' },
     }).result
     assertCleanCommand(bunObservation)
-    assert.deepEqual(bunObservation.stdoutTail, ['1.4.3'], 'Actual bundled Bun version differs')
+    assert.deepEqual(bunObservation.stdoutTail, ['1.4.4'], 'Actual bundled Bun version differs')
     report['bundledBun'] = {
-      version: '1.4.3',
+      version: '1.4.4',
       path: bunEntry.path,
       sha256: bunEntry.sha256,
       observation: bunObservation,

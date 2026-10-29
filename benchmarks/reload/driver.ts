@@ -19,7 +19,7 @@ const count = Number(process.argv[4])
 const hang = process.argv[5] === 'hang'
 assert.ok(reloadCandidates.includes(mode))
 assert.ok(Number.isSafeInteger(count) && count >= 1 && count <= 100)
-assert.equal(Bun.version, '1.4.3')
+assert.equal(Bun.version, '1.4.4')
 const stable = Bun.serve({
   hostname: '127.0.0.1',
   port: 0,

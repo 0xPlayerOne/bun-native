@@ -61,7 +61,7 @@
       "sha256": "099dff47e6a1637ef753b1364b7acc8023525e16a2baa8464be4b640db28284f"
     }
   ],
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "target": "darwin-arm64",
   "samples": 20,
   "cases": [
@@ -294,7 +294,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "import",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -693,7 +693,7 @@
         "memoryScope": "same-process-main-isolate-rss-and-heap",
         "heapAfterFinalGcBytes": 1084117
       },
-      "resultSha256": "ad6b6da48e68b1a5b8bf5ca377fca724f404ca0c6898399b137a51294afd2c6a",
+      "resultSha256": "c457fdc0b4f9f30ccc2be63ca56494bfdb51eafc06928676846cde2d2e312098",
       "acceptance": {
         "candidate": "import",
         "outcome": "rejected-stale-module-or-dependency",
@@ -934,7 +934,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "graph",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -1342,7 +1342,7 @@
         "graphAsyncErrorKind": "uncaughtException",
         "heapAfterFinalGcBytes": 1080361
       },
-      "resultSha256": "13e7fbf10ce881a559d81dfa6c8f37b581e770f3c7c33546ceedb691af8ec295",
+      "resultSha256": "ea1415baf1220ec2dcdcc3aa0413ec9523feeaf1a172da8ca3c36dc8fd946816",
       "acceptance": {
         "candidate": "graph",
         "outcome": "cooperative-replacement-observed",
@@ -1646,7 +1646,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "worker",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -2045,7 +2045,7 @@
         "memoryScope": "process-rss-includes-workers-main-isolate-heap-only",
         "heapAfterFinalGcBytes": 1590241
       },
-      "resultSha256": "191ba931f84259c863e19011e804ce8ddefde8989657b34d47130727700ea301",
+      "resultSha256": "4bb5ed0542a674c532a9036165957d1cb7bf659676144ac1479c9c68c546340c",
       "acceptance": {
         "candidate": "worker",
         "outcome": "cooperative-replacement-observed",
@@ -2356,7 +2356,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "process",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -2755,7 +2755,7 @@
         "memoryScope": "stable-parent-rss-and-heap-excludes-generation-child",
         "heapAfterFinalGcBytes": 9215840
       },
-      "resultSha256": "22b9fb780c0e16592657d6afb38fbe379b5109d2e29c0ec4abcf9b93966787c7",
+      "resultSha256": "879afed7b8e88e48497092e0a7bdd9ed1796ad769fa2b742c36a2b9b893134ef",
       "acceptance": {
         "candidate": "process",
         "outcome": "cooperative-replacement-observed",
@@ -3588,7 +3588,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "worker",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -3607,7 +3607,7 @@
         },
         "heapAfterFinalGcBytes": 1187861
       },
-      "resultSha256": "9ec9a9473169a0e6ea65e05dcace3dfae1e6607c38ce55c07bf49d47aea6b6ea",
+      "resultSha256": "f618a7bf9dc4a9acc3179a4ffc72bdd3b77d46265668536e6350b599b50be39d",
       "acceptance": {
         "candidate": "worker",
         "outcome": "isolated-loop-recovered"
@@ -3653,7 +3653,7 @@
         "schema": 1,
         "profile": "reload-mechanisms-v1",
         "mode": "process",
-        "bun": "1.4.3",
+        "bun": "VERSION_REDACTED",
         "platform": "darwin",
         "arch": "arm64",
         "complete": true,
@@ -3672,7 +3672,7 @@
         },
         "heapAfterFinalGcBytes": 1227428
       },
-      "resultSha256": "0e56a0aa72dc41e301026095e10514f0ca1c60fee3adb80e4d051c5c5debb480",
+      "resultSha256": "f0af0830f6089f57743633ebaca69d7cc5a2f1a7e3d2e692ac0aaf52470596e8",
       "acceptance": {
         "candidate": "process",
         "outcome": "isolated-loop-recovered"

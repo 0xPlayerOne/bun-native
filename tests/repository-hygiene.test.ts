@@ -100,18 +100,18 @@ test('all external Actions and reusable workflows are pinned to complete commit 
   }
 })
 
-test('obsolete toolchain snapshot and weaker CEF smoke runner stay removed', async () => {
-  const workflow = await readFile(resolve(root, '.github/workflows/cef-runtime.yml'), 'utf8')
-  expect(workflow).not.toContain('contributor-snapshot:')
-  expect(workflow).not.toContain('rust-toolchain.tgz')
-  expect(workflow).not.toContain('qualify-cef-runtime.ts')
-  expect(await Bun.file(resolve(root, 'scripts/qualify-cef-runtime.ts')).exists()).toBe(false)
-  const automatic = workflow.slice(workflow.indexOf('  cef:'), workflow.indexOf('  manual-plan:'))
-  expect(automatic).toContain('hosted_cef.py run --suite full')
-  expect(automatic).toContain('hosted-windows.ps1 -Suite full')
-  expect(automatic).toContain('--features packaging,rpc-qualification --release')
-  expect(automatic).toContain('build --locked')
-  expect(automatic).not.toContain('if: always()')
+test('full native CEF qualification stays behind explicit manual dispatch', async () => {
+  const workflow = Bun.YAML.parse(
+    await readFile(resolve(root, '.github/workflows/cef-runtime.yml'), 'utf8')
+  ) as { on: Record<string, unknown>; jobs: Record<string, { steps: { run?: string }[] }> }
+  expect(workflow.on).not.toHaveProperty('pull_request')
+  expect(Object.keys(workflow.jobs)).toEqual(['manual-plan', 'manual-native'])
+  const commands = workflow.jobs['manual-native']!.steps.map((step) => step.run ?? '').join('\n')
+  expect(commands).toContain('hosted_cef.py run --suite "$QUALIFICATION_SUITE"')
+  expect(commands).toContain('hosted-windows.ps1 -Suite $env:QUALIFICATION_SUITE')
+  expect(commands).toContain('--features packaging,rpc-qualification --release')
+  expect(commands).toContain('build --locked')
+  expect(commands).not.toContain('if: always()')
 })
 
 test('foundation CI provides the process observer before portable integration tests', async () => {
@@ -184,6 +184,51 @@ test('local and hosted portable validation share the complete application and Py
   expect(pkg.scripts.check).not.toContain('cargo')
 })
 
+test('required pull-request jobs report within five minutes', async () => {
+  const jobs: Array<[string, string, number]> = [
+    ['ci.yml', 'foundation', 15],
+    ['qualification.yml', 'lifecycle', 12],
+    ['development.yml', 'development', 8],
+    ['kernel-counters.yml', 'kernel', 10],
+    ['benchmarks.yml', 'portable', 10],
+    ['benchmarks.yml', 'electron', 15],
+    ['bun-pty.yml', 'pty', 10],
+    ['m6-reload.yml', 'reload', 10],
+    ['electrobun.yml', 'electrobun', 15],
+    ['cef-typecheck.yml', 'check', 15],
+  ]
+  for (const [file, name, previousTimeout] of jobs) {
+    const workflow = Bun.YAML.parse(
+      await readFile(resolve(root, '.github/workflows', file), 'utf8')
+    ) as { jobs: Record<string, { 'timeout-minutes': number | string }> }
+    const timeout = workflow.jobs[name]!['timeout-minutes']
+    expect(
+      timeout === 5 || String(timeout).includes('&& 5 ||'),
+      `${file}/${name} must cap pull-request execution at five minutes (previously ${previousTimeout})`
+    ).toBe(true)
+  }
+
+  const api = Bun.YAML.parse(
+    await readFile(resolve(root, '.github/workflows/cef-typecheck.yml'), 'utf8')
+  ) as { on: { pull_request: Record<string, unknown> } }
+  expect(api.on.pull_request).not.toHaveProperty('paths')
+
+  const validation = Bun.YAML.parse(
+    await readFile(resolve(root, '.github/workflows/validation.yml'), 'utf8')
+  ) as {
+    jobs: {
+      mode: { 'timeout-minutes': number; steps: { id?: string; run?: string }[] }
+      validation: { with: { mode: string } }
+    }
+  }
+  expect(validation.jobs.mode['timeout-minutes']).toBe(5)
+  expect(validation.jobs.validation.with.mode).toBe('${{ needs.mode.outputs.mode }}')
+  expect(validation.jobs.mode.steps.some((step) => step.run?.includes('mode=fast'))).toBe(true)
+  expect(
+    validation.jobs.mode.steps.some((step) => step.run?.includes('validation release_diff'))
+  ).toBe(true)
+})
+
 test('custom qualification jobs respect drafts and do not cancel manual runs when CI resumes', async () => {
   for (const file of [
     'benchmarks.yml',
@@ -212,22 +257,18 @@ test('custom qualification jobs respect drafts and do not cancel manual runs whe
   }
 })
 
-test('automatic and manual CEF builds both enforce native formatting, lint, and tests', async () => {
+test('manual CEF qualification enforces native formatting, lint, and tests', async () => {
   const workflow = Bun.YAML.parse(
     await readFile(resolve(root, '.github/workflows/cef-runtime.yml'), 'utf8')
   ) as {
     jobs: Record<string, { steps: { run?: string }[] }>
   }
-  for (const name of ['cef', 'manual-native']) {
-    const commands = workflow.jobs[name]!.steps.map((step) => step.run ?? '').join('\n')
-    expect(commands, name).toContain('--component clippy')
-    expect(commands, name).toContain(
-      'cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check'
-    )
-    expect(commands, name).toContain('cargo +1.91.0 clippy --locked')
-    expect(commands, name).toContain('--features packaging -- -D warnings')
-    expect(commands, name).toContain(
-      'cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib'
-    )
-  }
+  const commands = workflow.jobs['manual-native']!.steps.map((step) => step.run ?? '').join('\n')
+  expect(commands).toContain('--component clippy')
+  expect(commands).toContain('cargo +1.91.0 fmt --manifest-path native/cef-host/Cargo.toml --check')
+  expect(commands).toContain('cargo +1.91.0 clippy --locked')
+  expect(commands).toContain('--features packaging -- -D warnings')
+  expect(commands).toContain(
+    'cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --lib'
+  )
 })

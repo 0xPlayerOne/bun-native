@@ -21,7 +21,7 @@ this baseline; subsequent results are available in the PR's checks.
 | macOS arm64 / macos-15     | Passed                                                | Passed             | Passed                      | Passed                            |
 | Windows x64 / windows-2022 | Passed                                                | Passed             | Passed                      | Passed                            |
 
-Pinned versions: Bun `1.4.3+c6da4a4d3`, TypeScript `7.0.2`, Oxc parser `0.154.0`,
+Pinned versions: Bun (version redacted), TypeScript `7.0.2`, Oxc parser `0.154.0`,
 Oxlint `1.18.0`, Rust `1.85.1`. Native sources have no third-party Cargo dependencies.
 
 The verified Linux baseline ran 34 portable tests and three Rust tests. The

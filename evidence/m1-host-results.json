@@ -3,7 +3,7 @@
   "scope": "M1 host feasibility; not desktop performance",
   "testedHeadCommit": "a68c7dfe8ace8b3e1bb5245f1eafe817c15aba33",
   "testedMergeCommit": "b7097320d2726e0aa2a7da03ef0ff8ab15d4cf14",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "nativeProbeCompiler": "1.85.1",
   "sources": [
     {

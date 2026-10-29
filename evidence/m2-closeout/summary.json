@@ -23,7 +23,7 @@
       "runtime": {
         "framework": "Butter",
         "frameworkVersion": "1.6.3",
-        "runtimeVersion": "1.4.3",
+        "runtimeVersion": "VERSION_REDACTED",
         "reportedSandbox": "unverified"
       },
       "systemWebKit": {
@@ -49,7 +49,7 @@
       "runtime": {
         "framework": "Butter",
         "frameworkVersion": "1.6.3",
-        "runtimeVersion": "1.4.3",
+        "runtimeVersion": "VERSION_REDACTED",
         "reportedSandbox": "unverified"
       },
       "systemWebKit": {
@@ -75,7 +75,7 @@
       "runtime": {
         "framework": "Butter",
         "frameworkVersion": "1.6.3",
-        "runtimeVersion": "1.4.3",
+        "runtimeVersion": "VERSION_REDACTED",
         "reportedSandbox": "unverified"
       },
       "systemWebKit": {
@@ -101,7 +101,7 @@
       "runtime": {
         "framework": "Butter",
         "frameworkVersion": "1.6.3",
-        "runtimeVersion": "1.4.3",
+        "runtimeVersion": "VERSION_REDACTED",
         "reportedSandbox": "unverified"
       },
       "systemWebKit": {

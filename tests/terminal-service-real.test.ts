@@ -81,11 +81,11 @@ const options = {
 }
 const input = (value: string) => new TextEncoder().encode(value + '\n')
 
-const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.3')
+const pinnedRuntimeTest = test.skipIf(Bun.version !== '1.4.4')
 pinnedRuntimeTest(
   'real pinned Bun terminal service exercises input, resize, binary output, exit and close',
   async () => {
-    expect(Bun.version).toBe('1.4.3')
+    expect(Bun.version).toBe('1.4.4')
     const driver = new CapturingDriver()
     const service = new TerminalService({ driver })
     const writer = new TerminalWriter()

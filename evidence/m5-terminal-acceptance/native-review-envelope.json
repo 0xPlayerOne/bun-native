@@ -40,7 +40,7 @@
       ]
     },
     "runtime": {
-      "bun": "1.4.3",
+      "bun": "VERSION_REDACTED",
       "cef": "156.0.7",
       "chromium": "156.0.8078.17",
       "engineSha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",

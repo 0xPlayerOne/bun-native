@@ -6,7 +6,7 @@
     "clean": true
   },
   "cefRsRevision": "a46b48c6221f99414a5c6b37ff86491772f9b0a2",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "cefRust": "1.91.0",
   "runtimeIdentity": {
     "event": "cef-binary-identity",

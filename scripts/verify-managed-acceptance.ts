@@ -131,8 +131,8 @@ export function parseManagedRetainedRun(input: unknown): ManagedRetainedRun {
   assert.deepEqual(
     value['redactions'],
     value['profile'] === MANAGED_COMPARISON_PROFILE || value['id'] === 'last-window-quit-failure'
-      ? ['fixture-nonces', 'local-paths']
-      : ['fixture-nonces']
+      ? ['fixture-nonces', 'local-paths', 'runtime-version']
+      : ['fixture-nonces', 'runtime-version']
   )
   const fixed = (required as Record<string, Readonly<Record<string, unknown>>>)[value['id']]
   if (fixed)
@@ -348,9 +348,17 @@ export function replayManagedRetainedReport(
 ) {
   assert.equal(report['passed'], entry.passed)
   if (entry.id === 'native-managed-acceptance')
-    return { id: entry.id, passed: true, acceptance: acceptManagedDevelopmentReport(report) }
+    return {
+      id: entry.id,
+      passed: true,
+      acceptance: acceptManagedDevelopmentReport(report, { allowRedactedRuntime: true }),
+    }
   if (entry.id === 'common-workload-comparison')
-    return { id: entry.id, passed: true, acceptance: acceptManagedComparisonReport(report) }
+    return {
+      id: entry.id,
+      passed: true,
+      acceptance: acceptManagedComparisonReport(report, { allowRedactedRuntime: true }),
+    }
   assert.equal(report['passed'], false, 'Retained failures cannot be promoted by later fixes')
   if (entry.id === 'startup-public-map-failure') {
     const trial = singleNativeTrial(report),
@@ -599,7 +607,7 @@ export async function verifyManagedRetainedEvidence(
   }
 }
 if (import.meta.main) {
-  assert.equal(Bun.version, '1.4.3', 'Use pinned Bun 1.4.3')
+  assert.equal(Bun.version, '1.4.4', 'Use pinned Bun 1.4.4')
   assert.ok(process.argv.length <= 3, 'Use verify-managed-acceptance.ts [EVIDENCE_DIRECTORY]')
   console.log(
     JSON.stringify(

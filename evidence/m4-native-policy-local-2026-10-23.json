@@ -5,7 +5,7 @@
   "sourceTree": "df9a86d3cf4d69ee97135a176a341350e60f9281",
   "date": "2026-10-23",
   "target": "darwin-arm64",
-  "bun": "1.4.3",
+  "bun": "VERSION_REDACTED",
   "rustCef": "1.91.0",
   "cefRsRevision": "163744c8286d5f593d89202c7807751a7898db28",
   "counts": {

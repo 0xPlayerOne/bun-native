@@ -24,7 +24,7 @@ The first command executes **one complete load trial per visibility mode**, not 
 shortened workload. The second requires clean committed source and retains every
 warmup and measured attempt. The private clone, ad-hoc signing, binary identity,
 input/prepared inventories and process observer are the same as the functional
-qualifier. Native source is unchanged; a prepared CEF 156.0.7/Bun 1.4.3 application
+qualifier. Native source is unchanged; a prepared CEF 156.0.7/Bun (version redacted) application
 is required. Builds do not compile or download a native fallback.
 
 Each of two real, direct Bun PTYs emits 700 batches of 32 numbered Unicode
@@ -128,7 +128,7 @@ ordered samples, outcomes, complete batch records and native receipts remain.
 No binary, browser profile, credential or crash dump is included.
 
 The final declared profile ran on clean source
-`c23014dbb7f4d04a323ca23c935f1bc9c47c7978` with Bun 1.4.3 and the immutable
+`c23014dbb7f4d04a323ca23c935f1bc9c47c7978` with Bun (version redacted) and the immutable
 `c17d20f` native input. The unchanged CEF library identifies as
 `156.0.7+g47dbc1d+chromium-156.0.8078.17`. After #115 merged, the unpublished
 implementation was rebased onto `6c01202` as

@@ -555,7 +555,7 @@ test.each(['native', 'malformed-cross-drive'] as const)(
         const mock = spyOn(Bun, 'build').mockImplementation(async (config) => {
           const built = await build(config)
           if (!built.metafile) return built
-          // Reproduce the observed Bun 1.4.3 C:-temp/D:-checkout display paths.
+          // Reproduce the observed Bun 1.4.4 C:-temp/D:-checkout display paths.
           // Actual resolver/loader execution and generated code remain real.
           const inputs = Object.fromEntries(
             Object.entries(built.metafile.inputs).map(([path, input]) => [

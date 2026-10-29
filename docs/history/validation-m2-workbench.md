@@ -34,7 +34,7 @@ hashes; their different platform and security configurations remain non-comparab
 
 ## Executed checks
 
-Environment: Linux x64, actual Bun `1.4.3+c6da4a4d3`, retained authenticated dependency
+Environment: Linux x64, actual Bun (version redacted), retained authenticated dependency
 snapshot, local Python/psutil 7.2.2. No new frozen dependency installation is claimed.
 
 | Check                                                                       | Result                                                                                                                                        |

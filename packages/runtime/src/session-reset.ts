@@ -66,7 +66,7 @@ async function requireMaintenanceProtocol(host: string): Promise<void> {
     Array.isArray(data) ||
     (data as Record<string, unknown>)['schema'] !== 1 ||
     (data as Record<string, unknown>)['protocol'] !== 1 ||
-    (data as Record<string, unknown>)['bun_version'] !== '1.4.3' ||
+    (data as Record<string, unknown>)['bun_version'] !== '1.4.4' ||
     (data as Record<string, unknown>)['maintenance_protocol'] !== 1
   )
     throw new BunlyError(

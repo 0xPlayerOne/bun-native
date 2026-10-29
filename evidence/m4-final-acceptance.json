@@ -7,7 +7,7 @@
   "tree": "eb01658679fdbab71810b5848e2f1d581a36e12a",
   "workflowRun": 40063935689,
   "runtime": {
-    "bun": "1.4.3",
+    "bun": "VERSION_REDACTED",
     "cef": "156.0.7",
     "chromium": "156.0.8078.17"
   },

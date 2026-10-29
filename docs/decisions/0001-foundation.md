@@ -14,7 +14,7 @@ Use notification-driven bounded native queues in the probe, not a periodic GUI
 pump. Test Bun FFI, Node-API, and the process fallback before choosing a native
 integration for M3.
 
-Pin Bun 1.4.3, TypeScript 7.0.2, and Rust 1.85.1 for this foundation. Rust is a
+Pin Bun (version redacted), TypeScript 7.0.2, and Rust 1.85.1 for this foundation. Rust is a
 conservative fixture toolchain pin, not a claim that it is the latest release or
 a product requirement. Oxlint handles linting; no ESLint, custom package manager,
 or fleet-wide tooling migration is introduced. The built-in Bun checker is not
