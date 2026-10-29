@@ -176,3 +176,27 @@ test('temporary upload peer verifies real multipart bytes and retains only bound
     await server.stop()
   }
 })
+
+test('upload peer records the multipart media type instead of inferring it from the filename', async () => {
+  const server = fileFixtureServer()
+  try {
+    for (const [name, type] of [
+      ['text', 'text/plain'],
+      ['isolated', 'image/png'],
+    ] as const) {
+      const data = new FormData()
+      data.append('file', new File(['sample'], `${name}.bin`, { type }))
+      data.append('kind', 'file-input')
+      data.append('trusted', 'false')
+      const response = await fetch(server.origin + '/upload/' + name, {
+        method: 'POST',
+        headers: { cookie: 'partition=alpha' },
+        body: data,
+      })
+      assert.equal(response.status, 200)
+      assert.equal((await server.receipt(name)).mime, type)
+    }
+  } finally {
+    await server.stop()
+  }
+})

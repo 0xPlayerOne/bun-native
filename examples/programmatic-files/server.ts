@@ -44,6 +44,31 @@ drop.addEventListener('dragover',event=>event.preventDefault());
 drop.addEventListener('drop',event=>{event.preventDefault();send(event.dataTransfer.files[0],'file-drop',event)});
 </script>`
 
+/** Bun's multipart parser infers File.type from the filename on some versions.
+ * Inspect the actual first part header so acceptance measures the wire MIME. */
+async function uploadedWireMime(request: Request, name: UploadCase): Promise<string> {
+  const contentType = request.headers.get('content-type') ?? ''
+  const boundary = /^multipart\/form-data;\s*boundary=([A-Za-z0-9'()+_,.=:?-]{1,70})$/i.exec(
+    contentType
+  )?.[1]
+  assert.ok(boundary, 'Invalid multipart boundary')
+  const bytes = Buffer.from(await request.clone().arrayBuffer())
+  assert.ok(bytes.length <= 1024 * 1024 + 32 * 1024, 'Multipart fixture exceeds its bound')
+  const prefix = Buffer.from(`--${boundary}\r\n`)
+  assert.ok(bytes.subarray(0, prefix.length).equals(prefix), 'File part must be first')
+  const end = bytes.indexOf('\r\n\r\n', prefix.length)
+  assert.ok(end >= prefix.length && end - prefix.length <= 1024, 'Invalid file part headers')
+  const headers = bytes.subarray(prefix.length, end).toString('latin1').split('\r\n')
+  assert.equal(headers.length, 2, 'Unexpected file part headers')
+  assert.equal(headers[0], `Content-Disposition: form-data; name="file"; filename="${name}.bin"`)
+  const media =
+    /^Content-Type: ([a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+)(?:;\s*charset=utf-8)?$/i.exec(
+      headers[1]!
+    )?.[1]
+  assert.ok(media, 'Invalid file part media type')
+  return media.toLowerCase()
+}
+
 /** A bounded temporary HTTP peer. It accepts only this fixture's known cases,
  * and retains receipts rather than received file payloads or filesystem paths.
  */
@@ -88,6 +113,7 @@ export function fileFixtureServer() {
         const name = path.slice('/upload/'.length) as UploadCase
         assert.ok(uploadCases.includes(name))
         assert.equal(receipts.has(name), false, 'A fixture upload must arrive once')
+        const mime = await uploadedWireMime(request, name)
         const data = await request.formData()
         assert.deepEqual([...data.keys()].sort(), ['file', 'kind', 'trusted'])
         const file = data.get('file')
@@ -101,7 +127,7 @@ export function fileFixtureServer() {
         const receipt = Object.freeze({
           case: name,
           name: file.name,
-          mime: file.type,
+          mime,
           bytes: file.size,
           sha256: createHash('sha256')
             .update(new Uint8Array(await file.arrayBuffer()))
