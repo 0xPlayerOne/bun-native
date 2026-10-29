@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: code-foundry-opencode-security-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: code-foundry-opencode-security-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   # Only superseded pull-request scans are cancelled; dispatches queue.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 

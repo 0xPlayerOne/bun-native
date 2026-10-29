@@ -15,7 +15,7 @@ permissions: {}
 
 # Superseded PR updates cancel the previous run.
 concurrency:
-  group: code-foundry-validation-${{ github.event_name }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: code-foundry-validation-${{ github.event_name }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   # Superseded pull-request runs are cancelled so the newest head owns the
   # group; push and scheduled runs queue instead, because cancelling a main
   # push can drop default-branch analysis or release-adjacent work.

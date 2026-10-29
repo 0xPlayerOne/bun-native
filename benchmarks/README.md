@@ -60,6 +60,12 @@ bun scripts/prepare-electrobun.ts
 PYTHON=python bun scripts/qualify-electrobun.ts
 ```
 
+Failed Electrobun trials keep a bounded reason in the result matrix and write
+full error text to a separate `electrobun-failure-*.json` file alongside the
+observer evidence. The hosted artifact includes these files; any failed trial,
+including a warmup, still fails qualification. A surviving cleanup helper remains
+a failure unless an independently qualified cleanup policy proves its ownership.
+
 This uses the published `electrobun@2.0.3-beta.26` bootstrap, pinned Hutch
 0.28.0-canary.10 and its prebuilt devkit. Preparation, configuration and application
 assembly are timed separately. Tool caches and the generated application live in

@@ -88,8 +88,10 @@ also checks readiness independently of its detection job. The lightweight Draft
 Guard and Draft Control jobs still run to enforce draft state and cancel earlier
 runs. Release Please heads are excluded from ordinary Draft Guard and their
 release workflow manages the readiness transition; a ready release PR receives
-the same required checks. Push, scheduled and manual workflows retain their
-existing triggers. The sync wrapper reapplies the scanner gate after generation.
+the same required checks. PR concurrency groups distinguish Draft from Ready
+events, so a delayed Draft synchronize event cannot cancel or displace a Ready
+run; Ready updates still cancel superseded Ready runs. Push, scheduled and manual
+workflows retain their existing triggers and concurrency groups. The sync wrapper reapplies the scanner gate after generation.
 
 The `release` feature enables automated GitHub release PRs, tags, and release
 records. Bunly uses one root framework release and `v`-prefixed tag; its five SDK

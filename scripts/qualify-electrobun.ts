@@ -4,6 +4,7 @@ import { cpus, release, totalmem } from 'node:os'
 import { join } from 'node:path'
 import { electrobunIdentity, electrobunScenario } from '../benchmarks/adapters/electrobun/driver.ts'
 import { electrobunLayout } from '../benchmarks/adapters/electrobun/layout.ts'
+import { recordElectrobunFailure } from '../benchmarks/adapters/electrobun/failure.ts'
 import { inspectCefLibrary } from '../benchmarks/lib/cef-identity.ts'
 import { fileBytes } from '../benchmarks/lib/accounting.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
@@ -67,16 +68,7 @@ for (const warmup of [true, false])
           ...(await electrobunScenario(scenario)),
         })
       } catch (error) {
-        const result: Trial = {
-          variant: 'electrobun',
-          scenario,
-          trial,
-          warmup,
-          status: 'failed',
-          reason: String(error),
-          correctness: { passed: false, details: 'Actual Electrobun execution failed' },
-          metrics: {},
-        }
+        const result = await recordElectrobunFailure(directory, scenario, trial, warmup, error)
         trials.push(result)
         console.error(JSON.stringify({ failedTrialIncludingWarmup: result }))
       }

@@ -270,9 +270,31 @@ export function guardOpenCodeScan(source: string): string {
   return source.replace(previous, guarded)
 }
 
+// PR synchronize events can be delivered after ready_for_review. Keeping Draft
+// runs in a separate concurrency group prevents a skipped stale Draft event from
+// cancelling or replacing Ready validation, while all Ready heads still share a group.
+export const PR_READINESS_SUFFIX =
+  "${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}"
+
+export function isolateDraftConcurrency(name: string, source: string): string {
+  const workflow = record(Bun.YAML.parse(source))
+  const triggers = record(workflow['on'])
+  if (name === 'draft-control.yml' || !Object.hasOwn(triggers, 'pull_request')) return source
+  const concurrency = record(workflow['concurrency'])
+  const group = concurrency['group']
+  if (typeof group !== 'string' || !group) throw new Error(`Missing concurrency group: ${name}`)
+  if (group.endsWith(PR_READINESS_SUFFIX)) return source
+  if (group.includes(PR_READINESS_SUFFIX)) throw new Error(`Unexpected concurrency suffix: ${name}`)
+  const line = `  group: ${group}`
+  if (source.split(line).length !== 2)
+    throw new Error(`Unexpected concurrency group layout: ${name}`)
+  return source.replace(line, line + PR_READINESS_SUFFIX)
+}
+
 function applyWorkflowOverlay(name: string, source: string, paused: boolean): string {
   const guarded = pinFoundryWorkflow(guardWorkflow(source, paused))
-  return name === 'opencode-security.yml' ? guardOpenCodeScan(guarded) : guarded
+  const scan = name === 'opencode-security.yml' ? guardOpenCodeScan(guarded) : guarded
+  return isolateDraftConcurrency(name, scan)
 }
 
 /** Read-only validation of the repository overlay, in addition to upstream doctor. */
