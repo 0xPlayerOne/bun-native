@@ -15,6 +15,13 @@ operator. It does not close #34–#38 or qualify a production release.
 | Renderer/GPU fault handling                   | The maintained full native suite includes deliberate fault/recovery cases; [native platform acceptance](m3-native-platform-acceptance.md) defines their scope.                                                                                             | Hardware GPU switching, device loss, driver changes, and accessibility recovery on actual equipment.                                                |
 | View composition and further desktop adapters | Their individual PRs and [desktop qualification](desktop-qualification.md) own implementation and exact native receipts.                                                                                                                                   | A compiled adapter or API-driven focus receipt alone does not qualify the hardware cases below.                                                     |
 
+The [text status-item facet](status-items.md) supplies a macOS adapter and an exact
+source fixture for four creations, two AppKit action callbacks and zero remaining
+native owners. The bounded macOS synthetic-input fixture passed; [PR #142](https://github.com/0xPlayerOne/bunly/pull/142)
+records the exact source and native artifact attribution, including earlier failed
+attempts. Windows and Linux explicitly report unsupported status items. Physical
+input, status-bar appearance and assistive technology remain separate observations.
+
 The historical native teardown watchdog remains tracked by
 [#124](https://github.com/0xPlayerOne/bunly/issues/124). A later passing control run
 does not erase a failure or establish that either reliability investigation is

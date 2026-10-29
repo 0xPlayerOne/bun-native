@@ -175,7 +175,8 @@ mod tests {
                 "browser.action.release",
                 "commands.cancel",
                 "commands.dispose",
-                "dialog.cancel"
+                "dialog.cancel",
+                "status.dispose"
             ]
         );
     }
@@ -237,6 +238,22 @@ mod tests {
             drop(budget.reserve(operation, 1024).unwrap());
         }
         drop(permits);
+        empty(&budget);
+    }
+    #[test]
+    fn status_disposal_retains_reserved_capacity_under_ordinary_saturation() {
+        let budget = Arc::new(CommandBudget::default());
+        let ordinary: Vec<_> = (0..limits().native_ordinary_requests)
+            .map(|_| budget.reserve("view.create", 64).unwrap())
+            .collect();
+        assert!(budget.reserve("status.update", 64).is_err());
+        let disposal = budget.reserve("status.dispose", 128).unwrap();
+        assert_eq!(
+            budget.snapshot().ordinary_requests,
+            limits().native_ordinary_requests
+        );
+        drop(disposal);
+        drop(ordinary);
         empty(&budget);
     }
     #[test]

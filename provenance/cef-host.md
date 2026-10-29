@@ -95,6 +95,13 @@ cancellation, never general task dispatch or browser/window destruction.
 - https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/RunLoopManagement/RunLoopManagement.html
 - https://github.com/chromium/chromium/blob/156.0.8078.17/ui/base/cocoa/menu_utils.mm
 
+The text status-item adapter in `native/cef-host/src/status_items_macos.rs` is
+Bunly-authored code using pinned `objc2-app-kit` 0.3.2 declarations and Apple's
+documented `NSStatusBar`, `NSStatusItem` and `NSControl` APIs. It copies no upstream
+implementation. The retained action target holds a weak Rust callback owner;
+actual status-bar removal precedes owner release. Contributor `performClick`
+input exercises AppKit target-action dispatch and makes no physical-input claim.
+
 ## Cookie-provider format references
 
 The protected-cookie verifier is Bunly implementation using pinned Chromium

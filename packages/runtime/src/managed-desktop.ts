@@ -6,11 +6,13 @@ import type {
   WindowHandle,
   WindowCommandsHandle,
   WindowMenuPoint,
+  StatusItemHandle,
 } from '../../contracts/src/index.ts'
 import {
   normalizeViewPresentation,
   validateBounds,
   validateWindowMenuPoint,
+  normalizeStatusItem,
 } from '../../contracts/src/index.ts'
 import { validateClipboardText } from '../../contracts/src/desktop.ts'
 import { normalizeFileDialog } from '../../contracts/src/dialogs.ts'
@@ -95,6 +97,7 @@ const operations = {
   process: ['state', 'write', 'resize', 'signal'],
   clipboard: ['read-text', 'write-text', 'clear'],
   commands: ['show', 'cancel'],
+  'status-item': ['update'],
   dialog: ['open', 'save'],
 } as const
 const signals = new Set([
@@ -208,6 +211,14 @@ export class ManagedDesktopResources {
         )
       )
         return false
+      if (
+        entry.kind === 'status-item' &&
+        !this.backend.statusItemMatchesScope(
+          entry.handle as StatusItemHandle,
+          entry.authority.scope
+        )
+      )
+        return false
       if (entry.policy) {
         const result: unknown = entry.policy(operation)
         if (result !== true) {
@@ -270,7 +281,9 @@ export class ManagedDesktopResources {
       invalid()
     const allowed = new Set<string>([
       ...operations[kind],
-      ...(['window', 'view', 'session', 'commands'].includes(kind) ? lifecycleOperations : []),
+      ...(['window', 'view', 'session', 'commands', 'status-item'].includes(kind)
+        ? lifecycleOperations
+        : []),
     ])
     const selected = new Set<string>()
     for (const operation of policy.operations) {
@@ -424,6 +437,56 @@ export class ManagedDesktopResources {
     )
     try {
       stop = this.backend.onWindowCommandsEvent(commands, (event) => {
+        if (event.type === 'revoked') {
+          void this.#close(entry)
+          return
+        }
+        if (!this.#current(entry, 'events')) return
+        this.#appendEvent(entry, {
+          sequence: ++entry.eventSequence,
+          type: event.type,
+          state: event,
+        })
+      })
+    } catch (error) {
+      void this.#close(entry)
+      throw error
+    }
+    return entry.binding.resource
+  }
+  /** The stable owner retains the item; generations consume its bounded click journal. */
+  registerStatusItem(
+    name: string,
+    item: StatusItemHandle,
+    policy: ManagedDesktopPolicy
+  ): ManagedResource {
+    const authority = this.#authorities.get(policy.authority)
+    if (!authority || !this.backend.statusItemMatchesScope(item, authority.scope))
+      throw new ManagedError('DENIED')
+    let stop = () => {}
+    const entry = this.#register(
+      name,
+      'status-item',
+      item,
+      policy,
+      async (operation, input) => {
+        if (operation !== 'update') invalid()
+        let definition
+        try {
+          definition = normalizeStatusItem(JSON.parse(input))
+        } catch {
+          invalid()
+        }
+        await this.backend.updateStatusItem(item, definition)
+        return null
+      },
+      async () => {
+        stop()
+        await this.backend.disposeStatusItem(item)
+      }
+    )
+    try {
+      stop = this.backend.onStatusItemEvent(item, (event) => {
         if (event.type === 'revoked') {
           void this.#close(entry)
           return
