@@ -71,6 +71,10 @@ completed final-head validation and squash-merge record.
 
 ## Active technical guides
 
+[M7 implementation and evidence status](m7-status.md) consolidates the
+per-platform capability matrix, issue #34–#38 coverage, pending PRs and physical
+qualification gaps without treating unrun hardware cases as passes.
+
 [Packaged origin](packaged-origin.md), [artifact acquisition](artifact-acquisition.md),
 [RPC](rpc.md), [streams](streams.md), [native CEF streams](native-streams.md), and
 [provenance](provenance.md) describe their implemented surfaces and remaining limits. [M4 progress](m4-progress.md) and
