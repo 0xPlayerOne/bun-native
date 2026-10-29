@@ -69,6 +69,22 @@ The application edit loop does not run Foundry, both compilers, or native builds
 on every change. Commit hooks remain staged-file-aware. Repeated Foundry syncs
 must leave no tracked changes and preserve the formatting gate.
 
+### Generated release PRs with skipped validation
+
+If a generated version PR is ready but has only skipped validation for its
+current commit, inspect the commit and workflow runs before retrying. Investigate
+any actual failed check separately. The existing
+`Release / Version` job in `Code Foundry Release` owns recovery: rerunning that
+job lets its generated-PR normalization recheck the stable head and issue the
+required `ready_for_review` transition for missing, cancelled or skipped validation.
+It preserves an active or successful validation owner and refuses to erase a
+failed validation result. Release PR draft state remains workflow-owned;
+normal required checks and branch protection still gate the merge.
+
+This recovery was exercised for PR #167 after its first readiness transition
+left only skipped checks. The maintained normalization is in the
+[pinned release workflow](https://github.com/0xPlayerOne/code-foundry/blob/945e548d1a1de5f6ca6195d245e9d82fc8e4ca63/.github/workflows/release.yml).
+
 ## Native framework checks
 
 Install the pinned Rust 1.85.1 (M1 probe) and 1.91.0 (CEF) toolchains with rustfmt

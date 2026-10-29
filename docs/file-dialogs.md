@@ -15,8 +15,9 @@ capability. A renderer never receives this API or its native scope token.
 
 Mock and system-webview backends do not advertise the facet. The existing
 window, clipboard, lifecycle, download and composition capabilities retain their
-own platform matrices. This increment does not finish issue [#34](https://github.com/0xPlayerOne/bunly/issues/34)
-or file-input/drag-and-drop issue [#36](https://github.com/0xPlayerOne/bunly/issues/36).
+own platform matrices; the combined desktop scope is in the [M7 capability map](m7-status.md).
+File-input and drag/drop operations use the separate [programmatic-files contract](programmatic-files.md)
+tracked by [#36](https://github.com/0xPlayerOne/bunly/issues/36).
 Native cancellation qualification does not qualify user selection, physical
 keyboard behavior, assistive technology, or file-input uploads.
 

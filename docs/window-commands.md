@@ -5,7 +5,8 @@ The optional `window.commands` facet uses CEF `MenuModel`, `Window.ShowMenu`,
 `Window.SetAccelerator` and their native delegates. It registers declared command
 tokens in one window. It does not implement a system menu bar, tray, global OS
 shortcuts, Electron menu roles, or automatic replacement of Chromium context menus.
-Issue #34 remains open for its other desktop services and platform qualification.
+The combined desktop scope and qualification status for issue #34 are recorded
+in the [M7 capability map](m7-status.md).
 
 ## Availability
 
