@@ -9,6 +9,8 @@ test('one framework release synchronizes SDK and public backend versions', async
   const config = await Bun.file(resolve(root, 'release-please-config.json')).json()
   const manifest = await Bun.file(resolve(root, '.release-please-manifest.json')).json()
   const pkg = await Bun.file(resolve(root, 'package.json')).json()
+  expect(config['draft-pull-request']).toBe(true)
+  expect(Object.hasOwn(config, 'draft')).toBe(false)
   expect(Object.keys(config.packages)).toEqual(['.'])
   expect(Object.keys(manifest)).toEqual(['.'])
   expect(config.packages['.']['release-type']).toBe('node')
