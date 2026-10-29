@@ -232,6 +232,29 @@ test('close still reports actual release if clearing its timer throws', async ()
   expect(clock.timers.size).toBe(0)
 })
 
+test('close clears a scheduler timer even when its handle is undefined', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const set = clock.set.bind(clock)
+  const clear = clock.clear.bind(clock)
+  let actual: unknown,
+    clearCalls = 0
+  clock.set = (delay, callback) => {
+    actual = set(delay, callback)
+    return undefined as unknown as number
+  }
+  clock.clear = (timer) => {
+    expect(timer).toBeUndefined()
+    clearCalls++
+    clear(actual)
+  }
+  expect((await service.close(handle)).released).toBe(true)
+  expect(clearCalls).toBe(1)
+  expect(clock.timers.size).toBe(0)
+})
+
 test('an early close timer that cannot rearm reports unobserved state without inventing expiry', async () => {
   const clock = new Clock()
   const driver = new FakeDriver()

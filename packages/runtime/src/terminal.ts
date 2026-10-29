@@ -1048,6 +1048,7 @@ export class TerminalService {
     resource.closeSignal = signal
     let deadline: number
     let timer: unknown
+    let timerSet = false
     const snapshot = () =>
       Object.freeze({
         processExited: resource.processObserved,
@@ -1058,7 +1059,8 @@ export class TerminalService {
     const finish = () => {
       if (!resource.closePending) return
       resource.closePending = false
-      if (timer !== undefined) {
+      if (timerSet) {
+        timerSet = false
         try {
           this.#clock.clear(timer)
         } catch {
@@ -1079,6 +1081,7 @@ export class TerminalService {
         const remaining = deadline - this.#clock.now()
         if (remaining > 0) {
           timer = this.#clock.set(remaining, expire)
+          timerSet = true
           return
         }
       } catch {
@@ -1096,6 +1099,7 @@ export class TerminalService {
     try {
       deadline = this.#clock.now() + timeout
       timer = this.#clock.set(timeout, expire)
+      timerSet = true
     } catch {
       schedulerFailure()
       return resource.closeTask
