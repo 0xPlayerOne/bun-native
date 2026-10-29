@@ -130,7 +130,13 @@ export class RpcServer<S extends RpcSchema> {
   }
   #diagnostic(job: Job, stage: RpcDiagnostic['stage'], outcome: RpcDiagnostic['outcome']): void {
     if (!this.#onDiagnostic || this.#diagnosticQueue.length >= 128) return
-    const elapsed = this.#clock.now() - job.started
+    let elapsed: number
+    try {
+      elapsed = this.#clock.now() - job.started
+    } catch {
+      // Observability must never change request settlement or reject detached work.
+      return
+    }
     this.#diagnosticQueue.push(
       Object.freeze({
         stage,
@@ -166,12 +172,6 @@ export class RpcServer<S extends RpcSchema> {
       this.#error(message.id, 'NOT_FOUND')
       return
     }
-    try {
-      this.#guard.check(route.capability)
-    } catch (error) {
-      this.#error(message.id, error instanceof RpcError ? error.code : 'FORBIDDEN')
-      return
-    }
     if (this.#jobs.size + this.#parsing.size >= this.#limits.maxHandlers) {
       this.#error(message.id, 'OVERLOADED')
       return
@@ -180,6 +180,17 @@ export class RpcServer<S extends RpcSchema> {
     this.#parsing.set(message.id, parsing)
     let release: (() => void) | undefined
     try {
+      try {
+        this.#guard.check(route.capability)
+      } catch (error) {
+        this.#error(message.id, error instanceof RpcError ? error.code : 'FORBIDDEN')
+        return
+      }
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
+        return
+      }
       const deadline = this.#clock.now() + message.timeoutMs
       if (this.#closed) return
       if (parsing.cancelled) {
@@ -275,7 +286,9 @@ export class RpcServer<S extends RpcSchema> {
         this.#cancel(job, 'DEADLINE_EXCEEDED')
         return
       }
+      if (job.replied || this.#closed) return
       this.#guard.check(route.capability)
+      if (job.replied || this.#closed) return
       const output = route.parseOutput(value)
       // Output validation can also take time or trigger application lifecycle work.
       if (job.replied || this.#closed) return

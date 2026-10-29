@@ -201,6 +201,7 @@ export class RpcClient<S extends RpcSchema> {
       this.#cancel(message.id, new RpcError('DEADLINE_EXCEEDED', 'RPC deadline exceeded'))
       return
     }
+    if (this.#pending.get(message.id) !== pending) return
     if (message.type === 'error') {
       this.#settle(message.id, new RpcError(message.code, message.message))
       return
