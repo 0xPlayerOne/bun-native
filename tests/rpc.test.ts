@@ -605,6 +605,256 @@ describe('RPC client and server', () => {
     client.close()
     await outer
   })
+  for (const hook of ['first-now', 'second-now', 'third-now', 'first-set', 'second-set'] as const) {
+    test(`client scheduler ${hook} cannot reorder or exceed admission`, async () => {
+      const { left } = pair()
+      let nested: Promise<unknown> | undefined
+      let nowCalls = 0,
+        setCalls = 0
+      const clock = new Clock()
+      const now = clock.now.bind(clock),
+        set = clock.set.bind(clock)
+      clock.now = () => {
+        if (
+          ++nowCalls ===
+          (hook === 'first-now' ? 1 : hook === 'second-now' ? 2 : hook === 'third-now' ? 3 : -1)
+        )
+          nested = result(client.call('echo', 'nested'))
+        return now()
+      }
+      clock.set = (delay, callback) => {
+        if (++setCalls === (hook === 'first-set' ? 1 : hook === 'second-set' ? 2 : -1))
+          nested = result(client.call('echo', 'nested'))
+        return set(delay, callback)
+      }
+      const client = new RpcClient(schema, left, { limits: { maxPending: 2 }, scheduler: clock })
+      const outer = result(client.call('echo', 'outer'))
+      expect(client.diagnostics().pending).toBe(1)
+      expect((await nested!) as { code: string }).toMatchObject({ code: 'OVERLOADED' })
+      expect(decodeRpc(left.packets[0]!, limits)).toMatchObject({ type: 'request', id: 1 })
+      client.close()
+      await outer
+      expect(clock.timers.size).toBe(0)
+    })
+  }
+  test('server scheduler cannot reenter before the parsing reservation', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const done = deferred<string>()
+    const clock = new Clock()
+    const now = clock.now.bind(clock)
+    let entered = false
+    clock.now = () => {
+      if (!entered) {
+        entered = true
+        right.message?.(
+          encodeRpc(
+            { type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'inner' },
+            limits
+          )
+        )
+      }
+      return now()
+    }
+    const contract = defineRpc({ echo: procedure(text, text) })
+    const server = new RpcServer(
+      contract,
+      { echo: { capability: 'echo', handle: () => done.promise } },
+      env.lease(),
+      right,
+      { scheduler: clock, limits: { maxHandlers: 1 } }
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    expect(server.diagnostics().executing).toBe(1)
+    expect(decodeRpc(right.packets[0]!, limits)).toMatchObject({ id: 2, code: 'OVERLOADED' })
+    done.resolve('done')
+    await flush()
+    server.close()
+  })
+  for (const hook of ['first-now', 'second-now', 'first-set', 'second-set'] as const) {
+    test(`client scheduler ${hook} closure releases admission and timers`, async () => {
+      const { left } = pair()
+      const clock = new Clock()
+      const now = clock.now.bind(clock),
+        set = clock.set.bind(clock)
+      let nowCalls = 0,
+        setCalls = 0
+      clock.now = () => {
+        if (++nowCalls === (hook === 'first-now' ? 1 : hook === 'second-now' ? 2 : -1))
+          client.close()
+        return now()
+      }
+      clock.set = (delay, callback) => {
+        if (++setCalls === (hook === 'first-set' ? 1 : hook === 'second-set' ? 2 : -1))
+          client.close()
+        return set(delay, callback)
+      }
+      const client = new RpcClient(schema, left, { scheduler: clock })
+      expect((await result(client.call('echo', 'outer'))).code).toBe('DISCONNECTED')
+      await flush()
+      expect(client.diagnostics().pending).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      expect(left.packets).toHaveLength(0)
+    })
+  }
+  for (const hook of ['first-now', 'second-now', 'third-now', 'fourth-now', 'first-set'] as const) {
+    test(`server scheduler ${hook} cancellation releases unstarted work`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      const now = clock.now.bind(clock),
+        set = clock.set.bind(clock)
+      let nowCalls = 0,
+        setCalls = 0,
+        calls = 0
+      const cancel = () => right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+      clock.now = () => {
+        if (
+          ++nowCalls ===
+          (hook === 'first-now'
+            ? 1
+            : hook === 'second-now'
+              ? 2
+              : hook === 'third-now'
+                ? 3
+                : hook === 'fourth-now'
+                  ? 4
+                  : -1)
+        )
+          cancel()
+        return now()
+      }
+      clock.set = (delay, callback) => {
+        if (++setCalls === 1 && hook === 'first-set') cancel()
+        return set(delay, callback)
+      }
+      const contract = defineRpc({ echo: procedure(text, text) })
+      const server = new RpcServer(
+        contract,
+        {
+          echo: {
+            capability: 'echo',
+            handle: () => {
+              calls++
+              return 'done'
+            },
+          },
+        },
+        env.lease(),
+        right,
+        { scheduler: clock }
+      )
+      right.message?.(
+        encodeRpc(
+          { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' },
+          limits
+        )
+      )
+      await flush()
+      expect(calls).toBe(0)
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      server.close()
+    })
+  }
+  for (const hook of ['now', 'set'] as const) {
+    test(`client scheduler ${hook} failure settles without retaining pending work`, async () => {
+      const { left } = pair()
+      const clock = new Clock()
+      if (hook === 'now')
+        clock.now = () => {
+          throw new Error('scheduler')
+        }
+      else
+        clock.set = () => {
+          throw new Error('scheduler')
+        }
+      const client = new RpcClient(schema, left, { scheduler: clock })
+      expect((await result(client.call('echo', 'outer'))).code).toBe('INTERNAL')
+      expect(client.diagnostics().pending).toBe(0)
+      expect(left.packets).toHaveLength(0)
+      client.close()
+    })
+    test(`server scheduler ${hook} failure releases admitted work`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      if (hook === 'now')
+        clock.now = () => {
+          throw new Error('scheduler')
+        }
+      else
+        clock.set = () => {
+          throw new Error('scheduler')
+        }
+      const contract = defineRpc({ echo: procedure(text, text) })
+      let calls = 0
+      const server = new RpcServer(
+        contract,
+        {
+          echo: {
+            capability: 'echo',
+            handle: () => {
+              calls++
+              return 'done'
+            },
+          },
+        },
+        env.lease(),
+        right,
+        { scheduler: clock }
+      )
+      right.message?.(
+        encodeRpc(
+          { type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' },
+          limits
+        )
+      )
+      await flush()
+      expect(calls).toBe(0)
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(server.diagnostics().closed).toBe(true)
+    })
+  }
+  test('server closure during timer installation releases the returned timer and authority', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const clock = new Clock()
+    const set = clock.set.bind(clock)
+    clock.set = (delay, callback) => {
+      server.close()
+      return set(delay, callback)
+    }
+    const contract = defineRpc({ echo: procedure(text, text) })
+    let calls = 0
+    const server = new RpcServer(
+      contract,
+      {
+        echo: {
+          capability: 'echo',
+          handle: () => {
+            calls++
+            return 'done'
+          },
+        },
+      },
+      env.lease(),
+      right,
+      { scheduler: clock }
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    await flush()
+    expect(calls).toBe(0)
+    expect(server.diagnostics().executing).toBe(0)
+    expect(env.authority.diagnostics().executing).toBe(0)
+    expect(clock.timers.size).toBe(0)
+  })
   test('input parsing cannot enqueue a request after closing the client', async () => {
     const { left } = pair()
     const contract = defineRpc({

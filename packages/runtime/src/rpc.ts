@@ -51,6 +51,7 @@ interface Job {
   readonly started: number
   outcome: RpcDiagnostic['outcome']
   timer: unknown
+  timerSet: boolean
   replied: boolean
 }
 interface Route {
@@ -174,57 +175,93 @@ export class RpcServer<S extends RpcSchema> {
       this.#error(message.id, 'OVERLOADED')
       return
     }
-    const deadline = this.#clock.now() + message.timeoutMs
-    let input: unknown
     const parsing = { cancelled: false }
     this.#parsing.set(message.id, parsing)
+    let release: (() => void) | undefined
     try {
-      input = route.parseInput(message.value)
-    } catch {
-      this.#error(message.id, 'BAD_REQUEST')
-      return
+      const deadline = this.#clock.now() + message.timeoutMs
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
+        return
+      }
+      let input: unknown
+      try {
+        input = route.parseInput(message.value)
+      } catch {
+        this.#error(message.id, 'BAD_REQUEST')
+        return
+      }
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
+        return
+      }
+      try {
+        this.#guard.check(route.capability)
+        release = this.#guard.acquire()
+      } catch (error) {
+        this.#error(message.id, error instanceof RpcError ? error.code : 'REVOKED')
+        return
+      }
+      const started = this.#clock.now()
+      if (this.#closed) return
+      if (parsing.cancelled) {
+        this.#error(message.id, 'CANCELLED')
+        return
+      }
+      const job: Job = {
+        release,
+        id: message.id,
+        controller: new AbortController(),
+        deadline,
+        started,
+        outcome: 'error',
+        timer: undefined,
+        timerSet: false,
+        replied: false,
+      }
+      this.#parsing.delete(message.id)
+      this.#jobs.set(job.id, job)
+      release = undefined
+      try {
+        const remaining = Math.max(0, deadline - this.#clock.now())
+        if (job.replied || this.#closed) {
+          this.#jobs.delete(job.id)
+          job.release()
+          this.#settleIdle()
+          return
+        }
+        const timer = this.#clock.set(remaining, () => this.#cancel(job, 'DEADLINE_EXCEEDED'))
+        if (job.replied || this.#closed) {
+          this.#clock.clear(timer)
+          this.#jobs.delete(job.id)
+          job.release()
+          this.#settleIdle()
+          return
+        }
+        job.timer = timer
+        job.timerSet = true
+        this.#diagnostic(job, 'started', 'pending')
+        void this.#run(job, route, input)
+      } catch (error) {
+        this.#jobs.delete(job.id)
+        if (job.timerSet) this.#clearJobTimer(job)
+        job.release()
+        throw error
+      }
     } finally {
       this.#parsing.delete(message.id)
+      release?.()
     }
-    if (this.#closed) return
-    if (parsing.cancelled) {
-      this.#error(message.id, 'CANCELLED')
-      return
-    }
-    // Parsers are trusted application code but may synchronously revoke a grant.
-    try {
-      this.#guard.check(route.capability)
-    } catch {
-      this.#error(message.id, 'REVOKED')
-      return
-    }
-    let release: () => void
-    try {
-      release = this.#guard.acquire()
-    } catch (error) {
-      this.#error(message.id, error instanceof RpcError ? error.code : 'OVERLOADED')
-      return
-    }
-    const job: Job = {
-      release,
-      id: message.id,
-      controller: new AbortController(),
-      deadline,
-      started: this.#clock.now(),
-      outcome: 'error',
-      timer: undefined,
-      replied: false,
-    }
-    this.#jobs.set(job.id, job)
-    job.timer = this.#clock.set(Math.max(0, deadline - this.#clock.now()), () =>
-      this.#cancel(job, 'DEADLINE_EXCEEDED')
-    )
-    this.#diagnostic(job, 'started', 'pending')
-    void this.#run(job, route, input)
   }
+
   async #run(job: Job, route: Route, input: unknown): Promise<void> {
     try {
-      if (this.#clock.now() >= job.deadline) {
+      if (job.replied || this.#closed) return
+      const now = this.#clock.now()
+      if (job.replied || this.#closed) return
+      if (now >= job.deadline) {
         this.#cancel(job, 'DEADLINE_EXCEEDED')
         return
       }
@@ -249,7 +286,7 @@ export class RpcServer<S extends RpcSchema> {
       const packet = encodeRpc({ type: 'success', id: job.id, value: output }, this.#limits)
       job.replied = true
       job.outcome = 'success'
-      this.#clock.clear(job.timer)
+      this.#clearJobTimer(job)
       this.#send(packet, () => {
         this.#guard.check(route.capability)
         if (this.#clock.now() >= job.deadline)
@@ -262,18 +299,27 @@ export class RpcServer<S extends RpcSchema> {
         this.#error(job.id, 'INTERNAL')
       }
     } finally {
-      this.#clock.clear(job.timer)
+      this.#clearJobTimer(job)
       this.#jobs.delete(job.id)
       job.release()
       this.#settleIdle()
       this.#diagnostic(job, 'settled', job.outcome)
     }
   }
+  #clearJobTimer(job: Job): void {
+    if (!job.timerSet) return
+    job.timerSet = false
+    try {
+      this.#clock.clear(job.timer)
+    } catch {
+      /* Continue releasing owned work. */
+    }
+  }
   #cancel(job: Job, code: 'CANCELLED' | 'DEADLINE_EXCEEDED'): void {
     if (job.replied) return
     job.replied = true
     job.outcome = code === 'CANCELLED' ? 'cancelled' : 'deadline'
-    this.#clock.clear(job.timer)
+    this.#clearJobTimer(job)
     job.controller.abort(
       new RpcError(code, code === 'CANCELLED' ? 'RPC call cancelled' : 'RPC deadline exceeded')
     )
@@ -311,7 +357,7 @@ export class RpcServer<S extends RpcSchema> {
     for (const job of this.#jobs.values()) {
       if (!job.replied) job.outcome = 'disconnected'
       job.replied = true
-      this.#clock.clear(job.timer)
+      this.#clearJobTimer(job)
       job.controller.abort(reason)
     }
   }

@@ -17,6 +17,7 @@ interface Pending {
   readonly deadline: number
   readonly delivery: AbortController
   timer: unknown
+  timerSet: boolean
   sent: boolean
   removeAbort: () => void
 }
@@ -61,11 +62,18 @@ export class RpcClient<S extends RpcSchema> {
   }
   #call(method: string, input: unknown, options: RpcCallOptions): Promise<unknown> {
     if (this.#closed) return Promise.reject(this.#closed)
-    // Input parsers and serialization can run application code synchronously.
-    // A nested admission would send a later ID before this request and could
-    // exceed the pending limit before this request has reserved its slot.
     if (this.#preparing)
       return Promise.reject(new RpcError('OVERLOADED', 'RPC request preparation is in progress'))
+    this.#preparing = true
+    try {
+      return this.#prepare(method, input, options)
+    } catch {
+      return Promise.reject(new RpcError('INTERNAL', 'RPC request preparation failed'))
+    } finally {
+      this.#preparing = false
+    }
+  }
+  #prepare(method: string, input: unknown, options: RpcCallOptions): Promise<unknown> {
     if (options.signal?.aborted)
       return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
     const definition = Object.hasOwn(this.#schema, method) ? this.#schema[method] : undefined
@@ -77,8 +85,10 @@ export class RpcClient<S extends RpcSchema> {
       return Promise.reject(new RpcError('OVERLOADED', 'RPC pending request limit'))
     const id = ++this.#sequence,
       deadline = this.#clock.now() + timeoutMs
+    if (this.#closed) return Promise.reject(this.#closed)
+    if (options.signal?.aborted)
+      return Promise.reject(new RpcError('CANCELLED', 'RPC call cancelled'))
     let packet: Uint8Array
-    this.#preparing = true
     try {
       packet = encodeRpc(
         { type: 'request', id, method, timeoutMs, value: definition.input(input) },
@@ -88,8 +98,6 @@ export class RpcClient<S extends RpcSchema> {
       return Promise.reject(
         new RpcError('BAD_REQUEST', 'RPC input validation or serialization failed')
       )
-    } finally {
-      this.#preparing = false
     }
     if (this.#closed) return Promise.reject(this.#closed)
     if (options.signal?.aborted)
@@ -102,6 +110,7 @@ export class RpcClient<S extends RpcSchema> {
         deadline,
         delivery: new AbortController(),
         timer: undefined,
+        timerSet: false,
         sent: false,
         removeAbort: () => {},
       }
@@ -112,9 +121,22 @@ export class RpcClient<S extends RpcSchema> {
         signal.addEventListener('abort', cancel, { once: true })
         pending.removeAbort = () => signal.removeEventListener('abort', cancel)
       }
-      pending.timer = this.#clock.set(Math.max(0, deadline - this.#clock.now()), () =>
-        this.#cancel(id, new RpcError('DEADLINE_EXCEEDED', 'RPC deadline exceeded'))
-      )
+      try {
+        const remaining = Math.max(0, deadline - this.#clock.now())
+        if (this.#pending.get(id) !== pending) return
+        const timer = this.#clock.set(remaining, () =>
+          this.#cancel(id, new RpcError('DEADLINE_EXCEEDED', 'RPC deadline exceeded'))
+        )
+        if (this.#pending.get(id) !== pending) {
+          this.#clock.clear(timer)
+          return
+        }
+        pending.timer = timer
+        pending.timerSet = true
+      } catch {
+        this.#settle(id, new RpcError('INTERNAL', 'RPC request timer failed'))
+        return
+      }
       if (options.signal?.aborted) {
         cancel()
         return
@@ -140,7 +162,13 @@ export class RpcClient<S extends RpcSchema> {
     const pending = this.#pending.get(id)
     if (!pending) return
     this.#pending.delete(id)
-    this.#clock.clear(pending.timer)
+    if (pending.timerSet) {
+      try {
+        this.#clock.clear(pending.timer)
+      } catch {
+        // A scheduler failure must not prevent request settlement.
+      }
+    }
     pending.removeAbort()
     if (error) pending.reject(error)
     else pending.resolve(value)

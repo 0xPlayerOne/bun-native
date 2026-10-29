@@ -18,6 +18,7 @@ export class RpcChannel {
   #peakFrames = 0
   #off: (() => void) | undefined
   #timer: unknown
+  #timerSet = false
   #started = false
   #reason: RpcError | undefined
   readonly closed: Promise<RpcError>
@@ -125,9 +126,26 @@ export class RpcChannel {
       this.#finish(item, new RpcError('CANCELLED', 'RPC send cancelled'))
       return
     }
-    this.#timer = this.clock.set(this.limits.sendTimeoutMs, () =>
-      this.close(new RpcError('DISCONNECTED', 'RPC transport did not drain'))
-    )
+    try {
+      const timer = this.clock.set(this.limits.sendTimeoutMs, () =>
+        this.close(new RpcError('DISCONNECTED', 'RPC transport did not drain'))
+      )
+      if (this.#reason || this.#active !== item || item.signal?.aborted) {
+        try {
+          this.clock.clear(timer)
+        } catch {
+          /* Continue closing locally. */
+        }
+        if (this.#active === item)
+          this.#finish(item, new RpcError('CANCELLED', 'RPC send cancelled'))
+        return
+      }
+      this.#timer = timer
+      this.#timerSet = true
+    } catch {
+      this.close(new RpcError('DISCONNECTED', 'RPC transport timer failed'))
+      return
+    }
     try {
       Promise.resolve(this.transport.send(item.packet)).then(
         () => this.#finish(item),
@@ -139,8 +157,7 @@ export class RpcChannel {
   }
   #finish(item: Outgoing, error?: RpcError): void {
     if (this.#active !== item) return
-    this.clock.clear(this.#timer)
-    this.#timer = undefined
+    this.#clearTimer()
     this.#bytes -= item.bytes
     this.#active = undefined
     item.removeAbort()
@@ -152,7 +169,7 @@ export class RpcChannel {
   close(error = new RpcError('DISCONNECTED', 'RPC channel closed')): void {
     if (this.#reason) return
     this.#reason = error
-    this.clock.clear(this.#timer)
+    this.#clearTimer()
     const items = [...this.#queue]
     this.#queue.length = 0
     if (this.#active) items.unshift(this.#active)
@@ -193,5 +210,15 @@ export class RpcChannel {
       peakQueuedFrames: this.#peakFrames,
       closed: !!this.#reason,
     }
+  }
+  #clearTimer(): void {
+    if (!this.#timerSet) return
+    this.#timerSet = false
+    try {
+      this.clock.clear(this.#timer)
+    } catch {
+      /* Continue releasing owned work. */
+    }
+    this.#timer = undefined
   }
 }
