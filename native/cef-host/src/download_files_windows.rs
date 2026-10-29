@@ -430,12 +430,18 @@ impl Directory {
             }
         }
         match fs::symlink_metadata(self.path.join(component)) {
-            Ok(_) => {
+            Ok(metadata) => {
                 if !replace {
                     return Err("Download destination already exists".into());
                 }
                 if !exact {
                     return Err("Download destination spelling resolves to an alias".into());
+                }
+                // A file-only open rejects directories before handle inspection.
+                // Keep the existing fixed replacement error; regular files still
+                // pass through the handle, reparse-point and link checks below.
+                if !metadata.is_file() {
+                    return Err("Download replacement requires a regular non-aliased file".into());
                 }
                 let target = open(
                     &self.path.join(component),
