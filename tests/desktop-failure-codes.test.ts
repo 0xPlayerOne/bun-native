@@ -37,6 +37,15 @@ test('desktop summaries recognize only fixed fixture labels, including current d
     classifyDesktopFixtureFailure('downloads', 'complete: Error [windows-root-shared-writer]'),
     { phase: 'complete', name: 'Error', code: null, category: 'windows-root-shared-writer' }
   )
+  assert.deepEqual(
+    classifyDesktopFixtureFailure('status', 'owned-click: Error [native-event-identity]'),
+    {
+      phase: 'owned-click',
+      name: 'Error',
+      code: null,
+      category: 'native-event-identity',
+    }
+  )
   assert.deepEqual(classifyDesktopFixtureFailure('commands', 'shortcut'), {
     ...unknown,
     phase: 'shortcut',
@@ -112,6 +121,14 @@ test('fixture label parsing cannot export paths, messages, unknown fields or kno
 })
 
 test('fixture formatting uses exact source categories and suppresses arbitrary error metadata', () => {
+  assert.equal(
+    formatDesktopFixtureFailure('status', 'quit', new Error('Status item fixture deadline')),
+    'quit: Error [workload-deadline]'
+  )
+  assert.deepEqual(
+    classifyDesktopFixtureFailure('status', 'quit: Error [workload-deadline]\n/private/fixture'),
+    unknown
+  )
   assert.equal(
     formatDesktopFixtureFailure(
       'commands',

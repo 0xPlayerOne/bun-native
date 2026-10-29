@@ -13,6 +13,7 @@ import { ApplicationLifecycle } from './application-lifecycle.ts'
 import { CefFileDialogs } from './cef-dialogs.ts'
 import { CefDownloads } from './cef-downloads.ts'
 import { CefWindowCommands } from './cef-window-commands.ts'
+import { CefStatusItems } from './cef-status-items.ts'
 import {
   CefBrowserActions,
   validateBrowserAction,
@@ -75,6 +76,10 @@ import type {
   WindowCommandsHandle,
   WindowCommandsEvent,
   WindowMenuPoint,
+  StatusItemBackend,
+  StatusItemDefinition,
+  StatusItemHandle,
+  StatusItemEvent,
   FileDialogBackend,
   FileDialogResult,
   OpenFileDialogOptions,
@@ -224,6 +229,7 @@ export type NativeCapabilityGrant =
         | 'dialog-open'
         | 'dialog-save'
         | 'window-commands'
+        | 'status-item'
     }
   | {
       readonly name:
@@ -249,6 +255,7 @@ export type NativeOperationRequest =
         | 'dialog-open'
         | 'dialog-save'
         | 'window-commands'
+        | 'status-item'
     }
   | {
       readonly name:
@@ -417,7 +424,8 @@ export class CefBackend
     ViewCompositionBackend,
     DownloadManagementBackend,
     BrowserActionsBackend,
-    WindowCommandsBackend
+    WindowCommandsBackend,
+    StatusItemBackend
 {
   #descriptor: BackendDescriptor
   get descriptor(): BackendDescriptor {
@@ -425,6 +433,7 @@ export class CefBackend
   }
   readonly #transport: NativeTransport
   readonly #commands: CefWindowCommands
+  readonly #statusItems: CefStatusItems
   readonly #application = new ApplicationLifecycle()
   readonly #browserActions: CefBrowserActions
   readonly #dialogs: CefFileDialogs
@@ -497,6 +506,20 @@ export class CefBackend
       this.#listenerErrors++
     })
     this.#descriptor = descriptor(transport.desktopCapabilities)
+    this.#statusItems = new CefStatusItems(
+      transport,
+      (scope) => {
+        const captured = this.#capturedPolicyScope(scope)
+        return { view: captured.view, id: captured.resource.native, scope: captured.nativeScope }
+      },
+      () => {
+        this.#active()
+        requireCapability(this.descriptor, 'status.item')
+      },
+      () => {
+        this.#listenerErrors++
+      }
+    )
     this.#commands = new CefWindowCommands(
       transport,
       (scope) => {
@@ -537,6 +560,7 @@ export class CefBackend
       this.#downloads.close(transport.failure ?? new NativeShutdownError())
       this.#browserActions.close(transport.failure ?? new NativeShutdownError())
       this.#commands.close()
+      this.#statusItems.close()
       this.#dialogs.close(transport.failure ?? new NativeShutdownError())
       this.#stopStreams(false)
       const rpcClosed = this.#stopRpc(false)
@@ -574,6 +598,75 @@ export class CefBackend
     options?: OperationOptions
   ): Promise<WindowCommandsHandle> {
     return this.#commands.create(scope, definition, options)
+  }
+  createStatusItem(
+    scope: PolicyScope,
+    definition: StatusItemDefinition,
+    options?: OperationOptions
+  ): Promise<StatusItemHandle> {
+    return this.#statusItems.create(scope, definition, options)
+  }
+  updateStatusItem(item: StatusItemHandle, definition: StatusItemDefinition): Promise<void> {
+    return this.#statusItems.update(item, definition)
+  }
+  onStatusItemEvent(
+    item: StatusItemHandle,
+    listener: (event: StatusItemEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#statusItems.onEvent(item, listener, options)
+  }
+  disposeStatusItem(item: StatusItemHandle): Promise<void> {
+    return this.#statusItems.dispose(item)
+  }
+  /** @internal Stable managed-owner authorization; never renderer authority. */
+  statusItemMatchesScope(item: StatusItemHandle, scope: PolicyScope): boolean {
+    return this.#statusItems.matchesScope(item, scope)
+  }
+  statusItemDiagnostics() {
+    return this.#statusItems.diagnostics()
+  }
+  /** @internal Requires a contributor host and its real AppKit target-action path. */
+  qualifyStatusItemClick(item: StatusItemHandle): Promise<void> {
+    return this.#statusItems.qualify(item)
+  }
+  /** @internal Read-only native ownership counts, including unsupported platforms. */
+  async qualifyStatusItemSnapshot(): Promise<{
+    readonly supported: boolean
+    readonly items: number
+    readonly delegates: number
+    readonly weakOwners: number
+    readonly created: number
+    readonly removed: number
+    readonly clicks: number
+  }> {
+    this.#active()
+    const result = await this.#transport.call('status.qualification.snapshot')
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Object.keys(result).sort().join(',') !==
+        'clicks,created,delegates,items,removed,supported,weakOwners' ||
+      !('supported' in result) ||
+      typeof result.supported !== 'boolean' ||
+      Object.entries(result).some(
+        ([key, value]) =>
+          key !== 'supported' &&
+          (!Number.isSafeInteger(value) ||
+            Number(value) < 0 ||
+            Number(value) > Number.MAX_SAFE_INTEGER)
+      )
+    )
+      throw new Error('Malformed native status item snapshot')
+    return Object.freeze(result) as {
+      supported: boolean
+      items: number
+      delegates: number
+      weakOwners: number
+      created: number
+      removed: number
+      clicks: number
+    }
   }
   showWindowMenu(
     commands: WindowCommandsHandle,
@@ -1769,7 +1862,8 @@ export class CefBackend
         application.listeners +
         application.readyWaiters +
         this.#downloads.listenerCount +
-        this.#commands.listenerCount,
+        this.#commands.listenerCount +
+        this.#statusItems.listenerCount,
       listenerErrors: this.#listenerErrors + application.listenerErrors,
     }
   }
@@ -2005,6 +2099,7 @@ export class CefBackend
     if (this.#disposed) return this.closed
     this.#disposed = true
     this.#commands.stop()
+    this.#statusItems.stop()
     this.#application.requested()
     this.#stopStreams(true)
     const rpcClosed = this.#stopRpc(true)
@@ -2034,12 +2129,14 @@ export class CefBackend
   }
   #event(event: NativeEvent): void {
     this.#commands.event(event)
+    this.#statusItems.event(event)
     if (event.event === 'app.quitting' && this.descriptor.capabilities.includes('app.lifecycle')) {
       if (event.target !== undefined || !event.data || Object.keys(event.data).length !== 1)
         throw new Error('Malformed native application quitting event')
       // Native-initiated quit fences local calls before application callbacks run.
       this.#disposed = true
       this.#commands.stop()
+      this.#statusItems.stop()
       this.#application.quitting(event.data['reason'])
     }
     this.#downloads.event(event)
@@ -2132,6 +2229,7 @@ export class CefBackend
   }
   #retireRpc(view: ViewHandle): void {
     this.#commands.retireView(view)
+    this.#statusItems.retireView(view)
     this.#rpcRetired.add(view)
     this.#rpcService?.authority.revoke(view)
     this.#streamRetired.add(view)

@@ -28,6 +28,11 @@ test('native failure diagnostics distinguish known shutdown, owner and protocol 
     ['Native menu main run loop unavailable', 'menu-main-run-loop-unavailable'],
     ['Native menu common run-loop modes unavailable', 'menu-common-modes-unavailable'],
     ['Native menu cancellation requires the native main thread', 'menu-cancel-main-thread'],
+    ['Status item event identity exhausted', 'status-event-identity-exhausted'],
+    ['Status item callback count exhausted', 'status-callback-count-exhausted'],
+    ['Status item cleanup unavailable', 'status-cleanup-unavailable'],
+    ['Status item native removal failed', 'status-native-removal-failed'],
+    ['Native status items remain owned at shutdown', 'status-shutdown-ownership'],
   ])
     assert.equal(classifyNativeHostFailure(message), code)
 })

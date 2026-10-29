@@ -50,15 +50,7 @@ def main() -> int:
     workload.add_argument("--desktop", action="store_true")
     parser.add_argument(
         "--desktop-case",
-        choices=(
-            "windows",
-            "composition",
-            "services",
-            "downloads",
-            "parent-close",
-            "commands",
-            "dialogs",
-        ),
+        choices=("windows", "composition", "services", "downloads", "parent-close", "commands", "dialogs", "status"),
     )
     parser.add_argument("--native-source")
     parser.add_argument("app", type=Path)

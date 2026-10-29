@@ -34,6 +34,8 @@ mod navigation;
 mod shutdown_pending;
 #[path = "view_close.rs"]
 mod view_close;
+#[path = "status_items.rs"]
+mod status_items;
 #[path = "view_composition.rs"]
 mod view_composition;
 #[path = "window_commands.rs"]
@@ -58,6 +60,7 @@ fn desktop_capabilities_for(
             "view.composition",
             "download.manage",
             "dialog.file",
+            "status.item",
             #[cfg(feature = "browser-actions")]
             "view.snapshot",
             #[cfg(feature = "browser-actions")]
@@ -274,6 +277,7 @@ fn revoke_renderer(id: u64, binding: Option<rpc_authority::Binding>) {
     #[cfg(feature = "browser-actions")]
     browser_actions::invalidate_stale(id);
     window_commands::retire_view(id);
+    status_items::retire_view(id);
     let Some(binding) = binding else {
         return;
     };
@@ -1194,6 +1198,8 @@ wrap_task! { struct ShutdownUiFence; impl Task { fn execute(&self) {
     #[cfg(feature = "browser-actions")]
     if !browser_actions::shutdown_ready() { return; }
     window_commands::verify_shutdown();
+    status_items::release_all();
+    status_items::shutdown_receipt();
     dialogs::shutdown_receipt();
     crate::shutdown_audit::checkpoint("final-ui-fence");
     shutdown_acknowledged(); quit_message_loop();
@@ -1204,6 +1210,8 @@ pub fn release() {
     dialogs::stop();
     shutdown_acknowledged();
     window_commands::release_all();
+    status_items::release_all();
+    status_items::shutdown_receipt();
     #[cfg(feature = "rpc-qualification")]
     crate::rpc_transport_qualification::close();
     if let Some(slot) = SHUTDOWN_THREAD.get() {
@@ -1786,6 +1794,7 @@ fn begin_navigation(
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    status_items::retire_view(view);
     dialogs::revoke(view);
     let record = state.views.get_mut(&view).ok_or("INVALID_HANDLE: view")?;
     record.navigation_in_progress = true;
@@ -1810,6 +1819,7 @@ fn revoke_view(state: &mut HostState, view: u64) {
     #[cfg(feature = "browser-actions")]
     state.browser_actions.revoke(view);
     window_commands::retire_view(view);
+    status_items::retire_view(view);
     dialogs::revoke(view);
 }
 
@@ -1878,6 +1888,7 @@ fn allowed_during_quit(operation: &str) -> bool {
             | "commands.cancel"
             | "commands.dispose"
             | "dialog.cancel"
+            | "status.dispose"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -2813,6 +2824,13 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "commands.create" | "commands.show" | "commands.cancel" | "commands.dispose" => {
             window_commands::dispatch(request, operation, args)?;
         }
+        "status.create" | "status.update" | "status.dispose" => {
+            status_items::dispatch(request, operation, args)?;
+        }
+        #[cfg(feature = "rpc-qualification")]
+        "status.qualification.click" | "status.qualification.snapshot" => {
+            status_items::dispatch(request, operation, args)?;
+        }
         #[cfg(feature = "rpc-qualification")]
         "commands.qualification" | "commands.qualification.snapshot" => {
             window_commands::dispatch(request, operation, args)?
@@ -3009,6 +3027,7 @@ fn revoke_frame(id: u64, frame: Option<&mut Frame>) {
             #[cfg(feature = "browser-actions")]
             state.browser_actions.revoke(id);
             window_commands::retire_view(id);
+            status_items::retire_view(id);
             dialogs::revoke(id);
         }
     });
@@ -3392,6 +3411,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn desktop_capabilities_preserve_commands_with_platform_services() {
+        let capabilities = desktop_capabilities();
+        for capability in [
+            "window.state",
+            "window.geometry",
+            "window.commands",
+            "app.lifecycle",
+            "view.composition",
+            "download.manage",
+        ] {
+            assert!(capabilities.contains(&capability), "{capability}");
+        }
+        assert_eq!(
+            capabilities.contains(&"clipboard.text"),
+            clipboard::SUPPORTED
+        );
+        assert_eq!(capabilities.contains(&"dialog.file"), dialogs::SUPPORTED);
+        assert_eq!(
+            capabilities.contains(&"status.item"),
+            status_items::SUPPORTED
+        );
+        let unique: std::collections::BTreeSet<_> = capabilities.iter().collect();
+        assert_eq!(capabilities.len(), unique.len());
     fn desktop_capabilities_preserve_shared_facets_with_dialogs() {
         for (dialogs, clipboard) in [(false, false), (false, true), (true, true)] {
             let caps = desktop_capabilities_for(dialogs, clipboard);
@@ -3652,9 +3694,14 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("download.cancel"));
         assert!(allowed_during_quit("commands.cancel"));
         assert!(allowed_during_quit("commands.dispose"));
+        assert!(allowed_during_quit("status.dispose"));
+        assert!(allowed_during_quit("dialog.cancel"));
         for operation in [
             "download.start",
             "commands.create",
+            "status.create",
+            "status.update",
+            "status.qualification.click",
             "commands.show",
             "commands.qualification",
             "policy.native.grant",
