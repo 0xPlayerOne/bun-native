@@ -88,6 +88,29 @@ test('desktop summaries recognize only fixed fixture labels, including current d
   })
 })
 
+test('status managed failure phases retain a fixed step without exposing error text', () => {
+  for (const phase of [
+    'managed-authority',
+    'managed-prepare',
+    'managed-click',
+    'managed-read',
+    'managed-replace',
+    'managed-retired',
+    'managed-replay',
+    'managed-ack',
+    'managed-close',
+  ]) {
+    const formatted = formatDesktopFixtureFailure('status', phase, new Error('/private/example'))
+    assert.deepEqual(classifyDesktopFixtureFailure('status', formatted), {
+      phase,
+      name: 'Error',
+      code: null,
+      category: 'unclassified',
+    })
+    assert.ok(!formatted.includes('/private/example'))
+  }
+})
+
 test('fixture label parsing cannot export paths, messages, unknown fields or known-label prefixes', () => {
   const known = 'shortcut: Error [observation-order]'
   for (const input of [
