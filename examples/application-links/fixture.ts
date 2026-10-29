@@ -117,8 +117,11 @@ export default async function qualifyApplicationLinks(backend: CefBackend): Prom
       assert.rejects(backend.createApplicationLinkReader(scope), hasCode('PERMISSION_DENIED'))
     )
     checks['missingGrantDenied'] = true
+    stage = 'policy-grant'
     await bounded(backend.grantNativeCapability(scope, { name: 'application-links' }))
+    stage = 'policy-create'
     const reader = await bounded(backend.createApplicationLinkReader(scope))
+    stage = 'policy-forged'
     await bounded(
       assert.rejects(
         backend.readApplicationLinks({ ...reader } as ApplicationLinkReader),
@@ -126,6 +129,7 @@ export default async function qualifyApplicationLinks(backend: CefBackend): Prom
       )
     )
     checks['forgedReaderDenied'] = true
+    stage = 'policy-duplicate'
     await bounded(
       assert.rejects(backend.createApplicationLinkReader(scope), hasCode('RESOURCE_IN_USE'))
     )

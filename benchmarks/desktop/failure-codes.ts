@@ -11,6 +11,10 @@ const fixtures = {
     phases: [
       'ready',
       'policy',
+      'policy-grant',
+      'policy-create',
+      'policy-forged',
+      'policy-duplicate',
       'read-ack',
       'managed',
       'external-policy',
