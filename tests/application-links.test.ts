@@ -394,6 +394,8 @@ test('managed generations retain input before destructive native ACK and replay 
     f.deliver(acknowledgment)
     await f.owner.whenIdle()
     const second = begin()
+    assert.throws(() => f.owner.scope(first.generation), /RETIRED/)
+    await assert.rejects(first.invoke(resource, 'ack-events', '{"through":1}'), /RETIRED/)
     assert.equal(f.queued(), 0)
     await assert.rejects(second.invoke(resource, 'ack-events', '{"through":1}'), /INVALID_ARGUMENT/)
     const events = JSON.parse(await second.invoke(resource, 'events', 'null')) as unknown[]

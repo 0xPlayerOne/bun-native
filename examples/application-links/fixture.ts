@@ -167,9 +167,12 @@ export default async function qualifyApplicationLinks(backend: CefBackend): Prom
     const generation = owner.begin('links:1', ['links'])
     owner.attach(generation, resource, bindings['links']!.schema)
     owner.commit(generation, '{}')
-    const events = JSON.parse(
-      await bounded(owner.scope(generation).invoke(resource, 'events', 'null'))
-    ) as { sequence: number; type: string; state: { url: string } }[]
+    const firstScope = owner.scope(generation)
+    const events = JSON.parse(await bounded(firstScope.invoke(resource, 'events', 'null'))) as {
+      sequence: number
+      type: string
+      state: { url: string }
+    }[]
     assert.deepEqual(
       events.map((event) => [event.sequence, event.type, event.state.url]),
       applicationLinkStartupInputs.slice(0, 2).map((value, index) => [index + 1, 'link', value])
@@ -179,10 +182,7 @@ export default async function qualifyApplicationLinks(backend: CefBackend): Prom
     owner.attach(replacement, resource, bindings['links']!.schema)
     owner.commit(replacement, '{}')
     await bounded(
-      assert.rejects(
-        owner.scope(generation).invoke(resource, 'ack-events', '{"through":2}'),
-        /RETIRED/
-      )
+      assert.rejects(firstScope.invoke(resource, 'ack-events', '{"through":2}'), /RETIRED/)
     )
     await bounded(
       assert.rejects(
