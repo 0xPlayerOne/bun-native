@@ -487,6 +487,9 @@ fn snapshot() -> Value {
         json!({"readers":usize::from(links.reader.is_some()),"queued":links.queue.len(),"bytes":links.bytes,"overflow":links.overflow,"startup":links.startup,"macos":links.macos,"rejected":links.rejected,"acknowledged":links.acknowledged,"delegates":delegates})
     })
 }
+fn shutdown_event(data: Value) -> Value {
+    json!({"v":1,"event":"links.shutdown","data":data})
+}
 pub(super) fn shutdown() {
     LINKS.with(|links| {
         let mut links = links.borrow_mut();
@@ -508,13 +511,20 @@ pub(super) fn shutdown() {
             "{}",
             json!({"event":"bunly.host.links-shutdown","state":data})
         );
-        super::event("links.shutdown", 0, data);
+        crate::process::emit(shutdown_event(data));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shutdown_receipt_is_an_untargeted_global_protocol_event() {
+        let state = json!({"readers": 0, "queued": 0});
+        let frame = shutdown_event(state.clone());
+        assert_eq!(frame, json!({"v":1,"event":"links.shutdown","data":state}));
+        assert!(frame.get("target").is_none());
+    }
     fn manifest() -> Manifest {
         serde_json::from_value(
             json!({"schema":1,"routes":[{"scheme":"bunly-test","host":"open","path":"/item"}]}),
