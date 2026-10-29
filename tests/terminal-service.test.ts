@@ -119,10 +119,173 @@ class FakeDriver implements TerminalDriver {
   }
 }
 
+for (const failure of ['now', 'set'] as const)
+  test(`terminal close does not strand ownership if scheduler ${failure} throws`, async () => {
+    const clock = new Clock()
+    const driver = new FakeDriver()
+    const service = new TerminalService({ driver, scheduler: clock })
+    const handle = await service.create({}, new Writer(), valid())
+    const observation = service.observe(handle)
+    let processSettled = false,
+      terminalSettled = false
+    void observation.processExited.then(() => {
+      processSettled = true
+    })
+    void observation.terminalClosed.then(() => {
+      terminalSettled = true
+    })
+    const process = driver.processes[0]!
+    process.autoStop = false
+    const set = clock.set.bind(clock)
+    const now = clock.now.bind(clock)
+    if (failure === 'set')
+      clock.set = () => {
+        throw new Error('scheduler failed')
+      }
+    else
+      clock.now = () => {
+        throw new Error('scheduler failed')
+      }
+    const result = await service.close(handle)
+    expect(process.signals).toEqual(['SIGKILL'])
+    expect(result).toMatchObject({ processExited: false, terminalClosed: false, released: false })
+    expect(service.diagnostics().terminals).toBe(1)
+    await flush()
+    expect(processSettled).toBe(false)
+    expect(terminalSettled).toBe(false)
+    clock.set = set
+    clock.now = now
+    process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+    process.observer.terminalClosed(0)
+    await observation.released
+    expect(service.diagnostics().terminals).toBe(0)
+    expect(clock.timers.size).toBe(0)
+  })
+
 const valid = (change: Record<string, unknown> = {}) => ({
   executable: process.execPath,
   cwd: import.meta.dir,
   ...change,
+})
+
+test('disposal attempts every terminal if scheduler setup fails', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handles = [
+    await service.create({}, new Writer(), valid()),
+    await service.create({}, new Writer(), valid()),
+  ]
+  const observations = handles.map((handle) => service.observe(handle))
+  for (const process of driver.processes) process.autoStop = false
+  const set = clock.set.bind(clock)
+  clock.set = () => {
+    throw new Error('scheduler failed')
+  }
+  const outcomes = await service.dispose()
+  expect(outcomes).toHaveLength(2)
+  expect(outcomes.every((outcome) => !outcome.released && !outcome.processExited)).toBe(true)
+  expect(driver.processes.map((process) => process.signals)).toEqual([['SIGKILL'], ['SIGKILL']])
+  expect(service.diagnostics().terminals).toBe(2)
+  clock.set = set
+  for (const process of driver.processes) {
+    process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+    process.observer.terminalClosed(0)
+  }
+  await Promise.all(observations.map((observation) => observation.released))
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('close timer installation may reentrantly escalate without downgrading termination', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const set = clock.set.bind(clock)
+  let nested: Promise<unknown> | undefined
+  clock.set = (delay, callback) => {
+    clock.set = set
+    nested = service.cancel(handle)
+    return set(delay, callback)
+  }
+  const close = service.close(handle)
+  expect(nested).toBe(close)
+  expect((await close).released).toBe(true)
+  expect(driver.processes[0]!.signals).toEqual(['SIGKILL'])
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('close still reports actual release if clearing its timer throws', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const clear = clock.clear.bind(clock)
+  clock.clear = (timer) => {
+    clear(timer)
+    throw new Error('scheduler failed')
+  }
+  expect((await service.close(handle)).released).toBe(true)
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('close clears a scheduler timer even when its handle is undefined', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const set = clock.set.bind(clock)
+  const clear = clock.clear.bind(clock)
+  let actual: unknown,
+    clearCalls = 0
+  clock.set = (delay, callback) => {
+    actual = set(delay, callback)
+    return undefined as unknown as number
+  }
+  clock.clear = (timer) => {
+    expect(timer).toBeUndefined()
+    clearCalls++
+    clear(actual)
+  }
+  expect((await service.close(handle)).released).toBe(true)
+  expect(clearCalls).toBe(1)
+  expect(clock.timers.size).toBe(0)
+})
+
+test('an early close timer that cannot rearm reports unobserved state without inventing expiry', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock, limits: { closeTimeoutMs: 10 } })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const process = driver.processes[0]!
+  process.autoStop = false
+  const close = service.close(handle)
+  const timer = [...clock.timers.entries()][0]!
+  clock.timers.delete(timer[0])
+  clock.elapse(5)
+  const set = clock.set.bind(clock)
+  clock.set = () => {
+    throw new Error('scheduler failed')
+  }
+  timer[1].callback()
+  expect((await close).released).toBe(false)
+  expect(process.signals).toEqual(['SIGTERM', 'SIGKILL'])
+  let processSettled = false
+  void observation.processExited.then(() => {
+    processSettled = true
+  })
+  await flush()
+  expect(processSettled).toBe(false)
+  expect(service.diagnostics().terminals).toBe(1)
+  clock.set = set
+  process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+  process.observer.terminalClosed(0)
+  await observation.released
+  expect(clock.timers.size).toBe(0)
 })
 
 test('admission establishes opaque ownership before touching the writer or driver', async () => {
@@ -919,4 +1082,172 @@ test('attested failure before a PTY exists releases reservations without invente
     await flush()
     expect(service.diagnostics().terminals).toBe(0)
   }
+})
+
+test('lifecycle scheduler failures report missing observations without discarding natural output', async () => {
+  for (const failure of ['now', 'set', 'timer-now', 'timer-set'] as const) {
+    class FailingClock extends Clock {
+      fail: 'now' | 'set' | undefined
+      override now() {
+        if (this.fail === 'now') throw new Error('clock failed')
+        return super.now()
+      }
+      override set(delay: number, callback: () => void) {
+        if (this.fail === 'set') throw new Error('clock failed')
+        return super.set(delay, callback)
+      }
+    }
+    const clock = new FailingClock()
+    const driver = new FakeDriver()
+    const writer = new Writer()
+    const service = new TerminalService({
+      driver,
+      scheduler: clock,
+      limits: { closeTimeoutMs: 10 },
+    })
+    const handle = await service.create({}, writer, valid())
+    const observation = service.observe(handle)
+    const child = driver.processes[0]!
+    if (failure === 'now' || failure === 'set') clock.fail = failure
+    child.observer.processExited({ exitCode: 7, signalCode: null, waitError: false })
+    if (failure === 'timer-now' || failure === 'timer-set') {
+      clock.fail = failure === 'timer-now' ? 'now' : 'set'
+      clock.elapse(5)
+      // Trigger an early timer callback so rescheduling is required.
+      const timer = [...clock.timers.values()][0]!
+      timer.callback()
+    }
+    expect(await observation.processExited).toMatchObject({ observed: true, exitCode: 7 })
+    expect(await observation.terminalClosed).toMatchObject({
+      observed: false,
+      failure: 'SCHEDULER_FAILED',
+    })
+    expect(child.closes).toBe(0)
+    expect(writer.cancelled).toBe(0)
+    expect(service.diagnostics().terminals).toBe(1)
+    child.observer.output(new Uint8Array([3, 4, 255]))
+    child.observer.terminalClosed(0)
+    expect(await observation.outputFinished).toEqual({ ok: true })
+    await observation.released
+    expect(writer.writes.flatMap((bytes) => [...bytes])).toEqual([3, 4, 255])
+    expect(service.diagnostics().terminals).toBe(0)
+  }
+})
+
+test('lifecycle scheduler failure after PTY closure does not invent a process exit', async () => {
+  class FailingClock extends Clock {
+    fail = false
+    override now() {
+      if (this.fail) throw new Error('clock failed')
+      return super.now()
+    }
+  }
+  const clock = new FailingClock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const child = driver.processes[0]!
+  clock.fail = true
+  child.observer.terminalClosed(0)
+  expect(await observation.terminalClosed).toMatchObject({ observed: true, status: 0 })
+  expect(await observation.processExited).toMatchObject({
+    observed: false,
+    failure: 'SCHEDULER_FAILED',
+  })
+  expect(child.signals).toEqual([])
+  expect(service.diagnostics().terminals).toBe(1)
+  child.observer.processExited({ exitCode: 0, signalCode: null, waitError: false })
+  await observation.released
+  expect(service.diagnostics().terminals).toBe(0)
+})
+
+test('persistent scheduler failure after close keeps real callback accounting in either order', async () => {
+  for (const order of ['process', 'terminal'] as const) {
+    class FailingClock extends Clock {
+      fail = false
+      override now() {
+        if (this.fail) throw new Error('clock failed')
+        return super.now()
+      }
+    }
+    const clock = new FailingClock()
+    const driver = new FakeDriver()
+    driver.beforeReturn = (_observer, child) => {
+      child.autoStop = false
+    }
+    const service = new TerminalService({ driver, scheduler: clock })
+    const handle = await service.create({}, new Writer(), valid())
+    const observation = service.observe(handle)
+    const child = driver.processes[0]!
+    clock.fail = true
+    expect(await service.close(handle)).toMatchObject({ processExited: false, released: false })
+    const exit = () =>
+      child.observer.processExited({ exitCode: 0, signalCode: null, waitError: false })
+    const close = () => child.observer.terminalClosed(0)
+    if (order === 'process') exit()
+    else close()
+    expect(service.diagnostics().terminals).toBe(1)
+    if (order === 'process') close()
+    else exit()
+    await observation.released
+    expect(service.diagnostics().terminals).toBe(0)
+  }
+})
+
+test('throwing lifecycle timer clear cannot interrupt actual release', async () => {
+  class FailingClearClock extends Clock {
+    fail = false
+    override clear(timer: unknown) {
+      if (this.fail) throw new Error('clear failed')
+      super.clear(timer)
+    }
+  }
+  const clock = new FailingClearClock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const child = driver.processes[0]!
+  child.observer.processExited({ exitCode: 0, signalCode: null, waitError: false })
+  clock.fail = true
+  child.observer.terminalClosed(0)
+  await observation.released
+  expect(service.diagnostics().terminals).toBe(0)
+  clock.advance(5000)
+  expect(service.diagnostics().terminals).toBe(0)
+})
+
+test('lifecycle timer installation tolerates synchronous PTY closure and an undefined handle', async () => {
+  class ReentrantClock extends Clock {
+    duringSet: (() => void) | undefined
+    lifecycleClears = 0
+    override set(delay: number, callback: () => void): number {
+      if (this.duringSet) {
+        const action = this.duringSet
+        this.duringSet = undefined
+        action()
+        super.set(delay, callback)
+        return undefined as unknown as number
+      }
+      return super.set(delay, callback)
+    }
+    override clear(timer: unknown) {
+      if (timer === undefined) this.lifecycleClears++
+      super.clear(timer)
+    }
+  }
+  const clock = new ReentrantClock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handle = await service.create({}, new Writer(), valid())
+  const observation = service.observe(handle)
+  const child = driver.processes[0]!
+  clock.duringSet = () => child.observer.terminalClosed(0)
+  child.observer.processExited({ exitCode: 0, signalCode: null, waitError: false })
+  await observation.released
+  expect(clock.lifecycleClears).toBe(1)
+  expect(service.diagnostics().terminals).toBe(0)
+  clock.advance(5000)
+  expect(service.diagnostics().terminals).toBe(0)
 })

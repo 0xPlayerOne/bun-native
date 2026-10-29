@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.8](https://github.com/0xPlayerOne/bunly/compare/v0.5.7...v0.5.8) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** isolate application lifecycle listener rejections ([#185](https://github.com/0xPlayerOne/bunly/issues/185)) ([26b3869](https://github.com/0xPlayerOne/bunly/commit/26b3869f3c6b6ab7dffcb77062d3aca75c54bf60))
+
+## [0.5.7](https://github.com/0xPlayerOne/bunly/compare/v0.5.6...v0.5.7) (2026-10-29)
+
+
+### Bug Fixes
+
+* **cli:** release prepared-host lock after cleanup failure ([#183](https://github.com/0xPlayerOne/bunly/issues/183)) ([b2eb4ce](https://github.com/0xPlayerOne/bunly/commit/b2eb4ce33559a4112273ecf5f2e0dddbbc49d15a))
+* **rpc:** prevent reentrant request admission ([#181](https://github.com/0xPlayerOne/bunly/issues/181)) ([c77a9e8](https://github.com/0xPlayerOne/bunly/commit/c77a9e8663d1d503a9773a1bdf180205bd0dee4d))
+
 ## [0.5.6](https://github.com/0xPlayerOne/bunly/compare/v0.5.5...v0.5.6) (2026-10-29)
 
 
