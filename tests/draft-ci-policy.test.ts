@@ -116,6 +116,17 @@ test('push, schedule and manual entrypoints remain available outside PR validati
   )
 })
 
+test('Electrobun draft skips cannot collide with its required ready check context', async () => {
+  const workflow = Bun.YAML.parse(
+    await readFile(resolve(directory, 'electrobun.yml'), 'utf8')
+  ) as Record<string, unknown>
+  const jobs = workflow['jobs'] as Record<string, Record<string, unknown>>
+  expect(jobs['electrobun']!['name']).toBe(
+    "${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'electrobun (draft)' || 'electrobun' }}"
+  )
+  expect(String(jobs['electrobun']!['if'])).toContain(draftGuard)
+})
+
 test('draft and ready events use separate stable groups without changing non-PR groups', () => {
   const source =
     "on:\n  pull_request:\n  push:\nconcurrency:\n  group: ci-${{ github.ref }}\n  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
