@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.3](https://github.com/0xPlayerOne/bunly/compare/v0.6.2...v0.6.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ci:** isolate Electrobun draft check name ([#197](https://github.com/0xPlayerOne/bunly/issues/197)) ([995d776](https://github.com/0xPlayerOne/bunly/commit/995d776b035b8588853ae1960b6e208afea89bdb))
+
+
+### Documentation
+
+* **m7:** record current Windows qualification evidence ([#192](https://github.com/0xPlayerOne/bunly/issues/192)) ([a784143](https://github.com/0xPlayerOne/bunly/commit/a784143ff0292dee996a58839d7857972664d78e))
+
 ## [0.6.2](https://github.com/0xPlayerOne/bunly/compare/v0.6.1...v0.6.2) (2026-10-29)
 
 
