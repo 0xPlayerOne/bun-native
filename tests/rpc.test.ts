@@ -2561,3 +2561,26 @@ test('a reentrant diagnostic observer can close the server without releasing an 
   await flush()
   expect(server.diagnostics().executing).toBe(0)
 })
+
+test('a diagnostic observer can revoke authority without releasing an unsettled handler', async () => {
+  const done = deferred<string>()
+  let revoke = () => {}
+  const { client, server, authority, view } = await setup(
+    { work: { capability: 'work', handle: () => done.promise } },
+    {
+      onDiagnostic: (event) => {
+        if (event.stage === 'started') revoke()
+      },
+    }
+  )
+  revoke = () => authority.revoke(view)
+  const call = result(client.call('work', 'x'))
+  await flush()
+  expect((await call).code).toBe('DISCONNECTED')
+  expect(server.diagnostics().cancelledExecuting).toBe(1)
+  expect(authority.diagnostics().executing).toBe(1)
+  done.resolve('late')
+  await flush()
+  expect(server.diagnostics().executing).toBe(0)
+  expect(authority.diagnostics().executing).toBe(0)
+})
