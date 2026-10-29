@@ -296,7 +296,9 @@ export class RpcServer<S extends RpcSchema> {
         this.#cancel(job, 'DEADLINE_EXCEEDED')
         return
       }
+      if (job.replied || this.#closed) return
       this.#guard.check(route.capability)
+      if (job.replied || this.#closed) return
       const packet = encodeRpc({ type: 'success', id: job.id, value: output }, this.#limits)
       // Validation and serialization can synchronously run application code.
       // Revalidate before committing a terminal success.

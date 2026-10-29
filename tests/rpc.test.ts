@@ -1799,6 +1799,65 @@ describe('execution budgets survive connection replacement', () => {
 })
 
 describe('RPC final boundary review', () => {
+  for (const source of ['clock', 'backend'] as const) {
+    test(`server stops before output serialization when ${source} reentrantly cancels`, async () => {
+      const env = await environment()
+      const { right } = pair()
+      const clock = new Clock()
+      let serialized = 0
+      const output = new Proxy(
+        { ok: true },
+        {
+          getPrototypeOf(target) {
+            serialized++
+            return Reflect.getPrototypeOf(target)
+          },
+        }
+      )
+      const contract = defineRpc({
+        echo: procedure(text, () => {
+          const cancel = () => right.message?.(encodeRpc({ type: 'cancel', id: 1 }, limits))
+          if (source === 'clock') {
+            const now = clock.now.bind(clock)
+            clock.now = () => {
+              clock.now = now
+              cancel()
+              return now()
+            }
+          } else {
+            const original = env.backend.state.bind(env.backend)
+            const spy = spyOn(env.backend, 'state').mockImplementation((view) => {
+              spy.mockRestore()
+              const state = original(view)
+              cancel()
+              return state
+            })
+            cleanups.push(() => spy.mockRestore())
+          }
+          return output
+        }),
+      })
+      const server = new RpcServer(
+        contract,
+        { echo: { capability: 'echo', handle: () => output } },
+        env.lease(),
+        right,
+        { scheduler: clock }
+      )
+      right.message?.(
+        encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'x' }, limits)
+      )
+      await flush()
+      expect(serialized).toBe(0)
+      expect(right.packets.map((p) => decodeRpc(p, limits))).toEqual([
+        expect.objectContaining({ type: 'error', id: 1, code: 'CANCELLED' }),
+      ])
+      expect(server.diagnostics().executing).toBe(0)
+      expect(env.authority.diagnostics().executing).toBe(0)
+      expect(clock.timers.size).toBe(0)
+      server.close()
+    })
+  }
   for (const action of ['cancel', 'close', 'throw'] as const) {
     test(`client output parser ${action} cannot settle success or retain its call`, async () => {
       const { left } = pair()
