@@ -179,6 +179,12 @@ export class RpcServer<S extends RpcSchema> {
       this.#error(message.id, 'BAD_REQUEST')
       return
     }
+    // Parsing may synchronously close this connection or deliver another request.
+    if (this.#closed) return
+    if (this.#jobs.size >= this.#limits.maxHandlers) {
+      this.#error(message.id, 'OVERLOADED')
+      return
+    }
     // Parsers are trusted application code but may synchronously revoke a grant.
     try {
       this.#guard.check(route.capability)

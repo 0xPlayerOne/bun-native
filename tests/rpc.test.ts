@@ -618,6 +618,72 @@ describe('RPC client and server', () => {
     expect(client.diagnostics().pending).toBe(0)
     expect(left.packets).toHaveLength(0)
   })
+  test('server rechecks handler capacity after reentrant input parsing', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const done = deferred<string>()
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        if (value === 'outer')
+          right.message?.(
+            encodeRpc(
+              { type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'inner' },
+              limits
+            )
+          )
+        return text(value)
+      }, text),
+    })
+    const server = new RpcServer(
+      contract,
+      { echo: { capability: 'echo', handle: () => done.promise } },
+      env.lease(),
+      right,
+      { limits: { maxHandlers: 1 } }
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    expect(server.diagnostics().executing).toBe(1)
+    expect(decodeRpc(right.packets[0]!, limits)).toMatchObject({
+      type: 'error',
+      id: 1,
+      code: 'OVERLOADED',
+    })
+    done.resolve('done')
+    await flush()
+    server.close()
+  })
+  test('server input parsing cannot start a handler after connection closure', async () => {
+    const env = await environment()
+    const { right } = pair()
+    let calls = 0
+    const contract = defineRpc({
+      echo: procedure((value: unknown) => {
+        server.close()
+        return text(value)
+      }, text),
+    })
+    const server = new RpcServer(
+      contract,
+      {
+        echo: {
+          capability: 'echo',
+          handle: () => {
+            calls++
+            return 'done'
+          },
+        },
+      },
+      env.lease(),
+      right
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'echo', timeoutMs: 1000, value: 'outer' }, limits)
+    )
+    expect(calls).toBe(0)
+    expect(server.diagnostics().executing).toBe(0)
+  })
   test('duplicate and late responses are ignored without unbounded tombstones', async () => {
     const { client, left, right } = await setup()
     expect(await client.call('echo', 'x')).toBe('x')
