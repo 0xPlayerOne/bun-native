@@ -1046,7 +1046,7 @@ export class TerminalService {
     resource.closeTask = observation.promise
     resource.closePending = true
     resource.closeSignal = signal
-    const deadline = this.#clock.now() + timeout
+    let deadline: number
     let timer: unknown
     const snapshot = () =>
       Object.freeze({
@@ -1058,14 +1058,31 @@ export class TerminalService {
     const finish = () => {
       if (!resource.closePending) return
       resource.closePending = false
-      if (timer !== undefined) this.#clock.clear(timer)
+      if (timer !== undefined) {
+        try {
+          this.#clock.clear(timer)
+        } catch {
+          // Scheduler cleanup must not prevent reporting the observed state.
+        }
+      }
       observation.resolve(snapshot())
+    }
+    const schedulerFailure = () => {
+      if (!resource.closePending) return
+      this.#cancelResource(resource, 'SIGKILL')
+      // A failed clock is not a deadline or proof of process/PTY release.
+      finish()
     }
     const expire = () => {
       if (!resource.closePending) return
-      const remaining = deadline - this.#clock.now()
-      if (remaining > 0) {
-        timer = this.#clock.set(remaining, expire)
+      try {
+        const remaining = deadline - this.#clock.now()
+        if (remaining > 0) {
+          timer = this.#clock.set(remaining, expire)
+          return
+        }
+      } catch {
+        schedulerFailure()
         return
       }
       this.#cancelResource(resource, 'SIGKILL')
@@ -1076,10 +1093,20 @@ export class TerminalService {
       finish()
       return resource.closeTask
     }
-    timer = this.#clock.set(timeout, expire)
+    try {
+      deadline = this.#clock.now() + timeout
+      timer = this.#clock.set(timeout, expire)
+    } catch {
+      schedulerFailure()
+      return resource.closeTask
+    }
     void resource.released.promise.then(() => {
-      if (this.#clock.now() >= deadline) expire()
-      else finish()
+      try {
+        if (this.#clock.now() >= deadline) expire()
+        else finish()
+      } catch {
+        schedulerFailure()
+      }
     })
     this.#cancelResource(resource, signal)
     return resource.closeTask

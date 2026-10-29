@@ -119,10 +119,82 @@ class FakeDriver implements TerminalDriver {
   }
 }
 
+for (const failure of ['now', 'set'] as const)
+  test(`terminal close does not strand ownership if scheduler ${failure} throws`, async () => {
+    const clock = new Clock()
+    const driver = new FakeDriver()
+    const service = new TerminalService({ driver, scheduler: clock })
+    const handle = await service.create({}, new Writer(), valid())
+    const observation = service.observe(handle)
+    let processSettled = false,
+      terminalSettled = false
+    void observation.processExited.then(() => {
+      processSettled = true
+    })
+    void observation.terminalClosed.then(() => {
+      terminalSettled = true
+    })
+    const process = driver.processes[0]!
+    process.autoStop = false
+    const set = clock.set.bind(clock)
+    const now = clock.now.bind(clock)
+    if (failure === 'set')
+      clock.set = () => {
+        throw new Error('scheduler failed')
+      }
+    else
+      clock.now = () => {
+        throw new Error('scheduler failed')
+      }
+    const result = await service.close(handle)
+    expect(process.signals).toEqual(['SIGKILL'])
+    expect(result).toMatchObject({ processExited: false, terminalClosed: false, released: false })
+    expect(service.diagnostics().terminals).toBe(1)
+    await flush()
+    expect(processSettled).toBe(false)
+    expect(terminalSettled).toBe(false)
+    clock.set = set
+    clock.now = now
+    process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+    process.observer.terminalClosed(0)
+    await observation.released
+    expect(service.diagnostics().terminals).toBe(0)
+    expect(clock.timers.size).toBe(0)
+  })
+
 const valid = (change: Record<string, unknown> = {}) => ({
   executable: process.execPath,
   cwd: import.meta.dir,
   ...change,
+})
+
+test('disposal attempts every terminal if scheduler setup fails', async () => {
+  const clock = new Clock()
+  const driver = new FakeDriver()
+  const service = new TerminalService({ driver, scheduler: clock })
+  const handles = [
+    await service.create({}, new Writer(), valid()),
+    await service.create({}, new Writer(), valid()),
+  ]
+  const observations = handles.map((handle) => service.observe(handle))
+  for (const process of driver.processes) process.autoStop = false
+  const set = clock.set.bind(clock)
+  clock.set = () => {
+    throw new Error('scheduler failed')
+  }
+  const outcomes = await service.dispose()
+  expect(outcomes).toHaveLength(2)
+  expect(outcomes.every((outcome) => !outcome.released && !outcome.processExited)).toBe(true)
+  expect(driver.processes.map((process) => process.signals)).toEqual([['SIGKILL'], ['SIGKILL']])
+  expect(service.diagnostics().terminals).toBe(2)
+  clock.set = set
+  for (const process of driver.processes) {
+    process.observer.processExited({ exitCode: null, signalCode: 'SIGKILL', waitError: false })
+    process.observer.terminalClosed(0)
+  }
+  await Promise.all(observations.map((observation) => observation.released))
+  expect(service.diagnostics().terminals).toBe(0)
+  expect(clock.timers.size).toBe(0)
 })
 
 test('admission establishes opaque ownership before touching the writer or driver', async () => {
