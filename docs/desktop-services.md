@@ -162,6 +162,10 @@ backend. Abort removes the associated listener/waiter, disposers are idempotent,
 listener exceptions are isolated and counted, and final closure releases all
 retained callbacks. Removing a listener during delivery prevents later delivery
 to it in the same event snapshot.
+Returned thenables are observed for rejection and counted when they settle;
+delivery and shutdown do not wait for asynchronous listener work. There are at
+most three lifecycle events, so observing results is bounded by the subscription
+limit for each event.
 
 ## Managed application generations
 
