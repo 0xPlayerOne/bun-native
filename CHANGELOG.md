@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/0xPlayerOne/bunly/compare/v0.5.2...v0.5.3) (2026-10-29)
+
+
+### Tests
+
+* **m7:** add descriptive windowed composition resource profile ([#172](https://github.com/0xPlayerOne/bunly/issues/172)) ([7092119](https://github.com/0xPlayerOne/bunly/commit/7092119db8a3bd484d0e7ccd802b988530042cfa))
+
 ## [0.5.2](https://github.com/0xPlayerOne/bunly/compare/v0.5.1...v0.5.2) (2026-10-29)
 
 
