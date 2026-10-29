@@ -406,6 +406,25 @@ wrap_resource_request_handler! {
                 crate::host::fail("Unable to reject download redirect");
             }
         }
+        fn on_resource_load_complete(
+            &self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>,
+            request: Option<&mut Request>, _response: Option<&mut Response>,
+            status: UrlrequestStatus, received_content_length: i64,
+        ) {
+            let Some((lease, request)) = self.lease.as_ref().zip(request) else { return; };
+            let Some(url) = bounded_string(request.url(), 4096) else { return; };
+            if bounded_string(request.method(), 16).as_deref() != Some("GET") { return; }
+            use crate::download_access::RequestCompletionStatus;
+            let status = match status {
+                UrlrequestStatus::SUCCESS => RequestCompletionStatus::Success,
+                UrlrequestStatus::FAILED => RequestCompletionStatus::Failed,
+                UrlrequestStatus::CANCELED => RequestCompletionStatus::Cancelled,
+                _ => RequestCompletionStatus::Unknown,
+            };
+            lease.observe_resource_completion(
+                &url, request.identifier(), &self.network, status, received_content_length,
+            );
+        }
         fn on_protocol_execution(&self, _browser: Option<&mut Browser>, _frame: Option<&mut Frame>, _request: Option<&mut Request>, allow: Option<&mut i32>) {
             if let Some(allow) = allow { *allow = 0; }
         }
