@@ -42,6 +42,17 @@ const failureCodes = {
   'View placement not ready': 'view-placement-not-ready',
   'View overlay unavailable': 'view-overlay-unavailable',
   'Native focus could not leave an ineligible pane': 'view-focus-eviction',
+  'Menu qualification input unavailable': 'menu-input-unavailable',
+  'Menu input requires the native main thread': 'menu-input-main-thread',
+  'Menu owner view unavailable': 'menu-owner-view-unavailable',
+  'Menu owner window unavailable': 'menu-owner-window-unavailable',
+  'Menu input requires the active visible owner window': 'menu-owner-not-active-visible',
+  'Menu owner window number unavailable': 'menu-owner-window-number-unavailable',
+  'Menu input event construction failed': 'menu-input-event-construction',
+  'Native menu cleanup admission unavailable': 'menu-cleanup-admission',
+  'Native menu main run loop unavailable': 'menu-main-run-loop-unavailable',
+  'Native menu common run-loop modes unavailable': 'menu-common-modes-unavailable',
+  'Native menu cancellation requires the native main thread': 'menu-cancel-main-thread',
 } as const
 
 export type NativeFailureCode = (typeof failureCodes)[keyof typeof failureCodes] | 'unclassified'

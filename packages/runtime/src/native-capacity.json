@@ -18,7 +18,10 @@
     "credentials.discard",
     "download.cancel",
     "browser.action.cancel",
-    "browser.action.release"
+    "browser.action.release",
+    "commands.cancel",
+    "commands.dispose",
+    "dialog.cancel"
   ],
   "nativeRequests": 256,
   "nativeOrdinaryRequests": 192,

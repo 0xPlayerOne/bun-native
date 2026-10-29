@@ -67,15 +67,29 @@ percent-encoding = "=2.3.2"
 sha2 = { version = "=0.10.9", features = ["asm"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = "=0.6.2"
 objc2 = "=0.6.3"
 objc2-foundation = "=0.3.2"
+objc2-core-foundation = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "CFRunLoop",
+  "CFString",
+  "block2",
+] }
 objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
   "NSApplication",
   "NSEvent",
+  "NSGraphicsContext",
   "NSResponder",
   "NSRunningApplication",
   "NSPasteboard",
   "NSPasteboardItem",
+  "NSOpenPanel",
+  "NSSavePanel",
+  "NSPanel",
+  "NSWindow",
+  "NSView",
+  "block2",
 ] }
 
 [target.'cfg(unix)'.dependencies]

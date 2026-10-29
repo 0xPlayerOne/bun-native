@@ -56,6 +56,7 @@ pub enum NativeCapability {
     },
     ClipboardRead,
     ClipboardWrite,
+    WindowCommands,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -140,6 +141,7 @@ pub enum NativeRequest {
     },
     ClipboardRead,
     ClipboardWrite,
+    WindowCommands,
     DialogOpen,
     DialogSave,
     ExternalUrl {
@@ -464,6 +466,7 @@ pub fn decode_native_capability(
             ("browser-evaluate", &["expression"]),
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
+            ("window-commands", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["origins"]),
@@ -487,6 +490,7 @@ pub fn decode_native_request(value: serde_json::Value) -> Result<NativeRequest, 
             ("browser-evaluate", &["expression"]),
             ("clipboard-read", &[]),
             ("clipboard-write", &[]),
+            ("window-commands", &[]),
             ("dialog-open", &[]),
             ("dialog-save", &[]),
             ("external-url", &["url"]),
@@ -595,6 +599,7 @@ fn native_matches(grant: &NativeCapability, request: &NativeRequest) -> bool {
         }
         (NativeCapability::ClipboardRead, NativeRequest::ClipboardRead)
         | (NativeCapability::ClipboardWrite, NativeRequest::ClipboardWrite)
+        | (NativeCapability::WindowCommands, NativeRequest::WindowCommands)
         | (NativeCapability::DialogOpen, NativeRequest::DialogOpen)
         | (NativeCapability::DialogSave, NativeRequest::DialogSave) => true,
         (NativeCapability::ExternalUrl { origins }, NativeRequest::ExternalUrl { url }) => {

@@ -39,7 +39,10 @@ Authorization is separate from availability. The policy-only
 `unavailable` for a matching grant without executing an OS action. Adapter
 capabilities are discovered separately. The M7 [text clipboard adapter](desktop-services.md)
 calls this gate immediately before execution and again before returning its
-result; other adapters must preserve that boundary. Filesystem grants use relative paths under a canonical root,
+result. The [window command adapter](window-commands.md) uses the separate
+`window-commands` grant for registration, popup opening and each actual native
+command callback. That grant authorizes no implicit file, clipboard, process or
+external URL action. Other adapters must preserve that boundary. Filesystem grants use relative paths under a canonical root,
 reject traversal, prefixes, UNC/device forms, reserved Windows names, alias characters and
 symlink/reparse components. Directory inspection is capped at 4,096 entries per
 component, input paths at 4,096 bytes and 128 components. Requested relative

@@ -12,6 +12,11 @@ import type {
   Bounds,
   BrowserBackend,
   ClipboardBackend,
+  WindowCommandsBackend,
+  WindowCommandsDefinition,
+  WindowCommandsHandle,
+  WindowCommandsEvent,
+  WindowMenuPoint,
   ApplicationLifecycleBackend,
   ApplicationState,
   ApplicationEvent,
@@ -46,7 +51,9 @@ interface ViewRecord {
   state: ViewState
 }
 /** No browser or native UI. Implements lifecycle semantics for shared conformance tests. */
-export class MockBackend implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend {
+export class MockBackend
+  implements BrowserBackend, ClipboardBackend, ApplicationLifecycleBackend, WindowCommandsBackend
+{
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
     version: '0.1.0-dev.0',
@@ -63,7 +70,7 @@ export class MockBackend implements BrowserBackend, ClipboardBackend, Applicatio
   #disposed = false
   #listenerErrors = 0
   #desktopUnavailable(
-    capability: 'clipboard.text' | 'app.lifecycle',
+    capability: 'clipboard.text' | 'app.lifecycle' | 'window.commands',
     options?: OperationOptions
   ): never {
     this.#active()
@@ -83,6 +90,33 @@ export class MockBackend implements BrowserBackend, ClipboardBackend, Applicatio
   }
   async clearClipboard(_scope: PolicyScope, options?: OperationOptions): Promise<void> {
     this.#desktopUnavailable('clipboard.text', options)
+  }
+  async createWindowCommands(
+    _scope: PolicyScope,
+    _definition: WindowCommandsDefinition,
+    options?: OperationOptions
+  ): Promise<WindowCommandsHandle> {
+    return this.#desktopUnavailable('window.commands', options)
+  }
+  async showWindowMenu(
+    _commands: WindowCommandsHandle,
+    _point: WindowMenuPoint,
+    options?: OperationOptions
+  ): Promise<void> {
+    this.#desktopUnavailable('window.commands', options)
+  }
+  async cancelWindowMenu(_commands: WindowCommandsHandle): Promise<void> {
+    this.#desktopUnavailable('window.commands')
+  }
+  onWindowCommandsEvent(
+    _commands: WindowCommandsHandle,
+    _listener: (event: WindowCommandsEvent) => void,
+    options?: OperationOptions
+  ): () => void {
+    return this.#desktopUnavailable('window.commands', options)
+  }
+  async disposeWindowCommands(_commands: WindowCommandsHandle): Promise<void> {
+    this.#desktopUnavailable('window.commands')
   }
   async whenApplicationReady(options?: OperationOptions): Promise<ApplicationState> {
     return this.#desktopUnavailable('app.lifecycle', options)
