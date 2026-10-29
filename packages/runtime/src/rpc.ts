@@ -260,15 +260,15 @@ export class RpcServer<S extends RpcSchema> {
           return
         }
         const timer = this.#clock.set(remaining, () => this.#cancel(job, 'DEADLINE_EXCEEDED'))
+        job.timer = timer
+        job.timerSet = true
         if (job.replied || this.#closed) {
-          this.#clock.clear(timer)
+          this.#clearJobTimer(job)
           this.#jobs.delete(job.id)
           job.release()
           this.#settleIdle()
           return
         }
-        job.timer = timer
-        job.timerSet = true
         this.#diagnostic(job, 'started', 'pending')
         void this.#run(job, route, input)
       } catch (error) {

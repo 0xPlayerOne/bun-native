@@ -1844,6 +1844,72 @@ describe('RPC final boundary review', () => {
     expect(env.authority.diagnostics().executing).toBe(0)
     server.close()
   })
+  test('server timer cleanup failure retains cancellation and leaves other work active', async () => {
+    const env = await environment()
+    const { right } = pair()
+    const clock = new Clock()
+    const held = deferred<string>()
+    let handled = 0
+    const contract = defineRpc({
+      echo: procedure(text, text),
+      work: procedure(text, text),
+    })
+    const server = new RpcServer(
+      contract,
+      {
+        echo: { capability: 'echo', handle: () => 'done' },
+        work: {
+          capability: 'work',
+          handle: () => {
+            handled++
+            return held.promise
+          },
+        },
+      },
+      env.lease(),
+      right,
+      { scheduler: clock }
+    )
+    right.message?.(
+      encodeRpc({ type: 'request', id: 1, method: 'work', timeoutMs: 1000, value: 'hold' }, limits)
+    )
+    await flush()
+    expect(server.diagnostics().executing).toBe(1)
+
+    const set = clock.set.bind(clock)
+    const clear = clock.clear.bind(clock)
+    let cancelDuringSetup = false
+    clock.set = (delay, callback) => {
+      const timer = set(delay, callback)
+      if (!cancelDuringSetup) {
+        cancelDuringSetup = true
+        right.message?.(encodeRpc({ type: 'cancel', id: 2 }, limits))
+      }
+      return timer
+    }
+    clock.clear = (timer) => {
+      clear(timer)
+      if (cancelDuringSetup) throw new Error('private scheduler cleanup failure')
+    }
+    right.message?.(
+      encodeRpc({ type: 'request', id: 2, method: 'echo', timeoutMs: 1000, value: 'cancel' }, limits)
+    )
+    await flush()
+    const responses = right.packets.map((packet) => decodeRpc(packet, limits))
+    expect(responses).toContainEqual(
+      expect.objectContaining({ type: 'error', id: 2, code: 'CANCELLED' })
+    )
+    expect(handled).toBe(1)
+    expect(server.diagnostics()).toMatchObject({ executing: 1, closed: false })
+
+    held.resolve('held')
+    await flush()
+    expect(right.packets.map((packet) => decodeRpc(packet, limits))).toContainEqual(
+      expect.objectContaining({ type: 'success', id: 1, value: 'held' })
+    )
+    expect(server.diagnostics()).toMatchObject({ executing: 0, closed: false })
+    server.close()
+  })
   for (const action of ['cancel', 'close'] as const) {
     test(`client input parser ${action} prevents subsequent serialization`, async () => {
       const { left } = pair()
