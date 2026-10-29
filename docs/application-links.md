@@ -110,7 +110,8 @@ navigation retirement, and zero reader/delegate owners at shutdown. It never
 registers a handler or opens a real external URL. The 25-second workload and
 45-second observer deadlines are unchanged.
 
-Actual execution of this new fixture, live OS URL delivery, successful external
-browser submission, second-instance forwarding, physical input and release
-signing remain unqualified at this implementation checkpoint. A parser regression
-or cross-compilation is not evidence that these platform operations ran.
+The bounded startup-link fixture passed on macOS; [PR #145](https://github.com/0xPlayerOne/bunly/pull/145)
+records its exact source and native artifact, alongside earlier failed attempts.
+Live OS URL delivery, successful external browser submission, second-instance
+forwarding, physical input and release signing remain unqualified. A parser
+regression or cross-compilation is not evidence that these platform operations ran.

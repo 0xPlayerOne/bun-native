@@ -13,6 +13,7 @@ export const linksSourceSelectors = [
   ...desktopSourceSelectors,
   'examples/application-links',
   'examples/managed-desktop/document-readiness.ts',
+  'examples/file-dialogs/readiness.ts',
 ] as const
 const requiredSources = [
   'packages/contracts/src/application-links.ts',
@@ -26,6 +27,7 @@ const requiredSources = [
   'examples/application-links/fixture.ts',
   'examples/application-links/contract.ts',
   'examples/application-links/public/index.html',
+  'examples/file-dialogs/readiness.ts',
   'benchmarks/desktop/links-acceptance.ts',
 ] as const
 function record(input: unknown): Record<string, unknown> {

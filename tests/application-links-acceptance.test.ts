@@ -57,6 +57,7 @@ function report() {
       'examples/application-links/fixture.ts',
       'examples/application-links/contract.ts',
       'examples/application-links/public/index.html',
+      'examples/file-dialogs/readiness.ts',
       'benchmarks/desktop/links-acceptance.ts',
     ],
   })
@@ -110,6 +111,7 @@ test('link reports bind exact source and native cleanup before process stop', ()
     'duplicate-native',
     'late-native',
     'missing-source',
+    'missing-navigation-helper',
     'mismatched-native',
   ]) {
     const value = report()
@@ -117,6 +119,11 @@ test('link reports bind exact source and native cleanup before process stop', ()
     if (mutation === 'missing-native') observation.stderr.shift()
     if (mutation === 'duplicate-native') observation.stderr.unshift(observation.stderr[0]!)
     if (mutation === 'late-native') observation.stderr.splice(2, 0, observation.stderr.shift()!)
+    if (mutation === 'missing-navigation-helper')
+      for (const key of ['sourceHashes', 'sourceHashesAfter'])
+        value[key] = (value[key] as { path: string }[]).filter(
+          (entry) => entry.path !== 'examples/file-dialogs/readiness.ts'
+        )
     if (mutation === 'missing-source')
       for (const key of ['sourceHashes', 'sourceHashesAfter'])
         value[key] = (value[key] as { path: string }[]).filter(
