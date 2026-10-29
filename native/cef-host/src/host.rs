@@ -41,17 +41,37 @@ mod window_commands;
 #[path = "window_state.rs"]
 mod window_state;
 pub(crate) fn desktop_capabilities() -> &'static [&'static str] {
-    if dialogs::SUPPORTED {
+    desktop_capabilities_for(dialogs::SUPPORTED, clipboard::SUPPORTED)
+}
+
+fn desktop_capabilities_for(
+    dialogs_supported: bool,
+    clipboard_supported: bool,
+) -> &'static [&'static str] {
+    if dialogs_supported {
         &[
             "window.state",
             "window.geometry",
+            "window.commands",
             "clipboard.text",
             "app.lifecycle",
             "view.composition",
             "download.manage",
             "dialog.file",
+            #[cfg(feature = "browser-actions")]
+            "view.snapshot",
+            #[cfg(feature = "browser-actions")]
+            "view.evaluate",
+            #[cfg(feature = "browser-actions")]
+            "view.input",
+            #[cfg(feature = "browser-actions")]
+            "view.input.synthetic",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-dom",
+            #[cfg(feature = "browser-actions")]
+            "view.observe-accessibility",
         ]
-    } else if clipboard::SUPPORTED {
+    } else if clipboard_supported {
         &[
             "window.state",
             "window.geometry",
@@ -1851,7 +1871,13 @@ fn policy_scope(args: &Value) -> Result<capability_policy::DocumentScope, String
 fn allowed_during_quit(operation: &str) -> bool {
     matches!(
         operation,
-        "quit" | "download.cancel" | "browser.action.cancel" | "browser.action.release" | "commands.cancel" | "commands.dispose" | "dialog.cancel"
+        "quit"
+            | "download.cancel"
+            | "browser.action.cancel"
+            | "browser.action.release"
+            | "commands.cancel"
+            | "commands.dispose"
+            | "dialog.cancel"
     )
 }
 fn dispatch(command: &Value) -> Result<(), String> {
@@ -3364,6 +3390,60 @@ fn media_capabilities(bits: u32) -> Option<Vec<capability_policy::BrowserCapabil
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn desktop_capabilities_preserve_shared_facets_with_dialogs() {
+        for (dialogs, clipboard) in [(false, false), (false, true), (true, true)] {
+            let caps = desktop_capabilities_for(dialogs, clipboard);
+            for required in [
+                "window.state",
+                "window.geometry",
+                "window.commands",
+                "app.lifecycle",
+                "view.composition",
+                "download.manage",
+            ] {
+                assert!(
+                    caps.contains(&required),
+                    "missing {required} for dialogs={dialogs}, clipboard={clipboard}"
+                );
+            }
+            assert_eq!(caps.contains(&"dialog.file"), dialogs);
+            assert_eq!(caps.contains(&"clipboard.text"), clipboard);
+            #[cfg(feature = "browser-actions")]
+            for required in [
+                "view.snapshot",
+                "view.evaluate",
+                "view.input",
+                "view.input.synthetic",
+                "view.observe-dom",
+                "view.observe-accessibility",
+            ] {
+                assert!(
+                    caps.contains(&required),
+                    "missing {required} for dialogs={dialogs}, clipboard={clipboard}"
+                );
+            }
+            #[cfg(not(feature = "browser-actions"))]
+            for absent in [
+                "view.snapshot",
+                "view.evaluate",
+                "view.input",
+                "view.input.synthetic",
+                "view.observe-dom",
+                "view.observe-accessibility",
+            ] {
+                assert!(
+                    !caps.contains(&absent),
+                    "unexpected {absent} without browser-actions"
+                );
+            }
+            assert_eq!(
+                caps.len(),
+                caps.iter().collect::<std::collections::BTreeSet<_>>().len()
+            );
+        }
+    }
 
     #[test]
     fn media_permission_bits_are_portable_and_unknown_bits_fail_closed() {
