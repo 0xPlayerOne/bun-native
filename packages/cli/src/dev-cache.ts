@@ -544,10 +544,13 @@ export async function prepareDevelopmentHost(
     }
   }
   const stage = join(root, `.stage-${randomUUID()}`)
+  let failed = false
+  let failure: unknown
+  let result: PreparedDevelopmentHost | undefined
   try {
     const cached = await readPrepared(directory, key, options.signal)
     if (cached)
-      return {
+      result = {
         key,
         directory,
         entrypoint: safeEntry(cached.entrypoint, directory),
@@ -555,37 +558,62 @@ export async function prepareDevelopmentHost(
         verifiedBytes,
         durationMs: performance.now() - started,
       }
-    await mkdir(stage, { mode: 0o700 })
-    const assembled = await options.assemble(stage, options.signal)
-    abort(options.signal)
-    const entry = safeEntry(assembled.entrypoint, stage)
-    if (!(await lstat(entry)).isFile())
-      throw new DevelopmentError('CACHE_INTEGRITY', 'Host assembly did not produce its entrypoint')
-    const files = await inventory(stage, options.signal)
-    const receipt: CacheReceipt = {
-      schema: 1,
-      key,
-      entrypoint: relative(stage, entry).split(sep).join('/'),
-      files,
+    else {
+      await mkdir(stage, { mode: 0o700 })
+      const assembled = await options.assemble(stage, options.signal)
+      abort(options.signal)
+      const entry = safeEntry(assembled.entrypoint, stage)
+      if (!(await lstat(entry)).isFile())
+        throw new DevelopmentError(
+          'CACHE_INTEGRITY',
+          'Host assembly did not produce its entrypoint'
+        )
+      const files = await inventory(stage, options.signal)
+      const receipt: CacheReceipt = {
+        schema: 1,
+        key,
+        entrypoint: relative(stage, entry).split(sep).join('/'),
+        files,
+      }
+      await writeFile(join(stage, receiptName), JSON.stringify(receipt) + '\n', {
+        flag: 'wx',
+        mode: 0o600,
+      })
+      // A changed artifact during assembly must not be published under the old identity.
+      if ((await developmentHostKey(options.identity, options.signal)).key !== key)
+        throw new DevelopmentError('INPUT_INTEGRITY', 'Runtime input changed during host assembly')
+      await rename(stage, directory)
+      result = {
+        key,
+        directory,
+        entrypoint: safeEntry(receipt.entrypoint, directory),
+        cacheHit: false,
+        verifiedBytes,
+        durationMs: performance.now() - started,
+      }
     }
-    await writeFile(join(stage, receiptName), JSON.stringify(receipt) + '\n', {
-      flag: 'wx',
-      mode: 0o600,
-    })
-    // A changed artifact during assembly must not be published under the old identity.
-    if ((await developmentHostKey(options.identity, options.signal)).key !== key)
-      throw new DevelopmentError('INPUT_INTEGRITY', 'Runtime input changed during host assembly')
-    await rename(stage, directory)
-    return {
-      key,
-      directory,
-      entrypoint: safeEntry(receipt.entrypoint, directory),
-      cacheHit: false,
-      verifiedBytes,
-      durationMs: performance.now() - started,
-    }
-  } finally {
-    await rm(stage, { recursive: true, force: true })
-    await rm(lock, { recursive: true })
+  } catch (error) {
+    failed = true
+    failure = error
   }
+  const cleanupErrors: unknown[] = []
+  try {
+    await rm(stage, { recursive: true, force: true })
+  } catch (error) {
+    cleanupErrors.push(error)
+  }
+  try {
+    await rm(lock, { recursive: true })
+  } catch (error) {
+    cleanupErrors.push(error)
+  }
+  if (cleanupErrors.length)
+    throw new AggregateError(
+      failed ? [failure, ...cleanupErrors] : cleanupErrors,
+      'Prepared host cleanup failed'
+    )
+  if (failed) throw failure
+  if (!result)
+    throw new DevelopmentError('CACHE_INTEGRITY', 'Prepared host did not produce a result')
+  return result
 }
