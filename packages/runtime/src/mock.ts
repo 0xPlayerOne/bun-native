@@ -1,3 +1,4 @@
+import { ListenerResultObserver } from './listener-result.ts'
 import {
   BunlyError,
   CONTRACT_VERSION,
@@ -71,7 +72,7 @@ export class MockBackend
 {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
-    version: '0.5.6', // x-release-please-version
+    version: '0.6.3', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
@@ -83,7 +84,8 @@ export class MockBackend
   readonly #registry = new Registry()
   readonly #listeners = new Set<(event: RuntimeEvent) => void>()
   #disposed = false
-  #listenerErrors = 0
+  readonly #listenerErrors = { count: 0 }
+  readonly #eventResults = new ListenerResultObserver(this.#listenerErrors)
   #desktopUnavailable(
     capability: 'clipboard.text' | 'app.lifecycle' | 'window.commands' | 'status.item',
     options?: OperationOptions
@@ -473,7 +475,7 @@ export class MockBackend
       views: this.#registry.count('view'),
       sessions: this.#registry.count('session'),
       listeners: this.#listeners.size,
-      listenerErrors: this.#listenerErrors,
+      listenerErrors: this.#listenerErrors.count,
     })
   }
   async dispose(): Promise<void> {
@@ -500,9 +502,9 @@ export class MockBackend
     for (const listener of listeners) {
       if (!this.#listeners.has(listener)) continue
       try {
-        listener(frozen)
+        this.#eventResults.observe(listener(frozen))
       } catch {
-        this.#listenerErrors++
+        this.#listenerErrors.count++
       }
     }
   }

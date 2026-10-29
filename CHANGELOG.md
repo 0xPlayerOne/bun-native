@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.6.3](https://github.com/0xPlayerOne/bunly/compare/v0.6.2...v0.6.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ci:** isolate Electrobun draft check name ([#197](https://github.com/0xPlayerOne/bunly/issues/197)) ([995d776](https://github.com/0xPlayerOne/bunly/commit/995d776b035b8588853ae1960b6e208afea89bdb))
+
+
+### Documentation
+
+* **m7:** record current Windows qualification evidence ([#192](https://github.com/0xPlayerOne/bunly/issues/192)) ([a784143](https://github.com/0xPlayerOne/bunly/commit/a784143ff0292dee996a58839d7857972664d78e))
+
+## [0.6.2](https://github.com/0xPlayerOne/bunly/compare/v0.6.1...v0.6.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** observe asynchronous event listener failures ([#189](https://github.com/0xPlayerOne/bunly/issues/189)) ([5c2c04e](https://github.com/0xPlayerOne/bunly/commit/5c2c04e8301bce731d2514125d19c29b50e8f3de))
+
+## [0.6.1](https://github.com/0xPlayerOne/bunly/compare/v0.6.0...v0.6.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** preserve application rollback failures ([#188](https://github.com/0xPlayerOne/bunly/issues/188)) ([5ba03c2](https://github.com/0xPlayerOne/bunly/commit/5ba03c2e12183ab9291c3dcb52ce68188456ee4d))
+
+## [0.6.0](https://github.com/0xPlayerOne/bunly/compare/v0.5.8...v0.6.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** exhaustive TerminalProcessExit and TerminalClosure failure handlers must handle SCHEDULER_FAILED.
+
+### Bug Fixes
+
+* **runtime:** report terminal lifecycle scheduler failures ([#186](https://github.com/0xPlayerOne/bunly/issues/186)) ([4de6619](https://github.com/0xPlayerOne/bunly/commit/4de66192e0ba17a3991f6a9e89d3b565f41a5f10))
+
+## [0.5.8](https://github.com/0xPlayerOne/bunly/compare/v0.5.7...v0.5.8) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** isolate application lifecycle listener rejections ([#185](https://github.com/0xPlayerOne/bunly/issues/185)) ([26b3869](https://github.com/0xPlayerOne/bunly/commit/26b3869f3c6b6ab7dffcb77062d3aca75c54bf60))
+
+## [0.5.7](https://github.com/0xPlayerOne/bunly/compare/v0.5.6...v0.5.7) (2026-10-29)
+
+
+### Bug Fixes
+
+* **cli:** release prepared-host lock after cleanup failure ([#183](https://github.com/0xPlayerOne/bunly/issues/183)) ([b2eb4ce](https://github.com/0xPlayerOne/bunly/commit/b2eb4ce33559a4112273ecf5f2e0dddbbc49d15a))
+* **rpc:** prevent reentrant request admission ([#181](https://github.com/0xPlayerOne/bunly/issues/181)) ([c77a9e8](https://github.com/0xPlayerOne/bunly/commit/c77a9e8663d1d503a9773a1bdf180205bd0dee4d))
+
 ## [0.5.6](https://github.com/0xPlayerOne/bunly/compare/v0.5.5...v0.5.6) (2026-10-29)
 
 
