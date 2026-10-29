@@ -86,7 +86,7 @@ async function main(): Promise<void> {
       command.action === 'quit' ? 'Closing the final window…' : `Requesting ${command.action}…`
     )
     try {
-      await client.call('command', command)
+      await client.call('command', command, { timeoutMs: 60_000 })
       message('Native command acknowledged. Observe the actual desktop behavior.')
     } catch (error) {
       message(`Command unavailable: ${errorMessage(error)}`)

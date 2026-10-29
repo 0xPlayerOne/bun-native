@@ -33,14 +33,14 @@ export const hardwareCases = [
     title: 'Scaling and displays',
     status: 'not run',
     coverage:
-      'Move/resize/fullscreen/restore on recorded physical displays. Renderer scale is diagnostic only; native menus and dialogs are absent.',
+      'Move/resize/fullscreen/restore on recorded physical displays. Renderer scale is diagnostic only; native menu and macOS dialog steps require observation.',
   },
   {
     id: 'A1',
     title: 'Accessibility',
     status: 'not run',
     coverage:
-      'Labeled native HTML controls, previews and a nonmodal native overlay. Actual screen-reader testing is required; native menus/dialogs are unsupported.',
+      'Labeled native HTML controls, previews and a nonmodal native overlay. Actual screen-reader testing is required; native menu and macOS dialog steps require observation.',
   },
   {
     id: 'L1',
@@ -72,9 +72,9 @@ export const hardwareCases = [
   {
     id: 'M1',
     title: 'Native commands and dialogs',
-    status: 'unsupported',
+    status: 'not run',
     coverage:
-      'Native menus, shortcuts, status items, OS dialogs/file pickers and replacement during native UI are not included.',
+      'A native popup menu and macOS open-file panel are available for observation. Shortcuts, status items and replacement during native UI are not included; Linux and Windows file dialogs are unsupported.',
   },
   {
     id: 'C1',

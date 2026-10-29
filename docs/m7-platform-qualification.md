@@ -122,20 +122,20 @@ assistive-technology qualification remains not run.** Unsupported operations
 describe this workbench profile, even when another adapter or qualifier supplies
 a separate implementation. Available partial steps cannot pass the entire case.
 
-| Case | Initial workbench result | Available steps and remaining limits                                                                                                                                        |
-| ---- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| K1   | Not run                  | Physical traversal and pane eligibility/closure controls are available. API-directed focus does not prove keyboard routing.                                                 |
-| K2   | Not run                  | Pointer/clipping/resize and native overlay controls are available. The overlay is rectangular and nonmodal; transparent composition and click-through are unsupported.      |
-| I1   | Not run                  | Text/composition observations and focus/resize/minimize transitions are available. Actual IME behavior requires equipment; backend replacement is not driven here.          |
-| T1   | Not run                  | Controlled selection is available. Clipboard reads/writes, grants and permission tests are unsupported here; selection alone cannot pass T1.                                |
-| D1   | Not run                  | Move/resize/maximize/fullscreen/restore on actual equipment. Physical scale/topology/reconnect behavior is untested; native menus/dialogs are absent.                       |
-| A1   | Not run                  | Labeled controls, previews and a nonmodal overlay are available. Actual screen-reader observations remain untested; native menus/dialogs are absent.                        |
-| L1   | Not run                  | Window/page observations and bounded timer output are available. This is not terminal-load acceptance and does not resolve #129.                                            |
-| L2   | Not run                  | The app stays open for deliberate operator suspend/resume. No automated suspension or recovery result is supplied.                                                          |
-| F1   | Unsupported              | Fault injection belongs to the separate maintained native qualifier. Hardware GPU transitions and input/accessibility recovery still need their own observations.           |
-| E1   | Unsupported              | No deep-link registration, OS dispatch or app-reopen adapter is included in this workbench.                                                                                 |
-| M1   | Unsupported              | No native menu, shortcut, status item, OS dialog/file picker, or backend replacement during native UI is included here.                                                     |
-| C1   | Not run                  | Individual preview disposal/reopen and final-window close are available. Native/process/helper cleanup proof remains separately required; root-process exit cannot pass C1. |
+| Case | Initial workbench result | Available steps and remaining limits                                                                                                                                                        |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| K1   | Not run                  | Physical traversal and pane eligibility/closure controls are available. API-directed focus does not prove keyboard routing.                                                                 |
+| K2   | Not run                  | Pointer/clipping/resize and native overlay controls are available. The overlay is rectangular and nonmodal; transparent composition and click-through are unsupported.                      |
+| I1   | Not run                  | Text/composition observations and focus/resize/minimize transitions are available. Actual IME behavior requires equipment; backend replacement is not driven here.                          |
+| T1   | Not run                  | Controlled selection is available. Clipboard reads/writes, grants and permission tests are unsupported here; selection alone cannot pass T1.                                                |
+| D1   | Not run                  | Move/resize/maximize/fullscreen/restore on actual equipment. Physical scale/topology/reconnect behavior is untested; native popup and macOS open-dialog steps require operator observation. |
+| A1   | Not run                  | Labeled controls, previews and a nonmodal overlay are available. Actual screen-reader observations remain untested; native popup and macOS open-dialog steps require operator observation.  |
+| L1   | Not run                  | Window/page observations and bounded timer output are available. This is not terminal-load acceptance and does not resolve #129.                                                            |
+| L2   | Not run                  | The app stays open for deliberate operator suspend/resume. No automated suspension or recovery result is supplied.                                                                          |
+| F1   | Unsupported              | Fault injection belongs to the separate maintained native qualifier. Hardware GPU transitions and input/accessibility recovery still need their own observations.                           |
+| E1   | Unsupported              | No deep-link registration, OS dispatch or app-reopen adapter is included in this workbench.                                                                                                 |
+| M1   | Not run                  | The native popup and macOS open-file panel are available; shortcuts, status items and backend replacement remain absent. Linux/Windows file dialogs are unsupported.                        |
+| C1   | Not run                  | Individual preview disposal/reopen and final-window close are available. Native/process/helper cleanup proof remains separately required; root-process exit cannot pass C1.                 |
 
 ## Operator cases and failure criteria
 
@@ -167,7 +167,7 @@ later successful attempt for the earlier failure record.
 
 Keep partial steps under their original case ID with their own observations and
 unsupported reasons. In particular, successful selection cannot replace T1's
-clipboard criteria, and the workbench's initial F1/E1/M1 unsupported results
+clipboard criteria, and the workbench's initial F1/E1 unsupported results
 cannot be promoted using a different fixture without identifying its exact
 source, capabilities and evidence. A later adapter merge does not silently
 expand this workbench profile or qualify a physical test.
