@@ -71,7 +71,7 @@ export class MockBackend
 {
   readonly descriptor: BackendDescriptor = Object.freeze({
     name: 'mock',
-    version: '0.5.2', // x-release-please-version
+    version: '0.5.3', // x-release-please-version
     contractVersion: CONTRACT_VERSION,
     capabilityVersion: PROFILE_CAPABILITY_VERSION,
     capabilities: Object.freeze([
