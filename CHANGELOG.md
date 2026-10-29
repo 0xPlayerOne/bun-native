@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/0xPlayerOne/bunly/compare/v0.5.8...v0.6.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** exhaustive TerminalProcessExit and TerminalClosure failure handlers must handle SCHEDULER_FAILED.
+
+### Bug Fixes
+
+* **runtime:** report terminal lifecycle scheduler failures ([#186](https://github.com/0xPlayerOne/bunly/issues/186)) ([4de6619](https://github.com/0xPlayerOne/bunly/commit/4de66192e0ba17a3991f6a9e89d3b565f41a5f10))
+
 ## [0.5.8](https://github.com/0xPlayerOne/bunly/compare/v0.5.7...v0.5.8) (2026-10-29)
 
 
