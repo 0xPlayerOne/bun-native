@@ -148,6 +148,37 @@ source-inventory and source-blob verification. These were offline replays with n
 native launch. The CEF sandbox identity remains unverified and embedded
 native-build attestation is absent.
 
+### Historical windowed composition resource baseline
+
+The [retained 2026-10-29 composition cohort](../evidence/m7-composition/README.md)
+adds an executed windowed-CEF CPU/RSS baseline: one designated warmup and three
+recorded trials all passed at application source
+`6349e7527220a44fc75356090210fa9eebd656e9`, declared native build
+`9200034a2e7232a3f2f49ea1f61e8b7e8cdb85bf`, and native tree
+`287b418ed4e7dba5df106276baa2f1da3e71c596`. Runtime identity was packaged Bun
+1.4.4, CEF 156.0.7 and Chromium 156.0.8078.17. The original/export/archive
+hashes, sanitized replay reports and separate per-trial summaries are retained.
+These observations apply to the named historical source.
+
+A separate partial Metal System Trace retains target-process GPU intervals
+and allocated Metal device memory observations. It is excluded from the ordinary
+CPU/RSS cohort and does not qualify GPU utilization, resident GPU memory or
+full-workload GPU cost.
+
+The equipment was Mac14,5 / Apple M2 Max / 64 GiB / macOS 26.7.1 build 25G241
+on AC power, with a Screen Sharing Virtual Display (3840 × 2160 backing
+pixels, 1920 × 1080 logical pixels at 60 Hz). No physical panel was observed.
+Background machine activity was uncontrolled; no quiet-machine or thermal
+gate was established. `performanceEligible` remains false.
+
+Sampled CPU covers only adjacent same-PID-and-creation-time intervals within
+each phase; process churn and phase boundaries leave unobserved CPU. Summed
+RSS can double-count shared pages and is not GPU memory. API/readback timings
+are not paint or physical-input latency. The static pages do not measure a
+before/after gain from PR #170's interactive workbench overlay change.
+GPU utilization, physical input, IME, assistive technology, hardware DPI and
+a matched renderer comparison remain unqualified; #35 remains open.
+
 ## Issue acceptance status
 
 | Issue                                                                                           | Software acceptance and remaining qualification                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
