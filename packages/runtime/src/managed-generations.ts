@@ -198,9 +198,16 @@ export class ManagedGenerationOwner {
       label(schema)
       label(permission)
       if (
-        !['window', 'view', 'session', 'terminal', 'process', 'clipboard', 'commands', 'dialog'].includes(
-          kind
-        ) ||
+        ![
+          'window',
+          'view',
+          'session',
+          'terminal',
+          'process',
+          'clipboard',
+          'commands',
+          'dialog',
+        ].includes(kind) ||
         typeof authorize !== 'function' ||
         typeof invoke !== 'function' ||
         typeof dispose !== 'function'

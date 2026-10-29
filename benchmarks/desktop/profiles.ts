@@ -115,7 +115,7 @@ const profiles = {
       'One API parent-window close with four live native panes; OS quit, physical input and assistive technology remain separate qualification.',
     acceptObservation: acceptParentClose,
     acceptReport: acceptParentCloseReport,
-import {
+  },
   commands: {
     profile: COMMANDS_PROFILE,
     sourceSelectors: commandsSourceSelectors,

@@ -590,7 +590,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 16)
+                self.assertEqual(len(names), 18)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
