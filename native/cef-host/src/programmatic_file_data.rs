@@ -499,6 +499,18 @@ mod tests {
     }
 
     #[test]
+    fn closing_an_old_browser_releases_only_its_owner_before_replacement_close() {
+        let mut old = Ownership::new(71, 101);
+        let mut current = Ownership::new(72, 202);
+        assert!(old.await_close());
+        assert!(current.await_close());
+        assert!(old.can_release(71, Some(101)));
+        assert!(!current.can_release(72, Some(101)));
+        assert!(!current.can_release(72, None));
+        assert!(current.can_release(72, Some(202)));
+    }
+
+    #[test]
     fn normal_cleanup_requires_both_actual_acknowledgements_for_the_current_operation() {
         let mut owner = Ownership::new(31, 9);
         owner.acknowledge_group();

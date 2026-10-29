@@ -164,6 +164,7 @@ struct ViewRecord {
     overlay: Option<OverlayController>,
     placement: Option<view_composition::Placement>,
     browser: Option<Browser>,
+    browser_id: Option<i32>,
     window: u64,
     session: u64,
     create: u64,
@@ -1898,6 +1899,25 @@ fn revoke_view(state: &mut HostState, view: u64) {
     state.programmatic_files.revoke(view);
 }
 
+/// Only the browser currently registered for this view may retire its authority.
+/// Stale and missing identities leave the current view and all its owners intact.
+fn retire_closed_browser(
+    state: &mut HostState,
+    view: u64,
+    browser: Option<i32>,
+) -> Option<(ViewRecord, bool)> {
+    let browser = browser?;
+    if state.views.get(&view)?.browser_id != Some(browser) {
+        return None;
+    }
+    let download_pending = state.downloads.contains(view);
+    revoke_view(state, view);
+    state
+        .views
+        .remove(&view)
+        .map(|record| (record, download_pending))
+}
+
 fn revoke_all_views(state: &mut HostState) {
     for view in state.views.keys().copied().collect::<Vec<_>>() {
         revoke_view(state, view);
@@ -2373,6 +2393,7 @@ fn dispatch(command: &Value) -> Result<(), String> {
                         overlay: None,
                         placement: placement.clone(),
                         browser: None,
+                        browser_id: None,
                         window: owner,
                         session,
                         create: request,
@@ -3157,6 +3178,7 @@ wrap_life_span_handler! {
             let Some(browser) = browser else { return; };
             let replacement_url = browser.main_frame().map(|frame| CefString::from(&frame.url()).to_string()).unwrap_or_default();
             let owned_browser = browser.clone();
+            let browser_id = browser.identifier();
             let (action, replacement_error) = STATE.with(|s| { let mut s = s.borrow_mut();
                 let closing = QUITTING.load(Ordering::SeqCst) || s.views.get(&self.id).is_none_or(|r| {
                     r.close.is_some() || s.windows.get(&r.window).is_none_or(|w| w.closing.is_some())
@@ -3165,7 +3187,7 @@ wrap_life_span_handler! {
                 let replacement_error = if replacement {
                     begin_navigation(&mut s, self.id, &replacement_url).err()
                 } else { None };
-                let action = s.views.get_mut(&self.id).map(|r| { r.browser = Some(owned_browser); let request = r.create; r.create = 0; (request, closing || replacement_error.is_some()) });
+                let action = s.views.get_mut(&self.id).map(|r| { r.browser = Some(owned_browser); r.browser_id = Some(browser_id); let request = r.create; r.create = 0; (request, closing || replacement_error.is_some()) });
                 (action, replacement_error)
             });
             if let Some(message) = replacement_error { fail(message); }
@@ -3179,15 +3201,21 @@ wrap_life_span_handler! {
                 }
             }
         }
-        fn on_before_close(&self, _browser: Option<&mut Browser>) {
+        fn on_before_close(&self, browser: Option<&mut Browser>) {
             shutdown_pending::record(shutdown_pending::Point::BrowserBeforeClose);
+            let Some(browser) = browser else {
+                fail("Native browser close missing browser identity");
+                return;
+            };
+            let browser_id = browser.identifier();
             #[cfg(feature = "browser-actions")]
-            browser_actions::before_close(self.id, _browser.as_deref());
+            browser_actions::before_close(self.id, Some(browser));
             #[cfg(feature = "programmatic-files")]
-            programmatic_files::before_close(self.id, _browser.as_deref());
-            if STATE.with(|s| s.borrow().downloads.contains(self.id)) { fail("Browser closed with an unsettled native download"); }
-            let record = STATE.with(|s| { let mut s = s.borrow_mut(); revoke_view(&mut s, self.id); s.views.remove(&self.id) });
-            if let Some(mut record) = record {
+            programmatic_files::before_close(self.id, Some(browser));
+            let record = STATE.with(|s| retire_closed_browser(&mut s.borrow_mut(), self.id, Some(browser_id)));
+            let Some((mut record, download_pending)) = record else { return; };
+            if download_pending { fail("Browser closed with an unsettled native download"); }
+            {
                 revoke_renderer(self.id, record.rpc.revoke());
                 if record.create != 0 { error(record.create, "View closed before creation completed"); }
                 for request in record.navigate.cancel() { error(request, "Navigation cancelled by close"); }
@@ -3635,6 +3663,7 @@ mod tests {
                 overlay: None,
                 placement: None,
                 browser: None,
+                browser_id: None,
                 window,
                 session: 3,
                 create: 0,
@@ -3658,6 +3687,34 @@ mod tests {
             .grant_native(&scope, capability_policy::NativeCapability::ClipboardRead)
             .unwrap();
         (state, scope)
+    }
+
+    #[test]
+    fn stale_or_missing_browser_close_keeps_replacement_view_and_authority() {
+        let (mut state, scope) = state_with_view(7, 11);
+        // OnAfterCreated can replace the browser while the view ID stays stable.
+        state.views.get_mut(&7).unwrap().browser_id = Some(101);
+        state.views.get_mut(&7).unwrap().browser_id = Some(202);
+
+        for callback in [Some(101), None] {
+            assert!(retire_closed_browser(&mut state, 7, callback).is_none());
+            assert_eq!(state.views.get(&7).unwrap().browser_id, Some(202));
+            assert_eq!(state.policy.current_scope(7), Some(scope.clone()));
+            assert_eq!(
+                state.policy.authorize_native(
+                    &scope,
+                    &capability_policy::NativeRequest::ClipboardRead,
+                    capability_policy::AdapterAvailability::Available,
+                ),
+                capability_policy::GateDecision::Authorized
+            );
+        }
+        let (closed, download_pending) = retire_closed_browser(&mut state, 7, Some(202)).unwrap();
+        assert_eq!(closed.browser_id, Some(202));
+        assert!(!download_pending);
+        assert!(!state.views.contains_key(&7));
+        assert!(state.policy.current_scope(7).is_none());
+        assert!(retire_closed_browser(&mut state, 7, Some(202)).is_none());
     }
 
     #[test]
