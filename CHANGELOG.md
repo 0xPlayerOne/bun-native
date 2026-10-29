@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.1](https://github.com/0xPlayerOne/bunly/compare/v0.4.0...v0.4.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **cef:** bound best-effort console output ([#165](https://github.com/0xPlayerOne/bunly/issues/165)) ([d9beb8e](https://github.com/0xPlayerOne/bunly/commit/d9beb8e2a3dc67cca6aab361f557062fc38f06f4))
+
+## [0.4.0](https://github.com/0xPlayerOne/bunly/compare/v0.3.0...v0.4.0) (2026-10-29)
+
+
+### Features
+
+* **workbench:** expose scoped native menu and file-dialog controls ([#162](https://github.com/0xPlayerOne/bunly/issues/162)) ([60b89c2](https://github.com/0xPlayerOne/bunly/commit/60b89c2a68b71447ecf12b56bad56c8341f6e70e))
+
+## [0.3.0](https://github.com/0xPlayerOne/bunly/compare/v0.2.0...v0.3.0) (2026-10-29)
+
+
+### Features
+
+* **files:** add scoped native programmatic file interactions ([#143](https://github.com/0xPlayerOne/bunly/issues/143)) ([923014c](https://github.com/0xPlayerOne/bunly/commit/923014c9886bab511bc1d1c85d1eed0c4d98b5d1))
+
+
+### Bug Fixes
+
+* **test:** honor bounded session fixture cleanup retries ([#163](https://github.com/0xPlayerOne/bunly/issues/163)) ([d906112](https://github.com/0xPlayerOne/bunly/commit/d90611277ed65228c6f2a978e9b599527e921bc1))
+
 ## [0.2.0](https://github.com/0xPlayerOne/bunly/compare/v0.1.4...v0.2.0) (2026-10-29)
 
 

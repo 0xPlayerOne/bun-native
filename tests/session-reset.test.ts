@@ -1,9 +1,10 @@
 import { test, beforeAll, afterAll } from 'bun:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resetPersistentSessionStorage } from '../packages/runtime/src/session-reset.ts'
+import { removeSessionResetFixture } from './helpers/remove-session-reset-fixture.ts'
 import type { PersistentSessionResetOptions } from '../packages/contracts/src/session-reset.ts'
 
 let work: string, host: string, config: string, profile: string
@@ -51,7 +52,7 @@ afterAll(async () => {
   // Every reset call already awaits its child's exit and both output streams.
   // Bound temporary-file cleanup retries; a persistent Windows filesystem lock
   // must still reject. This does not change native/application exit deadlines.
-  await rm(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 })
+  await removeSessionResetFixture(work)
   await assert.rejects(lstat(work), { code: 'ENOENT' })
 })
 const options = (partition = 'success'): PersistentSessionResetOptions => ({
