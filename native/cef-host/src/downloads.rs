@@ -807,7 +807,7 @@ pub(super) fn observe_child_launch(command_line: Option<&CommandLine>) {
 }
 wrap_task! {
     struct DownloadClosedTask { view: u64 }
-    impl Task { fn execute(&self) { resume_after_download(self.view); } }
+    impl Task { fn execute(&self) { resume_after_owned_operation(self.view); } }
 }
 static RETIRED: OnceLock<Mutex<Vec<Staging>>> = OnceLock::new();
 /// Runs at the existing UI fence, after all callback methods and context cleanup

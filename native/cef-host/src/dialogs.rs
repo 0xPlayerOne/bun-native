@@ -418,7 +418,7 @@ pub(super) fn dismissed(token: u64, selected: bool, failure: Option<&'static str
     COUNTERS.with(|counts| counts.borrow_mut().callbacks += 1);
     finish(token, selected, failure);
 }
-wrap_task! { struct ResumeAfterDialog { view: u64 } impl Task { fn execute(&self) { super::resume_after_download(self.view); } } }
+wrap_task! { struct ResumeAfterDialog { view: u64 } impl Task { fn execute(&self) { super::resume_after_owned_operation(self.view); } } }
 
 pub(super) fn stop() {
     STOPPED.store(true, Ordering::SeqCst);

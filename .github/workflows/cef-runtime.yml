@@ -142,12 +142,16 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/hosted-windows.ps1 -Suite $env:QUALIFICATION_SUITE
-      - name: Check optional browser actions after the ordinary native suite
+      - name: Check optional view controls after the ordinary native suite
         if: inputs.suite == 'full'
         shell: bash
         run: |
           cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions -- -D warnings
           cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,programmatic-files -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,programmatic-files
+          cargo +1.91.0 clippy --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics -- -D warnings
+          cargo +1.91.0 test --locked --manifest-path native/cef-host/Cargo.toml --all-targets --features packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics
       - name: Save immutable download inputs after successful qualification
         if: success() && inputs.suite != 'portable' && steps.manual-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0; node24

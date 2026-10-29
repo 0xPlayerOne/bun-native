@@ -7,9 +7,10 @@ backends without this adapter. The portable lifecycle contract stays at version
 3; the new `DownloadManagementBackend` facet does not change an existing method
 signature or expose CEF callbacks.
 
-Uploads, native file input selection, and OS file drops remain unavailable.
-Issue #36 remains open for those workflows and for the native platform
-qualification evidence described below.
+The separate [programmatic file facet](programmatic-files.md) stages trusted Bun
+bytes for explicitly approved file inputs and synthetic DOM drops in development
+hosts. Native OS file selection and physical file drops remain unavailable.
+Issue #36 remains open for those workflows and native platform qualification.
 
 ## Application API and ownership
 

@@ -9,6 +9,7 @@ import {
   validateExportedCommandObservation,
 } from '../benchmarks/lib/exported-native-evidence.ts'
 import { acceptNativeCredentials } from '../benchmarks/lib/cef-credential-acceptance.ts'
+import { FileFixtureDiagnostic } from '../examples/programmatic-files/diagnostics.ts'
 
 function observation() {
   return {
@@ -150,6 +151,19 @@ test('exported failures remain failures and corrupt receipts do not become succe
       )
     ).toThrow()
   }
+})
+test('failed file upload diagnostics survive export independently of stderr tails', async () => {
+  const diagnostic = new FileFixtureDiagnostic()
+  diagnostic.begin('text')
+  diagnostic.step('native-owners-check')
+  diagnostic.native({ operations: 1 })
+  const line = JSON.stringify(diagnostic.failure('five-http-uploads:AssertionError'))
+  const report = await exported({
+    observation: { ...observation(), exitCode: 1, stderr: [], nativeDiagnostics: [line] },
+  })
+  const result = validateCommandObservation(decodeExportedNativeReport(report)['observation'])
+  expect(result.nativeDiagnostics).toEqual([line])
+  expect(() => assertCleanCommand(result)).toThrow()
 })
 test('export markers are explicit and malformed source identities are never laundered', async () => {
   await expect(

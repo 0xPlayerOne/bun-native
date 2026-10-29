@@ -73,6 +73,7 @@
     "qualify:managed-comparison": "bun scripts/qualify-managed-comparison.ts",
     "verify:managed-acceptance": "bun scripts/verify-managed-acceptance.ts",
     "qualify:desktop": "bun scripts/qualify-desktop.ts",
+    "qualify:programmatic-files": "bun scripts/qualify-programmatic-files.ts",
     "workbench:native": "bun scripts/hardware-workbench.ts"
   },
   "devDependencies": {

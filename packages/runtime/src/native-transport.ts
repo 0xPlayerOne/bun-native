@@ -16,6 +16,8 @@ const DESKTOP_CAPABILITIES = Object.freeze([
   'view.evaluate',
   'view.input',
   'view.input.synthetic',
+  'view.file-input',
+  'view.file-drop',
   'view.observe-dom',
   'view.observe-accessibility',
 ] as const)

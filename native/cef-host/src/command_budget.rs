@@ -177,7 +177,8 @@ mod tests {
                 "commands.dispose",
                 "dialog.cancel",
                 "status.dispose",
-                "links.dispose"
+                "links.dispose",
+                "file.interaction.cancel"
             ]
         );
     }
@@ -219,6 +220,32 @@ mod tests {
         drop(control);
         empty(&budget);
     }
+    #[test]
+    fn status_link_and_file_cleanup_share_reserved_capacity_under_pressure() {
+        let budget = Arc::new(CommandBudget::default());
+        let ordinary: Vec<_> = (0..limits().native_ordinary_requests)
+            .map(|_| budget.reserve("view.create", 64).unwrap())
+            .collect();
+        for operation in ["links.ack", "links.create", "file.interaction.prepare"] {
+            assert!(budget.reserve(operation, 64).is_err(), "{operation}");
+        }
+        let cleanup: Vec<_> = ["status.dispose", "links.dispose", "file.interaction.cancel"]
+            .into_iter()
+            .map(|operation| budget.reserve(operation, 128).unwrap())
+            .collect();
+        assert_eq!(
+            budget.snapshot().ordinary_requests,
+            limits().native_ordinary_requests
+        );
+        assert_eq!(
+            budget.snapshot().requests,
+            limits().native_ordinary_requests + 3
+        );
+        drop(cleanup);
+        drop(ordinary);
+        empty(&budget);
+    }
+
     #[test]
     fn unknown_operations_and_oversized_control_spelling_get_no_reserved_capacity() {
         let budget = Arc::new(CommandBudget::default());

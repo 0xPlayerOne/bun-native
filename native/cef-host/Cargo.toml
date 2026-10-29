@@ -47,6 +47,8 @@ rpc-context-diagnostics = ["rpc-qualification"]
 shutdown-diagnostics = []
 # Explicit development manifest opt-in is also required. Never opens a listener.
 browser-actions = []
+# Trusted Bun bytes only; independently gated from browser actions.
+programmatic-files = []
 
 [package.metadata.cef.bundle]
 helper_name = "bunly_helper"

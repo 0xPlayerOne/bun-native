@@ -53,6 +53,13 @@ export type {
   SessionClearResult,
   DownloadRequest,
   DownloadResult,
+  ProgrammaticFile,
+  FileInteractionKind,
+  FileInteractionRequest,
+  FileInteractionResult,
+  FileInteractionFailure,
+  FileInteractionOperation,
+  ProgrammaticFilesBackend,
   OperationOptions,
 } from '../../contracts/src/index.ts'
 
