@@ -2517,6 +2517,8 @@ fn dispatch(command: &Value) -> Result<(), String> {
         "browser.action.release" => browser_actions::release(request, args)?,
         "download.start" => downloads::start(request, args)?,
         "download.cancel" => downloads::cancel(request, args)?,
+        #[cfg(feature = "rpc-qualification")]
+        "download.qualification.analysis" => downloads::qualify_analysis(request, args)?,
         "dialog.show" => dialogs::start(request, args)?,
         "dialog.cancel" => dialogs::cancel(request, args)?,
         #[cfg(feature = "rpc-qualification")]
@@ -3868,6 +3870,7 @@ mod command_task_lifetime_tests {
         assert!(allowed_during_quit("file.interaction.cancel"));
         for operation in [
             "download.start",
+            "download.qualification.analysis",
             "commands.create",
             "status.create",
             "links.ack",

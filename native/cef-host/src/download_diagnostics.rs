@@ -206,6 +206,19 @@ impl Trace {
             },
         });
     }
+    #[cfg(feature = "rpc-qualification")]
+    pub(super) fn terminal_timing_snapshot(&self, resource_complete: Option<Instant>) -> Value {
+        let now = Instant::now();
+        json!({
+            "origin":"record-created-before-start-download",
+            "capturedAtTerminal":elapsed_ms(self.started, now),
+            "callbacks":self.timing,
+            "resourceComplete":resource_complete.filter(|at| *at <= now).and_then(|at| elapsed_ms(self.started, at)),
+            "fileUtilityLastLaunch":FILE_UTIL_LAUNCHES.last_elapsed(self.started, now),
+            "quarantineLastLaunch":QUARANTINE_LAUNCHES.last_elapsed(self.started, now),
+            "utilityObservationsAreApplicationWide":true,
+        })
+    }
     pub fn timeout(
         &mut self,
         quarantine_launches: u32,

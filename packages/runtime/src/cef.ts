@@ -2063,6 +2063,19 @@ export class CefBackend
   async nativeDiagnostics(): Promise<unknown> {
     return this.#transport.call('diagnostics')
   }
+  /** @internal Temporary fixed read-only download probe; contributor hosts only. */
+  async qualifyDownloadAnalysis(view: ViewHandle): Promise<unknown> {
+    this.#active()
+    const token = await this.capturePolicyScope(view)
+    const captured = this.#capturedPolicyScope(token)
+    const result = await this.#transport.call('download.qualification.analysis', {
+      id: captured.resource.native,
+      scope: captured.nativeScope,
+    })
+    this.#active()
+    this.#capturedPolicyScope(token)
+    return result
+  }
   /** Configure the independent native binary lane before creating any view.
    * The callback receives the opaque local ViewHandle as budget owner; renderer
    * packet metadata is never promoted to application authority.
