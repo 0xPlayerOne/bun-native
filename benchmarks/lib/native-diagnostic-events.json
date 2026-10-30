@@ -28,6 +28,7 @@
   "bunly.native.window-modes",
   "bunly.native.desktop-controls",
   "bunly.native.view-composition",
+  "bunly.native.composition-interactions",
   "bunly.composition.phase",
   "bunly.native.composition-profile",
   "bunly.native.view-parent-close",

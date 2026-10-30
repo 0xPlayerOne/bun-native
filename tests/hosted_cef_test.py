@@ -164,6 +164,7 @@ class HostedQualificationTests(unittest.TestCase):
                 "faults",
                 "desktop",
                 "view-composition",
+                "composition-interactions",
                 "desktop-services",
                 "file-downloads",
                 "view-parent-close",
@@ -265,6 +266,7 @@ class HostedQualificationTests(unittest.TestCase):
                             "faults",
                             "desktop",
                             "view-composition",
+                            "composition-interactions",
                             "desktop-services",
                             "file-downloads",
                             "view-parent-close",
@@ -594,7 +596,7 @@ class NativeTerminalLoadStageTests(unittest.TestCase):
             with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
                 selected = hosted.commands("full", "/bun", app)
                 names = [name for name, _ in selected]
-                self.assertEqual(len(names), 20)
+                self.assertEqual(len(names), 21)
                 self.assertEqual(
                     names[-4:], ["terminals", "terminal-load", "managed-development", "credentials"]
                 )
@@ -839,6 +841,41 @@ class DesktopStageTests(unittest.TestCase):
             hosted.report_directory("file-downloads"), hosted.ROOT / ".bunly/m7/file-downloads"
         )
 
+    def test_composition_interactions_are_a_distinct_source_bound_full_suite_case(self):
+        source = "a" * 40
+        app = Path("/app")
+        for system in ("linux", "darwin", "win32"):
+            with self.subTest(system=system), patch.object(hosted.sys, "platform", system):
+                selected = hosted.commands("full", "/bun", app, native_source=source)
+                names = [name for name, _ in selected]
+                self.assertEqual(names.count("composition-interactions"), 1)
+                self.assertEqual(
+                    names.index("composition-interactions"), names.index("view-composition") + 1
+                )
+                self.assertEqual(
+                    dict(selected)["composition-interactions"],
+                    [
+                        *dict(selected)["desktop"],
+                        "--desktop-case=composition-interactions"
+                        if system == "linux"
+                        else "--case=composition-interactions",
+                    ],
+                )
+                rows = [{"name": name, "passed": True} for name in names[:-1]]
+                hosted.require_stage_prerequisites("full", "credentials", rows)
+                next(row for row in rows if row["name"] == "composition-interactions")["passed"] = (
+                    False
+                )
+                with self.assertRaises(ValueError):
+                    hosted.require_stage_prerequisites("full", "credentials", rows)
+                self.assertNotIn(
+                    "composition-interactions", dict(hosted.commands("m4-acceptance", "/bun", app))
+                )
+        self.assertEqual(
+            hosted.report_directory("composition-interactions"),
+            hosted.ROOT / ".bunly/m7/composition-interactions",
+        )
+
     def test_services_requires_disposable_clipboard_opt_in_only_on_supported_platforms(self):
         source = "a" * 40
         app = Path("/app")
@@ -848,7 +885,7 @@ class DesktopStageTests(unittest.TestCase):
                 names = [name for name, _ in selected]
                 self.assertEqual(names.count("desktop-services"), 1)
                 self.assertEqual(
-                    names.index("desktop-services"), names.index("view-composition") + 1
+                    names.index("desktop-services"), names.index("composition-interactions") + 1
                 )
                 expected = [
                     *dict(selected)["desktop"],

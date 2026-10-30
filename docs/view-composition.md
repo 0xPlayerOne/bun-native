@@ -106,6 +106,31 @@ A popover that should yield focus when dismissed must explicitly choose a live
 eligible destination. Context menus and OS dialogs need their own policy and
 lifecycle handling; this view API does not implement them.
 
+### Menus, dialogs and focus restoration
+
+Use the [window-command facet](window-commands.md) for application-triggered
+context menus. Capture and grant the exact document scope that owns the command;
+overlapping a pane or focusing an overlay does not transfer its authority. Menu
+coordinates are client-area DIPs of the shared owner window, not coordinates
+inside the calling page. Chromium's built-in page context menu remains disabled.
+
+The admission response from `showWindowMenu` is not closure. Wait for the actual
+`menu-closed` callback before dismissing an application popover or restoring
+browser focus; handle `menu-failed` separately. Cancellation requests retain the
+native popup owner until that callback. A native file dialog has a separate exact
+document grant and retains its modal owner until its platform completion callback
+and native removal. The shared native modal reservation prevents a popup from
+opening while a file dialog remains owned.
+
+The application chooses a live eligible focus destination after native UI closes.
+Call `focusView` explicitly, then observe the destination if the next action needs
+confirmed focus. No stored destination is automatically replayed after a document
+navigation, generation retirement or pane close. A hidden overlay cannot receive
+focus; hiding it does not designate an arbitrary sibling as the new input owner.
+Applications that display a nonmodal overlay must supply their own dismissal and
+focus-restoration policy. This preserves the distinction between an ordinary
+application overlay and a native modal dialog.
+
 ## Focus and generation ownership
 
 `focusView` rejects hidden, fully clipped, disabled, and nonfocusable targets.
@@ -199,6 +224,20 @@ Run it with `bun run qualify:desktop PREPARED_APP --native-source=COMMIT
 describes source/artifact binding and the hosted stage. A passing receipt requires
 all 28 ordered observations and exact retained identities; an incomplete or
 reordered sequence cannot be promoted to native acceptance.
+
+The distinct `--case=composition-interactions` profile combines these panes with
+real native menu and dialog lifecycles. It opens and cancels one popup owned by
+each content pane and the trusted overlay, explicitly restores focus after each
+closure, and checks native and authenticated renderer focus for all three panes.
+On the supported dialog platform it observes a visible native open panel,
+rejects a competing popup while the panel is owned, cancels the panel and restores
+overlay focus only after actual completion. Unsupported adapters record the
+capability rejection and no dialog observation. It also hides, reopens and hides
+the overlay again, rejects a hidden focus request, preserves all three document
+and session identities, stops renderer producers and verifies native/SDK cleanup.
+The [interaction qualification contract](desktop-qualification.md#composition-interactions)
+defines its separate receipt and unchanged observer limit. Adding this case is
+not evidence that it has run on a platform.
 
 `examples/view-parent-close` is a separate regression selected with
 `--case=parent-close`, using profile `native-view-parent-close-v1`. It closes a

@@ -61,8 +61,27 @@ import {
   acceptCompositionResources,
   acceptCompositionResourceReport,
 } from './composition-profile.ts'
+import {
+  COMPOSITION_INTERACTIONS_PROFILE,
+  compositionInteractionSourceSelectors,
+  acceptCompositionInteractions,
+  acceptCompositionInteractionReport,
+} from './composition-interactions.ts'
 
 const profiles = {
+  'composition-interactions': {
+    profile: COMPOSITION_INTERACTIONS_PROFILE,
+    sourceSelectors: compositionInteractionSourceSelectors,
+    fixture: 'examples/view-composition',
+    applicationEntry: 'examples/view-composition/interactions.ts',
+    browserEntry: 'examples/view-composition/client.ts',
+    directory: 'composition-interactions',
+    title: 'Composition Interactions',
+    workloadLimitation:
+      'Three native pane/overlay menu cancellations and explicit authenticated focus restoration; supported native file dialog cancellation and modal exclusion. Physical input, IME, accessibility and hardware DPI remain unqualified.',
+    acceptObservation: acceptCompositionInteractions,
+    acceptReport: acceptCompositionInteractionReport,
+  },
   'composition-profile': {
     profile: COMPOSITION_RESOURCE_PROFILE,
     sourceSelectors: compositionResourceSourceSelectors,
@@ -190,6 +209,7 @@ export function desktopProfile(name = 'windows') {
     name === 'windows' ||
       name === 'composition' ||
       name === 'composition-profile' ||
+      name === 'composition-interactions' ||
       name === 'services' ||
       name === 'downloads' ||
       name === 'parent-close' ||

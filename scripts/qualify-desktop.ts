@@ -101,7 +101,7 @@ async function qualify(input: readonly string[]): Promise<void> {
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|composition-profile|services|downloads|commands|dialogs|status|links|parent-close] [--disposable-clipboard], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|composition-profile|composition-interactions|services|downloads|commands|dialogs|status|links|parent-close] [--disposable-clipboard], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
@@ -201,7 +201,10 @@ async function qualify(input: readonly string[]): Promise<void> {
     await mkdir(backend)
     for (const [entry, name] of [
       ['scripts/cef-bootstrap.ts', 'main.js'],
-      [profile.fixture + '/fixture.ts', 'application.js'],
+      [
+        'applicationEntry' in profile ? profile.applicationEntry : profile.fixture + '/fixture.ts',
+        'application.js',
+      ],
     ] as const) {
       const built = await Bun.build({
         entrypoints: [join(root, entry)],

@@ -208,6 +208,13 @@ def commands(suite, bun, app, native_source=None):
             "--desktop-case=composition" if sys.platform == "linux" else "--case=composition"
         )
         result.append(("view-composition", composition))
+        interactions = [*desktop]
+        interactions.append(
+            "--desktop-case=composition-interactions"
+            if sys.platform == "linux"
+            else "--case=composition-interactions"
+        )
+        result.append(("composition-interactions", interactions))
         services = [*desktop]
         services.append("--desktop-case=services" if sys.platform == "linux" else "--case=services")
         if sys.platform != "linux":
@@ -340,6 +347,8 @@ def report_directory(name):
         return ROOT / ".bunly/m7/desktop"
     if name == "view-composition":
         return ROOT / ".bunly/m7/view-composition"
+    if name == "composition-interactions":
+        return ROOT / ".bunly/m7/composition-interactions"
     if name == "desktop-services":
         return ROOT / ".bunly/m7/desktop-services"
     if name == "file-downloads":
@@ -522,6 +531,7 @@ def collect():
         ROOT / ".bunly/m6/managed-development",
         ROOT / ".bunly/m7/desktop",
         ROOT / ".bunly/m7/view-composition",
+        ROOT / ".bunly/m7/composition-interactions",
         ROOT / ".bunly/m7/desktop-services",
         ROOT / ".bunly/m7/file-downloads",
         ROOT / ".bunly/m7/view-parent-close",

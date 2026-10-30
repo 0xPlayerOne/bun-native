@@ -53,6 +53,7 @@ def main() -> int:
         choices=(
             "windows",
             "composition",
+            "composition-interactions",
             "services",
             "downloads",
             "parent-close",

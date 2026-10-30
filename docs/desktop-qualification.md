@@ -50,7 +50,7 @@ existing sandbox bootstrap.
 
 ## Hosted gate and replay
 
-The full hosted native matrix includes `desktop`, `view-composition`,
+The full hosted native matrix includes `desktop`, `view-composition`, `composition-interactions`,
 `desktop-services`, `file-downloads`, `window-commands`, `file-dialogs`,
 `status-items`, `view-parent-close` and `application-links` stages before the existing
 window-mode, terminal, managed-reload and credential stages. Every earlier stage
@@ -113,6 +113,55 @@ On Linux the existing disposable display wrapper accepts
 cleans its own Xvfb/Openbox processes. The full hosted suite requires the native
 desktop stages on every platform before later credential/provider work. Neither
 profile changes the existing M4-only suite.
+
+## Composition interactions
+
+The separate interaction case keeps the original composition workload and its
+retained report semantics unchanged:
+
+```sh
+bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=composition-interactions
+```
+
+Its profile is `native-composition-interactions-v1`, and reports live under
+`.bunly/m7/composition-interactions/run-*/report.json`. It reuses the authenticated
+composition renderer with a separate application entry. The full hosted suite
+runs it immediately after `view-composition`; Linux uses its owned disposable
+Xvfb/Openbox session. The fixture has a 30-second overall limit inside the same
+45-second process observer and existing native shutdown deadlines.
+
+Three independent documents and sessions occupy two manual content panes and a
+trusted overlay. Each opens and cancels its own native popup. Acceptance requires
+the actual `menu-shown`/`menu-closed` pair for each registration and agreement
+between native focus readback and authenticated renderer focus/blur observations
+for every pane after explicit restoration. The workload also records focus before
+opening each menu. Unsupported or failed menu display is a failure.
+
+On macOS the overlay's document opens a native file panel in a new empty temporary
+directory. The qualifier observes the panel as visible, requires a competing
+popup to fail with `RESOURCE_IN_USE`, cancels the panel, observes its callback and
+native removal, then explicitly restores overlay focus. No file is selected or
+created. Windows/Linux require an explicit unsupported dialog rejection with zero
+native admissions; that outcome does not count as a dialog pass. There are ten
+ordered focus observations with the panel case and nine when dialogs are
+unsupported. Hiding the overlay must remove both native and renderer focus and
+reject another focus request. Reopening it must preserve the same document and
+session.
+
+Before teardown, an authenticated resize acknowledgement stops each renderer
+producer and the fixture drains its admitted RPC replies. The receipt requires
+zero command registrations/popups, views, sessions and queued deliveries, plus
+successful native shutdown and zero SDK resources. Replay rejects missing,
+reordered or contradictory observations, changed identities, leaked ownership,
+an unobserved dialog dismissal and a receipt emitted before shutdown. Source and
+artifact identity checks remain the shared desktop checks.
+
+This is SDK-driven native integration, not physical input. It injects no keyboard
+or pointer event, and it cannot qualify an IME, screen reader or physical display.
+`physicalInputQualified`, `imeQualified`, `hardwareDpiQualified`,
+`assistiveTechnologyQualified` and `performanceEligible` are always `false`.
+The [operator protocol](m7-platform-qualification.md) remains the acceptance path
+for those observations.
 
 ## Live-pane parent close
 
