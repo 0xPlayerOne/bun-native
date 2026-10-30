@@ -6,7 +6,7 @@
 use super::*;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
 
-const HISTOGRAMS: [&str; 9] = [
+const HISTOGRAMS: [&str; 15] = [
     "SBClientDownload.CheckDownloadStats",
     "SBClientDownload.ZipArchiveAnalysisResult",
     "SBClientDownload.FileAnalysisDuration.Zip",
@@ -16,6 +16,17 @@ const HISTOGRAMS: [&str; 9] = [
     "Download.History.LoadLatency",
     "Download.History.TimeToFirstLoad",
     "Startup.AfterStartupTaskDelayedUntilTime",
+    // Sql::Database records these in microseconds, unlike the millisecond
+    // download/startup histograms above. The favicon database's pinned tag is
+    // "Thumbnail", not "Favicons". Keep raw samples in a separately named group.
+    // chromium 156.0.8078.17: sql/database.cc, sql/statement.cc and
+    // components/favicon/core/favicon_database.cc.
+    "Sql.Database.Success.OpenInternalTime.History",
+    "Sql.Database.Success.OpenInternalTime.Thumbnail",
+    "Sql.Database.Success.OpenInternalTime.HistoryInMemoryDB",
+    "Sql.Statement.ExecutionTime.History",
+    "Sql.Statement.ExecutionTime.Thumbnail",
+    "Sql.Statement.ExecutionTime.HistoryInMemoryDB",
 ];
 const NETWORK_RESULT_INDEX: usize = 3;
 // Pinned net/base/net_error_list.h defines errors down to -906. HTTP parsing
@@ -532,6 +543,14 @@ fn finish(download: u64, status: &'static str) {
             "downloadHistoryTimeToFirstLoad":query.histograms[7],
             "afterStartupTaskDelayedUntilTime":query.histograms[8]
         },
+        "sqlTimingMicroseconds":{
+            "historyOpen":query.histograms[9],
+            "faviconOpen":query.histograms[10],
+            "historyInMemoryOpen":query.histograms[11],
+            "historyStatements":query.histograms[12],
+            "faviconStatements":query.histograms[13],
+            "historyInMemoryStatements":query.histograms[14]
+        },
         "observerReleased":true
     });
     let request = query.request;
@@ -1019,14 +1038,14 @@ mod tests {
     #[test]
     fn initialization_histograms_have_fixed_names_and_retain_unsigned_bounds() {
         assert_eq!(
-            &HISTOGRAMS[6..],
+            &HISTOGRAMS[6..9],
             &[
                 "Download.History.LoadLatency",
                 "Download.History.TimeToFirstLoad",
                 "Startup.AfterStartupTaskDelayedUntilTime",
             ]
         );
-        for (index, name) in HISTOGRAMS.iter().enumerate().skip(6) {
+        for (index, name) in HISTOGRAMS.iter().enumerate().take(9).skip(6) {
             let valid = json!({"histogram":{"name":name,"count":1,"sum":5000,
                 "buckets":[{"low":4000,"high":6000,"count":1}]}});
             assert!(accept_histogram(&serde_json::to_vec(&valid).unwrap(), index).is_some());
@@ -1035,6 +1054,35 @@ mod tests {
             assert!(accept_histogram(&serde_json::to_vec(&wrong).unwrap(), index).is_none());
             wrong = valid;
             wrong["histogram"]["name"] = json!("not-allowlisted");
+            assert!(accept_histogram(&serde_json::to_vec(&wrong).unwrap(), index).is_none());
+        }
+    }
+    #[test]
+    fn sql_histograms_keep_pinned_tags_and_microsecond_samples() {
+        assert_eq!(
+            &HISTOGRAMS[9..],
+            &[
+                "Sql.Database.Success.OpenInternalTime.History",
+                "Sql.Database.Success.OpenInternalTime.Thumbnail",
+                "Sql.Database.Success.OpenInternalTime.HistoryInMemoryDB",
+                "Sql.Statement.ExecutionTime.History",
+                "Sql.Statement.ExecutionTime.Thumbnail",
+                "Sql.Statement.ExecutionTime.HistoryInMemoryDB",
+            ]
+        );
+        for (index, name) in HISTOGRAMS.iter().enumerate().skip(9) {
+            // Six seconds expressed in microseconds must remain 6,000,000, not
+            // be clamped to a millisecond deadline or silently rescaled.
+            let valid = json!({"histogram":{"name":name,"count":1,"sum":6_000_000,
+                "buckets":[{"low":5_000_000,"high":7_000_000,"count":1}]}});
+            let parsed = accept_histogram(&serde_json::to_vec(&valid).unwrap(), index)
+                .expect("bounded microsecond histogram");
+            assert_eq!(parsed["sum"], 6_000_000);
+            let mut wrong = valid.clone();
+            wrong["histogram"]["name"] = json!("Sql.Database.Success.OpenInternalTime.Favicons");
+            assert!(accept_histogram(&serde_json::to_vec(&wrong).unwrap(), index).is_none());
+            wrong = valid;
+            wrong["histogram"]["sum"] = json!(-1);
             assert!(accept_histogram(&serde_json::to_vec(&wrong).unwrap(), index).is_none());
         }
     }
