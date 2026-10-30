@@ -8,6 +8,7 @@ import {
   type NormalizedDownloadRequest,
 } from '../../contracts/src/index.ts'
 import type { NativeEvent, NativeTransport } from './native-transport.ts'
+import type { ListenerResultObserver } from './listener-result.ts'
 
 type Entry = {
   readonly view: number
@@ -36,9 +37,15 @@ export class CefDownloads {
   readonly #transport: NativeTransport
   readonly #entries = new Map<number, Entry>()
   readonly #listenerFailed: () => void
-  constructor(transport: NativeTransport, listenerFailed: () => void) {
+  readonly #listenerResults: ListenerResultObserver
+  constructor(
+    transport: NativeTransport,
+    listenerFailed: () => void,
+    listenerResults: ListenerResultObserver
+  ) {
     this.#transport = transport
     this.#listenerFailed = listenerFailed
+    this.#listenerResults = listenerResults
   }
   get listenerCount(): number {
     let count = 0
@@ -146,7 +153,7 @@ export class CefDownloads {
   }
   #notify(listener: (progress: DownloadProgress) => void, progress: DownloadProgress): void {
     try {
-      listener(progress)
+      this.#listenerResults.observe(listener(progress))
     } catch {
       this.#listenerFailed()
     }

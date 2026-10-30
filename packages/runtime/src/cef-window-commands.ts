@@ -14,6 +14,7 @@ import {
   type WindowMenuPoint,
 } from '../../contracts/src/index.ts'
 import type { NativeEvent, NativeTransport } from './native-transport.ts'
+import type { ListenerResultObserver } from './listener-result.ts'
 
 interface Authority {
   readonly view: ViewHandle
@@ -69,7 +70,8 @@ export class CefWindowCommands {
     readonly transport: NativeTransport,
     readonly capture: (scope: PolicyScope) => Authority,
     readonly available: () => void,
-    readonly listenerError: () => void
+    readonly listenerError: () => void,
+    readonly listenerResults: ListenerResultObserver
   ) {}
   #check(record: Registration): void {
     this.available()
@@ -428,7 +430,7 @@ export class CefWindowCommands {
         break
       }
       try {
-        subscription.listener(event)
+        this.listenerResults.observe(subscription.listener(event))
       } catch {
         this.listenerError()
       }
