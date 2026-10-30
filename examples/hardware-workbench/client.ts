@@ -4,6 +4,7 @@ import { hardwareCases } from './cases.ts'
 import {
   parseWorkbenchCommand,
   workbenchSchema,
+  type PreviewName,
   type WorkbenchCommand,
   type WorkbenchSnapshot,
 } from './contract.ts'
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
   let displayedEvent = -1
   let timer: ReturnType<typeof setTimeout> | undefined
   const timers = new Set<ReturnType<typeof setTimeout>>()
+  const presentations = new Map<PreviewName, Extract<WorkbenchCommand, { action: 'present' }>>()
   const message = (value: string) => {
     if (status.textContent !== value) status.textContent = value
   }
@@ -60,7 +62,9 @@ async function main(): Promise<void> {
     if (overlay || stopped || busy || reading) return
     reading = true
     try {
-      render(await client.call('snapshot', null))
+      const snapshot = await client.call('snapshot', null)
+      if (stopped) return
+      render(snapshot)
       if (
         status.textContent === 'Connecting to native application…' ||
         status.dataset['retry'] === 'true'
@@ -69,32 +73,57 @@ async function main(): Promise<void> {
         status.dataset['retry'] = 'false'
       }
     } catch (error) {
-      message(`Observation unavailable: ${errorMessage(error)}`)
-      status.dataset['retry'] = 'true'
+      if (!stopped) {
+        message(`Observation unavailable: ${errorMessage(error)}`)
+        status.dataset['retry'] = 'true'
+      }
     } finally {
       reading = false
+      void flushPresentations()
     }
   }
-  async function send(input: WorkbenchCommand): Promise<void> {
-    if (stopped || busy) {
-      message('A command is already pending. Try again after it settles.')
-      return
-    }
+  async function execute(command: WorkbenchCommand): Promise<void> {
     busy = true
-    // Snapshot reads are bounded; do not queue unbounded pointer/range commands behind them.
-    const command = parseWorkbenchCommand(input)
     message(
       command.action === 'quit' ? 'Closing the final window…' : `Requesting ${command.action}…`
     )
     try {
       await client.call('command', command, { timeoutMs: 60_000 })
-      message('Native command acknowledged. Observe the actual desktop behavior.')
+      if (!stopped) message('Native command acknowledged. Observe the actual desktop behavior.')
     } catch (error) {
-      message(`Command unavailable: ${errorMessage(error)}`)
+      if (!stopped) message(`Command unavailable: ${errorMessage(error)}`)
     } finally {
       busy = false
     }
+  }
+  async function flushPresentations(): Promise<void> {
+    if (stopped || busy || reading || presentations.size === 0) return
+    // Only the latest presentation for each of the two declared panes is kept.
+    // Remove before dispatch: failures are not retried, and newer intent remains distinct.
+    while (!stopped && !busy && !reading) {
+      const command = presentations.values().next().value
+      if (!command) break
+      presentations.delete(command.pane)
+      await execute(command)
+    }
     await refresh()
+  }
+  async function send(input: WorkbenchCommand): Promise<void> {
+    if (stopped) return
+    const command = parseWorkbenchCommand(input)
+    if (command.action === 'present') {
+      presentations.set(command.pane, command)
+      await flushPresentations()
+      return
+    }
+    // Focus, close, reopen and other one-shot actions are never queued or replayed.
+    if (busy || reading || presentations.size > 0) {
+      message('A command or observation is pending. Try again after it settles.')
+      return
+    }
+    await execute(command)
+    if (presentations.size > 0) await flushPresentations()
+    else await refresh()
   }
 
   if (overlay) {
@@ -184,6 +213,7 @@ async function main(): Promise<void> {
       clearTimeout(timer)
       for (const pending of timers) clearTimeout(pending)
       timers.clear()
+      presentations.clear()
       client.close()
     },
     { once: true }
