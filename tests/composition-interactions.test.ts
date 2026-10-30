@@ -3,10 +3,13 @@ import { readFileSync } from 'node:fs'
 import { test } from 'bun:test'
 import {
   COMPOSITION_INTERACTIONS_PROFILE,
+  LEGACY_COMPOSITION_INTERACTIONS_PROFILE,
   acceptCompositionInteractionReceipt,
   acceptCompositionInteractionReport,
   acceptCompositionInteractions,
   compositionInteractionRequiredSources,
+  acceptCompositionInteractionReceiptV1,
+  acceptCompositionInteractionReportV1,
 } from '../benchmarks/desktop/composition-interactions.ts'
 import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/profiles.ts'
 import { compositionMarker, panes } from '../examples/view-composition/contract.ts'
@@ -17,6 +20,10 @@ import {
 } from '../examples/view-composition/interactions-plan.ts'
 import { desktopReportFixture } from './helpers/desktop-evidence.ts'
 import { hasCode } from '../examples/view-composition/interactions.ts'
+import type {
+  InitialObservation,
+  InitialObservationEvent,
+} from '../examples/view-composition/initial-observation.ts'
 
 // Synthetic rejection fixtures only; these are not native qualification evidence.
 function receipt(supported = false) {
@@ -35,13 +42,68 @@ function receipt(supported = false) {
   }
   return {
     event: 'bunly.native.composition-interactions',
-    schema: 1,
+    schema: 2,
     passed: true,
     failure: null as string | null,
     pendingFocus: null as unknown,
     workloadMs: 1000,
     hiddenFocusRejected: true,
     shutdownSucceeded: true,
+    initialObservation: {
+      panes: Object.fromEntries(
+        panes.map((pane, index) => {
+          const event = (
+            name: InitialObservationEvent['event'],
+            focused = pane === 'right'
+          ): InitialObservationEvent => ({
+            event: name,
+            visibility: pane === 'overlay' ? 'hidden' : 'visible',
+            focused,
+            trusted: name === 'focus' ? true : null,
+          })
+          return [
+            pane,
+            {
+              viewId: `view-${pane}`,
+              documentId: `document-${pane}`,
+              history: {
+                pane,
+                instance: `00000000-0000-4000-8000-00000000000${index}`,
+                phase: 'before-show',
+                overflow: false as boolean,
+                events: [
+                  event('initial', false),
+                  ...(pane === 'right' ? [event('focus')] : []),
+                  ...(pane === 'overlay' ? [] : [event('before-create')]),
+                  event('after-create'),
+                  event('before-show'),
+                ],
+              } satisfies InitialObservation,
+            },
+          ]
+        })
+      ),
+      creation: Object.fromEntries(
+        (['before', 'after'] as const).map((phase) => [
+          phase,
+          Object.fromEntries(
+            panes
+              .filter((pane) => phase === 'after' || pane !== 'overlay')
+              .map((pane) => [
+                pane,
+                {
+                  visible: pane !== 'overlay',
+                  drawn: pane !== 'overlay',
+                  focusable: pane !== 'overlay',
+                  nativeFocused: pane === 'right',
+                  pageVisibility: pane === 'overlay' ? 'hidden' : 'visible',
+                  pageFocused: pane === 'right',
+                },
+              ])
+          ),
+        ])
+      ),
+    },
     focus: steps.map((step, index) => ({
       name: step.name,
       panes: Object.fromEntries(
@@ -359,6 +421,7 @@ test('interaction profile reuses authenticated renderer while preserving histori
   assert.equal(profile.applicationEntry, 'examples/view-composition/interactions.ts')
   assert.equal(profile.browserEntry, 'examples/view-composition/client.ts')
   assert.equal(profile.directory, 'composition-interactions')
+  assert.equal(profile.profile, 'native-composition-interactions-v2')
   assert.equal('applicationEntry' in desktopProfile('composition'), false)
   assert.ok(
     !desktopProfile('composition').sourceSelectors.some(
@@ -382,4 +445,91 @@ test('interaction profile reuses authenticated renderer while preserving histori
     target: 'bun',
   })
   assert.equal(built.success, true, built.logs.join('\n'))
+})
+
+test('initial interaction evidence rejects early exposure and transient focus theft', () => {
+  for (const mutate of [
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.history.events[0] = {
+        event: 'initial',
+        visibility: 'visible',
+        focused: false,
+        trusted: null,
+      }
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.history.events.splice(
+        1,
+        0,
+        { event: 'visibilitychange', visibility: 'visible', focused: false, trusted: true },
+        { event: 'visibilitychange', visibility: 'hidden', focused: false, trusted: true }
+      )
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.history.events.splice(
+        1,
+        0,
+        { event: 'focus', visibility: 'hidden', focused: true, trusted: true },
+        { event: 'blur', visibility: 'hidden', focused: false, trusted: true }
+      )
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['right']!.history.events.splice(
+        3,
+        0,
+        { event: 'blur', visibility: 'visible', focused: false, trusted: true },
+        { event: 'focus', visibility: 'visible', focused: true, trusted: true }
+      )
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['left']!.history.events.splice(
+        2,
+        0,
+        { event: 'focus', visibility: 'visible', focused: true, trusted: true },
+        { event: 'blur', visibility: 'visible', focused: false, trusted: true }
+      )
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.history.overflow = true
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.documentId = 'changed-document'
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.viewId = 'changed-view'
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.panes['overlay']!.history.instance = r.pages['left']!.initial.instance
+    },
+    (r: ReturnType<typeof receipt>) => {
+      r.initialObservation.creation['after']!['right']!.nativeFocused = false
+    },
+  ]) {
+    const value = receipt()
+    mutate(value)
+    assert.throws(() => acceptCompositionInteractionReceipt(value))
+  }
+  const accepted = acceptCompositionInteractionReceipt(receipt())
+  assert.equal(accepted.initialVisibilityObserved, true)
+  assert.equal(accepted.creationFocusPreserved, true)
+})
+
+test('retained v1 receipts keep their original acceptance and cannot satisfy current execution', () => {
+  const { initialObservation: _early, ...priorSections } = receipt()
+  const historical = { ...priorSections, schema: 1 }
+  const old = acceptCompositionInteractionReceiptV1(historical)
+  const current = acceptCompositionInteractionReceipt(receipt())
+  const {
+    initialVisibilityObserved: _visibility,
+    creationFocusPreserved: _focus,
+    ...unchanged
+  } = current
+  assert.deepEqual(old, unchanged)
+  assert.throws(() => acceptCompositionInteractionReceipt(historical), /schema 2/)
+  assert.throws(() => acceptCompositionInteractionReceiptV1(receipt()))
+  const replay = desktopReportProfile(LEGACY_COMPOSITION_INTERACTIONS_PROFILE)
+  assert.equal(replay.profile, 'native-composition-interactions-v1')
+  assert.equal(replay.acceptReport, acceptCompositionInteractionReportV1)
+  assert.match(replay.workloadLimitation, /after RPC startup/)
+  assert.equal(desktopProfile('composition').profile, 'native-view-composition-v1')
 })

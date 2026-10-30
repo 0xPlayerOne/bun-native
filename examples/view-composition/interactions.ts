@@ -12,13 +12,7 @@ import type {
 import type { CefBackend } from '../../packages/runtime/src/cef.ts'
 import { managedDocumentReadiness } from '../managed-desktop/document-readiness.ts'
 import { CommandObservations } from '../window-commands/observations.ts'
-import {
-  compositionMarker,
-  compositionSchema,
-  panes,
-  type CompositionPage,
-  type Pane,
-} from './contract.ts'
+import { compositionMarker, panes, type CompositionPage, type Pane } from './contract.ts'
 import { observeCompositionLifetime } from './lifetime.ts'
 import {
   COMPOSITION_INTERACTION_WORKLOAD_MS,
@@ -27,6 +21,8 @@ import {
   type InteractionFocusObservation,
   type InteractionPaneState,
 } from './interactions-plan.ts'
+import { interactionSchema, type InitialObservationPhase } from './initial-observation.ts'
+import { InitialObservationRequests } from './initial-observation-host.ts'
 
 interface OwnedPane {
   readonly view: ViewHandle
@@ -67,6 +63,9 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
   const stopping = new Map<Pane, { after: number; width: number }>()
   const stopped = new Set<Pane>()
   const focus: InteractionFocusObservation[] = []
+  const initialObservations = new InitialObservationRequests()
+  let creationBefore: Record<string, unknown> | null = null
+  let creationAfter: Record<string, unknown> | null = null
   let pendingFocus: InteractionFocusObservation | null = null
   const menus: { pane: Pane; events: readonly unknown[] }[] = []
   let dialog: Record<string, unknown> | null = null
@@ -115,8 +114,27 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
     })
   }
   const stopRpc = backend.serveRpc(
-    compositionSchema,
+    interactionSchema,
     {
+      initialObservation: {
+        capability: 'view-composition-fixture',
+        handle: async (history, context) => {
+          try {
+            const current = owned.get(history.pane)
+            if (current) {
+              assert.equal(context.identity.viewId, current.view.id)
+              assert.equal(context.identity.documentId, current.document)
+              assert.equal(history.instance, current.initial.instance)
+            }
+            const next = initialObservations.receive(history, context)
+            changed()
+            return await next
+          } catch (error) {
+            controller.abort(error)
+            throw error
+          }
+        },
+      },
       observe: {
         capability: 'view-composition-fixture',
         handle: (page, context) => {
@@ -168,6 +186,43 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
     assert.equal(backend.state(current.view).documentId, current.document)
     assert.equal(backend.session(current.view), current.session)
     return observation.latest
+  }
+  const initialCheckpoint = async (
+    phase: Exclude<InitialObservationPhase, 'initial'>,
+    names: readonly Pane[]
+  ) => {
+    stage = `initial-observation-${phase}`
+    const histories = await bounded(
+      Promise.all(names.map((name) => initialObservations.checkpoint(name, phase)))
+    )
+    const states: Record<string, unknown> = {}
+    for (const history of histories) {
+      const current = pane(history.pane)
+      const page = currentPage(history.pane)
+      assert.equal(history.instance, page.instance)
+      const native = await backend.viewPresentation(current.view, options)
+      const sampled = history.events.at(-1)!
+      const visible = history.pane !== 'overlay'
+      const focused = history.pane === 'right'
+      const state = {
+        visible: native.visible,
+        drawn: native.drawn,
+        focusable: native.focusable,
+        nativeFocused: native.focused,
+        pageVisibility: sampled.visibility,
+        pageFocused: sampled.focused,
+      }
+      assert.deepEqual(state, {
+        visible,
+        drawn: visible,
+        focusable: visible,
+        nativeFocused: focused,
+        pageVisibility: visible ? 'visible' : 'hidden',
+        pageFocused: focused,
+      })
+      states[history.pane] = state
+    }
+    return states
   }
   const capture = async (name: InteractionFocusObservation['name']) => {
     const expected = interactionSteps.find((step) => step.name === name)!
@@ -262,11 +317,32 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
       bounds: { x: 32, y: 32, width: 820, height: 520 },
     })
     for (const [index, name] of panes.entries()) {
+      if (name === 'overlay') {
+        // A known existing owner is observed before creation. Its complete event
+        // history catches a transient blur even if native focus is later restored.
+        stage = 'initial-focus-owner'
+        await backend.activateWindow(window, options)
+        await backend.focusView(pane('right').view, options)
+        for (;;) {
+          const seen = revision
+          const left = await backend.viewPresentation(pane('left').view, options)
+          const right = await backend.viewPresentation(pane('right').view, options)
+          if (
+            !left.focused &&
+            right.focused &&
+            !currentPage('left').focused &&
+            currentPage('right').focused
+          )
+            break
+          await wait(seen)
+        }
+        creationBefore = await initialCheckpoint('before-create', ['left', 'right'])
+      }
       const session = await backend.createSession({
         persistence: 'ephemeral',
         partition: `interaction-${name}`,
       })
-      const url = `app://ui/index.html?pane=${name}`
+      const url = `app://ui/index.html?pane=${name}&interaction=2`
       const readiness = managedDocumentReadiness(backend, url)
       const presentation = {
         bounds:
@@ -297,15 +373,24 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
           initial: observation.latest,
           presentation,
         })
+        while (!initialObservations.has(name)) await wait(revision)
+        const early = initialObservations.observations()[name]!
+        assert.equal(early.viewId, view.id)
+        assert.equal(early.documentId, observation.document)
+        assert.equal(early.history.instance, observation.latest.instance)
       } finally {
         readiness.close()
       }
     }
+    creationAfter = await initialCheckpoint('after-create', panes)
     await backend.activateWindow(window, options)
     await capture('left-ready')
     await menu('left', async () => capture('left-menu-closed'))
     await capture('right-ready')
     await menu('right', async () => capture('right-menu-closed'))
+    // Each document seals its real history only after this host-requested sample.
+    // The first overlay-show operation is admitted after all three acknowledgements.
+    await initialCheckpoint('before-show', panes)
     await presentOverlay(true)
     await capture('overlay-shown')
     await menu('overlay', async (commands) => {
@@ -435,6 +520,7 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
   } catch (error) {
     failure ??= `${stage}: ${String(error)}`.slice(0, 1024)
   } finally {
+    initialObservations.close()
     stopRpc()
     lifetime.beginShutdown()
     try {
@@ -459,12 +545,16 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
     if (Object.values(sdkFinal).some((value) => value !== 0)) failure ??= 'SDK cleanup incomplete'
     const receipt = JSON.stringify({
       event: 'bunly.native.composition-interactions',
-      schema: 1,
+      schema: 2,
       passed: failure === null,
       failure,
       workloadMs,
       focus,
       pendingFocus,
+      initialObservation: {
+        panes: initialObservations.observations(),
+        creation: { before: creationBefore, after: creationAfter },
+      },
       menus,
       dialog,
       hiddenFocusRejected,
@@ -491,7 +581,7 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
       performanceEligible: false,
     })
     assert.ok(
-      Buffer.byteLength(receipt) <= 16 * 1024,
+      Buffer.byteLength(receipt) <= 32 * 1024,
       'Interaction receipt exceeds native diagnostic budget'
     )
     console.error(receipt)

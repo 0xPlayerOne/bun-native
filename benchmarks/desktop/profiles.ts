@@ -63,9 +63,12 @@ import {
 } from './composition-profile.ts'
 import {
   COMPOSITION_INTERACTIONS_PROFILE,
+  LEGACY_COMPOSITION_INTERACTIONS_PROFILE,
   compositionInteractionSourceSelectors,
   acceptCompositionInteractions,
   acceptCompositionInteractionReport,
+  acceptCompositionInteractionsV1,
+  acceptCompositionInteractionReportV1,
 } from './composition-interactions.ts'
 
 const profiles = {
@@ -78,7 +81,7 @@ const profiles = {
     directory: 'composition-interactions',
     title: 'Composition Interactions',
     workloadLimitation:
-      'Three native pane/overlay menu cancellations and explicit authenticated focus restoration; supported native file dialog cancellation and modal exclusion. Physical input, IME, accessibility and hardware DPI remain unqualified.',
+      'Early bounded page visibility/focus history and preserved native focus during hidden overlay creation; three native menu cancellations, explicit focus restoration and supported native file dialog cancellation. Physical input, IME, accessibility and hardware DPI remain unqualified.',
     acceptObservation: acceptCompositionInteractions,
     acceptReport: acceptCompositionInteractionReport,
   },
@@ -223,6 +226,15 @@ export function desktopProfile(name = 'windows') {
 }
 
 export function desktopReportProfile(profile: unknown) {
+  if (profile === LEGACY_COMPOSITION_INTERACTIONS_PROFILE)
+    return {
+      ...profiles['composition-interactions'],
+      profile: LEGACY_COMPOSITION_INTERACTIONS_PROFILE,
+      workloadLimitation:
+        'Historical v1 interaction evidence observes renderer state after RPC startup; initial exposure and temporary focus loss before that observation were not qualified.',
+      acceptObservation: acceptCompositionInteractionsV1,
+      acceptReport: acceptCompositionInteractionReportV1,
+    }
   const selected = Object.values(profiles).find((entry) => entry.profile === profile)
   assert.ok(selected, 'Unknown desktop report profile')
   return selected

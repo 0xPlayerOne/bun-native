@@ -11,15 +11,17 @@ import {
   interactionMenuEvents,
   interactionSteps,
 } from '../../examples/view-composition/interactions-plan.ts'
+import { requireInitialObservation } from '../../examples/view-composition/initial-observation.ts'
 import { acceptDesktopEvidence, acceptDesktopObservation } from './acceptance.ts'
 import { compositionSourceSelectors } from './composition-acceptance.ts'
 
-export const COMPOSITION_INTERACTIONS_PROFILE = 'native-composition-interactions-v1'
+export const LEGACY_COMPOSITION_INTERACTIONS_PROFILE = 'native-composition-interactions-v1'
+export const COMPOSITION_INTERACTIONS_PROFILE = 'native-composition-interactions-v2'
 export const compositionInteractionSourceSelectors = [
   ...compositionSourceSelectors,
   'examples/window-commands/observations.ts',
 ] as const
-export const compositionInteractionRequiredSources = [
+export const compositionInteractionRequiredSourcesV1 = [
   'packages/contracts/src/view-composition.ts',
   'packages/contracts/src/window-commands.ts',
   'packages/runtime/src/cef.ts',
@@ -45,6 +47,12 @@ export const compositionInteractionRequiredSources = [
   'scripts/hosted_cef.py',
   'scripts/qualify-cef-window-modes-linux.py',
 ] as const
+export const compositionInteractionRequiredSources = [
+  ...compositionInteractionRequiredSourcesV1,
+  'examples/view-composition/initial-observation.ts',
+  'examples/view-composition/initial-observation-host.ts',
+  'examples/view-composition/public/initial-observation.js',
+] as const
 
 function record(input: unknown): Record<string, unknown> {
   assert.ok(input && typeof input === 'object' && !Array.isArray(input), 'Expected record')
@@ -56,7 +64,8 @@ function fields(input: unknown, names: readonly string[]) {
   return value
 }
 
-export function acceptCompositionInteractionReceipt(input: unknown) {
+/** Historical v1 replay only: no observation of application state before RPC startup. */
+export function acceptCompositionInteractionReceiptV1(input: unknown) {
   const receipt = fields(input, [
     'event',
     'schema',
@@ -258,12 +267,64 @@ export function acceptCompositionInteractionReceipt(input: unknown) {
   })
 }
 
-export function acceptCompositionInteractions(input: unknown) {
+export function acceptCompositionInteractionReceipt(input: unknown) {
+  const receipt = record(input)
+  assert.equal(receipt['schema'], 2, 'Current interaction execution requires schema 2')
+  // Three histories of at most 32 events, plus the unchanged bounded v1 sections.
+  // Retained v1 keeps its original 16 KiB ceiling and acceptance object.
+  assert.ok(Buffer.byteLength(JSON.stringify(receipt)) <= 32 * 1024)
+  const { initialObservation, ...priorSections } = receipt
+  const accepted = acceptCompositionInteractionReceiptV1({ ...priorSections, schema: 1 })
+  const initial = fields(initialObservation, ['panes', 'creation'])
+  const histories = fields(initial['panes'], panes)
+  const pages = record(receipt['pages'])
+  for (const pane of panes) {
+    const sample = fields(histories[pane], ['viewId', 'documentId', 'history'])
+    const page = record(pages[pane])
+    assert.equal(sample['viewId'], page['viewId'], 'Initial observation changed native view')
+    assert.equal(
+      sample['documentId'],
+      page['documentId'],
+      'Initial observation changed native document'
+    )
+    const history = requireInitialObservation(sample['history'])
+    assert.equal(history.pane, pane)
+    assert.equal(history.instance, record(page['initial'])['instance'])
+  }
+  const creation = fields(initial['creation'], ['before', 'after'])
+  for (const [phase, names] of [
+    ['before', ['left', 'right']],
+    ['after', panes],
+  ] as const) {
+    const states = fields(creation[phase], names)
+    for (const pane of names) {
+      const visible = pane !== 'overlay'
+      assert.deepEqual(states[pane], {
+        visible,
+        drawn: visible,
+        focusable: visible,
+        nativeFocused: pane === 'right',
+        pageVisibility: visible ? 'visible' : 'hidden',
+        pageFocused: pane === 'right',
+      })
+    }
+  }
+  return Object.freeze({
+    ...accepted,
+    initialVisibilityObserved: true,
+    creationFocusPreserved: true,
+  })
+}
+
+function acceptInteractionObservation(
+  input: unknown,
+  acceptReceipt: typeof acceptCompositionInteractionReceiptV1
+) {
   const observation = validateCommandObservation(input)
   const result = acceptDesktopObservation(
     observation,
     'bunly.native.composition-interactions',
-    acceptCompositionInteractionReceipt
+    acceptReceipt
   )
   assert.equal(
     result.dialog,
@@ -285,6 +346,23 @@ export function acceptCompositionInteractions(input: unknown) {
     'Interaction receipt must follow actual shutdown and precede backend exit'
   )
   return result
+}
+
+export function acceptCompositionInteractionsV1(input: unknown) {
+  return acceptInteractionObservation(input, acceptCompositionInteractionReceiptV1)
+}
+
+export function acceptCompositionInteractions(input: unknown) {
+  return acceptInteractionObservation(input, acceptCompositionInteractionReceipt)
+}
+
+export function acceptCompositionInteractionReportV1(input: unknown) {
+  return acceptDesktopEvidence(
+    input,
+    LEGACY_COMPOSITION_INTERACTIONS_PROFILE,
+    compositionInteractionRequiredSourcesV1,
+    acceptCompositionInteractionsV1
+  )
 }
 
 export function acceptCompositionInteractionReport(input: unknown) {
