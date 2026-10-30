@@ -1,3 +1,5 @@
+import * as fs from 'node:fs'
+import { EventEmitter } from 'node:events'
 import { expect, spyOn, test } from 'bun:test'
 import { createHash } from 'node:crypto'
 import { Worker } from 'node:worker_threads'
@@ -650,6 +652,69 @@ test.each(['native', 'malformed-cross-drive'] as const)(
   },
   20000
 )
+test.skipIf(process.platform !== 'darwin')(
+  'macOS reconciliation reloads real bundles when every filesystem notification is withheld',
+  async () => {
+    const parent = await temporary(),
+      root = join(parent, 'app')
+    let session: DevelopmentSession | undefined
+    let activeWatchers = 0,
+      createdWatchers = 0
+    // Drop notifications, not writes, bundling, worker replacement, or the assertion.
+    const watcher = spyOn(fs, 'watch').mockImplementation((..._args: unknown[]) => {
+      activeWatchers++
+      createdWatchers++
+      const events = new EventEmitter() as fs.FSWatcher
+      let closed = false
+      events.close = () => {
+        if (!closed) {
+          activeWatchers--
+          closed = true
+        }
+      }
+      events.ref = () => events
+      events.unref = () => events
+      return events
+    })
+    try {
+      await mkdir(root)
+      await fixture(root)
+      await writeFile(join(parent, 'external.ts'), 'export const external = 20')
+      await writeFile(
+        join(root, 'backend/main.ts'),
+        [
+          "import { parentPort } from 'node:worker_threads'",
+          "import { external } from '../../external.ts'",
+          'parentPort!.on("message", () => {})',
+          'parentPort!.postMessage(external)',
+        ].join('\n')
+      )
+      const adapter = workerAdapter()
+      session = await DevelopmentSession.start(
+        options(root, adapter, { watch: true, debounceMs: 10 })
+      )
+      expect(createdWatchers).toBeGreaterThan(0)
+      expect(adapter.value()).toBe(20)
+      await writeFile(join(parent, 'external.ts'), 'export const external = 21')
+      const deadline = performance.now() + 15000
+      while (adapter.value() !== 21 && performance.now() < deadline) await Bun.sleep(10)
+      expect(adapter.value()).toBe(21)
+      await session.close()
+      expect(activeWatchers).toBe(0)
+      expect(session.diagnostics()).toMatchObject({
+        closed: true,
+        pendingChanges: 0,
+        watchedDirectories: 0,
+      })
+    } finally {
+      watcher.mockRestore()
+      await session?.close()
+      await rm(parent, { recursive: true, force: true })
+    }
+  },
+  20000
+)
+
 test('shutdown cancels queued changes and waits for owned runtime completion', async () => {
   const root = await temporary()
   let session: DevelopmentSession | undefined

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.5](https://github.com/0xPlayerOne/bunly/compare/v0.6.4...v0.6.5) (2026-10-30)
+
+
+### Bug Fixes
+
+* **cli:** reconcile missed macOS dependency notifications ([#202](https://github.com/0xPlayerOne/bunly/issues/202)) ([a6e4a93](https://github.com/0xPlayerOne/bunly/commit/a6e4a93f75e6b80c67b8f528fc2f91fc5103faa5))
+
+
+### Maintenance
+
+* **m7:** retain native download timeout phase timings ([#201](https://github.com/0xPlayerOne/bunly/issues/201)) ([a5a3e4a](https://github.com/0xPlayerOne/bunly/commit/a5a3e4a3d3341c9b0ad4dd8a9b323222d6eba514))
+
 ## [0.6.4](https://github.com/0xPlayerOne/bunly/compare/v0.6.3...v0.6.4) (2026-10-30)
 
 
