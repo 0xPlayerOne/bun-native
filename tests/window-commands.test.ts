@@ -418,6 +418,73 @@ test('listener signals and capacity have independent bounded ownership', async (
   }
 })
 
+test('command listener failures are isolated without delaying later callbacks', async () => {
+  const f = await fixture()
+  try {
+    const handle = await f.backend.createWindowCommands(f.scope, definition)
+    const deliveries: string[] = []
+    f.backend.onWindowCommandsEvent(handle, () => {
+      deliveries.push('sync')
+      throw new Error('synchronous command failure')
+    })
+    f.backend.onWindowCommandsEvent(handle, async () => {
+      deliveries.push('async')
+      throw new Error('asynchronous command failure')
+    })
+    let errorsDuringDispatch = -1
+    f.backend.onWindowCommandsEvent(handle, () => {
+      deliveries.push('later')
+      errorsDuringDispatch = f.backend.diagnostics().listenerErrors
+    })
+    f.emit(handle, 1, { type: 'command', command: 'open', source: 'shortcut' })
+    await turn()
+    assert.deepEqual(deliveries, ['sync', 'async', 'later'])
+    assert.equal(errorsDuringDispatch, 1)
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test('command listeners count shared promise rejections after their subscriptions retire', async () => {
+  const f = await fixture()
+  try {
+    const handle = await f.backend.createWindowCommands(f.scope, definition)
+    const controller = new AbortController()
+    let reject!: (error: unknown) => void
+    const pending = new Promise<void>((_resolve, fail) => {
+      reject = fail
+    })
+    // Keep a failing pre-fix run contained; diagnostics must still observe each delivery.
+    void pending.catch(() => {})
+    const deliveries: number[] = []
+    f.backend.onWindowCommandsEvent(
+      handle,
+      (event) => {
+        deliveries.push(event.sequence)
+        return pending
+      },
+      { signal: controller.signal }
+    )
+    f.emit(handle, 1, { type: 'command', command: 'open', source: 'shortcut' })
+    f.emit(handle, 2, { type: 'command', command: 'open', source: 'shortcut' })
+    await turn()
+    assert.deepEqual(deliveries, [1, 2])
+    assert.equal(f.backend.diagnostics().listenerErrors, 0)
+    controller.abort()
+    assert.equal(f.backend.windowCommandsDiagnostics().listeners, 0)
+    f.emit(handle, 3, { type: 'command', command: 'open', source: 'shortcut' })
+    reject(new Error('shared command failure'))
+    await turn()
+    assert.deepEqual(deliveries, [1, 2])
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.cleanup()
+  }
+})
+
 test('popup admission and actual native shown/closed are distinct and cancellation remains charged', async () => {
   const f = await fixture()
   try {

@@ -41,6 +41,12 @@ tooltips are at most 256 UTF-8 bytes. Controls, unpaired surrogates and unknown
 definition fields are rejected. Each update supplies a complete text definition.
 The API does not accept an image path, icon payload or menu definition.
 
+Listeners run synchronously in registration order. Exceptions and rejections from
+returned promises are isolated and counted in backend `listenerErrors`, including
+rejections that settle after the listener is removed. Dispatch never waits for a
+listener's asynchronous work, and aborting a subscription only fences future
+delivery; it does not cancel work the application has already started.
+
 The native owner validates the grant immediately before creation, update and
 click delivery. Navigation and view closure retire the registration immediately;
 AppKit removal runs on the native UI thread outside host-registry borrows. The

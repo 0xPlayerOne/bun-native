@@ -171,7 +171,10 @@ successful zero-resource observation.
 Listeners should perform synchronous dispatch into application-owned work. Their
 AbortSignals fence future delivery; retiring a listener does not undo application
 effects already performed by a callback. Listener exceptions are isolated and
-counted by the existing backend diagnostics.
+counted by the existing backend diagnostics. Rejections from returned promises
+are also counted in `listenerErrors`, including those that settle after the
+subscription retires. Dispatch does not await asynchronous work or reorder later
+listeners.
 
 ## Managed application generations
 

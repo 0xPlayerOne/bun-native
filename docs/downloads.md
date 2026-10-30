@@ -48,7 +48,11 @@ Each operation owns one view reservation until its terminal native callback and
 owned-file cleanup have settled. There is at most one operation per view and
 eight per host. Progress subscriptions are bounded to 32 per operation. Exceptions
 in a subscriber cannot interrupt protocol progress and are counted in backend
-diagnostics. The returned state and outcome are immutable snapshots.
+`listenerErrors` diagnostics. Rejections from returned promises are counted for
+each delivered snapshot, including the immediate subscription snapshot and
+rejections that settle after completion or unsubscription. Dispatch and native
+settlement never wait for a subscriber's asynchronous work. The returned state
+and outcome are immutable snapshots.
 
 `operation.cancel()` is idempotent and returns `operation.completed`. Its promise
 does not resolve at cancellation-command acknowledgment. An `AbortSignal` passed
