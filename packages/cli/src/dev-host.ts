@@ -4,6 +4,7 @@ import type { FSWatcher } from 'node:fs'
 import { lstat, mkdir, readFile, realpath, rm } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { DevelopmentError } from './dev-cache.ts'
+import { DependencyReconciler, dependencyStamp } from './dev-dependency-reconciler.ts'
 
 export interface DevelopmentBundle {
   readonly entry: string
@@ -149,6 +150,7 @@ export class DevelopmentSession {
   readonly #watchers = new Map<string, FSWatcher>()
   readonly #restartFingerprints = new Map<string, string | null>()
   readonly #dependencies = new Set<string>()
+  readonly #reconciler: DependencyReconciler | undefined
   readonly #backend: readonly string[]
   readonly #frontend: readonly string[]
   readonly #shared: readonly string[]
@@ -198,6 +200,21 @@ export class DevelopmentSession {
       16384,
       'dependency capacity'
     )
+    // Bun's macOS FSEvents stream is recreated asynchronously without a readiness
+    // acknowledgment. Known backend inputs therefore need level reconciliation.
+    this.#reconciler =
+      process.platform === 'darwin' && options.watch !== false
+        ? new DependencyReconciler({
+            maxEntries: this.#maxDependencies,
+            changed: async (paths) => {
+              await this.invalidate(paths)
+            },
+            failed: () =>
+              this.#restart(
+                'Dependency reconciliation failed; restart to restore complete input observation'
+              ),
+          })
+        : undefined
     this.#debounce = boundedInteger(options.debounceMs ?? 25, 0, 1000, 'watch debounce')
     this.#frontendTimeout = boundedInteger(
       options.frontendTimeoutMs ?? 2000,
@@ -387,6 +404,7 @@ export class DevelopmentSession {
   }
   #restart(reason: string): void {
     this.#requiresRestart = true
+    void this.#reconciler?.close()
     this.#diagnostic('restart', 'configuration', 0, 'RESTART_REQUIRED', reason)
     try {
       this.#options.restartRequired?.(reason)
@@ -567,6 +585,8 @@ export class DevelopmentSession {
       const bundleStarted = performance.now()
       let built: Bun.BuildOutput
       const dependencies = new Set<string>()
+      const dependencyStamps = new Map<string, string | null>()
+      const reconcile = this.#reconciler !== undefined
       const maxDependencies = this.#maxDependencies
       let inputFailure: DevelopmentError | undefined
       try {
@@ -602,6 +622,14 @@ export class DevelopmentSession {
                       throw inputFailure
                     }
                     dependencies.add(path)
+                    if (reconcile) {
+                      // Capture before Bun's normal load, not after publication: an
+                      // edit between build and watcher readiness must remain visible.
+                      return dependencyStamp(path).then((stamp) => {
+                        dependencyStamps.set(path, stamp)
+                        return undefined
+                      })
+                    }
                   }
                   // Observe resolved files only; Bun still performs its normal load.
                   return undefined
@@ -641,6 +669,7 @@ export class DevelopmentSession {
         // Metafile keys are display paths. Bun 1.4.4 can emit non-resolvable
         // cross-drive keys on Windows; only actual file loads define watchers.
         await this.#trackDependencies([...dependencies])
+        this.#reconciler?.replace(dependencyStamps)
         this.#diagnostic(
           'build',
           'bundle',
@@ -815,6 +844,7 @@ export class DevelopmentSession {
       const stopped = await Promise.allSettled([
         Promise.resolve().then(() => this.#options.shutdown()),
         this.#running,
+        this.#reconciler?.close(),
         this.#server?.stop(true),
       ])
       if (stopped.some((item) => item.status === 'rejected')) {
