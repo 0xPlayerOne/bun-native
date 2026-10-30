@@ -10,6 +10,7 @@ import {
   type ViewHandle,
 } from '../../contracts/src/index.ts'
 import type { NativeEvent, NativeTransport } from './native-transport.ts'
+import type { ListenerResultObserver } from './listener-result.ts'
 
 interface Authority {
   readonly view: ViewHandle
@@ -55,7 +56,8 @@ export class CefStatusItems {
     readonly transport: NativeTransport,
     readonly capture: (scope: PolicyScope) => Authority,
     readonly available: () => void,
-    readonly listenerError: () => void
+    readonly listenerError: () => void,
+    readonly listenerResults: ListenerResultObserver
   ) {}
   #record(handle: StatusItemHandle): Registration {
     const record = handle && typeof handle === 'object' ? this.#handles.get(handle) : undefined
@@ -265,7 +267,7 @@ export class CefStatusItems {
         break
       }
       try {
-        subscription.listener(event)
+        this.listenerResults.observe(subscription.listener(event))
       } catch {
         this.listenerError()
       }

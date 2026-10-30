@@ -537,9 +537,13 @@ export class CefBackend
     this.#browserActions = new CefBrowserActions(transport)
     this.#dialogs = new CefFileDialogs(transport)
     this.#programmaticFiles = new CefProgrammaticFiles(transport)
-    this.#downloads = new CefDownloads(transport, () => {
-      this.#listenerErrors.count++
-    })
+    this.#downloads = new CefDownloads(
+      transport,
+      () => {
+        this.#listenerErrors.count++
+      },
+      this.#eventResults
+    )
     this.#descriptor = descriptor(transport.desktopCapabilities)
     this.#applicationLinks = new CefApplicationLinks(
       transport,
@@ -564,7 +568,8 @@ export class CefBackend
       },
       () => {
         this.#listenerErrors.count++
-      }
+      },
+      this.#eventResults
     )
     this.#commands = new CefWindowCommands(
       transport,
@@ -583,7 +588,8 @@ export class CefBackend
       },
       () => {
         this.#listenerErrors.count++
-      }
+      },
+      this.#eventResults
     )
     if (transport.desktopCapabilities.includes('app.lifecycle')) this.#application.ready(true)
     void transport.ready.then(

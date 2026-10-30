@@ -287,6 +287,73 @@ test('status listeners have a global bound, support abort, and recheck authority
   }
 })
 
+test('status listener failures are isolated without delaying later callbacks', async () => {
+  const f = await fixture()
+  try {
+    const item = await f.backend.createStatusItem(await f.grant(f.view), { title: 'Ready' })
+    const deliveries: string[] = []
+    f.backend.onStatusItemEvent(item, () => {
+      deliveries.push('sync')
+      throw new Error('synchronous status failure')
+    })
+    f.backend.onStatusItemEvent(item, async () => {
+      deliveries.push('async')
+      throw new Error('asynchronous status failure')
+    })
+    let errorsDuringDispatch = -1
+    f.backend.onStatusItemEvent(item, () => {
+      deliveries.push('later')
+      errorsDuringDispatch = f.backend.diagnostics().listenerErrors
+    })
+    f.emit(item, 1)
+    await turn()
+    assert.deepEqual(deliveries, ['sync', 'async', 'later'])
+    assert.equal(errorsDuringDispatch, 1)
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test('status listeners count shared promise rejections after their subscriptions retire', async () => {
+  const f = await fixture()
+  try {
+    const item = await f.backend.createStatusItem(await f.grant(f.view), { title: 'Ready' })
+    const controller = new AbortController()
+    let reject!: (error: unknown) => void
+    const pending = new Promise<void>((_resolve, fail) => {
+      reject = fail
+    })
+    // Keep a failing pre-fix run contained; diagnostics must still observe each delivery.
+    void pending.catch(() => {})
+    const deliveries: number[] = []
+    f.backend.onStatusItemEvent(
+      item,
+      (event) => {
+        deliveries.push(event.sequence)
+        return pending
+      },
+      { signal: controller.signal }
+    )
+    f.emit(item, 1)
+    f.emit(item, 2)
+    await turn()
+    assert.deepEqual(deliveries, [1, 2])
+    assert.equal(f.backend.diagnostics().listenerErrors, 0)
+    controller.abort()
+    assert.equal(f.backend.statusItemDiagnostics().listeners, 0)
+    f.emit(item, 3)
+    reject(new Error('shared status failure'))
+    await turn()
+    assert.deepEqual(deliveries, [1, 2])
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.cleanup()
+  }
+})
+
 test('native revocation and explicit disposal fence later status callbacks', async () => {
   for (const reason of ['native', 'dispose', 'view-close'] as const) {
     const f = await fixture()
