@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.7](https://github.com/0xPlayerOne/bunly/compare/v0.6.6...v0.6.7) (2026-10-30)
+
+
+### Bug Fixes
+
+* **runtime:** observe asynchronous desktop listener failures ([#207](https://github.com/0xPlayerOne/bunly/issues/207)) ([f1de054](https://github.com/0xPlayerOne/bunly/commit/f1de0549bfa7facebe28c968e38ce0fe81881ef2))
+* **workbench:** retain latest pane presentation during native requests ([#208](https://github.com/0xPlayerOne/bunly/issues/208)) ([9d3a500](https://github.com/0xPlayerOne/bunly/commit/9d3a50040052da9e3bb489e2f0632276f5673b10))
+
 ## [0.6.6](https://github.com/0xPlayerOne/bunly/compare/v0.6.5...v0.6.6) (2026-10-30)
 
 
