@@ -123,12 +123,28 @@ retained report semantics unchanged:
 bun run qualify:desktop /absolute/path/to/prepared-app --native-source=COMMIT --case=composition-interactions
 ```
 
-Its profile is `native-composition-interactions-v1`, and reports live under
+Its current profile is `native-composition-interactions-v2`, and reports live under
 `.bunly/m7/composition-interactions/run-*/report.json`. It reuses the authenticated
 composition renderer with a separate application entry. The full hosted suite
 runs it immediately after `view-composition`; Linux uses its owned disposable
 Xvfb/Openbox session. The fixture has a 30-second overall limit inside the same
 45-second process observer and existing native shutdown deadlines.
+
+A self-hosted blocking script records each page's actual visibility and focus
+before the module client starts. Authenticated, append-only histories preserve
+the same native document and page instance through `before-create`,
+`after-create` and `before-show` checkpoints. The hidden overlay must remain
+hidden and unfocused throughout its history; creating it must not interrupt the
+existing right pane's focus. Each history has a fixed 32-record limit and rejects
+overflow. The v2 receipt is bounded to 32 KiB. Collectors seal at the acknowledged
+`before-show` checkpoint, so this history does not observe the later IPC interval
+before the native show call. See the [fixture contract](../examples/view-composition/README.md)
+for that boundary and the unchanged native assertions.
+
+Historical `native-composition-interactions-v1` reports retain their separate
+validator, original acceptance object and 16 KiB limit. They establish their
+recorded observations after RPC startup, not the v2 early-history criterion.
+New execution cannot use a historical v1 receipt as acceptance.
 
 Three independent documents and sessions occupy two manual content panes and a
 trusted overlay. Each opens and cancels its own native popup. Acceptance requires

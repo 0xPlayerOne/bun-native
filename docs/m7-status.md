@@ -1,16 +1,18 @@
 # M7 implementation and evidence status
 
-This 2026-10-29 record maps M7's bounded desktop/browser implementation to its
-retained evidence. It covers the outgoing feature PRs #142, #143 and #145,
+This record, begun 2026-10-29 and continued 2026-10-30, maps M7's bounded
+desktop/browser implementation to its retained evidence. It covers the outgoing
+feature PRs #142, #143 and #145,
 diagnostics in #161, hardware-workbench controls in #162, fixture cleanup in
 #163 and native console bounds in #165, alongside the earlier desktop APIs.
 It also records the merged overlay polling cleanup in #170, composition resource
 profile in #172, download completion diagnostics in #173, the Windows
 non-file destination correction in #177 and native input-cache retention in #184.
-The bounded software criteria for #34 and #37 are complete. M7 remains in
-progress: #35 retains physical focus/composition and measurement gaps, and #36
-retains the Windows native download-completion gate. The owner closed #38 on
-2026-10-28 with its acceptance boxes unchecked; that closure is not hardware
+The bounded software criteria for #34, #36 and #37 are complete. M7 remains in
+progress: #35 has a strict Linux initial-hidden composition failure alongside
+physical focus/composition and measurement gaps. #36's maintained Windows gate
+passed on the reviewed correction and final released main. The owner closed #38
+on 2026-10-28 with its acceptance boxes unchecked; that closure is not hardware
 evidence. The issue tracker remains authoritative for closure state.
 
 “Qualified” below means that a retained native fixture ran on that OS for the
@@ -19,6 +21,87 @@ integration path, release packaging or performance. “Implemented / unqualified
 means code or API coverage exists without a matching native run. “Unsupported”
 means the adapter rejects the operation or has no implementation. Unsupported
 and unrun paths are not passes.
+
+## October 30 follow-up: lifecycle and initial-visibility work
+
+Release [v0.6.9](https://github.com/0xPlayerOne/bunly/releases/tag/v0.6.9) is
+`be0cec207781ceab27835e6d302f64ce16ee11bb`. A fresh unchanged
+[M1 lifecycle run 41143997686](https://github.com/0xPlayerOne/bunly/actions/runs/41143997686)
+completed successfully on Linux, Windows and macOS at that exact source. All
+three jobs installed Rust, built the M1 native probe, executed all six lifecycle
+cases and uploaded their reports. The three artifact digests and all 21 JSON
+reports were checked; every observation completed without timeout, cancellation,
+observer failure, overflow, orphan or cleanup survivor. Each process soak
+observed 28 generations. [PR #215](https://github.com/0xPlayerOne/bunly/pull/215)
+retains artifact/summary hashes and the earlier failed installer/retry attempts.
+Their cause remains unestablished. This closes that hosted lifecycle follow-up;
+the M1 probe is not CEF or physical desktop qualification.
+
+The draft composition branch now uses
+[`native-composition-interactions-v2`](desktop-qualification.md#composition-interactions)
+to retain actual visibility/focus history from the first page script. It rejects
+early overlay exposure and transient loss of the existing pane's focus during
+hidden-overlay creation. The bounded history ends at the authenticated pre-show
+checkpoint; the subsequent IPC interval before showing is not observed by that
+history. The original six v1 reports keep their exact acceptance and failure
+outcomes. Neither profile fabricates renderer state or relaxes the native gate.
+
+The [prepared CEF source candidate](../upstream/cef/initial-hidden-views/README.md)
+sets initial WebContents visibility from the BrowserView and its actual widget.
+Separate test-only and candidate patches make the expected baseline failure and
+proposed correction independently reproducible. Four upstream Views cases,
+source/tree/digest guards and a stock-library fallback check are prepared. The
+full patched test translation unit passed a public-header C++20 syntax check;
+the Chromium-internal implementation and full CEF target remain unbuilt. No
+candidate binary or native pass is claimed. The package does not change Bunly's
+runtime dependency or release identity. A full native CEF build and the strict
+Linux qualification remain prerequisites, alongside #35's physical and measured
+rendering criteria.
+
+## October 30 continuation: Windows correction and composition blocker
+
+[PR #212](https://github.com/0xPlayerOne/bunly/pull/212) merged the Windows CEF
+cache-path correction as `04650be8ca1f0844b85bb6f5c4871c6ad40fa284`; release
+[v0.6.8](https://github.com/0xPlayerOne/bunly/releases/tag/v0.6.8) is
+`eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d`. The reviewed branch's uninstrumented
+[Windows/full run 41106853236](https://github.com/0xPlayerOne/bunly/actions/runs/41106853236)
+passed all twenty native stages, including all fourteen download outcomes and
+the subsequent credential stage. The required optional-view-controls Clippy and
+native compile/lifetime step also passed for its three feature sets. Its unchanged
+strict download acceptance and historical source/native binding pass offline replay. Complete exported reports,
+qualifications and hashes are retained in the [Windows download cohort](../evidence/m7-windows-downloads/README.md).
+The [final released-main run 41111900552](https://github.com/0xPlayerOne/bunly/actions/runs/41111900552)
+passed on its first attempt at exact source `eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d`.
+It independently passed the same twenty stages, fourteen outcomes (three completed,
+seven cancelled, four expected failures), nine safety checks, zero final native/SDK
+owners, temporary cleanup and clean host shutdown. Its full report passes the
+unchanged strict receipt and historical source replay. The separate optional
+feature checks passed, as did 258 ordinary native tests, 1,613 Bun tests with
+fourteen skips and 269 Python tests with 41 skips. **#36's bounded software gate
+is complete.** The 10,475.6416 ms final download workload covers all fourteen
+cases; it is not a first-request latency or a speedup measurement.
+
+The first download retains the 6,000 ms completion requirement. Safe Browsing,
+native completion, security metadata and temporary ownership remain enforced.
+The [cache-path analysis](windows-cache-paths.md) records the source-backed defect
+and Windows kernel regressions. Diagnostic-only [#211](https://github.com/0xPlayerOne/bunly/pull/211)
+closed without merge and remains excluded from acceptance. Earlier failed
+qualifications below keep their original outcomes.
+
+**#35 remains blocked.** The separate strict composition-interactions work on
+unmerged [PR #210](https://github.com/0xPlayerOne/bunly/pull/210) has a
+[retained six-attempt cohort](https://github.com/0xPlayerOne/bunly/blob/e76f02ae78ce7532ea5f02a5a5e6c36090f2d85f/evidence/m7-composition-interactions/README.md):
+one Mac pass, two earlier Mac failures, the hosted Linux failure, and local Linux
+baseline/candidate failures. On Linux, an initially hidden native overlay still
+reports `visible` in its authenticated renderer document. The candidate native
+change failed the same strict fixture and was reverted. The
+[pinned upstream analysis](https://github.com/0xPlayerOne/bunly/blob/e76f02ae78ce7532ea5f02a5a5e6c36090f2d85f/evidence/m7-composition-interactions/upstream-initial-visibility.md)
+traces CEF Alloy's default creation-time visibility to Chromium's initial-hidden
+guard; no supported initial-hidden parameter was found in the inspected public
+windowed Views route. The fixture remains strict and the qualifier is not part
+of this released-main suite. Physical focus/IME/accessibility/display observations
+and measured windowed/off-screen rendering tradeoffs also remain unqualified.
+The Mac run used a virtual display and does not fill those hardware cells.
 
 ## October 30 continuation: watcher recovery and download phase timing
 
@@ -60,10 +143,12 @@ download scenarios were not run. Source-before/after are clean with equal source
 hashes, but after-run binary inventories were not reached. No security setting,
 payload, completion rule or maintained deadline was relaxed.
 
-**M7 remains open.** #36 still requires a corrected, passing maintained Windows
-completion gate, and #35 still requires physical focus/input/IME/accessibility/
-display observations and the specified rendering comparison. Historical Mac
-composition data and a software watcher fix do not qualify those missing cases.
+At that earlier phase-timing attempt, #36's maintained Windows completion gate
+remained open. The later correction and its acceptance state are recorded above.
+M7 still requires the strict Linux composition correction, physical focus/input/
+IME/accessibility/display observations and the specified rendering comparison.
+Historical Mac composition data and a software watcher fix do not qualify those
+missing cases.
 
 ## Composition interaction continuation
 
@@ -100,18 +185,18 @@ native integration evidence; they do not complete #35 or M7.
 
 ## Current capability matrix
 
-| Capability                                                                               | macOS ARM64                                                                | Windows x64                                                                                                | Linux x64                                            | Scope and evidence                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window state, geometry and native view composition                                       | Native fixtures; API focus and overlay covered                             | Hosted native suite                                                                                        | Hosted native suite                                  | [#132](https://github.com/0xPlayerOne/bunly/pull/132), [#133](https://github.com/0xPlayerOne/bunly/pull/133). Physical focus, pointer/Tab, IME, accessibility, hardware DPI and multi-monitor behavior remain unqualified.                                                                     |
-| Application lifecycle observations and text clipboard                                    | Native fixtures                                                            | Native fixtures                                                                                            | Lifecycle fixture; text clipboard unsupported        | [#134](https://github.com/0xPlayerOne/bunly/pull/134). Clipboard coverage is macOS/Windows text only and does not establish physical clipboard contention.                                                                                                                                     |
-| Popup/context menus and window-local shortcuts                                           | Native selection, cancellation and disposal fixture                        | Synthetic-native selection, cancellation and disposal fixture                                              | Native selection/cancellation/disposal fixture       | [#139](https://github.com/0xPlayerOne/bunly/pull/139); [Windows source and replay](#verified-windows-desktop-fixture-reports). Physical keyboard routing and accessibility remain unqualified. Global shortcuts are outside the implemented MVP. PR #162 supplies operator-workbench controls. |
-| Native open/save panels                                                                  | Callback/cancel/cleanup fixture; zero files selected                       | Unsupported                                                                                                | Unsupported                                          | [#139](https://github.com/0xPlayerOne/bunly/pull/139); see [dialog limits](file-dialogs.md). This is not general message-dialog or filesystem access.                                                                                                                                          |
-| Text status item                                                                         | Native fixture                                                             | Unsupported                                                                                                | Unsupported                                          | [#142](https://github.com/0xPlayerOne/bunly/pull/142). The fixture covers text items and synthetic callbacks, not a tray icon/menu, physical activation, keepalive or release signing.                                                                                                         |
-| Application links and outbound HTTPS                                                     | Controlled inbox/read/acknowledgment fixture; live OS delivery unqualified | Startup inbox/read/acknowledgment fixture; outbound HTTPS launch unqualified; inbound OS links unsupported | Outbound submission unsupported                      | [#145](https://github.com/0xPlayerOne/bunly/pull/145); [Windows source and replay](#verified-windows-desktop-fixture-reports). OS registration, live OS delivery and a real external-browser launch remain unqualified. Second-instance forwarding and reopen are not implemented.             |
-| Native downloads                                                                         | Fixture evidence on earlier source                                         | Implemented / unqualified; retained completion failure                                                     | Native fixture, source-attributed below              | [#144](https://github.com/0xPlayerOne/bunly/pull/144), incorporating the implementation from superseded [#138](https://github.com/0xPlayerOne/bunly/pull/138). Preserve the Windows failure described below; a fresh passing current-source run is still needed.                               |
-| Programmatic file-input upload and synthetic DOM drop                                    | Earlier four-profile fixture on prior source                               | Implemented / unqualified; no native run identified                                                        | Four-profile native fixture, source-attributed below | Merged [#143](https://github.com/0xPlayerOne/bunly/pull/143). This stages application-supplied bytes for approved file inputs and synthetic drops; it grants no arbitrary path reads and does not qualify an OS picker, physical OS-file drop or directory upload.                             |
-| Development browser actions                                                              | Four-profile native fixture at recorded source                             | Implemented / unqualified for the native action fixture                                                    | Four-profile native fixture at recorded source       | [#144](https://github.com/0xPlayerOne/bunly/pull/144). Input is synthetic; Windows actions, trusted/physical input and assistive technology remain unqualified.                                                                                                                                |
-| Physical keyboard, pointer, IME, accessibility, DPI, display topology and suspend/resume | Not run                                                                    | Not run                                                                                                    | Not run                                              | The maintained [hardware protocol](m7-platform-qualification.md) records operator cases as not run or unsupported. Linux x64/X11 evidence does not imply Wayland support.                                                                                                                      |
+| Capability                                                                               | macOS ARM64                                                                | Windows x64                                                                                                | Linux x64                                            | Scope and evidence                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Window state, geometry and native view composition                                       | Native fixtures; API focus and overlay covered                             | Hosted native suite                                                                                        | Hosted native suite                                  | [#132](https://github.com/0xPlayerOne/bunly/pull/132), [#133](https://github.com/0xPlayerOne/bunly/pull/133). Physical focus, pointer/Tab, IME, accessibility, hardware DPI and multi-monitor behavior remain unqualified.                                                                       |
+| Application lifecycle observations and text clipboard                                    | Native fixtures                                                            | Native fixtures                                                                                            | Lifecycle fixture; text clipboard unsupported        | [#134](https://github.com/0xPlayerOne/bunly/pull/134). Clipboard coverage is macOS/Windows text only and does not establish physical clipboard contention.                                                                                                                                       |
+| Popup/context menus and window-local shortcuts                                           | Native selection, cancellation and disposal fixture                        | Synthetic-native selection, cancellation and disposal fixture                                              | Native selection/cancellation/disposal fixture       | [#139](https://github.com/0xPlayerOne/bunly/pull/139); [Windows source and replay](#verified-windows-desktop-fixture-reports). Physical keyboard routing and accessibility remain unqualified. Global shortcuts are outside the implemented MVP. PR #162 supplies operator-workbench controls.   |
+| Native open/save panels                                                                  | Callback/cancel/cleanup fixture; zero files selected                       | Unsupported                                                                                                | Unsupported                                          | [#139](https://github.com/0xPlayerOne/bunly/pull/139); see [dialog limits](file-dialogs.md). This is not general message-dialog or filesystem access.                                                                                                                                            |
+| Text status item                                                                         | Native fixture                                                             | Unsupported                                                                                                | Unsupported                                          | [#142](https://github.com/0xPlayerOne/bunly/pull/142). The fixture covers text items and synthetic callbacks, not a tray icon/menu, physical activation, keepalive or release signing.                                                                                                           |
+| Application links and outbound HTTPS                                                     | Controlled inbox/read/acknowledgment fixture; live OS delivery unqualified | Startup inbox/read/acknowledgment fixture; outbound HTTPS launch unqualified; inbound OS links unsupported | Outbound submission unsupported                      | [#145](https://github.com/0xPlayerOne/bunly/pull/145); [Windows source and replay](#verified-windows-desktop-fixture-reports). OS registration, live OS delivery and a real external-browser launch remain unqualified. Second-instance forwarding and reopen are not implemented.               |
+| Native downloads                                                                         | Fixture evidence on earlier source                                         | Maintained branch and released-main native passes                                                          | Native fixture, source-attributed below              | [#144](https://github.com/0xPlayerOne/bunly/pull/144), incorporating the implementation from superseded [#138](https://github.com/0xPlayerOne/bunly/pull/138). The [Windows cohort](../evidence/m7-windows-downloads/README.md) completes the maintained gate while preserving earlier failures. |
+| Programmatic file-input upload and synthetic DOM drop                                    | Earlier four-profile fixture on prior source                               | Implemented / unqualified; no native run identified                                                        | Four-profile native fixture, source-attributed below | Merged [#143](https://github.com/0xPlayerOne/bunly/pull/143). This stages application-supplied bytes for approved file inputs and synthetic drops; it grants no arbitrary path reads and does not qualify an OS picker, physical OS-file drop or directory upload.                               |
+| Development browser actions                                                              | Four-profile native fixture at recorded source                             | Implemented / unqualified for the native action fixture                                                    | Four-profile native fixture at recorded source       | [#144](https://github.com/0xPlayerOne/bunly/pull/144). Input is synthetic; Windows actions, trusted/physical input and assistive technology remain unqualified.                                                                                                                                  |
+| Physical keyboard, pointer, IME, accessibility, DPI, display topology and suspend/resume | Not run                                                                    | Not run                                                                                                    | Not run                                              | The maintained [hardware protocol](m7-platform-qualification.md) records operator cases as not run or unsupported. Linux x64/X11 evidence does not imply Wayland support.                                                                                                                        |
 
 The accepted #34 MVP is the capability-reported CEF-first surface: window
 state/geometry, lifecycle observations, text clipboard on supported adapters,
@@ -177,7 +262,7 @@ assistive-technology, hardware, performance or RSS result is inferred.
 | View composition          | Hosted workflow [40628759325](https://github.com/0xPlayerOne/bunly/actions/runs/40628759325) passed all three targets. The detailed macOS run is attributed to source/native commit `2771bed9af84c956372ca8bbac56711508640ecc`; see [composition evidence](../evidence/m7-view-composition/README.md).                                                                                                                                                                                                                                                                                                                                                                                 |
 | Lifecycle and clipboard   | Workflow [40637325605](https://github.com/0xPlayerOne/bunly/actions/runs/40637325605) passed the 14-stage native suite on all three targets at PR head `ef2626b8cd7da8236527947f81965e551e0353af`; see the [public result](../evidence/m7-desktop-services-results.json). Text clipboard ran only on macOS and Windows; Linux was explicitly unsupported.                                                                                                                                                                                                                                                                                                                              |
 | Menus and dialogs         | The macOS menu-selection and panel-admission/cancellation/cleanup result is tied to source `efe4db3` in [#139](https://github.com/0xPlayerOne/bunly/pull/139). The panel selected zero files. Neither result is evidence of physical keyboard input or a Windows/Linux native menu run.                                                                                                                                                                                                                                                                                                                                                                                                |
-| Windows download          | The maintained [merged-main run 40942788214](https://github.com/0xPlayerOne/bunly/actions/runs/40942788214) retains the six-second completion failure after #177. Earlier failed runs and both excluded timing probes are recorded below with their exact sources and limits.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Windows download          | The [released-main run 41111900552](https://github.com/0xPlayerOne/bunly/actions/runs/41111900552) passes all fourteen outcomes at exact source `eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d`; see the [complete cohort](../evidence/m7-windows-downloads/README.md). Earlier failed runs and excluded diagnostic probes remain below with their exact sources and limits.                                                                                                                                                                                                                                                                                                                |
 | Status item               | [#142](https://github.com/0xPlayerOne/bunly/pull/142) merged at `2815596`. Its macOS fixture source was `211a09b4f8c53ea005c62024fc9069e73ccedd29`, native build `398f5ac`, report SHA-256 `ab050ec42367161518c02172758d07b40abfc75fcc7320948fe6b8c6b3be72ef`. It has no Windows/Linux adapter.                                                                                                                                                                                                                                                                                                                                                                                        |
 | Application links         | [#145](https://github.com/0xPlayerOne/bunly/pull/145) merged at `3fc7ae0`; its macOS fixture source was `3067a218097cd5f18d78673cc2c4b2b510f4a43a`, native build `f984f112ab09b40b64e66090ca21dd2911c7cd84`. Status report SHA-256: `ee3488d6a0877ea78b857c7c603700752b8d46790ce0e045d7e0fc0601bf0168`; links report SHA-256: `05c3ec6d893aa9a6772eea5011f75942552d822bd8a315893c130fd6836e7852`. Neither report proves live OS URL delivery or launch of a real external browser.                                                                                                                                                                                                     |
 | Browser actions           | The four-profile macOS pass is tied to fixture `6f7c3ab`, native build `b1dd997`, native tree `4ab9910dd6a24cb90af863763902fc3eb95e4dfb`, as recorded in [#144](https://github.com/0xPlayerOne/bunly/pull/144). The Linux four-profile run used source `718598a55fac90c997cf650879439a79fc46ef31`, source tree `d890d1e028ff1cb0798e8c618c2400f6b60d7ba5`, native CEF tree `faef4e6612afed868de53398333734590e900a7f`, and report SHA-256 `d5b88ac4ce028a3b61cccaeede25c0f9d1e2940aebe801bd51cb2165c8bf50c1`. These are synthetic-input results, not Windows, physical/trusted input or assistive-technology evidence.                                                                 |
@@ -259,13 +344,13 @@ a matched renderer comparison remain unqualified; #35 remains open.
 
 ## Issue acceptance status
 
-| Issue                                                                                           | Software acceptance and remaining qualification                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [#34](https://github.com/0xPlayerOne/bunly/issues/34) — bounded TypeScript desktop API          | The bounded MVP above is implemented with native capability policy, validated arguments/paths and disposable generation-owned callbacks. This matrix records tested, unsupported and implemented-but-unqualified paths. #162 supplies scoped operator-workbench controls. Broader Electron compatibility and untested OS integration are not accepted claims.                                                                                                                                                        |
-| [#35](https://github.com/0xPlayerOne/bunly/issues/35) — embedded views and composition          | Attachment, bounds, clipping, visibility, native overlays, reload identity and logical native-owner retirement are implemented and fixture-tested. PR #172 supplies the executable [composition resource profile](composition-measurement.md) and replay validator. Physical focus/pointer/Tab, IME, assistive technology, hardware DPI/multi-monitor behavior, overlay/dialog interaction and measured rendering tradeoffs remain open. Logical owner retirement is not a measurement of GPU memory or process RSS. |
-| [#36](https://github.com/0xPlayerOne/bunly/issues/36) — downloads, uploads and file interaction | Bounded downloads and programmatic uploads/synthetic DOM drops are merged, with validated scope and explicit operation cleanup. The issue remains open for a fresh passing Windows native completion run. Application-supplied bytes do not qualify arbitrary path reads, OS-file drop, directory upload or an OS picker.                                                                                                                                                                                            |
-| [#37](https://github.com/0xPlayerOne/bunly/issues/37) — browser actions and diagnostics         | #144 implements authorized engine-neutral actions; #161 completes the public diagnostic helpers and bounded renderer/RPC observers; #165 bounds best-effort native console output. No public raw CDP or listening debug endpoint is added. Software acceptance preserves disabled-profile and exact native authority checks; it does not claim Windows native action qualification, physical input, screen-reader behavior or hardware performance.                                                                  |
-| [#38](https://github.com/0xPlayerOne/bunly/issues/38) — physical hardware qualification         | Owner-closed 2026-10-28 with acceptance boxes unchecked. The maintained protocol still lists operator cases as not run or unsupported. Workbench controls and preparation are not hardware evidence.                                                                                                                                                                                                                                                                                                                 |
+| Issue                                                                                           | Software acceptance and remaining qualification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [#34](https://github.com/0xPlayerOne/bunly/issues/34) — bounded TypeScript desktop API          | The bounded MVP above is implemented with native capability policy, validated arguments/paths and disposable generation-owned callbacks. This matrix records tested, unsupported and implemented-but-unqualified paths. #162 supplies scoped operator-workbench controls. Broader Electron compatibility and untested OS integration are not accepted claims.                                                                                                                                                                                                      |
+| [#35](https://github.com/0xPlayerOne/bunly/issues/35) — embedded views and composition          | Existing fixtures cover attachment, bounds, clipping, overlays, reload identity and logical owner retirement. The stricter interaction cohort above exposes a Linux initially-hidden native/renderer visibility mismatch; the attempted correction failed and was reverted. Its Mac interaction pass does not qualify physical focus/pointer/Tab, IME, assistive technology, hardware DPI/multi-monitor behavior or rendering tradeoffs. PR #172's [resource profile](composition-measurement.md) remains a windowed baseline, not a matched rendering comparison. |
+| [#36](https://github.com/0xPlayerOne/bunly/issues/36) — downloads, uploads and file interaction | Bounded downloads and programmatic uploads/synthetic DOM drops are merged, with validated scope and explicit operation cleanup. The bounded software gate is complete after the reviewed branch and released-main Windows/full passes, including strict download replay and the required optional-feature checks. Application-supplied bytes do not qualify arbitrary path reads, OS-file drop, directory upload or an OS picker.                                                                                                                                  |
+| [#37](https://github.com/0xPlayerOne/bunly/issues/37) — browser actions and diagnostics         | #144 implements authorized engine-neutral actions; #161 completes the public diagnostic helpers and bounded renderer/RPC observers; #165 bounds best-effort native console output. No public raw CDP or listening debug endpoint is added. Software acceptance preserves disabled-profile and exact native authority checks; it does not claim Windows native action qualification, physical input, screen-reader behavior or hardware performance.                                                                                                                |
+| [#38](https://github.com/0xPlayerOne/bunly/issues/38) — physical hardware qualification         | Owner-closed 2026-10-28 with acceptance boxes unchecked. The maintained protocol still lists operator cases as not run or unsupported. Workbench controls and preparation are not hardware evidence.                                                                                                                                                                                                                                                                                                                                                               |
 
 The maintained [hardware workbench guide](hardware-workbench.md) and
 [qualification protocol](m7-platform-qualification.md) define equipment,
@@ -360,14 +445,16 @@ physical qualification.
 The retained failure lacks watcher-callback, build/reload-stage and final
 session-counter observations. Source review confirms that the external
 dependency-directory watcher is created before startup returns, but it does
-not establish operating-system watcher readiness or a cause. #179 remains open;
-a naturally failing bounded trace of the write, callback, build/reload diagnostics
-and final session counters is needed to distinguish a missed event from later
-build or replacement failure. The existing deadline remains unchanged.
+not establish operating-system watcher readiness or a cause. At that earlier
+probe, #179 remained open: a naturally failing bounded trace of the write,
+callback, build/reload diagnostics and final session counters was still needed
+to distinguish a missed event from later build or replacement failure. The later
+#202 correction and accepted recovery regression are recorded in the October 30
+continuation above. The existing deadline remains unchanged.
 
-## Remaining qualification work
+## Qualification history and remaining work
 
-### Windows file-workflow completion
+### Windows file-workflow completion history
 
 The historical standard-user failure at `42675aa` in
 [workflow 40764782582](https://github.com/0xPlayerOne/bunly/actions/runs/40764782582)
@@ -537,7 +624,7 @@ All 68 artifact files and the completed log are retained, and the prior #190
 run's ZIP/report hashes remain unchanged. PR #190 is closed without merge;
 both diagnostic sources and their failed acceptance receipts remain retained.
 
-### Final released-main Windows verification
+### Historical v0.6.3 released-main Windows failure
 
 The final maintained [Windows/full run 40970973932](https://github.com/0xPlayerOne/bunly/actions/runs/40970973932)
 used clean released source `21abd9128e60388d431a329073d75d013426778a`,
@@ -583,27 +670,42 @@ The exported download report has SHA-256
 `c55564475d5970d436dba7b7a15ea88f40aee3f382ccfc68f42584abd6a3fd48`;
 its two retained copies are identical. The completed job log has SHA-256
 `690d43b7dc951700f88b30c21de08a61fd5c937c5f6861225fee931e205e27f3`.
-This attempt was not retried. The result preserves the prior failed evidence
-and keeps #36 open; no cause or correction for the first-completion delay has
-been established.
+This attempt was not retried. At that source it kept #36 open; a cause or
+correction had not yet been established. The later cache-path correction does
+not alter this failed result or its retained evidence.
 
-### Maintained Windows acceptance run
+### Completed maintained Windows acceptance
 
-After an evidence-backed correction, rerun the maintained [native CEF workflow](https://github.com/0xPlayerOne/bunly/actions/workflows/cef-runtime.yml)
-on the final reviewed `main` revision with `platform=windows` and `suite=full`:
+The [cache-path correction](windows-cache-paths.md) passed the real Windows
+kernel regression and uninstrumented full suite on the reviewed branch and
+released `main`. The complete [two-run cohort](../evidence/m7-windows-downloads/README.md)
+retains both source identities, exact exports and qualification records,
+original/compressed digests, actual optional-feature job steps and strict replay
+results. Safe Browsing, security metadata handling, native completion and the
+6,000 ms first-request deadline remain enforced. The earlier startup trace is
+excluded from acceptance; diagnostic #211 closed without merge.
 
-```sh
-gh workflow run cef-runtime.yml --ref main -f platform=windows -f suite=full
-```
+Both actual standard-user runs passed the twenty ordinary native stages,
+including credentials. Their separate required optional-view-control step
+executed Clippy and native compile/lifetime tests for browser actions,
+programmatic files and the combined feature set. These successful feature checks
+do not qualify the separate GUI programmatic-file workload, Windows OS pickers,
+physical OS-file drop or directory upload. The current capability matrix keeps
+those limits explicit.
 
-Follow [manual native qualification](manual-native-qualification.md). Retain
-the exact source/artifact identities and failed attempts. Require the native
-completion callback and the unchanged six-second deadline; arrival of all
-32,768 bytes alone does not pass the completion gate. The standard-user native
-run, its cleanup, and the optional feature-profile gates must actually execute.
-A portable-only pass or a Linux result cannot close this Windows gap.
+The documentation/evidence recording commit is separate from the tested release
+commit. Its qualified source-selector inventories, source hashes and native tree
+are unchanged from `eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d`; the manifest records
+that equivalence. Follow [manual native qualification](manual-native-qualification.md)
+for future runtime changes and preserve both successful and failed attempts.
 
-### Physical focus, input, accessibility and rendering tradeoffs
+### Strict composition, physical input and rendering tradeoffs
+
+The strict Linux initial-hidden mismatch described above remains a software
+blocker before the remaining physical work. Preserve the failing receipt and
+creation-time source analysis when evaluating an upstream fix or a reviewed
+architecture change. Briefly showing hidden content, substituting synthetic
+visibility or relaxing the fixture does not establish correct initial visibility.
 
 Use the [hardware workbench](hardware-workbench.md) and
 [platform protocol](m7-platform-qualification.md) on the claimed equipment.
@@ -618,5 +720,6 @@ for the fixed windowed workload and retained-report validation, alongside the
 physical cases. Current windowed CEF fixtures provide no measured comparison
 with off-screen/composited rendering.
 
-Track these remaining gates in #35 and #36. Preserve #38's owner-closed,
+Track the remaining composition gates in #35; #36's bounded software gate is
+complete. Preserve #38's owner-closed,
 unchecked state without converting it into a passed equipment record.

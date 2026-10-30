@@ -1,0 +1,18 @@
+diff --git a/libcef/browser/alloy/browser_platform_delegate_alloy.cc b/libcef/browser/alloy/browser_platform_delegate_alloy.cc
+index 48cf8b71c441b856ce6db740304d54bcd0af1d33..31ec064dfce2e4e28c1e7675a79ab1524d58c99c 100644
+--- a/libcef/browser/alloy/browser_platform_delegate_alloy.cc
++++ b/libcef/browser/alloy/browser_platform_delegate_alloy.cc
+@@ -9,0 +10 @@
++#include "cef/include/views/cef_browser_view.h"
+@@ -22,0 +24 @@
++#include "ui/views/widget/widget.h"
+@@ -48,0 +51,9 @@ content::WebContents* CefBrowserPlatformDelegateAlloy::CreateWebContents(
++  if (create_params.browser_view) {
++    // Views browsers are created during AddedToWidget, when the actual host
++    // widget is already available. Chromium trusts this initial state until
++    // the contents is first shown, so a later Hide cannot supply it instead.
++    auto* widget = GetWindowWidget();
++    wc_create_params.initially_hidden =
++        !create_params.browser_view->IsDrawn() || !widget || !widget->IsVisible();
++  }
++

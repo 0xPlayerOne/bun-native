@@ -226,7 +226,11 @@ all 28 ordered observations and exact retained identities; an incomplete or
 reordered sequence cannot be promoted to native acceptance.
 
 The distinct `--case=composition-interactions` profile combines these panes with
-real native menu and dialog lifecycles. It opens and cancels one popup owned by
+real native menu and dialog lifecycles. Its current v2 receipt first retains
+bounded visibility/focus history from the initial page script through an
+authenticated pre-show checkpoint. Hidden-overlay creation must preserve the
+existing pane's focus without an earlier visible overlay interval. Historical
+v1 receipts retain their original meaning. It opens and cancels one popup owned by
 each content pane and the trusted overlay, explicitly restores focus after each
 closure, and checks native and authenticated renderer focus for all three panes.
 On the supported dialog platform it observes a visible native open panel,

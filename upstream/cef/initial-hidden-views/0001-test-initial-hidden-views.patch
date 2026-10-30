@@ -1,0 +1,357 @@
+diff --git a/tests/ceftests/views/browser_view_unittest.cc b/tests/ceftests/views/browser_view_unittest.cc
+index 597455546a882f41e49987b2798b52e4573573f8..b0432b544e42be19228548bbdbd0ff1bf5cca484 100644
+--- a/tests/ceftests/views/browser_view_unittest.cc
++++ b/tests/ceftests/views/browser_view_unittest.cc
+@@ -5,0 +6 @@
++#include "include/cef_focus_handler.h"
+@@ -8,0 +10 @@
++#include "include/views/cef_textfield.h"
+@@ -358,0 +361,341 @@ void ChromeWindowOneAlloyOverlayImpl(CefRefPtr<CefWaitableEvent> event) {
++// The first application script records every observed visibility state. Keeping
++// the history in the document detects a visible interval before OnLoadEnd.
++const char kInitialVisibilityUrl[] = "https://test1.example/initial-visibility";
++const char kInitialVisibilityPrefix[] = "cef-initial-visibility:";
++const char kInitialVisibilityContent[] = R"HTML(
++<!doctype html><script>
++const visibilityHistory = [];
++function reportVisibility() {
++  visibilityHistory.push(document.visibilityState);
++  console.log("cef-initial-visibility:" + visibilityHistory.join(","));
++}
++document.addEventListener("visibilitychange", reportVisibility);
++reportVisibility();
++</script><body>Initial visibility</body>
++)HTML";
++
++enum class InitialVisibilityMode {
++  kHiddenOverlay,
++  kHiddenOwner,
++  kHiddenView,
++  kVisibleView,
++};
++
++class InitialVisibilityTestHandler : public BrowserViewTestHandlerBase,
++                                     public CefFocusHandler {
++ public:
++  using VisibilityCallback =
++      base::RepeatingCallback<void(CefRefPtr<CefBrowser>, const std::string&)>;
++
++  InitialVisibilityTestHandler() : BrowserViewTestHandlerBase(1) {}
++
++  void AddResources() {
++    AddResource(kInitialVisibilityUrl, kInitialVisibilityContent, "text/html");
++  }
++
++  void SetVisibilityCallback(VisibilityCallback callback) {
++    visibility_callback_ = std::move(callback);
++  }
++
++  void ClearCallbacks() {
++    visibility_callback_.Reset();
++    BrowserViewTestHandlerBase::ClearCallbacks();
++  }
++
++  CefRefPtr<CefFocusHandler> GetFocusHandler() override { return this; }
++
++  void OnGotFocus(CefRefPtr<CefBrowser> browser) override {
++    EXPECT_UI_THREAD();
++    got_focus_ = true;
++  }
++
++  bool got_focus() const { return got_focus_; }
++
++  void OnLoadEnd(CefRefPtr<CefBrowser> browser,
++                 CefRefPtr<CefFrame> frame,
++                 int httpStatusCode) override {
++    if (!frame->IsMain()) {
++      return;
++    }
++
++    EXPECT_UI_THREAD();
++    EXPECT_EQ(1, ++browsers_loaded_);
++    EXPECT_EQ(kInitialVisibilityUrl, frame->GetURL().ToString());
++    frame_identifier_ = frame->GetIdentifier().ToString();
++    MaybeNotify(browser);
++  }
++
++  bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
++                        cef_log_severity_t level,
++                        const CefString& message,
++                        const CefString& source,
++                        int line) override {
++    const auto value = message.ToString();
++    if (value.rfind(kInitialVisibilityPrefix, 0) != 0) {
++      return TestHandler::OnConsoleMessage(browser, level, message, source, line);
++    }
++
++    EXPECT_UI_THREAD();
++    EXPECT_EQ(kInitialVisibilityUrl, source.ToString());
++    history_ = value.substr(sizeof(kInitialVisibilityPrefix) - 1);
++    MaybeNotify(browser);
++    return true;
++  }
++
++  void Complete(bool success) {
++    visibility_callback_.Reset();
++    if (on_complete_) {
++      // Match the existing test harness: close only after the CEF load/console
++      // callback has unwound and released its temporary client references.
++      CefPostTask(TID_UI, base::BindOnce(std::move(on_complete_), success));
++    }
++  }
++
++ private:
++  void MaybeNotify(CefRefPtr<CefBrowser> browser) {
++    if (browsers_loaded_ != 1 || history_.empty() || !visibility_callback_) {
++      return;
++    }
++    EXPECT_EQ(frame_identifier_,
++              browser->GetMainFrame()->GetIdentifier().ToString());
++    // Completion can reset the stored callback while this invocation runs.
++    auto callback = visibility_callback_;
++    callback.Run(browser, history_);
++  }
++
++  std::string history_;
++  std::string frame_identifier_;
++  VisibilityCallback visibility_callback_;
++  bool got_focus_ = false;
++
++  IMPLEMENT_REFCOUNTING(InitialVisibilityTestHandler);
++};
++
++class InitialVisibilityFocusDelegate : public CefTextfieldDelegate {
++ public:
++  void OnBlur(CefRefPtr<CefView> view) override {
++    if (armed_) {
++      lost_focus_ = true;
++    }
++  }
++
++  void SetArmed(bool armed) { armed_ = armed; }
++  bool lost_focus() const { return lost_focus_; }
++
++ private:
++  bool armed_ = false;
++  bool lost_focus_ = false;
++
++  IMPLEMENT_REFCOUNTING(InitialVisibilityFocusDelegate);
++};
++
++class InitialVisibilityDelegate
++    : public BrowserViewDelegateBase<InitialVisibilityTestHandler> {
++ public:
++  InitialVisibilityDelegate(CefRefPtr<InitialVisibilityTestHandler> handler,
++                            CefRefPtr<CefWaitableEvent> event,
++                            InitialVisibilityMode mode)
++      : BrowserViewDelegateBase(handler, event, CEF_RUNTIME_STYLE_ALLOY, 1),
++        mode_(mode) {}
++
++  void OnWindowCreated(CefRefPtr<CefWindow> window) override {
++    window_ = window;
++    focus_delegate_ = new InitialVisibilityFocusDelegate();
++    focus_view_ = CefTextfield::CreateTextfield(focus_delegate_);
++    window_->AddChildView(focus_view_);
++    focus_view_->SetBounds(CefRect(0, 0, 200, 30));
++
++    // Show the owner before adding the BrowserView in the visible-owner cases.
++    // The visible control must therefore be visible at WebContents creation.
++    if (mode_ != InitialVisibilityMode::kHiddenOwner) {
++      window_->Show();
++      focus_view_->RequestFocus();
++      EXPECT_TRUE(focus_view_->HasFocus());
++      focus_delegate_->SetArmed(true);
++    }
++
++    CefBrowserSettings settings;
++    browser_view_ =
++        CreateBrowserView(handler_, kInitialVisibilityUrl, settings, this);
++    if (mode_ == InitialVisibilityMode::kHiddenView) {
++      browser_view_->SetVisible(false);
++    }
++
++    if (mode_ == InitialVisibilityMode::kHiddenOverlay ||
++        mode_ == InitialVisibilityMode::kHiddenOwner) {
++      overlay_controller_ = window_->AddOverlayView(
++          browser_view_, CEF_DOCKING_MODE_CUSTOM, /*can_activate=*/true);
++      EXPECT_TRUE(overlay_controller_);
++      overlay_controller_->SetBounds(CefRect(50, 50, 300, 200));
++      if (mode_ == InitialVisibilityMode::kHiddenOwner) {
++        // This child is shown but its owner remains hidden.
++        overlay_controller_->SetVisible(true);
++      }
++    } else {
++      window_->AddChildView(browser_view_);
++      browser_view_->SetBounds(CefRect(50, 50, 300, 200));
++    }
++  }
++
++  cef_runtime_style_t GetBrowserRuntimeStyle() override {
++    return CEF_RUNTIME_STYLE_ALLOY;
++  }
++
++  void Close() {
++    finished_ = true;
++    if (window_) {
++      window_->Close();
++    }
++  }
++
++  void OnVisibility(CefRefPtr<CefBrowser> browser,
++                    const std::string& history) {
++    EXPECT_UI_THREAD();
++    if (finished_) {
++      return;
++    }
++
++    const bool initially_visible = mode_ == InitialVisibilityMode::kVisibleView;
++    const char* expected =
++        initially_visible
++            ? (phase_ == 0 ? "visible"
++                           : phase_ == 1 ? "visible,hidden"
++                                         : "visible,hidden,visible")
++            : (phase_ == 0 ? "hidden"
++                           : phase_ == 1 ? "hidden,visible"
++                                         : "hidden,visible,hidden");
++    if (history != expected) {
++      ADD_FAILURE() << "phase=" << phase_ << " expected=" << expected
++                    << " actual=" << history;
++      Finish(false);
++      return;
++    }
++
++    EXPECT_TRUE(browser_view_->GetBrowser()->IsSame(browser));
++    if (phase_ == 0) {
++      browser_identifier_ = browser->GetIdentifier();
++      if (!initially_visible) {
++        EXPECT_FALSE(browser_view_->HasFocus());
++        if (mode_ == InitialVisibilityMode::kHiddenView) {
++          EXPECT_FALSE(browser_view_->IsDrawn());
++          EXPECT_FALSE(browser_view_->IsFocusable());
++        } else {
++          EXPECT_FALSE(overlay_controller_->IsDrawn());
++        }
++        EXPECT_FALSE(handler_->got_focus());
++        if (mode_ != InitialVisibilityMode::kHiddenOwner) {
++          EXPECT_TRUE(focus_view_->HasFocus());
++          EXPECT_FALSE(focus_delegate_->lost_focus());
++        }
++      }
++      focus_delegate_->SetArmed(false);
++    } else {
++      EXPECT_EQ(browser_identifier_, browser->GetIdentifier());
++    }
++
++    if (phase_ == 2) {
++      Finish(true);
++      return;
++    }
++
++    ++phase_;
++    // Let the console callback unwind before changing native visibility.
++    CefPostTask(TID_UI,
++                base::BindOnce(&InitialVisibilityDelegate::SetVisible,
++                               CefRefPtr<InitialVisibilityDelegate>(this),
++                               phase_ == 1 ? !initially_visible
++                                           : initially_visible));
++  }
++
++  bool CanClose(CefRefPtr<CefWindow> window) override {
++    if (browser_view_) {
++      auto browser = browser_view_->GetBrowser();
++      if (browser) {
++        const bool can_close = browser->GetHost()->TryCloseBrowser();
++        if (can_close) {
++          if (overlay_controller_ && overlay_controller_->IsValid()) {
++            overlay_controller_->Destroy();
++            overlay_controller_ = nullptr;
++          }
++          browser_view_ = nullptr;
++        }
++        return can_close;
++      }
++    }
++    return true;
++  }
++
++  void OnBrowserDestroyed(CefRefPtr<CefBrowserView> browser_view,
++                          CefRefPtr<CefBrowser> browser) override {
++    BrowserViewDelegateBase::OnBrowserDestroyed(browser_view, browser);
++    browser_view_ = nullptr;
++    Close();
++  }
++
++ private:
++  void SetVisible(bool visible) {
++    if (finished_) {
++      return;
++    }
++    if (mode_ == InitialVisibilityMode::kHiddenOwner) {
++      if (visible) {
++        window_->Show();
++      } else {
++        window_->Hide();
++      }
++    } else if (overlay_controller_) {
++      overlay_controller_->SetVisible(visible);
++    } else {
++      browser_view_->SetVisible(visible);
++    }
++  }
++
++  void Finish(bool success) {
++    finished_ = true;
++    handler_->Complete(success);
++  }
++
++  const InitialVisibilityMode mode_;
++  CefRefPtr<CefBrowserView> browser_view_;
++  CefRefPtr<CefOverlayController> overlay_controller_;
++  CefRefPtr<CefTextfield> focus_view_;
++  CefRefPtr<InitialVisibilityFocusDelegate> focus_delegate_;
++  int browser_identifier_ = 0;
++  int phase_ = 0;
++  bool finished_ = false;
++
++  IMPLEMENT_REFCOUNTING(InitialVisibilityDelegate);
++};
++
++void InitialVisibilityTestImpl(CefRefPtr<CefWaitableEvent> event,
++                               InitialVisibilityMode mode) {
++  CefRefPtr<InitialVisibilityTestHandler> handler =
++      new InitialVisibilityTestHandler();
++  handler->AddResources();
++  CefRefPtr<InitialVisibilityDelegate> delegate =
++      new InitialVisibilityDelegate(handler, event, mode);
++  handler->SetVisibilityCallback(
++      base::BindRepeating(&InitialVisibilityDelegate::OnVisibility, delegate));
++  handler->SetOnComplete(
++      base::BindOnce([](CefRefPtr<InitialVisibilityDelegate> delegate,
++                        bool success) { delegate->Close(); },
++                     delegate));
++  CefWindow::CreateTopLevelWindow(delegate);
++}
++
++void InitiallyHiddenOverlayImpl(CefRefPtr<CefWaitableEvent> event) {
++  InitialVisibilityTestImpl(event, InitialVisibilityMode::kHiddenOverlay);
++}
++
++void InitiallyHiddenOwnerImpl(CefRefPtr<CefWaitableEvent> event) {
++  InitialVisibilityTestImpl(event, InitialVisibilityMode::kHiddenOwner);
++}
++
++void InitiallyHiddenViewImpl(CefRefPtr<CefWaitableEvent> event) {
++  InitialVisibilityTestImpl(event, InitialVisibilityMode::kHiddenView);
++}
++
++void InitiallyVisibleViewImpl(CefRefPtr<CefWaitableEvent> event) {
++  InitialVisibilityTestImpl(event, InitialVisibilityMode::kVisibleView);
++}
++
+@@ -927,0 +1271,6 @@ BROWSER_VIEW_TEST_ASYNC(ChromeWindowOneAlloyOverlay)
++// Initial state is observed by the first application script, before load ends.
++BROWSER_VIEW_TEST_ASYNC(InitiallyHiddenOverlay)
++BROWSER_VIEW_TEST_ASYNC(InitiallyHiddenOwner)
++BROWSER_VIEW_TEST_ASYNC(InitiallyHiddenView)
++BROWSER_VIEW_TEST_ASYNC(InitiallyVisibleView)
++
