@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.9](https://github.com/0xPlayerOne/bunly/compare/v0.6.8...v0.6.9) (2026-10-30)
+
+
+### Documentation
+
+* **m7:** retain accepted Windows downloads and composition blockers ([#214](https://github.com/0xPlayerOne/bunly/issues/214)) ([b1a3247](https://github.com/0xPlayerOne/bunly/commit/b1a3247aa63966868620febb4ea2903377eeef49))
+
 ## [0.6.8](https://github.com/0xPlayerOne/bunly/compare/v0.6.7...v0.6.8) (2026-10-30)
 
 
