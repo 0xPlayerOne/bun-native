@@ -8,6 +8,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
+use std::time::Instant;
 
 const MAX_URL: usize = 4096;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -52,6 +53,7 @@ struct RequestState {
     // before publishing its expected continuation under this same mutex.
     hop: Hop,
     resource_completion: Option<RequestCompletion>,
+    resource_completed_at: Option<Instant>,
 }
 pub(crate) struct Permit {
     request_url: String,
@@ -141,6 +143,7 @@ impl Permit {
                     claimed: false,
                 },
                 resource_completion: None,
+                resource_completed_at: None,
             }),
             request_url,
             fragment,
@@ -157,8 +160,9 @@ impl Permit {
     pub fn admitted(&self) -> bool {
         self.state.lock().unwrap().request.is_some()
     }
-    pub fn resource_completion(&self) -> Option<RequestCompletion> {
-        self.state.lock().unwrap().resource_completion
+    pub fn resource_completion(&self) -> (Option<RequestCompletion>, Option<Instant>) {
+        let state = self.state.lock().unwrap();
+        (state.resource_completion, state.resource_completed_at)
     }
     pub fn revoke(&self) {
         self.active.store(false, Ordering::Release);
@@ -225,6 +229,7 @@ impl RequestLease {
         {
             state.resource_completion =
                 Some(RequestCompletion::new(status, received_content_length));
+            state.resource_completed_at = Some(Instant::now());
         }
     }
     pub fn deny(&self) {
@@ -259,6 +264,7 @@ impl RequestLease {
             claimed: false,
         };
         state.resource_completion = None;
+        state.resource_completed_at = None;
         Some(url)
     }
 }
@@ -307,7 +313,7 @@ mod tests {
             let permit = Permit::new("https://download.test/private?credential=secret").unwrap();
             access.install(permit.clone()).unwrap();
             let lease = owner(&access, permit.request_url(), identifier, false);
-            assert_eq!(permit.resource_completion(), None);
+            assert_eq!(permit.resource_completion(), (None, None));
             for (url, id) in [
                 (
                     "https://download.test/private?credential=secret".to_owned(),
@@ -326,7 +332,7 @@ mod tests {
                     RequestCompletionStatus::Success,
                     32768,
                 );
-                assert_eq!(permit.resource_completion(), None);
+                assert_eq!(permit.resource_completion(), (None, None));
             }
             lease.observe_resource_completion(
                 permit.request_url(),
@@ -335,7 +341,8 @@ mod tests {
                 RequestCompletionStatus::Success,
                 32768,
             );
-            let completion = permit.resource_completion().unwrap();
+            let observed_at = permit.resource_completion().1.unwrap();
+            let completion = permit.resource_completion().0.unwrap();
             assert_eq!(
                 serde_json::to_value(completion).unwrap(),
                 json!({
@@ -349,7 +356,8 @@ mod tests {
                 RequestCompletionStatus::Failed,
                 0,
             );
-            assert_eq!(permit.resource_completion(), Some(completion));
+            assert_eq!(permit.resource_completion().0, Some(completion));
+            assert_eq!(permit.resource_completion().1, Some(observed_at));
             assert!(permit.active());
             assert!(!permit.denied());
             assert!(lease.allows(permit.request_url(), identifier, &network()));
@@ -378,7 +386,7 @@ mod tests {
             RequestCompletionStatus::Success,
             10,
         );
-        assert!(permit.resource_completion().is_some());
+        assert!(permit.resource_completion().0.is_some());
         let target = first
             .redirect(
                 permit.request_url(),
@@ -387,7 +395,7 @@ mod tests {
                 &network(),
             )
             .unwrap();
-        assert_eq!(permit.resource_completion(), None);
+        assert_eq!(permit.resource_completion(), (None, None));
         let second = owner(&access, &target, 0, false);
         first.observe_resource_completion(
             &target,
@@ -396,7 +404,7 @@ mod tests {
             RequestCompletionStatus::Success,
             20,
         );
-        assert_eq!(permit.resource_completion(), None);
+        assert_eq!(permit.resource_completion(), (None, None));
         let same = second.redirect(&target, 0, &target, &network()).unwrap();
         let third = owner(&access, &same, 0, false);
         second.observe_resource_completion(
@@ -406,7 +414,7 @@ mod tests {
             RequestCompletionStatus::Success,
             30,
         );
-        assert_eq!(permit.resource_completion(), None);
+        assert_eq!(permit.resource_completion(), (None, None));
         third.observe_resource_completion(
             &same,
             0,
@@ -415,7 +423,7 @@ mod tests {
             40,
         );
         assert_eq!(
-            permit.resource_completion(),
+            permit.resource_completion().0,
             Some(RequestCompletion::new(RequestCompletionStatus::Success, 40,))
         );
     }
@@ -439,7 +447,7 @@ mod tests {
                 RequestCompletionStatus::Success,
                 32768,
             );
-            assert_eq!(permit.resource_completion(), None);
+            assert_eq!(permit.resource_completion(), (None, None));
             access.clear(&permit);
             let replacement = Permit::new("https://download.test/file").unwrap();
             access.install(replacement.clone()).unwrap();
@@ -451,7 +459,7 @@ mod tests {
                 RequestCompletionStatus::Success,
                 32768,
             );
-            assert_eq!(replacement.resource_completion(), None);
+            assert_eq!(replacement.resource_completion(), (None, None));
             assert!(replacement.active());
         }
     }
