@@ -269,6 +269,7 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
         .as_ref()
         .map(|root| root.path().to_path_buf())
         .unwrap_or_else(|| cache.clone());
+    let cef_root = session::cef_compatible_path(&cef_root)?;
     let bun = resources.join(if cfg!(windows) { "bun.exe" } else { "bun" });
     let entry = resources.join("backend/main.js");
     let (terminal_owner, _) = terminal_runtime::discover(directory)?;

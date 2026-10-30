@@ -1,0 +1,268 @@
+{
+  "schema": 1,
+  "kind": "selected-windows-download-readiness-diagnostic-summary",
+  "recordedAt": "2026-10-30",
+  "run": 41101870731,
+  "artifact": 13001565760,
+  "runUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/41101870731",
+  "diagnosticOnly": true,
+  "maintainedAcceptance": false,
+  "passed": false,
+  "maintainedFirstDownloadDeadlineMs": 6000,
+  "sourceBefore": {
+    "commit": "a245b6149e1b578e13727c0413f887df6373fa07",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceAfter": {
+    "commit": "a245b6149e1b578e13727c0413f887df6373fa07",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceHashesUnchanged": true,
+  "nativeSource": {
+    "declaredCommit": "a245b6149e1b578e13727c0413f887df6373fa07",
+    "tree": "81277571093f46ea9e42952005c8078d88ce94bb",
+    "embeddedBuildAttestation": false
+  },
+  "digests": {
+    "artifactZipSha256": "8157248c6ecfa93c2fa3ed9acfe4475195868b2a6aa808da474b60af8e0401cd",
+    "fileDownloadsExportSha256": "56ade9f2ccfe8b27c4b69f29d5acb470c3668e0c7433fee93bf962b990d210bf"
+  },
+  "capture": {
+    "rawSha256": "ba03a47460540d87f134486774807513eb2fda55f693ea0c7c8382a0cf07a780",
+    "rawBytes": 4303270,
+    "origin": "first-native-download-record",
+    "timingUnit": "microseconds",
+    "clocksUs": {
+      "beforeInitialize": -640475,
+      "contextInitialized": -509771,
+      "firstDownload": 0,
+      "firstCallback": 5493867
+    },
+    "coverage": {
+      "historyBackendInitObserved": true,
+      "nativeSpansBeforeContext": true,
+      "nativeSpansThroughFirstCallback": true
+    },
+    "dataLossVerified": false,
+    "parsedEvents": 24706,
+    "ignoredEvents": 2,
+    "unclassifiedTasks": 3168,
+    "unmatchedEnds": 0,
+    "unmatchedBegins": 6,
+    "unmatchedAsyncEnds": 0,
+    "unmatchedAsyncBegins": 0,
+    "observedAsyncSpans": 380,
+    "unmatchedFlows": 646
+  },
+  "privateTraceRemoved": true,
+  "timings": [
+    {
+      "label": "history-backend-init",
+      "count": 1,
+      "totalDurationUs": 133434,
+      "maximumDurationUs": 133434,
+      "firstStartUs": -549771,
+      "lastEndUs": -416337,
+      "longest": [
+        {
+          "thread": 1,
+          "startUs": -549771,
+          "durationUs": 133434,
+          "enclosingTaskQueueWaitUs": 570
+        }
+      ]
+    },
+    {
+      "label": "proto-leveldb-task",
+      "count": 38,
+      "totalDurationUs": 21208001,
+      "maximumDurationUs": 1039918,
+      "firstStartUs": -542060,
+      "lastEndUs": 5491418,
+      "longest": [
+        {
+          "thread": 14,
+          "startUs": -411486,
+          "durationUs": 1039918,
+          "enclosingTaskQueueWaitUs": 122095
+        },
+        {
+          "thread": 1,
+          "startUs": -412067,
+          "durationUs": 1024861,
+          "enclosingTaskQueueWaitUs": 121520
+        },
+        {
+          "thread": 6,
+          "startUs": -371736,
+          "durationUs": 1016409,
+          "enclosingTaskQueueWaitUs": 39713
+        },
+        {
+          "thread": 15,
+          "startUs": -371004,
+          "durationUs": 1015612,
+          "enclosingTaskQueueWaitUs": 40445
+        },
+        {
+          "thread": 7,
+          "startUs": -416760,
+          "durationUs": 1013557,
+          "enclosingTaskQueueWaitUs": 116833
+        },
+        {
+          "thread": 12,
+          "startUs": 3213996,
+          "durationUs": 1013187,
+          "enclosingTaskQueueWaitUs": 205040
+        },
+        {
+          "thread": 12,
+          "startUs": 4227329,
+          "durationUs": 1012114,
+          "enclosingTaskQueueWaitUs": 1214823
+        },
+        {
+          "thread": 10,
+          "startUs": 4196208,
+          "durationUs": 1011726,
+          "enclosingTaskQueueWaitUs": 1183863
+        }
+      ]
+    },
+    {
+      "label": "in-progress-task",
+      "count": 4,
+      "totalDurationUs": 2431,
+      "maximumDurationUs": 2201,
+      "firstStartUs": 531,
+      "lastEndUs": 5493614,
+      "longest": [
+        {
+          "thread": 2,
+          "startUs": 5491413,
+          "durationUs": 2201,
+          "enclosingTaskQueueWaitUs": 18
+        },
+        {
+          "thread": 18,
+          "startUs": 531,
+          "durationUs": 188,
+          "enclosingTaskQueueWaitUs": 32
+        },
+        {
+          "thread": 2,
+          "startUs": 536,
+          "durationUs": 36,
+          "enclosingTaskQueueWaitUs": 456
+        },
+        {
+          "thread": 2,
+          "startUs": 732,
+          "durationUs": 6,
+          "enclosingTaskQueueWaitUs": 34
+        }
+      ]
+    },
+    {
+      "label": "download-manager-task",
+      "count": 1,
+      "totalDurationUs": 97,
+      "maximumDurationUs": 97,
+      "firstStartUs": 5493658,
+      "lastEndUs": 5493755,
+      "longest": [
+        {
+          "thread": 2,
+          "startUs": 5493658,
+          "durationUs": 97,
+          "enclosingTaskQueueWaitUs": 2241
+        }
+      ]
+    }
+  ],
+  "timeoutReceipt": {
+    "before": true,
+    "callbackCount": 6,
+    "callbackCountSaturated": false,
+    "callbackOwned": true,
+    "event": "bunly.host.download-timeout",
+    "fileUtilityObservedLaunches": 1,
+    "lastCallback": {
+      "bytesReceived": 32768,
+      "cancelled": false,
+      "complete": false,
+      "inProgress": true,
+      "interruptReason": "none",
+      "interrupted": false,
+      "pathState": "owned-stage",
+      "paused": false,
+      "percentComplete": 100,
+      "phase": "updated",
+      "totalBytes": 32768,
+      "valid": true
+    },
+    "quarantineObservedLaunches": 0,
+    "requestCompletion": {
+      "receivedContentLength": 32768,
+      "status": "success"
+    },
+    "safeBrowsingEnabledAtAdmission": true,
+    "schema": 1,
+    "timingMs": {
+      "callbacks": {
+        "beforeCallback": 5495,
+        "firstCallback": 5493,
+        "firstFullByteCount": 5496,
+        "firstPositiveBytes": 5496,
+        "lastCallback": 5583
+      },
+      "fileUtilityLastLaunch": 5584,
+      "origin": "record-created-before-start-download",
+      "quarantineLastLaunch": null,
+      "resourceComplete": 3,
+      "timeoutObserved": 6012
+    }
+  },
+  "nativeDownloadShutdown": {
+    "admitted": 1,
+    "cancelled": 0,
+    "completed": 0,
+    "event": "bunly.host.download-shutdown",
+    "failed": 1,
+    "ownedCallbacks": 0,
+    "ownedDeadlineWorkers": 0,
+    "ownedStagingHandles": 0,
+    "ownedTransfers": 0,
+    "passed": true,
+    "schema": 1,
+    "terminalCallbacks": 1
+  },
+  "hostShutdown": {
+    "clean": false,
+    "event": "bunly.host.shutdown"
+  },
+  "observer": {
+    "exitCode": 1,
+    "timedOut": false,
+    "cancelled": false,
+    "outputOverflow": false,
+    "observerFailure": null,
+    "observedOrphans": [],
+    "cleanupSurvivors": []
+  },
+  "performanceEligible": false,
+  "limits": [
+    "Selected fields from the sanitized public hosted artifact; not a complete independently replayable report.",
+    "Instrumented startup can perturb scheduling. This diagnostic is excluded from maintained acceptance.",
+    "The first download actually failed the unchanged 6000 ms deadline; later download cases did not execute.",
+    "Only eight longest spans per fixed label are retained; nested spans overlap and cannot be summed across labels.",
+    "Six begin scopes and 646 flows were unmatched; capture loss has not been independently verified.",
+    "Task labels identify fixed source components, not a database path, exact error code or complete causal dependency.",
+    "History initialization ended before admission in this occurrence; readiness also depends on the in-progress cache.",
+    "No raw trace, metadata, task source strings, process identifiers or filesystem paths are retained here.",
+    "Physical hardware, sandbox identity, embedded build attestation and performance qualification remain unverified."
+  ]
+}
