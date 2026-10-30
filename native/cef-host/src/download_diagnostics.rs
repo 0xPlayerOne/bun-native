@@ -154,6 +154,8 @@ impl Trace {
         observation: &Observation,
         expected_path: Option<&Path>,
     ) {
+        #[cfg(feature = "rpc-qualification")]
+        crate::download_readiness_trace::download_callback();
         self.observe_at(phase, observation, expected_path, Instant::now());
     }
     fn observe_at(

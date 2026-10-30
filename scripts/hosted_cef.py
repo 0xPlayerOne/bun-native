@@ -217,6 +217,10 @@ def commands(suite, bun, app, native_source=None):
         downloads.append(
             "--desktop-case=downloads" if sys.platform == "linux" else "--case=downloads"
         )
+        # Isolated diagnostic branch only; raw capture remains private and the
+        # instrumented result is explicitly excluded from maintained acceptance.
+        if sys.platform == "win32":
+            downloads.append("--download-readiness-trace")
         result.append(("file-downloads", downloads))
         parent_close = [*desktop]
         parent_close.append(

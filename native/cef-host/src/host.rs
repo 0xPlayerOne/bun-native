@@ -1370,6 +1370,8 @@ wrap_app! {
     pub struct BunlyApp;
     impl App {
         fn on_before_command_line_processing(&self, process_type: Option<&CefString>, command_line: Option<&mut CommandLine>) {
+            #[cfg(feature = "rpc-qualification")]
+            crate::download_readiness_trace::configure(process_type, command_line.as_deref());
             #[cfg(target_os = "linux")]
             if process_type.is_none_or(|value|value.to_string().is_empty())
                 && crate::PATHS.get().and_then(|paths|paths.credential_policy.as_ref()).is_some() {
@@ -1389,6 +1391,8 @@ wrap_browser_process_handler! {
     struct BunlyProcess;
     impl BrowserProcessHandler {
         fn on_context_initialized(&self) { if currently_on(ThreadId::UI) == 0 { fail("CEF initialized on incorrect thread"); return; }
+            #[cfg(feature = "rpc-qualification")]
+            crate::download_readiness_trace::context_initialized();
             if let Err(e) = process::start() { fail(&e); } }
         fn on_before_child_process_launch(&self, command_line: Option<&mut CommandLine>) {
             downloads::observe_child_launch(command_line.as_deref());

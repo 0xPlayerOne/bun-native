@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 import { inventory } from '../benchmarks/lib/inventory.ts'
 import { sourceIdentity } from '../benchmarks/lib/source-identity.ts'
 import {
@@ -19,6 +20,10 @@ import {
 import { DESKTOP_OBSERVER_MS } from '../benchmarks/desktop/acceptance.ts'
 import { desktopProfile, desktopReportProfile } from '../benchmarks/desktop/profiles.ts'
 import { summarizeDesktopFailures } from '../benchmarks/desktop/failure-codes.ts'
+import {
+  readDownloadReadinessTrace,
+  requireDisposableDownloadTrace,
+} from '../benchmarks/desktop/download-readiness-trace.ts'
 import { prepareManagedRuntimeLayout } from './qualify-managed-development.ts'
 import { requireDisposableClipboardRunner } from './cef-desktop-services-precondition.ts'
 import {
@@ -98,16 +103,26 @@ async function qualify(input: readonly string[]): Promise<void> {
   const profile = desktopProfile(flag < 0 ? 'windows' : args.splice(flag, 1)[0]!.slice(7))
   const clipboardFlag = args.indexOf('--disposable-clipboard')
   const clipboardOptIn = clipboardFlag < 0 ? undefined : args.splice(clipboardFlag, 1)[0]
+  const traceFlag = args.indexOf('--download-readiness-trace')
+  const traceOptIn = traceFlag >= 0
+  if (traceOptIn) args.splice(traceFlag, 1)
   assert.equal(
     args.length,
     2,
-    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|composition-profile|services|downloads|commands|dialogs|status|links|parent-close] [--disposable-clipboard], or --verify REPORT'
+    'Use qualify-desktop PREPARED_APP --native-source=COMMIT [--case=windows|composition|composition-profile|services|downloads|commands|dialogs|status|links|parent-close] [--disposable-clipboard] [--download-readiness-trace], or --verify REPORT'
   )
   const selected = /^--native-source=([a-f0-9]{40})$/.exec(args[1]!)?.[1]
   assert.ok(selected, 'Explicit immutable native build source required')
   const target = `${process.platform}-${process.arch}`
   assert.ok(['darwin-arm64', 'linux-x64', 'win32-x64'].includes(target))
   assert.ok(process.platform === 'win32' || process.getuid?.() !== 0, 'Use a standard user')
+  if (traceOptIn)
+    requireDisposableDownloadTrace({
+      platform: process.platform,
+      arch: process.arch,
+      fixture: profile.directory,
+      environment: process.env,
+    })
   // This contributor precondition is checked before copying, signing or launching
   // any native application. It is independent of runtime clipboard authority.
   const services = profile.directory === 'desktop-services'
@@ -175,6 +190,7 @@ async function qualify(input: readonly string[]): Promise<void> {
   }
   const python = process.env['PYTHON'] ?? 'python3'
   let observation: CommandObservation | undefined
+  let traceDirectory: string | undefined
   try {
     const app = join(work, profile.title + (mac ? '.app' : ' Unicode é Ω'))
     await cp(inputRoot, app, { recursive: true, dereference: false })
@@ -321,6 +337,15 @@ async function qualify(input: readonly string[]): Promise<void> {
     report['runtimeIdentity'] = cefIdentityFromObservation(identity, libraryHash)
     const executable = mac ? join(app, 'Contents/MacOS/bunly_host') : join(app, basename(source))
     assert.equal(relative(app, executable).split('\\').join('/'), hostPath)
+    // The Windows standard-user launcher supplies an ACL-protected TEMP.
+    // Keep raw traces outside every report/artifact collection directory.
+    if (traceOptIn) {
+      try {
+        traceDirectory = await mkdtemp(join(tmpdir(), 'bunly-download-readiness-'))
+      } catch {
+        throw new Error('Cannot create private download trace directory')
+      }
+    }
     observation = await observedCommand(
       [
         executable,
@@ -332,7 +357,13 @@ async function qualify(input: readonly string[]): Promise<void> {
         cwd: work,
         output: join(work, 'trial.process.json'),
         timeoutMs: DESKTOP_OBSERVER_MS,
-        env: { BUNLY_CACHE_DIR: join(work, 'cache'), BUNLY_BENCH_SANDBOX: '1' },
+        env: {
+          BUNLY_CACHE_DIR: join(work, 'cache'),
+          BUNLY_BENCH_SANDBOX: '1',
+          ...(traceDirectory === undefined
+            ? {}
+            : { BUNLY_DOWNLOAD_READINESS_TRACE_DIR: traceDirectory }),
+        },
       }
     ).result
     report['observation'] = observation
@@ -356,6 +387,41 @@ async function qualify(input: readonly string[]): Promise<void> {
   } catch (error) {
     report['failure'] = error instanceof Error ? error.message : String(error)
   } finally {
+    if (traceOptIn) {
+      let privateTraceRemoved = traceDirectory === undefined
+      let summary: unknown = null
+      let traceFailure: string | null = null
+      try {
+        if (traceDirectory === undefined) traceFailure = 'trace-host-not-launched'
+        else summary = await readDownloadReadinessTrace(traceDirectory)
+      } catch {
+        // Never publish parser excerpts, raw args, trace metadata or private filenames.
+        traceFailure = 'trace-summary-unavailable-or-invalid'
+      } finally {
+        if (traceDirectory !== undefined) {
+          try {
+            await rm(traceDirectory, {
+              recursive: true,
+              force: true,
+              maxRetries: 5,
+              retryDelay: 100,
+            })
+            privateTraceRemoved = true
+          } catch {
+            traceFailure = 'private-trace-cleanup-failed'
+          }
+        }
+      }
+      report['diagnosticReadinessTrace'] = {
+        diagnosticOnly: true,
+        maintainedAcceptance: false,
+        privateTraceRemoved,
+        failure: traceFailure,
+        summary,
+      }
+      report['passed'] = false
+      report['failure'] ??= 'Instrumented readiness trace is excluded from maintained acceptance'
+    }
     report['sourceAfter'] = sourceIdentity(root)
     report['sourceHashesAfter'] = await fingerprints().catch((error) => ({
       failure: String(error),

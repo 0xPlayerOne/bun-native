@@ -824,6 +824,7 @@ class DesktopStageTests(unittest.TestCase):
                     [
                         *dict(selected)["desktop"],
                         "--desktop-case=downloads" if system == "linux" else "--case=downloads",
+                        *(["--download-readiness-trace"] if system == "win32" else []),
                     ],
                 )
                 self.assertNotIn("--disposable-clipboard", dict(selected)["file-downloads"])

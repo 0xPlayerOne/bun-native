@@ -223,6 +223,8 @@ pub(super) fn start(request: u64, args: &Value) -> Result<(), String> {
     };
     let request_url = permit.request_url().to_owned();
     let safe_browsing_enabled = diagnostics::safe_browsing_enabled(&host);
+    #[cfg(feature = "rpc-qualification")]
+    crate::download_readiness_trace::download_started();
     STATE.with(|s| {
         let mut s = s.borrow_mut();
         s.downloads.counts.admitted += 1;

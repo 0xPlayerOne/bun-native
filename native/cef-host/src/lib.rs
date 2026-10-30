@@ -10,6 +10,8 @@ mod cookie_completion;
 mod deadlines;
 mod download_access;
 mod download_files;
+#[cfg(feature = "rpc-qualification")]
+mod download_readiness_trace;
 mod event_queue;
 mod exit_notification;
 mod handshake;
@@ -314,6 +316,10 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     if let Some(policy) = config.credential_policy.as_ref() {
         policy.configure(&mut settings);
     }
+    #[cfg(feature = "rpc-qualification")]
+    download_readiness_trace::prepare(
+        profile_root.is_none() && config.credential_policy.is_none(),
+    )?;
     if initialize(
         Some(args.as_main_args()),
         Some(&settings),
@@ -333,8 +339,12 @@ fn run_inner(sandbox: *mut u8, _main_args: Option<MainArgs>) -> Result<i32, Stri
     shutdown_audit::checkpoint("before-cef-shutdown");
     shutdown_phase("cef-shutdown", shutdown);
     shutdown_audit::checkpoint("after-cef-shutdown");
+    #[cfg(feature = "rpc-qualification")]
+    let download_trace_result = download_readiness_trace::finish();
     host::cleanup_downloads_after_cef_shutdown()?;
     session::release_after_cef_shutdown()?;
+    #[cfg(feature = "rpc-qualification")]
+    download_trace_result?;
     eprintln!(
         "{}",
         serde_json::json!({"event":"bunly.host.shutdown","clean":!host::FAILED.load(std::sync::atomic::Ordering::SeqCst)})
