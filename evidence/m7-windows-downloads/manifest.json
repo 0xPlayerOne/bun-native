@@ -1,0 +1,1192 @@
+{
+  "schema": 1,
+  "kind": "retained-maintained-windows-download-qualification",
+  "recordedAt": "2026-10-30",
+  "issue": 36,
+  "correctionPullRequest": 212,
+  "correctionMergeCommit": "04650be8ca1f0844b85bb6f5c4871c6ad40fa284",
+  "testedReleaseMain": "eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d",
+  "finalMainGate": {
+    "runId": 41111900552,
+    "attempt": 1,
+    "passed": true,
+    "status": "maintained-native-full, optional-feature checks and strict retained source replay passed"
+  },
+  "retention": {
+    "originals": "Hosted artifacts already use the maintained native evidence export schema.",
+    "exporterPath": "scripts/export_native_evidence.py",
+    "exporterSha256": "2c54114b1a681bc025620f03d2463c67e2b8101da36aa230c850dc502fa96a91",
+    "bytes": "Expanded report bytes and qualification/environment JSON are identical to the named hosted artifact members.",
+    "redactions": [
+      "fixture-nonces",
+      "live observation correlation omitted by maintained export"
+    ],
+    "additionalRedactions": [],
+    "failedPriorRuns": "Preserved separately in docs/m7-status.md and the linked historical selected evidence; no outcome is reclassified."
+  },
+  "records": [
+    {
+      "label": "branch",
+      "runId": 41106853236,
+      "runUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/41106853236",
+      "artifact": {
+        "id": 13004205822,
+        "url": "https://github.com/0xPlayerOne/bunly/actions/runs/41106853236/artifacts/13004205822",
+        "zipBytes": 4864522,
+        "zipSha256": "bfb25b84e7506afa7462463d7320d9603c37a1dd1727fcd614a1da43b65b95ac",
+        "retainedArtifactMembers": {
+          "file-downloads.json": "file-downloads.json",
+          "qualification.json": "qualification.json",
+          "environment.json": "environment.json"
+        },
+        "identicalDownloadCopies": [
+          "file-downloads-run-u5Ff9P.json"
+        ]
+      },
+      "sourceBefore": {
+        "commit": "ff3f408c378975ac115e8842e2bba98823cbac03",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "ff3f408c378975ac115e8842e2bba98823cbac03",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceTree": "1cf9e95cf257bae043b30cb330a93925803ff00c",
+      "sourceInventoryEntries": 359,
+      "sourceInventorySha256": "26a2e4d006cea40c8711014e364469474131a1f30276868af918c2803a7594b0",
+      "sourceInventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+      "sourceHashesUnchanged": true,
+      "nativeSource": {
+        "declaredCommit": "ff3f408c378975ac115e8842e2bba98823cbac03",
+        "tree": "efb611c4aef5233c30d7768e69178a5bd4bd3ffb",
+        "embeddedBuildAttestation": false
+      },
+      "target": "win32-x64",
+      "environment": {
+        "target": "win32-x64",
+        "os": "Windows-10-10.0.20348-SP0",
+        "machine": "AMD64",
+        "standardUser": true,
+        "emulated": false,
+        "bunVersion": "1.4.4",
+        "python": "3.11.9",
+        "runnerImage": "20261026.347.1",
+        "runClass": "ci-smoke",
+        "display": "hosted-desktop-unqualified",
+        "nativeEvidenceExport": {
+          "schema": 1,
+          "redactions": [
+            "fixture-nonces"
+          ],
+          "correlation": "not-retained"
+        }
+      },
+      "nativeHostSha256": {
+        "input": "341eb8b4f405cf02833f8f27942e7e1df3313b448280fb873602b832f2a55d76",
+        "prepared": "341eb8b4f405cf02833f8f27942e7e1df3313b448280fb873602b832f2a55d76"
+      },
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "cb1d8e6564e655e49d30cead359750a1cbbd12f42651caa4b62244d7bd93c244"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "cf8276a6f37ea83ce90daa38bc4b3a8ffbbab0a067a72eb7f8bb683a5e869150",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "files": {
+        "downloads": {
+          "path": "branch-file-downloads.json.gz",
+          "bytes": 99541,
+          "sha256": "fb5c4da558c8c6d553861d6f86f04541638497918fb8fe61be2a7c518c547ceb",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 2300513,
+          "exportedSha256": "b77e18c98e9ffdd72d496fc5553098024a1f9dad0bbf5432c80d9865836c78f4",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "qualification": {
+          "path": "branch-qualification.json.gz",
+          "bytes": 730,
+          "sha256": "d7b881d9ebf66d78c5860fc74d14b3c89a8c81c031db929f795184655156b4a6",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 3642,
+          "exportedSha256": "6024df6f050e21f951cb2568c9af22d10a151f8f44f80f0b4c877280c4c157a0",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "environment": {
+          "path": "branch-environment.json.gz",
+          "bytes": 297,
+          "sha256": "7732d42be12938817fb80a9ac403e20dacf333e4e31c26dc87edc25fa1fe821b",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 436,
+          "exportedSha256": "887b9f0659f84b30eb603f3c886b27843d4facbf44bdf039bb6a525336ee5547",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "workflowSteps": {
+          "path": "branch-workflow-steps.json",
+          "bytes": 3689,
+          "sha256": "b3f795224d7fde95d6cca0bffb3a6ae8c6021462bc7e2515923a9acbdd1d32d2",
+          "encoding": "utf-8 JSON",
+          "exportedBytes": 3689,
+          "exportedSha256": "b3f795224d7fde95d6cca0bffb3a6ae8c6021462bc7e2515923a9acbdd1d32d2",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        }
+      },
+      "additionalArtifactLogDigests": {
+        "native-tests.log": "10cc65ff5975a0b30c3df5ebba45fa3c893e9f60ee6e6df8f8aeb3a20b7537c6",
+        "check.log": "d0d9fa1a74f32f7d356cfdd1b3bfd492543e099e0c3165ed99f1971f2bc4b141"
+      },
+      "nativeTests": {
+        "passed": 258,
+        "failed": 0,
+        "ignored": 0,
+        "selectedPassingTests": [
+          "session::tests::cef_cache_path_allows_leveldb_slash_names_with_the_same_kernel_directory",
+          "session::tests::cef_paths_normalize_drive_prefixes_without_admitting_other_namespaces",
+          "download_files::tests::publication_preserves_windows_zone_identifier_stream"
+        ]
+      },
+      "portableTests": {
+        "bun": {
+          "passed": 1613,
+          "skipped": 14,
+          "failed": 0
+        },
+        "python": {
+          "passed": 269,
+          "skipped": 41
+        }
+      },
+      "workflowGate": {
+        "jobId": 124238884605,
+        "requiredSteps": [
+          "Execute Windows qualification as a temporary standard user",
+          "Check optional view controls after the ordinary native suite"
+        ],
+        "passed": true,
+        "optionalViewControlChecks": {
+          "kind": "Cargo Clippy and native tests; separate from GUI qualification",
+          "features": [
+            "packaging,browser-actions",
+            "packaging,programmatic-files",
+            "packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics"
+          ],
+          "workflowPath": ".github/workflows/cef-runtime.yml",
+          "workflowSha256": "f200d099615bbb0cbba3058d447a132e0fc05b9c45f117f6697e78cba8a1e16c",
+          "libraryTestResults": [
+            {
+              "features": "packaging,browser-actions",
+              "passed": 268,
+              "failed": 0
+            },
+            {
+              "features": "packaging,programmatic-files",
+              "passed": 267,
+              "failed": 0
+            },
+            {
+              "features": "packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics",
+              "passed": 285,
+              "failed": 0
+            }
+          ],
+          "countingLimit": "Feature configurations overlap; counts are not additive with each other or with the ordinary native test suite."
+        },
+        "completedJobLog": {
+          "retrieval": "Separately retrieved completed GitHub Actions job log; decoded UTF-8 bytes with original CRLF, not an artifact ZIP member",
+          "bytes": 524650,
+          "sha256": "294f2a1b1e0f45d98b40314fb6b388f20750a4f32fc4879cfea1e0afa861cbf0",
+          "rawLogRetainedInRepository": false
+        }
+      },
+      "passed": true,
+      "strictRetainedReplay": {
+        "command": "bun scripts/qualify-desktop.ts --verify REPORT",
+        "includesHistoricalInventoryAndNativeTree": true,
+        "passed": true,
+        "implicitSourceFetch": false
+      },
+      "maintainedFirstDownloadDeadlineMs": 6000,
+      "firstDownloadElapsedMs": null,
+      "wholeDownloadWorkloadMs": 11010.628499999999,
+      "acceptance": {
+        "transfers": 14,
+        "completed": 3,
+        "cancelled": 7,
+        "failed": 4,
+        "documents": 5,
+        "nativeOwnershipReleased": true,
+        "temporaryCleanup": true,
+        "physicalInputQualified": false,
+        "hardwareDpiQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      },
+      "steps": [
+        {
+          "name": "complete",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 32768,
+            "bytesReceived": 32768
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "4daba74b0ccc9f1971db4376f8e7c3f6da921c29c39c9281c9aeb7b10023c13a"
+        },
+        {
+          "name": "explicit-replace-large",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 4194304,
+            "bytesReceived": 4194304
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "c9b91ff6ee35aa20653f8f4318652971b3ba8efe5ce0aea42e272381af39cfef"
+        },
+        {
+          "name": "allowed-redirect",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 32768,
+            "bytesReceived": 32768
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "4daba74b0ccc9f1971db4376f8e7c3f6da921c29c39c9281c9aeb7b10023c13a"
+        },
+        {
+          "name": "denied-redirect",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 0,
+            "failure": "permission"
+          },
+          "notifications": 3,
+          "positiveProgress": false,
+          "sha256": null
+        },
+        {
+          "name": "cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "abort",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "unknown-size-limit",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 557056,
+            "failure": "limit"
+          },
+          "notifications": 4,
+          "positiveProgress": false,
+          "sha256": null
+        },
+        {
+          "name": "transfer-timeout",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 557056,
+            "failure": "timeout"
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "network-interruption",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 32768,
+            "failure": "network"
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "navigation-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "renderer-reload-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "view-close-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "window-close-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "quit-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        }
+      ],
+      "checks": {
+        "permissionDenied": true,
+        "traversalRejected": true,
+        "rootMismatchRejected": true,
+        "duplicatePreserved": true,
+        "nonfileDestinationRejected": true,
+        "redirectNeverReachedBlockedOrigin": true,
+        "staleGrantRejected": true,
+        "cancelDuringQuitRequested": true,
+        "sentinelPreserved": true
+      },
+      "nativeDownloadShutdown": {
+        "admitted": 14,
+        "cancelled": 7,
+        "completed": 3,
+        "event": "bunly.host.download-shutdown",
+        "failed": 4,
+        "ownedCallbacks": 0,
+        "ownedDeadlineWorkers": 0,
+        "ownedStagingHandles": 0,
+        "ownedTransfers": 0,
+        "passed": true,
+        "schema": 1,
+        "terminalCallbacks": 14
+      },
+      "hostShutdown": {
+        "clean": true,
+        "event": "bunly.host.shutdown"
+      },
+      "sdkFinalOwners": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "temporaryCleanup": true,
+      "observer": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "observedOrphans": [],
+        "cleanupSurvivors": []
+      },
+      "preparedArtifactUnchanged": true,
+      "inputArtifactUnchanged": true,
+      "preparedMetadataIdentityUnchanged": true,
+      "fullNativeSuite": {
+        "passed": true,
+        "stages": [
+          {
+            "name": "prebuilt",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "development",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "network",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "transports",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "session-reset",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "faults",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "desktop",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "view-composition",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "desktop-services",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "file-downloads",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "view-parent-close",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "window-commands",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "file-dialogs",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "status-items",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "application-links",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "window-modes",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "terminals",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "terminal-load",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "managed-development",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "credentials",
+            "exitCode": 0,
+            "passed": true
+          }
+        ],
+        "terminalOwnership": {
+          "passed": true
+        },
+        "prebuiltTrials": 10,
+        "lifecycleCycles": 100,
+        "faultCases": 6
+      }
+    },
+    {
+      "label": "released-main",
+      "runId": 41111900552,
+      "runUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/41111900552",
+      "artifact": {
+        "id": 13006430837,
+        "url": "https://github.com/0xPlayerOne/bunly/actions/runs/41111900552/artifacts/13006430837",
+        "zipBytes": 4591949,
+        "zipSha256": "fba2ab861ec532772d951759527683be3b249ff74e26c24790d0b06b0d61c724",
+        "retainedArtifactMembers": {
+          "file-downloads.json": "file-downloads.json",
+          "qualification.json": "qualification.json",
+          "environment.json": "environment.json"
+        },
+        "identicalDownloadCopies": [
+          "file-downloads-run-gWzXI6.json"
+        ]
+      },
+      "sourceBefore": {
+        "commit": "eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceAfter": {
+        "commit": "eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceTree": "048a1fed33b3060d297c8a2dc278a3e31afd940d",
+      "sourceInventoryEntries": 359,
+      "sourceInventorySha256": "ac2af96acb83843159ff26833129e61c7fa71d05871d7a538f879cec366c0809",
+      "sourceInventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+      "sourceHashesUnchanged": true,
+      "nativeSource": {
+        "declaredCommit": "eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d",
+        "tree": "efb611c4aef5233c30d7768e69178a5bd4bd3ffb",
+        "embeddedBuildAttestation": false
+      },
+      "target": "win32-x64",
+      "environment": {
+        "target": "win32-x64",
+        "os": "Windows-10-10.0.20348-SP0",
+        "machine": "AMD64",
+        "standardUser": true,
+        "emulated": false,
+        "bunVersion": "1.4.4",
+        "python": "3.11.9",
+        "runnerImage": "20261026.347.1",
+        "runClass": "ci-smoke",
+        "display": "hosted-desktop-unqualified",
+        "nativeEvidenceExport": {
+          "schema": 1,
+          "redactions": [
+            "fixture-nonces"
+          ],
+          "correlation": "not-retained"
+        }
+      },
+      "nativeHostSha256": {
+        "input": "341eb8b4f405cf02833f8f27942e7e1df3313b448280fb873602b832f2a55d76",
+        "prepared": "341eb8b4f405cf02833f8f27942e7e1df3313b448280fb873602b832f2a55d76"
+      },
+      "bundledBun": {
+        "version": "1.4.4",
+        "sha256": "cb1d8e6564e655e49d30cead359750a1cbbd12f42651caa4b62244d7bd93c244"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "cf8276a6f37ea83ce90daa38bc4b3a8ffbbab0a067a72eb7f8bb683a5e869150",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "files": {
+        "downloads": {
+          "path": "released-main-file-downloads.json.gz",
+          "bytes": 96196,
+          "sha256": "f65db0587df110f1a4c51072ce162f9a754487b9f9fdc99f7cf73186ff5f72b3",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 1980016,
+          "exportedSha256": "e38c856125a4cdb55c03e182e98ac1f8659ce77d99708974e01dbc4512b173b4",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "qualification": {
+          "path": "released-main-qualification.json.gz",
+          "bytes": 723,
+          "sha256": "1c8bde6c7085fc3dc217345ee487053b8428d25ef0c77caf93e9b2f204cc794a",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 3642,
+          "exportedSha256": "47a5595d58e4e0abbe62b3b4200301be6f7774affc6ed92e50a5e233a51abf3c",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "environment": {
+          "path": "released-main-environment.json.gz",
+          "bytes": 297,
+          "sha256": "7732d42be12938817fb80a9ac403e20dacf333e4e31c26dc87edc25fa1fe821b",
+          "encoding": "gzip; mtime=0; no filename",
+          "exportedBytes": 436,
+          "exportedSha256": "887b9f0659f84b30eb603f3c886b27843d4facbf44bdf039bb6a525336ee5547",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "workflowSteps": {
+          "path": "released-main-workflow-steps.json",
+          "bytes": 3689,
+          "sha256": "b5f639e4bcf15db16f4da440a6c4aaed598ebe7834d432f129b4eaf34be5d0d2",
+          "encoding": "utf-8 JSON",
+          "exportedBytes": 3689,
+          "exportedSha256": "b5f639e4bcf15db16f4da440a6c4aaed598ebe7834d432f129b4eaf34be5d0d2",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "workflowJobRest": {
+          "path": "released-main-workflow-job-rest.json",
+          "bytes": 1697,
+          "sha256": "0f0b24330b35730111ff5b6a792b8ee37e83c828c0c11774c6872feb67168671",
+          "encoding": "utf-8 JSON",
+          "exportedBytes": 1697,
+          "exportedSha256": "0f0b24330b35730111ff5b6a792b8ee37e83c828c0c11774c6872feb67168671",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        },
+        "workflowStepsStale": {
+          "path": "released-main-workflow-steps-stale.json",
+          "bytes": 2884,
+          "sha256": "0cd7c755932bda244e3c9868d40305fc85fdb4e311b9e7ba5c94954b9a28bdd8",
+          "encoding": "utf-8 JSON",
+          "exportedBytes": 2884,
+          "exportedSha256": "0cd7c755932bda244e3c9868d40305fc85fdb4e311b9e7ba5c94954b9a28bdd8",
+          "exportedBytesUnchanged": true,
+          "additionalRedactions": []
+        }
+      },
+      "additionalArtifactLogDigests": {
+        "native-tests.log": "a20f3c5d5a869faefd4a49bf5cdb6b78ea1f14fa14ecdbd73ae7421535c5b769",
+        "check.log": "ca3013aa7c9038eedc30fa9e88cc34ad1d673065fb424ee442cc1e1738622b58"
+      },
+      "nativeTests": {
+        "passed": 258,
+        "failed": 0,
+        "ignored": 0,
+        "selectedPassingTests": [
+          "session::tests::cef_cache_path_allows_leveldb_slash_names_with_the_same_kernel_directory",
+          "session::tests::cef_paths_normalize_drive_prefixes_without_admitting_other_namespaces",
+          "download_files::tests::publication_preserves_windows_zone_identifier_stream"
+        ]
+      },
+      "portableTests": {
+        "bun": {
+          "passed": 1613,
+          "skipped": 14,
+          "failed": 0
+        },
+        "python": {
+          "passed": 269,
+          "skipped": 41
+        }
+      },
+      "workflowGate": {
+        "jobId": 124255908251,
+        "requiredSteps": [
+          "Execute Windows qualification as a temporary standard user",
+          "Check optional view controls after the ordinary native suite"
+        ],
+        "passed": true,
+        "optionalViewControlChecks": {
+          "kind": "Cargo Clippy and native tests; separate from GUI qualification",
+          "features": [
+            "packaging,browser-actions",
+            "packaging,programmatic-files",
+            "packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics"
+          ],
+          "workflowPath": ".github/workflows/cef-runtime.yml",
+          "workflowSha256": "f200d099615bbb0cbba3058d447a132e0fc05b9c45f117f6697e78cba8a1e16c",
+          "libraryTestResults": [
+            {
+              "features": "packaging,browser-actions",
+              "passed": 268,
+              "failed": 0
+            },
+            {
+              "features": "packaging,programmatic-files",
+              "passed": 267,
+              "failed": 0
+            },
+            {
+              "features": "packaging,browser-actions,programmatic-files,rpc-qualification,shutdown-diagnostics",
+              "passed": 285,
+              "failed": 0
+            }
+          ],
+          "countingLimit": "Feature configurations overlap; counts are not additive with each other or with the ordinary native test suite."
+        },
+        "completedJobLog": {
+          "retrieval": "Separately retrieved completed GitHub Actions job log; decoded UTF-8 bytes with original CRLF, not an artifact ZIP member",
+          "bytes": 523171,
+          "sha256": "a2018399771428fc74e79876ddde7e3b8b73a789bb523aabcf8c336d6fc5ec4f",
+          "rawLogRetainedInRepository": false
+        },
+        "statusEvidence": {
+          "accepted": "Authoritative completed job REST projection and later completed connector step snapshot agree on standard-user and optional-feature success.",
+          "earlierSnapshot": "released-main-workflow-steps-stale.json preserves a stale pending standard-user step returned after workflow completion; it is not an acceptance receipt or a failed native run."
+        }
+      },
+      "passed": true,
+      "strictRetainedReplay": {
+        "command": "bun scripts/qualify-desktop.ts --verify REPORT",
+        "includesHistoricalInventoryAndNativeTree": true,
+        "passed": true,
+        "implicitSourceFetch": false
+      },
+      "maintainedFirstDownloadDeadlineMs": 6000,
+      "firstDownloadElapsedMs": null,
+      "wholeDownloadWorkloadMs": 10475.6416,
+      "acceptance": {
+        "transfers": 14,
+        "completed": 3,
+        "cancelled": 7,
+        "failed": 4,
+        "documents": 5,
+        "nativeOwnershipReleased": true,
+        "temporaryCleanup": true,
+        "physicalInputQualified": false,
+        "hardwareDpiQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      },
+      "steps": [
+        {
+          "name": "complete",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 32768,
+            "bytesReceived": 32768
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "4daba74b0ccc9f1971db4376f8e7c3f6da921c29c39c9281c9aeb7b10023c13a"
+        },
+        {
+          "name": "explicit-replace-large",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 4194304,
+            "bytesReceived": 4194304
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "c9b91ff6ee35aa20653f8f4318652971b3ba8efe5ce0aea42e272381af39cfef"
+        },
+        {
+          "name": "allowed-redirect",
+          "outcome": {
+            "status": "completed",
+            "bytesWritten": 32768,
+            "bytesReceived": 32768
+          },
+          "notifications": 4,
+          "positiveProgress": true,
+          "sha256": "4daba74b0ccc9f1971db4376f8e7c3f6da921c29c39c9281c9aeb7b10023c13a"
+        },
+        {
+          "name": "denied-redirect",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 0,
+            "failure": "permission"
+          },
+          "notifications": 3,
+          "positiveProgress": false,
+          "sha256": null
+        },
+        {
+          "name": "cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "abort",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "unknown-size-limit",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 557056,
+            "failure": "limit"
+          },
+          "notifications": 4,
+          "positiveProgress": false,
+          "sha256": null
+        },
+        {
+          "name": "transfer-timeout",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 557056,
+            "failure": "timeout"
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "network-interruption",
+          "outcome": {
+            "status": "failed",
+            "bytesWritten": 0,
+            "bytesReceived": 32768,
+            "failure": "network"
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "navigation-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "renderer-reload-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "view-close-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "window-close-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        },
+        {
+          "name": "quit-cancel",
+          "outcome": {
+            "status": "cancelled",
+            "bytesWritten": 0,
+            "bytesReceived": 557056
+          },
+          "notifications": 5,
+          "positiveProgress": true,
+          "sha256": null
+        }
+      ],
+      "checks": {
+        "permissionDenied": true,
+        "traversalRejected": true,
+        "rootMismatchRejected": true,
+        "duplicatePreserved": true,
+        "nonfileDestinationRejected": true,
+        "redirectNeverReachedBlockedOrigin": true,
+        "staleGrantRejected": true,
+        "cancelDuringQuitRequested": true,
+        "sentinelPreserved": true
+      },
+      "nativeDownloadShutdown": {
+        "admitted": 14,
+        "cancelled": 7,
+        "completed": 3,
+        "event": "bunly.host.download-shutdown",
+        "failed": 4,
+        "ownedCallbacks": 0,
+        "ownedDeadlineWorkers": 0,
+        "ownedStagingHandles": 0,
+        "ownedTransfers": 0,
+        "passed": true,
+        "schema": 1,
+        "terminalCallbacks": 14
+      },
+      "hostShutdown": {
+        "clean": true,
+        "event": "bunly.host.shutdown"
+      },
+      "sdkFinalOwners": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "temporaryCleanup": true,
+      "observer": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "outputOverflow": false,
+        "observerFailure": null,
+        "observedOrphans": [],
+        "cleanupSurvivors": []
+      },
+      "preparedArtifactUnchanged": true,
+      "inputArtifactUnchanged": true,
+      "preparedMetadataIdentityUnchanged": true,
+      "fullNativeSuite": {
+        "passed": true,
+        "stages": [
+          {
+            "name": "prebuilt",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "development",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "network",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "transports",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "session-reset",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "faults",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "desktop",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "view-composition",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "desktop-services",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "file-downloads",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "view-parent-close",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "window-commands",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "file-dialogs",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "status-items",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "application-links",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "window-modes",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "terminals",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "terminal-load",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "managed-development",
+            "exitCode": 0,
+            "passed": true
+          },
+          {
+            "name": "credentials",
+            "exitCode": 0,
+            "passed": true
+          }
+        ],
+        "terminalOwnership": {
+          "passed": true
+        },
+        "prebuiltTrials": 10,
+        "lifecycleCycles": 100,
+        "faultCases": 6
+      }
+    }
+  ],
+  "limits": [
+    "The bounded software gate requires both the reviewed branch and released-main native suite, optional-feature checks and strict retained report replay; both cohorts are kept distinct.",
+    "Whole fourteen-case workload duration is not first-request latency or a speedup measurement. First-request elapsed time is not separately retained.",
+    "Expected permission, byte-limit, transfer-timeout and network failures are required scenario outcomes, not failed qualification attempts.",
+    "Unsupported Windows native dialogs and status items remain unsupported. Physical file drops, OS file-picker use and directory upload are not qualified.",
+    "No physical input, IME, assistive technology, multi-DPI/display, GPU or performance qualification follows from this hosted run.",
+    "Runtime sandbox identity is unverified, and the native source is an operator declaration checked against Git and artifact bytes without embedded binary build attestation.",
+    "Strict Linux initial-hidden composition failure and physical/rendering criteria keep issue #35 and M7 incomplete."
+  ],
+  "recordingScope": {
+    "testedRuntimeCommit": "eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d",
+    "testedRuntimeTree": "048a1fed33b3060d297c8a2dc278a3e31afd940d",
+    "nativeTree": "efb611c4aef5233c30d7768e69178a5bd4bd3ffb",
+    "nativeTreeUnchanged": true,
+    "onlyDocumentationAndEvidenceChanged": true,
+    "qualifiedDesktopProfiles": {
+      "windows": {
+        "entries": 352,
+        "inventorySha256": "7e6b600a03b0ed88e721d0222caa86a3f5b959177320e573613893cf994465f4",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "composition": {
+        "entries": 359,
+        "inventorySha256": "704cc4b1700aaef319a387b9e82dc2b7b90bcaa052925237065b007cbb994b36",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "composition-profile": {
+        "entries": 357,
+        "inventorySha256": "c7359d3a03f979c0a0823ef700eec49fe3b90b65c6fc272d6f4316f6f786a766",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "services": {
+        "entries": 356,
+        "inventorySha256": "bbef02a20e5d1900aba2301aaf4acf8e88f3ac78ec14d9d5e98777f0c7dbe292",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "downloads": {
+        "entries": 359,
+        "inventorySha256": "ac2af96acb83843159ff26833129e61c7fa71d05871d7a538f879cec366c0809",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "parent-close": {
+        "entries": 357,
+        "inventorySha256": "11e6c49983b4d3354efc6141cc4f204faee24c335a1731ec49c86bba4af60406",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "commands": {
+        "entries": 357,
+        "inventorySha256": "52af3edc812ff36d67e870b0cfc1e414a7e5d39c416499725e044f65c8f788e6",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "status": {
+        "entries": 355,
+        "inventorySha256": "63652b85a35793dd444ac324a62ca4196de3c9965fa9811849116d73e3dce25d",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "links": {
+        "entries": 357,
+        "inventorySha256": "c5ef7be17f1c430ac58a5e50fca210bc5b4311edfc92e7d32261beb93366f636",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      },
+      "dialogs": {
+        "entries": 356,
+        "inventorySha256": "485135d36426a5cec81abcd56170a841519887a130ed40e0599bd1794ce3550e",
+        "inventoryEncoding": "UTF-8 compact JSON array of ordered {path,sha256} records",
+        "unchanged": true
+      }
+    },
+    "qualifiedFilesChecked": 387
+  }
+}
