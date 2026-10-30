@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/0xPlayerOne/bunly/compare/v0.6.3...v0.6.4) (2026-10-30)
+
+
+### Documentation
+
+* **m7:** publish qualification status and composition evidence ([#199](https://github.com/0xPlayerOne/bunly/issues/199)) ([1e3bc4f](https://github.com/0xPlayerOne/bunly/commit/1e3bc4f1ede6fac13fc4935531e645c8d7c75701))
+
 ## [0.6.3](https://github.com/0xPlayerOne/bunly/compare/v0.6.2...v0.6.3) (2026-10-29)
 
 
