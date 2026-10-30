@@ -217,6 +217,10 @@ graph; no recursive polling walk or extra process is introduced. Atomic file
 replacement, same-size edits, removal and a parent becoming a non-directory are
 observed through device/inode/mode/size and nanosecond modification/change times.
 This is cooperative development change detection, not a content-integrity check.
+Metadata precision is filesystem-dependent; distinct contents with identical
+observed metadata cannot be distinguished by this fallback. The portable stamp
+test uses explicit timestamp changes, while the supported macOS integration
+retains real same-size writes and a separate lost-notification regression.
 
 Event-driven reloads still take the normal fast path. Reconciliation adds a
 bounded periodic metadata cost and can add approximately one interval plus build

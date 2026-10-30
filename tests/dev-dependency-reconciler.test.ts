@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { mkdtemp, writeFile, rename, rm } from 'node:fs/promises'
+import { mkdtemp, writeFile, rename, rm, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -250,15 +250,19 @@ test('the single timer actually recovers a missed change without an explicit sca
   expect(monitor.diagnostics()).toEqual(settled)
 })
 
-test('metadata stamps detect same-size writes, atomic replacements, missing paths and non-directory parents', async () => {
+test('metadata stamps detect changed timestamps, atomic replacements, missing paths and non-directory parents', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bunly-reconcile-'))
   try {
     const file = join(root, 'input.ts'),
       replacement = join(root, 'next.ts')
     expect(await dependencyStamp(file)).toBeNull()
     await writeFile(file, 'export const value = 20')
+    // Filesystem timestamp precision is platform-specific. Exercise a deliberate
+    // metadata change here; the macOS-only case below retains rapid real writes.
+    await utimes(file, 1000000000, 1000000000)
     const before = await dependencyStamp(file)
     await writeFile(file, 'export const value = 21')
+    await utimes(file, 1000000010, 1000000010)
     const after = await dependencyStamp(file)
     expect(after).not.toBe(before)
     await writeFile(replacement, 'export const value = 21')
@@ -271,3 +275,19 @@ test('metadata stamps detect same-size writes, atomic replacements, missing path
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test.skipIf(process.platform !== 'darwin')(
+  'macOS same-size writes change the dependency metadata baseline',
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), 'bunly-reconcile-native-'))
+    try {
+      const file = join(root, 'input.ts')
+      await writeFile(file, 'export const value = 20')
+      const before = await dependencyStamp(file)
+      await writeFile(file, 'export const value = 21')
+      expect(await dependencyStamp(file)).not.toBe(before)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  }
+)
