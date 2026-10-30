@@ -6,6 +6,11 @@ identity. The CEF-facing spelling now reuses the persistent-session normalizer,
 including its rejection of UNC/device namespaces and ambiguous Windows names.
 No profile is moved, shared, warmed up or converted to a persistent session.
 
+[PR #212](https://github.com/0xPlayerOne/bunly/pull/212) merged this correction as
+`04650be8ca1f0844b85bb6f5c4871c6ad40fa284`, included in v0.6.8. Its reviewed
+branch and final released main passed the maintained Windows/full suite. The [complete retained reports and hashes](../evidence/m7-windows-downloads/README.md)
+separate those two executions and preserve the unchanged download gate.
+
 ## Source-backed defect
 
 The native host canonicalized the cache directory before assigning
@@ -43,8 +48,9 @@ Diagnostic-only [PR #211](https://github.com/0xPlayerOne/bunly/pull/211) produce
 at clean source `a245b6149e1b578e13727c0413f887df6373fa07`. Its
 [selected evidence](../evidence/m7-windows-readiness-trace-2026-10-30.json)
 retains public artifact hashes, fixed labels and relative numeric timings.
-The disposable startup trace was deleted after sanitization. The probe remains
-separate from this runtime correction and is excluded from maintained acceptance.
+The disposable startup trace was deleted after sanitization. PR #211 closed
+without merge; its probe is separate from this runtime correction and excluded
+from maintained acceptance.
 
 All timings below are relative to native record creation before `StartDownload`:
 
@@ -67,12 +73,52 @@ flows were unmatched; event loss was not independently verified. Only eight
 longest spans per label are retained, and concurrent/nested durations cannot be
 summed into request latency.
 
-## Required acceptance
+## Maintained acceptance
 
-Actual Windows execution must pass the kernel regression and the uninstrumented
-maintained `file-downloads` fixture with the original 6,000 ms first-request
+The uninstrumented [reviewed-branch run 41106853236](https://github.com/0xPlayerOne/bunly/actions/runs/41106853236)
+passed at clean source `ff3f408c378975ac115e8842e2bba98823cbac03` and native
+tree `efb611c4aef5233c30d7768e69178a5bd4bd3ffb`. All twenty full-suite stages
+passed, including the fourteen-case downloads workload and the later credential
+stage. The retained export passed the unchanged strict receipt parser plus
+historical source inventory and native-tree verification. The native library
+run passed 258 tests, including both Windows path regressions and
+`Zone.Identifier` preservation. The exact source/artifact/runtime identities
+and complete receipts are in the linked cohort.
+
+The branch workflow's separate optional-view-controls step also completed
+successfully. It runs Clippy and native compile/lifetime tests for browser
+actions, programmatic files, and the combined features; these required checks
+are distinct from the separate GUI programmatic-file qualifier.
+
+All nine download safety checks passed. The receipts account for three completed
+transfers, seven cancellations and four expected failures; all native download
+owners and final SDK owners returned to zero, temporary cleanup passed and
+overall host shutdown was clean. The 11,010.6285 ms branch workload duration
+covers all fourteen cases, not the first request. Individual first-request
+elapsed time is not retained; passing the unchanged completion gate establishes
+only that it satisfied its 6,000 ms deadline.
+
+The final released-main [run 41111900552](https://github.com/0xPlayerOne/bunly/actions/runs/41111900552)
+passed on its first attempt at clean source
+`eba03821c84bd2e73ffdeac1b2d8ccd1d36ddf5d`, with the same native tree. Its
+complete exported report also passes strict receipt and historical source replay:
+all twenty ordinary stages, all fourteen expected download outcomes, all nine
+safety checks, zero final owners and clean host shutdown. The required optional
+feature checks, 258 ordinary native tests, 1,613 Bun tests (fourteen skips), and
+269 Python tests (41 skips) passed. Its 10,475.6416 ms duration is the whole
+download workload. **Issue #36's bounded software acceptance is complete.**
+
+The retained branch and released-main executions satisfy the required Windows
+kernel regression and uninstrumented maintained `file-downloads` fixture with the original 6,000 ms first-request
 deadline, strict receipt parser, all fourteen outcomes and clean ownership.
-Run the full native suite on the reviewed correction, then repeat it on merged
-`main` before closing #36. Safe Browsing, quarantine/security metadata handling,
-temporary ownership and the native-completion requirement stay enabled. A
+Both ran the full native suite and required optional-feature checks. Safe
+Browsing, quarantine/security metadata handling, temporary ownership and the
+native-completion requirement stay enabled. A
 successful diagnostic or cross-platform type-check cannot satisfy this gate.
+
+This bounded software acceptance does not qualify physical file drops, OS picker
+use, directory upload, assistive technology or hardware/performance behavior.
+Windows native dialogs and status items remain unsupported. Runtime sandbox
+identity is unverified and native binary build attestation is absent. The strict
+Linux composition failure and remaining physical/rendering criteria in #35 keep
+M7 incomplete; see the [current M7 status](m7-status.md).
