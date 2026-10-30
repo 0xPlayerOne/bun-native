@@ -209,6 +209,13 @@ fn apply_one(id: u64) -> Result<(), String> {
     let client = current.window.client_area_bounds_in_screen();
     let viewport = placement.presentation.viewport(client.width, client.height);
     let visible = placement.presentation.visible && !viewport.empty();
+    // An overlay widget starts hidden, while its BrowserView starts visible.
+    // Apply the intent to the content View as well so Views propagates hidden
+    // state to the renderer even when the widget has never been shown.
+    if (current.view.is_visible() != 0) != visible {
+        current.view.set_visible(i32::from(visible));
+        target(id)?;
+    }
     // CEF ignores empty overlay bounds. Hide without resizing to a fake pixel.
     if !visible {
         if overlay.is_visible() != 0 {
