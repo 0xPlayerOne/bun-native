@@ -1,0 +1,416 @@
+{
+  "base": "f2437361b8c58e1b35b8036ef5df7af1c62c1744",
+  "instrumentationSha256": "59d9a096c3664ef5795f571bdbc4308eee5629cbb8c7cc8f04003790a6de68af",
+  "traces": [
+    {
+      "event": "bunly.watcher-trace",
+      "metadata": "native",
+      "entries": [
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 0.0
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 1
+          },
+          "atMs": 2.649958
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 2.658
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 2
+          },
+          "atMs": 31.459833
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 31.470208
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 3
+          },
+          "atMs": 47.161291
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 47.167916
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 4
+          },
+          "atMs": 1277.64725
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": false
+          },
+          "atMs": 1277.923375
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 5
+          },
+          "atMs": 2089.908041
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "external-directory",
+            "recursive": false
+          },
+          "atMs": 2235.534375
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "external-directory",
+            "count": 6
+          },
+          "atMs": 2235.595625
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "build",
+            "stage": "bundle",
+            "code": "BUILT",
+            "sequence": 1
+          },
+          "atMs": 2235.60375
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "reload",
+            "stage": "replace",
+            "code": "RELOADED",
+            "sequence": 1
+          },
+          "atMs": 2241.894083
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "ready",
+            "stage": "startup",
+            "code": "READY",
+            "sequence": 1
+          },
+          "atMs": 2241.902708
+        },
+        {
+          "event": "startup-return",
+          "detail": {
+            "schema": 1,
+            "closed": false,
+            "restartRequired": false,
+            "sequence": 1,
+            "builds": 1,
+            "replacements": 1,
+            "frontendEvents": 0,
+            "watchedDirectories": 6,
+            "dependencies": 2,
+            "pendingChanges": 0,
+            "pendingCallers": 0,
+            "retainedBundles": 1,
+            "diagnosticPort": null
+          },
+          "atMs": 2241.906208
+        },
+        {
+          "event": "write-start",
+          "detail": null,
+          "atMs": 2241.922541
+        },
+        {
+          "event": "write-return",
+          "detail": null,
+          "atMs": 2242.034916
+        },
+        {
+          "event": "assertion",
+          "detail": {
+            "value": 20,
+            "counters": {
+              "schema": 1,
+              "closed": false,
+              "restartRequired": false,
+              "sequence": 1,
+              "builds": 1,
+              "replacements": 1,
+              "frontendEvents": 0,
+              "watchedDirectories": 6,
+              "dependencies": 2,
+              "pendingChanges": 0,
+              "pendingCallers": 0,
+              "retainedBundles": 1,
+              "diagnosticPort": null
+            }
+          },
+          "atMs": 17242.253083
+        }
+      ]
+    },
+    {
+      "event": "bunly.watcher-trace",
+      "metadata": "malformed-cross-drive",
+      "entries": [
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 0.0
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 1
+          },
+          "atMs": 0.150875
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 0.15875
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 2
+          },
+          "atMs": 118.334708
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 118.379916
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 3
+          },
+          "atMs": 1061.506833
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": true
+          },
+          "atMs": 1061.634291
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 4
+          },
+          "atMs": 1138.983708
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "project-directory",
+            "recursive": false
+          },
+          "atMs": 1139.041166
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "project-directory",
+            "count": 5
+          },
+          "atMs": 1139.280875
+        },
+        {
+          "event": "watch-register",
+          "detail": {
+            "kind": "external-directory",
+            "recursive": false
+          },
+          "atMs": 1287.765416
+        },
+        {
+          "event": "watch-returned",
+          "detail": {
+            "kind": "external-directory",
+            "count": 6
+          },
+          "atMs": 1411.029958
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "build",
+            "stage": "bundle",
+            "code": "BUILT",
+            "sequence": 1
+          },
+          "atMs": 1411.064
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "reload",
+            "stage": "replace",
+            "code": "RELOADED",
+            "sequence": 1
+          },
+          "atMs": 1421.243
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "ready",
+            "stage": "startup",
+            "code": "READY",
+            "sequence": 1
+          },
+          "atMs": 1421.257125
+        },
+        {
+          "event": "startup-return",
+          "detail": {
+            "schema": 1,
+            "closed": false,
+            "restartRequired": false,
+            "sequence": 1,
+            "builds": 1,
+            "replacements": 1,
+            "frontendEvents": 0,
+            "watchedDirectories": 6,
+            "dependencies": 2,
+            "pendingChanges": 0,
+            "pendingCallers": 0,
+            "retainedBundles": 1,
+            "diagnosticPort": null
+          },
+          "atMs": 1421.264041
+        },
+        {
+          "event": "write-start",
+          "detail": null,
+          "atMs": 1421.398875
+        },
+        {
+          "event": "write-return",
+          "detail": null,
+          "atMs": 1421.648041
+        },
+        {
+          "event": "watch-callback",
+          "detail": {
+            "kind": "external-directory",
+            "event": "rename",
+            "externalFile": true,
+            "missing": false
+          },
+          "atMs": 2201.132875
+        },
+        {
+          "event": "invalidate",
+          "detail": {
+            "count": 1,
+            "external": true
+          },
+          "atMs": 2201.189666
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "build",
+            "stage": "bundle",
+            "code": "BUILT",
+            "sequence": 2
+          },
+          "atMs": 2234.348125
+        },
+        {
+          "event": "diagnostic",
+          "detail": {
+            "event": "reload",
+            "stage": "replace",
+            "code": "RELOADED",
+            "sequence": 2
+          },
+          "atMs": 2262.994708
+        },
+        {
+          "event": "assertion",
+          "detail": {
+            "value": 21,
+            "counters": {
+              "schema": 1,
+              "closed": false,
+              "restartRequired": false,
+              "sequence": 2,
+              "builds": 2,
+              "replacements": 2,
+              "frontendEvents": 0,
+              "watchedDirectories": 6,
+              "dependencies": 2,
+              "pendingChanges": 0,
+              "pendingCallers": 0,
+              "retainedBundles": 1,
+              "diagnosticPort": null
+            }
+          },
+          "atMs": 2266.31925
+        }
+      ]
+    }
+  ],
+  "suite": {
+    "passed": 1591,
+    "skipped": 3,
+    "failed": 12,
+    "limitation": "Diagnostic whole-suite invocation omitted the contributor PYTHON environment and has additional environment failures; it is not a portable gate result. The watcher trace is independently explicit."
+  }
+}
