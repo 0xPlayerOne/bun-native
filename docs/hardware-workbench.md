@@ -167,7 +167,13 @@ origin/URL, authenticated frame/generation and cancellation signal. It rechecks
 authority after asynchronous work and before subsequent actions. The overlay
 cannot invoke the controls' commands. At most one workbench mutation or readback
 is admitted at a time; input bursts are bounded rather than accumulated in an
-unlimited command queue.
+unlimited command queue. While a command or snapshot is pending, presentation
+controls retain only the latest requested value for each of the two previews.
+Those values run after the current request settles, so the final slider position
+is not lost during rapid resizing. Failed requests are not retried automatically.
+Focus, close, reopen and other one-shot actions must be requested again if the
+workbench is busy; they are never queued for later execution. Leaving the controls
+document discards any pending presentations.
 
 Every surface has a labeled editable multilingual field, reset and select
 controls, a local action, visible focus styling, and local input/composition
