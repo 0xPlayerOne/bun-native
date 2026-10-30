@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "suite": "full",
+  "target": "linux-x64",
+  "passed": false,
+  "steps": [
+    {
+      "name": "prebuilt",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "development",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "network",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "transports",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "session-reset",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "faults",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "desktop",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "view-composition",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "composition-interactions",
+      "exitCode": 1,
+      "passed": false
+    },
+    {
+      "name": "desktop-services",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "file-downloads",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "view-parent-close",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "window-commands",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "file-dialogs",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "status-items",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "application-links",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "window-modes",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "terminals",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "terminal-load",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "managed-development",
+      "exitCode": 0,
+      "passed": true
+    }
+  ],
+  "sourceCommit": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+  "sourceClean": true,
+  "terminalOwnership": {
+    "passed": true
+  },
+  "failure": "Credential qualification requires every preceding native stage to pass",
+  "nativeEvidenceExport": {
+    "schema": 1,
+    "redactions": [
+      "fixture-nonces"
+    ],
+    "correlation": "not-retained"
+  }
+}

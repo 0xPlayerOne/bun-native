@@ -1,0 +1,683 @@
+{
+  "schema": 1,
+  "profile": "native-composition-interactions-v1",
+  "scope": "Native integration observations; physical hardware and performance remain unqualified.",
+  "physicalInputQualified": false,
+  "imeQualified": false,
+  "hardwareDpiQualified": false,
+  "assistiveTechnologyQualified": false,
+  "performanceEligible": false,
+  "sanitization": {
+    "exporter": "scripts/export_native_evidence.py",
+    "exporterSha256": "2c54114b1a681bc025620f03d2463c67e2b8101da36aa230c850dc502fa96a91",
+    "redactions": [
+      "fixture-nonces",
+      "hosted-worktree-prefix",
+      "local-linux-worktree-prefix",
+      "local-linux-run-prefix",
+      "workspace-prefix",
+      "composition-worktree-prefix",
+      "native-build-worktree-prefix",
+      "home-prefix"
+    ],
+    "outcomesAndReceiptsPreserved": true
+  },
+  "runs": [
+    {
+      "id": "macos-preparation-failed",
+      "run": "f8GpyT",
+      "reportOriginal": {
+        "bytes": 192332,
+        "sha256": "21cb59fa1ddeab44ae2c9b3db43c47dbd4d14e05834c6cfe1ff158e8e78637dd"
+      },
+      "archive": "macos-preparation-failed.json.gz",
+      "archiveBytes": 42991,
+      "archiveSha256": "8ea85e6adc8f3142699b0c0e7e8621aab4269b016459fe6d0d3c5841e1463d75",
+      "expandedBytes": 192414,
+      "expandedSha256": "c9db6c789efb2002ddb4a77be89a56f58709cc29cab5e03c7a3ea12721465193",
+      "passed": false,
+      "source": "8662a164fe3b1cb664ed75693cf59e3b6a29d047",
+      "nativeSource": {
+        "declaredCommit": "be22c89a1c680c3262316e516f22a4816cbf4e9c",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "failure": "ENOENT: no such file or directory, open '[composition-worktree]/.bunly/m7/composition-interactions/run-f8GpyT/Composition Interactions.app/Contents/Resources/runtime.json'",
+      "acceptance": null,
+      "target": "darwin-arm64",
+      "nativeExecutionReached": false,
+      "replay": {
+        "expected": "rejected",
+        "exitCode": 1
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": false
+    },
+    {
+      "id": "macos-focus-assertion-failed",
+      "run": "cC1W7u",
+      "reportOriginal": {
+        "bytes": 690915,
+        "sha256": "273295768ec8738d23f7b9eb55760c4008ab3507cd0b06fa232ce3f364db5bc0"
+      },
+      "archive": "macos-focus-assertion-failed.json.gz",
+      "archiveBytes": 70434,
+      "archiveSha256": "ca8c98de061c20d1e27d2515ad1e3098d278c54407765cb34b8025d8429dd126",
+      "expandedBytes": 691036,
+      "expandedSha256": "c314b9d6cca5b853e9d3bc1b2725e02219b8ec825bf6f06925085df2d3f50097",
+      "passed": false,
+      "source": "8662a164fe3b1cb664ed75693cf59e3b6a29d047",
+      "nativeSource": {
+        "declaredCommit": "be22c89a1c680c3262316e516f22a4816cbf4e9c",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "acceptance": null,
+      "target": "darwin-arm64",
+      "nativeExecutionReached": true,
+      "replay": {
+        "expected": "rejected",
+        "exitCode": 1
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": false,
+      "observerElapsedMs": 3226.517042145133,
+      "observer": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "cleanupSurvivors": [],
+        "observedOrphans": [],
+        "observerFailure": null
+      },
+      "environment": {
+        "os": "Darwin",
+        "release": "25.6.0",
+        "arch": "arm64",
+        "logicalCpus": 12,
+        "memoryBytes": 68719476736,
+        "psutil": "7.0.0",
+        "python": "3.11.15",
+        "runClass": "local-smoke"
+      },
+      "applicationWorkloadMs": 2517.4415000000004,
+      "applicationFailure": "overlay-dialog-closed: AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n\nCaught error:\n\nError: PERMISSION_DENIED: view is hidden, clipped or nonfocusable",
+      "nativeFinal": null,
+      "sdkFinal": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "applicationShutdownSucceeded": true,
+      "focusObservations": 7,
+      "menus": 3,
+      "dialog": {
+        "status": "cancelled",
+        "before": {
+          "active": 0,
+          "admissions": 0,
+          "callbacks": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": false
+        },
+        "visible": {
+          "active": 1,
+          "admissions": 1,
+          "callbacks": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": true
+        },
+        "after": {
+          "active": 0,
+          "admissions": 1,
+          "callbacks": 1,
+          "cancelled": 1,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": false
+        },
+        "menuRejectedWhileOpen": true
+      },
+      "nativeHostClean": false,
+      "inputHostSha256": "690e8164830de24c99b80acd97cb16d3344f971e3f35f523011843de96581a0f",
+      "preparedHostSha256": "4ac48b6dd47bae738a3b23d1d18a08564138bf01b3be6e8f6271c7c083b3f0ce",
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "bundledBun": {
+        "version": "1.4.4",
+        "path": "Contents/Resources/bun",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      }
+    },
+    {
+      "id": "macos-passed",
+      "run": "qVYXoq",
+      "reportOriginal": {
+        "bytes": 952095,
+        "sha256": "18161871f93568e20aaff5bd4b5ff1ff145afe0182e67facb92b84e8bd6ca3c3"
+      },
+      "archive": "macos-passed.json.gz",
+      "archiveBytes": 89248,
+      "archiveSha256": "d4cb604c210104850e4271be55499ad60a7cbc5ed1cc0d9afde4dc0371480dbf",
+      "expandedBytes": 952268,
+      "expandedSha256": "1d12efaeb70d2af7dd571cc897bfa8ff0d2deec694d69974a3d9e2b89cc4d8c5",
+      "passed": true,
+      "source": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+      "nativeSource": {
+        "declaredCommit": "be22c89a1c680c3262316e516f22a4816cbf4e9c",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "failure": null,
+      "acceptance": {
+        "panes": 3,
+        "focusObservations": 10,
+        "cancelledMenus": 3,
+        "dialog": "cancelled",
+        "menuRejectedWhileDialogOpen": true,
+        "retainedDocuments": 3,
+        "nativeOwnershipReleased": true,
+        "physicalInputQualified": false,
+        "imeQualified": false,
+        "hardwareDpiQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false
+      },
+      "target": "darwin-arm64",
+      "nativeExecutionReached": true,
+      "replay": {
+        "expected": "passed",
+        "exitCode": 0
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": true,
+      "observerElapsedMs": 3105.9253332205117,
+      "observer": {
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "cleanupSurvivors": [],
+        "observedOrphans": [],
+        "observerFailure": null
+      },
+      "environment": {
+        "os": "Darwin",
+        "release": "25.6.0",
+        "arch": "arm64",
+        "logicalCpus": 12,
+        "memoryBytes": 68719476736,
+        "psutil": "7.0.0",
+        "python": "3.11.15",
+        "runClass": "local-smoke"
+      },
+      "applicationWorkloadMs": 2472.698166,
+      "applicationFailure": null,
+      "nativeFinal": {
+        "windows": 1,
+        "views": 0,
+        "sessions": 0,
+        "rpcBindings": 0,
+        "pending": 0,
+        "downloads": 0,
+        "nativeDeliveryPackets": 0,
+        "nativeDeliveryBytes": 0,
+        "rpcIncomingBytes": 0,
+        "streamIncomingBytes": 0
+      },
+      "sdkFinal": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "applicationShutdownSucceeded": true,
+      "focusObservations": 10,
+      "menus": 3,
+      "dialog": {
+        "status": "cancelled",
+        "before": {
+          "active": 0,
+          "admissions": 0,
+          "callbacks": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": false
+        },
+        "visible": {
+          "active": 1,
+          "admissions": 1,
+          "callbacks": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": true
+        },
+        "after": {
+          "active": 0,
+          "admissions": 1,
+          "callbacks": 1,
+          "cancelled": 1,
+          "failed": 0,
+          "selected": 0,
+          "supported": true,
+          "visible": false
+        },
+        "menuRejectedWhileOpen": true
+      },
+      "nativeHostClean": true,
+      "inputHostSha256": "690e8164830de24c99b80acd97cb16d3344f971e3f35f523011843de96581a0f",
+      "preparedHostSha256": "592e1124345cba3015cb0651570be6eb33008ec09cc76d4c8d9b5d9ec0ec20a5",
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "bundledBun": {
+        "version": "1.4.4",
+        "path": "Contents/Resources/bun",
+        "sha256": "0d5af21485ade43e49366435d7010ab9cea7a162d5a0d3db3afe31e39d68717d"
+      }
+    },
+    {
+      "id": "linux-initial-hidden-failed",
+      "target": "linux-x64",
+      "passed": false,
+      "classification": "initial-hidden-renderer-visibility-mismatch",
+      "source": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+      "nativeSource": {
+        "declaredCommit": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "hostedRun": 41101637251,
+      "hostedArtifact": 13000456175,
+      "hostedRunUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/41101637251",
+      "hostedArchiveSha256": "aa987a79549f2fd7acc49992f836edc5bcbc21bf133ce41ff8a8f4e4255d5f71",
+      "downloadedReport": {
+        "file": "composition-interactions.json",
+        "duplicateFile": "composition-interactions-run-NyVRUU.json",
+        "bytes": 7984335,
+        "sha256": "7e3e72c2d27cdd3440fb9a86a4aad0e8a67f5a9a837e404748112bf44b554c45",
+        "alreadySanitized": true
+      },
+      "archive": "linux-initial-hidden-failed.json.gz",
+      "archiveBytes": 126329,
+      "archiveSha256": "56f4d9d6c5cf3416afa5fd27d66dd2f3dec5ea79134bd9e0d7340b60d2185c3e",
+      "expandedBytes": 7984319,
+      "expandedSha256": "fa21080b8edf975dd26fc66cce0314975975a5fb86a8f46ecbb382f731f08e0d",
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "applicationFailure": "left-ready: Error: Composition interaction deadline",
+      "applicationWorkloadMs": 30037.326442,
+      "observerElapsedMs": 30383.224573000007,
+      "observer": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "cleanupSurvivors": [],
+        "observedOrphans": [],
+        "observerFailure": null
+      },
+      "applicationShutdownSucceeded": true,
+      "sdkFinal": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "nativeHostClean": false,
+      "pendingFocus": {
+        "name": "left-ready",
+        "panes": {
+          "left": {
+            "nativeFocused": true,
+            "pageFocused": true,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 1
+          },
+          "right": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 0
+          },
+          "overlay": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": false,
+            "drawn": false,
+            "focusable": false,
+            "pageVisibility": "visible",
+            "sequence": 0
+          }
+        }
+      },
+      "menusStarted": 0,
+      "dialog": null,
+      "inputHostSha256": "f09525ad81d6b89ed4171f9f5cb61021cd51f3bf2fb18427e8dc30587279db0c",
+      "preparedHostSha256": "f09525ad81d6b89ed4171f9f5cb61021cd51f3bf2fb18427e8dc30587279db0c",
+      "bundledBun": {
+        "version": "1.4.4",
+        "path": "resources/bun",
+        "sha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d6ae34b71b65685b9fc84f24b53214cdb71a17ceecca0034c3a95a9d4358d86f",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": false,
+      "environment": {
+        "os": "Linux",
+        "release": "6.8.0-1070-azure",
+        "arch": "x86_64",
+        "logicalCpus": 4,
+        "memoryBytes": 16765386752,
+        "psutil": "7.0.0",
+        "python": "3.11.17",
+        "runClass": "ci-smoke"
+      },
+      "qualification": {
+        "file": "linux-qualification.json",
+        "bytes": 2172,
+        "sha256": "4844101c0d1a525fd65b7566e60417502b7ccaf289f2fecdc3103629221241b5",
+        "passed": false
+      },
+      "replay": {
+        "expected": "rejected",
+        "exitCode": 1,
+        "reason": "Report records passed: false; acceptance did not promote the failed outcome."
+      }
+    },
+    {
+      "id": "linux-baseline-failed",
+      "target": "linux-x64",
+      "passed": false,
+      "classification": "initial-hidden-renderer-visibility-mismatch",
+      "source": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+      "nativeSource": {
+        "declaredCommit": "bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "reportOriginal": {
+        "sha256": "8cd090ecfe50bd49aec7ca814ad14077e01e1e686a3266be1c9e8b21cbd2bb67",
+        "rawReportRetainedPrivately": true
+      },
+      "sanitizedInput": {
+        "bytes": 8859673,
+        "sha256": "1f14133954b8fcc4fa83e1a31799a48cf39bdb9bd9e5f83e4cb9a7707da5ddaf"
+      },
+      "archive": "linux-baseline-failed.json.gz",
+      "archiveBytes": 133783,
+      "archiveSha256": "4d5090ebe02ceb39f3a2a11f8c5735c72f4fcbe8e449ca7b214bc9ee22a4c269",
+      "expandedBytes": 8859656,
+      "expandedSha256": "ce360a94dbc11533c4f8995adeaf847daf268336913e9496081e6c00570236cf",
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "applicationFailure": "left-ready: Error: Composition interaction deadline",
+      "applicationWorkloadMs": 30047.958876,
+      "observerElapsedMs": 30574.368867000885,
+      "observer": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "cleanupSurvivors": [],
+        "observedOrphans": [],
+        "observerFailure": null
+      },
+      "applicationShutdownSucceeded": true,
+      "sdkFinal": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "nativeHostClean": false,
+      "pendingFocus": {
+        "name": "left-ready",
+        "panes": {
+          "left": {
+            "nativeFocused": true,
+            "pageFocused": true,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 1
+          },
+          "right": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 0
+          },
+          "overlay": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": false,
+            "drawn": false,
+            "focusable": false,
+            "pageVisibility": "visible",
+            "sequence": 0
+          }
+        }
+      },
+      "menusStarted": 0,
+      "dialog": null,
+      "inputHostSha256": "60a2995de98afc61520954bf64593713819e12f79b0f07cf6ee5aa2d52d5898a",
+      "preparedHostSha256": "60a2995de98afc61520954bf64593713819e12f79b0f07cf6ee5aa2d52d5898a",
+      "bundledBun": {
+        "version": "1.4.4",
+        "path": "resources/bun",
+        "sha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d6ae34b71b65685b9fc84f24b53214cdb71a17ceecca0034c3a95a9d4358d86f",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": false,
+      "environment": {
+        "os": "Linux",
+        "release": "6.18.57",
+        "arch": "x86_64",
+        "logicalCpus": 9,
+        "memoryBytes": 10451427328,
+        "psutil": "7.0.0",
+        "python": "3.12.14",
+        "runClass": "local-smoke"
+      },
+      "candidateWithdrawn": false,
+      "replay": {
+        "expected": "rejected",
+        "exitCode": 1,
+        "reason": "Report records passed: false; acceptance did not promote the failed outcome."
+      }
+    },
+    {
+      "id": "linux-candidate-failed",
+      "target": "linux-x64",
+      "passed": false,
+      "classification": "initial-hidden-renderer-visibility-mismatch",
+      "source": "0584f3bf7ab4d287706beb345b2c5d1eb680c1fc",
+      "nativeSource": {
+        "declaredCommit": "0584f3bf7ab4d287706beb345b2c5d1eb680c1fc",
+        "tree": "7eda6d87db73a8551da4e9709e5adec1b14525ba",
+        "embeddedBuildAttestation": false
+      },
+      "reportOriginal": {
+        "sha256": "03a441ae4bcb673cc39bf5fc7952106eeeddca329ce6a65a1245b2f97fc2564f",
+        "rawReportRetainedPrivately": true
+      },
+      "sanitizedInput": {
+        "bytes": 9427540,
+        "sha256": "b7b43668dcfc222d0f70716c7267ce2c40941782320504ecc97792f7e701c7e8"
+      },
+      "archive": "linux-candidate-failed.json.gz",
+      "archiveBytes": 136375,
+      "archiveSha256": "2715c0ee070f32dcfe7b273d119814f3e605507642b63146879ae747ef19cf52",
+      "expandedBytes": 9427523,
+      "expandedSha256": "0a3a73dc7659e14f35f7b4d4787b079351eac95c3454deef8335cf95b0e0b84e",
+      "failure": "Command failed: unexpected exit 1 (expected 0)",
+      "applicationFailure": "left-ready: Error: Composition interaction deadline",
+      "applicationWorkloadMs": 30026.872395,
+      "observerElapsedMs": 30348.498957999254,
+      "observer": {
+        "exitCode": 1,
+        "timedOut": false,
+        "cancelled": false,
+        "cleanupSurvivors": [],
+        "observedOrphans": [],
+        "observerFailure": null
+      },
+      "applicationShutdownSucceeded": true,
+      "sdkFinal": {
+        "windows": 0,
+        "views": 0,
+        "sessions": 0,
+        "listeners": 0,
+        "listenerErrors": 0
+      },
+      "nativeHostClean": false,
+      "pendingFocus": {
+        "name": "left-ready",
+        "panes": {
+          "left": {
+            "nativeFocused": true,
+            "pageFocused": true,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 1
+          },
+          "right": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "pageVisibility": "visible",
+            "sequence": 0
+          },
+          "overlay": {
+            "nativeFocused": false,
+            "pageFocused": false,
+            "visible": false,
+            "drawn": false,
+            "focusable": false,
+            "pageVisibility": "visible",
+            "sequence": 0
+          }
+        }
+      },
+      "menusStarted": 0,
+      "dialog": null,
+      "inputHostSha256": "563a04628d0a102fe7cdf70c22cda02bef47ba2ef8392cdca7ad83cee1d00f88",
+      "preparedHostSha256": "563a04628d0a102fe7cdf70c22cda02bef47ba2ef8392cdca7ad83cee1d00f88",
+      "bundledBun": {
+        "version": "1.4.4",
+        "path": "resources/bun",
+        "sha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235"
+      },
+      "runtimeIdentity": {
+        "event": "cef-binary-identity",
+        "schema": 1,
+        "sha256": "d6ae34b71b65685b9fc84f24b53214cdb71a17ceecca0034c3a95a9d4358d86f",
+        "cefVersion": "156.0.7",
+        "chromiumVersion": "156.0.8078.17",
+        "cefCommitNumber": 3652,
+        "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+        "source": "exported-api",
+        "sandbox": "unverified"
+      },
+      "sourceUnchanged": true,
+      "artifactAfterChecksReached": false,
+      "environment": {
+        "os": "Linux",
+        "release": "6.18.57",
+        "arch": "x86_64",
+        "logicalCpus": 9,
+        "memoryBytes": 10451427328,
+        "psutil": "7.0.0",
+        "python": "3.12.14",
+        "runClass": "local-smoke"
+      },
+      "candidateWithdrawn": true,
+      "replay": {
+        "expected": "rejected",
+        "exitCode": 1,
+        "reason": "Report records passed: false; acceptance did not promote the failed outcome."
+      }
+    }
+  ],
+  "candidate": {
+    "publishedCommit": "0584f3bf7ab4d287706beb345b2c5d1eb680c1fc",
+    "nativeTree": "7eda6d87db73a8551da4e9709e5adec1b14525ba",
+    "qualified": false,
+    "withdrawn": true,
+    "revertCommit": "47b02d83c02ab3590fe293b89d16899e389a209e",
+    "restoredNativeTree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88"
+  },
+  "originalMacHashesVerifiedBeforeExport": true,
+  "historicalReplayOffline": true,
+  "equipmentContext": {
+    "macosDisplay": "Screen Sharing Virtual Display",
+    "source": "Device inventory observed by the coordinating operator during these attempts; not a fixture hardware-qualification receipt.",
+    "physicalPanelQualified": false,
+    "inputOrAssistiveTechnologyQualified": false
+  }
+}

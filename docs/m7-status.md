@@ -65,6 +65,39 @@ completion gate, and #35 still requires physical focus/input/IME/accessibility/
 display observations and the specified rendering comparison. Historical Mac
 composition data and a software watcher fix do not qualify those missing cases.
 
+## Composition interaction continuation
+
+[PR #210](https://github.com/0xPlayerOne/bunly/pull/210) adds a distinct combined
+pane/overlay/menu/dialog qualification profile. The
+[retained attempts](../evidence/m7-composition-interactions/README.md) preserve
+two unsuccessful Mac attempts, the corrected Mac pass, the hosted Linux failure
+and two local Linux reproductions. The archives retain exact sources, original
+and export hashes, runtime identity, pending observations and cleanup outcomes.
+
+At source `bebcaf49cdd66b3da25fe8b7bb76a6bd2685f70d`, the macOS ARM64 run passed
+ten focus observations, three native menu opening/cancellation pairs and a native
+file-panel cancellation with competing-popup rejection. It preserved all three
+documents and sessions, released native/SDK owners and completed clean native
+shutdown. Its two earlier attempts remain failed: preparation stopped before
+launch, then the first native execution exposed an overly narrow fixture error
+matcher after successful dialog completion. The matcher correction preserved
+the exact required native denial and all existing deadlines.
+
+The same corrected fixture failed on hosted Linux at its first checkpoint:
+the initially hidden overlay is natively hidden, undrawn and nonfocusable, but
+its renderer still reports `visibility: visible`. No menu/dialog step was reached.
+The mismatch reproduced locally. A seven-line native visibility candidate also
+failed actual execution and was normally reverted; it is not a delivered fix.
+The [pinned upstream analysis](../evidence/m7-composition-interactions/upstream-initial-visibility.md)
+identifies the missing creation-time hidden setting in the CEF Alloy path and
+Chromium's first-visibility guard. The strict fixture and hosted prerequisite
+continue to reject this result.
+
+The Mac session used a virtual display. Physical keyboard/pointer, IME,
+screen-reader and hardware display/DPI observations remain unqualified, and no
+performance or matched OSR comparison is inferred. These records advance #35's
+native integration evidence; they do not complete #35 or M7.
+
 ## Current capability matrix
 
 | Capability                                                                               | macOS ARM64                                                                | Windows x64                                                                                                | Linux x64                                            | Scope and evidence                                                                                                                                                                                                                                                                             |
