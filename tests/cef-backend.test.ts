@@ -348,6 +348,44 @@ test('unsubscribed observers do not fire later in the same delivery snapshot', a
   first()
   await f.backend.dispose()
 })
+test('native diagnostic observers do not await callbacks and count rejected promises and thenables', async () => {
+  const f = await fixture()
+  const pending = Promise.withResolvers<void>()
+  let deliveries = 0,
+    assimilations = 0
+  const removePromise = f.backend.observe(() => pending.promise)
+  const removeThenable = f.backend.observe(() => ({
+    // Exercise a callback's PromiseLike result through the native-event dispatcher.
+    // oxlint-disable-next-line unicorn/no-thenable
+    then(_resolve: (value: unknown) => void, reject: (error: unknown) => void) {
+      assimilations++
+      reject(new Error('Native diagnostic thenable failed'))
+    },
+  }))
+  const removeHealthy = f.backend.observe(() => {
+    deliveries++
+  })
+  try {
+    for (let index = 0; index < 2; index++)
+      f.send({ v: 1, event: 'view.console', target: 3, data: { message: 'fixture' } })
+    await turn()
+    assert.equal(deliveries, 2, 'A pending observer cannot delay later native-event delivery')
+    assert.equal(assimilations, 2)
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    removePromise()
+    removeThenable()
+    pending.reject(new Error('Native diagnostic promise failed after unsubscribe'))
+    await turn()
+    assert.equal(f.backend.diagnostics().listenerErrors, 4, 'Each rejected invocation is counted')
+    assert.equal(f.transport.failure, null, 'Observer failure does not fail the native transport')
+  } finally {
+    removePromise()
+    removeThenable()
+    removeHealthy()
+    pending.resolve()
+    await f.backend.dispose()
+  }
+})
 test('focus and visibility operations reject disposed or closing owners', async () => {
   const f = await fixture()
   await f.backend.focusView(f.view)

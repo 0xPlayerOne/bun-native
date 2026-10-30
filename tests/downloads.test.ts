@@ -321,6 +321,69 @@ test('download progress listener errors are isolated and their registrations are
   }
 })
 
+test('async download listener failures include initial, progress, and terminal snapshots', async () => {
+  const f = await fixture()
+  try {
+    const operation = await f.backend.startDownload(f.view, request)
+    const observations: DownloadProgress['status'][] = []
+    operation.onProgress(async () => {
+      throw new Error('asynchronous download failure')
+    })
+    operation.onProgress((progress) => observations.push(progress.status))
+    assert.deepEqual(observations, ['starting'])
+    await turn()
+    assert.equal(f.backend.diagnostics().listenerErrors, 1)
+    f.progress('in-progress', 1)
+    await turn()
+    assert.deepEqual(observations, ['starting', 'in-progress'])
+    assert.equal(f.backend.diagnostics().listenerErrors, 2)
+    f.finish('completed', 1)
+    assert.equal((await operation.completed).status, 'completed')
+    await turn()
+    assert.deepEqual(observations, ['starting', 'in-progress', 'completed'])
+    assert.equal(f.backend.diagnostics().listenerErrors, 3)
+    assert.equal(f.backend.diagnostics().listeners, 0)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
+test('download settlement does not await a shared listener promise or lose its later rejection', async () => {
+  const f = await fixture()
+  try {
+    const operation = await f.backend.startDownload(f.view, request)
+    let reject!: (error: unknown) => void
+    const pending = new Promise<void>((_resolve, fail) => {
+      reject = fail
+    })
+    // Keep a failing pre-fix run contained; diagnostics must still observe each delivery.
+    void pending.catch(() => {})
+    const observations: DownloadProgress['status'][] = []
+    const listener = (progress: DownloadProgress) => {
+      observations.push(progress.status)
+      return pending
+    }
+    operation.onProgress(listener)
+    f.progress('in-progress', 1)
+    f.finish('completed', 1)
+    assert.equal((await operation.completed).status, 'completed')
+    assert.deepEqual(observations, ['starting', 'in-progress', 'completed'])
+    assert.equal(f.backend.diagnostics().listeners, 0)
+    assert.equal(f.backend.diagnostics().listenerErrors, 0)
+    reject(new Error('shared download failure'))
+    await turn()
+    assert.equal(f.backend.diagnostics().listenerErrors, 3)
+    operation.onProgress(listener)
+    assert.deepEqual(observations, ['starting', 'in-progress', 'completed', 'completed'])
+    assert.equal(f.backend.diagnostics().listenerErrors, 4)
+    assert.equal(f.backend.diagnostics().listeners, 0)
+    assert.equal(f.transport.failure, null)
+  } finally {
+    await f.backend.dispose()
+  }
+})
+
 test('a forged native operation identity fails the transport without accepting completion', async () => {
   const f = await fixture()
   const operation = await f.backend.startDownload(f.view, request)
