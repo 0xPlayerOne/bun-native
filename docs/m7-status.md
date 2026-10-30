@@ -20,6 +20,51 @@ means code or API coverage exists without a matching native run. â€œUnsupportedâ
 means the adapter rejects the operation or has no implementation. Unsupported
 and unrun paths are not passes.
 
+## October 30 continuation: watcher recovery and download phase timing
+
+Release [v0.6.5](https://github.com/0xPlayerOne/bunly/releases/tag/v0.6.5)
+includes merged [#201](https://github.com/0xPlayerOne/bunly/pull/201)
+and [#202](https://github.com/0xPlayerOne/bunly/pull/202). The latter closes
+[#179](https://github.com/0xPlayerOne/bunly/issues/179) for the demonstrated macOS
+backend notification-loss recovery path. Its retained failing trace distinguishes
+missing notification delivery from a later build/worker failure. The same
+real-bundle regression with every filesystem notification withheld fails on the
+old implementation at the unchanged fifteen-second deadline and passes on the
+bounded correction. Final local validation passed 1,614 Bun tests with three
+skips and 310 Python tests; all current-head hosted platform checks passed.
+See [the recovery contract](development-host.md#macos-backend-dependency-notification-recovery)
+and [source-attributed failure evidence](../evidence/development-watcher/README.md).
+This is not a fix for every filesystem notification or arbitrary frontend asset.
+
+The maintained Windows/full [run 41002711192](https://github.com/0xPlayerOne/bunly/actions/runs/41002711192)
+on #201's exact source `9bec0651a5ac6b2725095ece77667f0978f97810` still failed its
+first six-second download. The [selected phase summary](../evidence/m7-windows-phase-timing-2026-10-30.json)
+retains exact source/digests and the following relative native observations:
+
+| Observation                                       | Milliseconds from record creation before StartDownload |
+| ------------------------------------------------- | -----------------------------------------------------: |
+| Exact resource completion (32,768 bytes, success) |                                                      2 |
+| First matched native download callback            |                                                  5,549 |
+| Before-download callback                          |                                                  5,551 |
+| First positive/full byte count                    |                                                  5,552 |
+| Last callback before timeout                      |                                                  5,645 |
+| Application-wide file-utility last launch         |                                                  5,647 |
+| Timeout receipt                                   |                                                  6,001 |
+
+This localizes substantial pre-callback delay but does not prove its cause. The
+last native item remained in progress, not complete. The separate native shutdown
+receipt has zero download owners; temporary cleanup and SDK shutdown succeeded,
+while overall host `clean` is false. The fixture's nested `downloadShutdown` field
+is null and is not substituted for the separate native receipt. Thirteen later
+download scenarios were not run. Source-before/after are clean with equal source
+hashes, but after-run binary inventories were not reached. No security setting,
+payload, completion rule or maintained deadline was relaxed.
+
+**M7 remains open.** #36 still requires a corrected, passing maintained Windows
+completion gate, and #35 still requires physical focus/input/IME/accessibility/
+display observations and the specified rendering comparison. Historical Mac
+composition data and a software watcher fix do not qualify those missing cases.
+
 ## Current capability matrix
 
 | Capability                                                                               | macOS ARM64                                                                | Windows x64                                                                                                | Linux x64                                            | Scope and evidence                                                                                                                                                                                                                                                                             |

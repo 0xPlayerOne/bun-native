@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "kind": "selected-maintained-native-failure-summary",
+  "run": 41002711192,
+  "artifact": 12955321226,
+  "runUrl": "https://github.com/0xPlayerOne/bunly/actions/runs/41002711192",
+  "sourceBefore": {
+    "commit": "9bec0651a5ac6b2725095ece77667f0978f97810",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceAfter": {
+    "commit": "9bec0651a5ac6b2725095ece77667f0978f97810",
+    "clean": true,
+    "reason": "clean-checkout"
+  },
+  "sourceHashesUnchanged": true,
+  "nativeSource": {
+    "declaredCommit": "9bec0651a5ac6b2725095ece77667f0978f97810",
+    "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+    "embeddedBuildAttestation": false
+  },
+  "digests": {
+    "artifactZipSha256": "b4073b83967d4bf117b84617cba9fa29ded8be98d1c9df9c6a8e3a4933639b16",
+    "fileDownloadsExportSha256": "50177eae05f2d84530179c6f4d50daf0104ef43249b10b7a53bd1344dc20d899"
+  },
+  "passed": false,
+  "timeoutReceipt": {
+    "before": true,
+    "callbackCount": 6,
+    "callbackCountSaturated": false,
+    "callbackOwned": true,
+    "event": "bunly.host.download-timeout",
+    "fileUtilityObservedLaunches": 1,
+    "lastCallback": {
+      "bytesReceived": 32768,
+      "cancelled": false,
+      "complete": false,
+      "inProgress": true,
+      "interruptReason": "none",
+      "interrupted": false,
+      "pathState": "owned-stage",
+      "paused": false,
+      "percentComplete": 100,
+      "phase": "updated",
+      "totalBytes": 32768,
+      "valid": true
+    },
+    "quarantineObservedLaunches": 0,
+    "requestCompletion": {
+      "receivedContentLength": 32768,
+      "status": "success"
+    },
+    "safeBrowsingEnabledAtAdmission": true,
+    "schema": 1,
+    "timingMs": {
+      "callbacks": {
+        "beforeCallback": 5551,
+        "firstCallback": 5549,
+        "firstFullByteCount": 5552,
+        "firstPositiveBytes": 5552,
+        "lastCallback": 5645
+      },
+      "fileUtilityLastLaunch": 5647,
+      "origin": "record-created-before-start-download",
+      "quarantineLastLaunch": null,
+      "resourceComplete": 2,
+      "timeoutObserved": 6001
+    }
+  },
+  "nativeDownloadShutdown": {
+    "admitted": 1,
+    "cancelled": 0,
+    "completed": 0,
+    "event": "bunly.host.download-shutdown",
+    "failed": 1,
+    "ownedCallbacks": 0,
+    "ownedDeadlineWorkers": 0,
+    "ownedStagingHandles": 0,
+    "ownedTransfers": 0,
+    "passed": true,
+    "schema": 1,
+    "terminalCallbacks": 1
+  },
+  "fixture": {
+    "passed": false,
+    "workloadMs": 6370.6584,
+    "steps": [
+      {
+        "name": "complete",
+        "outcome": {
+          "status": "failed",
+          "bytesWritten": 0,
+          "bytesReceived": 32768,
+          "failure": "timeout"
+        },
+        "notifications": 5,
+        "positiveProgress": true,
+        "sha256": "4daba74b0ccc9f1971db4376f8e7c3f6da921c29c39c9281c9aeb7b10023c13a"
+      }
+    ],
+    "checks": {
+      "permissionDenied": true,
+      "traversalRejected": true,
+      "rootMismatchRejected": true
+    },
+    "laterDownloadScenariosNotRun": 13,
+    "sdkShutdownSucceeded": true,
+    "temporaryCleanup": true,
+    "sdkFinalOwners": {
+      "windows": 0,
+      "views": 0,
+      "sessions": 0,
+      "listeners": 0,
+      "listenerErrors": 0
+    },
+    "nestedDownloadShutdown": null
+  },
+  "hostShutdown": {
+    "clean": false,
+    "event": "bunly.host.shutdown"
+  },
+  "observer": {
+    "exitCode": 1,
+    "timedOut": false,
+    "cancelled": false,
+    "observerFailure": null,
+    "outputOverflow": false,
+    "observedOrphans": [],
+    "cleanupSurvivors": []
+  },
+  "afterRunArtifactInventoryObserved": false,
+  "performanceEligible": false,
+  "limits": [
+    "Selected fields only; not a complete independently replayable native report.",
+    "Phase origin is native record creation before StartDownload, not SDK invocation.",
+    "Utility launch observations are application-wide, not exact-transfer ownership or readiness.",
+    "Full byte arrival is not native completion or completed security inspection.",
+    "No physical input, assistive technology, hardware display, sandbox attestation or performance qualification.",
+    "The failed workflow did not run thirteen later download scenarios or the later credential prerequisite-dependent job."
+  ]
+}
