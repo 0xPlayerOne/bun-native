@@ -234,9 +234,24 @@ pub fn release_after_cef_shutdown() -> Result<(), String> {
 fn normalized_canonical(path: &Path) -> Result<PathBuf, String> {
     let canonical = fs::canonicalize(path)
         .map_err(|error| format!("Cannot resolve persistent profile: {error}"))?;
+    cef_compatible_path(&canonical)
+}
+
+/// Preserve the canonical directory while adapting its spelling for CEF.
+/// Windows canonicalization adds a verbatim prefix, but Chromium's LevelDB
+/// appends forward-slash filenames. Win32 does not translate those separators
+/// in verbatim paths. Native filesystem ownership keeps its original path.
+pub(super) fn cef_compatible_path(canonical: &Path) -> Result<PathBuf, String> {
     #[cfg(windows)]
     {
         use std::path::Prefix;
+        if !canonical.is_absolute()
+            || canonical
+                .components()
+                .any(|part| matches!(part, Component::CurDir | Component::ParentDir))
+        {
+            return Err("CEF cache path must be an absolute normalized path".into());
+        }
         let mut parts = canonical.components();
         if let Some(Component::Prefix(prefix)) = parts.next() {
             if let Prefix::VerbatimDisk(drive) = prefix.kind() {
@@ -246,11 +261,13 @@ fn normalized_canonical(path: &Path) -> Result<PathBuf, String> {
                         normalized.push(part.as_os_str());
                     }
                 }
+                validate_absolute(&normalized, "CEF cache path")?;
                 return Ok(normalized);
             }
         }
+        validate_absolute(canonical, "CEF cache path")?;
     }
-    Ok(canonical)
+    Ok(canonical.to_path_buf())
 }
 
 fn open_owned_lock(path: &Path) -> Result<File, String> {
@@ -643,6 +660,96 @@ mod tests {
         drop(next);
         drop(root);
         fs::remove_dir_all(path).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn cef_paths_normalize_drive_prefixes_without_admitting_other_namespaces() {
+        for (canonical, expected) in [
+            (r"\\?\C:\Private é\Profile", r"C:\Private é\Profile"),
+            (r"C:\Private é\Profile", r"C:\Private é\Profile"),
+            (r"\\?\D:\", r"D:\"),
+        ] {
+            assert_eq!(
+                cef_compatible_path(Path::new(canonical)).unwrap(),
+                Path::new(expected)
+            );
+        }
+        for denied in [
+            r"\\server\share\profile",
+            r"\\?\UNC\server\share\profile",
+            r"\\.\pipe\profile",
+            r"\\?\GLOBALROOT\Device\HarddiskVolume1\profile",
+            r"\\?\C:\profile.\child",
+            r"\\?\C:\profile \child",
+            r"\\?\C:\CON\child",
+            r"\\?\C:\profile:stream",
+            r"\\?\C:\profile\..\other",
+            r"C:relative",
+        ] {
+            assert!(cef_compatible_path(Path::new(denied)).is_err(), "{denied}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn cef_cache_path_allows_leveldb_slash_names_with_the_same_kernel_directory() {
+        use std::ffi::OsStr;
+        use std::os::windows::{
+            ffi::OsStrExt,
+            io::{FromRawHandle, OwnedHandle},
+        };
+        use windows_sys::Win32::{
+            Foundation::{GENERIC_READ, GENERIC_WRITE, INVALID_HANDLE_VALUE},
+            Storage::FileSystem::{
+                CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_ALWAYS,
+            },
+        };
+
+        fn open_leveldb_lock(directory: &Path) -> std::io::Result<OwnedHandle> {
+            // Match the pinned LevelDB's string append and Chromium's direct
+            // CreateFile call, without Rust filesystem path adaptation.
+            let mut name = directory.as_os_str().to_os_string();
+            name.push(OsStr::new("/LOCK"));
+            let wide: Vec<u16> = name.encode_wide().chain(Some(0)).collect();
+            let handle = unsafe {
+                CreateFileW(
+                    wide.as_ptr(),
+                    GENERIC_READ | GENERIC_WRITE,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    std::ptr::null(),
+                    OPEN_ALWAYS,
+                    FILE_ATTRIBUTE_NORMAL,
+                    std::ptr::null_mut(),
+                )
+            };
+            if handle == INVALID_HANDLE_VALUE {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
+            }
+        }
+
+        struct Temporary(PathBuf);
+        impl Drop for Temporary {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let directory = Temporary(temporary("cef-cache-é"));
+        create_private_dir(&directory.0).unwrap();
+        let canonical = fs::canonicalize(&directory.0).unwrap();
+        assert!(matches!(
+            canonical.components().next(),
+            Some(Component::Prefix(prefix))
+                if matches!(prefix.kind(), std::path::Prefix::VerbatimDisk(_))
+        ));
+        assert!(open_leveldb_lock(&canonical).is_err());
+        let cef_path = cef_compatible_path(&canonical).unwrap();
+        assert_eq!(fs::canonicalize(&cef_path).unwrap(), canonical);
+        let lock = open_leveldb_lock(&cef_path).unwrap();
+        assert!(canonical.join("LOCK").is_file());
+        drop(lock);
     }
 
     #[cfg(windows)]

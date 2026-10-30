@@ -556,6 +556,14 @@ been established.
 
 ### Maintained Windows acceptance run
 
+The later [startup-readiness diagnostic](windows-cache-paths.md) captured
+`HistoryBackend::Init` finishing 416 ms before download admission, while
+LevelDB-proto work and the in-progress cache callback extended to about 5.49 s.
+The source-backed correction normalizes the ephemeral CEF cache's Windows drive
+path, matching the existing persistent-profile treatment of Rust's verbatim
+canonical paths. Its Windows kernel regression and uninstrumented completion
+gate remain required; diagnostic PR #211 is excluded from acceptance.
+
 After an evidence-backed correction, rerun the maintained [native CEF workflow](https://github.com/0xPlayerOne/bunly/actions/workflows/cef-runtime.yml)
 on the final reviewed `main` revision with `platform=windows` and `suite=full`:
 
