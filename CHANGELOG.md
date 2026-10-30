@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.6](https://github.com/0xPlayerOne/bunly/compare/v0.6.5...v0.6.6) (2026-10-30)
+
+
+### Documentation
+
+* **m7:** retain download phase timing and watcher correction ([#205](https://github.com/0xPlayerOne/bunly/issues/205)) ([56bded0](https://github.com/0xPlayerOne/bunly/commit/56bded094499e03f7fa09fa9a27f230585c77440))
+
 ## [0.6.5](https://github.com/0xPlayerOne/bunly/compare/v0.6.4...v0.6.5) (2026-10-30)
 
 
