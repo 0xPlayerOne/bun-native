@@ -2432,7 +2432,7 @@ export class CefBackend
     for (const observer of Array.from(this.#observers)) {
       if (!this.#observers.has(observer)) continue
       try {
-        observer(event)
+        this.#eventResults.observe(observer(event))
       } catch {
         this.#listenerErrors.count++
       }
