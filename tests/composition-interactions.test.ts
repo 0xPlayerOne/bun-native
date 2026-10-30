@@ -16,6 +16,7 @@ import {
   interactionSteps,
 } from '../examples/view-composition/interactions-plan.ts'
 import { desktopReportFixture } from './helpers/desktop-evidence.ts'
+import { hasCode } from '../examples/view-composition/interactions.ts'
 
 // Synthetic rejection fixtures only; these are not native qualification evidence.
 function receipt(supported = false) {
@@ -140,6 +141,41 @@ function report(target = 'linux-x64') {
   observation.stderr.splice(1, 0, application)
   return result
 }
+
+test('hidden focus accepts only its exact native denial or the matching structured SDK code', () => {
+  const message = 'view is hidden, clipped or nonfocusable'
+  const expected = hasCode('PERMISSION_DENIED', message)
+  const native = new Error(`PERMISSION_DENIED: ${message}`)
+  assert.equal(expected(native), true)
+  assert.equal(
+    hasCode('PERMISSION_DENIED')(native),
+    false,
+    'Native fallback requires explicit opt-in'
+  )
+  assert.equal(
+    expected(
+      Object.assign(new Error('SDK denial'), { name: 'BunlyError', code: 'PERMISSION_DENIED' })
+    ),
+    true
+  )
+  for (const error of [
+    new Error('PERMISSION_DENIED: focus target changed during activation'),
+    new Error(`INVALID_ARGUMENT: ${message}`),
+    new Error(`prefix PERMISSION_DENIED: ${message}`),
+    new Error(`PERMISSION_DENIED_EXTRA: ${message}`),
+    new Error(`PERMISSION_DENIED:${message}`),
+    new TypeError(`PERMISSION_DENIED: ${message}`),
+    Object.assign(new Error(`PERMISSION_DENIED: ${message}`), { code: 'INVALID_ARGUMENT' }),
+    Object.assign(new Error(`PERMISSION_DENIED: ${message}`), {
+      name: 'BunlyError',
+      code: 'INVALID_ARGUMENT',
+    }),
+    { name: 'BunlyError', code: 'PERMISSION_DENIED' },
+    `PERMISSION_DENIED: ${message}`,
+    null,
+  ])
+    assert.equal(expected(error), false)
+})
 
 test('composition interactions require native and renderer agreement for each focus owner', () => {
   for (const supported of [false, true]) {

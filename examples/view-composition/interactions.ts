@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type {
+  ErrorCode,
   SessionHandle,
   ViewHandle,
   ViewPresentationOptions,
@@ -35,8 +36,19 @@ interface OwnedPane {
   readonly presentation: ViewPresentationOptions
 }
 
-const hasCode = (code: string) => (error: unknown) =>
-  error instanceof Error && error.name === 'BunlyError' && 'code' in error && error.code === code
+/** Some direct view operations retain the native transport's plain Error. Opt in
+ * only to the exact expected native message; unrelated failures must still fail.
+ */
+export const hasCode = (code: ErrorCode, nativeMessage?: string) => (error: unknown) => {
+  if (!(error instanceof Error)) return false
+  if (error.name === 'BunlyError') return 'code' in error && error.code === code
+  return (
+    nativeMessage !== undefined &&
+    error.name === 'Error' &&
+    !('code' in error) &&
+    error.message === `${code}: ${nativeMessage}`
+  )
+}
 
 /** A separate finite integration case, preserving the original composition profile.
  * SDK focus and cancellation drive real native widgets; no physical input is injected.
@@ -360,17 +372,22 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
       dialog = { status: 'cancelled', before, visible, after, menuRejectedWhileOpen: true }
       await capture('overlay-dialog-closed')
     })
+    stage = 'overlay-hide'
     await presentOverlay(false)
+    stage = 'hidden-overlay-focus-denial'
     await assert.rejects(
       backend.focusView(pane('overlay').view, options),
-      hasCode('PERMISSION_DENIED')
+      hasCode('PERMISSION_DENIED', 'view is hidden, clipped or nonfocusable')
     )
     hiddenFocusRejected = true
     await capture('overlay-hidden')
+    stage = 'overlay-reopen'
     await presentOverlay(true)
     await capture('overlay-reopened')
+    stage = 'overlay-final-hide'
     await presentOverlay(false)
     await capture('overlay-final-hidden')
+    stage = 'final-menu-ownership'
     menuFinal = await bounded(backend.qualifyWindowCommandsSnapshot())
     assert.deepEqual(menuFinal, { registrations: 0, shortcuts: 0, popups: 0 })
     assert.deepEqual(await readdir(root), [], 'Cancel-only dialogs must not create files')
