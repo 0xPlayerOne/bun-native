@@ -197,3 +197,32 @@ application code cannot be inferred from a JavaScript import graph: declare such
 generated assets and configuration explicitly. Native addons, owner bootstrap
 changes, arbitrary unmanaged closures and irreversible external effects remain
 outside the resource-preserving reload contract.
+
+## macOS backend dependency notification recovery
+
+Bun 1.4.4 can miss an edit made just after filesystem watcher registration. A
+retained bounded trace for #179 observed a completed dependency write, no watcher
+callback, and no second build through the unchanged 15-second assertion window.
+The pinned macOS watcher asynchronously recreates its FSEvents stream; the public
+`FSWatcher` API does not provide a registration-ready acknowledgment. No arbitrary
+sleep or extended reload deadline is used as a substitute.
+
+On macOS, watched development sessions now reconcile metadata for the known
+backend dependency graph once per second in addition to normal event-driven
+notifications. Baselines are captured during Bun's actual file-load observations,
+before the normal loader reads the input, so an edit between bundling and watcher
+registration remains detectable. There is one non-overlapping timer and at most
+eight concurrent `stat` reads. The existing dependency capacity bounds the entire
+graph; no recursive polling walk or extra process is introduced. Atomic file
+replacement, same-size edits, removal and a parent becoming a non-directory are
+observed through device/inode/mode/size and nanosecond modification/change times.
+This is cooperative development change detection, not a content-integrity check.
+
+Event-driven reloads still take the normal fast path. Reconciliation adds a
+bounded periodic metadata cost and can add approximately one interval plus build
+latency to recovery of a missed event; no performance improvement is claimed.
+It covers loaded backend dependencies, not every frontend asset or an arbitrary
+filesystem tree. Linux/Windows behavior and `watch: false` sessions are unchanged.
+A new dependency graph retires stale scan results, errors require a restart rather
+than silent loss of observation, and shutdown cancels the timer and drains the
+bounded in-flight reads before it completes.
