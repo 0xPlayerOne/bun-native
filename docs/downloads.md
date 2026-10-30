@@ -221,6 +221,23 @@ for ZIP inspection. An observed launch does not prove the service belongs to
 this transfer or that archive/security inspection succeeded. Zero launches do
 not rule out earlier safety-check work.
 
+The timeout diagnostic also retains fixed `timingMs` phase observations. Its
+monotonic origin is native record creation immediately before `StartDownload`,
+not the SDK invocation or filesystem preparation. It records the first callback,
+before-download callback, first positive byte count, first nonzero full byte
+count, last callback, exact-current-hop resource completion, and timeout receipt.
+Missing observations remain `null`; zero means less than one millisecond at the
+stored resolution. Full byte arrival is never interpreted as native completion.
+The resource timestamp and result are captured together under the existing hop
+lock, and both are cleared by a redirect. Repeated or unauthorized completion
+callbacks cannot overwrite the first observation.
+
+The last file-utility and quarantine launch times are application-wide
+observations within that same interval, not transfer ownership or service-ready
+acknowledgments. No command line, path, URL, wall-clock time or additional owner
+is retained. Timing adds fixed storage, no polling, no task markers, and no
+change to security settings, transfer deadlines or acceptance requirements.
+
 ## Destination and filesystem guarantees
 
 Destinations have a single 1–128 character portable ASCII filename. Separators,

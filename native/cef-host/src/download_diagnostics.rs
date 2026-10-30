@@ -11,28 +11,47 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::{
     path::Path,
-    sync::atomic::{AtomicU32, Ordering},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Mutex,
+    },
+    time::Instant,
 };
 
 pub(super) struct LaunchCounter {
     count: AtomicU32,
     subtype: &'static str,
+    last_observed_at: Mutex<Option<Instant>>,
 }
 impl LaunchCounter {
     pub const fn new(subtype: &'static str) -> Self {
         Self {
             count: AtomicU32::new(0),
             subtype,
+            last_observed_at: Mutex::new(None),
         }
     }
     pub fn observe(&self, process_type: Option<&str>, subtype: Option<&str>) {
+        self.observe_at(process_type, subtype, Instant::now());
+    }
+    fn observe_at(&self, process_type: Option<&str>, subtype: Option<&str>, now: Instant) {
         if process_type == Some("utility") && subtype == Some(self.subtype) {
+            if let Ok(mut last) = self.last_observed_at.lock() {
+                *last = Some(last.map_or(now, |previous| previous.max(now)));
+            }
             let _ = self
                 .count
                 .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
                     Some(count.saturating_add(1))
                 });
         }
+    }
+    fn last_elapsed(&self, start: Instant, end: Instant) -> Option<u64> {
+        if self.count() == u32::MAX {
+            return None;
+        }
+        let last = self.last_observed_at.lock().ok().and_then(|last| *last)?;
+        (last <= end).then(|| elapsed_ms(start, last)).flatten()
     }
     pub fn count(&self) -> u32 {
         self.count.load(Ordering::Relaxed)
@@ -85,7 +104,26 @@ fn interrupt_label(reason: DownloadInterruptReason) -> &'static str {
         _ => "other",
     }
 }
+/// Relative monotonic milliseconds; backwards or out-of-range observations stay unknown.
+fn elapsed_ms(start: Instant, end: Instant) -> Option<u64> {
+    let elapsed = end.checked_duration_since(start)?.as_millis();
+    u64::try_from(elapsed)
+        .ok()
+        .filter(|value| *value <= super::wire::MAX_ID)
+}
+
+#[derive(Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CallbackTiming {
+    first_callback: Option<u64>,
+    before_callback: Option<u64>,
+    first_positive_bytes: Option<u64>,
+    first_full_byte_count: Option<u64>,
+    last_callback: Option<u64>,
+}
 pub(super) struct Trace {
+    started: Instant,
+    timing: CallbackTiming,
     callbacks: u32,
     last: Option<CallbackSnapshot>,
     quarantine_baseline: u32,
@@ -100,6 +138,8 @@ impl Trace {
         safe_browsing_enabled: Option<bool>,
     ) -> Self {
         Self {
+            started: Instant::now(),
+            timing: CallbackTiming::default(),
             callbacks: 0,
             last: None,
             quarantine_baseline,
@@ -114,6 +154,30 @@ impl Trace {
         observation: &Observation,
         expected_path: Option<&Path>,
     ) {
+        self.observe_at(phase, observation, expected_path, Instant::now());
+    }
+    fn observe_at(
+        &mut self,
+        phase: CallbackPhase,
+        observation: &Observation,
+        expected_path: Option<&Path>,
+        now: Instant,
+    ) {
+        let elapsed = elapsed_ms(self.started, now);
+        self.timing.first_callback = self.timing.first_callback.or(elapsed);
+        self.timing.last_callback = elapsed;
+        if phase == CallbackPhase::Before {
+            self.timing.before_callback = self.timing.before_callback.or(elapsed);
+        }
+        if observation.received > 0 {
+            self.timing.first_positive_bytes = self.timing.first_positive_bytes.or(elapsed);
+        }
+        if observation
+            .total
+            .is_some_and(|total| total > 0 && total == observation.received)
+        {
+            self.timing.first_full_byte_count = self.timing.first_full_byte_count.or(elapsed);
+        }
         self.callbacks = self.callbacks.saturating_add(1);
         self.last = Some(CallbackSnapshot {
             phase: phase.label(),
@@ -148,7 +212,7 @@ impl Trace {
         file_util_launches: u32,
         before: bool,
         callback_owned: bool,
-        request_completion: Option<RequestCompletion>,
+        request_completion: (Option<RequestCompletion>, Option<Instant>),
     ) -> Option<Value> {
         if std::mem::replace(&mut self.reported, true) {
             return None;
@@ -160,6 +224,7 @@ impl Trace {
                 .then(|| current.checked_sub(baseline))
                 .flatten()
         };
+        let now = Instant::now();
         Some(json!({
             "event":"bunly.host.download-timeout",
             "schema":1,
@@ -168,7 +233,15 @@ impl Trace {
             "callbackCount":self.callbacks,
             "callbackCountSaturated":self.callbacks == u32::MAX,
             "lastCallback":self.last,
-            "requestCompletion":request_completion,
+            "requestCompletion":request_completion.0,
+            "timingMs":{
+                "origin":"record-created-before-start-download",
+                "timeoutObserved":elapsed_ms(self.started, now),
+                "callbacks":self.timing,
+                "resourceComplete":request_completion.1.filter(|at| *at <= now).and_then(|at| elapsed_ms(self.started, at)),
+                "fileUtilityLastLaunch":FILE_UTIL_LAUNCHES.last_elapsed(self.started, now),
+                "quarantineLastLaunch":QUARANTINE_LAUNCHES.last_elapsed(self.started, now),
+            },
             "safeBrowsingEnabledAtAdmission":self.safe_browsing_enabled,
             "quarantineObservedLaunches":delta(quarantine_launches, self.quarantine_baseline),
             "fileUtilityObservedLaunches":delta(file_util_launches, self.file_util_baseline),
@@ -217,7 +290,9 @@ mod tests {
             Some(Path::new("/private/download/stage/payload")),
         );
         let completion = RequestCompletion::new(RequestCompletionStatus::Success, 32768);
-        let receipt = trace.timeout(8, 4, true, true, Some(completion)).unwrap();
+        let receipt = trace
+            .timeout(8, 4, true, true, (Some(completion), None))
+            .unwrap();
         assert_eq!(receipt["callbackCount"], 2);
         assert_eq!(receipt["quarantineObservedLaunches"], 1);
         assert_eq!(receipt["fileUtilityObservedLaunches"], 1);
@@ -238,11 +313,11 @@ mod tests {
             })
         );
         let encoded = receipt.to_string();
-        assert!(encoded.len() < 1024);
+        assert!(encoded.len() < 2048);
         for private in ["private", "secret", "credential", "321", "payload"] {
             assert!(!encoded.contains(private));
         }
-        assert!(trace.timeout(9, 3, true, true, None).is_none());
+        assert!(trace.timeout(9, 3, true, true, (None, None)).is_none());
     }
     #[test]
     fn snapshots_preserve_raw_callback_changes_without_inventing_progress_or_paths() {
@@ -258,7 +333,7 @@ mod tests {
             &item,
             Some(Path::new("/a/different/owned-stage")),
         );
-        let receipt = trace.timeout(0, 3, true, false, None).unwrap();
+        let receipt = trace.timeout(0, 3, true, false, (None, None)).unwrap();
         assert_eq!(receipt["lastCallback"]["pathState"], "other");
         assert_eq!(receipt["lastCallback"]["percentComplete"], Value::Null);
         assert_eq!(receipt["lastCallback"]["inProgress"], false);
@@ -269,7 +344,7 @@ mod tests {
             "file-access-denied"
         );
         let mut empty = Trace::new(4, 2, None);
-        let receipt = empty.timeout(4, 3, false, false, None).unwrap();
+        let receipt = empty.timeout(4, 3, false, false, (None, None)).unwrap();
         assert_eq!(receipt["lastCallback"], Value::Null);
         assert_eq!(receipt["quarantineObservedLaunches"], 0);
         assert_eq!(receipt["fileUtilityObservedLaunches"], 1);
@@ -278,7 +353,7 @@ mod tests {
         let mut unavailable = Trace::new(u32::MAX, u32::MAX, None);
         assert_eq!(
             unavailable
-                .timeout(u32::MAX, u32::MAX, true, true, None)
+                .timeout(u32::MAX, u32::MAX, true, true, (None, None))
                 .unwrap()["quarantineObservedLaunches"],
             Value::Null
         );
@@ -288,7 +363,7 @@ mod tests {
         let mut trace = Trace::new(3, 7, Some(false));
         let completion = RequestCompletion::new(RequestCompletionStatus::Failed, -1);
         let receipt = trace
-            .timeout(2, u32::MAX, false, false, Some(completion))
+            .timeout(2, u32::MAX, false, false, (Some(completion), None))
             .unwrap();
         assert_eq!(receipt["quarantineObservedLaunches"], Value::Null);
         assert_eq!(receipt["fileUtilityObservedLaunches"], Value::Null);
@@ -348,5 +423,103 @@ mod tests {
         counter.count.store(u32::MAX, Ordering::Relaxed);
         counter.observe(Some("utility"), Some("quarantine.mojom.Quarantine"));
         assert_eq!(counter.count(), u32::MAX);
+    }
+    #[test]
+    fn phase_timing_is_monotonic_first_observation_only_and_not_completion() {
+        use std::time::Duration;
+        let mut trace = Trace::new(0, 0, None);
+        let start = trace.started;
+        let mut item = observation();
+        item.received = 0;
+        item.total = Some(0);
+        trace.observe_at(CallbackPhase::Updated, &item, None, start);
+        trace.observe_at(
+            CallbackPhase::Before,
+            &item,
+            None,
+            start + Duration::from_millis(7),
+        );
+        item.received = 16;
+        item.total = Some(32);
+        trace.observe_at(
+            CallbackPhase::Updated,
+            &item,
+            None,
+            start + Duration::from_millis(11),
+        );
+        item.received = 32;
+        trace.observe_at(
+            CallbackPhase::Updated,
+            &item,
+            None,
+            start + Duration::from_millis(13),
+        );
+        item.received = 0;
+        item.total = None;
+        trace.observe_at(
+            CallbackPhase::Updated,
+            &item,
+            None,
+            start + Duration::from_millis(19),
+        );
+        assert_eq!(
+            serde_json::to_value(&trace.timing).unwrap(),
+            json!({
+                "firstCallback":0,"beforeCallback":7,"firstPositiveBytes":11,
+                "firstFullByteCount":13,"lastCallback":19
+            })
+        );
+        assert!(!trace.last.unwrap().complete);
+        assert_eq!(elapsed_ms(start + Duration::from_millis(1), start), None);
+    }
+    #[test]
+    fn launch_timing_is_scoped_to_the_observation_interval() {
+        use std::time::Duration;
+        let counter = LaunchCounter::new("chrome.mojom.FileUtilService");
+        let start = Instant::now();
+        assert_eq!(counter.last_elapsed(start, start), None);
+        counter.observe_at(
+            Some("renderer"),
+            Some("chrome.mojom.FileUtilService"),
+            start,
+        );
+        assert_eq!(counter.last_elapsed(start, start), None);
+        counter.observe_at(Some("utility"), Some("chrome.mojom.FileUtilService"), start);
+        assert_eq!(counter.last_elapsed(start, start), Some(0));
+        assert_eq!(
+            counter.last_elapsed(
+                start + Duration::from_millis(1),
+                start + Duration::from_millis(2)
+            ),
+            None
+        );
+        counter.observe_at(
+            Some("utility"),
+            Some("chrome.mojom.FileUtilService"),
+            start + Duration::from_millis(9),
+        );
+        assert_eq!(
+            counter.last_elapsed(start, start + Duration::from_millis(8)),
+            None
+        );
+        assert_eq!(
+            counter.last_elapsed(start, start + Duration::from_millis(10)),
+            Some(9)
+        );
+        // A callback that acquired the lock later cannot move the last time backwards.
+        counter.observe_at(
+            Some("utility"),
+            Some("chrome.mojom.FileUtilService"),
+            start + Duration::from_millis(5),
+        );
+        assert_eq!(
+            counter.last_elapsed(start, start + Duration::from_millis(10)),
+            Some(9)
+        );
+        counter.count.store(u32::MAX, Ordering::Relaxed);
+        assert_eq!(
+            counter.last_elapsed(start, start + Duration::from_millis(10)),
+            None
+        );
     }
 }
