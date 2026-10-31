@@ -213,10 +213,78 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       await root.ready
       expect(app.diagnostics.callbacks).toBe(1)
       setProp(button, 'onClick', () => (clicks += 10))
+      // Publish the replacement before asking the peer to deliver a new event.
+      // An acknowledgement alone does not publish framework registrations.
+      await root.flush()
       setProp(text, 'text', 'emit click')
       await root.flush()
       for (let attempt = 0; attempt < 100 && clicks === 0; attempt++) await Bun.sleep(5)
       expect(clicks).toBe(10)
+      await root.dispose()
+      expect(app.diagnostics.callbacks).toBe(0)
+    }))
+
+  test('an event before replacement publication cannot acquire the newer callback', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid event publication' })
+      const { window: observed } = observeWindow(window)
+      const batch = observed.batch.bind(observed)
+      const on = observed.on.bind(observed)
+      const held = Promise.withResolvers<void>()
+      let hold = false
+      let acknowledged = false
+      let delivered = false
+      let registrations = 0
+      observed.batch = async (operation) => {
+        const value = await batch(operation)
+        if (hold) {
+          hold = false
+          acknowledged = true
+          await held.promise
+        }
+        return value
+      }
+      observed.on = (node, type, listener, options) => {
+        const identity = ++registrations
+        return on(
+          node,
+          type,
+          async (event) => {
+            await listener(event)
+            if (identity === 1) delivered = true
+          },
+          options
+        )
+      }
+      let clicks = 0
+      const button = createElement('button')
+      const text = label('initial')
+      setProp(button, 'text', 'Click')
+      setProp(button, 'onClick', () => clicks++)
+      const root = render(() => {
+        const box = createElement('box')
+        insert(box, [text, button])
+        return box
+      }, observed)
+      await root.ready
+      hold = true
+      setProp(button, 'onClick', () => (clicks += 10))
+      setProp(text, 'text', 'emit click')
+      try {
+        // The real peer emits this click immediately after its acknowledgement.
+        // Hold only the delegating framework continuation, not native/core IPC.
+        for (let attempt = 0; attempt < 100 && !(acknowledged && delivered); attempt++)
+          await Bun.sleep(5)
+        expect(acknowledged).toBe(true)
+        expect(delivered).toBe(true)
+        expect(registrations).toBe(1)
+        expect(clicks).toBe(0)
+      } finally {
+        held.resolve()
+      }
+      await root.flush()
+      expect(registrations).toBe(2)
+      expect(clicks).toBe(0)
       await root.dispose()
       expect(app.diagnostics.callbacks).toBe(0)
     }))

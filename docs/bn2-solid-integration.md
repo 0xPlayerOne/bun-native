@@ -283,3 +283,84 @@ build. The unchanged source coverage run passed 377 tests with 2,401 assertions;
 an earlier run with six positive-peer startup timeouts is retained separately.
 No timeout, coverage threshold, WeakRef assertion or production source was altered
 to obtain the serial result.
+
+## Explicit production framework modules
+
+Inspection of the preserved generated-module source map above found
+`solid-js/dist/dev.js` and `solid-js/universal/dist/dev.js`. The JSX preset's
+`dev: false` did not choose production package exports. Those earlier native and
+AOT passes remain evidence for their exact development-framework modules; none
+of their source records or artifacts has been relabelled or replaced.
+
+The builder now defines `process.env.NODE_ENV` as `"production"` while retaining
+the existing `browser` export condition for client reactivity. An actual pinned
+Bun conditional-export experiment under caller `NODE_ENV=test` selected
+development for both `browser` alone and `browser` plus `production`. Adding the
+explicit definition selected production dependency code and the production
+constant. `tests/solid/build.test.ts` preserves that negative control and also
+inspects the real native counter bundle for the production reactive and universal
+modules, with no development or server distribution. No runtime or renderer
+implementation changed.
+
+[The new production-module record](../benchmarks/bn2/solid-production-recipe-linux.json)
+binds 75 source/controller/inspector files, three generated modules and three
+inspected executables to all twelve actual Linux scenarios. Each mode used the
+same generated module, with its production framework distribution independently
+identified through the source map. Every case passed once with full native paint
+and application assertions, OS close, exit zero and no forced cleanup or observed
+remaining/unreaped descendants. The shared renderer's ten files and the immutable
+host's 27 native/toolchain build sources match the prior foundation exactly.
+
+| Entry                | Generated module bytes |  AOT bytes | AOT SHA-256                                                        |
+| -------------------- | ---------------------: | ---------: | ------------------------------------------------------------------ |
+| `solid`              |                115,242 | 71,351,336 | `9fed2b3ff5aa9b71b4ec9fa44f9a164a64001f7524e805bbe191597a475fd7d7` |
+| `solid-input-intent` |                110,223 | 71,302,184 | `e6a2a7980b03fd564a8653f34f9c80e569a68985c036a8eefa30cffc3bc8ddf9` |
+| `solid-interactions` |                116,322 | 71,711,784 | `cd873d0831ace6d405c59c76f3783ac19e34b9c57f44e5b4888b806be6e40b34` |
+
+All three executables contain the actual compiled program, mark JIT unused and
+have 27 validated removed JIT ranges; the interpreter remains present. The
+compiler consumed the exact generated module executed through ordinary Bun.
+Development therefore names the runtime mode, while both modes use production
+Solid dependencies.
+
+These runs use the same development-profile host `7e5acbd353f8…c2cb` and software
+llvmpipe as the earlier protocol-4 qualification. They establish neither a
+release-host performance baseline nor a matched before/after timing improvement.
+XTest input, full-tree paint and bounded owner/process cleanup do not qualify
+physical input, compositor presentation, all allocation reclamation, another OS
+or the unresolved weak-target observations in #287. The required hosted native
+lane consumes this builder correction and must provide its own source-bound
+release-host evidence.
+
+## Main integration and current-lock control
+
+The combined candidate merges main `d8bcae3130f9f95833bdfe864852d07078ab4dab`
+(release 0.11.1 and the draft/ready CI concurrency correction), the production
+builder above, and the opt-in [startup diagnostics](native-startup-diagnostics.md).
+Main updates the native pins to serde `1.0.229`, serde_json `1.0.154` and
+unicode-segmentation `1.13.3`. The earlier `7e5acbd…` and startup-diagnostic
+`1a510561…` host records retain their original dependency hashes.
+
+[The current-lock integration record](../tests/native/evidence/solid-main-integration-linux.json)
+identifies a newly built development host, SHA-256
+`72db09e99bd8956c7922498af007fe7bcd55030d8654d2ed7e2e30d1bb21bd4f`,
+111,786,864 bytes, and 81 unchanged source/controller/inspector files. One
+five-window lifecycle and one caret-editing control each passed once in ordinary
+Bun and inspected machine-code AOT. Every lifecycle produced all 35 native open
+markers, all five painted window identities and joined exit zero under the
+unchanged 5-second request and 45-second fixture deadlines. Both caret controls
+required actual XTest input, the complete `AxBCD` paint at input revision 1,
+OS close and clean observed ownership. The AOT screenshot was visually inspected;
+automated pixel assertions remain unsupported.
+
+These four narrow integration controls complement the earlier twelve-case
+production-module qualification. They do not requalify its historical binaries
+against a different lockfile, establish complete Unicode/IME behavior, or replace
+the required hosted release suite. Both new application executables passed the
+compiled-program and JIT-removal inspectors; the Solid development module remains
+the exact AOT input with production framework dependencies. The source gate
+passed 385 tests with 2,573 assertions, strict checking of 89 files, formatting,
+lint, boundaries, package build, Actionlint and session shell syntax. Current-pin
+Rust formatting, warnings-denied Clippy and all 34 protocol tests passed.
+The original hosted startup failure remains open in #296, and the unchanged
+weak-target oracle does not close #287.

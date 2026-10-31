@@ -32,7 +32,7 @@ try {
 }
 ```
 
-The official JSX preset uses `generate: 'universal'` and `moduleName: '@bun-native/solid'`. The build script applies it before Bun bundling and selects Solid's reactive package exports. Ordinary Bun resolution selects Solid's server runtime, whose effects are inert; `render` explicitly rejects that runtime. The `browser` export condition means client reactivity here, not browser rendering. `solid-js/web`, HTML/CSS and DOM props are forbidden package edges.
+The official JSX preset uses `generate: 'universal'` and `moduleName: '@bun-native/solid'`. The build script applies it before Bun bundling and selects Solid's reactive package exports. Ordinary Bun resolution selects Solid's server runtime, whose effects are inert; `render` explicitly rejects that runtime. The `browser` export condition means client reactivity here, not browser rendering. The explicit `process.env.NODE_ENV` definition selects production Solid modules and production application branches independently of the caller's environment. The JSX preset's `dev: false` alone does not select production dependency exports. `solid-js/web`, HTML/CSS and DOM props are forbidden package edges.
 
 From the repository root, with the pinned Bun and an existing native host:
 
@@ -46,7 +46,7 @@ bun compile --no-script --production --explain=json \
 BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" .bun-native/solid-example/application
 ```
 
-The same generated JavaScript module drives development and AOT. The JSX/build step is not itself AOT; the separate `bun compile` step must be inspected and executed. The script does not build or copy the native host. Artifact provenance, native libraries, signing and distribution retain their existing separate acceptance requirements. The private application records optional nonce-scoped evidence using the existing native fixture conventions.
+The same generated JavaScript module drives development and AOT, with production Solid in both modes. Here, development means execution through ordinary Bun; the generated module is still a production framework build. The JSX/build step is not itself AOT; the separate `bun compile` step must be inspected and executed. The script does not build or copy the native host. Artifact provenance, native libraries, signing and distribution retain their existing separate acceptance requirements. The private application records optional nonce-scoped evidence using the existing native fixture conventions.
 
 ## Render ownership and batching
 
@@ -134,6 +134,8 @@ Changing one event property does not replace unrelated types or phases. The
 shared core handles these rules even when an earlier async handler is suspended.
 
 ## Validation and references
+
+`tests/solid/build.test.ts` executes the actual pinned bundler under `NODE_ENV=test`. A conditional-export fixture proves the explicit definition selects production code, while a condition-only negative selects development code. A second test inspects the real counter's source map for `solid-js/dist/solid.js` and `solid-js/universal/dist/universal.js`, rejecting development and server distributions. These are compiler checks; the [separate production-module native record](../../benchmarks/bn2/solid-production-recipe-linux.json) covers all twelve Linux development/AOT input scenarios with a development-profile host.
 
 `bun test tests/solid tests/renderers tests/quality/boundaries.test.ts` covers reactive coalescing, keyed identity retention, repeated owner cleanup, typed event phases and queued-route revocation, input revision races, immutable intents, native-batch rejection, foreign nodes, the JSX transform and package boundaries. The independent keyed-order oracle and common public-core subprocess support live under `tests/renderers`. A deterministic window-lifetime test counts completion subscriptions and verifies released callbacks are inert, with deliberately broken negative controls. The existing explicit-GC/WeakRef regression is retained unchanged; its intermittent positives and no-framework controls are tracked in [#287](https://github.com/0xPlayerOne/bun-native/issues/287), without claiming a resolved retaining path. These adapter tests use a headless subprocess peer and do not establish rendering. A narrow test preload selects the exact installed reactive Solid source; it does not fabricate signals or native operations. It leaves other tooling on Node resolution because a global browser condition selects Oxc's browser/WASM build.
 

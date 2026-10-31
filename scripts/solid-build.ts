@@ -16,6 +16,7 @@ export async function buildSolid(entry: string, outdir: string): Promise<string>
     target: 'bun',
     format: 'esm',
     conditions: ['browser'],
+    define: { 'process.env.NODE_ENV': '"production"' },
     sourcemap: 'external',
     plugins: [
       {

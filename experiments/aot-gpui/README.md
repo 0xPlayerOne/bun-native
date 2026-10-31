@@ -110,6 +110,21 @@ module and all original Solid/shared-renderer/build sources stayed unchanged.
 The module and source map are retained with hosted evidence. No Cargo process is
 started, and `buildMs` remains AOT compiler duration, separate from transform time.
 
+The transform selects the `browser` export condition for Solid reactivity and
+explicitly defines `process.env.NODE_ENV` as `"production"`. Both execution modes
+therefore use production `solid.js` and `universal.js`, independently of the
+environment running the builder. The real bundler controls in
+`tests/solid/build.test.ts` show that a `production` condition alone still selects
+development exports on this pin under `NODE_ENV=test`. The Babel JSX preset's
+`dev: false` controls transformation and does not choose dependency distributions.
+
+The [production-module qualification](../../benchmarks/bn2/solid-production-recipe-linux.json)
+records all twelve native scenarios against the exact generated modules and their
+inspected AOT executables. Earlier source maps in the retained hosted-recipe local
+record selected Solid's development distributions; that historical correctness
+evidence keeps its original hashes and is not relabelled. These new runs still use
+the immutable development-profile software-GPU host, not a release-host baseline.
+
 ```sh
 bun experiments/aot-gpui/build-window.ts \
   --entry solid-interactions \
