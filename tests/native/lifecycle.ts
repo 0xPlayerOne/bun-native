@@ -85,7 +85,7 @@ if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
   const path = process.env['BUN_NATIVE_EVIDENCE_LOG']
   const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
   assert(path && nonce)
-  const records = readFileSync(path, 'utf8')
+  const evidence = readFileSync(path, 'utf8')
     .trimEnd()
     .split('\n')
     .map((line) => {
@@ -95,7 +95,7 @@ if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
       assert.equal(record['nonce'], nonce)
       return record
     })
-    .filter((record) => record['stage'] === 'startup-diagnostic')
+  const records = evidence.filter((record) => record['stage'] === 'startup-diagnostic')
   const opened = records.filter(
     (record) => record['source'] === 'transport' && record['response'] === 'opened'
   )
@@ -121,5 +121,25 @@ if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
   assert(
     records.some((record) => record['phase'] === 'transport_finished' && record['exit_code'] === 0)
   )
+  if (process.env['BUN_NATIVE_STARTUP_LOG'] === '1') {
+    const logs = evidence.filter((record) => record['stage'] === 'startup-log')
+    assert.equal(logs[0]?.['phase'], 'logger_installed')
+    assert(logs.length > 1 && logs.length <= 64)
+    assert(!logs.some((record) => ['record_limit', 'byte_limit'].includes(String(record['phase']))))
+    assert(
+      logs.some(
+        (record) =>
+          record['target'] === 'gpui_linux::linux::x11::window' &&
+          String(record['message']).startsWith('Using ')
+      )
+    )
+    assert(
+      logs.some(
+        (record) =>
+          record['target'] === 'gpui_wgpu::wgpu_context' &&
+          String(record['message']).startsWith('Selected GPU (passed configuration test):')
+      )
+    )
+  }
 }
 console.log(JSON.stringify({ status: 'passed', nativeWindowCycles: cycles, nativeExitCode: 0 }))
