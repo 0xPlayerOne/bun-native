@@ -1,77 +1,24 @@
-# Code provenance
+# Bun Native provenance and third-party code
 
-Record what is reused, what is referenced, and what is actually shipped.
+This file is the active provenance policy for the new Bun Native implementation. The prior Bunly/CEF source inventory and historical M1/M2 decisions are retained in Git history, not active architecture guidance.
 
-**Status:** M1/M2 inventory. No competitor implementation or browser distribution is vendored in the Bunly runtime.
-**Related issues:** #4, #10.
+## Rules
 
-## Reference audit
+- Preserve upstream copyright notices, license requirements and attribution when copying or adapting GPUI, Zed, other native rendering source, framework adapters, dependencies, examples or benchmark fixtures.
+- Inspect licensing and binary redistribution requirements before importing a crate, package, asset or prebuilt native library. Track exact upstream project, revision, license, copied files and local changes.
+- Do not represent competitors' implementation or benchmarks as original Bun Native work. Comparable benchmark runs must be independently reproduced under the documented workload.
+- Remove provenance entries for code **no longer shipped** from the active inventory when old Bunly/CEF code is deleted, while preserving historical evidence in Git history.
+- Reconcile [LICENSE](../LICENSE), [NOTICE](../NOTICE) and [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) with actual native artifacts before distribution.
+- Keep credentials, signing keys, personal machine paths and third-party private code out of the repository.
 
-| Source       | Inspected design                                                                             | Reuse decision                                                                                  |
-| ------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Mirin        | Bun bootstrap, native-main-thread/Worker handoff, CEF helpers, development assembly          | Reference host pattern; evaluate narrow CEF integration imports in M3, not the complete SDK/CLI |
-| Electrobun   | Prebuilt native components, Worker handoff, typed RPC, browser profiles and reload lifecycle | Principal executable benchmark; do not copy its alternative runtime/package tooling into Bunly  |
-| Butter       | Separate native shim, framed shared memory, polling, generated compiler bootstrap            | Reference tradeoffs; do not inherit duplicated generated transport or extraction design         |
-| cef-rs / CEF | Candidate browser bindings and official embedding contracts                                  | Dependency candidates only; pin and audit exact source/binary versions before M3                |
-| Wry          | Candidate system-webview integrations                                                        | Post-MVP candidate; not linked or bundled in M1                                                 |
+## New source inventory
 
-Exact reference revisions and license URLs are recorded in
-`provenance/references.json` and `benchmarks/references.json`. Upstream claims are
-not Bunly measurements. M1's native fixture, SDK, and installer code were authored
-for this repository; no clean-room design claim is made.
+**Not yet populated.** BN0's native host/toolchain and BN1's bridge implementation must create a versioned record of external source actually copied or bundled. Reference-only research links are not copied code.
 
-## Executed benchmark dependencies
+## Required record format
 
-Electron 44.9.3, Electrobun 2.0.3-beta.26 and xterm 5.5.0 have separate benchmark
-package manifests and frozen Bun locks. They do not belong to consumer SDK
-workspaces and are not included by Bunly's SDK/application build.
+| Component | Upstream/revision | License | Files or binaries used | Changes | Shipped target |
+| --- | --- | --- | --- | --- | --- |
+| _Populate as implementation lands_ | | | | | |
 
-The Electrobun adapter's small application configuration and entrypoint use the
-public API and prepared devkit. The reference is
-`blackboardsh/electrobun@c4bbeca07829d9b1634d31598ef6091fb19ace2a`, particularly
-`kitchen/hutch.config.ts`, `kitchen/electrobun.config.ts`, and the BrowserWindow
-API. The adapter is Bunly-authored; it does not copy the framework implementation.
-Its generated third-party CEF application and Hutch/Cottontail/Bun downloads live
-under `.bunly` and are never checked in or published by these tests. Upstream
-licenses/notices remain in the downloaded distributions. The npm lock authenticates
-the bootstrap package, not every future release asset; actual app file hashes and
-upstream setup versions are separately recorded.
-
-## Import contract
-
-For every future adapted/copied component, add repository URL, immutable commit,
-source paths, destination paths, license/notices, local modifications, rationale,
-and patch-following responsibility. Prefer a maintained dependency over copying
-when the integration permits. Keep copyright/license notices in copied files.
-A repository's top-level license does not establish all browser binary, codec,
-font, operating-system, or transitive dependency redistribution rights.
-
-The M1 native artifact contains our probe and the linked Rust standard library;
-it does not contain Bun, CEF, helpers, codecs, fonts, or application assets.
-`scripts/package-probe.ts` emits inventory and SBOM inputs alongside its artifact.
-This is not a complete production SBOM or redistribution review. The Bun runtime,
-Chromium/CEF distribution, helpers and native addons need their own notices when
-introduced to shipping artifacts. See `THIRD_PARTY_NOTICES.md`.
-
-## Patch maintenance
-
-Before importing native browser code, identify the upstream security/update
-channel and record a reproducible patch diff. Review Bun/CEF compatibility on
-candidate upgrades; do not float shipped versions or assume developer Bun updates
-the packaged executable. Reference snapshots are not automatic upstream
-synchronization. No bot, scheduled job, or external monitoring was activated.
-
-## Electron benchmark security refresh
-
-The current benchmark-only Electron pin is 44.9.3, upstream release commit
-`c542df1ecbc2c2978e8f53f8c7baf602404d166f`. This includes the vendor fix for
-[GHSA-jr5w-w6x2-84p9](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9),
-which requires 44.9.1 or later in the 44.x line. It does not add Electron to any
-Bunly application/runtime package. The nested Bun lock and runtime identity guards
-must agree with the exact pinned release. The vendor's binary installer/checksum
-verification remains unchanged.
-
-Earlier M2 reports and evidence continue to identify 44.8.0; their measured data
-is not relabeled as a new runtime. Fresh qualification of the updated adapter is
-required before accepting new benchmark observations. This dependency correction
-is not a Bunly performance claim or qualification of other browser versions.
+See [architecture](architecture.md), [releasing](releasing.md) and [BN7 docs/provenance #254](https://github.com/0xPlayerOne/bun-native/issues/254).
