@@ -1,6 +1,6 @@
 {
   "name": "bun-native-workspace",
-  "version": "0.6.12",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,7 +10,7 @@
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run check:boundaries && bun run test && bun run build",
     "format": "bun fmt --no-script .",
     "format:check": "bun fmt --no-script --check .",
-    "lint": "oxlint --deny-warnings packages scripts tests examples",
+    "lint": "oxlint --deny-warnings packages scripts tests examples benchmarks experiments",
     "typecheck": "bun --check --tsconfig-override tsconfig.json",
     "check:boundaries": "bun scripts/quality/boundaries.ts",
     "test": "bun test tests",
@@ -25,12 +25,16 @@
     "example": "bun examples/native-window/main.ts"
   },
   "devDependencies": {
-    "@types/bun": "1.4.4",
-    "code-foundry": "1.48.8",
-    "oxc-parser": "0.154.0",
-    "oxlint": "1.83.0",
+    "@bun-native/core": "workspace:*",
     "@bun-native/protocol": "workspace:*",
-    "@bun-native/runtime": "workspace:*"
+    "@bun-native/runtime": "workspace:*",
+    "@types/bun": "1.4.4",
+    "@types/react": "19.3.0",
+    "code-foundry": "1.48.8",
+    "oxc-parser": "0.156.0",
+    "oxlint": "1.90.0",
+    "react": "19.3.1",
+    "solid-js": "1.9.18"
   },
   "engines": {
     "bun": "1.4.4-canary.1"

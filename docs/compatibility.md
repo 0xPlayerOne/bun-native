@@ -1,20 +1,27 @@
 # Compatibility and support scope
 
-**Status:** Bun Native is a new framework under implementation. The matrix below distinguishes **intended scope** from **verified support**; no native app release has been qualified yet. Update this matrix from real tests and linked issues, not optimism.
+**Status:** BN0 is complete and BN1's shared core is implemented in this source.
+The matrix distinguishes actual observed behavior, compile-only contracts and
+remaining native release qualification. No signed, installed, cross-platform
+application release is qualified. See the [BN0 audit](bn0-audit.md),
+[public API](../packages/core/README.md) and [native fixtures](../tests/native/README.md).
 
-## Intended languages, frameworks and platforms
+## Languages, frameworks and platforms
 
-| Capability                                     | Intended support                             | Verified today      |
-| ---------------------------------------------- | -------------------------------------------- | ------------------- |
-| TypeScript `.ts/.tsx`                          | First-class app and framework authoring      | Not yet qualified   |
-| JavaScript `.js/.jsx`                          | First-class consumer authoring               | Not yet qualified   |
-| SolidJS                                        | First native UI adapter                      | Not yet implemented |
-| React                                          | Separate native UI adapter using shared host | Not yet implemented |
-| macOS native GPU window                        | Target                                       | Not yet verified    |
-| Windows native GPU window                      | Target                                       | Not yet verified    |
-| Linux native GPU window                        | Target                                       | Not yet verified    |
-| Bun machine-code AOT release                   | Required production target                   | Not yet verified    |
-| Native text, input, accessibility, OS services | Required useful desktop functionality        | Not yet verified    |
+| Capability                      | Implemented or observed scope                                                                                                       | Remaining acceptance                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| TypeScript `.ts`                | Public core/native tree works in development and inspected AOT on Linux                                                             | Stable release API and remaining OS targets                                                                        |
+| JavaScript `.js`                | Checked-JSDoc public consumer passed real dev/AOT click, typing, paint and cleanup                                                  | Broader consumer/library and platform matrix                                                                       |
+| Framework `.tsx/.jsx`           | Separate Solid renderer draft #277 has initial real dev/AOT evidence                                                                | Complete adapter behavior and release-host audit; no automatic DOM compatibility                                   |
+| SolidJS                         | Pinned 1.9.18 shared-core import/type fixture; actual native renderer in [#277](https://github.com/0xPlayerOne/bun-native/pull/277) | BN2 #231/#234/#233, including controlled input and component reuse                                                 |
+| React                           | Pinned 19.3.1 shared-core import/type fixture compiles; no renderer is included here                                                | BN3 reconciler, native effect/event/lifecycle tests and representative example                                     |
+| Shared native tree              | Boxes, text, buttons and inputs; atomic mutations, opaque ownership and input revisions                                             | Advanced BN4 widgets, scrolling, theme and accessibility                                                           |
+| Linux native window             | X11/XTest and llvmpipe input/paint/close passed in dev/AOT; BN0 includes release host                                               | BN1's current release audit, Wayland and hardware-GPU matrix                                                       |
+| macOS / Windows GUI             | Headless protocol/contract lanes pass                                                                                               | Native GUI/AOT target qualification under BN6 #246 and CI #256                                                     |
+| Bun machine-code AOT            | Actual compiler and artifact inspection plus native execution                                                                       | Per-target artifact inspection and release packaging                                                               |
+| Native text/input               | Actual typing and versioned replacement; preserved full values                                                                      | Horizontal scrolling, general focus order, IME, assistive technology and full Unicode/DPI qualification under #241 |
+| Sensitive native services       | Not exposed; unknown service commands fail validation                                                                               | Scoped capability contracts and native implementation under #255                                                   |
+| Installers, signing and updates | Experimental Linux executable payload and provenance only                                                                           | BN6 packaging, clean-machine, signing and integrity/rollback checks                                                |
 
 The renderer starts with Rust GPUI. An agent may choose a different real native renderer with recorded evidence and update this document; WebView/CEF is not a fallback.
 

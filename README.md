@@ -2,7 +2,7 @@
 
 **Bun Native** is an experimental, TypeScript-first desktop framework for building **real native interfaces** with Bun. The first implementation runs a Bun-authored application against Rust GPUI, in development and through **Bun's machine-code ahead-of-time (AOT) compiler**. First-party **SolidJS** and **React** adapters will share the same native host.
 
-> **Status — October 31, 2026:** The legacy Bunly/CEF runtime has been removed. A real GPUI fixture now renders, accepts OS-delivered clicks and typing, updates Bun-owned state, and closes cleanly under both Bun development and the same source's AOT executable. Initial GUI verification uses Linux X11 with a software GPU. This is an early implementation, not a released general-purpose framework. See [the precise integration record](docs/bn0-integration.md).
+> **Status — October 31, 2026:** BN0 and BN1 are complete. The legacy Bunly/CEF runtime is removed; the real GPUI/AOT integration and [experimental public TS/JS API](packages/core/README.md) are merged, with opaque handles, atomic updates and owned callbacks. The complete required release suite passed actual development/AOT native interaction, fault, scheduling and lifecycle checks on Linux X11 with a software GPU. Solid/React adapters and supported release packages remain under implementation. See [the BN0 integration record](docs/bn0-integration.md), [BN1 audit](docs/bn1-audit.md) and [current protocol](docs/native-abi.md) and the merged [shared layout contract](docs/native-layout.md) for exact scope.
 
 ## What we're building
 
@@ -15,22 +15,23 @@
 
 ### Architecture at a glance
 
-The implemented runtime owns one prebuilt GPUI child process and exchanges bounded, validated commands and events over private pipes. GPUI owns its UI thread. The forthcoming Solid and React adapters will translate their tree changes through that common host. [The architecture](docs/architecture.md) separates implemented packages from planned capabilities.
+Applications use `@bun-native/core` for windows, native elements, atomic batches and events. The private runtime owns one prebuilt GPUI child process and exchanges bounded, validated commands and events over private pipes. GPUI owns its UI thread. The forthcoming Solid and React adapters will translate their tree changes through that common public core and native host. [The architecture](docs/architecture.md) separates implemented packages from planned capabilities.
 
 In development, Bun runs the app code normally. For distribution, Bun's AOT compiler generates CPU-specific machine code for the application while the separately built native host renders the interface. **Native rendering and AOT solve different problems; Bun Native needs both.**
 
 ## Current implementation status
 
-| Capability                                      | Status                                                                                                                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Repo rename and BN0–BN7 roadmap                 | Complete; implementation issues track each acceptance requirement                                                                                      |
-| New native codebase (replacement for Bunly/CEF) | Merged native workspace, strict contracts and replacement CI — [#251](https://github.com/0xPlayerOne/bun-native/issues/251)                            |
-| Real Bun → native renderer window               | Linux X11 click, typing, paint, close/relaunch and in-process lifecycle verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230)        |
-| Bun AOT + native renderer integration           | Same application compiled and exercised; release-profile CI and final baseline tracked in [#227](https://github.com/0xPlayerOne/bun-native/issues/227) |
-| SolidJS, React, components and CLI              | Planned — BN2–BN5                                                                                                                                      |
-| Cross-platform native packaging, benchmarks     | Planned — BN6–BN7                                                                                                                                      |
+| Capability                                            | Status                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repo rename and BN0–BN7 roadmap                       | Complete; implementation issues track each acceptance requirement                                                                                                                                                                                                     |
+| New native codebase (replacement for Bunly/CEF)       | Merged native workspace, strict contracts and replacement CI — [#251](https://github.com/0xPlayerOne/bun-native/issues/251)                                                                                                                                           |
+| Real Bun → native renderer window                     | Linux X11 click, typing, paint, close/relaunch and in-process lifecycle verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230)                                                                                                                       |
+| Bun AOT + native renderer integration                 | Same application compiled, inspected and exercised; release-host baseline/audit merged in [#273](https://github.com/0xPlayerOne/bun-native/pull/273)                                                                                                                  |
+| Shared native tree and public TS/JS API               | Merged and qualified by the complete required release suite; see the [BN1 audit](docs/bn1-audit.md) and [#271](https://github.com/0xPlayerOne/bun-native/pull/271)                                                                                                    |
+| SolidJS, React, components and CLI                    | Solid [#277](https://github.com/0xPlayerOne/bun-native/pull/277), React [#280](https://github.com/0xPlayerOne/bun-native/pull/280) and native layout [#281](https://github.com/0xPlayerOne/bun-native/pull/281) are in progress; full BN2–BN5 acceptance remains open |
+| Cross-platform native packaging and production audits | Planned — BN6–BN7                                                                                                                                                                                                                                                     |
 
-The active packages contain the new protocol, runtime and native host. Obsolete CEF runtime, browser fixtures, qualification scripts and benchmark evidence have been removed; Git history preserves them. See the [implementation handoff and removal inventory](docs/bun-native-handoff.md) for current checks and remaining acceptance.
+The active packages contain the new core API, protocol, runtime and native host. Obsolete CEF runtime, browser fixtures, qualification scripts and benchmark evidence have been removed; Git history preserves them. See the [implementation handoff and removal inventory](docs/bun-native-handoff.md) for current checks and remaining acceptance.
 
 ## Start here
 
@@ -64,7 +65,7 @@ The [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) contain
 
 Bun Native is **not** an Electron, Electrobun, Tauri or WebView wrapper. It does not promise arbitrary HTML/CSS, browser DOM APIs, Tailwind, shadcn, Radix or Kobalte components running unchanged. Their functionality must be represented through actual native host elements/adapters, and support is documented per feature.
 
-The public app API is still being designed. **Do not copy hypothetical CLI or component examples as working commands.** See [BN1 public API #253](https://github.com/0xPlayerOne/bun-native/issues/253) and [BN5 CLI #242](https://github.com/0xPlayerOne/bun-native/issues/242) for implementation status.
+The [experimental public core API](packages/core/README.md) is implemented and tested; its native element and lifecycle contract remains deliberately small. **Do not copy hypothetical CLI or advanced component examples as working commands.** The [BN5 CLI #242](https://github.com/0xPlayerOne/bun-native/issues/242) and framework/component tasks track the remaining developer-facing surface.
 
 ## Contributing
 

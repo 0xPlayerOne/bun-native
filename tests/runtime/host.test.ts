@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { ProtocolError } from '@bun-native/protocol'
-import { NativeHost } from '@bun-native/runtime'
+import { NativeCommandError, NativeHost } from '@bun-native/runtime'
+import { ProtocolError, type Command, type Element } from '@bun-native/protocol'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -11,6 +11,30 @@ const options = (mode = 'normal', requestTimeoutMs = 1_000) => ({
   args: [fixture, mode],
   requestTimeoutMs,
 })
+const open = {
+  type: 'open',
+  window_id: 1,
+  root_id: 1,
+  title: 'Test',
+  width: 560,
+  height: 380,
+} as const
+
+function batch(
+  element: Element,
+  base_revision = 0,
+  node_id = 2
+): Omit<Extract<Command, { type: 'batch' }>, 'id'> {
+  return {
+    type: 'batch',
+    window_id: 1,
+    base_revision,
+    operations: [
+      { type: 'create', node_id, element },
+      { type: 'insert', parent_id: 1, child_id: node_id, index: 0 },
+    ],
+  }
+}
 
 async function deadline<T>(operation: Promise<T>, name: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -102,27 +126,59 @@ describe('native process transport (headless protocol peer)', () => {
     const host = await NativeHost.launch(options())
     const events = host[Symbol.asyncIterator]()
     try {
-      await host.send({ type: 'open', title: 'Test', text: 'Hello', input: '世界' })
-      expect(await events.next()).toEqual({ done: false, value: { type: 'input', value: '世界' } })
-      await host.send({ type: 'update', text: 'emit-click' })
-      expect(await events.next()).toEqual({ done: false, value: { type: 'click' } })
-      await host.send({ type: 'close' })
-      expect(await events.next()).toEqual({ done: false, value: { type: 'closed' } })
+      expect(await host.send(open)).toEqual({
+        type: 'opened',
+        id: 2,
+        window_id: 1,
+        root_id: 1,
+        tree_revision: 0,
+      })
+      expect(await host.send(batch({ kind: 'input', value: '世界' }))).toEqual({
+        type: 'applied',
+        id: 3,
+        window_id: 1,
+        tree_revision: 1,
+      })
+      expect(await events.next()).toEqual({
+        done: false,
+        value: {
+          type: 'input',
+          sequence: 1,
+          window_id: 1,
+          node_id: 2,
+          value: '世界',
+          input_revision: 1,
+        },
+      })
+      await host.send(batch({ kind: 'button', text: 'Click' }, 1, 3))
+      expect(await events.next()).toEqual({
+        done: false,
+        value: { type: 'click', sequence: 2, window_id: 1, node_id: 3 },
+      })
+      expect(await host.send({ type: 'close', window_id: 1 })).toEqual({ type: 'ack', id: 5 })
+      expect(await events.next()).toEqual({
+        done: false,
+        value: { type: 'closed', sequence: 3, window_id: 1 },
+      })
     } finally {
       await host.shutdown()
     }
     expect(await host.exited).toBe(0)
     expect(await events.next()).toEqual({ done: true, value: undefined })
     await host.shutdown()
-    expect((await rejectedError(host.send({ type: 'close' }))).message).toContain('not running')
+    expect((await rejectedError(host.send({ type: 'close', window_id: 1 }))).message).toContain(
+      'not running'
+    )
   })
 
   test('command rejection preserves the healthy session', async () => {
     const host = await NativeHost.launch(options())
     try {
-      const error = await rejectedError(host.send({ type: 'update', text: 'reject' }))
-      expect(error.message).toContain('invalid_state')
-      await host.send({ type: 'update', text: 'accepted' })
+      await host.send(open)
+      const error = await rejectedError(host.send(batch({ kind: 'text', text: 'reject' })))
+      expect(error).toBeInstanceOf(NativeCommandError)
+      expect(error).toMatchObject({ code: 'invalid_state', requestId: 3 })
+      await host.send(batch({ kind: 'text', text: 'accepted' }))
     } finally {
       await host.shutdown()
     }
@@ -141,9 +197,18 @@ describe('native process transport (headless protocol peer)', () => {
 
   test.each([
     ['wrong-version', 'Native protocol version mismatch'],
+    ['obsolete-version', 'Native protocol version mismatch'],
+    [
+      'missing-layout',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+    ],
+    [
+      'missing-capability',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+    ],
     ['bad-json', 'Invalid UTF-8 or JSON in native frame'],
     ['wrong-id', 'Unknown native response id'],
-    ['wrong-ack', 'Native response type does not match its request'],
+    ['wrong-ack', 'Native response does not match its request, owner or revision'],
     ['duplicate-ready', 'Unexpected ready event'],
   ])('rejects and reaps a host with %s', async (mode, message) => {
     const error = await rejectedError(NativeHost.launch(options(mode)))
@@ -172,7 +237,8 @@ describe('native process transport (headless protocol peer)', () => {
 
   test('bounds an unconsumed event flood and terminates the native process', async () => {
     const host = await NativeHost.launch(options('flood'))
-    await host.send({ type: 'open', title: 'Test', text: '', input: '' })
+    await host.send(open)
+    await host.send(batch({ kind: 'button', text: 'Flood' }))
     await host.exited
     expect((await rejectedError(host.shutdown())).message).toBe('Native event limit exceeded')
   })
@@ -194,11 +260,70 @@ describe('native process transport (headless protocol peer)', () => {
       const pending = deadline(events.next(), 'event after native exit')
       // The peer acknowledges this request before exiting. There is no pending
       // command timeout to rescue the event iterator when the process exits.
-      await host.send({ type: 'update', text: 'exit-after-ack' })
+      await host.send(open)
+      await host.send(batch({ kind: 'text', text: 'exit-after-ack' }))
       const error = await rejectedError(pending)
       expect(error.message).toBe('Native output remained open after host exit')
       expect(await host.exited).toBe(23)
       expect(existsSync(finished)).toBe(false)
     })
   })
+
+  test.each(['wrong-window', 'wrong-root', 'wrong-initial-revision'])(
+    'rejects an opened response with %s',
+    async (mode) => {
+      const host = await NativeHost.launch(options(mode))
+      try {
+        const error = await rejectedError(deadline(host.send(open), 'invalid opened response'))
+        expect(error).toBeInstanceOf(ProtocolError)
+        expect(error.message).toBe('Native response does not match its request, owner or revision')
+      } finally {
+        await deadline(
+          host.shutdown().catch(() => {}),
+          'failed host cleanup'
+        )
+      }
+    }
+  )
+
+  test.each(['wrong-batch-window', 'wrong-revision'])(
+    'rejects an applied response with %s',
+    async (mode) => {
+      const host = await NativeHost.launch(options(mode))
+      try {
+        await host.send(open)
+        const error = await rejectedError(
+          deadline(host.send(batch({ kind: 'text', text: 'Update' })), 'invalid applied response')
+        )
+        expect(error).toBeInstanceOf(ProtocolError)
+        expect(error.message).toBe('Native response does not match its request, owner or revision')
+      } finally {
+        await deadline(
+          host.shutdown().catch(() => {}),
+          'failed host cleanup'
+        )
+      }
+    }
+  )
+
+  test.each(['wrong-sequence', 'out-of-order-sequence'])(
+    'terminates on %s and rejects further event reads',
+    async (mode) => {
+      const host = await NativeHost.launch(options(mode))
+      const events = host[Symbol.asyncIterator]()
+      try {
+        await host.send(open)
+        await host.send(batch({ kind: 'button', text: 'Sequence test' }))
+        await deadline(host.exited, 'invalid event sequence')
+        const error = await rejectedError(events.next())
+        expect(error).toBeInstanceOf(ProtocolError)
+        expect(error.message).toBe('Native event sequence is out of order')
+      } finally {
+        await deadline(
+          host.shutdown().catch(() => {}),
+          'failed host cleanup'
+        )
+      }
+    }
+  )
 })

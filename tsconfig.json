@@ -5,6 +5,8 @@
     "module": "Preserve",
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true,
     "verbatimModuleSyntax": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -18,6 +20,14 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["packages/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
+  "include": [
+    "packages/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "examples/**/*.ts",
+    "benchmarks/**/*.ts",
+    "tests/native/javascript.js",
+    "experiments/**/*.ts"
+  ],
   "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/**"]
 }

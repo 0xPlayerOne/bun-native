@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "application": {
+    "file": "native-window",
+    "bytes": 70712360,
+    "sha256": "a80e2ba3ab7c4a0cc23d1bd2722b28326dd37e5f9a3ffc9467252cc232a0b556",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3145951,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    },
+    "runtimeFeatures": {
+      "format": "elf64-le",
+      "section": {
+        "name": ".bun_features",
+        "offset": 19504728,
+        "bytes": 536
+      },
+      "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "trimmedProgramFeatures": false,
+      "removedRangeCount": 202,
+      "jit": "unused",
+      "interpreter": "present",
+      "imageCompiler": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      }
+    }
+  },
+  "host": {
+    "file": "bun-native-host",
+    "profile": "release",
+    "bytes": 28669752,
+    "sha256": "4508642dfa90a59c49fa7a22ae20a525cf2a3d77c69c35c7555504c9aa0b9354",
+    "provenance": "Caller-supplied prebuilt host. Match this hash to native build and interaction evidence."
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": [
+        "compile",
+        "--no-script",
+        "--production"
+      ],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": [
+        "rustfmt",
+        "clippy"
+      ]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "target": {
+    "os": "linux",
+    "architecture": "x64",
+    "osRelease": "7.0.0-1017-azure"
+  },
+  "source": {
+    "commit": "e89d1511708f4230eae3318c9d6acb0612b60ca4",
+    "dirty": false,
+    "files": [
+      {
+        "path": ".bun-version",
+        "bytes": 15,
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+      },
+      {
+        "path": "Cargo.lock",
+        "bytes": 160678,
+        "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 434,
+        "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 13168,
+        "sha256": "3e59bc25ec20dd3c8677d754a6b910eac250da173220fc5c31c9b05a62b6573d"
+      },
+      {
+        "path": "bunfig.toml",
+        "bytes": 84,
+        "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef"
+      },
+      {
+        "path": "examples/native-window/main.ts",
+        "bytes": 1051,
+        "sha256": "305be8b434b37bde84f5a77c195d098a04428c5c05184d2430985170cd7e7c7b"
+      },
+      {
+        "path": "native/gpui-host/Cargo.toml",
+        "bytes": 628,
+        "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+      },
+      {
+        "path": "native/gpui-host/src/channel.rs",
+        "bytes": 2635,
+        "sha256": "3c86cc4f51a12de97912563972d78da72003366a863108a589215df203d972e9"
+      },
+      {
+        "path": "native/gpui-host/src/evidence.rs",
+        "bytes": 2531,
+        "sha256": "00730f1f0927d8206b992fe2021ac0324370a3c1fd928d8ccacc945f55454f1f"
+      },
+      {
+        "path": "native/gpui-host/src/input.rs",
+        "bytes": 19045,
+        "sha256": "862a5ab22c78d7a4d1f108b43d50ab87b00138a7eff02cd14640876c9aa727c7"
+      },
+      {
+        "path": "native/gpui-host/src/input/paint.rs",
+        "bytes": 5796,
+        "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+      },
+      {
+        "path": "native/gpui-host/src/main.rs",
+        "bytes": 8505,
+        "sha256": "8c290db36343ba91047dd43ed074c1ea122b63966a4f1bd3dc3a8dfb04091727"
+      },
+      {
+        "path": "native/gpui-host/src/view.rs",
+        "bytes": 2393,
+        "sha256": "012a274d3f5ec61560c376b5836bedf97c2f5b68d257ae2e0b3ffcf95de78962"
+      },
+      {
+        "path": "native/protocol/Cargo.toml",
+        "bytes": 225,
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+      },
+      {
+        "path": "native/protocol/src/lib.rs",
+        "bytes": 7453,
+        "sha256": "ea6cbc0317c5e042669740059ba70bacc13881007ad7ead07d074a5c42ea8d64"
+      },
+      {
+        "path": "native/protocol/src/tests.rs",
+        "bytes": 4189,
+        "sha256": "286c71353069fc37075fc40578d0902aea241a7aeb9672bae6e6eeeff18ec61f"
+      },
+      {
+        "path": "package.json",
+        "bytes": 1474,
+        "sha256": "1ebb2041544f1583ddf4c50c02b7050391a47dfff5d1be57529561db0f38ed49"
+      },
+      {
+        "path": "packages/protocol/package.json",
+        "bytes": 129,
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+      },
+      {
+        "path": "packages/protocol/src/framing.ts",
+        "bytes": 2806,
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+      },
+      {
+        "path": "packages/protocol/src/index.ts",
+        "bytes": 244,
+        "sha256": "9bc5f8f83162a3ec273bdf3e40ecde9e77729fd835b7bce317de590b568dad7f"
+      },
+      {
+        "path": "packages/protocol/src/messages.ts",
+        "bytes": 4817,
+        "sha256": "6f5bfceae09a77bf1a6a201d6c544f885cadaa71d9b4aa5c681548d899f903fd"
+      },
+      {
+        "path": "packages/runtime/package.json",
+        "bytes": 195,
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "bytes": 10565,
+        "sha256": "c518a95ae964ef500402aaacbeb1ba37cf1eb35ab036772452da16586f64b9d8"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 86,
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+      },
+      {
+        "path": "toolchain.json",
+        "bytes": 1725,
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+      },
+      {
+        "path": "tsconfig.json",
+        "bytes": 760,
+        "sha256": "924615f55bba09fe1b3c386ad866b0524016db17f353c42df99fe61ca563f62c"
+      }
+    ]
+  },
+  "compileCommand": [
+    "/home/runner/work/_temp/bun-native-bun/bun",
+    "compile",
+    "--no-script",
+    "--production",
+    "--explain=json",
+    "/home/runner/work/bun-native/bun-native/examples/native-window/main.ts",
+    "--outfile",
+    "/home/runner/work/_temp/native-evidence/package/native-window"
+  ],
+  "buildMs": 1874.523385,
+  "launch": {
+    "executable": "native-window",
+    "environment": {
+      "BUN_NATIVE_HOST": "<absolute-output-directory>/bun-native-host"
+    }
+  },
+  "verification": {
+    "aotCompiledProgram": "passed",
+    "jitOmission": "passed",
+    "nativeRendering": "not-run",
+    "osInput": "not-run",
+    "teardown": "not-run",
+    "installation": "not-tested",
+    "signing": "unsigned"
+  }
+}

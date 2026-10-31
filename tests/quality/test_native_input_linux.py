@@ -1,5 +1,6 @@
 """Headless driver safety tests. These do not verify a native window or input."""
 
+import copy
 import importlib.util
 import io
 import json
@@ -61,6 +62,128 @@ class EvidenceTests(unittest.TestCase):
                 output.write("\n")
             self.assertEqual(len(DRIVER.read_events(path, "run", 0)), 1)
 
+    def test_paint_requires_native_stage_full_tree_and_matching_revisions(self):
+        expected = {
+            "type": "rendered",
+            "window_id": 1,
+            "tree_revision": 2,
+            "nodes": [
+                {
+                    "node_id": 1,
+                    "element": {"kind": "box", "style": {}},
+                    "children": [2],
+                },
+                {
+                    "node_id": 2,
+                    "element": {
+                        "kind": "input",
+                        "value": "native edit",
+                        "placeholder": "",
+                        "style": {},
+                    },
+                    "children": [],
+                    "input_revision": 11,
+                },
+            ],
+        }
+        painted = {"stage": "native-paint", "nonce": "run", **expected}
+        self.assertTrue(DRIVER.matches_paint(painted, expected))
+        for change in [
+            {"type": "ack"},
+            {"stage": "bun-application"},
+            {"window_id": 2},
+            {"tree_revision": 1},
+            {"nodes": expected["nodes"][:1]},
+            {"status": "omitted", "reason": "evidence_record_limit"},
+        ]:
+            with self.subTest(change=change):
+                self.assertFalse(DRIVER.matches_paint({**painted, **change}, expected))
+        stale = copy.deepcopy(painted)
+        stale["nodes"][1]["input_revision"] = 10
+        self.assertFalse(DRIVER.matches_paint(stale, expected))
+        stale["nodes"][1]["input_revision"] = 11
+        stale["nodes"][1]["element"]["value"] = "stale application echo"
+        self.assertFalse(DRIVER.matches_paint(stale, expected))
+
+    def test_keyboard_activation_requires_a_distinct_event_sequence(self):
+        click = {"type": "click", "target": "increment", "sequence": 1}
+        keyboard = {"type": "click", "target": "increment", "sequence": 2}
+        self.assertTrue(DRIVER.matches(click, click))
+        self.assertFalse(DRIVER.matches(click, keyboard))
+        self.assertTrue(DRIVER.matches(keyboard, keyboard))
+
+    def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
+        DRIVER.validate_input_request(
+            False, "ordinary", "x" * 200, ["Return"] * 16, None
+        )
+        for text, keys in [
+            ("x" * 201, []),
+            (DRIVER.EVENT_STRESS_TEXT, []),
+            ("x" * 180 + "{nonce}", []),
+            (None, ["Return"] * 17),
+        ]:
+            with self.subTest(text_length=len(text or ""), keys=len(keys)):
+                with self.assertRaisesRegex(ValueError, "Native smoke input"):
+                    DRIVER.validate_input_request(False, "ordinary", text, keys, None)
+        valid = {
+            "event_stress": True,
+            "title": DRIVER.EVENT_STRESS_TITLE,
+            "text": DRIVER.EVENT_STRESS_TEXT,
+            "keys": [],
+            "click": None,
+        }
+        DRIVER.validate_input_request(**valid)
+        for changed in [
+            {"title": "another window"},
+            {"text": "x" * 999},
+            {"text": "x" * 1001},
+            {"text": "y" * 1000},
+            {"keys": ["Return"]},
+            {"click": [0, 0]},
+        ]:
+            with self.subTest(changed=changed):
+                with self.assertRaisesRegex(ValueError, "Event stress requires"):
+                    DRIVER.validate_input_request(**{**valid, **changed})
+
+    def test_event_stress_checks_every_edit_and_rejects_gaps_duplicates_and_bad_times(
+        self,
+    ):
+        events = [
+            {
+                "type": "input",
+                "stage": "bun-application",
+                "sequence": index,
+                "input_revision": index,
+                "value": "x" * index,
+                "observed_at_ms": 20 + index / 2,
+            }
+            for index in range(1, 1001)
+        ]
+        result = DRIVER.event_stress_observations(events, require_complete=True)
+        self.assertTrue(result["complete"])
+        self.assertEqual(result["verified_callbacks"], 1000)
+        self.assertEqual(result["observed_callbacks_per_second"], 2000)
+        partial = DRIVER.event_stress_observations(events[:-1])
+        self.assertFalse(partial["complete"])
+        with self.assertRaisesRegex(RuntimeError, "all 1000"):
+            DRIVER.event_stress_observations(events[:-1], require_complete=True)
+        with self.assertRaisesRegex(RuntimeError, "more than 1000"):
+            DRIVER.event_stress_observations([*events, events[-1]])
+        for changed in [
+            {"sequence": 501},
+            {"sequence": True},
+            {"input_revision": 499},
+            {"value": "x" * 499 + "y"},
+            {"observed_at_ms": 0},
+            {"observed_at_ms": float("nan")},
+            {"observed_at_ms": True},
+        ]:
+            with self.subTest(changed=changed):
+                damaged = [dict(event) for event in events]
+                damaged[499].update(changed)
+                with self.assertRaises(RuntimeError):
+                    DRIVER.event_stress_observations(damaged, require_complete=True)
+
     def test_evidence_size_is_bounded(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.jsonl"
@@ -119,16 +242,13 @@ class EvidenceTests(unittest.TestCase):
         "Linux process IDs and /proc must share a PID namespace",
     )
     def test_real_process_tree_is_observed_and_stopped_without_killing_the_test(self):
+        DRIVER.enable_subreaper()
         app = subprocess.Popen(
             [
                 sys.executable,
                 "-c",
-                "import signal,subprocess,sys,time\n"
+                "import subprocess,sys,time\n"
                 'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\n'
-                "def stop(_signal,_frame):\n"
-                "    child.wait(timeout=2)\n"
-                "    raise SystemExit(0)\n"
-                "signal.signal(signal.SIGTERM,stop)\n"
                 "print(child.pid,flush=True)\n"
                 "time.sleep(30)",
             ],
