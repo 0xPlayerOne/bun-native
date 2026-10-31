@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/0xPlayerOne/bun-native/compare/v0.11.2...v0.12.0) (2026-10-31)
+
+
+### Features
+
+* **solid:** implement native renderer and shared protocol-4 event mapping ([#277](https://github.com/0xPlayerOne/bun-native/issues/277)) ([010db65](https://github.com/0xPlayerOne/bun-native/commit/010db65754ca9e54eca28e7701324e22b3c1f6c2))
+
+## [0.11.2](https://github.com/0xPlayerOne/bun-native/compare/v0.11.1...v0.11.2) (2026-10-31)
+
+
+### CI
+
+* **native:** build and execute GPUI paint and lifecycle on macOS and Windows ([#288](https://github.com/0xPlayerOne/bun-native/issues/288)) ([afb47e1](https://github.com/0xPlayerOne/bun-native/commit/afb47e1ae322f9e7e7b97261752e0e33e78f7eb7))
+
 ## [0.11.1](https://github.com/0xPlayerOne/bun-native/compare/v0.11.0...v0.11.1) (2026-10-31)
 
 
