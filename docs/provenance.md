@@ -17,8 +17,8 @@ This file is the active provenance policy for the new Bun Native implementation.
 
 ## Required record format
 
-| Component | Upstream/revision | License | Files or binaries used | Changes | Shipped target |
-| --- | --- | --- | --- | --- | --- |
-| _Populate as implementation lands_ | | | | | |
+| Component                          | Upstream/revision | License | Files or binaries used | Changes | Shipped target |
+| ---------------------------------- | ----------------- | ------- | ---------------------- | ------- | -------------- |
+| _Populate as implementation lands_ |                   |         |                        |         |                |
 
 See [architecture](architecture.md), [releasing](releasing.md) and [BN7 docs/provenance #254](https://github.com/0xPlayerOne/bun-native/issues/254).

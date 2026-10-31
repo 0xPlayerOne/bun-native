@@ -24,7 +24,7 @@ Every change must leave the touched area cleaner or demonstrably no worse.
 - Check for **duplication, implicit coupling, circular dependencies, god files/classes, shotgun surgery, pass-through wrappers, wrong-layer validation, boundary leaks, and representable illegal states**. Split by responsibility when a change repeatedly touches unrelated modules; do not split into useless wrappers.
 - Keep public contracts strict and types meaningful. Prefer precise TS/JS types, small explicit APIs, `Result`/typed errors and exhaustive handling. Justify `any`, type assertions, unsafe Rust and native FFI blocks in code review; keep the unsafe surface narrow and test it.
 - Avoid unnecessary dependency growth. Audit imported runtime surface, licensing and native binary cost; prefer built-in Bun/platform facilities where they are correct. Do not introduce an extra bundler, renderer, process, JS engine or framework merely for convenience.
-- Keep tests, examples, documentation, scripts, lockfiles, generated manifests, CI and package exports in sync. Add no generated build artifacts or caches to Git. Remove a superseded test only when its behavior is irrelevant or replaced by an equivalent *new architecture* test.
+- Keep tests, examples, documentation, scripts, lockfiles, generated manifests, CI and package exports in sync. Add no generated build artifacts or caches to Git. Remove a superseded test only when its behavior is irrelevant or replaced by an equivalent _new architecture_ test.
 - Favor straightforward, inspectable code. No duplicate Solid/React native primitives, speculative compatibility layers, hidden browser shims or permanent TODOs without linked issues and ownership.
 - Run dependency/unused-code and boundary checks over changed packages and periodically repository-wide. Use tools selected for the actual stack; do not assume an obsolete Bunly script remains authoritative.
 
@@ -56,15 +56,15 @@ Every change must leave the touched area cleaner or demonstrably no worse.
 
 These are **automatic agent-owned** checks, never questions for the owner.
 
-| Cadence | Required activity | Evidence |
-| --- | --- | --- |
-| Every PR/commit series | Focused format/lint/typecheck/unit tests, changed-package dependency/unused-code scan, architecture boundary review, no stale files | Exact commands, results, diff/PR notes |
-| Every merged behavior change | Integration/lifecycle/error-path tests and targeted microbenchmark for touched hot path | Native execution log and comparison to current baseline |
-| Every milestone | Full relevant native scenario, code-health sweep, performance profile and documented cleanup of superseded paths | Phase audit in epic; reproducible artifacts and remaining issues |
-| Scheduled CI / before a release candidate | Full Linux/Windows/macOS matrix when supported; soak/leak, crash/recovery, accessibility/input and realistic workloads | Versioned benchmark report, failures and unsupported cases |
-| BN7/release scope | Cross-framework, cross-renderer and competitive identical-workload comparison, public API/docs audit and release risk review | Final support matrix and quantitative performance report |
+| Cadence                                   | Required activity                                                                                                                   | Evidence                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Every PR/commit series                    | Focused format/lint/typecheck/unit tests, changed-package dependency/unused-code scan, architecture boundary review, no stale files | Exact commands, results, diff/PR notes                           |
+| Every merged behavior change              | Integration/lifecycle/error-path tests and targeted microbenchmark for touched hot path                                             | Native execution log and comparison to current baseline          |
+| Every milestone                           | Full relevant native scenario, code-health sweep, performance profile and documented cleanup of superseded paths                    | Phase audit in epic; reproducible artifacts and remaining issues |
+| Scheduled CI / before a release candidate | Full Linux/Windows/macOS matrix when supported; soak/leak, crash/recovery, accessibility/input and realistic workloads              | Versioned benchmark report, failures and unsupported cases       |
+| BN7/release scope                         | Cross-framework, cross-renderer and competitive identical-workload comparison, public API/docs audit and release risk review        | Final support matrix and quantitative performance report         |
 
-**Regression policy:** establish budgets from the *first correct native baseline*, not guessed competitor numbers. Trend medians and tails with repeated runs and environment metadata. Treat a reproducible unexplained regression around **10% or more** in critical startup, interactive latency, RSS, binary size or edit-loop metrics as an investigation trigger; particularly severe regressions should block the affected release claim until fixed or documented with a justified tradeoff. Noise, tiny absolute changes and benchmark methodology differences are not automatic failures. The agent may revise budgets with evidence and an ADR—no human sign-off needed.
+**Regression policy:** establish budgets from the _first correct native baseline_, not guessed competitor numbers. Trend medians and tails with repeated runs and environment metadata. Treat a reproducible unexplained regression around **10% or more** in critical startup, interactive latency, RSS, binary size or edit-loop metrics as an investigation trigger; particularly severe regressions should block the affected release claim until fixed or documented with a justified tradeoff. Noise, tiny absolute changes and benchmark methodology differences are not automatic failures. The agent may revise budgets with evidence and an ADR—no human sign-off needed.
 
 Prefer a fast PR quality lane (target roughly five minutes when practical) with focused checks. Run heavier GPU/soak/benchmark cases on scheduled or release-triggered hosted jobs so ordinary iteration remains quick.
 

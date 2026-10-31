@@ -12,16 +12,16 @@ A headless stub or successful `cargo build` is not proof of a visible interactiv
 
 ## Test pyramid
 
-| Level | Examples | Expected evidence |
-| --- | --- | --- |
-| Static/code health | Bun format/lint/check, Rust fmt/Clippy, dependency boundaries, unused/duplicate code | Exact commands and failing negative fixtures |
-| Unit | Lifecycle state, typed errors, tree diff, IDs, capability checks, serialization, event ordering | Deterministic assertions |
-| Host integration | Bun TS/JS ↔ native ABI, AOT addon loading, batching, disposal, restart | Real native binary and trace |
-| Framework adapters | Solid signals/effects/keyed updates; React hooks/refs/reconciler commits | Native tree and event behavior in dev + AOT |
-| UI interaction | Window open, type/click/focus/scroll/dialog/IME, native accessibility | OS/GPU run evidence, screenshots/recordings if available |
-| Soak/failure | 1,000+ mount/unmount, 100+ hot reload, long stream, queue flood, crash/recovery | Resource trend and cleanup logs |
-| Packaging/release | Fresh host install, integrity, update/rollback, clean launch, failed update | Versioned artifact manifest and install logs |
-| Performance | Cold startup, RSS, CPU/GPU, p95/p99 frame/input, compiler time, binary size | Raw samples, baseline, methodology |
+| Level              | Examples                                                                                        | Expected evidence                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Static/code health | Bun format/lint/check, Rust fmt/Clippy, dependency boundaries, unused/duplicate code            | Exact commands and failing negative fixtures             |
+| Unit               | Lifecycle state, typed errors, tree diff, IDs, capability checks, serialization, event ordering | Deterministic assertions                                 |
+| Host integration   | Bun TS/JS ↔ native ABI, AOT addon loading, batching, disposal, restart                          | Real native binary and trace                             |
+| Framework adapters | Solid signals/effects/keyed updates; React hooks/refs/reconciler commits                        | Native tree and event behavior in dev + AOT              |
+| UI interaction     | Window open, type/click/focus/scroll/dialog/IME, native accessibility                           | OS/GPU run evidence, screenshots/recordings if available |
+| Soak/failure       | 1,000+ mount/unmount, 100+ hot reload, long stream, queue flood, crash/recovery                 | Resource trend and cleanup logs                          |
+| Packaging/release  | Fresh host install, integrity, update/rollback, clean launch, failed update                     | Versioned artifact manifest and install logs             |
+| Performance        | Cold startup, RSS, CPU/GPU, p95/p99 frame/input, compiler time, binary size                     | Raw samples, baseline, methodology                       |
 
 ## Quality cadence
 
@@ -41,7 +41,7 @@ This is **automated agent-owned verification, not a human sign-off process**. Fo
 
 ## Performance reproducibility
 
-Define a fixture and assert its output correctness *before* measuring. Run repeated trials on the same hardware/OS/build with source hash, power mode, warm/cold distinction and measurement method. Report medians/tail latencies, variance and raw logs, not isolated wins. Establish budgets from correct native baselines. A credible, unexplained regression around 10% in critical metrics is an investigation trigger, not an arbitrary release claim. See [benchmarks](../benchmarks/README.md).
+Define a fixture and assert its output correctness _before_ measuring. Run repeated trials on the same hardware/OS/build with source hash, power mode, warm/cold distinction and measurement method. Report medians/tail latencies, variance and raw logs, not isolated wins. Establish budgets from correct native baselines. A credible, unexplained regression around 10% in critical metrics is an investigation trigger, not an arbitrary release claim. See [benchmarks](../benchmarks/README.md).
 
 ## Clean completion
 

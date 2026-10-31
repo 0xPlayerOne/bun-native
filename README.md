@@ -31,14 +31,14 @@ In development, Bun runs the app code normally. For distribution, Bun's AOT comp
 
 ## Current implementation status
 
-| Capability | Status |
-| --- | --- |
-| Repo rename and BN0–BN7 roadmap | Planned and tracked |
-| New native codebase (replacement for Bunly/CEF) | Not yet implemented — [#251](https://github.com/0xPlayerOne/bun-native/issues/251) |
-| Real Bun → native renderer window | Not yet verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230) |
-| Production Bun AOT + native renderer integration | Not yet verified — [#227](https://github.com/0xPlayerOne/bun-native/issues/227) |
-| SolidJS, React, components and CLI | Planned — BN2–BN5 |
-| Cross-platform native packaging, benchmarks | Planned — BN6–BN7 |
+| Capability                                       | Status                                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Repo rename and BN0–BN7 roadmap                  | Planned and tracked                                                                |
+| New native codebase (replacement for Bunly/CEF)  | Not yet implemented — [#251](https://github.com/0xPlayerOne/bun-native/issues/251) |
+| Real Bun → native renderer window                | Not yet verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230)    |
+| Production Bun AOT + native renderer integration | Not yet verified — [#227](https://github.com/0xPlayerOne/bun-native/issues/227)    |
+| SolidJS, React, components and CLI               | Planned — BN2–BN5                                                                  |
+| Cross-platform native packaging, benchmarks      | Planned — BN6–BN7                                                                  |
 
 The current source code is **not** an endorsed implementation foundation. Legacy CEF, WebView, browser API and M1–M7 documentation has been removed from the active documentation; it remains available in Git history for archaeology. The code itself is removed by the first migration implementation issue.
 
@@ -57,15 +57,15 @@ The current source code is **not** an endorsed implementation foundation. Legacy
 
 ## Roadmap
 
-| Phase | Deliverable |
-| --- | --- |
-| [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app |
-| [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security |
-| [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) | SolidJS native renderer |
-| [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) | React native renderer |
-| [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) | Shared native components, OS services and accessibility |
-| [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) | CLI, Bun tooling, hot reload and native CI |
-| [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) | Native AOT packaging, installation, updates and recovery |
+| Phase                                                       | Deliverable                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app             |
+| [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security    |
+| [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) | SolidJS native renderer                                                   |
+| [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) | React native renderer                                                     |
+| [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) | Shared native components, OS services and accessibility                   |
+| [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) | CLI, Bun tooling, hot reload and native CI                                |
+| [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) | Native AOT packaging, installation, updates and recovery                  |
 | [BN7](https://github.com/0xPlayerOne/bun-native/issues/224) | Real apps, equivalent-workload benchmarks, documentation and optimization |
 
 The [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) contains 8 self-contained milestone epics and linked implementation tasks. It is the current source of engineering work; milestones can progress in parallel when contracts allow.

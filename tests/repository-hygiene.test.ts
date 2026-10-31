@@ -73,7 +73,7 @@ test('bug form customization preserves platform-specific diagnostics after sync'
 test('the actual checkout has one canonical policy layout and the reviewed Foundry overlay', async () => {
   await verifyFoundryState(root)
   const guide = await readFile(resolve(root, '.github/CONTRIBUTING.md'), 'utf8')
-  expect(guide).toContain('## Bunly development setup')
+  expect(guide).toContain('# Contributing to Bun Native')
   expect(guide).toContain('code-foundry-managed: agent-operating-contract')
   const validation = Bun.YAML.parse(
     await readFile(resolve(root, '.github/workflows/validation.yml'), 'utf8')
