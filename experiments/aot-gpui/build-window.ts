@@ -168,11 +168,8 @@ const buildMs = performance.now() - start
 const inspection = inspectBunExecutable(application)
 if (!inspection.hasCompiledProgram)
   throw new Error('Compiler output has no compiled-program record')
-const runtimeFeatures = process.platform === 'linux' ? inspectBunRuntime(application) : null
-if (
-  runtimeFeatures &&
-  (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
-)
+const runtimeFeatures = inspectBunRuntime(application)
+if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
   throw new Error('Compiler output does not record removal of the JIT compiler')
 if (bundledHost) {
   copyFileSync(values.host, host)
@@ -247,7 +244,7 @@ const manifest = {
   },
   verification: {
     aotCompiledProgram: 'passed',
-    jitOmission: runtimeFeatures ? 'passed' : 'not-implemented-for-this-format',
+    jitOmission: 'passed',
     nativeRendering: 'not-run',
     osInput: 'not-run',
     teardown: 'not-run',
