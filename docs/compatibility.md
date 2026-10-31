@@ -4,17 +4,17 @@
 
 ## Intended languages, frameworks and platforms
 
-| Capability | Intended support | Verified today |
-| --- | --- | --- |
-| TypeScript `.ts/.tsx` | First-class app and framework authoring | Not yet qualified |
-| JavaScript `.js/.jsx` | First-class consumer authoring | Not yet qualified |
-| SolidJS | First native UI adapter | Not yet implemented |
-| React | Separate native UI adapter using shared host | Not yet implemented |
-| macOS native GPU window | Target | Not yet verified |
-| Windows native GPU window | Target | Not yet verified |
-| Linux native GPU window | Target | Not yet verified |
-| Bun machine-code AOT release | Required production target | Not yet verified |
-| Native text, input, accessibility, OS services | Required useful desktop functionality | Not yet verified |
+| Capability                                     | Intended support                             | Verified today      |
+| ---------------------------------------------- | -------------------------------------------- | ------------------- |
+| TypeScript `.ts/.tsx`                          | First-class app and framework authoring      | Not yet qualified   |
+| JavaScript `.js/.jsx`                          | First-class consumer authoring               | Not yet qualified   |
+| SolidJS                                        | First native UI adapter                      | Not yet implemented |
+| React                                          | Separate native UI adapter using shared host | Not yet implemented |
+| macOS native GPU window                        | Target                                       | Not yet verified    |
+| Windows native GPU window                      | Target                                       | Not yet verified    |
+| Linux native GPU window                        | Target                                       | Not yet verified    |
+| Bun machine-code AOT release                   | Required production target                   | Not yet verified    |
+| Native text, input, accessibility, OS services | Required useful desktop functionality        | Not yet verified    |
 
 The renderer starts with Rust GPUI. An agent may choose a different real native renderer with recorded evidence and update this document; WebView/CEF is not a fallback.
 

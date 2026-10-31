@@ -5,7 +5,7 @@
 ## Start with the current implementation task
 
 1. Read the [vision](bun-native-vision.md), [architecture](architecture.md), [engineering-quality policy](engineering-quality.md) and [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
-2. Start [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217). [#251](https://github.com/0xPlayerOne/bun-native/issues/251) replaces legacy source, scripts and CI; [#225](https://github.com/0xPlayerOne/bun-native/issues/225) pins the *actual* Bun AOT, GPUI and Rust toolchains. They can proceed in parallel.
+2. Start [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217). [#251](https://github.com/0xPlayerOne/bun-native/issues/251) replaces legacy source, scripts and CI; [#225](https://github.com/0xPlayerOne/bun-native/issues/225) pins the _actual_ Bun AOT, GPUI and Rust toolchains. They can proceed in parallel.
 3. Inspect the current checkout/branch and any existing PRs. Do not assume obsolete Bun 1.4.4 versions, M1 tests or CEF run commands apply to the new framework.
 4. Open a draft PR with the first useful change, push continuously, run focused tests and enable auto-merge when repository checks permit. No routine human design checkpoint is required.
 
