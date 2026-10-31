@@ -28,16 +28,16 @@ AOT is an execution mechanism, **not** a JSX/CSS-to-Rust compiler. The Solid/Rea
 
 ## Package boundaries (suggested, not frozen names)
 
-| Area | Responsibility | May depend on |
-| --- | --- | --- |
-| Public core API | Typed windows, elements, events, errors, capabilities, lifecycle | Portable contracts |
-| Native host and bridge | ABI, event queue, resource ownership, renderer integration | Core contract and native OS libraries |
-| Solid adapter | Solid signals/owner lifecycle mapped to native host | Public core, Solid |
-| React adapter | React reconciler mapped to native host | Public core, React |
-| Shared components | Layout, text, input, overlays, style tokens, accessibility | Public native host primitives |
-| CLI/tooling | Create/dev/build/diagnose, AOT, package resolution, reload | Public contracts, compiler/native artifacts |
-| Platform artifacts | Per-OS/arch native host and manifest | Pinned native build |
-| Examples/tests/benchmarks | Consumer behavior and evidence | Only public APIs wherever possible |
+| Area                      | Responsibility                                                   | May depend on                               |
+| ------------------------- | ---------------------------------------------------------------- | ------------------------------------------- |
+| Public core API           | Typed windows, elements, events, errors, capabilities, lifecycle | Portable contracts                          |
+| Native host and bridge    | ABI, event queue, resource ownership, renderer integration       | Core contract and native OS libraries       |
+| Solid adapter             | Solid signals/owner lifecycle mapped to native host              | Public core, Solid                          |
+| React adapter             | React reconciler mapped to native host                           | Public core, React                          |
+| Shared components         | Layout, text, input, overlays, style tokens, accessibility       | Public native host primitives               |
+| CLI/tooling               | Create/dev/build/diagnose, AOT, package resolution, reload       | Public contracts, compiler/native artifacts |
+| Platform artifacts        | Per-OS/arch native host and manifest                             | Pinned native build                         |
+| Examples/tests/benchmarks | Consumer behavior and evidence                                   | Only public APIs wherever possible          |
 
 Enforce this dependency direction, without introducing layers that merely forward arguments. Public UI packages should not import Rust internals or require browser globals. Avoid duplicate native widget implementations across Solid/React.
 

@@ -4,11 +4,11 @@
 
 ## Bun application modes
 
-| Mode | Purpose | Compiler/runtime behavior |
-| --- | --- | --- |
-| `bun run` | Development and fast edit loop | Executes application JS/TS with normal Bun runtime |
-| `bun build --compile` | Conventional standalone executable | Bundles JS with Bun runtime and uses JIT at run time |
-| `bun compile` | **Production Bun Native AOT target** | Experimental compile of supported JS/TS to machine code, with reduced Bun runtime and no JIT |
+| Mode                  | Purpose                              | Compiler/runtime behavior                                                                    |
+| --------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `bun run`             | Development and fast edit loop       | Executes application JS/TS with normal Bun runtime                                           |
+| `bun build --compile` | Conventional standalone executable   | Bundles JS with Bun runtime and uses JIT at run time                                         |
+| `bun compile`         | **Production Bun Native AOT target** | Experimental compile of supported JS/TS to machine code, with reduced Bun runtime and no JIT |
 
 Bun AOT does **not** create native UI, compile JSX/CSS into Rust, remove GC or guarantee universal performance improvements. Native rendering comes from a separately compiled host. AOT currently targets the build machine's platform; build on target-native CI runners unless verified support changes.
 

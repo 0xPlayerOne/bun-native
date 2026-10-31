@@ -35,7 +35,7 @@ describe('Code Foundry installation', () => {
     expect(config['license']).toBe('preserve')
     expect(await readFile(resolve(root, 'LICENSE'), 'utf8')).toStartWith('MIT License')
     const agents = await readFile(resolve(root, 'AGENTS.md'), 'utf8')
-    expect(agents).toContain('# Bunly implementation rules')
+    expect(agents).toContain('# Bun Native — autonomous implementation instructions')
     expect(agents).toContain('code-foundry-managed: pull-request-policy')
   })
   test('places generated content in .github with only one case-safe PR template', async () => {
