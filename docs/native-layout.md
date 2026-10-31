@@ -2,7 +2,7 @@
 
 This is the initial shared layout increment for [BN4 #237](https://github.com/0xPlayerOne/bun-native/issues/237). Boxes, text, buttons and inputs use one TypeScript contract, one Rust validator and one GPUI implementation. Solid and React consume these elements through public core; neither framework owns a separate native layout engine.
 
-Protocol **3** requires `layout_v1`, `tree` and `input_revisions`. A version-2 host is incompatible. Pin packages and the prebuilt host to the same tested revision and rebuild both sides when upgrading. Historical protocol-2 artifacts and measurements remain evidence for their original sources.
+The initial layout increment used protocol **3**. Current protocol **4** also requires `interactions_v1`, alongside `layout_v1`, `tree` and `input_revisions`; older hosts are incompatible. Pin packages and the prebuilt host to the same tested revision and rebuild both sides when upgrading. Historical protocol-2/3 artifacts and measurements remain evidence for their original sources. The [interaction contract](native-events.md) describes observed focus/key/pointer events without changing this style contract.
 
 ## Supported style fields
 

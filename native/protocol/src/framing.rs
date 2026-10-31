@@ -7,6 +7,7 @@ pub enum ProtocolError {
     Io(io::Error),
     InvalidJson(serde_json::Error),
     InvalidCommand(&'static str),
+    InvalidEvent(&'static str),
     Oversized,
     Truncated,
     Poisoned,
@@ -17,7 +18,9 @@ impl fmt::Display for ProtocolError {
         match self {
             Self::Io(error) => write!(formatter, "channel I/O failed: {error}"),
             Self::InvalidJson(error) => write!(formatter, "invalid JSON frame: {error}"),
-            Self::InvalidCommand(message) => formatter.write_str(message),
+            Self::InvalidCommand(message) | Self::InvalidEvent(message) => {
+                formatter.write_str(message)
+            }
             Self::Oversized => formatter.write_str("frame exceeds 65536 bytes"),
             Self::Truncated => formatter.write_str("channel ended within a frame"),
             Self::Poisoned => formatter.write_str("channel is poisoned"),
@@ -88,6 +91,7 @@ impl CommandReader {
 
 /// Writes one complete event and flushes before returning. Never logs on stdout.
 pub fn write_event(sink: &mut impl Write, event: &Event) -> Result<(), ProtocolError> {
+    event.validate().map_err(ProtocolError::InvalidEvent)?;
     let mut bytes = serde_json::to_vec(event).map_err(ProtocolError::InvalidJson)?;
     if bytes.len() > MAX_FRAME_BYTES {
         return Err(ProtocolError::Oversized);

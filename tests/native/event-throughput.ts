@@ -20,6 +20,7 @@ const startedAt = new Date().toISOString()
 const started = performance.now()
 const observationsMs: number[] = []
 let observedEvents = 0
+let lastSequence = 0
 let peakQueuedCallbacks = 0
 let peakActiveCallbacks = 0
 let inputSignal: AbortSignal | undefined
@@ -69,7 +70,10 @@ try {
       const expected = observedEvents + 1
       assert(expected <= EVENT_COUNT, 'The fixed workload must not emit additional edits')
       assert.equal(event.node, input)
-      assert.equal(event.sequence, expected, 'Native event sequence must be contiguous')
+      // Global native order also includes key and focus events. Input callbacks
+      // are a strictly ordered subset; their edit revisions remain contiguous.
+      assert(event.sequence > lastSequence, 'Input callbacks must preserve native event order')
+      lastSequence = event.sequence
       assert.equal(event.revision, expected, 'Every accepted edit must advance its revision')
       assert.equal(event.value, EXPECTED_TEXT.slice(0, expected), 'Every edit value must match')
       assert.equal(event.signal.aborted, false)
@@ -143,7 +147,7 @@ const result = {
   checks: {
     expectedEvents: EVENT_COUNT,
     observedEvents,
-    contiguousSequenceRevisionAndValues: !failure && observedEvents === EVENT_COUNT,
+    orderedSequencesContiguousRevisionsAndValues: !failure && observedEvents === EVENT_COUNT,
     nativeTreeRevision: 1,
     applicationInputReplacementBatches: 0,
     peakObservedQueuedCallbacks: peakQueuedCallbacks,

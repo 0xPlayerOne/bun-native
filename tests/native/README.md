@@ -2,8 +2,8 @@
 
 These entry points launch the actual prebuilt GPUI host. They are separate from
 the default headless `bun test tests` suite. The required Linux native CI job
-builds one release host and reuses that artifact for development Bun and six
-inspected machine-code AOT entries.
+builds one release host and reuses that artifact for development Bun and the
+explicit inspected machine-code AOT entries below.
 
 ## Session modes
 
@@ -64,7 +64,8 @@ native runtime behavior; the session modes above exercise that separately.
 ## Compile and run AOT entries
 
 The shared build helper accepts `native-window`, `input-race`, `bridge`,
-`javascript`, `core-lifecycle` and `event-throughput`. It records source/configuration and executable
+`javascript`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`
+and `interactions`. It records source/configuration and executable
 hashes, the exact compiler command, compiled-program metadata and Linux JIT
 omission evidence. `native-window` bundles a copy of the native host for the
 distribution/baseline package. The other entries reference the existing host by
@@ -122,7 +123,9 @@ remain unchanged.
 
 The input listener uses the public API and never echoes a value or sends a
 per-edit tree update. Both the application and independent driver validate all
-1,000 contiguous event sequences, input revisions and prefix values. The final
+1,000 increasing input-event sequences, contiguous input revisions and exact
+prefix values. The runtime independently validates the complete contiguous UI
+sequence, including key and focus events between input callbacks. The final
 native paint must contain the complete value at input revision 1,000 while the
 tree revision remains 1. The fixture writes `event-throughput.json` beside the
 event log, with every callback observation time, inter-callback gaps, observed
@@ -154,4 +157,23 @@ input, display-presentation latency or macOS/Windows GUI behavior.
 
 ## Shared layout diagnostics
 
-`tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching protocol-3 host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
+`tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching current host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
+
+## Shared interaction diagnostics
+
+`tests/native/interactions.ts` also uses public core only. The diagnostics runner's
+`interactions` scenario reuses the same owned-window checks, bounded nonce-tagged
+logs, deadlines and cleanup. It supplies pointer/Enter activation, Tab focus,
+caret movement and Shift-selection replacement. It verifies complete
+capture/target/bubble traces, distinguishes both propagation controls at the
+target, and proves that native activation still occurs after JS propagation
+stops. While a callback deliberately awaits a private gate, real events queue;
+reparenting preserves their captured ancestry, whereas target deletion cancels
+delivery and remount does not inherit old callbacks. The final complete native
+paint, OS close, revoked signals and zero ownership counters are required.
+
+Use `--entry interactions` for the corresponding AOT executable and
+`--scenario interactions` with development or AOT in the existing diagnostics
+runner. The [interaction contract](../../docs/native-events.md) contains exact
+commands, current evidence and unsupported scope. None of these finite tests
+claims DOM event compatibility, native default cancellation or full IME support.

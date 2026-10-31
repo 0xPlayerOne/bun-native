@@ -15,4 +15,6 @@ export {
   type Limits,
   type ErrorCode,
   type Capability,
+  type KeyModifiers,
+  type PointerButton,
 } from './messages.ts'

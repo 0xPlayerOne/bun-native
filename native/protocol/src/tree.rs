@@ -127,6 +127,20 @@ impl Tree {
         self.nodes.iter().map(|(id, node)| (*id, node))
     }
 
+    /// Snapshot the committed root-to-target route before an event leaves the
+    /// UI thread. A later move must not rewrite an already-emitted event path.
+    pub fn path(&self, id: NodeId) -> Option<Vec<NodeId>> {
+        let mut path = Vec::new();
+        let mut current = Some(id);
+        while let Some(id) = current {
+            let node = self.nodes.get(&id)?;
+            path.push(id);
+            current = node.parent;
+        }
+        path.reverse();
+        Some(path)
+    }
+
     /// `last_node_id` is the session-wide committed high-water mark. Neither
     /// this tree nor that counter changes when any operation is rejected.
     pub fn prepare(

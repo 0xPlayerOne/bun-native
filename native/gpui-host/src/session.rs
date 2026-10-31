@@ -135,6 +135,7 @@ impl Session {
                             Capability::Tree,
                             Capability::InputRevisions,
                             Capability::LayoutV1,
+                            Capability::InteractionsV1,
                         ],
                         limits: Limits::default(),
                     },
@@ -231,7 +232,7 @@ impl Session {
             },
             move |window, cx| {
                 evidence.renderer(window_id, window.gpu_specs());
-                cx.new(|_| NativeView::new(window_id, view_state, events, evidence))
+                cx.new(|cx| NativeView::new(window_id, view_state, events, evidence, window, cx))
             },
         );
         match result {

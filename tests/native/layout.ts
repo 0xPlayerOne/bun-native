@@ -38,6 +38,7 @@ const clicks = { top: 0, bottom: 0 }
 const inputEvents: Array<{ value: string; revision: number; sequence: number }> = []
 const signals: AbortSignal[] = []
 let lastSequence = 0
+let observedCallbacks = 0
 try {
   const window = await app.openWindow({ title: 'Bun Native layout', width: 640, height: 480 })
   const nodes = await window.batch((batch) => {
@@ -111,14 +112,18 @@ try {
     ['bottom', nodes.bottom],
   ] as const)
     window.onClick(node, (event) => {
-      assert.equal(event.sequence, ++lastSequence)
+      assert(event.sequence > lastSequence)
+      lastSequence = event.sequence
+      observedCallbacks += 1
       assert.equal(event.signal.aborted, false)
       signals.push(event.signal)
       clicks[target] += 1
       record('click', { target, sequence: event.sequence })
     })
   window.onInput(nodes.input, (event) => {
-    assert.equal(event.sequence, ++lastSequence)
+    assert(event.sequence > lastSequence)
+    lastSequence = event.sequence
+    observedCallbacks += 1
     const entry = { value: event.value, revision: event.revision, sequence: event.sequence }
     inputEvents.push(entry)
     record('input', entry)
@@ -212,11 +217,14 @@ try {
   await app.shutdown()
   await app.closed
 }
-assert.deepEqual(inputEvents, [
-  { value: 'ABxC', revision: 1, sequence: 3 },
-  { value: 'ABxYC', revision: 3, sequence: 4 },
-])
-assert.equal(lastSequence, 7)
+assert.deepEqual(
+  inputEvents.map(({ value, revision }) => ({ value, revision })),
+  [
+    { value: 'ABxC', revision: 1 },
+    { value: 'ABxYC', revision: 3 },
+  ]
+)
+assert.equal(observedCallbacks, 7)
 assert(Object.values(app.diagnostics).every((count) => count === 0))
 writeFileSync(
   join(directory, 'application-result.json'),

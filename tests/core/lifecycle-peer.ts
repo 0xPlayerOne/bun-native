@@ -6,12 +6,12 @@ import {
   FrameDecoder,
   parseCommand,
   PROTOCOL_VERSION,
-  type Element,
+  REQUIRED_CAPABILITIES,
   type NativeEvent,
 } from '@bun-native/protocol'
+import { PeerTree, type PeerNode } from './peer-tree.ts'
 
-type Node = { element: Element; inputRevision: number }
-const windows = new Map<number, Map<number, Node>>()
+const windows = new Map<number, PeerTree>()
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
 let sequence = 0
@@ -21,15 +21,20 @@ async function emit(event: NativeEvent): Promise<void> {
   await output.flush()
 }
 
-function buttons(nodes: Map<number, Node>): number[] {
+function buttons(nodes: Map<number, PeerNode>): number[] {
   return [...nodes].filter(([, node]) => node.element.kind === 'button').map(([id]) => id)
 }
 
-async function click(window_id: number, node_id: number): Promise<void> {
-  await emit({ type: 'click', window_id, node_id, sequence: ++sequence })
+async function click(
+  window_id: number,
+  node_id: number,
+  tree = windows.get(window_id)!
+): Promise<void> {
+  await emit({ type: 'click', window_id, ...tree.route(node_id), sequence: ++sequence })
 }
 
-async function marker(window_id: number, value: string, nodes: Map<number, Node>): Promise<void> {
+async function marker(window_id: number, value: string, tree: PeerTree): Promise<void> {
+  const nodes = tree.nodes
   const ids = buttons(nodes)
   if (value === 'edge:click') {
     if (ids[0] === undefined) throw new Error('Test marker requires a button')
@@ -52,7 +57,7 @@ async function marker(window_id: number, value: string, nodes: Map<number, Node>
     await emit({
       type: 'input',
       window_id,
-      node_id,
+      ...tree.route(node_id),
       sequence: ++sequence,
       value: 'sibling native edit',
       input_revision: node.inputRevision,
@@ -61,7 +66,7 @@ async function marker(window_id: number, value: string, nodes: Map<number, Node>
     windows.delete(window_id)
     await emit({ type: 'closed', window_id, sequence: ++sequence })
     // A previously buffered frame may outlive native window revocation.
-    if (ids[0] !== undefined) await click(window_id, ids[0])
+    if (ids[0] !== undefined) await click(window_id, ids[0], tree)
   }
 }
 
@@ -72,15 +77,12 @@ for await (const chunk of Bun.stdin.stream()) {
       await emit({
         type: 'ready',
         protocol: PROTOCOL_VERSION,
-        capabilities: ['tree', 'input_revisions', 'layout_v1'],
+        capabilities: [...REQUIRED_CAPABILITIES],
         limits: { ...DEFAULT_LIMITS },
       })
       await emit({ type: 'ack', id: command.id })
     } else if (command.type === 'open') {
-      windows.set(
-        command.window_id,
-        new Map([[command.root_id, { element: { kind: 'box' }, inputRevision: 0 }]])
-      )
+      windows.set(command.window_id, new PeerTree(command.root_id))
       await emit({
         type: 'opened',
         id: command.id,
@@ -89,8 +91,8 @@ for await (const chunk of Bun.stdin.stream()) {
         tree_revision: 0,
       })
     } else if (command.type === 'batch') {
-      const nodes = windows.get(command.window_id)
-      if (!nodes) {
+      const tree = windows.get(command.window_id)
+      if (!tree) {
         await emit({
           type: 'error',
           id: command.id,
@@ -99,35 +101,32 @@ for await (const chunk of Bun.stdin.stream()) {
         })
         continue
       }
-      const markers: string[] = []
-      const lateButtons: number[] = []
-      for (const operation of command.operations) {
-        if (operation.type === 'create')
-          nodes.set(operation.node_id, { element: operation.element, inputRevision: 0 })
-        else if (operation.type === 'set') {
-          const node = nodes.get(operation.node_id)
-          if (!node) throw new Error('Test set requires an owned node')
-          node.element = operation.element
-          if (operation.element.kind === 'input') node.inputRevision += 1
-          if (operation.element.kind === 'text' && operation.element.text.startsWith('edge:'))
-            markers.push(operation.element.text)
-        } else if (operation.type === 'delete') {
-          if (nodes.get(operation.node_id)?.element.kind === 'button')
-            lateButtons.push(operation.node_id)
-          nodes.delete(operation.node_id)
-        }
-      }
+      const markers = command.operations.flatMap((operation) =>
+        operation.type === 'set' &&
+        operation.element.kind === 'text' &&
+        operation.element.text.startsWith('edge:')
+          ? [operation.element.text]
+          : []
+      )
+      const lateRoutes = command.operations.flatMap((operation) =>
+        operation.type === 'delete' && tree.nodes.get(operation.node_id)?.element.kind === 'button'
+          ? [tree.route(operation.node_id)]
+          : []
+      )
+      tree.apply(command.operations)
+
       await emit({
         type: 'applied',
         id: command.id,
         window_id: command.window_id,
         tree_revision: command.base_revision + 1,
       })
-      for (const value of markers) await marker(command.window_id, value, nodes)
-      for (const node_id of lateButtons) await click(command.window_id, node_id)
+      for (const value of markers) await marker(command.window_id, value, tree)
+      for (const route of lateRoutes)
+        await emit({ type: 'click', window_id: command.window_id, sequence: ++sequence, ...route })
     } else if (command.type === 'close') {
-      const nodes = windows.get(command.window_id)
-      if (!nodes) {
+      const tree = windows.get(command.window_id)
+      if (!tree) {
         await emit({
           type: 'error',
           id: command.id,
@@ -141,8 +140,8 @@ for await (const chunk of Bun.stdin.stream()) {
       // cleanup without relying on a test guessing when a native reply arrived.
       await Bun.sleep(25)
       await emit({ type: 'closed', window_id: command.window_id, sequence: ++sequence })
-      const first = buttons(nodes)[0]
-      if (first !== undefined) await click(command.window_id, first)
+      const first = buttons(tree.nodes)[0]
+      if (first !== undefined) await click(command.window_id, first, tree)
       await emit({ type: 'ack', id: command.id })
     } else {
       await emit({ type: 'ack', id: command.id })

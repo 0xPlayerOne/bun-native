@@ -18,7 +18,9 @@ Each invocation performs a bounded sequence:
 1. Create three real windows over one session. Check cross-window handles,
    rejected cycles/orphans, failed transaction revision and ID rollback, stale
    input revisions, subtree disposal, closed-window ID reuse and ordered native
-   close events. A remaining window must keep accepting updates after another
+   close events. The current protocol's focus/blur observations are continuously
+   drained and included in the complete global sequence check; they are not
+   mistaken for input callbacks or close-only sequence numbers. A remaining window must keep accepting updates after another
    closes.
 2. Create 1,000 text nodes, keep all of them alive, and warm up 20 requests.
 3. Measure 1,000 individual property updates, then the same number of updates in

@@ -146,6 +146,8 @@ describe('native process transport (headless protocol peer)', () => {
           sequence: 1,
           window_id: 1,
           node_id: 2,
+          tree_revision: 1,
+          path: [1, 2],
           value: '世界',
           input_revision: 1,
         },
@@ -153,7 +155,14 @@ describe('native process transport (headless protocol peer)', () => {
       await host.send(batch({ kind: 'button', text: 'Click' }, 1, 3))
       expect(await events.next()).toEqual({
         done: false,
-        value: { type: 'click', sequence: 2, window_id: 1, node_id: 3 },
+        value: {
+          type: 'click',
+          sequence: 2,
+          window_id: 1,
+          node_id: 3,
+          tree_revision: 2,
+          path: [1, 3],
+        },
       })
       expect(await host.send({ type: 'close', window_id: 1 })).toEqual({ type: 'ack', id: 5 })
       expect(await events.next()).toEqual({
@@ -200,11 +209,15 @@ describe('native process transport (headless protocol peer)', () => {
     ['obsolete-version', 'Native protocol version mismatch'],
     [
       'missing-layout',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
     ],
     [
       'missing-capability',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+    ],
+    [
+      'missing-interactions',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
     ],
     ['bad-json', 'Invalid UTF-8 or JSON in native frame'],
     ['wrong-id', 'Unknown native response id'],

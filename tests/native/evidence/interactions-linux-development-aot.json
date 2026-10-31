@@ -1,0 +1,1377 @@
+{
+  "schemaVersion": 1,
+  "protocol": 4,
+  "capability": "interactions_v1",
+  "scope": "Actual shared public core -> pinned Bun development or inspected machine-code AOT -> GPUI; isolated owned Linux X11/XTest windows with software rendering. Instrumented correctness diagnostics, not presentation timestamps, release performance or leak proof.",
+  "sourceBase": "73d2f9f5e1e30e18789418a9728ad608f702b093",
+  "sourceWasDirty": true,
+  "sourceFiles": {
+    ".bun-version": {
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+      "bytes": 15
+    },
+    "Cargo.lock": {
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+      "bytes": 160678
+    },
+    "Cargo.toml": {
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+      "bytes": 434
+    },
+    "bun.lock": {
+      "sha256": "08d79fc2dbcc9ad62ae277964a77a5923ba28dab3ca6d947c4d20ddef556d16e",
+      "bytes": 14646
+    },
+    "bunfig.toml": {
+      "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+      "bytes": 84
+    },
+    "examples/native-window/content.ts": {
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+      "bytes": 1766
+    },
+    "examples/native-window/main.ts": {
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec",
+      "bytes": 1147
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+      "bytes": 628
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+      "bytes": 5961
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+      "bytes": 5330
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "bytes": 19158
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "bytes": 3666
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+      "bytes": 2539
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+      "bytes": 11756
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "bytes": 3732
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+      "bytes": 13370
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "bytes": 9592
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/event_tests.rs": {
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "bytes": 4925
+    },
+    "native/protocol/src/events.rs": {
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+      "bytes": 7635
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "bytes": 3838
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+      "bytes": 469
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+      "bytes": 11716
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "bytes": 14549
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+      "bytes": 18177
+    },
+    "package.json": {
+      "sha256": "69ef65b95bda206ffe2789e00ab88feed50f86b9b28ba62ebfb9fae9bef760aa",
+      "bytes": 1602
+    },
+    "packages/core/package.json": {
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "bytes": 234
+    },
+    "packages/core/src/application.ts": {
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+      "bytes": 14616
+    },
+    "packages/core/src/events.ts": {
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+      "bytes": 7680
+    },
+    "packages/core/src/index.ts": {
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+      "bytes": 646
+    },
+    "packages/core/src/tree.ts": {
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "bytes": 7898
+    },
+    "packages/core/src/types.ts": {
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+      "bytes": 5566
+    },
+    "packages/protocol/package.json": {
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "bytes": 129
+    },
+    "packages/protocol/src/elements.ts": {
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+      "bytes": 5003
+    },
+    "packages/protocol/src/framing.ts": {
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "bytes": 2806
+    },
+    "packages/protocol/src/index.ts": {
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+      "bytes": 512
+    },
+    "packages/protocol/src/messages.ts": {
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+      "bytes": 13102
+    },
+    "packages/protocol/src/values.ts": {
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "bytes": 1732
+    },
+    "packages/runtime/package.json": {
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "bytes": 195
+    },
+    "packages/runtime/src/index.ts": {
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+      "bytes": 13240
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "scripts/quality/native-diagnostics-linux.py": {
+      "sha256": "3c9446b00c3501c17c1b00255e49c364ffc774644e2d8c76da9225d7bf117f1a",
+      "bytes": 19620
+    },
+    "scripts/quality/native-input-linux.py": {
+      "sha256": "0b7cc4ce9c33a32a1ba27adafe8d2bf28ff8fd9c455cbe1ddde99bb3f06ae82e",
+      "bytes": 37262
+    },
+    "scripts/quality/native-interactions-scenario.py": {
+      "sha256": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+      "bytes": 13251
+    },
+    "scripts/quality/native-layout-scenario.py": {
+      "sha256": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+      "bytes": 12855
+    },
+    "tests/native/fault.ts": {
+      "sha256": "f4494b7c6732539d692ec8cc1e0bfaab7b62529d72d9ef6d1345fb06701acc50",
+      "bytes": 5198
+    },
+    "tests/native/interactions.ts": {
+      "sha256": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+      "bytes": 10546
+    },
+    "tests/native/layout.ts": {
+      "sha256": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+      "bytes": 7966
+    },
+    "tests/native/scheduling.ts": {
+      "sha256": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+      "bytes": 7980
+    },
+    "toolchain.json": {
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+      "bytes": 1725
+    },
+    "tsconfig.json": {
+      "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+      "bytes": 862
+    }
+  },
+  "host": {
+    "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+    "bytes": 111772680,
+    "profile": "dev"
+  },
+  "application": {
+    "sha256": "e1a1f05b56b4366246e77268b82ef0d2502a6ef605a172e9f485c0e59a7af0c1",
+    "bytes": 71498792,
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3932398,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    }
+  },
+  "runtimeFeatures": {
+    "format": "elf64-le",
+    "trimmedProgramFeatures": false,
+    "removedRangeCount": 202,
+    "jit": "unused",
+    "interpreter": "present",
+    "imageCompiler": "unused",
+    "jitRemovedRanges": {
+      "count": 27,
+      "virtualBytes": 14297303
+    }
+  },
+  "aotManifest": {
+    "bytes": 13688,
+    "sha256": "1ab8c77ebe27a7d5e5a959108b894c63a4acae0c7aac614486ec12d32dd6da0c"
+  },
+  "aotManifestSourcePaths": [
+    ".bun-version",
+    "Cargo.lock",
+    "Cargo.toml",
+    "bun.lock",
+    "bunfig.toml",
+    "examples/native-window/content.ts",
+    "examples/native-window/main.ts",
+    "native/gpui-host/Cargo.toml",
+    "native/gpui-host/src/channel.rs",
+    "native/gpui-host/src/evidence.rs",
+    "native/gpui-host/src/evidence/layout.rs",
+    "native/gpui-host/src/input.rs",
+    "native/gpui-host/src/input/binding.rs",
+    "native/gpui-host/src/input/paint.rs",
+    "native/gpui-host/src/main.rs",
+    "native/gpui-host/src/session.rs",
+    "native/gpui-host/src/state.rs",
+    "native/gpui-host/src/style.rs",
+    "native/gpui-host/src/view.rs",
+    "native/gpui-host/src/view/interactions.rs",
+    "native/protocol/Cargo.toml",
+    "native/protocol/src/event_tests.rs",
+    "native/protocol/src/events.rs",
+    "native/protocol/src/framing.rs",
+    "native/protocol/src/lib.rs",
+    "native/protocol/src/security_tests.rs",
+    "native/protocol/src/tests.rs",
+    "native/protocol/src/tree.rs",
+    "native/protocol/src/tree/tests.rs",
+    "native/protocol/src/wire.rs",
+    "package.json",
+    "packages/core/package.json",
+    "packages/core/src/application.ts",
+    "packages/core/src/events.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/tree.ts",
+    "packages/core/src/types.ts",
+    "packages/protocol/package.json",
+    "packages/protocol/src/elements.ts",
+    "packages/protocol/src/framing.ts",
+    "packages/protocol/src/index.ts",
+    "packages/protocol/src/messages.ts",
+    "packages/protocol/src/values.ts",
+    "packages/runtime/package.json",
+    "packages/runtime/src/index.ts",
+    "rust-toolchain.toml",
+    "tests/native/interactions.ts",
+    "toolchain.json",
+    "tsconfig.json"
+  ],
+  "rawArtifacts": "Repository task-artifacts/bn2-native-events/interactions-{dev,aot}; hosted CI regenerates and retains raw evidence with the release host.",
+  "runs": {
+    "development": {
+      "status": "passed",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "interactions",
+        "activations": 6,
+        "inputEvents": [
+          {
+            "value": "AxBCD",
+            "revision": 1,
+            "sequence": 19
+          },
+          {
+            "value": "AYBCD",
+            "revision": 2,
+            "sequence": 24
+          }
+        ],
+        "traceCount": 236,
+        "observedRegistrationSignalsRevoked": 72,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "observations": {
+        "initialGeometry": {
+          "viewport": [640.0, 480.0],
+          "scale_factor": 1.0,
+          "node_count": 7,
+          "status": "complete",
+          "focused_node_id": 6,
+          "nodes": [
+            {
+              "node_id": 1,
+              "bounds": [0.0, 0.0, 640.0, 480.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 2,
+              "bounds": [16.0, 16.0, 608.0, 32.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 3,
+              "bounds": [16.0, 60.0, 608.0, 28.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 4,
+              "bounds": [16.0, 100.0, 608.0, 180.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 5,
+              "bounds": [28.0, 112.0, 200.0, 44.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 6,
+              "bounds": [28.0, 168.0, 584.0, 40.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 7,
+              "bounds": [16.0, 292.0, 608.0, 68.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            }
+          ],
+          "scrolls": []
+        },
+        "pointer": {
+          "injected": [128, 134],
+          "down": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "trace",
+            "event": "pointer_down",
+            "sequence": 2,
+            "treeRevision": 1,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "button": "left",
+            "x": 128.001953125,
+            "y": 134.00204467773438,
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          },
+          "up": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "trace",
+            "event": "pointer_up",
+            "sequence": 3,
+            "treeRevision": 1,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "button": "left",
+            "x": 128.001953125,
+            "y": 134.00204467773438,
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          }
+        },
+        "keyboardActivation": {
+          "down": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "trace",
+            "event": "key_down",
+            "sequence": 7,
+            "treeRevision": 2,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "enter",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          },
+          "activation": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "activation",
+            "count": 2,
+            "target": "action",
+            "sequence": 8,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 2,
+            "treeRevision": 3
+          },
+          "up": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "trace",
+            "event": "key_up",
+            "sequence": 9,
+            "treeRevision": 2,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "enter",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          }
+        },
+        "editing": {
+          "inputEvents": [
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "input",
+              "value": "AxBCD",
+              "revision": 1,
+              "sequence": 19
+            },
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "input",
+              "value": "AYBCD",
+              "revision": 2,
+              "sequence": 24
+            }
+          ],
+          "shiftLeft": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "trace",
+            "event": "key_down",
+            "sequence": 21,
+            "treeRevision": 3,
+            "target": "input",
+            "currentTarget": "root",
+            "path": ["root", "panel", "input"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "left",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": true,
+              "platform": false,
+              "function": false
+            }
+          },
+          "focus": [
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 1,
+              "treeRevision": 1,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "trace",
+              "event": "blur",
+              "sequence": 5,
+              "treeRevision": 1,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 6,
+              "treeRevision": 1,
+              "target": "action",
+              "currentTarget": "root",
+              "path": ["root", "panel", "action"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "trace",
+              "event": "blur",
+              "sequence": 11,
+              "treeRevision": 3,
+              "target": "action",
+              "currentTarget": "root",
+              "path": ["root", "panel", "action"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "600a324cf9a44dd712aaa142db832d28",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 12,
+              "treeRevision": 3,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            }
+          ]
+        },
+        "stop": {
+          "pointerSequence": 26,
+          "nativeActivationStillOccurred": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "activation",
+            "count": 3,
+            "target": "action",
+            "sequence": 28,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 3,
+            "treeRevision": 4
+          }
+        },
+        "immediate": {
+          "pointerSequence": 31,
+          "nativeActivationStillOccurred": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "activation",
+            "count": 4,
+            "target": "action",
+            "sequence": 33,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 4,
+            "treeRevision": 5
+          }
+        },
+        "queuedReparent": {
+          "held": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "callback-held",
+            "policy": "hold-move",
+            "sequence": 34,
+            "path": ["root", "panel", "action"]
+          },
+          "moved": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "moved",
+            "treeRevision": 6,
+            "ownership": {
+              "windows": 1,
+              "nodes": 7,
+              "callbacks": 80,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 2,
+              "activeCallbacks": 1
+            }
+          },
+          "activation": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "activation",
+            "count": 5,
+            "target": "action",
+            "sequence": 36,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 5,
+            "treeRevision": 7
+          }
+        },
+        "queuedDelete": {
+          "held": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "callback-held",
+            "policy": "hold-delete",
+            "sequence": 37,
+            "path": ["root", "alternate", "action"]
+          },
+          "replaced": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "replaced",
+            "treeRevision": 8,
+            "activations": 5,
+            "ownership": {
+              "windows": 1,
+              "nodes": 7,
+              "callbacks": 80,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            }
+          },
+          "remountActivation": {
+            "nonce": "600a324cf9a44dd712aaa142db832d28",
+            "type": "activation",
+            "count": 6,
+            "target": "replacement",
+            "sequence": 42,
+            "path": ["root", "alternate", "replacement"],
+            "eventTreeRevision": 8,
+            "treeRevision": 9
+          }
+        },
+        "finalNativePaint": {
+          "tree_revision": 9,
+          "nodes": [
+            {
+              "node_id": 1,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "column",
+                  "gap": 12.0,
+                  "padding": 16.0,
+                  "background": 16053751
+                }
+              },
+              "children": [2, 3, 4, 7]
+            },
+            {
+              "node_id": 2,
+              "element": {
+                "kind": "text",
+                "text": "Shared native interactions",
+                "style": {
+                  "height": 32.0,
+                  "font_size": 24.0
+                }
+              },
+              "children": []
+            },
+            {
+              "node_id": 3,
+              "element": {
+                "kind": "text",
+                "text": "Activations: 6",
+                "style": {
+                  "height": 28.0
+                }
+              },
+              "children": []
+            },
+            {
+              "node_id": 4,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "column",
+                  "gap": 12.0,
+                  "padding": 12.0,
+                  "width": "fill",
+                  "height": 180.0,
+                  "background": 14870768
+                }
+              },
+              "children": [6]
+            },
+            {
+              "node_id": 6,
+              "element": {
+                "kind": "input",
+                "value": "AYBCD",
+                "placeholder": "",
+                "style": {
+                  "width": "fill",
+                  "height": 40.0,
+                  "font_size": 20.0
+                }
+              },
+              "children": [],
+              "input_revision": 2
+            },
+            {
+              "node_id": 7,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "row",
+                  "padding": 12.0,
+                  "width": "fill",
+                  "height": 68.0,
+                  "background": 15003359
+                }
+              },
+              "children": [8]
+            },
+            {
+              "node_id": 8,
+              "children": [],
+              "element": {
+                "kind": "button",
+                "text": "Replacement action",
+                "disabled": false,
+                "style": {
+                  "width": 200,
+                  "height": 44
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rawArtifactHashes": {
+        "result.json": {
+          "bytes": 23659,
+          "sha256": "40965c13ca948cad0ea19a2f549fae35baec0aa01177fcac9c12dadc444bb659"
+        },
+        "application-result.json": {
+          "bytes": 338,
+          "sha256": "28cfbeff19f8dd6be8ce7cfb971fb4caed7140148d3540d4e83cb781a14ab45b"
+        },
+        "application.jsonl": {
+          "bytes": 77869,
+          "sha256": "48776f6c557e39b9da44d3292637c3e0191fc9aa44275abea8dbe8acec310b2c"
+        },
+        "native.jsonl": {
+          "bytes": 20442,
+          "sha256": "f716fac070a876195836a9a073d3203cb2ee8be385acfd359ad4c1619bd1c938"
+        },
+        "before.png": {
+          "bytes": 14221,
+          "sha256": "e5f6ae9e9b4d8c70918daf056e8dc52805e38d554855543ba11c464b61cd99ba"
+        },
+        "after.png": {
+          "bytes": 15328,
+          "sha256": "604474817a73ddde94e38c42e5e29ab8b11b05b3201960a800eed6747b0b78c3"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "aot": {
+      "status": "passed",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "interactions",
+        "activations": 6,
+        "inputEvents": [
+          {
+            "value": "AxBCD",
+            "revision": 1,
+            "sequence": 19
+          },
+          {
+            "value": "AYBCD",
+            "revision": 2,
+            "sequence": 24
+          }
+        ],
+        "traceCount": 236,
+        "observedRegistrationSignalsRevoked": 72,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "observations": {
+        "initialGeometry": {
+          "viewport": [640.0, 480.0],
+          "scale_factor": 1.0,
+          "node_count": 7,
+          "status": "complete",
+          "focused_node_id": 6,
+          "nodes": [
+            {
+              "node_id": 1,
+              "bounds": [0.0, 0.0, 640.0, 480.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 2,
+              "bounds": [16.0, 16.0, 608.0, 32.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 3,
+              "bounds": [16.0, 60.0, 608.0, 28.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 4,
+              "bounds": [16.0, 100.0, 608.0, 180.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 5,
+              "bounds": [28.0, 112.0, 200.0, 44.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 6,
+              "bounds": [28.0, 168.0, 584.0, 40.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            },
+            {
+              "node_id": 7,
+              "bounds": [16.0, 292.0, 608.0, 68.0],
+              "ancestor_clip": [0.0, 0.0, 640.0, 480.0]
+            }
+          ],
+          "scrolls": []
+        },
+        "pointer": {
+          "injected": [128, 134],
+          "down": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "trace",
+            "event": "pointer_down",
+            "sequence": 2,
+            "treeRevision": 1,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "button": "left",
+            "x": 128.001953125,
+            "y": 134.00204467773438,
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          },
+          "up": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "trace",
+            "event": "pointer_up",
+            "sequence": 3,
+            "treeRevision": 1,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "button": "left",
+            "x": 128.001953125,
+            "y": 134.00204467773438,
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          }
+        },
+        "keyboardActivation": {
+          "down": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "trace",
+            "event": "key_down",
+            "sequence": 7,
+            "treeRevision": 2,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "enter",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          },
+          "activation": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "activation",
+            "count": 2,
+            "target": "action",
+            "sequence": 8,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 2,
+            "treeRevision": 3
+          },
+          "up": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "trace",
+            "event": "key_up",
+            "sequence": 9,
+            "treeRevision": 2,
+            "target": "action",
+            "currentTarget": "root",
+            "path": ["root", "panel", "action"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "enter",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": false,
+              "platform": false,
+              "function": false
+            }
+          }
+        },
+        "editing": {
+          "inputEvents": [
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "input",
+              "value": "AxBCD",
+              "revision": 1,
+              "sequence": 19
+            },
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "input",
+              "value": "AYBCD",
+              "revision": 2,
+              "sequence": 24
+            }
+          ],
+          "shiftLeft": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "trace",
+            "event": "key_down",
+            "sequence": 21,
+            "treeRevision": 3,
+            "target": "input",
+            "currentTarget": "root",
+            "path": ["root", "panel", "input"],
+            "phase": "capture",
+            "capture": true,
+            "propagationStopped": false,
+            "key": "left",
+            "modifiers": {
+              "control": false,
+              "alt": false,
+              "shift": true,
+              "platform": false,
+              "function": false
+            }
+          },
+          "focus": [
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 1,
+              "treeRevision": 1,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "trace",
+              "event": "blur",
+              "sequence": 5,
+              "treeRevision": 1,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 6,
+              "treeRevision": 1,
+              "target": "action",
+              "currentTarget": "root",
+              "path": ["root", "panel", "action"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "trace",
+              "event": "blur",
+              "sequence": 11,
+              "treeRevision": 3,
+              "target": "action",
+              "currentTarget": "root",
+              "path": ["root", "panel", "action"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            },
+            {
+              "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+              "type": "trace",
+              "event": "focus",
+              "sequence": 12,
+              "treeRevision": 3,
+              "target": "input",
+              "currentTarget": "root",
+              "path": ["root", "panel", "input"],
+              "phase": "capture",
+              "capture": true,
+              "propagationStopped": false
+            }
+          ]
+        },
+        "stop": {
+          "pointerSequence": 26,
+          "nativeActivationStillOccurred": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "activation",
+            "count": 3,
+            "target": "action",
+            "sequence": 28,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 3,
+            "treeRevision": 4
+          }
+        },
+        "immediate": {
+          "pointerSequence": 31,
+          "nativeActivationStillOccurred": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "activation",
+            "count": 4,
+            "target": "action",
+            "sequence": 33,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 4,
+            "treeRevision": 5
+          }
+        },
+        "queuedReparent": {
+          "held": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "callback-held",
+            "policy": "hold-move",
+            "sequence": 34,
+            "path": ["root", "panel", "action"]
+          },
+          "moved": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "moved",
+            "treeRevision": 6,
+            "ownership": {
+              "windows": 1,
+              "nodes": 7,
+              "callbacks": 80,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 2,
+              "activeCallbacks": 1
+            }
+          },
+          "activation": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "activation",
+            "count": 5,
+            "target": "action",
+            "sequence": 36,
+            "path": ["root", "panel", "action"],
+            "eventTreeRevision": 5,
+            "treeRevision": 7
+          }
+        },
+        "queuedDelete": {
+          "held": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "callback-held",
+            "policy": "hold-delete",
+            "sequence": 37,
+            "path": ["root", "alternate", "action"]
+          },
+          "replaced": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "replaced",
+            "treeRevision": 8,
+            "activations": 5,
+            "ownership": {
+              "windows": 1,
+              "nodes": 7,
+              "callbacks": 80,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            }
+          },
+          "remountActivation": {
+            "nonce": "897dddb00aff5ffa4c421dde46e0b3ab",
+            "type": "activation",
+            "count": 6,
+            "target": "replacement",
+            "sequence": 42,
+            "path": ["root", "alternate", "replacement"],
+            "eventTreeRevision": 8,
+            "treeRevision": 9
+          }
+        },
+        "finalNativePaint": {
+          "tree_revision": 9,
+          "nodes": [
+            {
+              "node_id": 1,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "column",
+                  "gap": 12.0,
+                  "padding": 16.0,
+                  "background": 16053751
+                }
+              },
+              "children": [2, 3, 4, 7]
+            },
+            {
+              "node_id": 2,
+              "element": {
+                "kind": "text",
+                "text": "Shared native interactions",
+                "style": {
+                  "height": 32.0,
+                  "font_size": 24.0
+                }
+              },
+              "children": []
+            },
+            {
+              "node_id": 3,
+              "element": {
+                "kind": "text",
+                "text": "Activations: 6",
+                "style": {
+                  "height": 28.0
+                }
+              },
+              "children": []
+            },
+            {
+              "node_id": 4,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "column",
+                  "gap": 12.0,
+                  "padding": 12.0,
+                  "width": "fill",
+                  "height": 180.0,
+                  "background": 14870768
+                }
+              },
+              "children": [6]
+            },
+            {
+              "node_id": 6,
+              "element": {
+                "kind": "input",
+                "value": "AYBCD",
+                "placeholder": "",
+                "style": {
+                  "width": "fill",
+                  "height": 40.0,
+                  "font_size": 20.0
+                }
+              },
+              "children": [],
+              "input_revision": 2
+            },
+            {
+              "node_id": 7,
+              "element": {
+                "kind": "box",
+                "style": {
+                  "direction": "row",
+                  "padding": 12.0,
+                  "width": "fill",
+                  "height": 68.0,
+                  "background": 15003359
+                }
+              },
+              "children": [8]
+            },
+            {
+              "node_id": 8,
+              "children": [],
+              "element": {
+                "kind": "button",
+                "text": "Replacement action",
+                "disabled": false,
+                "style": {
+                  "width": 200,
+                  "height": 44
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rawArtifactHashes": {
+        "result.json": {
+          "bytes": 23649,
+          "sha256": "27aa378ff4eac1537890bb82afb47dd8f2ac7025d27901488f9168704cdd4040"
+        },
+        "application-result.json": {
+          "bytes": 338,
+          "sha256": "28cfbeff19f8dd6be8ce7cfb971fb4caed7140148d3540d4e83cb781a14ab45b"
+        },
+        "application.jsonl": {
+          "bytes": 77869,
+          "sha256": "04b9e4ecc0c462b4f03afa69e3062e8d0b6fff7e935b1a61d4a524597b37ef01"
+        },
+        "native.jsonl": {
+          "bytes": 20441,
+          "sha256": "4b3cc737e9205994ab6274d6174351f95a30ded1b2cc0367827a830eadf347f8"
+        },
+        "before.png": {
+          "bytes": 14221,
+          "sha256": "e5f6ae9e9b4d8c70918daf056e8dc52805e38d554855543ba11c464b61cd99ba"
+        },
+        "after.png": {
+          "bytes": 15328,
+          "sha256": "604474817a73ddde94e38c42e5e29ab8b11b05b3201960a800eed6747b0b78c3"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Development-profile native host; hosted release suite is a separate required check.",
+    "X11/XTest and Mesa llvmpipe at native scale1; no hardware-input/GPU, Wayland, macOS or Windows GUI claim.",
+    "No native preventDefault or read-only policy; propagation affects Bun listeners only.",
+    "No complete IME, physical key/repeat metadata, pointer movement/capture or accessibility qualification.",
+    "Adapter mappings and remaining #234 acceptance stay open."
+  ]
+}

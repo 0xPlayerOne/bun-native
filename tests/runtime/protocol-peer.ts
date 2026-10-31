@@ -5,6 +5,7 @@ import {
   FrameDecoder,
   parseCommand,
   PROTOCOL_VERSION,
+  REQUIRED_CAPABILITIES,
 } from '@bun-native/protocol'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -40,6 +41,7 @@ if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
 let sequence = 0
+const roots = new Map<number, number>()
 async function emit(value: unknown): Promise<void> {
   output.write(encodeFrame(value))
   await output.flush()
@@ -62,14 +64,16 @@ for await (const chunk of Bun.stdin.stream()) {
           mode === 'wrong-version'
             ? PROTOCOL_VERSION + 1
             : mode === 'obsolete-version'
-              ? 2
+              ? 3
               : PROTOCOL_VERSION,
         capabilities:
           mode === 'missing-capability'
             ? ['tree']
             : mode === 'missing-layout'
               ? ['tree', 'input_revisions']
-              : ['tree', 'input_revisions', 'layout_v1'],
+              : mode === 'missing-interactions'
+                ? ['tree', 'input_revisions', 'layout_v1']
+                : REQUIRED_CAPABILITIES,
         limits: DEFAULT_LIMITS,
       }
       await emit(ready)
@@ -87,6 +91,7 @@ for await (const chunk of Bun.stdin.stream()) {
         })
       else await emit({ type: 'ack', id: mode === 'wrong-id' ? 123 : command.id })
     } else if (command.type === 'open') {
+      roots.set(command.window_id, command.root_id)
       await emit({
         type: 'opened',
         id: command.id,
@@ -123,6 +128,8 @@ for await (const chunk of Bun.stdin.stream()) {
               sequence: ++sequence,
               window_id: command.window_id,
               node_id: operation.node_id,
+              tree_revision: command.base_revision + 1,
+              path: [roots.get(command.window_id), operation.node_id],
               value: operation.element.value,
               input_revision: 1,
             })
@@ -147,6 +154,8 @@ for await (const chunk of Bun.stdin.stream()) {
                       : actual,
                 window_id: command.window_id,
                 node_id: operation.node_id,
+                tree_revision: command.base_revision + 1,
+                path: [roots.get(command.window_id), operation.node_id],
               })
             }
           }

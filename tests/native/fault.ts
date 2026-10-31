@@ -91,7 +91,7 @@ try {
     })
     let callbackSignal: AbortSignal | undefined
     window.onClick(button, (event) => {
-      assert.equal(event.sequence, 1)
+      assert.equal(callbackSignal, undefined, 'Fault injection requires one actual click')
       callbackSignal = event.signal
       record('callback-waiting', { sequence: event.sequence })
       return new Promise<void>(() => {})

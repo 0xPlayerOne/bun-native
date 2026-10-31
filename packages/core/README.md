@@ -12,7 +12,7 @@ Use the exact Bun toolchain from [the repository instructions](../../docs/toolch
 BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun examples/native-window/main.ts
 ```
 
-The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions` and `layout_v1` features. Launch fails if the host cannot negotiate all three. These are rendering features, not grants to use OS services; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
+The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions`, `layout_v1` and `interactions_v1` features. Launch fails if the host cannot negotiate all four. These are rendering features, not grants to use OS services; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
 
 ```ts
 import { createApplication } from '@bun-native/core'
@@ -83,13 +83,39 @@ await window.batch((batch) => {
 
 The native side rejects a replacement if a newer edit wins the race before commit. Handle that stale-revision error according to the application's intent; do not retry blindly with an old value. An accepted explicit replacement advances the input revision even if its text is unchanged. An input callback already describes a native edit: update application state without echoing the same text back into the native input.
 
-There is one active listener registration per button or input. Registering another replaces the previous registration. `onClick` and `onInput` return an idempotent unsubscribe function bound to that exact registration. An old unsubscribe cannot remove its replacement.
+## Shared native events
 
-Application callbacks run one at a time in native global event order, across windows. A listener may return a promise; later callbacks wait for it. The pending callback queue is bounded at 128, separate from the active callback. Overflow fails the session instead of growing memory indefinitely. A callback failure is observed through application shutdown/completion.
+`window.on(node, type, listener, { capture?: boolean })` registers one binding for that node, event type and phase. It accepts any owned node, including an ancestor box. A new binding replaces the previous binding in that exact slot; it does not replace another event type or phase. The returned unsubscribe is idempotent and cannot remove a replacement. `onClick(button, listener)` and `onInput(input, listener)` are target-specific bubble conveniences using the same registry.
 
-Native event ingestion is independent of waiting for those promises. Input snapshots and OS-close events continue to update across windows while an asynchronous listener waits. This does not make synchronous CPU-heavy JavaScript nonblocking: that still blocks Bun's event loop.
+```ts
+window.on(window.root, 'key_down', (event) => {
+  console.log(event.key, event.modifiers.control, event.phase)
+}, { capture: true })
 
-Every callback carries `event.signal`. Unsubscribe, replacement, subtree deletion, window close and application shutdown abort that registration, discard its queued callbacks and release dispatch from an unresolved listener. Use the signal for cancellable work and check it before applying delayed results. Aborting does not forcibly terminate an arbitrary promise or undo application side effects.
+window.on(button, 'pointer_up', (event) => {
+  console.log(event.button, event.x, event.y)
+})
+```
+
+| Type                         | Additional fields                      | Meaning                                                                  |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
+| `click`                      | None                                   | Native button activation, including pointer or keyboard activation.      |
+| `input`                      | `value`, `revision`                    | Committed native edit; the input snapshot is updated before callbacks.   |
+| `key_down`, `key_up`         | `key`, optional `keyChar`, `modifiers` | GPUI logical key/text, including keys used by native actions.            |
+| `pointer_down`, `pointer_up` | `button`, `x`, `y`, `modifiers`        | Native hit-tested pointer target; coordinates are window logical pixels. |
+| `focus`, `blur`              | None                                   | Retained native focus changed.                                           |
+
+Every event exposes immutable `node` (the native target), `currentTarget`, `path`, `phase`, `treeRevision` and `sequence`. The path is the native committed ancestry at input, root first and target last. `phase` is `capture`, `target` or `bubble`; both target registrations use `target`. Modifiers are a frozen record of `control`, `alt`, `shift`, `platform` and `function`. The API does not fabricate physical key codes or repeat metadata that the current native interception path cannot observe. `keyChar` is optional logical text, not a committed input or IME notification. The current contract does not emit pointer movement/coalescing or scrolling events.
+
+Callbacks run in capture order from root to target, then bubble from target to root. The registration identities and native path are captured when the core ingests an event. A queued event therefore keeps its original route after a keyed move; a new registration does not receive earlier events. Each invocation rechecks revocation. Deleted ancestors are skipped, a deleted target cancels the event, and a disposed handle in an older captured path does not regain authority. Malformed routes, foreign owners, impossible future revisions and invalid input revisions fail the session.
+
+`event.stopPropagation()` prevents delivery to later nodes. At the target it still permits the target's other phase. `event.stopImmediatePropagation()` also stops that remaining target delivery. These controls are effective only while that listener is executing, including while its returned promise is pending. Retaining an event and calling its control methods after that invocation settles has no effect. The controls affect JavaScript dispatch only: native focus, editing and button actions may already have happened across the subprocess boundary. There is no misleading asynchronous `preventDefault` API. GPUI focus notifications follow its rendered-focus phase and may arrive after click; DOM pointer/focus ordering is not promised.
+
+Application callbacks run one at a time in native global event order, across windows. The pending queue is bounded at 128 events, separate from the active dispatch. Each route contains at most 65 nodes, with one capture and one bubble binding per node/type. Overflow fails the session instead of growing memory indefinitely. A callback failure is observed through application shutdown/completion. Sequence numbers count all native UI events, so click-only or input-only listeners can legitimately observe gaps; count activations separately and use input revisions for edit ordering.
+
+Native ingestion is independent of waiting for listener promises. Input snapshots and OS-close events continue to update across windows while an asynchronous listener waits. This does not make synchronous CPU-heavy JavaScript nonblocking: that still blocks Bun's event loop.
+
+Every invocation carries the binding's `event.signal`. Unsubscribe, replacement, deletion of the registered node, window close and application shutdown abort that registration, discard its queued deliveries and release dispatch from an unresolved listener. Deleting an event's target also releases a waiting ancestor callback without revoking that still-live ancestor registration or changing its signal. Use the signal for cancellable work and validate delayed application intent before committing it. Cancellation does not forcibly terminate an arbitrary promise or undo application side effects.
 
 ## Lifetime and errors
 
@@ -114,4 +140,4 @@ The initial elements are `box`, `text`, `button` and single-line `input`. `Style
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 3 requires the shared layout contract and replaces protocol 2 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 4 requires the shared layout and interaction contracts and replaces protocol 3 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

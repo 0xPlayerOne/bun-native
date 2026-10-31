@@ -1,0 +1,668 @@
+{
+  "schemaVersion": 1,
+  "scope": "Protocol4 click-oracle regression qualification. Actual native profiled runs retain full lifecycle, OSclose, cleanup and all original bounds. Allocation counters are instrumented observations, not baseline or comparative optimization measurements.",
+  "sourceParent": "c2d6bb2c58874f73b2768c97ccb6637d48954cde",
+  "sourceWasDirty": true,
+  "sourceFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+      "bytes": 160678
+    },
+    "Cargo.toml": {
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+      "bytes": 434
+    },
+    "bun.lock": {
+      "sha256": "08d79fc2dbcc9ad62ae277964a77a5923ba28dab3ca6d947c4d20ddef556d16e",
+      "bytes": 14646
+    },
+    "bunfig.toml": {
+      "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+      "bytes": 84
+    },
+    "examples/native-window/content.ts": {
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+      "bytes": 1766
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+      "bytes": 628
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+      "bytes": 5961
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+      "bytes": 5330
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "bytes": 19158
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "bytes": 3666
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+      "bytes": 2539
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+      "bytes": 11756
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "bytes": 3732
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+      "bytes": 13370
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "bytes": 9592
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/event_tests.rs": {
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "bytes": 4925
+    },
+    "native/protocol/src/events.rs": {
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+      "bytes": 7635
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "bytes": 3838
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+      "bytes": 469
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+      "bytes": 11716
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "bytes": 14549
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+      "bytes": 18177
+    },
+    "package.json": {
+      "sha256": "ca13f5753580029ec20e2c4e0ba08245914d9bd3a5c4fb041608ac810b2084db",
+      "bytes": 1602
+    },
+    "packages/core/package.json": {
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "bytes": 234
+    },
+    "packages/core/src/application.ts": {
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+      "bytes": 14616
+    },
+    "packages/core/src/events.ts": {
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+      "bytes": 7680
+    },
+    "packages/core/src/index.ts": {
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+      "bytes": 646
+    },
+    "packages/core/src/tree.ts": {
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "bytes": 7898
+    },
+    "packages/core/src/types.ts": {
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+      "bytes": 5566
+    },
+    "packages/protocol/package.json": {
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "bytes": 129
+    },
+    "packages/protocol/src/elements.ts": {
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+      "bytes": 5003
+    },
+    "packages/protocol/src/framing.ts": {
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "bytes": 2806
+    },
+    "packages/protocol/src/index.ts": {
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+      "bytes": 512
+    },
+    "packages/protocol/src/messages.ts": {
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+      "bytes": 13102
+    },
+    "packages/protocol/src/values.ts": {
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "bytes": 1732
+    },
+    "packages/runtime/package.json": {
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "bytes": 195
+    },
+    "packages/runtime/src/index.ts": {
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+      "bytes": 13240
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "scripts/quality/native-allocation-linux.py": {
+      "sha256": "398fa92b76405e0de0c1855b0fc795f510cc08e2c776696929e2b5d7ea8dedae",
+      "bytes": 17173
+    },
+    "scripts/quality/native-input-linux.py": {
+      "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f",
+      "bytes": 37751
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf",
+      "bytes": 6957
+    },
+    "tests/native/public-lifecycle.ts": {
+      "sha256": "cd692c101add6c39ce1379bd6998e23cd88afa13a184d8bab8fd5b854ec4e5c1",
+      "bytes": 14702
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+      "bytes": 862
+    }
+  },
+  "retainedHostedFailure": {
+    "run": 41236220063,
+    "status": "failed",
+    "error": {
+      "type": "RuntimeError",
+      "message": "Instrumented native lifecycle failed; inspect lifecycle/result.json"
+    },
+    "host": {
+      "bytes": 29185976,
+      "sha256": "31e2f125f8149e74d360ceaefc89be33447b9c301a6087d05c3edeae2f26a13c"
+    },
+    "observedLaunchClicks": [
+      {
+        "nonce": "83a0983e448a56b9a2275b26c0028c09",
+        "type": "click",
+        "sequence": 3,
+        "target": "public-lifecycle",
+        "stage": "bun-application"
+      }
+    ],
+    "completedNativePaints": [
+      {
+        "window_id": 1,
+        "tree_revision": 3002,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [2, 3, 4]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "text",
+              "text": "Public lifecycle",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "text",
+              "text": "Completed 1000 cycles",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "button",
+              "text": "Run 1,000 cycles",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ],
+        "stage": "native-paint"
+      }
+    ],
+    "applicationStatus": "failed",
+    "applicationChecks": {
+      "completedCycles": 1000,
+      "callbackRegistrations": 3000,
+      "callbackReplacements": 1000,
+      "disposedSubtrees": 1000,
+      "launchInvocations": 1,
+      "launchAborted": true,
+      "unexpectedCallbacks": 0,
+      "finalOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "peakOwnership": {
+        "windows": 1,
+        "nodes": 8,
+        "callbacks": 3,
+        "queuedTransactions": 1,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 1
+      }
+    },
+    "applicationElapsedMs": 45077.660826,
+    "driverStatus": "failed",
+    "driverFailure": {
+      "error": "Application exited before producing requested input evidence",
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 1
+      }
+    },
+    "artifactDigests": {
+      "result.json": {
+        "bytes": 14313,
+        "sha256": "cabbaa61d09462ec9bd52f8765fae3bec2c620b3fc955d646cb6d1372439bc36"
+      },
+      "lifecycle/result.json": {
+        "bytes": 242808,
+        "sha256": "3d3b704f0b705bca7005caad24575ac30244fb52223c7e16a56279f3df711c59"
+      },
+      "lifecycle/public-lifecycle.json": {
+        "bytes": 57897,
+        "sha256": "c0d7307da06e26cacd3a5acbceb85b416616e0ec83b473e8d4b30baa723af0ee"
+      },
+      "lifecycle/app-events.jsonl": {
+        "bytes": 599031,
+        "sha256": "3cd8efaeff294a98f9ee0d85cc02ba7ffcbbc5ffb105f654c479087bf8692b24"
+      }
+    },
+    "interpretation": "The real native launch click and all1000cycles/finalpaint existed. The obsolete sequence1 subset did not match actualsequence3, so the controller never requested OS close before the unchanged45s fixture deadline. This remains a failed hosted profile."
+  },
+  "application": {
+    "bytes": 71318568,
+    "sha256": "041bffd88d146d57def62e58c5c4311b7738a3b6279acb522fb99f8773d61d7d",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3752184,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    }
+  },
+  "runtimeFeatures": {
+    "format": "elf64-le",
+    "jit": "unused",
+    "interpreter": "present",
+    "removedRangeCount": 202,
+    "jitRemovedRanges": {
+      "count": 27,
+      "virtualBytes": 14297303
+    }
+  },
+  "aotManifest": {
+    "bytes": 13713,
+    "sha256": "f6c7d59063747bff496b7cfa45a5dbbaf427afefd7b632a2f9d9f8d04debeb4b"
+  },
+  "runs": {
+    "development": {
+      "status": "passed",
+      "instrumented": true,
+      "hostProfile": "dev",
+      "profilerVersion": "heaptrack 1.5.0",
+      "artifacts": {
+        "host": {
+          "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+          "bytes": 111772680
+        },
+        "wrapper": {
+          "sha256": "f518f92527b4aa6f0ebef848d44fc858e7cc51dbc26123c72573a151347a20be",
+          "bytes": 1353
+        },
+        "heaptrackPreload": {
+          "sha256": "134760dbba8d9a2cd1b45f639c119f5c0cd779674a496fb7ed2b6baacac15ca9",
+          "bytes": 51608
+        },
+        "heaptrackInterpret": {
+          "sha256": "ad4e06cd5f43b4b4850a032a3d7abdaf557dba16eeb551668ce8122e3d7e3661",
+          "bytes": 113056
+        },
+        "heaptrackPrint": {
+          "sha256": "518c7958efd5ef75781ad5eeed06fc017dbb1368699f1f3c4794321ac0ab8308",
+          "bytes": 342392
+        },
+        "heaptrackFrontend": {
+          "sha256": "11ef8b89a93d43b63e4dec187f4c7dca2644f10254c5639e55a563fb5465b574",
+          "bytes": 12702
+        },
+        "rustDemangler": {
+          "sha256": "2c11b66c0fad24afc649517f890eaa8a6a4d4dceb1d613c5631bb96ff09352b4",
+          "bytes": 22800
+        }
+      },
+      "actualLaunchClick": {
+        "nonce": "8f4da72f45cb9e95c2576c8ebefa2aa1",
+        "type": "click",
+        "sequence": 3,
+        "target": "public-lifecycle",
+        "stage": "bun-application"
+      },
+      "completeFinalPaints": 1,
+      "lifecycleChecks": {
+        "completedCycles": 1000,
+        "callbackRegistrations": 3000,
+        "callbackReplacements": 1000,
+        "disposedSubtrees": 1000,
+        "launchInvocations": 1,
+        "launchAborted": true,
+        "unexpectedCallbacks": 0,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "peakOwnership": {
+          "windows": 1,
+          "nodes": 8,
+          "callbacks": 3,
+          "queuedTransactions": 1,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 1
+        }
+      },
+      "nativeChecks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "nativeCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "profilerCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "allocations": {
+        "profile": {
+          "sha256": "41281d54833f6596ab734dc6a4675cb4cc9c932f00341817e5c86cd3177ac637",
+          "bytes": 3452976
+        },
+        "allocationCalls": 1358672,
+        "temporaryAllocationCalls": 175975,
+        "reportedTotals": {
+          "peak heap memory consumption": "82.99M",
+          "peak RSS (including heaptrack overhead)": "181.88M",
+          "total memory leaked": "625.15K"
+        },
+        "allocationSizes": {
+          "sha256": "8b0e65e0b5e09fdf5ca8ee2a2b332b3baf98f30927a4963a58abecab2aa30548",
+          "bytes": 7651
+        },
+        "summary": {
+          "sha256": "863f72ca4fa509d897af20ca6f4ce6abc4f6d242790b6ece04980ffb16731ee5",
+          "bytes": 304788
+        },
+        "demangledStacks": {
+          "sha256": "caf75dae1734d832765e705aa80c6c9758a2b2bf182ca4ba45ccb783eadc0e0b",
+          "bytes": 323342
+        }
+      },
+      "rawTrace": {
+        "sha256": "543f3cd64379d91b80a9d101e1d5738719f1e4f435b65663ac1c057b9469b1fb",
+        "bytes": 60537647,
+        "retained": false
+      },
+      "rawRecords": {
+        "result.json": {
+          "bytes": 16488,
+          "sha256": "959d15677db61c1a1912294995c100fd24877a15378ddb4a0363ac051e8749a4"
+        },
+        "lifecycle/result.json": {
+          "bytes": 3590934,
+          "sha256": "70deffb4b09580e6e77d2919b93299d1d3cd8a6ad2c93bc880dc4bab97210fb5"
+        },
+        "lifecycle/public-lifecycle.json": {
+          "bytes": 56822,
+          "sha256": "4cbeb2ace261ae7cd4967b41b1d2498d1a04278cd3ae361d1f4fafcb5581df38"
+        },
+        "lifecycle/app-events.jsonl": {
+          "bytes": 1612680,
+          "sha256": "ea9f8c57b7d38066b8563150a401432cf97b8bfeeed28a56d525e81837439d30"
+        }
+      }
+    },
+    "aot": {
+      "status": "passed",
+      "instrumented": true,
+      "hostProfile": "dev",
+      "profilerVersion": "heaptrack 1.5.0",
+      "artifacts": {
+        "host": {
+          "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+          "bytes": 111772680
+        },
+        "wrapper": {
+          "sha256": "6c3d7ccbec8ac6dd08b2d91b8bf9c48753f20d761eaccc4b26654962ac9a826a",
+          "bytes": 1321
+        },
+        "heaptrackPreload": {
+          "sha256": "134760dbba8d9a2cd1b45f639c119f5c0cd779674a496fb7ed2b6baacac15ca9",
+          "bytes": 51608
+        },
+        "heaptrackInterpret": {
+          "sha256": "ad4e06cd5f43b4b4850a032a3d7abdaf557dba16eeb551668ce8122e3d7e3661",
+          "bytes": 113056
+        },
+        "heaptrackPrint": {
+          "sha256": "518c7958efd5ef75781ad5eeed06fc017dbb1368699f1f3c4794321ac0ab8308",
+          "bytes": 342392
+        },
+        "heaptrackFrontend": {
+          "sha256": "11ef8b89a93d43b63e4dec187f4c7dca2644f10254c5639e55a563fb5465b574",
+          "bytes": 12702
+        },
+        "rustDemangler": {
+          "sha256": "2c11b66c0fad24afc649517f890eaa8a6a4d4dceb1d613c5631bb96ff09352b4",
+          "bytes": 22800
+        }
+      },
+      "actualLaunchClick": {
+        "nonce": "24f83b6a27567a84bd9cf968b655076e",
+        "type": "click",
+        "sequence": 3,
+        "target": "public-lifecycle",
+        "stage": "bun-application"
+      },
+      "completeFinalPaints": 1,
+      "lifecycleChecks": {
+        "completedCycles": 1000,
+        "callbackRegistrations": 3000,
+        "callbackReplacements": 1000,
+        "disposedSubtrees": 1000,
+        "launchInvocations": 1,
+        "launchAborted": true,
+        "unexpectedCallbacks": 0,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "peakOwnership": {
+          "windows": 1,
+          "nodes": 8,
+          "callbacks": 3,
+          "queuedTransactions": 1,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 1
+        }
+      },
+      "nativeChecks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "nativeCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "profilerCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "allocations": {
+        "profile": {
+          "sha256": "0e8426c655c913df08bcd527a1dfc87ab1a540429413757aa290d81eab398b91",
+          "bytes": 3430397
+        },
+        "allocationCalls": 1342496,
+        "temporaryAllocationCalls": 173418,
+        "reportedTotals": {
+          "peak heap memory consumption": "82.99M",
+          "peak RSS (including heaptrack overhead)": "181.74M",
+          "total memory leaked": "625.94K"
+        },
+        "allocationSizes": {
+          "sha256": "b26b81784298c290ce4396a3348398e890d33f2fa85415669aa34218527739a1",
+          "bytes": 7657
+        },
+        "summary": {
+          "sha256": "2b57f9c0e896fbe1a472f29765b3bd94bc418697355536051d85bf1f5018eda5",
+          "bytes": 301956
+        },
+        "demangledStacks": {
+          "sha256": "0775c7412984496e7fb7d9ca5fbaad6d24ebbccad198759574c9515080f10be1",
+          "bytes": 320087
+        }
+      },
+      "rawTrace": {
+        "sha256": "b648f9111cb22991c0bb783fc12c05a38fac4f55088522a17d694d96cf4f0b2e",
+        "bytes": 59901870,
+        "retained": false
+      },
+      "rawRecords": {
+        "result.json": {
+          "bytes": 16478,
+          "sha256": "365e040422a0acd39ccd8645b8636d4d194486da64c7a2e62d2122b7d448e314"
+        },
+        "lifecycle/result.json": {
+          "bytes": 3499526,
+          "sha256": "2257c258b6fb0bdae208a6e5d000ef8117cdcd430b502b37d585cc4ddce66e7a"
+        },
+        "lifecycle/public-lifecycle.json": {
+          "bytes": 54893,
+          "sha256": "0f0dbb2fb8dd7567279029b634604d4be7bf85d047c304cbd8d66d152072e65a"
+        },
+        "lifecycle/app-events.jsonl": {
+          "bytes": 1585888,
+          "sha256": "3c1ad1c945ae857c90d3c31f28c95e67d830e5fb00ab282d71b989152a4ce3a8"
+        }
+      }
+    }
+  },
+  "limits": {
+    "fixtureMs": 45000,
+    "inputDriverSeconds": 60,
+    "supervisorSeconds": 70,
+    "outerSeconds": 120,
+    "profileBytes": 67108864
+  },
+  "remainingQualification": [
+    "Hosted release-host rerun is required; these corrected runs use the immutable dev-profile host.",
+    "The repeated release baseline uses the shared activation-counter oracle; no new baseline performance measurements are claimed.",
+    "No macOS/Windows GUI, physical input, GPU memory or long-term leak-freedom claim."
+  ],
+  "rawArtifactLocation": "task-artifacts/bn2-allocation-oracle and the retained native-events-failed-41236220063 archive in the implementation workspace."
+}

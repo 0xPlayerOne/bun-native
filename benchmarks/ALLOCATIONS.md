@@ -8,6 +8,24 @@ registrations, final native paint and OS close. It retains the ordinary ownershi
 and cleanup assertions. No allocator implementation or rendering substitute is
 introduced.
 
+The profiled and ordinary lifecycle runs share the same launch-click expectation.
+It requires the application's `public-lifecycle` click callback; it does not
+assume that callback has global sequence 1. Protocol 4 also numbers native focus,
+pointer and keyboard observations. The complete initial/final native trees,
+1,000-cycle ownership checks, OS close, deadlines and profiling bounds remain
+required.
+
+The [protocol-4 oracle regression record](results/native-allocation-protocol4-oracle.json)
+retains the failed hosted run: the actual launch click had global sequence 3,
+and all 1,000 cycles reached their final native paint, but the old sequence-1
+expectation prevented OS close. With the shared expectation, both development
+and inspected AOT instrumented runs completed the real lifecycle and profiling,
+with zero final ownership and clean process cleanup. Those corrected local runs
+use the immutable development host; a hosted release rerun remains required.
+The repeated window baseline now uses the same explicit activation counter as
+ordinary window smoke, keeping its first and second callbacks distinct without
+assuming positions in global native event order.
+
 This is an instrumented diagnostic. Its timings and RSS must not be combined with
 the uninstrumented startup/idle baseline or interpreted as production throughput.
 Native paint evidence remains enabled, so its allocations are included too.
