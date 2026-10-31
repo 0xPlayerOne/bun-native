@@ -188,3 +188,35 @@ llvmpipe software Vulkan. The AOT application has compiled-program metadata and
 27 removed JIT ranges; its interpreter remains present. No OS input, hardware
 GPU, hosted release qualification, startup speed or cause of #296 is inferred
 from these successful diagnostic cases.
+
+The [hosted release record](../tests/native/evidence/startup-log-hosted-linux.json)
+comes from run [41247548396](https://github.com/0xPlayerOne/bun-native/actions/runs/41247548396)
+at tested merge `744a08ffbbfc4b1b382796df18ed2c4d9808501f`. Its five-window
+development lifecycle passed and emitted 16 bounded logger records totaling
+5,679 bytes, with a maximum line of 406 bytes. Actual visual/colormap selection
+and llvmpipe adapter selection were present. The complete Linux archive audit
+matched 1,672 source references to 87 exact Git blobs, 13 AOT manifests and
+56 clean owned-process reports. The archive omits executable bytes, so its
+recorded binary inspection and runtime identities were cross-checked without
+fresh binary inspection. All twelve implementation jobs passed; the separate
+CodeQL finding described below still blocked that PR head at capture time.
+
+### Diagnostic correlation values and code scanning
+
+The logger's private `correlation_id` identifies one synthetic diagnostic run.
+It is copied into the existing JSON `nonce` field and comes from the existing
+launch environment in real execution. It never serves as a cryptographic
+nonce, key, password, authorization token or grant. Unit tests intentionally
+use fixed and malformed strings to verify shape checks and bounded output in
+an in-memory sink; their module is compiled only with `cfg(test)`.
+
+CodeQL check `124674170129` reported thirteen hard-coded-cryptographic-value
+annotations on those test literals at head `81aa3ce2`. Static review traced
+all thirteen through configuration validation or JSON encoding and found no
+cryptographic sink or supported privilege boundary. The public
+[query model](https://github.com/github/codeql/blob/main/rust/ql/lib/codeql/rust/security/HardcodedCryptographicValueExtensions.qll)
+includes a parameter-name heuristic for `nonce`. The private naming now
+describes the value's actual correlation role. No test assertion, evidence
+schema, scanner rule, scanner configuration or branch protection was removed
+or relaxed. The fresh scan remains required; the triage is static evidence,
+not a claim to have executed or reproduced a cryptographic exploit.

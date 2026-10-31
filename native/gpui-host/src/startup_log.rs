@@ -23,23 +23,23 @@ static LOGGER: OnceLock<StartupLog> = OnceLock::new();
 
 struct Configuration {
     path: PathBuf,
-    nonce: String,
+    correlation_id: String,
 }
 
 impl Configuration {
-    fn parse(flag: &str, trace: &str, path: &str, nonce: &str) -> Option<Self> {
+    fn parse(flag: &str, trace: &str, path: &str, correlation_id: &str) -> Option<Self> {
         if flag != "1"
             || trace != "1"
             || !PathBuf::from(path).is_absolute()
-            || nonce.is_empty()
-            || nonce.len() > 128
-            || nonce.chars().any(char::is_control)
+            || correlation_id.is_empty()
+            || correlation_id.len() > 128
+            || correlation_id.chars().any(char::is_control)
         {
             return None;
         }
         Some(Self {
             path: path.into(),
-            nonce: nonce.into(),
+            correlation_id: correlation_id.into(),
         })
     }
 }
@@ -68,7 +68,7 @@ pub(crate) fn install_from_environment() {
     if LOGGER
         .set(StartupLog(Mutex::new(Output::new(
             file,
-            configuration.nonce,
+            configuration.correlation_id,
         ))))
         .is_err()
     {
@@ -132,17 +132,18 @@ impl Log for StartupLog {
 
 struct Output<W> {
     sink: Option<W>,
-    nonce: String,
+    // Synthetic run correlation only; never a key, cryptographic nonce or grant.
+    correlation_id: String,
     started: Instant,
     records: usize,
     bytes: usize,
 }
 
 impl<W: Write> Output<W> {
-    fn new(sink: W, nonce: String) -> Self {
+    fn new(sink: W, correlation_id: String) -> Self {
         Self {
             sink: Some(sink),
-            nonce,
+            correlation_id,
             started: Instant::now(),
             records: 0,
             bytes: 0,
@@ -202,7 +203,7 @@ impl<W: Write> Output<W> {
     }
 
     fn header(&self, record: &mut Value) {
-        record["nonce"] = json!(self.nonce);
+        record["nonce"] = json!(self.correlation_id);
         record["stage"] = json!("startup-log");
         record["source"] = json!("native-log");
         record["pid"] = json!(std::process::id());
