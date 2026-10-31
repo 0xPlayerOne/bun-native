@@ -1,0 +1,1643 @@
+// @bun
+// packages/protocol/src/framing.ts
+var MAX_FRAME_BYTES = 65536;
+
+class ProtocolError extends Error {
+  name = "ProtocolError";
+}
+function encodeFrame(value) {
+  let json;
+  try {
+    json = JSON.stringify(value);
+  } catch (error) {
+    throw new ProtocolError("Frame is not a JSON value", { cause: error });
+  }
+  if (json === undefined)
+    throw new ProtocolError("Frame is not a JSON value");
+  const encoded = new TextEncoder().encode(`${json}
+`);
+  if (encoded.byteLength - 1 > MAX_FRAME_BYTES)
+    throw new ProtocolError("Frame exceeds byte limit");
+  return encoded;
+}
+
+class FrameDecoder {
+  buffer = new Uint8Array(MAX_FRAME_BYTES);
+  utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  length = 0;
+  state = "open";
+  push(chunk) {
+    if (this.state !== "open")
+      throw new ProtocolError(this.state === "failed" ? "Decoder is closed after a protocol error" : "Decoder is closed after end of stream");
+    const frames = [];
+    let start = 0;
+    try {
+      while (start < chunk.length) {
+        const newline = chunk.indexOf(10, start);
+        const end = newline === -1 ? chunk.length : newline;
+        const size = end - start;
+        if (this.length + size > MAX_FRAME_BYTES)
+          throw new ProtocolError("Frame exceeds byte limit");
+        this.buffer.set(chunk.subarray(start, end), this.length);
+        this.length += size;
+        if (newline === -1)
+          break;
+        if (this.length === 0)
+          throw new ProtocolError("Empty frame");
+        const json = this.utf8.decode(this.buffer.subarray(0, this.length));
+        frames.push(JSON.parse(json));
+        this.length = 0;
+        start = newline + 1;
+      }
+    } catch (error) {
+      this.state = "failed";
+      if (error instanceof ProtocolError)
+        throw error;
+      throw new ProtocolError("Invalid UTF-8 or JSON in native frame", { cause: error });
+    }
+    return frames;
+  }
+  finish() {
+    if (this.state === "failed")
+      throw new ProtocolError("Decoder is closed after a protocol error");
+    if (this.length !== 0) {
+      this.state = "failed";
+      throw new ProtocolError("Native stream ended inside a frame");
+    }
+    this.state = "finished";
+  }
+}
+// packages/protocol/src/values.ts
+var MAX_TEXT_BYTES = 16384;
+var MAX_TITLE_BYTES = 256;
+var encoder = new TextEncoder;
+function object(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    throw new ProtocolError("Message must be an object");
+  return value;
+}
+function keys(value, allowed) {
+  for (const key of Object.keys(value))
+    if (!allowed.includes(key))
+      throw new ProtocolError("Unknown message property: " + key);
+}
+function number(value, field, min, max) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max)
+    throw new ProtocolError(field + " must be finite and between " + min + " and " + max);
+  return value;
+}
+function integer(value, field, min = 0, max = Number.MAX_SAFE_INTEGER) {
+  const result = number(value, field, min, max);
+  if (!Number.isSafeInteger(result))
+    throw new ProtocolError(field + " must be a safe integer");
+  return result;
+}
+function id(value) {
+  return integer(value, "Identifier", 1);
+}
+function string(value, field, limit = MAX_TEXT_BYTES) {
+  if (typeof value !== "string" || encoder.encode(value).byteLength > limit)
+    throw new ProtocolError(field + " must be a string within " + limit + " UTF-8 bytes");
+  if (!value.isWellFormed())
+    throw new ProtocolError(field + " contains an unpaired surrogate");
+  if (value.includes("\x00"))
+    throw new ProtocolError(field + " contains a NUL character");
+  return value;
+}
+
+// packages/protocol/src/elements.ts
+function parseStyle(value) {
+  const data = object(value);
+  keys(data, [
+    "direction",
+    "gap",
+    "padding",
+    "width",
+    "height",
+    "flex_grow",
+    "background",
+    "color",
+    "font_size"
+  ]);
+  const style = {};
+  for (const key of ["gap", "padding"])
+    if (key in data)
+      style[key] = number(data[key], key, 0, 4096);
+  for (const key of ["width", "height"])
+    if (key in data)
+      style[key] = data[key] === "fill" ? "fill" : number(data[key], key, 0, 16384);
+  for (const key of ["background", "color"])
+    if (key in data)
+      style[key] = integer(data[key], key, 0, 16777215);
+  if ("direction" in data) {
+    if (data["direction"] !== "row" && data["direction"] !== "column")
+      throw new ProtocolError("direction must be row or column");
+    style.direction = data["direction"];
+  }
+  if ("flex_grow" in data)
+    style.flex_grow = number(data["flex_grow"], "flex_grow", 0, 1000);
+  if ("font_size" in data)
+    style.font_size = number(data["font_size"], "font_size", 1, 512);
+  return style;
+}
+function parseElement(value) {
+  const element = object(value);
+  const style = "style" in element ? parseStyle(element["style"]) : {};
+  switch (element["kind"]) {
+    case "box":
+      keys(element, ["kind", "style"]);
+      return { kind: "box", style };
+    case "text":
+      keys(element, ["kind", "text", "style"]);
+      return { kind: "text", text: string(element["text"], "text"), style };
+    case "button": {
+      keys(element, ["kind", "text", "disabled", "style"]);
+      if ("disabled" in element && typeof element["disabled"] !== "boolean")
+        throw new ProtocolError("disabled must be a boolean");
+      return {
+        kind: "button",
+        text: string(element["text"], "text"),
+        disabled: element["disabled"] === true,
+        style
+      };
+    }
+    case "input":
+      keys(element, ["kind", "value", "placeholder", "style"]);
+      return {
+        kind: "input",
+        value: string(element["value"], "value"),
+        placeholder: "placeholder" in element ? string(element["placeholder"], "placeholder") : "",
+        style
+      };
+    default:
+      throw new ProtocolError("Unknown native element kind");
+  }
+}
+// packages/protocol/src/messages.ts
+var PROTOCOL_VERSION = 2;
+var MAX_OPERATIONS = 256;
+var MAX_NODES_PER_WINDOW = 4096;
+var MAX_WINDOWS = 16;
+var MAX_DEPTH = 64;
+var MAX_TEXT_BYTES_PER_WINDOW = 4194304;
+var DEFAULT_LIMITS = Object.freeze({
+  max_frame_bytes: MAX_FRAME_BYTES,
+  max_operations: MAX_OPERATIONS,
+  max_nodes_per_window: MAX_NODES_PER_WINDOW,
+  max_windows: MAX_WINDOWS,
+  max_depth: MAX_DEPTH,
+  max_text_bytes: MAX_TEXT_BYTES,
+  max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW
+});
+var ERROR_CODES = [
+  "invalid_command",
+  "version_mismatch",
+  "invalid_state",
+  "invalid_handle",
+  "stale_revision",
+  "limit_exceeded",
+  "native_failure"
+];
+function version(value) {
+  if (value !== PROTOCOL_VERSION)
+    throw new ProtocolError("Native protocol version mismatch");
+  return PROTOCOL_VERSION;
+}
+function operation(value) {
+  const data = object(value);
+  switch (data["type"]) {
+    case "create":
+      keys(data, ["type", "node_id", "element"]);
+      return {
+        type: "create",
+        node_id: id(data["node_id"]),
+        element: parseElement(data["element"])
+      };
+    case "set": {
+      keys(data, ["type", "node_id", "element", "expected_input_revision"]);
+      const node_id = id(data["node_id"]);
+      const element = parseElement(data["element"]);
+      if (element.kind === "input")
+        return {
+          type: "set",
+          node_id,
+          element,
+          expected_input_revision: integer(data["expected_input_revision"], "input revision")
+        };
+      if ("expected_input_revision" in data)
+        throw new ProtocolError("Only input elements accept an input revision");
+      return { type: "set", node_id, element };
+    }
+    case "insert":
+      keys(data, ["type", "parent_id", "child_id", "index"]);
+      return {
+        type: "insert",
+        parent_id: id(data["parent_id"]),
+        child_id: id(data["child_id"]),
+        index: integer(data["index"], "index", 0, MAX_NODES_PER_WINDOW)
+      };
+    case "delete":
+      keys(data, ["type", "node_id"]);
+      return { type: "delete", node_id: id(data["node_id"]) };
+    default:
+      throw new ProtocolError("Unknown native operation");
+  }
+}
+function parseCommand(value) {
+  const message = object(value);
+  const request = id(message["id"]);
+  switch (message["type"]) {
+    case "hello":
+      keys(message, ["id", "type", "protocol"]);
+      return { id: request, type: "hello", protocol: version(message["protocol"]) };
+    case "open": {
+      keys(message, ["id", "type", "window_id", "root_id", "title", "width", "height"]);
+      const title = string(message["title"], "title", MAX_TITLE_BYTES);
+      if (!title || /\p{Cc}/u.test(title))
+        throw new ProtocolError("Window title must be nonempty and contain no control characters");
+      return {
+        id: request,
+        type: "open",
+        window_id: id(message["window_id"]),
+        root_id: id(message["root_id"]),
+        title,
+        width: number(message["width"], "width", 64, 16384),
+        height: number(message["height"], "height", 64, 16384)
+      };
+    }
+    case "batch": {
+      keys(message, ["id", "type", "window_id", "base_revision", "operations"]);
+      const operations = message["operations"];
+      if (!Array.isArray(operations) || operations.length < 1 || operations.length > MAX_OPERATIONS)
+        throw new ProtocolError("Batch must contain between 1 and " + MAX_OPERATIONS + " operations");
+      return {
+        id: request,
+        type: "batch",
+        window_id: id(message["window_id"]),
+        base_revision: integer(message["base_revision"], "tree revision"),
+        operations: operations.map(operation)
+      };
+    }
+    case "close":
+      keys(message, ["id", "type", "window_id"]);
+      return { id: request, type: "close", window_id: id(message["window_id"]) };
+    case "shutdown":
+      keys(message, ["id", "type"]);
+      return { id: request, type: "shutdown" };
+    default:
+      throw new ProtocolError("Unknown native command");
+  }
+}
+function limits(value) {
+  const data = object(value);
+  keys(data, Object.keys(DEFAULT_LIMITS));
+  const parse = (key) => integer(data[key], key, 1, DEFAULT_LIMITS[key]);
+  return {
+    max_frame_bytes: parse("max_frame_bytes"),
+    max_operations: parse("max_operations"),
+    max_nodes_per_window: parse("max_nodes_per_window"),
+    max_windows: parse("max_windows"),
+    max_depth: parse("max_depth"),
+    max_text_bytes: parse("max_text_bytes"),
+    max_text_bytes_per_window: parse("max_text_bytes_per_window")
+  };
+}
+function parseEvent(value) {
+  const message = object(value);
+  switch (message["type"]) {
+    case "ready": {
+      keys(message, ["type", "protocol", "capabilities", "limits"]);
+      const capabilities = message["capabilities"];
+      if (!Array.isArray(capabilities) || capabilities.length > 2)
+        throw new ProtocolError("Invalid native capabilities");
+      const parsed = [];
+      for (const value of capabilities) {
+        if (value !== "tree" && value !== "input_revisions" || parsed.includes(value))
+          throw new ProtocolError("Unknown or duplicate native capability");
+        parsed.push(value);
+      }
+      return {
+        type: "ready",
+        protocol: version(message["protocol"]),
+        capabilities: parsed,
+        limits: limits(message["limits"])
+      };
+    }
+    case "ack":
+      keys(message, ["type", "id"]);
+      return { type: "ack", id: id(message["id"]) };
+    case "opened":
+      keys(message, ["type", "id", "window_id", "root_id", "tree_revision"]);
+      return {
+        type: "opened",
+        id: id(message["id"]),
+        window_id: id(message["window_id"]),
+        root_id: id(message["root_id"]),
+        tree_revision: integer(message["tree_revision"], "tree revision")
+      };
+    case "applied":
+      keys(message, ["type", "id", "window_id", "tree_revision"]);
+      return {
+        type: "applied",
+        id: id(message["id"]),
+        window_id: id(message["window_id"]),
+        tree_revision: integer(message["tree_revision"], "tree revision")
+      };
+    case "click":
+      keys(message, ["type", "sequence", "window_id", "node_id"]);
+      return {
+        type: "click",
+        sequence: id(message["sequence"]),
+        window_id: id(message["window_id"]),
+        node_id: id(message["node_id"])
+      };
+    case "closed":
+      keys(message, ["type", "sequence", "window_id"]);
+      return {
+        type: "closed",
+        sequence: id(message["sequence"]),
+        window_id: id(message["window_id"])
+      };
+    case "input":
+      keys(message, ["type", "sequence", "window_id", "node_id", "value", "input_revision"]);
+      return {
+        type: "input",
+        sequence: id(message["sequence"]),
+        window_id: id(message["window_id"]),
+        node_id: id(message["node_id"]),
+        value: string(message["value"], "value"),
+        input_revision: integer(message["input_revision"], "input revision")
+      };
+    case "error": {
+      keys(message, ["type", "id", "code", "message"]);
+      const code = ERROR_CODES.find((code) => code === message["code"]);
+      if (!code)
+        throw new ProtocolError("Invalid native error code");
+      return {
+        type: "error",
+        code,
+        message: string(message["message"], "message"),
+        ..."id" in message ? { id: id(message["id"]) } : {}
+      };
+    }
+    default:
+      throw new ProtocolError("Unknown native event");
+  }
+}
+// packages/runtime/src/index.ts
+import { isAbsolute } from "path";
+
+class NativeCommandError extends Error {
+  code;
+  requestId;
+  name = "NativeCommandError";
+  constructor(code, requestId, message) {
+    super("Native " + code + ": " + message);
+    this.code = code;
+    this.requestId = requestId;
+  }
+}
+var MAX_PENDING_COMMANDS = 128;
+var MAX_QUEUED_EVENTS = 128;
+
+class NativeHost {
+  exited;
+  process;
+  stdout;
+  stderr;
+  timeout;
+  pending = new Map;
+  events = [];
+  finished;
+  waiting;
+  failure;
+  phase = "starting";
+  ready = false;
+  negotiatedLimits;
+  sequence = 0;
+  nextId = 1;
+  writeTail = Promise.resolve();
+  stderrTail = "";
+  iteratorTaken = false;
+  constructor(options) {
+    this.timeout = options.requestTimeoutMs ?? 5000;
+    this.process = Bun.spawn({
+      cmd: [options.executable, ...options.args ?? []],
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe"
+    });
+    this.stdout = this.process.stdout.getReader();
+    this.stderr = this.process.stderr.getReader();
+    this.exited = this.process.exited;
+    this.finished = this.watch();
+  }
+  static async launch(options) {
+    if (!isAbsolute(options.executable))
+      throw new Error("Native host path must be absolute");
+    const timeout = options.requestTimeoutMs ?? 5000;
+    if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 60000)
+      throw new Error("requestTimeoutMs must be an integer between 1 and 60000");
+    const host = new NativeHost(options);
+    try {
+      await host.request({ type: "hello", protocol: PROTOCOL_VERSION });
+      if (!host.ready)
+        throw new ProtocolError("Host acknowledged hello before protocol readiness");
+      host.phase = "running";
+      return host;
+    } catch (error) {
+      host.fail(error);
+      await host.finished;
+      throw host.failure;
+    }
+  }
+  get limits() {
+    if (!this.negotiatedLimits)
+      throw new ProtocolError("Native limits are not negotiated");
+    return this.negotiatedLimits;
+  }
+  send(command) {
+    if (this.phase !== "running")
+      return Promise.reject(this.closedError());
+    return this.request(command);
+  }
+  async shutdown() {
+    if (this.phase === "closed" || this.phase === "stopping") {
+      await this.finished;
+      if (this.failure)
+        throw this.failure;
+      return;
+    }
+    this.phase = "stopping";
+    try {
+      await this.request({ type: "shutdown" });
+      this.process.stdin.end();
+      const deadline = setTimeout(() => this.fail(new Error("Native host did not exit")), this.timeout);
+      try {
+        await this.finished;
+      } finally {
+        clearTimeout(deadline);
+      }
+      if (this.failure)
+        throw this.failure;
+    } catch (error) {
+      this.fail(error);
+      await this.finished;
+      throw this.failure;
+    }
+  }
+  [Symbol.asyncIterator]() {
+    if (this.iteratorTaken)
+      throw new Error("Native events have exactly one consumer");
+    this.iteratorTaken = true;
+    return {
+      next: () => {
+        if (this.failure)
+          return Promise.reject(this.failure);
+        const event = this.events.shift();
+        if (event)
+          return Promise.resolve({ done: false, value: event });
+        if (this.phase === "closed")
+          return Promise.resolve({ done: true, value: undefined });
+        if (this.waiting)
+          return Promise.reject(new Error("Concurrent event reads are not supported"));
+        return new Promise((resolve, reject) => {
+          this.waiting = { resolve, reject };
+        });
+      },
+      return: async () => {
+        await this.shutdown();
+        return { done: true, value: undefined };
+      }
+    };
+  }
+  request(input) {
+    if (this.phase === "closed")
+      return Promise.reject(this.closedError());
+    if (this.pending.size >= MAX_PENDING_COMMANDS)
+      return Promise.reject(new Error("Native command limit exceeded"));
+    let command;
+    let frame;
+    try {
+      command = parseCommand({ ...input, id: this.nextId++ });
+      frame = encodeFrame(command);
+      if (this.negotiatedLimits) {
+        if (frame.byteLength - 1 > this.negotiatedLimits.max_frame_bytes)
+          throw new ProtocolError("Command exceeds the negotiated frame limit");
+        if (command.type === "batch" && command.operations.length > this.negotiatedLimits.max_operations)
+          throw new ProtocolError("Command exceeds the negotiated batch limit");
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    const result = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)), this.timeout);
+      this.pending.set(command.id, {
+        command,
+        resolve,
+        reject,
+        timer
+      });
+    });
+    this.writeTail = this.writeTail.then(async () => {
+      if (this.phase === "closed")
+        return;
+      this.process.stdin.write(frame);
+      await this.process.stdin.flush();
+    }).catch((error) => this.fail(error));
+    return result;
+  }
+  async readStdout() {
+    const decoder = new FrameDecoder;
+    try {
+      for (;; ) {
+        const { done, value } = await this.stdout.read();
+        if (done)
+          break;
+        for (const raw of decoder.push(value))
+          this.receive(parseEvent(raw));
+      }
+      decoder.finish();
+      if (this.phase !== "stopping" && this.phase !== "closed")
+        throw new ProtocolError("Native output closed before shutdown");
+    } finally {
+      this.stdout.releaseLock();
+    }
+  }
+  async readStderr() {
+    const decoder = new TextDecoder;
+    try {
+      for (;; ) {
+        const { done, value } = await this.stderr.read();
+        if (done)
+          break;
+        this.stderrTail = (this.stderrTail + decoder.decode(value, { stream: true })).slice(-4096);
+      }
+      this.stderrTail = (this.stderrTail + decoder.decode()).slice(-4096);
+    } finally {
+      this.stderr.releaseLock();
+    }
+  }
+  cancelOutput() {
+    this.stdout.cancel().catch(() => {});
+    this.stderr.cancel().catch(() => {});
+  }
+  async watch() {
+    const streams = [this.readStdout(), this.readStderr()];
+    let drainDeadline;
+    const exit = this.exited.then((code) => {
+      drainDeadline = setTimeout(() => this.fail(new Error("Native output remained open after host exit")), this.timeout);
+      return code;
+    });
+    try {
+      const [code] = await Promise.all([exit, ...streams]);
+      if (code !== 0 || this.phase !== "stopping" || this.pending.size)
+        throw new Error(`Native host exited unexpectedly (${code}). ${this.stderrTail}`);
+      this.phase = "closed";
+      this.waiting?.resolve({ done: true, value: undefined });
+      this.waiting = undefined;
+    } catch (error) {
+      this.fail(error);
+      await this.exited;
+    } finally {
+      clearTimeout(drainDeadline);
+      this.cancelOutput();
+      await Promise.allSettled(streams);
+    }
+  }
+  receive(event) {
+    if (this.phase === "closed")
+      return;
+    if (event.type === "ready") {
+      if (this.ready || this.phase !== "starting")
+        throw new ProtocolError("Unexpected ready event");
+      if (!event.capabilities.includes("tree") || !event.capabilities.includes("input_revisions"))
+        throw new ProtocolError("Native host lacks the required tree/input capabilities");
+      this.negotiatedLimits = Object.freeze(event.limits);
+      this.ready = true;
+      return;
+    }
+    if (event.type === "ack" || event.type === "opened" || event.type === "applied" || event.type === "error") {
+      if (event.type === "error" && event.id === undefined)
+        throw new ProtocolError(`Native ${event.code}: ${event.message}`);
+      const requestId = event.id;
+      const request = requestId === undefined ? undefined : this.pending.get(requestId);
+      if (!request || requestId === undefined)
+        throw new ProtocolError("Unknown native response id");
+      clearTimeout(request.timer);
+      this.pending.delete(requestId);
+      if (event.type === "error")
+        request.reject(new NativeCommandError(event.code, requestId, event.message));
+      else if (!this.matchesResponse(request.command, event)) {
+        const error = new ProtocolError("Native response does not match its request, owner or revision");
+        request.reject(error);
+        throw error;
+      } else
+        request.resolve(event);
+      return;
+    }
+    if (!this.ready)
+      throw new ProtocolError("Native input arrived before protocol readiness");
+    if (event.sequence !== this.sequence + 1)
+      throw new ProtocolError("Native event sequence is out of order");
+    this.sequence = event.sequence;
+    if (this.waiting) {
+      this.waiting.resolve({ done: false, value: event });
+      this.waiting = undefined;
+    } else {
+      if (this.events.length >= MAX_QUEUED_EVENTS)
+        throw new ProtocolError("Native event limit exceeded");
+      this.events.push(event);
+    }
+  }
+  matchesResponse(command, response) {
+    switch (command.type) {
+      case "open":
+        return response.type === "opened" && response.window_id === command.window_id && response.root_id === command.root_id && response.tree_revision === 0;
+      case "batch":
+        return response.type === "applied" && response.window_id === command.window_id && response.tree_revision === command.base_revision + 1;
+      case "hello":
+      case "close":
+      case "shutdown":
+        return response.type === "ack";
+    }
+  }
+  closedError() {
+    return this.failure ?? new Error("Native host is not running");
+  }
+  fail(cause) {
+    if (this.failure)
+      return;
+    this.failure = cause instanceof Error ? cause : new Error(String(cause));
+    this.phase = "closed";
+    for (const request of this.pending.values()) {
+      clearTimeout(request.timer);
+      request.reject(this.failure);
+    }
+    this.pending.clear();
+    this.events.length = 0;
+    this.waiting?.reject(this.failure);
+    this.waiting = undefined;
+    this.cancelOutput();
+    this.process.kill("SIGKILL");
+  }
+}
+
+// packages/core/src/types.ts
+class NativeStateError extends Error {
+  code;
+  name = "NativeStateError";
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+class UnsupportedFeatureError extends Error {
+  feature;
+  name = "UnsupportedFeatureError";
+  constructor(feature) {
+    super("Unsupported native feature: " + feature);
+    this.feature = feature;
+  }
+}
+
+// packages/core/src/tree.ts
+var identities = new WeakMap;
+var encoder2 = new TextEncoder;
+var elementKinds = ["box", "text", "button", "input"];
+function normalize(element) {
+  if (element !== null && typeof element === "object" && typeof element.kind === "string" && !elementKinds.includes(element.kind))
+    throw new UnsupportedFeatureError("element:" + element.kind);
+  return parseElement(element);
+}
+function makeNode(id, element) {
+  const handle = Object.freeze({ kind: element.kind });
+  identities.set(handle, id);
+  return {
+    id,
+    handle,
+    element: normalize(element),
+    parent: undefined,
+    children: [],
+    inputRevision: 0
+  };
+}
+function own(nodes, handle) {
+  const id = identities.get(handle);
+  const node = id === undefined ? undefined : nodes.get(id);
+  if (!node || node.handle !== handle)
+    throw new NativeStateError("invalid_handle", "Node is forged, disposed or belongs to another window");
+  return node;
+}
+
+class Transaction {
+  rootId;
+  allocateId;
+  limits;
+  nodes;
+  operations = [];
+  active = true;
+  constructor(current, rootId, allocateId, limits) {
+    this.rootId = rootId;
+    this.allocateId = allocateId;
+    this.limits = limits;
+    this.nodes = new Map([...current].map(([id, node]) => [id, { ...node, children: [...node.children] }]));
+  }
+  check() {
+    if (!this.active)
+      throw new NativeStateError("invalid_state", "Batch callback has already returned");
+    if (this.operations.length >= this.limits.max_operations)
+      throw new NativeStateError("limit_exceeded", "Batch operation limit exceeded");
+  }
+  finish() {
+    this.active = false;
+  }
+  create(element) {
+    this.check();
+    if (this.nodes.size >= this.limits.max_nodes_per_window)
+      throw new NativeStateError("limit_exceeded", "Window node limit exceeded");
+    const normalized = normalize(element);
+    const node = makeNode(this.allocateId(), normalized);
+    this.nodes.set(node.id, node);
+    this.operations.push({ type: "create", node_id: node.id, element: node.element });
+    return node.handle;
+  }
+  set(handle, value, expectedInputRevision) {
+    this.check();
+    const node = own(this.nodes, handle);
+    const element = normalize(value);
+    if (element.kind !== node.element.kind)
+      throw new NativeStateError("invalid_state", "Element kind cannot change; create a replacement node");
+    if (element.kind === "input") {
+      if (!Number.isSafeInteger(expectedInputRevision) || expectedInputRevision !== node.inputRevision)
+        throw new NativeStateError("stale_revision", "Input update requires its current observed revision");
+      if (node.inputRevision === Number.MAX_SAFE_INTEGER)
+        throw new NativeStateError("limit_exceeded", "Input revision exhausted");
+      this.operations.push({
+        type: "set",
+        node_id: node.id,
+        element,
+        expected_input_revision: node.inputRevision
+      });
+      node.inputRevision += 1;
+    } else {
+      if (expectedInputRevision !== undefined)
+        throw new NativeStateError("invalid_state", "Only an input accepts an edit revision");
+      this.operations.push({ type: "set", node_id: node.id, element });
+    }
+    node.element = element;
+  }
+  insert(parentHandle, childHandle, index) {
+    this.check();
+    const parent = own(this.nodes, parentHandle);
+    const child = own(this.nodes, childHandle);
+    if (parent.element.kind !== "box" || child.id === this.rootId)
+      throw new NativeStateError("invalid_state", "Only boxes accept children and the root cannot move");
+    let ancestor = parent;
+    while (ancestor) {
+      if (ancestor.id === child.id)
+        throw new NativeStateError("invalid_state", "Native tree cannot contain a cycle");
+      ancestor = ancestor.parent === undefined ? undefined : this.nodes.get(ancestor.parent);
+    }
+    const length = parent.children.length - (child.parent === parent.id ? 1 : 0);
+    if (!Number.isSafeInteger(index) || index < 0 || index > length)
+      throw new NativeStateError("invalid_state", "Child insertion index is out of range");
+    if (child.parent !== undefined) {
+      const previous = this.nodes.get(child.parent);
+      previous.children.splice(previous.children.indexOf(child.id), 1);
+    }
+    parent.children.splice(index, 0, child.id);
+    child.parent = parent.id;
+    this.operations.push({ type: "insert", parent_id: parent.id, child_id: child.id, index });
+  }
+  append(parentHandle, childHandle) {
+    const parent = own(this.nodes, parentHandle);
+    const child = own(this.nodes, childHandle);
+    this.insert(parentHandle, childHandle, parent.children.length - (child.parent === parent.id ? 1 : 0));
+  }
+  remove(handle) {
+    this.check();
+    const node = own(this.nodes, handle);
+    if (node.id === this.rootId)
+      throw new NativeStateError("invalid_state", "Close the window to dispose its root");
+    if (node.parent !== undefined) {
+      const parent = this.nodes.get(node.parent);
+      parent.children.splice(parent.children.indexOf(node.id), 1);
+    }
+    const pending = [node.id];
+    for (const id of pending) {
+      const child = this.nodes.get(id);
+      pending.push(...child.children);
+      this.nodes.delete(id);
+    }
+    this.operations.push({ type: "delete", node_id: node.id });
+  }
+  validate() {
+    let seen = 0;
+    let bytes = 0;
+    const pending = [{ id: this.rootId, depth: 0 }];
+    for (const { id, depth } of pending) {
+      if (depth > this.limits.max_depth)
+        throw new NativeStateError("limit_exceeded", "Native tree depth limit exceeded");
+      const node = this.nodes.get(id);
+      seen += 1;
+      const element = node.element;
+      const texts = element.kind === "input" ? [element.value, element.placeholder ?? ""] : element.kind === "box" ? [] : [element.text];
+      for (const text of texts) {
+        const size = encoder2.encode(text).byteLength;
+        if (size > this.limits.max_text_bytes)
+          throw new NativeStateError("limit_exceeded", "Native text limit exceeded");
+        bytes += size;
+      }
+      if (bytes > this.limits.max_text_bytes_per_window)
+        throw new NativeStateError("limit_exceeded", "Window text memory limit exceeded");
+      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1 })));
+    }
+    if (seen !== this.nodes.size)
+      throw new NativeStateError("invalid_state", "Every created node must be attached before commit");
+  }
+}
+
+// packages/core/src/application.ts
+var MAX_QUEUED_TRANSACTIONS = 128;
+var MAX_QUEUED_CALLBACKS = 128;
+
+class Application {
+  host;
+  closed;
+  limits;
+  capabilities = Object.freeze(["tree", "input_revisions"]);
+  windows = new Map;
+  tail = Promise.resolve();
+  queued = 0;
+  callbacks = [];
+  dispatching;
+  activeCallbacks = 0;
+  nextWindow = 1;
+  nextNode = 1;
+  stopping;
+  failure;
+  phase = "running";
+  constructor(host) {
+    this.host = host;
+    this.limits = host.limits;
+    this.closed = this.consume();
+    this.closed.catch(() => {});
+  }
+  get diagnostics() {
+    let nodes = 0;
+    let callbacks = 0;
+    for (const window of this.windows.values()) {
+      nodes += window.nodes.size;
+      callbacks += window.clicks.size + window.inputs.size;
+    }
+    return Object.freeze({
+      windows: this.windows.size,
+      nodes,
+      callbacks,
+      queuedTransactions: this.queued,
+      queuedCallbacks: this.callbacks.length,
+      activeCallbacks: this.activeCallbacks
+    });
+  }
+  allocateNode() {
+    if (!Number.isSafeInteger(this.nextNode))
+      throw new NativeStateError("limit_exceeded", "Native node identity space exhausted");
+    return this.nextNode++;
+  }
+  cancelCallbacks(windowId, nodeId) {
+    this.callbacks = this.callbacks.filter((callback) => callback.windowId !== windowId || nodeId !== undefined && callback.nodeId !== nodeId);
+  }
+  queueCallback(callback) {
+    if (this.phase !== "running")
+      return;
+    if (this.callbacks.length >= MAX_QUEUED_CALLBACKS)
+      throw new ProtocolError("Application callback queue limit exceeded");
+    this.callbacks.push(callback);
+    this.startDispatch();
+  }
+  startDispatch() {
+    if (!this.callbacks.length)
+      return;
+    if (this.dispatching)
+      return;
+    this.dispatching = this.dispatchCallbacks().catch(async (cause) => {
+      this.failure ??= cause instanceof Error ? cause : new Error(String(cause));
+      await this.shutdown().catch(() => {});
+    }).finally(() => {
+      this.dispatching = undefined;
+      this.startDispatch();
+    });
+  }
+  async dispatchCallbacks() {
+    while (this.callbacks.length) {
+      const callback = this.callbacks.shift();
+      const window = this.windows.get(callback.windowId);
+      if (!window || callback.event.signal.aborted)
+        continue;
+      this.activeCallbacks = 1;
+      try {
+        await window.dispatch(callback.nodeId, callback.event);
+      } finally {
+        this.activeCallbacks = 0;
+      }
+    }
+  }
+  enqueue(operation, closingWindow = false) {
+    if (this.phase !== "running")
+      return Promise.reject(this.failure ?? new NativeStateError("invalid_state", "Application is shutting down"));
+    if (!closingWindow && this.queued >= MAX_QUEUED_TRANSACTIONS)
+      return Promise.reject(new NativeStateError("limit_exceeded", "Application transaction queue is full"));
+    this.queued += 1;
+    const result = this.tail.then(() => {
+      if (this.phase !== "running")
+        throw this.failure ?? new NativeStateError("invalid_state", "Transaction cancelled during shutdown");
+      return operation();
+    }).finally(() => {
+      this.queued -= 1;
+    });
+    this.tail = result.then(() => {}, () => {});
+    return result;
+  }
+  openWindow(options) {
+    const requested = { ...options };
+    return this.enqueue(async () => {
+      if (this.windows.size >= this.limits.max_windows)
+        throw new NativeStateError("limit_exceeded", "Application window limit exceeded");
+      if (!Number.isSafeInteger(this.nextWindow))
+        throw new NativeStateError("limit_exceeded", "Native window identity space exhausted");
+      const window = new Window(this, this.nextWindow++, this.allocateNode());
+      this.windows.set(window.id, window);
+      try {
+        await this.host.send({
+          type: "open",
+          window_id: window.id,
+          root_id: window.rootId,
+          title: requested.title,
+          width: requested.width ?? 560,
+          height: requested.height ?? 380
+        });
+        window.assertActive();
+        return window;
+      } catch (error) {
+        window.revoke();
+        throw error;
+      }
+    });
+  }
+  async shutdown() {
+    if (!this.stopping) {
+      this.phase = "stopping";
+      for (const window of this.windows.values())
+        window.revoke();
+      this.stopping = (async () => {
+        await this.tail;
+        await this.host.shutdown();
+      })();
+    }
+    await this.stopping;
+    if (this.failure)
+      throw this.failure;
+  }
+  async consume() {
+    try {
+      for await (const event of this.host) {
+        const window = this.windows.get(event.window_id);
+        if (!window) {
+          if (event.window_id >= this.nextWindow)
+            throw new ProtocolError("Native event names an unallocated window");
+          continue;
+        }
+        window.receive(event, this.nextNode);
+      }
+    } catch (cause) {
+      this.failure ??= cause instanceof Error ? cause : new Error(String(cause));
+      this.phase = "stopping";
+      await this.host.shutdown().catch(() => {});
+    } finally {
+      for (const window of this.windows.values())
+        window.revoke();
+      await this.dispatching;
+      this.phase = "closed";
+    }
+    if (this.failure)
+      throw this.failure;
+  }
+}
+
+class Window {
+  application;
+  id;
+  rootId;
+  root;
+  closed;
+  clicks = new Map;
+  inputs = new Map;
+  nodes = new Map;
+  revision = 0;
+  active = true;
+  registrations = new Map;
+  resolveClosed;
+  closing;
+  constructor(application, id, rootId) {
+    this.application = application;
+    this.id = id;
+    this.rootId = rootId;
+    const node = makeNode(rootId, { kind: "box" });
+    this.root = node.handle;
+    this.nodes.set(rootId, node);
+    this.closed = new Promise((resolve) => {
+      this.resolveClosed = resolve;
+    });
+  }
+  assertActive() {
+    if (!this.active)
+      throw new NativeStateError("invalid_handle", "Window is closed");
+  }
+  batch(update) {
+    return this.application.enqueue(async () => {
+      this.assertActive();
+      const transaction = new Transaction(this.nodes, this.rootId, () => this.application.allocateNode(), this.application.limits);
+      let value;
+      try {
+        value = update(transaction);
+        if (value !== null && (typeof value === "object" || typeof value === "function") && typeof value.then === "function") {
+          Promise.resolve(value).catch(() => {});
+          throw new NativeStateError("invalid_state", "Batch callbacks must be synchronous");
+        }
+        transaction.validate();
+      } finally {
+        transaction.finish();
+      }
+      if (!transaction.operations.length)
+        return value;
+      const reply = await this.application.host.send({
+        type: "batch",
+        window_id: this.id,
+        base_revision: this.revision,
+        operations: transaction.operations
+      });
+      this.assertActive();
+      for (const [id, candidate] of transaction.nodes) {
+        const current = this.nodes.get(id);
+        if (current && current.inputRevision > candidate.inputRevision && current.element.kind === "input" && candidate.element.kind === "input") {
+          candidate.inputRevision = current.inputRevision;
+          candidate.element = { ...candidate.element, value: current.element.value };
+        }
+      }
+      this.nodes = transaction.nodes;
+      this.revision = reply.tree_revision;
+      for (const id of this.registrations.keys())
+        if (!this.nodes.has(id))
+          this.revokeListener(id);
+      return value;
+    });
+  }
+  onClick(handle, listener) {
+    this.assertActive();
+    const node = own(this.nodes, handle);
+    if (node.element.kind !== "button" || typeof listener !== "function")
+      throw new NativeStateError("invalid_state", "Click listeners require a button and a function");
+    this.clicks.set(node.id, listener);
+    return this.register(node.id);
+  }
+  onInput(handle, listener) {
+    this.assertActive();
+    const node = own(this.nodes, handle);
+    if (node.element.kind !== "input" || typeof listener !== "function")
+      throw new NativeStateError("invalid_state", "Input listeners require an input and a function");
+    this.inputs.set(node.id, listener);
+    return this.register(node.id);
+  }
+  input(handle) {
+    this.assertActive();
+    const node = own(this.nodes, handle);
+    if (node.element.kind !== "input")
+      throw new NativeStateError("invalid_state", "Only an input has an edit state");
+    return Object.freeze({ value: node.element.value, revision: node.inputRevision });
+  }
+  async close() {
+    if (!this.active) {
+      await this.closing;
+      return;
+    }
+    this.active = false;
+    for (const id of this.registrations.keys())
+      this.revokeListener(id);
+    this.nodes.clear();
+    this.closing = this.application.enqueue(async () => {
+      try {
+        await this.application.host.send({ type: "close", window_id: this.id });
+      } catch (error) {
+        if (!(error instanceof NativeCommandError && error.code === "invalid_handle")) {
+          this.application.shutdown().catch(() => {});
+          throw error;
+        }
+      }
+      this.revoke();
+    }, true);
+    await this.closing;
+  }
+  revoke() {
+    this.active = false;
+    for (const id of this.registrations.keys())
+      this.revokeListener(id);
+    this.nodes.clear();
+    this.application.windows.delete(this.id);
+    this.resolveClosed();
+  }
+  register(id) {
+    const previous = this.registrations.get(id);
+    this.application.cancelCallbacks(this.id, id);
+    const controller = new AbortController;
+    this.registrations.set(id, controller);
+    previous?.abort();
+    return () => {
+      if (this.registrations.get(id) === controller)
+        this.revokeListener(id);
+    };
+  }
+  revokeListener(id) {
+    const previous = this.registrations.get(id);
+    this.registrations.delete(id);
+    this.clicks.delete(id);
+    this.inputs.delete(id);
+    this.application.cancelCallbacks(this.id, id);
+    previous?.abort();
+  }
+  receive(event, nextNode) {
+    if (event.type === "closed") {
+      this.revoke();
+      return;
+    }
+    if (!this.active)
+      return;
+    const node = this.nodes.get(event.node_id);
+    if (!node) {
+      if (event.node_id >= nextNode || [...this.application.windows.values()].some((window) => window.nodes.has(event.node_id)))
+        throw new ProtocolError("Native event names a node outside its owner");
+      return;
+    }
+    if (event.type === "input") {
+      if (node.element.kind !== "input" || event.input_revision <= node.inputRevision)
+        throw new ProtocolError("Native input kind or edit revision is invalid");
+      node.inputRevision = event.input_revision;
+      node.element = { ...node.element, value: event.value };
+      const signal = this.registrations.get(node.id)?.signal;
+      if (signal)
+        this.application.queueCallback({
+          windowId: this.id,
+          nodeId: node.id,
+          event: Object.freeze({
+            type: "input",
+            node: node.handle,
+            value: event.value,
+            revision: event.input_revision,
+            sequence: event.sequence,
+            signal
+          })
+        });
+    } else {
+      if (node.element.kind !== "button")
+        throw new ProtocolError("Native click targeted a non-button node");
+      const signal = this.registrations.get(node.id)?.signal;
+      if (!node.element.disabled && signal)
+        this.application.queueCallback({
+          windowId: this.id,
+          nodeId: node.id,
+          event: Object.freeze({
+            type: "click",
+            node: node.handle,
+            sequence: event.sequence,
+            signal
+          })
+        });
+    }
+  }
+  async dispatch(nodeId, event) {
+    if (!this.active || event.signal.aborted || this.registrations.get(nodeId)?.signal !== event.signal)
+      return;
+    let cancel;
+    const cancelled = new Promise((resolve) => {
+      cancel = resolve;
+    });
+    event.signal.addEventListener("abort", cancel, { once: true });
+    try {
+      const called = event.type === "input" ? this.inputs.get(nodeId)?.(event) : this.clicks.get(nodeId)?.(event);
+      await Promise.race([called, cancelled]);
+    } finally {
+      event.signal.removeEventListener("abort", cancel);
+    }
+  }
+}
+async function createApplication(options) {
+  return new Application(await NativeHost.launch(options));
+}
+// benchmarks/solid/workload.ts
+import { heapStats, jscDescribe, generateHeapSnapshotForDebugging } from "bun:jsc";
+const diagnosticAddresses = [];
+function diagnosticWeakRef(target) { const description = jscDescribe(target); const address = /: (0x[0-9a-f]+) /.exec(description)?.[1]; if (!address) throw new Error("Missing diagnostic object address"); diagnosticAddresses.push(address); return new WeakRef(target); }
+import assert from "assert/strict";
+import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { isAbsolute as isAbsolute2 } from "path";
+import { parseArgs } from "util";
+var CONTENT_STYLE = { direction: "column", gap: 8, padding: 16 };
+var LIST_STYLE = { direction: "column", gap: 0 };
+var ROW_STYLE = { font_size: 12 };
+function count(value, name, maximum) {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum)
+    throw new Error(`${name} must be an integer in 1..${maximum}`);
+  return parsed;
+}
+function distribution(samples) {
+  const sorted = [...samples].sort((a, b) => a - b);
+  const rank = (fraction) => sorted[Math.ceil(sorted.length * fraction) - 1] ?? null;
+  return {
+    count: samples.length,
+    p50Ms: rank(0.5),
+    p95Ms: rank(0.95),
+    p99Ms: rank(0.99),
+    totalMs: samples.reduce((sum, value) => sum + value, 0),
+    samplesMs: samples
+  };
+}
+async function heapSnapshot(phase) {
+  await Bun.sleep(1);
+  const start = performance.now();
+  Bun.gc(true);
+  const stats = heapStats();
+  return {
+    phase,
+    collectionAndWalkMs: performance.now() - start,
+    heapSize: stats.heapSize,
+    heapCapacity: stats.heapCapacity,
+    extraMemorySize: stats.extraMemorySize,
+    objectCount: stats.objectCount,
+    protectedObjectCount: stats.protectedObjectCount,
+    objectTypeCounts: stats.objectTypeCounts,
+    protectedObjectTypeCounts: stats.protectedObjectTypeCounts,
+    applicationRss: process.memoryUsage().rss
+  };
+}
+function expectedNodes(rows, label) {
+  return [
+    { node_id: 1, element: { kind: "box", style: {} }, children: [2] },
+    { node_id: 2, element: { kind: "box", style: {} }, children: [3] },
+    { node_id: 3, element: { kind: "box", style: CONTENT_STYLE }, children: [4, 5, 6] },
+    { node_id: 4, element: { kind: "text", text: label, style: {} }, children: [] },
+    {
+      node_id: 5,
+      element: { kind: "button", text: "Benchmark fixture", disabled: false, style: {} },
+      children: []
+    },
+    {
+      node_id: 6,
+      element: { kind: "box", style: LIST_STYLE },
+      children: rows.map((row) => row.id + 7)
+    },
+    ...[...rows].sort((a, b) => a.id - b.id).map((row) => ({
+      node_id: row.id + 7,
+      element: { kind: "text", text: row.text, style: ROW_STYLE },
+      children: []
+    }))
+  ];
+}
+async function observedPaint(path, nonce, revision, nodes) {
+  const deadline = performance.now() + 1e4;
+  while (performance.now() < deadline) {
+    if (!existsSync(path)) {
+      await Bun.sleep(5);
+      continue;
+    }
+    if (statSync(path).size > 4194304)
+      throw new Error("Calibration evidence exceeds 4 MiB");
+    const events = readFileSync(path, "utf8").split(`
+`).slice(0, -1).map((line) => JSON.parse(line));
+    const records = events.filter((value) => value !== null && typeof value === "object" && !Array.isArray(value));
+    assert.equal(records.length, events.length, "Invalid native calibration record");
+    assert(records.every((event) => event["nonce"] === nonce), "Foreign calibration nonce");
+    const paint = records.findLast((event) => event["type"] === "rendered" && event["tree_revision"] === revision);
+    if (paint) {
+      assert.equal(paint["stage"], "native-paint");
+      assert.deepEqual(paint["nodes"], nodes);
+      const renderer = records.find((event) => event["type"] === "renderer");
+      assert(renderer, "Native calibration must report its actual GPU adapter");
+      return { renderer, paint };
+    }
+    await Bun.sleep(5);
+  }
+  throw new Error(`Native calibration did not paint tree revision ${revision}`);
+}
+function delta(after, before) {
+  return {
+    create: after.create - before.create,
+    set: after.set - before.set,
+    insert: after.insert - before.insert,
+    remove: after.remove - before.remove
+  };
+}
+function expectWindowRootOnly(application) {
+  assert.deepEqual(application.diagnostics, {
+    windows: 1,
+    nodes: 1,
+    callbacks: 0,
+    queuedTransactions: 0,
+    queuedCallbacks: 0,
+    activeCallbacks: 0
+  });
+}
+async function runWorkload(adapter, mount) {
+  const { values } = parseArgs({
+    options: {
+      host: { type: "string" },
+      output: { type: "string" },
+      nonce: { type: "string" },
+      mode: { type: "string" },
+      iterations: { type: "string", default: "1000" },
+      rotations: { type: "string", default: "1000" },
+      mounts: { type: "string", default: "100" },
+      rows: { type: "string", default: "32" },
+      calibration: { type: "boolean", default: false }
+    },
+    strict: true,
+    allowPositionals: false
+  });
+  if (!values.host || !isAbsolute2(values.host) || !values.output || !isAbsolute2(values.output))
+    throw new Error("--host and --output require absolute paths");
+  if (!values.nonce || values.nonce.length > 128)
+    throw new Error("--nonce is required");
+  if (values.mode !== "development" && values.mode !== "aot")
+    throw new Error("--mode must be development or aot; the controller verifies it");
+  const iterations = count(values.iterations, "iterations", 1e4);
+  const rotations = count(values.rotations, "rotations", 1e4);
+  const mounts = count(values.mounts, "mounts", 1000);
+  const rowCount = count(values.rows, "rows", 128);
+  if (iterations % 10 !== 0)
+    throw new Error("iterations must be a multiple of 10");
+  const initial = Array.from({ length: rowCount }, (_, id) => ({ id, text: `Row ${id}` }));
+  const result = {
+    schemaVersion: 1,
+    status: "running",
+    adapter,
+    nonce: values.nonce,
+    declaredMode: values.mode,
+    executable: process.execPath,
+    bunRevision: Bun.revision,
+    workload: { iterations, rotations, mounts, rows: rowCount, warmup: 20 },
+    methodology: {
+      timings: "application update submission through public-core acknowledgement",
+      synchronousSubmission: "only the synchronous setter/batch call; deferred planning is in acknowledgement time",
+      presentation: "not measured; an acknowledgement is not display presentation",
+      heap: "live JSC heap after full GC; not cumulative allocation or native heap totals",
+      nativeRss: "not measured by this runner",
+      instrumentation: values.calibration ? "separate native paint/GPU calibration; excluded from timed comparisons" : "native evidence disabled for the timed comparison",
+      retainedProbeObjects: mounts * 3
+    }
+  };
+  let application;
+  let active;
+  let failure;
+  const started = performance.now();
+  const deadline = started + 120000;
+  function withinDeadline() {
+    if (performance.now() > deadline)
+      throw new Error("Solid/core workload exceeded 120 seconds");
+  }
+  try {
+    const evidence = process.env["BUN_NATIVE_EVIDENCE_LOG"];
+    if (values.calibration) {
+      assert(evidence && isAbsolute2(evidence), "Calibration requires an explicit evidence path");
+      assert.equal(process.env["BUN_NATIVE_EVIDENCE_NONCE"], values.nonce);
+    } else {
+      delete process.env["BUN_NATIVE_EVIDENCE_LOG"];
+      delete process.env["BUN_NATIVE_EVIDENCE_NONCE"];
+    }
+    application = await createApplication({ executable: values.host, requestTimeoutMs: 1e4 });
+    const window = await application.openWindow({
+      title: "Bun Native matched renderer workload",
+      width: 640,
+      height: 720
+    });
+    active = await mount(window, initial);
+    if (values.calibration)
+      result["initialNativePaint"] = await observedPaint(evidence, values.nonce, 1, expectedNodes(initial, "Initial"));
+    for (let index = 0;index < 20; index++) {
+      withinDeadline();
+      await active.update([`Warmup ${index}`]);
+    }
+    const beforeHeap = await heapSnapshot("mounted view after 20 warmup updates");
+    const initialMutations = active.inspect().mutations;
+    const phases = {};
+    result["phases"] = phases;
+    async function measure(name, count, operation) {
+      const acknowledgement = [];
+      const submission = [];
+      const before = active.inspect().mutations;
+      for (let index = 0;index < count; index++) {
+        withinDeadline();
+        const start = performance.now();
+        const pending = operation(index);
+        submission.push(performance.now() - start);
+        await pending;
+        acknowledgement.push(performance.now() - start);
+      }
+      phases[name] = {
+        acknowledgement: distribution(acknowledgement),
+        synchronousSubmission: distribution(submission),
+        mutations: delta(active.inspect().mutations, before)
+      };
+    }
+    await measure("signals", iterations, (index) => active.update([`Update ${index}`]));
+    const coalesced = Array.from({ length: 10 }, (_, index) => `Batched ${index}`);
+    await measure("coalesced", iterations / 10, (index) => active.update(coalesced.map((value) => `${index}: ${value}`)));
+    let ordered = initial;
+    await measure("keyedRotations", rotations, () => {
+      ordered = [...ordered.slice(1), ordered[0]];
+      return active.rotate(ordered);
+    });
+    assert.deepEqual(delta(active.inspect().mutations, initialMutations), {
+      create: 0,
+      set: iterations + iterations / 10,
+      insert: rowCount === 1 ? 0 : rotations,
+      remove: 0
+    });
+    assert.equal(active.inspect().rowsCreated, rowCount);
+    assert.equal(active.inspect().rowsDisposed, 0);
+    assert.equal(active.inspect().unexpectedClicks, 0);
+    if (values.calibration)
+      result["finalNativePaint"] = await observedPaint(evidence, values.nonce, window.revision, expectedNodes(ordered, `${iterations / 10 - 1}: Batched 9`));
+    await active.dispose();
+    assert.equal(active.inspect().rowsDisposed, rowCount);
+    active = undefined;
+    expectWindowRootOnly(application);
+    const afterUpdatesHeap = await heapSnapshot("view disposed; timing arrays retained");
+    const probes = [];
+    const lifecycle = [];
+    let rowsCreated = 0;
+    let rowsDisposed = 0;
+    async function cycle() {
+      const view = await mount(window, initial);
+      await view.dispose();
+      const state = view.inspect();
+      rowsCreated += state.rowsCreated;
+      rowsDisposed += state.rowsDisposed;
+      assert.equal(state.unexpectedClicks, 0);
+      return view.probes;
+    }
+    for (let index = 0;index < mounts; index++) {
+      withinDeadline();
+      const start = performance.now();
+      probes.push(...await cycle());
+      lifecycle.push(performance.now() - start);
+      expectWindowRootOnly(application);
+    }
+    assert.equal(probes.length, mounts * 3);
+    assert.equal(rowsCreated, rowCount * mounts);
+    assert.equal(rowsDisposed, rowsCreated);
+    result["lifecycles"] = {
+      ...distribution(lifecycle),
+      rowsCreated,
+      rowsDisposed,
+      retainedWeakRefObjects: probes.length
+    };
+    await Bun.sleep(1);
+    Bun.gc(true);
+    const firstReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index]);
+    await window.batch(() => {
+      return;
+    });
+    const afterLifecyclesHeap = await heapSnapshot("all views disposed; collection after a core queue fence and timer turn; timing/WeakRef instrumentation retained");
+    const stillReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index]);
+    result["retentionObservation"] = {
+      firstReachable,
+      stillReachable,
+      probesPerMount: 3,
+      probeKinds: adapter === "core" ? ["container handle", "label handle", "listener"] : ["render root", "content node", "listener"],
+      collectionCheckpoints: 2,
+      quiescence: "empty core transaction queue fence; no additional native command"
+    };
+    result["heap"] = {
+      before: beforeHeap,
+      afterUpdates: afterUpdatesHeap,
+      afterLifecycles: afterLifecyclesHeap
+    };
+    expectWindowRootOnly(application);
+    assert.equal(diagnosticAddresses.length, probes.length + 3);
+    result.retentionDiagnostic = {
+      methodology: "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+      targets: stillReachable.map(index => ({ index, address: diagnosticAddresses[index + 3] }))
+    };
+    if (stillReachable.length) {
+      await Bun.sleep(1);
+      const snapshotPath = values.output + ".heap.json";
+      writeFileSync(snapshotPath, JSON.stringify(generateHeapSnapshotForDebugging()) + "\n", { flag: "wx" });
+      result.retentionDiagnostic.snapshot = snapshotPath;
+    }
+    assert.equal(stillReachable.length, 0, "Disposed view/callback targets remain observable");
+    await window.close();
+  } catch (error) {
+    failure = error;
+  } finally {
+    for (const cleanup of [
+      () => active?.dispose(),
+      () => application?.shutdown(),
+      () => application?.closed
+    ]) {
+      try {
+        await cleanup();
+      } catch (error) {
+        failure = failure ? new AggregateError([failure, error], "Workload and cleanup failed") : error;
+      }
+    }
+    result["cleanup"] = application?.diagnostics ?? null;
+    if (application) {
+      try {
+        assert.deepEqual(application.diagnostics, {
+          windows: 0,
+          nodes: 0,
+          callbacks: 0,
+          queuedTransactions: 0,
+          queuedCallbacks: 0,
+          activeCallbacks: 0
+        });
+      } catch (error) {
+        failure = failure ? new AggregateError([failure, error], "Workload and ownership cleanup failed") : error;
+      }
+    }
+    result["totalWorkloadMs"] = performance.now() - started;
+    result["status"] = failure ? "failed" : "passed";
+    if (failure)
+      result["error"] = failure instanceof Error ? failure.stack : String(failure);
+    writeFileSync(values.output, JSON.stringify(result, null, 2) + `
+`, { flag: "wx" });
+  }
+  if (failure)
+    throw failure;
+}
+
+// benchmarks/solid/direct.ts
+await runWorkload("core", async (window, initial) => {
+  const counts = { create: 0, set: 0, insert: 0, remove: 0 };
+  let rowsDisposed = 0;
+  let unexpectedClicks = 0;
+  let disposed = false;
+  const listener = () => {
+    unexpectedClicks++;
+  };
+  const { root, label, button, list, rows } = await window.batch((batch) => {
+    const root = batch.create({ kind: "box" });
+    const content = batch.create({ kind: "box", style: CONTENT_STYLE });
+    const label = batch.create({ kind: "text", text: "Initial" });
+    const button = batch.create({ kind: "button", text: "Benchmark fixture" });
+    const list = batch.create({ kind: "box", style: LIST_STYLE });
+    const rows = new Map;
+    for (const row of initial)
+      rows.set(row.id, batch.create({ kind: "text", text: row.text, style: ROW_STYLE }));
+    batch.append(window.root, root);
+    batch.append(root, content);
+    for (const node of [label, button, list])
+      batch.append(content, node);
+    for (const node of rows.values())
+      batch.append(list, node);
+    counts.create = 5 + initial.length;
+    counts.insert = counts.create;
+    return { root, label, button, list, rows };
+  });
+  const unsubscribe = window.onClick(button, listener);
+  return {
+    async update(values) {
+      let pending = "";
+      for (const value of values)
+        pending = value;
+      await window.batch((batch) => batch.set(label, { kind: "text", text: pending }));
+      counts.set++;
+    },
+    async rotate(next) {
+      if (next.length < 2)
+        return;
+      await window.batch((batch) => batch.append(list, rows.get(next.at(-1).id)));
+      counts.insert++;
+    },
+    async dispose() {
+      if (disposed)
+        return;
+      disposed = true;
+      unsubscribe();
+      await window.batch((batch) => batch.remove(root));
+      rowsDisposed = initial.length;
+      counts.remove++;
+      rows.clear();
+    },
+    probes: [diagnosticWeakRef(root), diagnosticWeakRef(label), diagnosticWeakRef(listener)],
+    inspect: () => ({
+      mutations: { ...counts },
+      rowsCreated: initial.length,
+      rowsDisposed,
+      unexpectedClicks
+    })
+  };
+});
+
+//# debugId=B96BDE8C15D91D7864756E2164756E21

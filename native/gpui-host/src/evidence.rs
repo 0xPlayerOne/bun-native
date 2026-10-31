@@ -3,7 +3,7 @@
 
 mod layout;
 mod pointer;
-use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, Tree, WindowId};
+use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
 pub(crate) use layout::LayoutFrame;
 use layout::LayoutSnapshot;
 use serde_json::{Value, json};
@@ -12,6 +12,9 @@ use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::rc::Rc;
+use std::time::Instant;
+
+const MAX_STARTUP_RECORDS: u16 = 256;
 
 #[derive(Clone, Default)]
 pub(crate) struct Evidence(Option<Rc<RefCell<Log>>>);
@@ -23,6 +26,8 @@ struct Log {
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
     pointer: Option<pointer::PointerTrace>,
+    startup_started: Option<Instant>,
+    startup_records: u16,
 }
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
@@ -54,6 +59,9 @@ impl Evidence {
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
                 pointer: pointer::PointerTrace::from_environment(),
+                startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
+                    .then(Instant::now),
+                startup_records: 0,
             })))),
             Err(error) => {
                 eprintln!("Bun Native native evidence log unavailable: {error}");
@@ -64,6 +72,42 @@ impl Evidence {
 
     pub(crate) fn enabled(&self) -> bool {
         self.0.is_some()
+    }
+
+    /// Opt-in phase evidence only; never changes native dispatch or its deadline.
+    pub(crate) fn startup(&self, phase: &'static str, id: RequestId, window_id: WindowId) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let mut log = log.borrow_mut();
+        let Some(started) = log.startup_started else {
+            return;
+        };
+        if log.startup_records >= MAX_STARTUP_RECORDS {
+            return;
+        }
+        log.startup_records += 1;
+        let phase = if log.startup_records == MAX_STARTUP_RECORDS {
+            "record_limit"
+        } else {
+            phase
+        };
+        let record = json!({
+            "nonce": log.nonce,
+            "stage": "startup-diagnostic",
+            "source": "native",
+            "pid": std::process::id(),
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": started.elapsed().as_nanos().to_string(),
+            "index": log.startup_records,
+            "phase": phase,
+            "request_id": id,
+            "window_id": window_id,
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native startup evidence unavailable: {error}");
+            log.startup_started = None;
+        }
     }
 
     pub(crate) fn layout(

@@ -1,0 +1,203 @@
+{
+  "method": "fixed 5 trials x 2 counts x 2 execution modes; no early stop on collection outcome",
+  "records": [
+    {
+      "trial": 1,
+      "mounts": 100,
+      "mode": "development",
+      "report": "development-100-1.json",
+      "firstReachable": [
+        246,
+        247,
+        248
+      ],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 1,
+      "mounts": 100,
+      "mode": "aot",
+      "report": "aot-100-1.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 1,
+      "mounts": 1000,
+      "mode": "development",
+      "report": "development-1000-1.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 1,
+      "mounts": 1000,
+      "mode": "aot",
+      "report": "aot-1000-1.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 2,
+      "mounts": 100,
+      "mode": "development",
+      "report": "development-100-2.json",
+      "firstReachable": [
+        249,
+        250,
+        251
+      ],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 2,
+      "mounts": 100,
+      "mode": "aot",
+      "report": "aot-100-2.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 2,
+      "mounts": 1000,
+      "mode": "development",
+      "report": "development-1000-2.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 2,
+      "mounts": 1000,
+      "mode": "aot",
+      "report": "aot-1000-2.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 3,
+      "mounts": 100,
+      "mode": "development",
+      "report": "development-100-3.json",
+      "firstReachable": [
+        144
+      ],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 3,
+      "mounts": 100,
+      "mode": "aot",
+      "report": "aot-100-3.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 3,
+      "mounts": 1000,
+      "mode": "development",
+      "report": "development-1000-3.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 3,
+      "mounts": 1000,
+      "mode": "aot",
+      "report": "aot-1000-3.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 4,
+      "mounts": 100,
+      "mode": "development",
+      "report": "development-100-4.json",
+      "firstReachable": [
+        246,
+        247,
+        248
+      ],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 4,
+      "mounts": 100,
+      "mode": "aot",
+      "report": "aot-100-4.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 4,
+      "mounts": 1000,
+      "mode": "development",
+      "report": "development-1000-4.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 4,
+      "mounts": 1000,
+      "mode": "aot",
+      "report": "aot-1000-4.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 5,
+      "mounts": 100,
+      "mode": "development",
+      "report": "development-100-5.json",
+      "firstReachable": [
+        240,
+        241,
+        283
+      ],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 5,
+      "mounts": 100,
+      "mode": "aot",
+      "report": "aot-100-5.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 5,
+      "mounts": 1000,
+      "mode": "development",
+      "report": "development-1000-5.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    },
+    {
+      "trial": 5,
+      "mounts": 1000,
+      "mode": "aot",
+      "report": "aot-1000-5.json",
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null
+    }
+  ]
+}

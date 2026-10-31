@@ -1,6 +1,6 @@
 {
   "name": "bun-native-workspace",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -22,14 +22,20 @@
     "format:native:check": "cargo fmt --all -- --check",
     "lint:native": "cargo clippy --locked --workspace --all-targets -- -D warnings",
     "foundry:doctor": "bun --bun code-foundry doctor",
-    "example": "bun examples/native-window/main.ts"
+    "example": "bun examples/native-window/main.ts",
+    "solid:build": "bun scripts/solid-build.ts"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
     "@bun-native/core": "workspace:*",
     "@bun-native/protocol": "workspace:*",
+    "@bun-native/renderer": "workspace:*",
     "@bun-native/runtime": "workspace:*",
+    "@bun-native/solid": "workspace:*",
+    "@types/babel__core": "7.20.5",
     "@types/bun": "1.4.4",
     "@types/react": "19.3.0",
+    "babel-preset-solid": "1.9.16",
     "code-foundry": "1.48.8",
     "oxc-parser": "0.156.0",
     "oxlint": "1.90.0",

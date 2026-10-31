@@ -1,0 +1,17 @@
+{
+  "originalModule": {
+    "bytes": 57635,
+    "sha256": "ed955115b1fd18a1f4c3f4776260ac05ef40bbab0655c584849086ff2615715a"
+  },
+  "diagnosticModule": {
+    "bytes": 58677,
+    "sha256": "2cbd104d6fbf2932388230b04bcac75a7de37277c2f953fba3e0ff38cb8864ae"
+  },
+  "sourceReport": "../solid-matched-current-v1/results/comparison.json",
+  "changes": [
+    "record jscDescribe addresses when making each WeakRef, stored only as strings",
+    "after positive final checkpoint, wait one extra timer turn then save a JSC GCDebugging snapshot",
+    "preserve original failed checkpoint assertion, mutation and ownership checks"
+  ],
+  "comparisonTimings": "excluded"
+}

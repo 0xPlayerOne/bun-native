@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "scope": "Historical hosted release-host failure before the Solid scenarios; no failure cause or subsequent passing result inferred.",
+  "failedRun": {
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238544825/attempts/2",
+    "jobId": 124648082336,
+    "artifactId": 13057305522,
+    "commit": "606613a2b9a4a8791c48fa1cee0af7e7683d0342",
+    "hostSha256": "cddfc6df63bed522dabc635c426b4cbf18d1a7e70c72fcb130d3722e64ba089e",
+    "hostBytes": 29206992
+  },
+  "priorPassingRun": {
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238155555",
+    "commit": "4549e75ca5463f136898a2f5fb49d22b58dffa11",
+    "hostSha256": "fa26c6eaa07de733142ee47b80962345f4546ccbf5b566d927a21f7bfa2dca54",
+    "hostBytes": 29206992,
+    "lifecycleLog": "{\"status\":\"passed\",\"nativeWindowCycles\":5,\"nativeExitCode\":0}\n"
+  },
+  "originalFailure": {
+    "lifecycleLog": "200 |     } catch (error) {\n201 |       return Promise.reject(error)\n202 |     }\n203 |     const result = new Promise<HostResponse>((resolve, reject) => {\n204 |       const timer = setTimeout(\n205 |         () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),\n                                  ^\nerror: Native open request 3 timed out\n      at <anonymous> (/home/runner/work/bun-native/bun-native/packages/runtime/src/index.ts:205:29)\n\n::error file=packages/runtime/src/index.ts,line=205,col=29,title=error: Native open request 3 timed out::%0A      at <anonymous> (/home/runner/work/bun-native/bun-native/packages/runtime/src/index.ts:205:29)\n\nBun v1.4.4-canary.1+da867c60b (Linux x64)\n",
+    "windowManagerLog": "Openbox-Message: Unable to find a valid menu file \"/var/lib/openbox/debian-menu.xml\"\n",
+    "toolchain": "606613a2b9a4a8791c48fa1cee0af7e7683d0342\nLinux runnervm48cm3 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n1.4.4-canary.1+da867c60b\nrustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\ncargo 1.98.1 (797e8a9bc 2026-08-05)\ncc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\nbinutils\t2.42-4ubuntu2.10\nheaptrack\t1.5.0+dfsg1-2ubuntu3\nimagemagick\t8:6.9.12.98+dfsg1-5.2build2\nlibheaptrack\t1.5.0+dfsg1-2ubuntu3\nlibvulkan1:amd64\t1.3.275.0-1build1\nlibwayland-client0:amd64\t1.22.0-2.1build1\nlibxkbcommon0:amd64\t1.6.0-1build1\nmesa-vulkan-drivers:amd64\t25.2.8-0ubuntu0.24.04.4\nopenbox\t3.6.1-12build5\nxdotool\t1:3.20160805.1-5build1\nxvfb\t2:21.1.12-1ubuntu1.9\nApplication modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n"
+  },
+  "sourceComparison": {
+    "command": [
+      "git",
+      "diff",
+      "--name-only",
+      "4549e75ca5463f136898a2f5fb49d22b58dffa11",
+      "606613a2b9a4a8791c48fa1cee0af7e7683d0342",
+      "--",
+      "native",
+      "packages/protocol",
+      "packages/runtime",
+      "Cargo.toml",
+      "Cargo.lock",
+      "tests/native/lifecycle.ts",
+      "scripts/quality/native-linux-session.sh",
+      "toolchain.json",
+      ".bun-version",
+      "rust-toolchain.toml"
+    ],
+    "changedPaths": [],
+    "interpretation": "These exact native, runtime, protocol, Cargo and lifecycle sources are unchanged. Root framework configuration differs, and host binary hashes differ. The failure predates the added Solid scenario steps."
+  },
+  "requestOrder": [
+    {
+      "id": 1,
+      "type": "hello"
+    },
+    {
+      "id": 2,
+      "type": "close",
+      "expected": "invalid_handle"
+    },
+    {
+      "id": 3,
+      "type": "open",
+      "windowId": 1,
+      "result": "timeout"
+    }
+  ],
+  "originalFiles": [
+    {
+      "name": "development/lifecycle.log",
+      "sha256": "373bb751022c08f9791d75ab0687a5278b2a78535e0db234375970bc156e0869",
+      "bytes": 720
+    },
+    {
+      "name": "development/window-manager.log",
+      "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+      "bytes": 85
+    },
+    {
+      "name": "toolchain.txt",
+      "sha256": "6c6145a9e7ece2f031ba80c3790de2efb0e25855cc647fe4197ac7f93311c594",
+      "bytes": 1250
+    },
+    {
+      "name": "build.log",
+      "sha256": "c0551d8e391bdc1a3057e8b61d880b4f31016fc1f23122a36165080f71539326",
+      "bytes": 31704
+    }
+  ],
+  "remainingUnknowns": [
+    "GPU initialization caused the timeout",
+    "a framework regression",
+    "a dependency regression",
+    "close/reopen ownership defect"
+  ],
+  "diagnosticStatus": "Opt-in source instrumentation added separately. The original artifact had no native phase records or retained stderr tail, so it cannot identify the blocking boundary."
+}
