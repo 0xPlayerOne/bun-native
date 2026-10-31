@@ -1,0 +1,193 @@
+name: Native Platforms
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-platforms-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  native:
+    name: GPUI release and native paint (${{ matrix.os }})
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            python: python3
+            binary: bun-native-host
+            application: platform-smoke
+          - os: windows-2022
+            python: python
+            binary: bun-native-host.exe
+            application: platform-smoke.exe
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      BUN_NATIVE_HOST_PROFILE: release
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare bounded evidence location
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'bun-native-platform-evidence'
+          New-Item -ItemType Directory $evidence | Out-Null
+          "NATIVE_EVIDENCE=$evidence" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Verify Xcode and precompiled Metal tools
+        if: runner.os == 'macOS'
+        run: |
+          xcodebuild -version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'xcode.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'A complete Xcode toolchain is required' }
+          xcrun --sdk macosx --show-sdk-path | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'macos-sdk.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'The macOS SDK is unavailable' }
+          xcrun --sdk macosx --find metal
+          if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode Metal compiler' }
+          xcrun --sdk macosx --find metallib
+          if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode metallib linker' }
+      - name: Locate the installed Windows SDK shader compiler
+        if: runner.os == 'Windows'
+        run: |
+          $sdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin'
+          $fxc = Get-ChildItem -Directory $sdk |
+            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.Name } -Descending |
+            ForEach-Object { Join-Path $_.FullName 'x64/fxc.exe' } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if (!$fxc) { throw 'GPUI release shaders require the Windows SDK fxc.exe' }
+          "GPUI_FXC_PATH=$fxc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-Item -LiteralPath $fxc | Select-Object FullName,Length,VersionInfo |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'windows-sdk.txt')
+          Get-FileHash -Algorithm SHA256 -LiteralPath $fxc |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'fxc-sha256.txt')
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Check portable paint guards on the actual target Python
+        run: |
+          & '${{ matrix.python }}' -m unittest discover -s tests/quality -p 'test_native_platform_smoke.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Portable evidence guard tests failed' }
+      - name: Record source and actual target tools
+        run: |
+          & {
+            git rev-parse HEAD
+            "ImageOS=$env:ImageOS"
+            "ImageVersion=$env:ImageVersion"
+            [Runtime.InteropServices.RuntimeInformation]::OSDescription
+            bun --revision
+            rustc --version --verbose
+            cargo --version
+            & '${{ matrix.python }}' --version
+            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint traversal; OS visibility/input unverified"}))'
+          } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
+      - name: Build the genuine target-platform GPUI executable
+        id: native-build
+        run: |
+          $timer = [Diagnostics.Stopwatch]::StartNew()
+          cargo build --locked --release -p bun-native-host 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'native-build.log')
+          $code = $LASTEXITCODE
+          $timer.Stop()
+          @{ elapsedMs = $timer.Elapsed.TotalMilliseconds; exitCode = $code; profile = 'release' } |
+            ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-build.json')
+          if ($code -ne 0) { throw "Native build failed: $code" }
+          $hostPath = (Resolve-Path 'target/release/${{ matrix.binary }}').Path
+          "BUN_NATIVE_HOST=$hostPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-Item $hostPath | Select-Object Name,Length |
+            ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-size.json')
+          Get-FileHash -Algorithm SHA256 $hostPath |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-sha256.txt')
+      - name: Lint and test actual platform host
+        run: |
+          cargo fmt --all -- --check
+          if ($LASTEXITCODE -ne 0) { throw 'Rust formatting failed' }
+          cargo clippy --locked --release -p bun-native-host --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Native host Clippy failed' }
+          cargo test --locked --release -p bun-native-host
+          if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
+      - name: Development actual native paint and lifecycle
+        timeout-minutes: 3
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
+            --mode development --host-profile release -- bun tests/native/platform-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Development native paint/lifecycle was not verified' }
+      - name: Prove a wrong native paint expectation fails
+        timeout-minutes: 3
+        run: |
+          $out = Join-Path $env:NATIVE_EVIDENCE 'negative-paint'
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output $out --negative-paint-check `
+            --mode development --host-profile release -- bun tests/native/platform-smoke.ts
+          $code = $LASTEXITCODE
+          $report = Get-Content -Raw (Join-Path $out 'result.json') | ConvertFrom-Json
+          if ($code -eq 0 -or $report.status -ne 'failed' -or `
+              $report.error.type -ne 'NativePaintMismatch' -or `
+              $report.nativeShutdownAndExitVerified -ne $true -or `
+              $report.forcedApplicationTermination -ne $false) {
+            throw 'The deliberately invalid native expectation did not fail and clean up precisely'
+          }
+          $global:LASTEXITCODE = 0
+      - name: Compile and inspect the exact native fixture through Bun AOT
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'aot-package'
+          bun experiments/aot-gpui/build-window.ts --entry platform-smoke `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The genuine AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              !$manifest.application.runtimeFeatures -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present' -or `
+              $manifest.application.runtimeFeatures.jitRemovedRanges.count -le 0) {
+            throw 'Actual AOT compiled-program and JIT-removal evidence is required on this target'
+          }
+      - name: AOT actual native paint and lifecycle
+        timeout-minutes: 3
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'aot') `
+            --mode aot --host-profile release -- `
+            (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
+          if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
+      - name: Retain unsigned native host for reproducibility
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: |
+          $archive = Join-Path $env:NATIVE_EVIDENCE 'unsigned-native-host.tar.gz'
+          tar -czf $archive -C target/release '${{ matrix.binary }}'
+          if ($LASTEXITCODE -ne 0) { throw 'Native host archive failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: native-platform-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/bun-native-platform-evidence/
+            !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke
+            !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke.exe
+          if-no-files-found: error
+          retention-days: 14
