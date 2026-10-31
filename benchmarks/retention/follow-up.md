@@ -1,6 +1,6 @@
 # Follow-up proposal: identify fixed-checkpoint retention in pinned Bun and native AOT
 
-**Proposed Bun Native issue; not an upstream report.** Related work: BN2 #231 and PR #277. No renderer or benchmark assertion is relaxed by filing this follow-up.
+**Tracked in [Bun Native #287](https://github.com/0xPlayerOne/bun-native/issues/287); not an upstream report.** Related work: BN2 #231 and PR #277. No renderer or benchmark assertion is relaxed by filing this follow-up.
 
 ## Concrete problem
 
@@ -17,6 +17,8 @@ Independent controls on the same exact Bun revision reproduce positive checkpoin
 - Deterministic completion-subscription/revocation regression with two deliberately broken negative controls. Existing weak-reference assertions remain intact.
 
 The native snapshot reaches both handles through a disposed view object with no recorded incoming edge. The development control reaches its targets through an async operation/lexical environment whose outer object likewise has no recorded incoming edge. The pinned snapshot implementation omits some conservative and hidden edges, and taking the snapshot performs another collection. These observations cannot classify the ultimate root as either an application leak or a conservative stack word.
+
+The later [root-tracing controls](root-tracing.md) demonstrate an omitted ordinary JavaScript Set ownership edge in development and preserve the resulting inconclusive observer check. The same minimal control exposes its AOT CompactTable path. This narrows the diagnostic limitation without explaining the original native AOT failure; the proposed graph check is not an acceptance gate.
 
 ## Work required
 

@@ -4,6 +4,8 @@
 
 This directory preserves the exact experimental source, every fixed-trial summary, the original failed comparison, the inspected executable identities and the visible retaining graphs. These are Linux x86_64 diagnostics on Bun revision `da867c60bf0bcbf9d6d36994f8ca0efa42075115`, not a successful matched performance comparison or cross-platform qualification. [summary.json](summary.json) contains the full SHA-256 identities and source references.
 
+The later [root-tracing investigation](root-tracing.md) preserves a failed live-listener positive control: development snapshots omit a real ownership edge through Set backing storage. A small same-source development/AOT reproduction confirms that visibility differs for compiled compact storage. This makes absence-of-path unsuitable as a complete disposal oracle and leaves [#287](https://github.com/0xPlayerOne/bun-native/issues/287) unresolved. The original fixed controls below are unchanged.
+
 ## Observations
 
 All matrices were fixed before execution and retained every result. A positive checkpoint means at least one `WeakRef.deref()` returned an object after collection. It does not, on its own, identify an application leak.
