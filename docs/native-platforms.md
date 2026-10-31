@@ -138,17 +138,23 @@ application termination. These establish the controller/fixture on Linux and
 **do not qualify macOS or Windows**. The compact source-bound record is
 [platform-smoke-linux-development-aot.json](../tests/native/evidence/platform-smoke-linux-development-aot.json).
 
-The first hosted matrix results must be recorded before either new platform is
-marked supported. Failures retain their exact compile, startup, renderer or
-missing-paint reason; a missing capability never becomes a pass.
+The [hosted matrix](https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201)
+passed all twelve required jobs. Its [source-bound target record](../tests/native/evidence/platform-smoke-hosted-macos-windows.json)
+verifies both target archives and every recorded source against the actual tested
+merge. On both macOS ARM64 and Windows x64, development and independently
+inspected AOT each completed three window lifecycles, six populated-tree paints,
+joined native shutdown and zero public ownership counters. Each target also
+rejected the deliberate wrong-paint expectation with the required error and
+clean shutdown. This establishes the build, paint and lifecycle scope above;
+OS input and the other explicitly unverified capabilities remain separate.
 
 The initial [macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102)
 passed the release host build, Clippy and native unit tests, then failed the old
 controller's unconditional adapter requirement. Its retained evidence contains
 the actual `gpu: null` record, an empty-root paint and an acknowledged populated
 tree, but no complete populated-tree paint before the abort. That historical
-result remains failed; the telemetry correction requires a fresh hosted run to
-establish the complete native paint/lifecycle result.
+result remains failed. The later successful hosted run described above supplies
+the separate complete native paint/lifecycle evidence.
 
 The [telemetry correction record](../tests/native/evidence/platform-renderer-telemetry.json)
 retains that failed macOS result and its offline validator replay. Fresh Linux
