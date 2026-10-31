@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/0xPlayerOne/bun-native/compare/v0.7.0...v0.8.0) (2026-10-31)
+
+
+### Features
+
+* implement the shared native host and owned TS/JS application API ([#271](https://github.com/0xPlayerOne/bun-native/issues/271)) ([515c0bd](https://github.com/0xPlayerOne/bun-native/commit/515c0bda14ce4f40c0ddd1469a161315d03356a8))
+
 ## [0.7.0](https://github.com/0xPlayerOne/bun-native/compare/v0.6.12...v0.7.0) (2026-10-31)
 
 
