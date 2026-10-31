@@ -1,6 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import type { NativeNode } from '@bun-native/core'
-import type { JSX, NativeRef } from '@bun-native/react'
+import type { JSX, NativeRef, ReactRenderOptions } from '@bun-native/react'
 import { createRef } from 'react'
 
 export function nativeReactContract(): JSX.Element {
@@ -41,6 +41,14 @@ export function nativeReactContract(): JSX.Element {
   )
   // @ts-expect-error A renderer reference does not expose a core native handle.
   const handle: NativeNode | null = reference.current
-  void [browser, css, change, children, target, handle]
+  const options: ReactRenderOptions = {
+    onRecoverableError(error, info) {
+      void error
+      info.componentStack?.trim()
+    },
+  }
+  // @ts-expect-error Recovery reporting is a callable contract.
+  const invalidOptions: ReactRenderOptions = { onRecoverableError: true }
+  void [browser, css, change, children, target, handle, options, invalidOptions]
   return accepted
 }

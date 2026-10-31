@@ -112,6 +112,38 @@ The process-tree safety case is explicitly skipped if the local PID namespace ca
 
 Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
 
+## React adapter, native input and lifecycle
+
+`tests/react/*.test.tsx` runs the pinned React reconciler over the public core and
+a real headless protocol subprocess. It covers state batching, keyed identity,
+native input revisions, callback-subscription stability, refs/effects, bounded
+commit barriers and disposal during a commit. Real React error boundaries must
+retain a usable fallback; a recoverable concurrent retry must retain its root.
+A throwing recovery reporter fails that root while leaving a sibling usable.
+Uncaught effect/ref-cleanup errors must reject disposal after native ownership
+has been released. These tests do not render GPUI.
+
+`tests/native/react-window.py` drives `examples/react-counter/main.tsx` through the
+existing owned-process X11 supervisor. Required native CI runs both counter-click
+and counter-input against development Bun and the inspected AOT `react` entry,
+using its one release host. Full native paint snapshots check keyed reuse and
+input revisions. Application assertions require a callback to remain active
+through rerender, all row/effect cleanup on OS close and zero owned children at
+exit. The [local interaction record](../tests/native/evidence/react-linux-development-aot.json)
+is separately bound to its development-host source and binary hashes.
+
+The [React native workload](../benchmarks/REACT.md) uses the same framework-neutral
+workload as the Solid/direct-core experiments. Each mode performs 1,000 individual
+state updates, 1,000 values coalesced into 100 updates, 1,000 keyed rotations and
+1,000 complete mount/update/dispose cycles. Exact mutation counts, 32,000 row-owner
+cleanups, two fixed WeakRef observations and all six public ownership counts are
+checked. Separate small calibration processes require complete expected native
+paint trees and actual GPU descriptions. The required native lane retains the
+calibration and raw timing/heap reports, while the [committed local evidence](../benchmarks/evidence/react-linux-lifecycle.json)
+uses a development-profile protocol-2 host. Single-run acknowledgement timings
+are diagnostic; they do not establish a release budget, presentation latency or
+a cross-framework speed comparison.
+
 ## Real native startup, crash and scheduling regressions
 
 `scripts/quality/native-diagnostics-linux.py` reuses the input driver's process-tree discovery, PID/start-time identity, nonce/log bounds and child-subreaper cleanup. It requires an explicit application command, native executable, execution mode and host profile. Its 30-second outer deadline bounds each diagnostic; source and artifact fingerprints must remain unchanged throughout the run.

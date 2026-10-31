@@ -1,5 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import { describe, expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { render, type NativeRef } from '@bun-native/react'
 import {
   Component,
@@ -122,6 +123,8 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       expect(caught).toHaveLength(1)
       expect(String(caught[0])).toContain('native-element:div')
       expect(root.diagnostics.nodes).toBe(2)
+      await root.render(<text>Usable after the handled error</text>)
+      expect(root.diagnostics.nodes).toBe(2)
       await root.dispose()
     }))
 
@@ -133,8 +136,8 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
         createElement('box', { dangerouslySetInnerHTML: undefined }),
       ]) {
         const root = render(element, window)
-        await expect(root.ready).rejects.toThrow('Unsupported native feature')
-        await expect(root.closed).rejects.toThrow('Unsupported native feature')
+        await assert.rejects(root.ready, /Unsupported native feature/)
+        await assert.rejects(root.closed, /Unsupported native feature/)
         expect(root.diagnostics.nodes).toBe(0)
         expect(application.diagnostics.nodes).toBe(1)
       }
@@ -156,10 +159,11 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       }
       const root = render(<Label value="Initial" />, window)
       await root.ready
-      await expect(root.render(<Label value="reject transaction" />)).rejects.toThrow(
-        'Requested test rejection'
+      await assert.rejects(
+        root.render(<Label value="reject transaction" />),
+        /Requested test rejection/
       )
-      await expect(root.closed).rejects.toThrow('Requested test rejection')
+      await assert.rejects(root.closed, /Requested test rejection/)
       expect(reference.current).toBeNull()
       expect(disposed).toBe(1)
       expect(application.diagnostics.nodes).toBe(1)
@@ -193,6 +197,6 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       expect(disposed).toBe(1)
       expect(root.diagnostics.nodes).toBe(0)
       expect(application.diagnostics.callbacks).toBe(0)
-      await expect(root.render(<text>Too late</text>)).rejects.toThrow('React root is closed')
+      await assert.rejects(root.render(<text>Too late</text>), /React root is closed/)
     }))
 })

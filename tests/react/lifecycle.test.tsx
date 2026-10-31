@@ -1,5 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import { expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { render, type NativeRef, type ReactRenderRoot } from '@bun-native/react'
 import { Activity, useEffect, useLayoutEffect, useState } from 'react'
 import { withApp } from '../renderers/support.ts'
@@ -29,7 +30,7 @@ test('immediate React disposal rejects readiness and runs effect and callback-re
     }
     const root = render(<App />, window)
     await root.dispose()
-    await expect(root.ready).rejects.toThrow('before initial native acknowledgement')
+    await assert.rejects(root.ready, /before initial native acknowledgement/)
     await root.closed
     await root.dispose()
     expect({ effects, cleanups, attached, detached }).toEqual({
@@ -66,7 +67,7 @@ test('React layout effects may request terminal disposal without reentering a Fi
     root = render(<App />, window)
     await root.ready
     request(true)
-    await expect(root.flush()).rejects.toThrow('React root is closed')
+    await assert.rejects(root.flush(), /React root is closed/)
     await disposal
     await root.closed
     expect(cleaned).toBe(1)
@@ -100,14 +101,15 @@ test('unsupported hidden Activity fails explicitly and disposes its native subtr
       window
     )
     await root.ready
-    await expect(
+    await assert.rejects(
       root.render(
         <Activity mode="hidden">
           <text>Hidden</text>
         </Activity>
-      )
-    ).rejects.toThrow('react-hidden-subtrees')
-    await expect(root.closed).rejects.toThrow('react-hidden-subtrees')
+      ),
+      /react-hidden-subtrees/
+    )
+    await assert.rejects(root.closed, /react-hidden-subtrees/)
     expect(root.diagnostics.nodes).toBe(0)
     expect(app.diagnostics.nodes).toBe(1)
   }))

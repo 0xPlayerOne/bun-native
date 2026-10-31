@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import {
   createElement,
   createRenderRoot,
@@ -18,9 +19,9 @@ test('shared root publishes framework cleanup before initialization can fail', (
       onCleanup(() => cleaned++)
       throw new Error('Component initialization failed')
     })
-    await expect(root.ready).rejects.toThrow('Component initialization failed')
-    await expect(root.closed).rejects.toThrow('Component initialization failed')
-    await expect(root.dispose()).rejects.toThrow('Component initialization failed')
+    await assert.rejects(root.ready, /Component initialization failed/)
+    await assert.rejects(root.closed, /Component initialization failed/)
+    await assert.rejects(root.dispose(), /Component initialization failed/)
     expect(cleaned).toBe(1)
     expect(root.diagnostics.nodes).toBe(0)
     expect(app.diagnostics.nodes).toBe(1)
@@ -28,8 +29,8 @@ test('shared root publishes framework cleanup before initialization can fail', (
       onCleanup(() => cleaned++)
       onCleanup(() => cleaned++)
     })
-    await expect(duplicate.ready).rejects.toThrow('cleanup is already registered')
-    await expect(duplicate.closed).rejects.toThrow('cleanup is already registered')
+    await assert.rejects(duplicate.ready, /cleanup is already registered/)
+    await assert.rejects(duplicate.closed, /cleanup is already registered/)
     expect(cleaned).toBe(2)
   }))
 
@@ -48,10 +49,10 @@ test('shared root failure cleans only its subtree and remains terminal after dis
     })
     await Promise.all([root.ready, sibling.ready])
     fail('Asynchronous framework failure')
-    await expect(root.closed).rejects.toThrow('Asynchronous framework failure')
-    await expect(root.flush()).rejects.toThrow('Asynchronous framework failure')
+    await assert.rejects(root.closed, /Asynchronous framework failure/)
+    await assert.rejects(root.flush(), /Asynchronous framework failure/)
     fail(new Error('Later error must not replace the original cause'))
-    await expect(root.dispose()).rejects.toThrow('Asynchronous framework failure')
+    await assert.rejects(root.dispose(), /Asynchronous framework failure/)
     expect(cleaned).toBe(1)
     expect(root.diagnostics.nodes).toBe(0)
     expect(sibling.diagnostics.nodes).toBe(2)
@@ -67,8 +68,8 @@ test('shared staging rejects cross-root movement while retaining the original ow
     const first = createRenderRoot(window, ({ container }) => insertNode(container, node))
     await first.ready
     const second = createRenderRoot(window, ({ container }) => insertNode(container, node))
-    await expect(second.ready).rejects.toThrow('between render roots')
-    await expect(second.closed).rejects.toThrow('between render roots')
+    await assert.rejects(second.ready, /between render roots/)
+    await assert.rejects(second.closed, /between render roots/)
     expect(first.diagnostics.nodes).toBe(2)
     expect(app.diagnostics.callbacks).toBe(1)
     const detached = createElement('box')
@@ -145,8 +146,8 @@ test('conflicting text sources fail the shared native snapshot and run teardown'
       insertNode(label, createTextNode('Child'))
       insertNode(container, label)
     })
-    await expect(root.ready).rejects.toThrow('Choose text properties or text children')
-    await expect(root.closed).rejects.toThrow('Choose text properties or text children')
+    await assert.rejects(root.ready, /Choose text properties or text children/)
+    await assert.rejects(root.closed, /Choose text properties or text children/)
     expect(cleaned).toBe(true)
     expect(app.diagnostics.nodes).toBe(1)
   }))

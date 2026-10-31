@@ -1,5 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import { expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { render } from '@bun-native/react'
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { withApp } from '../renderers/support.ts'
@@ -90,7 +91,7 @@ test('a throwing React native callback terminates the owning application and cle
     )
     await root.ready
     await window.batch((batch) => batch.set(marker, { kind: 'text', text: 'emit click' }))
-    await expect(app.closed).rejects.toBe(error)
+    await assert.rejects(app.closed, (actual: unknown) => actual === error)
     await root.closed
     expect(root.diagnostics.nodes).toBe(0)
     expect(root.diagnostics.listeners).toBe(0)

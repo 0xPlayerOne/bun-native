@@ -1,6 +1,6 @@
 import { NativeStateError, type NativeWindow } from '@bun-native/core'
 import { createRenderRoot, type RenderRoot } from '@bun-native/renderer'
-import type { ReactNode } from 'react'
+import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
 import { reconciler } from './reconciler.ts'
 
@@ -9,6 +9,11 @@ type FiberRoot = ReturnType<typeof reconciler.createContainer>
 export interface ReactRenderRoot extends RenderRoot {
   /** Submit a new React tree; resolves after its native acknowledgement. */
   render(children: ReactNode): Promise<void>
+}
+
+export interface ReactRenderOptions {
+  /** Synchronously observe errors React recovered from; defaults to console.error. A thrown reporter error terminates this root. */
+  onRecoverableError?: (error: unknown, info: Readonly<ErrorInfo>) => void
 }
 
 class Root implements ReactRenderRoot {
@@ -22,9 +27,19 @@ class Root implements ReactRenderRoot {
   private disposal: Promise<void> | undefined
   private readonly barriers = new Set<{ resolve: () => void; reject: (error: unknown) => void }>()
 
-  constructor(children: ReactNode, window: NativeWindow) {
+  constructor(
+    children: ReactNode,
+    window: NativeWindow,
+    onRecoverableError: NonNullable<ReactRenderOptions['onRecoverableError']>
+  ) {
     this.element = children
     this.native = createRenderRoot(window, ({ container, onCleanup, fail }) => {
+      const terminate = (error: unknown) => {
+        this.failure ??= error instanceof Error ? error : new Error(String(error))
+        // React invokes this inside its commit. Teardown must start after that
+        // stack returns, rather than recursively entering Fiber's commit.
+        queueMicrotask(() => fail(this.failure))
+      }
       this.fiber = reconciler.createContainer(
         container,
         ConcurrentRoot,
@@ -32,16 +47,14 @@ class Root implements ReactRenderRoot {
         false,
         null,
         '',
-        (error) => {
-          this.failure = error instanceof Error ? error : new Error(String(error))
-          // React invokes this inside its commit. Teardown must start after that
-          // stack returns, rather than recursively entering Fiber's commit.
-          queueMicrotask(() => fail(this.failure))
-        },
+        terminate,
         () => {},
-        (error) => {
-          this.failure = error instanceof Error ? error : new Error(String(error))
-          queueMicrotask(() => fail(this.failure))
+        (error, info) => {
+          try {
+            onRecoverableError(error, Object.freeze({ ...info }))
+          } catch (reporterError) {
+            terminate(reporterError)
+          }
         },
         () => {},
         null
@@ -51,6 +64,10 @@ class Root implements ReactRenderRoot {
         reconciler.updateContainerSync(null, this.fiber, null)
         reconciler.flushSyncWork()
         reconciler.flushPassiveEffects()
+        // React reports unmount effect/ref errors through onUncaughtError.
+        // The shared root is already disposing, so forward the synchronous
+        // result here instead of relying on a later terminal-error request.
+        if (this.failure) throw this.failure
       })
       reconciler.updateContainerSync(children, this.fiber, null)
       reconciler.flushSyncWork()
@@ -144,6 +161,17 @@ class Root implements ReactRenderRoot {
 }
 
 /** Mount React into one independently disposable shared native subtree. */
-export function render(children: ReactNode, window: NativeWindow): ReactRenderRoot {
-  return new Root(children, window)
+export function render(
+  children: ReactNode,
+  window: NativeWindow,
+  options: ReactRenderOptions = {}
+): ReactRenderRoot {
+  if (!options || typeof options !== 'object' || Array.isArray(options))
+    throw new TypeError('React render options must be an object')
+  for (const name of Object.keys(options))
+    if (name !== 'onRecoverableError') throw new TypeError('Unknown React render option: ' + name)
+  const reporter = options.onRecoverableError
+  if (reporter !== undefined && typeof reporter !== 'function')
+    throw new TypeError('onRecoverableError must be a function')
+  return new Root(children, window, reporter ?? console.error)
 }

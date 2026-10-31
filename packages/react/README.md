@@ -100,6 +100,15 @@ clean its owned resources. A native rejection occurs outside React's synchronous
 render phase, so a React error boundary does not handle that promise for the
 application. Observe `ready`, `render`/`flush` and `closed` as appropriate.
 
+React may recover a failed concurrent attempt by retrying synchronously. That
+recovered error does not invalidate the root. The optional third argument to
+`render` accepts `onRecoverableError(error, info)`, a synchronous diagnostic
+callback receiving a frozen React error-info object. Its default is
+`console.error`. If the reporter itself throws, that error terminates only this
+root. Uncaught effect or ref-cleanup errors reject `dispose()` and `closed`
+after the shared cleanup path releases owned native resources. Handled React
+error boundaries retain their usable fallback and root.
+
 Hydration, portals, host form actions, hidden Suspense/Activity subtrees, view
 transitions, fragment refs, DOM selectors and presentation-timing callbacks are not
 implemented. Unsupported native tags and properties fail explicitly; unknown
@@ -151,6 +160,10 @@ The [local evidence record](../../tests/native/evidence/react-linux-development-
 records four passing scenarios on Linux X11 with a development-profile protocol-2
 host and Mesa llvmpipe software rendering. Screenshots show actual rendered pixels;
 the full-tree paint records are not display-presentation timestamps. These runs
-do not qualify macOS/Windows GUI, physical input, hardware GPU, HiDPI/IME, release
-performance, or the still-pending 1,000-cycle and matched direct-core/Solid/React
-performance checkpoint. Issue #236 remains open for those acceptance items.
+do not qualify macOS/Windows GUI, physical input, hardware GPU, HiDPI/IME or release
+performance. The later [native lifecycle diagnostic](../../benchmarks/REACT.md)
+passed 1,000 complete mount/update/dispose cycles in development and inspected AOT,
+with 32,000 row owners cleaned and all 3,000 sampled WeakRef targets absent at both
+fixed checkpoints. Its separate evidence record identifies that newer source
+snapshot. A matched, repeated release-host direct-core/Solid/React comparison is
+still pending; issue #236 remains open for the remaining acceptance work.

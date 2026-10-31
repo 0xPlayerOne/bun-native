@@ -40,6 +40,7 @@ const entries = {
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
   react: 'examples/react-counter/main.tsx',
+  'react-workload': 'benchmarks/solid/react.tsx',
 } as const
 function isEntry(value: string | undefined): value is keyof typeof entries {
   return typeof value === 'string' && Object.hasOwn(entries, value)
@@ -67,7 +68,8 @@ if (
     entry === 'event-throughput' ||
     entry === 'fault' ||
     entry === 'scheduling' ||
-    entry === 'react') &&
+    entry === 'react' ||
+    entry === 'react-workload') &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')
@@ -135,7 +137,7 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
-  if (entry === 'react') {
+  if (entry === 'react' || entry === 'react-workload') {
     sources.add('packages/react/package.json')
     sources.add('packages/renderer/package.json')
     for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
@@ -143,6 +145,7 @@ async function sourceHashes() {
     }))
       sources.add(path)
   }
+  if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
   }))

@@ -1,5 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import { describe, expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { NativeStateError, type InputEvent, type InputState } from '@bun-native/core'
 import { inputState, render, type NativeRef } from '@bun-native/react'
 import { createElement, createRef, useState } from 'react'
@@ -56,8 +57,8 @@ describe('React native input intents (headless subprocess)', () => {
       )
       void replacement.catch(() => {})
       await edit
-      await expect(replacement).rejects.toBeInstanceOf(NativeStateError)
-      await expect(root.closed).rejects.toThrow('current observed revision')
+      await assert.rejects(replacement, NativeStateError)
+      await assert.rejects(root.closed, /current observed revision/)
       expect(app.diagnostics.nodes).toBe(2)
       expect(app.diagnostics.callbacks).toBe(0)
     }))
@@ -140,14 +141,15 @@ describe('React native input intents (headless subprocess)', () => {
         { value: 'x', revision: 9 },
       ]) {
         const root = render(createElement('input', { value }), window)
-        await expect(root.ready).rejects.toBeInstanceOf(Error)
-        await expect(root.closed).rejects.toBeInstanceOf(Error)
+        await assert.rejects(root.ready, Error)
+        await assert.rejects(root.closed, Error)
         expect(app.diagnostics.nodes).toBe(1)
       }
       const root = render(<input value="Initial" />, window)
       await root.ready
-      await expect(root.render(<input value="Unversioned replacement" />)).rejects.toThrow(
-        'input-value-requires-revision'
+      await assert.rejects(
+        root.render(<input value="Unversioned replacement" />),
+        /input-value-requires-revision/
       )
       expect(app.diagnostics.nodes).toBe(1)
     }))
@@ -173,7 +175,7 @@ describe('React native input intents (headless subprocess)', () => {
       await window.batch((batch) =>
         batch.set(marker, { kind: 'text', text: 'input before acknowledgement' })
       )
-      await expect(second.closed).rejects.toThrow('belongs to another node')
+      await assert.rejects(second.closed, /belongs to another node/)
       expect(second.diagnostics.nodes).toBe(0)
       expect(first.diagnostics.nodes).toBe(2)
       expect(app.diagnostics.callbacks).toBe(1)
