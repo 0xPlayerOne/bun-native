@@ -160,6 +160,48 @@ for comparison with the original observation. These diagnostics do not relax
 ownership. Corrected macOS event delivery remains subject to the hosted
 development and AOT checks; SDK conversion and Linux runs cannot establish it.
 
+The [next hosted attempt](https://github.com/0xPlayerOne/bun-native/actions/runs/41242660014/job/124659569247)
+passed the corrected SDK controls and native paint-only fixture, then still
+failed actual pointer activation. Its retained observation shows posting access
+was true, the exact owned window and process identities matched, and three
+PID-targeted events were posted. The application recorded its initial focus
+but no pointer or click event before the unchanged controller-command deadline.
+Shutdown joined with all six public ownership counters zero. AOT input did not
+run after this failure. The [source-verified failure record](../tests/native/evidence/platform-macos-delivery-failure.json)
+retains all observations and trace records; it rehashes the archived release
+host and checks all 61 source fingerprints against the actual tested merge.
+The delivery failure remains unattributed. The SDK object conversion is not
+evidence that AppKit received or dispatched those events.
+
+The next diagnostic enables `BUN_NATIVE_POINTER_TRACE=1` only for the hosted
+macOS input commands. With the existing nonce-bound evidence log, a non-hitbox
+canvas registers window-global GPUI capture observers before the native body
+is painted. They record readiness once per live window and raw move/down/up
+positions, button, viewport and active state, including positions outside the
+viewport. They never stop propagation, change focus or replace input. The
+process-wide limit is 64 records including readiness; the last record marks
+the exhausted limit, and closing a window does not reset that budget.
+
+This distinguishes GPUI delivery from the later target/viewport filters. It
+cannot observe events dropped before GPUI dispatch, and absent records only
+become meaningful after a readiness record and before the limit is reached.
+The flag is off for paint-only, baseline and allocation-profile runs. No
+diagnostic result qualifies the required native button/text observations or
+changes their original deadlines.
+
+The [Linux diagnostic controls](../tests/native/evidence/platform-pointer-diagnostics-linux.json)
+passed ordinary Bun with tracing on and off, plus inspected AOT with tracing
+on. Each case completed three windows, three clicks, all 96 ordered edits and
+nine complete paints with joined shutdown and zero public resources. The
+enabled cases emitted 12 trace records each; the disabled case emitted none.
+An initial diagnostic-only layout-index defect is preserved separately: the
+new first canvas was incorrectly recorded as the model root's bounds. Explicit
+child indexing fixed that evidence mapping, and the corrected controls require
+the full root and target geometry. The actual pointer coordinates retain X11's
+fractional representation; they are checked against the native target bounds,
+not assumed to equal integer injection coordinates exactly. These use a
+development-profile Linux host and do not qualify macOS delivery.
+
 ## Pinned native requirements
 
 Requirements come from GPUI revision
@@ -280,17 +322,23 @@ binds both runs to their 61 current compiler/controller source fingerprints and
 the newly compiled application. It retains the dev-host and software-GPU scope;
 these correctness runs are not comparative timing measurements.
 
-The first hosted matrix results must be recorded before either new platform is
-marked supported. Failures retain their exact compile, startup, renderer or
-missing-paint reason; a missing capability never becomes a pass.
+The [hosted paint matrix](https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201)
+passed all twelve required jobs. Its [source-bound target record](../tests/native/evidence/platform-smoke-hosted-macos-windows.json)
+verifies both target archives and every recorded source against the actual tested
+merge. On both macOS ARM64 and Windows x64, development and independently
+inspected AOT each completed three window lifecycles, six populated-tree paints,
+joined native shutdown and zero public ownership counters. Each target also
+rejected the deliberate wrong-paint expectation with the required error and
+clean shutdown. This establishes the build, paint and lifecycle scope above;
+OS input and the other explicitly unverified capabilities remain separate.
 
 The initial [macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102)
 passed the release host build, Clippy and native unit tests, then failed the old
 controller's unconditional adapter requirement. Its retained evidence contains
 the actual `gpu: null` record, an empty-root paint and an acknowledged populated
 tree, but no complete populated-tree paint before the abort. That historical
-result remains failed; the telemetry correction requires a fresh hosted run to
-establish the complete native paint/lifecycle result.
+result remains failed. The later successful hosted run described above supplies
+the separate complete native paint/lifecycle evidence.
 
 The [telemetry correction record](../tests/native/evidence/platform-renderer-telemetry.json)
 retains that failed macOS result and its offline validator replay. Fresh Linux

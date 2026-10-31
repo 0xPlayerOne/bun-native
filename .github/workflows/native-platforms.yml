@@ -172,6 +172,8 @@ jobs:
             Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'os-helper-sha256.txt')
       - name: Development owned native window and OS input
         timeout-minutes: 3
+        env:
+          BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
@@ -217,6 +219,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
       - name: AOT owned native window and OS input
         timeout-minutes: 3
+        env:
+          BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `

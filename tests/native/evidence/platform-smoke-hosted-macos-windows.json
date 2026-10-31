@@ -1,0 +1,514 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual hosted macOS and Windows release GPUI paint/lifecycle; separately inspected Bun AOT. No OS input, independently visible-window, presentation, full process-tree or installation claim.",
+  "run": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201",
+  "pullRequestHead": "5418a456a51ed5dfa499ba4e1cd1b79f6893860a",
+  "testedMergeCommit": "f2a0bef48d427cf5bfe6e52f4a7043fe34cc7e64",
+  "platforms": {
+    "macos": {
+      "artifactId": 13057110593,
+      "archive": {
+        "bytes": 3294976,
+        "sha256": "89ae0756e7c5f09b5bd85e6fd98c1958b54c4bb6690a806f6b0ddf6f0f976498"
+      },
+      "nativeBuild": {
+        "profile": "release",
+        "elapsedMs": 350595.4953,
+        "exitCode": 0
+      },
+      "host": {
+        "bytes": 8181840,
+        "sha256": "c209122d37fff8f976f37b8e9a9d8d6ff37588522ef21eef14f72fbc9f006a5e",
+        "profile": "release"
+      },
+      "application": {
+        "bytes": 55027682,
+        "sha256": "8e289d54751a9be2666e1a9d2f900946d8dfd58a0d13144c3361cd3e9c7a89d7",
+        "format": "macho",
+        "hasCompiledProgram": true,
+        "jit": "unused",
+        "jitRemovedRanges": {
+          "count": 187,
+          "virtualBytes": 14073758
+        },
+        "interpreter": "present"
+      },
+      "modes": {
+        "development": {
+          "status": "passed",
+          "completePaints": 6,
+          "completedCycles": 3,
+          "applicationExitCode": 0,
+          "forcedApplicationTermination": false,
+          "nativeShutdownAndExitVerified": true,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "system": {
+            "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+            "architecture": "arm64"
+          },
+          "rendererTelemetry": [
+            {
+              "window_id": 1,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            },
+            {
+              "window_id": 2,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            },
+            {
+              "window_id": 3,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            }
+          ],
+          "gpuReports": [null, null, null]
+        },
+        "aot": {
+          "status": "passed",
+          "completePaints": 6,
+          "completedCycles": 3,
+          "applicationExitCode": 0,
+          "forcedApplicationTermination": false,
+          "nativeShutdownAndExitVerified": true,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "system": {
+            "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+            "architecture": "arm64"
+          },
+          "rendererTelemetry": [
+            {
+              "window_id": 1,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            },
+            {
+              "window_id": 2,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            },
+            {
+              "window_id": 3,
+              "status": "unavailable",
+              "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+              "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+              "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+            }
+          ],
+          "gpuReports": [null, null, null]
+        }
+      },
+      "negativeControl": {
+        "status": "expected-failure",
+        "error": {
+          "type": "NativePaintMismatch",
+          "message": "Timed out waiting for complete native paint"
+        },
+        "applicationExitCode": 1,
+        "nativeShutdownAndExitVerified": true,
+        "forcedApplicationTermination": false,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "sourceFiles": {
+        ".bun-version": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "Cargo.lock": "f2a40ecaf8b62fd7154f9d9460f6ef64f2ef615ebc657aa9f803e68fe844abdb",
+        "Cargo.toml": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0",
+        "bun.lock": "3f6c1228f5015c7ad93ee03a6b357a19cfb1ecd702559c0e4f5acf75b4b38394",
+        "bunfig.toml": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+        "native/gpui-host/Cargo.toml": "38f2854c445a3d31ab668b91d8fd73a510d3ff2d515100f128b1e90e56a13a8c",
+        "native/gpui-host/src/channel.rs": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+        "native/gpui-host/src/evidence/layout.rs": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+        "native/gpui-host/src/evidence.rs": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+        "native/gpui-host/src/input/binding.rs": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+        "native/gpui-host/src/input/paint.rs": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+        "native/gpui-host/src/input.rs": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+        "native/gpui-host/src/main.rs": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+        "native/gpui-host/src/session.rs": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+        "native/gpui-host/src/state.rs": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+        "native/gpui-host/src/style.rs": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+        "native/gpui-host/src/view/interactions.rs": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+        "native/gpui-host/src/view.rs": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+        "native/protocol/Cargo.toml": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+        "native/protocol/src/event_tests.rs": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+        "native/protocol/src/events.rs": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+        "native/protocol/src/framing.rs": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+        "native/protocol/src/lib.rs": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+        "native/protocol/src/security_tests.rs": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+        "native/protocol/src/tests.rs": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+        "native/protocol/src/tree/tests.rs": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+        "native/protocol/src/tree.rs": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+        "native/protocol/src/wire.rs": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+        "package.json": "79414fd97d10f295fd2c2e0fc2c11f0d0b6c402e4dfd69d10b835d653facc546",
+        "packages/core/package.json": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+        "packages/core/src/application.ts": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+        "packages/core/src/events.ts": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+        "packages/core/src/index.ts": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+        "packages/core/src/tree.ts": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+        "packages/core/src/types.ts": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+        "packages/protocol/package.json": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+        "packages/protocol/src/elements.ts": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+        "packages/protocol/src/framing.ts": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+        "packages/protocol/src/index.ts": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+        "packages/protocol/src/messages.ts": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+        "packages/protocol/src/values.ts": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+        "packages/runtime/package.json": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+        "packages/runtime/src/index.ts": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+        "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+        "scripts/quality/native-diagnostics-linux.py": "3c9446b00c3501c17c1b00255e49c364ffc774644e2d8c76da9225d7bf117f1a",
+        "scripts/quality/native-input-linux.py": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f",
+        "scripts/quality/native-interactions-scenario.py": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+        "scripts/quality/native-layout-scenario.py": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+        "tests/native/fault.ts": "f4494b7c6732539d692ec8cc1e0bfaab7b62529d72d9ef6d1345fb06701acc50",
+        "tests/native/interactions.ts": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+        "tests/native/layout.ts": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+        "tests/native/scheduling.ts": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+        "toolchain.json": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+        "tsconfig.json": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+        "tests/native/platform-smoke.ts": "9be1a96b4a18d3fbc5c7329b8733032368b2faf01d7ac92bb67481d8d7a771b4",
+        "examples/native-window/content.ts": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+        "scripts/quality/native-platform-smoke.py": "710d2197f2a6198a52911f10c38e481b1417f4eaba74849640f319d04259d851",
+        "examples/native-window/main.ts": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+      },
+      "currentIntegrationDifferences": {
+        "paths": ["package.json"],
+        "reason": "The current main integration updates only the recorded workspace package version among these sources. Native sources/dependencies, runtime, fixture, controller and AOT builder remain identical to the actual tested merge."
+      },
+      "rawEvidence": {
+        "aot/application-result.json": {
+          "bytes": 330,
+          "sha256": "9a4dca465cae97096423747e0b714cf6504dfa866df9d75859cfb3dfbef70b2c"
+        },
+        "aot/result.json": {
+          "bytes": 24418,
+          "sha256": "599ac5149fe151f5fafcd945da60f219d3ea0e59b92365da04246a78bd701a96"
+        },
+        "aot-package/manifest.json": {
+          "bytes": 13652,
+          "sha256": "4ef474b12bd07ddbaee5aed1021ef4c4f3dbe8ee90028197e27dd5e8714ea89f"
+        },
+        "development/application-result.json": {
+          "bytes": 337,
+          "sha256": "2d81d60a59de7be64d2ca206bf18d0b4e4b86fdcf13ac74c7d0ce6c2fe0f7b7d"
+        },
+        "development/result.json": {
+          "bytes": 24393,
+          "sha256": "25fd73e5067174ba27ca3caa8a358ad7ea57f246cd1b989d6f2b3dc926637761"
+        },
+        "native-build.json": {
+          "bytes": 72,
+          "sha256": "a239c0a55f71899abcd5b59ec54da907cd75af4335c91670753566a359c66b04"
+        },
+        "native-size.json": {
+          "bytes": 53,
+          "sha256": "aabe21705f80e34249fba7da2530999c63fb3d308f24f922e7e6e425b0cc2921"
+        },
+        "negative-paint/application-result.json": {
+          "bytes": 418,
+          "sha256": "6c42f61d9152abc99a433bd435f64a31616d22474f16f3cc70e628b39e0ee5d1"
+        },
+        "negative-paint/result.json": {
+          "bytes": 10929,
+          "sha256": "d30429886b3d46ab4ea60085170708c6d4ea4a979966efdfaf360a916f15e0f0"
+        }
+      }
+    },
+    "windows": {
+      "artifactId": 13055884951,
+      "archive": {
+        "bytes": 3939802,
+        "sha256": "f295aef77cf8c8030ab829d4f227e937d7bba5c0a3f51f781e6f5c9c8d0d0e53"
+      },
+      "nativeBuild": {
+        "elapsedMs": 489412.5555,
+        "exitCode": 0,
+        "profile": "release"
+      },
+      "host": {
+        "bytes": 9939968,
+        "sha256": "0df25f9e804bf0189214b0c6cc4aa6c27a08307c6b8ec2f9b3a1ee7447959f36",
+        "profile": "release"
+      },
+      "application": {
+        "bytes": 84293632,
+        "sha256": "5e5bd4f4ab6d849e83f0c16bf09c0cd6ea156653aabe42ac499b25e3d63f263c",
+        "format": "pe",
+        "hasCompiledProgram": true,
+        "jit": "unused",
+        "jitRemovedRanges": {
+          "count": 170,
+          "virtualBytes": 14193188
+        },
+        "interpreter": "present"
+      },
+      "modes": {
+        "development": {
+          "status": "passed",
+          "completePaints": 6,
+          "completedCycles": 3,
+          "applicationExitCode": 0,
+          "forcedApplicationTermination": false,
+          "nativeShutdownAndExitVerified": true,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "system": {
+            "platform": "Windows-2022Server-10.0.20348-SP0",
+            "architecture": "AMD64"
+          },
+          "rendererTelemetry": [
+            {
+              "window_id": 1,
+              "status": "reported"
+            },
+            {
+              "window_id": 2,
+              "status": "reported"
+            },
+            {
+              "window_id": 3,
+              "status": "reported"
+            }
+          ],
+          "gpuReports": [
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            },
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            },
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            }
+          ]
+        },
+        "aot": {
+          "status": "passed",
+          "completePaints": 6,
+          "completedCycles": 3,
+          "applicationExitCode": 0,
+          "forcedApplicationTermination": false,
+          "nativeShutdownAndExitVerified": true,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "system": {
+            "platform": "Windows-2022Server-10.0.20348-SP0",
+            "architecture": "AMD64"
+          },
+          "rendererTelemetry": [
+            {
+              "window_id": 1,
+              "status": "reported"
+            },
+            {
+              "window_id": 2,
+              "status": "reported"
+            },
+            {
+              "window_id": 3,
+              "status": "reported"
+            }
+          ],
+          "gpuReports": [
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            },
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            },
+            {
+              "is_software_emulated": false,
+              "device_name": "Microsoft Basic Render Driver",
+              "driver_name": "Unknown Vendor (ID: 0x1414)",
+              "driver_info": "10.0.20348.5756"
+            }
+          ]
+        }
+      },
+      "negativeControl": {
+        "status": "expected-failure",
+        "error": {
+          "type": "NativePaintMismatch",
+          "message": "Timed out waiting for complete native paint"
+        },
+        "applicationExitCode": 1,
+        "nativeShutdownAndExitVerified": true,
+        "forcedApplicationTermination": false,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "sourceFiles": {
+        ".bun-version": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "bun.lock": "3f6c1228f5015c7ad93ee03a6b357a19cfb1ecd702559c0e4f5acf75b4b38394",
+        "bunfig.toml": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+        "Cargo.lock": "f2a40ecaf8b62fd7154f9d9460f6ef64f2ef615ebc657aa9f803e68fe844abdb",
+        "Cargo.toml": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0",
+        "native/gpui-host/Cargo.toml": "38f2854c445a3d31ab668b91d8fd73a510d3ff2d515100f128b1e90e56a13a8c",
+        "native/gpui-host/src/channel.rs": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+        "native/gpui-host/src/evidence/layout.rs": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+        "native/gpui-host/src/evidence.rs": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+        "native/gpui-host/src/input/binding.rs": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+        "native/gpui-host/src/input/paint.rs": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+        "native/gpui-host/src/input.rs": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+        "native/gpui-host/src/main.rs": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+        "native/gpui-host/src/session.rs": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+        "native/gpui-host/src/state.rs": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+        "native/gpui-host/src/style.rs": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+        "native/gpui-host/src/view/interactions.rs": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+        "native/gpui-host/src/view.rs": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+        "native/protocol/Cargo.toml": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+        "native/protocol/src/event_tests.rs": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+        "native/protocol/src/events.rs": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+        "native/protocol/src/framing.rs": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+        "native/protocol/src/lib.rs": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+        "native/protocol/src/security_tests.rs": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+        "native/protocol/src/tests.rs": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+        "native/protocol/src/tree/tests.rs": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+        "native/protocol/src/tree.rs": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+        "native/protocol/src/wire.rs": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+        "package.json": "79414fd97d10f295fd2c2e0fc2c11f0d0b6c402e4dfd69d10b835d653facc546",
+        "packages/core/package.json": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+        "packages/core/src/application.ts": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+        "packages/core/src/events.ts": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+        "packages/core/src/index.ts": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+        "packages/core/src/tree.ts": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+        "packages/core/src/types.ts": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+        "packages/protocol/package.json": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+        "packages/protocol/src/elements.ts": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+        "packages/protocol/src/framing.ts": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+        "packages/protocol/src/index.ts": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+        "packages/protocol/src/messages.ts": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+        "packages/protocol/src/values.ts": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+        "packages/runtime/package.json": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+        "packages/runtime/src/index.ts": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+        "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+        "scripts/quality/native-diagnostics-linux.py": "3c9446b00c3501c17c1b00255e49c364ffc774644e2d8c76da9225d7bf117f1a",
+        "scripts/quality/native-input-linux.py": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f",
+        "scripts/quality/native-interactions-scenario.py": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+        "scripts/quality/native-layout-scenario.py": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+        "tests/native/fault.ts": "f4494b7c6732539d692ec8cc1e0bfaab7b62529d72d9ef6d1345fb06701acc50",
+        "tests/native/interactions.ts": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+        "tests/native/layout.ts": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+        "tests/native/scheduling.ts": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+        "toolchain.json": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+        "tsconfig.json": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+        "tests/native/platform-smoke.ts": "9be1a96b4a18d3fbc5c7329b8733032368b2faf01d7ac92bb67481d8d7a771b4",
+        "examples/native-window/content.ts": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+        "scripts/quality/native-platform-smoke.py": "710d2197f2a6198a52911f10c38e481b1417f4eaba74849640f319d04259d851",
+        "examples/native-window/main.ts": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+      },
+      "currentIntegrationDifferences": {
+        "paths": ["package.json"],
+        "reason": "The current main integration updates only the recorded workspace package version among these sources. Native sources/dependencies, runtime, fixture, controller and AOT builder remain identical to the actual tested merge."
+      },
+      "rawEvidence": {
+        "aot/application-result.json": {
+          "bytes": 337,
+          "sha256": "18440756c148d7b04f789752b8137150f83c31577433653544092f1174d570d9"
+        },
+        "aot/result.json": {
+          "bytes": 24944,
+          "sha256": "2fbc8ff422d2edf831038dc1e06dcb3a3797eae4737417cc4daba605db19a5f5"
+        },
+        "aot-package/manifest.json": {
+          "bytes": 13714,
+          "sha256": "99ab8fe8e5e2e8269b54ca86fd08c0b0f225b82eb97ad228e5327021dd0786ad"
+        },
+        "development/application-result.json": {
+          "bytes": 327,
+          "sha256": "ff47c6633bf2d00267b1b8e8cd25a5587427198672de2c1340126250242093cb"
+        },
+        "development/result.json": {
+          "bytes": 24909,
+          "sha256": "97f2babeacdedaff4993cef55df70edad8f1525611c400a8ad463effedac8697"
+        },
+        "native-build.json": {
+          "bytes": 77,
+          "sha256": "ec2184208e65b019f5616fbea9e998155ae716a00cb546ad2f0aac272c74b20f"
+        },
+        "native-size.json": {
+          "bytes": 61,
+          "sha256": "2d84beb7003df6c516f8a3613a53a523d2a8c656b2861a39332b193476f23b6c"
+        },
+        "negative-paint/application-result.json": {
+          "bytes": 425,
+          "sha256": "bc95e3c2b04ab02cf027d84a2eccf7c2ea97e8682d7468cbd4eb8c39bfacf60d"
+        },
+        "negative-paint/result.json": {
+          "bytes": 11227,
+          "sha256": "2427f3ebf31125c3db5a1f98affd8aa240c2e375b6c01637fa97653800eb5cf7"
+        }
+      }
+    }
+  },
+  "limits": [
+    "AOT metadata is independently verified from the matching build manifest; the controller mode label alone is not AOT proof.",
+    "macOS gpu_specs is unavailable at the exact pinned GPUI revision; actual Metal adapter identity remains issue292.",
+    "Windows raw software-emulation flag is retained without inferring physical hardware classification.",
+    "Elapsed build durations are uncontrolled observations, not comparable performance measurements.",
+    "All earlier failed results remain in their existing records."
+  ]
+}

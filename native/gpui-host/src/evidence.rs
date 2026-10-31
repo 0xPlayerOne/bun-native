@@ -2,6 +2,7 @@
 //! presentation; screenshots are separate. Every JSONL record is bounded.
 
 mod layout;
+mod pointer;
 use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, Tree, WindowId};
 pub(crate) use layout::LayoutFrame;
 use layout::LayoutSnapshot;
@@ -21,6 +22,7 @@ struct Log {
     nonce: String,
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
+    pointer: Option<pointer::PointerTrace>,
 }
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
@@ -51,6 +53,7 @@ impl Evidence {
                 nonce,
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
+                pointer: pointer::PointerTrace::from_environment(),
             })))),
             Err(error) => {
                 eprintln!("Bun Native native evidence log unavailable: {error}");
@@ -114,6 +117,9 @@ impl Evidence {
             let mut log = log.borrow_mut();
             log.last_state.remove(&window_id);
             log.last_layout.remove(&window_id);
+            if let Some(trace) = &mut log.pointer {
+                trace.closed(window_id);
+            }
         }
     }
 
