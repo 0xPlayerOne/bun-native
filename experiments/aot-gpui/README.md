@@ -99,4 +99,6 @@ behaviors or any remaining adapter/platform acceptance.
 
 `--entry platform-smoke` runs the portable three-window lifecycle and paint fixture.
 The [native platform qualification](../../docs/native-platforms.md) records its
-separate build, native paint, AOT and unverified OS-input/visibility scope.
+separate build, native paint, AOT and opt-in `--os-input` controller scope. The
+same compiled fixture serves both modes; target OS input is qualified only by
+the separate owned-window/event/paint run.

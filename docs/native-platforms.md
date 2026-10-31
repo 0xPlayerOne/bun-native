@@ -6,7 +6,7 @@ Both issues remain open. Linux's existing owned-window/input suite stays require
 this lane adds genuine target-host compilation and a portable native lifecycle
 fixture for macOS and Windows. It does not infer GUI interaction from compilation.
 
-## First increment and its claims
+## Paint/lifecycle mode and its claims
 
 The reusable [`Native Platforms` workflow](../.github/workflows/native-platforms.yml)
 uses `macos-15` and `windows-2022`, a 60-minute per-target budget and independent
@@ -48,6 +48,60 @@ nonzero with `NativePaintMismatch`, joined native shutdown and no forced
 application termination. An arbitrary startup failure cannot satisfy this
 negative check. The ordinary development and AOT runs must pass their correct
 complete tree expectations.
+
+## Owned native OS input extension
+
+`native-platform-smoke.py --os-input` adds a separate phase to the same public
+fixture and bounded controller. Every cycle independently identifies the
+launched application's native child and a visible window. It uses the host's
+actual paint geometry to select the button, delivers a pointer click, sends Tab
+to focus the editor, then types a fresh 32-character hexadecimal run nonce. The
+controller requires the native pointer-down/up and click route, Tab down/up,
+native input focus, every input prefix with its independent revision, and the
+complete final native paint. Injection API success alone never qualifies input.
+The subsequent programmatic replacement uses the observed revision and must
+advance it exactly once. All three windows still close and release their public
+resources before final joined native shutdown.
+
+- **Windows:** SDK-compatible `ctypes` declarations call Toolhelp32,
+  `GetProcessTimes`, `QueryFullProcessImageNameW`, `EnumWindows` and User32. Query
+  handles retain each process identity. A matching child must have been created
+  at or after this launched application, excluding older orphans that retain a
+  recycled numeric parent PID. Every input rechecks the expected native
+  executable/window and foreground state. Visible windows must be uncloaked and
+  unminimized, on a visible window station and the controller's current input
+  desktop. The controller queries these objects without switching desktops;
+  borrowed handles remain borrowed and the input-desktop query handle is closed.
+  Pointer coordinates use the actual client rectangle with a
+  thread-local, temporarily selected per-monitor DPI context. The controller
+  refuses held external modifiers and checks `SendInput` counts. A partial
+  insertion attempts to release only the down event it just inserted, then
+  fails. Missing interactive desktop/foreground/UIPI capability is reported as
+  unsupported, without attempting to change security settings.
+- **macOS:** A small Objective-C helper is compiled against the actual Xcode SDK.
+  It checks `libproc` creation identity, same-user ownership, direct parentage,
+  executable path and Quartz onscreen window ownership. Window titles are
+  verified when Quartz exposes them; absent title access does not replace the
+  required PID/image/creation identity. Input requires read-only
+  `CGPreflightPostEventAccess`, owned foreground activation and no external held
+  modifiers. Events use `CGEventPostToPid` for the verified native child. The
+  click location is bounded within the Quartz frame using the actual GPUI
+  viewport; the content origin is inferred, so actual native target delivery is
+  required. The helper never requests permissions or changes privacy settings.
+- **Linux:** The same fixture can be checked in the existing isolated Xvfb/DBus
+  session. Its small adapter reuses the established process-identity and XTest
+  helpers. This exercises the common assertions locally without claiming that
+  Linux behavior qualifies another OS.
+
+OS controllers retain no application event handlers or renderer implementation.
+Each command and observation has a bounded deadline, all logs retain the common
+nonce and size checks, and macOS helper source/executable hashes join the run's
+provenance. The workflow runs development and AOT input as separate commands
+after paint-only qualification. An unsupported input session exits nonzero and
+retains its exact reason; it is never counted as a pass. Programmatic close is
+still not an OS close-button test. Screenshots, presentation, hardware input,
+accessibility/IME and complete process-tree enumeration remain unverified by
+this extension.
 
 ## Pinned native requirements
 
@@ -94,6 +148,20 @@ retain the matching build manifest. CI additionally requires actual
 compiled-program metadata and nonempty removed JIT ranges on that target format.
 An interpreter may remain present.
 
+Add `--os-input` to the controller command to request independent native window,
+pointer and keyboard qualification. On macOS, first compile the checked-in SDK
+helper and supply its explicit absolute path:
+
+```sh
+xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics \
+  scripts/quality/native-platform-macos.m -o /absolute/owned/native-platform-macos
+export BUN_NATIVE_PLATFORM_HELPER=/absolute/owned/native-platform-macos
+```
+
+On Linux, run these commands only inside the existing isolated Xvfb/DBus session
+wrapper, as the native CI does. The new input mode retains the same small fixed
+workload: three windows and 32 hexadecimal characters per window.
+
 Artifacts retain toolchain/SDK/build logs, source hashes, native binary hash/size,
 actual paint/application records, AOT inspection/build metadata and controller
 results. A successfully built unsigned native host is archived with executable
@@ -111,6 +179,19 @@ expected `NativePaintMismatch`, joined native shutdown, and needed no forced
 application termination. These establish the controller/fixture on Linux and
 **do not qualify macOS or Windows**. The compact source-bound record is
 [platform-smoke-linux-development-aot.json](../tests/native/evidence/platform-smoke-linux-development-aot.json).
+
+The owned-input extension also passed actual Linux development and inspected
+AOT runs: each exercised three pointer activations, native Tab key/focus
+traversal, all 96 ordered text edits and nine complete paints. Every public
+resource counter returned to zero and native shutdown joined without forced
+application termination. An AOT paint-only control still passed six paints with
+no input callbacks. The exact source, executable, renderer and raw-report hashes
+are in [platform-input-linux-development-aot.json](../tests/native/evidence/platform-input-linux-development-aot.json).
+These runs used the immutable **dev-profile** host; hosted jobs require the
+release host. macOS SDK compilation and macOS/Windows input are not qualified by
+these Linux results. The Windows pure guards cover ABI sizes, clipped geometry,
+edit ordering, callback exception containment, borrowed/owned desktop handles,
+partial input release and recycled parent-PID rejection; they are headless tests.
 
 The first hosted matrix results must be recorded before either new platform is
 marked supported. Failures retain their exact compile, startup, renderer or

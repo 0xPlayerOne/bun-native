@@ -187,7 +187,15 @@ expectations, requiring each native renderer and initial/update paint. Its
 `--negative-paint-check` proves an incorrect expected native tree fails while
 the fixture joins native shutdown. The shared AOT entry is `platform-smoke`.
 
-This first macOS/Windows lane explicitly leaves OS-visible-window, real input,
-screenshots and full process-tree observation unverified. A successful portable
-paint test is not those claims. See [native platform qualification](../../docs/native-platforms.md)
-for target requirements, artifact scope and remaining #246/#256 work.
+The separate `--os-input` mode additionally requires independent owned-process
+and visible-window identity, a native button pointer activation, Tab down/up and
+focus traversal, all 32 nonce edits in exact input-revision order, and their full
+native paint on every cycle. It uses target OS APIs and reuses the existing X11
+helpers on Linux. A successful injection API return cannot satisfy delivery.
+The macOS helper requires an explicit prebuilt `BUN_NATIVE_PLATFORM_HELPER`;
+neither target controller requests permission or changes security settings.
+
+Paint-only mode still leaves OS input/visibility unverified. Screenshots,
+presentation, hardware input, OS close-button behavior and complete process-tree
+observation remain outside both modes. See [native platform qualification](../../docs/native-platforms.md)
+for exact target results, unsupported sessions and remaining #246/#256 work.

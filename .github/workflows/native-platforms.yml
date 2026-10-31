@@ -137,6 +137,23 @@ jobs:
             --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
             --mode development --host-profile release -- bun tests/native/platform-smoke.ts
           if ($LASTEXITCODE -ne 0) { throw 'Development native paint/lifecycle was not verified' }
+      - name: Build the bounded macOS OS controller
+        if: runner.os == 'macOS'
+        run: |
+          $helper = Join-Path $env:NATIVE_EVIDENCE 'native-platform-macos'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            scripts/quality/native-platform-macos.m -o $helper
+          if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK controller did not compile' }
+          "BUN_NATIVE_PLATFORM_HELPER=$helper" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-FileHash -Algorithm SHA256 $helper |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'os-helper-sha256.txt')
+      - name: Development owned native window and OS input
+        timeout-minutes: 3
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
+            --mode development --host-profile release --os-input -- bun tests/native/platform-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Actual owned window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Prove a wrong native paint expectation fails
         timeout-minutes: 3
         run: |
@@ -175,6 +192,14 @@ jobs:
             --mode aot --host-profile release -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
+      - name: AOT owned native window and OS input
+        timeout-minutes: 3
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `
+            --mode aot --host-profile release --os-input -- `
+            (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
+          if ($LASTEXITCODE -ne 0) { throw 'Actual AOT window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
