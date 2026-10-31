@@ -1,8 +1,8 @@
 //! Native event payloads carry the committed ownership route, never callbacks.
 
 use crate::{
-    validate_text, Capability, DisplaySnapshot, ErrorCode, EventSequence, Limits, NodeId,
-    RequestId, ServicePolicy, WindowId, MAX_DEPTH, MAX_ID,
+    validate_text, Capability, ClipboardText, DisplaySnapshot, ErrorCode, EventSequence, Limits,
+    NodeId, RequestId, ServicePolicy, WindowId, MAX_DEPTH, MAX_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +59,15 @@ pub enum Event {
         id: RequestId,
         window_id: WindowId,
         snapshot: DisplaySnapshot,
+    },
+    ClipboardText {
+        id: RequestId,
+        window_id: WindowId,
+        result: ClipboardText,
+    },
+    ClipboardWritten {
+        id: RequestId,
+        window_id: WindowId,
     },
     Click {
         sequence: EventSequence,
@@ -235,6 +244,7 @@ impl Event {
         }
         match self {
             Self::DisplaySnapshot { snapshot, .. } => snapshot.validate()?,
+            Self::ClipboardText { result, .. } => result.validate()?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

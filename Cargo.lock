@@ -618,8 +618,11 @@ dependencies = [
  "bun-native-protocol",
  "gpui",
  "gpui_platform",
+ "raw-window-handle",
+ "rustix",
  "serde_json",
  "unicode-segmentation",
+ "x11rb",
 ]
 
 [[package]]

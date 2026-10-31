@@ -92,7 +92,10 @@ let activations = 0
 let deadline: ReturnType<typeof setTimeout> | undefined
 try {
   assert.equal(app.serviceCapabilities.windowDisplay.permission, 'allow')
-  assert.equal(app.serviceCapabilities.clipboardText.availability, 'unavailable')
+  if (app.serviceCapabilities.clipboardText.availability === 'available') {
+    assert.equal(app.serviceCapabilities.clipboardText.read, 'deny')
+    assert.equal(app.serviceCapabilities.clipboardText.write, 'deny')
+  }
   const window = await app.openWindow({
     title: 'Bun Native desktop services',
     width: 560,

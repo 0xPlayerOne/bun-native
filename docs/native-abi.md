@@ -1,15 +1,15 @@
-# Native host protocol 5
+# Native host protocol 6
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocols 1–4 are superseded without a compatibility fallback.
-Protocol 5 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+numeric handles. Protocols 1–5 are superseded without a compatibility fallback.
+Protocol 6 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
-owned-window display reads.
+owned-window display reads and bounded clipboard transfers.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -56,7 +56,7 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `5`. The host emits `ready` with the
+- The first request is `hello` with protocol `6`. The host emits `ready` with the
   same protocol, implemented capabilities, resource limits and explicit
   `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
   `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Missing features,
@@ -95,6 +95,8 @@ poisons the channel instead of satisfying another request.
 | `batch`            | `window_id`, `base_revision`, `operations`         | `applied` with matching window and tree revision incremented once      |
 | `close`            | `window_id`                                        | `ack` after native removal is requested                                |
 | `display_snapshot` | `window_id`                                        | `display_snapshot` with matching owner and validated native `snapshot` |
+| `clipboard_read`   | `window_id`                                        | `clipboard_text` with matching owner and empty/text result             |
+| `clipboard_write`  | `window_id`, `text`                                | `clipboard_written` after X11 confirms selection ownership             |
 | `shutdown`         | none                                               | flushed final `ack`, then process exit                                 |
 
 The root is an existing `box` created by `open`. Closing the final window does
@@ -108,6 +110,17 @@ scale factor. It requires the immutable native `window_display` launch grant,
 which defaults to false. The response does not mutate a tree or consume a UI
 event sequence. Its small finite geometry schema, platform semantics and
 delivery cancellation are defined in the [service contract](native-services.md).
+
+`clipboard_text_v1` is optional and is advertised only by the implemented
+local Linux X11 backend. The mandatory policy object contains independent
+`window_display`, `clipboard_read` and `clipboard_write` booleans. Clipboard
+work is queued separately from tree commits and completes asynchronously,
+without consuming a UI event sequence or tree revision. Replies may complete
+out of request order and still must match the exact request and window.
+There are at most eight pending clipboard operations, each with a two-second
+total deadline including its native queue time. Text is at most 8,192 UTF-8
+bytes; empty text differs from no selection owner. See
+[clipboard semantics](native-services.md#clipboard-text-and-lifecycle).
 
 Each atomic `batch` supports the following operations:
 
@@ -175,6 +188,8 @@ is observed without echoing older values back to the native editor.
 | Individual text/input string                     |                                  16,384 UTF-8 bytes |
 | Aggregate model text per window                  |                               4,194,304 UTF-8 bytes |
 | Window title                                     | 256 UTF-8 bytes; nonempty and no control characters |
+| Clipboard text UTF-8 bytes                       |                                               8,192 |
+| Pending clipboard service requests               |                                                   8 |
 | Native command queue                             |                                                  64 |
 | Native output queue                              |                                                 256 |
 | Runtime pending requests / unread UI events      |                                           128 / 128 |
@@ -207,7 +222,8 @@ and releases readers. Shutdown cannot wait forever for inherited pipes.
 
 Native errors are `invalid_command`, `version_mismatch`, `invalid_state`,
 `invalid_handle`, `stale_revision`, `limit_exceeded`, `native_failure`,
-`permission_denied` and `service_unavailable`.
+`permission_denied`, `service_unavailable`, `cancelled`, `operation_timed_out` and
+`payload_too_large`.
 A correlated recoverable command error becomes public `NativeCommandError`.
 Malformed protocol, invalid sequence/reply or fatal transport failure ends the
 session. Public preflight/ownership errors use `NativeStateError`, malformed
@@ -216,7 +232,7 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 5's display service additionally requires the immutable explicit
+Protocol 6's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. No file,
 shell, process, network, update or browser service command exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted

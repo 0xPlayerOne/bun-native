@@ -5,6 +5,7 @@ export { NativeCommandError } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
 export type {
   NativeDisplaySnapshot,
+  NativeClipboardText,
   ServiceCapabilities,
   ServicePermissions,
   ServiceRequestOptions,

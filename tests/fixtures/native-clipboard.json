@@ -1,0 +1,173 @@
+{
+  "protocol": 6,
+  "capability": "clipboard_text_v1",
+  "commands": [
+    {
+      "name": "owned text read",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "owned Unicode text write",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"literal \\u65e5\\u672c\\u8a9e \\ud83d\\ude42\\r\\n\"}",
+      "valid": true
+    },
+    {
+      "name": "empty string is a text write",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"\"}",
+      "valid": true
+    },
+    {
+      "name": "read cannot grant itself",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":1,\"grant\":true}",
+      "valid": false
+    },
+    {
+      "name": "read cannot address a selection name",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":1,\"selection\":\"PRIMARY\"}",
+      "valid": false
+    },
+    {
+      "name": "read owner is required",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":null}",
+      "valid": false
+    },
+    {
+      "name": "read owner must be positive",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":0}",
+      "valid": false
+    },
+    {
+      "name": "read has no callback",
+      "wire": "{\"type\":\"clipboard_read\",\"id\":1,\"window_id\":1,\"callback\":\"code\"}",
+      "valid": false
+    },
+    {
+      "name": "write cannot grant itself",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"literal \\u65e5\\u672c\\u8a9e \\ud83d\\ude42\\r\\n\",\"grant\":true}",
+      "valid": false
+    },
+    {
+      "name": "write is text only",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":[65]}",
+      "valid": false
+    },
+    {
+      "name": "write rejects NUL",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"a\\u0000b\"}",
+      "valid": false
+    },
+    {
+      "name": "write rejects lone surrogate",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"\\ud800\"}",
+      "valid": false
+    },
+    {
+      "name": "write owner is not boolean",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":true,\"text\":\"literal \\u65e5\\u672c\\u8a9e \\ud83d\\ude42\\r\\n\"}",
+      "valid": false
+    },
+    {
+      "name": "write has no native format selector",
+      "wire": "{\"type\":\"clipboard_write\",\"id\":2,\"window_id\":1,\"text\":\"literal \\u65e5\\u672c\\u8a9e \\ud83d\\ude42\\r\\n\",\"format\":\"files\"}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "no selection owner",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"empty\"}}",
+      "valid": true
+    },
+    {
+      "name": "selected empty text",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\",\"text\":\"\"}}",
+      "valid": true
+    },
+    {
+      "name": "selected Unicode text",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\",\"text\":\"\\u4e16\\u754c\\ud83d\\ude42\\n\"}}",
+      "valid": true
+    },
+    {
+      "name": "acknowledged native selection ownership",
+      "wire": "{\"type\":\"clipboard_written\",\"id\":2,\"window_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "empty cannot hide text",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"empty\",\"text\":\"cached\"}}",
+      "valid": false
+    },
+    {
+      "name": "text cannot be absent",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\"}}",
+      "valid": false
+    },
+    {
+      "name": "no files fallback",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"files\",\"paths\":[\"/untrusted\"]}}",
+      "valid": false
+    },
+    {
+      "name": "NUL native text",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\",\"text\":\"\\u0000\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid native scalar",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\",\"text\":\"\\udfff\"}}",
+      "valid": false
+    },
+    {
+      "name": "response cannot grant",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"window_id\":1,\"result\":{\"kind\":\"text\",\"text\":\"safe\",\"grant\":true}}",
+      "valid": false
+    },
+    {
+      "name": "write cannot return an unrelated value",
+      "wire": "{\"type\":\"clipboard_written\",\"id\":2,\"window_id\":1,\"text\":\"cached\"}",
+      "valid": false
+    },
+    {
+      "name": "response must name owner",
+      "wire": "{\"type\":\"clipboard_text\",\"id\":1,\"result\":{\"kind\":\"empty\"}}",
+      "valid": false
+    },
+    {
+      "name": "typed permission_denied",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"permission_denied\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed service_unavailable",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"service_unavailable\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed cancelled",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"cancelled\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed operation_timed_out",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"operation_timed_out\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed payload_too_large",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"payload_too_large\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed native_failure",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"native_failure\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed limit_exceeded",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"limit_exceeded\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    }
+  ]
+}

@@ -4,17 +4,32 @@ use bun_native_protocol::{DisplayBounds, DisplaySnapshot, ErrorCode, ServicePoli
 use gpui::{App, Window};
 use std::ffi::OsString;
 
+#[cfg(target_os = "linux")]
+pub(crate) mod clipboard;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/clipboard_unavailable.rs"]
+pub(crate) mod clipboard;
+
 pub(crate) const DISPLAY_PERMISSION_ARGUMENT: &str = "--bun-native-allow-window-display";
+pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-read";
+pub(crate) const CLIPBOARD_WRITE_ARGUMENT: &str = "--bun-native-allow-clipboard-write";
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
 ) -> Result<ServicePolicy, &'static str> {
     let mut policy = ServicePolicy::default();
     for argument in arguments {
-        if argument == DISPLAY_PERMISSION_ARGUMENT && !policy.window_display {
-            policy.window_display = true;
+        let permission = if argument == DISPLAY_PERMISSION_ARGUMENT {
+            &mut policy.window_display
+        } else if argument == CLIPBOARD_READ_ARGUMENT {
+            &mut policy.clipboard_read
+        } else if argument == CLIPBOARD_WRITE_ARGUMENT {
+            &mut policy.clipboard_write
         } else {
-            return Err("unknown or duplicate native host argument");
+            return Err("unknown native host argument");
+        };
+        if std::mem::replace(permission, true) {
+            return Err("duplicate native host argument");
         }
     }
     Ok(policy)
@@ -54,7 +69,8 @@ mod tests {
         assert_eq!(
             policy([OsString::from(DISPLAY_PERMISSION_ARGUMENT)]).unwrap(),
             ServicePolicy {
-                window_display: true
+                window_display: true,
+                ..ServicePolicy::default()
             }
         );
         for arguments in [
@@ -63,6 +79,18 @@ mod tests {
             vec!["--bun-native-allow-window-display=true"],
         ] {
             assert!(policy(arguments.into_iter().map(OsString::from)).is_err());
+        }
+        assert_eq!(
+            policy([CLIPBOARD_READ_ARGUMENT, CLIPBOARD_WRITE_ARGUMENT].map(OsString::from))
+                .unwrap(),
+            ServicePolicy {
+                window_display: false,
+                clipboard_read: true,
+                clipboard_write: true
+            }
+        );
+        for argument in [CLIPBOARD_READ_ARGUMENT, CLIPBOARD_WRITE_ARGUMENT] {
+            assert!(policy([argument, argument].map(OsString::from)).is_err());
         }
     }
 }

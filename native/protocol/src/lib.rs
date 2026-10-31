@@ -1,5 +1,5 @@
 //! Bun Native's bounded, versioned private host protocol and atomic tree model.
-//! Protocol 5 requires an explicit service policy; there is no older-version decoder.
+//! Protocol 6 requires explicit per-operation service policy; no older-version decoder.
 
 mod events;
 mod framing;

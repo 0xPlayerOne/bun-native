@@ -109,7 +109,7 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 The [native services recipe](../../docs/native-services.md#reproduction-and-evidence-boundaries)
 builds and executes the core, Solid and React display-service consumers in
-development and AOT modes. Each uses an explicit prebuilt protocol-5 host;
+development and AOT modes. Each uses the current explicit prebuilt protocol-6 host;
 the older retained protocol-4 artifacts cannot qualify these scenarios.
 The framework modes execute the exact generated production modules recorded
 by `--entry solid-services` and `--entry react-services` before compiling them

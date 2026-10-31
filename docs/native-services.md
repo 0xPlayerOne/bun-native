@@ -1,15 +1,19 @@
 # Native desktop services
 
-The shared public core exposes one implemented service in this branch:
-`NativeWindow.displaySnapshot()`. It reads the display associated with that
-owned native window through the pinned GPUI backend. Solid and React use this
-same window method; neither adapter owns an OS implementation.
+The shared public core exposes owned-window display reads and a bounded
+clipboard text worker. `NativeWindow.displaySnapshot()` reads the display
+associated with that window through GPUI. `readClipboardText()` and
+`writeClipboardText(text)` use the actual local X11 selection protocol off the
+UI thread. Solid and React use the same public window methods; neither adapter
+owns an OS implementation.
 
-The core, Solid and React consumers have passed actual Linux development/AOT
+The protocol-5 core, Solid and React display consumers passed actual Linux development/AOT
 qualification on one isolated Xvfb screen with a development-profile host.
 Hosted release-host acceptance is configured separately; macOS and Windows
 service execution remains unverified. Parser and type checks are separate
 evidence. See the [source-bound record](../tests/native/evidence/services-linux-development-aot.json).
+The protocol-6 clipboard increment currently has source and headless contract
+checks; actual isolated-X11 and AOT clipboard qualification is pending.
 
 ## Policy and capability contract
 
@@ -36,16 +40,17 @@ try {
 }
 ```
 
-The default permission is `deny`. The only accepted permission key is
-`windowDisplay`, and its value must be `allow` or `deny`. The runtime translates
-an explicit grant into one reserved native launch argument. The Rust process
+The default permission is `deny`. The accepted keys are `windowDisplay`,
+`clipboardRead` and `clipboardWrite`, each independently `allow` or `deny`.
+The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
 grant, extend or change the policy.
 
-Protocol 5 replaces protocol 4 without a compatibility decoder. Readiness must
+Protocol 6 replaces protocol 5 without a compatibility decoder. Readiness must
 include `window_display_v1` alongside the existing rendering capabilities and
-an explicit boolean `service_policy.window_display`. The runtime requires the
+explicit `window_display`, `clipboard_read` and `clipboard_write` booleans in
+`service_policy`. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission
@@ -53,6 +58,10 @@ says which implemented service the application elected to expose.
 
 `app.serviceCapabilities` is a frozen record. `windowDisplay` contains
 `{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window' }`.
+The optional `clipboard_text_v1` feature is advertised only for the implemented
+local Linux X11 backend. Its capability record reports independent `read` and
+`write` permissions, `owned_window` scope and backend `x11`. Other targets and
+backends report `unavailable` / `unsupported_platform` for clipboard text.
 The other listed services contain
 `{ availability: 'unavailable', reason: 'not_implemented' }`. An advertised
 implementation does not certify the current display environment: an allowed
@@ -130,6 +139,68 @@ still fails the channel even if the caller cancelled in the meantime.
 | `NativeCommandError`, `invalid_handle` / `native_failure` | Native owner lookup failed or actual native geometry was invalid.                                                               |
 | `ProtocolError` or transport failure                      | Incompatible readiness, malformed/wrong-owner response, timeout, native exit or broken channel. No fallback result is supplied. |
 
+## Clipboard text and lifecycle
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { clipboardRead: 'allow', clipboardWrite: 'allow' },
+})
+const window = await app.openWindow({ title: 'Explicit clipboard operations' })
+try {
+  await window.writeClipboardText('Text the application intentionally copies')
+  const result = await window.readClipboardText()
+  if (result.kind === 'text') console.log(result.text)
+} finally {
+  await app.shutdown()
+  await app.closed
+}
+```
+
+The result is a frozen `{ kind: 'empty' }` when the native selection has no
+owner, or `{ kind: 'text', text }`. An owned empty string is text, not absence.
+The read requests `UTF8_STRING`; unsupported formats do not turn into empty
+text, file paths or cached application data. Payloads are capped at 8,192 UTF-8
+bytes and reject NUL/invalid Unicode. Worst-case JSON escaping remains below
+the private frame cap.
+
+The implementation supports a **local Linux X11 connection** selected by the
+actual GPUI environment. Wayland, macOS, Windows, remote/TCP X11, nontext
+formats, clipboard history and persistence after host exit remain unavailable
+or unimplemented. Granting a permission does not invent backend support.
+Read and write denial is enforced before native owner lookup or clipboard I/O.
+
+Clipboard operations do not occupy the application's serialized tree queue.
+There are at most eight pending service requests, observable through
+`app.diagnostics.serviceRequests`. The native worker's total two-second deadline
+starts at request submission, includes queue time and is never extended by
+an incremental-transfer chunk. Native owner replies and server I/O are polled
+with cancellation checks. Ordinary updates and input can progress while a
+clipboard request waits; actual validation of that scheduling property remains
+part of the pending native fixture.
+
+Read cancellation before dispatch sends nothing. After dispatch, the bounded
+reply is drained and validated before cancellation suppresses delivery.
+Window closure revokes its pending native requests. Shutdown cancels pending
+work, joins the worker off the UI thread and only then acknowledges terminal
+completion. A malformed response still fails the channel under cancellation.
+
+`writeClipboardText` has no cancellation option. The acknowledgement verifies
+that the X server made the worker's private window the selection owner. It does
+not claim that another process has read the data. Qualification requires an
+independent external reader. Selected text survives closing the requesting
+window while the host remains alive; replacement by another clipboard owner
+or host exit ends that ownership. A submitted copy cannot be rolled back by
+later window revocation. Worker teardown never restores old clipboard contents
+or clears a newer external owner.
+
+Clipboard `NativeServiceError.service` is `clipboard_read` or `clipboard_write`.
+The codes are `permission_denied`, `service_unavailable`, `cancelled`,
+`operation_timed_out`, `payload_too_large`, `native_failure` and native
+`limit_exceeded`. Local queue/ownership errors remain `NativeStateError` and
+malformed transport data remains `ProtocolError`. An owner change during a
+read fails explicitly; it does not return a possibly mixed snapshot.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -137,17 +208,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                     | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
-| Clipboard text    | Capability `clipboardText`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | Separate read/write grants, byte limits, bounded native transfer, cancellation and truthful OS errors. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                    |
-| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                   | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                   | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                   | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                   | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                   | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                   | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+| Service           | Current public surface                                        | Linux X11                                                      | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending  | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | Implemented local X11 worker; native/AOT qualification pending | Unavailable                  | Unavailable                  | Independent-reader proof, bounded INCR/stalled-owner/cancellation checks, additional platforms/formats. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                   |
+| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                    | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                    | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                    | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
+| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                    | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                    | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                    | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                    | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
 
 The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
@@ -164,8 +235,9 @@ service grant or a sandbox supplied by this framework.
 
 Display reads give a small real operation with native ownership, explicit
 denial, cancellation delivery and teardown, without changing user data. The
-current clipboard methods need a separate implementation decision before
-their errors and responsiveness can meet the same contract.
+clipboard worker now supplies a separate native implementation for bounded
+selection transfers; [ADR 0006](decisions/0006-native-clipboard.md) records its
+explicit scope and verification requirements.
 
 At the exact GPUI pin, the default
 [`read_from_clipboard_async`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/platform.rs#L586-L599)
@@ -176,8 +248,9 @@ selection-write errors. Calling this from a service handler and reporting a
 successful cancellable write would overstate what was observed. See the
 pinned [X11 client](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/client.rs#L1841-L1879)
 and [clipboard transfer loop](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/clipboard.rs#L396-L450).
-This is a problem for the clipboard follow-up to solve, not a browser fallback
-or permission to substitute cached content as a successful OS operation.
+The clipboard worker uses the pinned native X11 protocol library to solve
+these transfer/result limits. It does not substitute a browser or cached
+content for a native operation.
 
 Native editor copy/paste caused by user keyboard actions remains a distinct
 interaction from a programmatic clipboard service. The service fixture never
