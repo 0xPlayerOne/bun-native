@@ -62,7 +62,12 @@ fi
 
 if [[ "$mode" == development ]]; then
   # This test reopens five real windows in one host and checks invalid states.
-  timeout 45s bun tests/native/lifecycle.ts 2>&1 | tee "$evidence_dir/lifecycle.log"
+  # Instrument this smoke only. Other correctness/benchmark commands retain their
+  # existing evidence mode and never inherit startup diagnostic I/O.
+  BUN_NATIVE_STARTUP_TRACE=1 \
+    BUN_NATIVE_EVIDENCE_LOG="$evidence_dir/lifecycle-events.jsonl" \
+    BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+    timeout 45s bun tests/native/lifecycle.ts 2>&1 | tee "$evidence_dir/lifecycle.log"
 fi
 
 # Share fixture expectations with the repeated baseline and allocation runner.
