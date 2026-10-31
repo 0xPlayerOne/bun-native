@@ -111,6 +111,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(DRIVER.matches(click, click))
         self.assertFalse(DRIVER.matches(click, keyboard))
         self.assertTrue(DRIVER.matches(keyboard, keyboard))
+        self.assertFalse(DRIVER.matches({**click, "sequence": True}, click))
 
     def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
         DRIVER.validate_input_request(

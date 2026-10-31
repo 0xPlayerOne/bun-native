@@ -66,7 +66,10 @@ def fingerprint(path):
 
 
 def distribution(values):
-    if not values or any(not math.isfinite(value) or value < 0 for value in values):
+    if not values or any(
+        type(value) not in (int, float) or not math.isfinite(value) or value < 0
+        for value in values
+    ):
         raise ValueError("Metric samples must be finite, nonnegative and nonempty")
     ordered = sorted(values)
     return {
@@ -226,6 +229,9 @@ def metrics(report):
     }
     values["idle_median_tree_rss_bytes"] = measured["idle"]["median_tree_rss_bytes"]
     values["idle_maximum_tree_rss_bytes"] = measured["idle"]["maximum_tree_rss_bytes"]
+    values["input_command_to_paint_record_observed_ms"] = measured[
+        "native_paint_file_observation"
+    ]["command_start_to_paint_observed_ms"]
     values["os_close_to_app_exit_observed_ms"] = (
         measured["application_exit_observed_ms"] - measured["os_close_requested_ms"]
     )
@@ -272,7 +278,7 @@ def main():
             "fixture": "BN1 public application API; complete initial and changed native tree snapshots",
             "renderer": "software GPU, actual adapter must match across trials",
             "rss": "sum of process RSS; shared pages may be counted more than once",
-            "timing": "driver observations at nominal 100 ms polling; no presentation timestamps",
+            "timing": "startup/RSS/app observations at nominal 100 ms polling; a separate concurrent file-event reader measures input-command start to matching paint-record observation; no presentation timestamps",
             "p95": "nearest rank of observed samples; small samples do not establish a population tail",
             "budgets": "none; correctness failures stop the run",
         },
@@ -306,6 +312,7 @@ def main():
             "manifest_fingerprint": fingerprint(args.package / "manifest.json"),
             "manifest": manifest,
             "driver_fingerprint": fingerprint(DRIVER),
+            "paint_observer_fingerprint": fingerprint(NATIVE_INPUT.PAINT_OBSERVER_PATH),
             "baseline_fingerprint": fingerprint(Path(__file__)),
             "session_fingerprint": fingerprint(
                 REPOSITORY / "scripts/quality/native-linux-session.sh"

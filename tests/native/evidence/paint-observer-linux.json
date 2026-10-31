@@ -1,0 +1,1203 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local collector qualification on Linux X11 with development-profile protocol-2 GPUI host and software Vulkan; command-start to native paint JSONL observation, never display presentation or framework performance comparison.",
+  "recordedAt": "2026-10-31T18:51:30.557718+00:00",
+  "sourceBase": "568f4906e0f1200521568325feed21eacdb504c2",
+  "compiledSourceHashesUnchanged": true,
+  "compiledSourceFiles": [
+    {
+      "path": ".bun-version",
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    {
+      "path": "bun.lock",
+      "bytes": 16009,
+      "sha256": "2e863283b5eba9ab69ee2bbe7773e45e688a02ec386dd9a5b941d032ab2f43e6"
+    },
+    {
+      "path": "bunfig.toml",
+      "bytes": 101,
+      "sha256": "d8c2e64d274d36b77538425312901881ddcd7b3f5e78ca6dda3fcd0e294dd1b0"
+    },
+    {
+      "path": "examples/native-window/content.ts",
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    {
+      "path": "examples/native-window/main.ts",
+      "bytes": 1098,
+      "sha256": "dfb562977790bc1f7c36374e16803ca4297c2732b3977fccd1e78e7add82ac62"
+    },
+    {
+      "path": "examples/react-counter/main.tsx",
+      "bytes": 4152,
+      "sha256": "0a2fd9bab78bc2ed90d72b47b43535fef507e42644021334ba389db66ceba17c"
+    },
+    {
+      "path": "native/gpui-host/Cargo.toml",
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    {
+      "path": "native/gpui-host/src/channel.rs",
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    {
+      "path": "native/gpui-host/src/evidence.rs",
+      "bytes": 4834,
+      "sha256": "bfb385ec618f75ea21b4ac9209aac3895b99fecb530b15f59f7d962c8cdce2df"
+    },
+    {
+      "path": "native/gpui-host/src/input.rs",
+      "bytes": 19143,
+      "sha256": "35f5e1f3b5c7e2807566013e1d781d37be1da54fef047eae0cef2beecf6bdbea"
+    },
+    {
+      "path": "native/gpui-host/src/input/binding.rs",
+      "bytes": 2675,
+      "sha256": "2f61a306b211c3208a51b35eb8fda800fe5ceb71a82f75c58903779015075d72"
+    },
+    {
+      "path": "native/gpui-host/src/input/paint.rs",
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    {
+      "path": "native/gpui-host/src/main.rs",
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    {
+      "path": "native/gpui-host/src/session.rs",
+      "bytes": 11554,
+      "sha256": "55587241bf6b9ca4d0e3e0027a25b1cfb425b5535d1e3b52071c28f380035c68"
+    },
+    {
+      "path": "native/gpui-host/src/state.rs",
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    {
+      "path": "native/gpui-host/src/style.rs",
+      "bytes": 1568,
+      "sha256": "78310951954517b10a1575798b4b9d9a00e3874279a26aaca72490e329814bc4"
+    },
+    {
+      "path": "native/gpui-host/src/view.rs",
+      "bytes": 8990,
+      "sha256": "245dea7986c31ffba598836f64e4f40e5edbabee1349b6e70ed00ff6d0568c01"
+    },
+    {
+      "path": "native/protocol/Cargo.toml",
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    {
+      "path": "native/protocol/src/framing.rs",
+      "bytes": 3685,
+      "sha256": "84aac62624b49798e88beccf84551e6534e46ad5ca1c71a74134a05256f95610"
+    },
+    {
+      "path": "native/protocol/src/lib.rs",
+      "bytes": 402,
+      "sha256": "a4426bedb7b9e5848537a1270884afcbdaf3ce63ad72d10f621e81aef04e4861"
+    },
+    {
+      "path": "native/protocol/src/security_tests.rs",
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    {
+      "path": "native/protocol/src/tests.rs",
+      "bytes": 9530,
+      "sha256": "627932f6be2dd267866bdfd345b7db58fa5a41229aebddaebde736c1af41dc2a"
+    },
+    {
+      "path": "native/protocol/src/tree.rs",
+      "bytes": 14053,
+      "sha256": "55aa26d2c25055cab4cd4459dd4622587e4a2377ff780f9affc6812f3ceab4f1"
+    },
+    {
+      "path": "native/protocol/src/tree/tests.rs",
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    {
+      "path": "native/protocol/src/wire.rs",
+      "bytes": 16179,
+      "sha256": "fcffff41db7407c00183a1ae76772f567467c76671738ca309f526f12b5e5856"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1726,
+      "sha256": "ebf6a108358721e91ef17ef50ee5f7f99e2ef982225af9328aa5759f6135b97b"
+    },
+    {
+      "path": "packages/core/package.json",
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    {
+      "path": "packages/core/src/application.ts",
+      "bytes": 15246,
+      "sha256": "91110f20548a8205214d682e94e133608efbc14a0d1241a44f2dcb15b3994943"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "bytes": 482,
+      "sha256": "58250b6d85bb271ea9f6fdbafbfc5b10f82ab406fd0cc51e443279e7529130c7"
+    },
+    {
+      "path": "packages/core/src/tree.ts",
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    {
+      "path": "packages/core/src/types.ts",
+      "bytes": 3425,
+      "sha256": "eac93a063ea9591134df76c07b5d5ba2adaeb4b9b041dea6fc16a8be0a3a206a"
+    },
+    {
+      "path": "packages/protocol/package.json",
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    {
+      "path": "packages/protocol/src/elements.ts",
+      "bytes": 2915,
+      "sha256": "f76169c71a390aa44b4f4dbc0a138d5c1a1d6516ca6fdb6dca628dabb9f94d70"
+    },
+    {
+      "path": "packages/protocol/src/framing.ts",
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "bytes": 444,
+      "sha256": "02d2e3887e52b07496e0d63ab2dfa36b6d71c1eb4504a4315accde128438b24e"
+    },
+    {
+      "path": "packages/protocol/src/messages.ts",
+      "bytes": 9902,
+      "sha256": "8e52c2adc4c22fb7074253f1aed758fe0be310e9f69eabb9e152e2f299f5ecc1"
+    },
+    {
+      "path": "packages/protocol/src/values.ts",
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    {
+      "path": "packages/react/package.json",
+      "bytes": 402,
+      "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+    },
+    {
+      "path": "packages/react/src/index.ts",
+      "bytes": 262,
+      "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+    },
+    {
+      "path": "packages/react/src/jsx-dev-runtime.ts",
+      "bytes": 93,
+      "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+    },
+    {
+      "path": "packages/react/src/jsx-runtime.ts",
+      "bytes": 92,
+      "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+    },
+    {
+      "path": "packages/react/src/jsx.ts",
+      "bytes": 1364,
+      "sha256": "da255ec0301c3baf99ea175e087d32bb7b90693824e284e46a89fd0af0677dbb"
+    },
+    {
+      "path": "packages/react/src/mount.ts",
+      "bytes": 6551,
+      "sha256": "e11f0ab0388fcfbe587d17c2a838a3f7f994b7d6ef3b889192f5153f7dd7cd00"
+    },
+    {
+      "path": "packages/react/src/reconciler.ts",
+      "bytes": 7060,
+      "sha256": "0e16e868d9a9cb8a2697e6bca3beb21b5d2895a4fb7a626eb1bf0ffe92a364b1"
+    },
+    {
+      "path": "packages/renderer/package.json",
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    {
+      "path": "packages/renderer/src/index.ts",
+      "bytes": 763,
+      "sha256": "eddbb7296ea3537ec545d65d71d21dc1c212804c427589af9a9d4afde30b2fb7"
+    },
+    {
+      "path": "packages/renderer/src/input-intent.ts",
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    {
+      "path": "packages/renderer/src/native-tree.ts",
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    {
+      "path": "packages/renderer/src/nodes.ts",
+      "bytes": 8353,
+      "sha256": "578c9e9bc66aa7ff01bc95722bcfcbbae8b60ef710fd452757694b43b938c86c"
+    },
+    {
+      "path": "packages/renderer/src/order.ts",
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    {
+      "path": "packages/renderer/src/root.ts",
+      "bytes": 9323,
+      "sha256": "b9cab9272b819d1e708715b1309c68341fb77c6fceb7eca3d991a4c3636fb685"
+    },
+    {
+      "path": "packages/renderer/src/window-lifetime.ts",
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    {
+      "path": "packages/runtime/package.json",
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "bytes": 13166,
+      "sha256": "2ccbca88fc25b04bf2de3201888dc97bdc5d5d13f01f6b9fc00df3d793a67bcb"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 1029,
+      "sha256": "0d91a562bb02d0cb7e0ad2552d082139d3e3fede6356bbcdc5cf7c3460525b74"
+    }
+  ],
+  "artifacts": {
+    "core": {
+      "sourceCommit": "568f4906e0f1200521568325feed21eacdb504c2",
+      "entrypoint": "examples/native-window/main.ts",
+      "manifestSha256": "b000f155aa2923f2cff3641109222ad860e40fd06a25f45957bf98ee711f9b05",
+      "application": {
+        "file": "native-window",
+        "bytes": 70859816,
+        "sha256": "f9b6b2ace0781022e561155142a1d306213e458e18dfa6419080443ff49c63d8",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3293407,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime": {
+        "jit": "unused",
+        "interpreter": "present",
+        "trimmedProgramFeatures": false
+      },
+      "jitRemovedRangeCount": 27,
+      "host": {
+        "profile": "dev",
+        "bytes": 110851600,
+        "sha256": "55d2b9312529a01ccc3c4720f03040c4d685e7d51d9b7ece160f8b8e64ad7a49",
+        "placement": "bundled"
+      },
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+    },
+    "react": {
+      "sourceCommit": "568f4906e0f1200521568325feed21eacdb504c2",
+      "entrypoint": "examples/react-counter/main.tsx",
+      "manifestSha256": "f8df81e9e309eae2debd63cc3fa55c16f3c6a522b483f1be58b8c8c1fa67258a",
+      "application": {
+        "file": "react",
+        "bytes": 72629288,
+        "sha256": "31e8b16531abf154bf85f40fbc9b67e9f95ff8a79745f8c1a2a2e68787cc44b3",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5062873,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime": {
+        "jit": "unused",
+        "interpreter": "present",
+        "trimmedProgramFeatures": false
+      },
+      "jitRemovedRangeCount": 27,
+      "host": {
+        "profile": "dev",
+        "bytes": 110851600,
+        "sha256": "55d2b9312529a01ccc3c4720f03040c4d685e7d51d9b7ece160f8b8e64ad7a49",
+        "placement": "external"
+      },
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+    }
+  },
+  "harnessFiles": [
+    {
+      "path": "scripts/quality/native-input-linux.py",
+      "bytes": 40666,
+      "sha256": "90076aa25dd95c7c87ea76a9a047d643f0446955de7dc5c306652a91e8d58ef5"
+    },
+    {
+      "path": "scripts/quality/native-paint-observer.py",
+      "bytes": 16506,
+      "sha256": "f99b78e57f7d5ba2863596f49847b5a6c724e16db8b2addc738038746de9d45c"
+    },
+    {
+      "path": "tests/native/react-window.py",
+      "bytes": 4208,
+      "sha256": "9cc34232b2ea6549363ad914b536d417bd2ee5f41942610f668ea68cf7bc3f1b"
+    }
+  ],
+  "methodology": {
+    "clock": "Python time.monotonic_ns, common process for input wrapper and reader thread",
+    "start": "immediately before first actual OS input command, after its focus/geometry/pointer preparation",
+    "end": "complete matching native paint JSONL record read and validated in concurrent inotify reader",
+    "textScope": "entire offered Ctrl+A and typed-string sequence including inter-command preparation, not a per-keystroke sample",
+    "trials": "one scenario per core/React x development/AOT x click/input combination; no inferential comparison",
+    "rendering": "native paint traversal evidence and screenshots, not compositor/monitor presentation",
+    "bounds": {
+      "logBytes": 4194304,
+      "jsonRecordBytesExcludingNewline": 65536,
+      "notifications": 32768,
+      "maximumFixtureSeconds": 60
+    },
+    "kernelQueueOverflowTest": "injected kernel-format overflow notification plus real-watch notification-budget control; not actual kernel queue saturation",
+    "ownership": "existing driver owns app/host/window/input; collector owns only regular-file/inotify/cancellation-pipe descriptors and one joined thread"
+  },
+  "scenarios": [
+    {
+      "name": "core-aot-click",
+      "status": "passed",
+      "mode": "aot",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 24.1231,
+        "command_start_to_input_commands_returned_ms": 105.711461,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787068
+        },
+        "start_byte_offset": 1450,
+        "read_byte_offset": 2581,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 3,
+        "notifications": 4,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "1f40d619f845ddc0765bc30b1c33998db75cb521783cb079100decbd5965c708",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 116.86281800029974,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 11536,
+          "sha256": "b655ed5f8639831550077b34a1e6b6de88f1b88c74465ebfcf1ead83ef7582e2"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-click/result.json",
+          "bytes": 18085,
+          "sha256": "c0ce9a90995590ef2b2e4075cd3893efd0b8120397b8fac27664c47e9b01b5f3"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-click/app-events.jsonl",
+          "bytes": 2668,
+          "sha256": "bd8f3814ec9c1f17ce7353d631d6da66f25eb8953016d160bf565935b018e2f9"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-click.log",
+          "bytes": 282,
+          "sha256": "a15ed5a2770d7168710fd4a11ff226f9c48ca76d7a73ebd0767a21ecd08792bb"
+        }
+      ]
+    },
+    {
+      "name": "core-aot-input",
+      "status": "passed",
+      "mode": "aot",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 460.199424,
+        "command_start_to_input_commands_returned_ms": 461.517793,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787079
+        },
+        "start_byte_offset": 1450,
+        "read_byte_offset": 44939,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 86,
+        "notifications": 129,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 1,
+          "record_sha256": "5a583f3ced6b140195b4c921aa4de925f0c3a519359cce68acb67628c3fd5a49",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 522.0697349996044,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 22028,
+          "sha256": "1c79bc8fcb5a95684faa56f6759e4b0e6faf572a09e12061b22b9b11320a2103"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-input/result.json",
+          "bytes": 105737,
+          "sha256": "64f6a305d76d213f844860f1bd9e5474292ccf36023095b2bd3e822f3a68f7a3"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-input/app-events.jsonl",
+          "bytes": 45026,
+          "sha256": "4d002a5cc4457c38fecdcce9f8e4892a8292cc4d622f0c40bb513ff648ba210a"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-aot-input.log",
+          "bytes": 282,
+          "sha256": "e68f8abb5cb3adcc6b98401d6e13c315d82258898c8c4993773035a485bdb5f4"
+        }
+      ]
+    },
+    {
+      "name": "core-development-click",
+      "status": "passed",
+      "mode": "development",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 20.787644,
+        "command_start_to_input_commands_returned_ms": 103.590584,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787046
+        },
+        "start_byte_offset": 1451,
+        "read_byte_offset": 2582,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 3,
+        "notifications": 4,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "fad865aeccced3fba39f412c79dfc6985d4f513d97506867c881fa5b08a345bc",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 117.18391399972461,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 11536,
+          "sha256": "b655ed5f8639831550077b34a1e6b6de88f1b88c74465ebfcf1ead83ef7582e2"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-click/result.json",
+          "bytes": 18122,
+          "sha256": "3e2100c6a3e42caa4753c4a96a3bda02bb0c8e6f8b950892f3335b3e9d6361f5"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-click/app-events.jsonl",
+          "bytes": 2669,
+          "sha256": "57e2f0fe79540d0d6b60da35caed3e13107ff1f65cbc55d036d974628f5f84be"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-click.log",
+          "bytes": 290,
+          "sha256": "9d0efe4363fc669d33b6314269b1a266e23d3bfc2d6ac0ca17b9b5c5f4e6a151"
+        }
+      ]
+    },
+    {
+      "name": "core-development-input",
+      "status": "passed",
+      "mode": "development",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 343.520469,
+        "command_start_to_input_commands_returned_ms": 344.49211,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787057
+        },
+        "start_byte_offset": 1450,
+        "read_byte_offset": 44939,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 86,
+        "notifications": 129,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 1,
+          "record_sha256": "0358d35029b95d6382810ecbcbac552a5370dc2d955e61f47b11647dec4893a7",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 395.6251270001303,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 18986,
+          "sha256": "915785c8b66552d54d165adf74c7394d858c5c5d6a2d6761a7849bf66bf4a9f2"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-input/result.json",
+          "bytes": 105776,
+          "sha256": "ba23b231930446fb8e608863f585e05f0a62a26e0200d96172ed2baff7193412"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-input/app-events.jsonl",
+          "bytes": 45026,
+          "sha256": "2e020c6ae29f29a1e4b94a7ef703e921aa3c3f0f91b7a943122ba26e2cfc7f55"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/core-development-input.log",
+          "bytes": 290,
+          "sha256": "18384616225d770fddf0ba8265818e8c5dd9b0938081d946d35cf032a3bdfa08"
+        }
+      ]
+    },
+    {
+      "name": "react-aot-click",
+      "status": "passed",
+      "mode": "aot",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 32.202003,
+        "command_start_to_input_commands_returned_ms": 111.9667,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787113
+        },
+        "start_byte_offset": 2381,
+        "read_byte_offset": 4369,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 5,
+        "notifications": 8,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "a3a022009848f8846635f7fe7b9cc8b88774ab9642301c3af7b483c851152a7d",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 131.35705099921324,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-click/result.json",
+          "bytes": 21390,
+          "sha256": "ef2332ca11497ee26897bd261c1c0b16586effca9c881e7b9ef5e2a6c738c212"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-click/app-events.jsonl",
+          "bytes": 4730,
+          "sha256": "9356e441aafc9a4824ad9d90b2bc754182fedaf4ee00c1fdb89cb123c3a9dd0a"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-click.log",
+          "bytes": 283,
+          "sha256": "3083cee506af68b9e8bd2170b636875b486744d4811e90e2f9a97f2479fc332c"
+        }
+      ]
+    },
+    {
+      "name": "react-aot-input",
+      "status": "passed",
+      "mode": "aot",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 378.579583,
+        "command_start_to_input_commands_returned_ms": 306.998621,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 787133
+        },
+        "start_byte_offset": 2382,
+        "read_byte_offset": 75255,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 118,
+        "notifications": 155,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "b838012d7dee1ad6585ef149f45ced71cbd39727d2922bc139bbff1aac996ee5",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 429.9887649995071,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 33107,
+          "sha256": "79471144952ba6f4c08e95e8fae5960452efe8e3f168346404a8ee93cbc1a475"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-input/result.json",
+          "bytes": 176267,
+          "sha256": "f109b626bf9424a8bfefd6e09a1543363a38e2fbff87e4a07a3f90e5c6c553c1"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-input/app-events.jsonl",
+          "bytes": 75618,
+          "sha256": "af0cc8f76c19454a8f11a50d24d1d560dc674bf3dff18e768fbf0ed88f8c7f19"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-aot-input.log",
+          "bytes": 283,
+          "sha256": "d60286eb4c8abcddc58226dadebbc30cb12766d81b6a5d7465ecf10423517db8"
+        }
+      ]
+    },
+    {
+      "name": "react-development-click",
+      "status": "passed",
+      "mode": "development",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 28.531979,
+        "command_start_to_input_commands_returned_ms": 111.88493,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 787091
+        },
+        "start_byte_offset": 2382,
+        "read_byte_offset": 4370,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 5,
+        "notifications": 8,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "c49c1a63a235ef14e50e82c77c1e3aabc1be35e28c406a6176adbbb3931d1ee7",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 127.43586200031132,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-click/result.json",
+          "bytes": 22045,
+          "sha256": "0d79be1ce7ed060231984d6664f1de6b718ea21345912122ff93ef100ab30f3a"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-click/app-events.jsonl",
+          "bytes": 4731,
+          "sha256": "0f0ee90f114927a180cd47608c1b5ea3dcca073292d5b294673eb10b0b2237ac"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-click.log",
+          "bytes": 291,
+          "sha256": "079330b0acfca4f16fae31b5a4cb1f417814189b4b73a145d440e7ed41ebca27"
+        }
+      ]
+    },
+    {
+      "name": "react-development-input",
+      "status": "passed",
+      "mode": "development",
+      "platform": {
+        "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64",
+        "display": ":99",
+        "display_protocol": "X11",
+        "physical_input_tested": false,
+        "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+        "software_gl_requested": "1",
+        "child_subreaper": true
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 408.075312,
+        "command_start_to_input_commands_returned_ms": 326.241553,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 787102
+        },
+        "start_byte_offset": 2381,
+        "read_byte_offset": 78121,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 120,
+        "notifications": 158,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "6e3cbc3e1590d0b40b47e1ef89f10f555a196e5eec13de2da806afb81312e268",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "legacyCoarsePaintObservationMs": 462.901994999811,
+      "observerCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "applicationCleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "screenshots": {
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 33030,
+          "sha256": "b5f63d4c072c6ece7bc3a8410895b971167c6cecc2e91c2918ba02373c53822d"
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-input/result.json",
+          "bytes": 182985,
+          "sha256": "cf0081b314ad564cd703cd7c8d52600dd006edfa3bc1ac6efd9efee1a3cd37de"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-input/app-events.jsonl",
+          "bytes": 78484,
+          "sha256": "1fc7b3744e9111091ff63620d30f299c80eafbdb2c2ffdf3082d00e8042268de"
+        },
+        {
+          "file": "task-artifacts/native-paint-observer/final/react-development-input.log",
+          "bytes": 291,
+          "sha256": "bbedb614a89767f10005647067f3b06dfc3faa3bc5f3b5ab327c60d6856d8539"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No physical-input or display-presentation latency.",
+    "No hardware-GPU, release-host, macOS or Windows GUI qualification.",
+    "No speedup, capacity, renderer ranking or application performance claim from changing the observer.",
+    "Append-only producer contract; observed file-size and boundary changes are checked, not a forensic proof against hidden truncate-and-regrow sequences."
+  ],
+  "concurrentClickOracle": {
+    "checked": 4,
+    "allObservedWhileInputCommandRunning": true
+  }
+}

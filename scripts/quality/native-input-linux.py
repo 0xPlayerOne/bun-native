@@ -11,6 +11,7 @@ Screenshots are evidence, never automatically asserted to contain expected text.
 import argparse
 import ctypes
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -27,10 +28,16 @@ import threading
 import time
 
 
-MAX_LOG_BYTES = 4 * 1024 * 1024
 EVENT_STRESS_COUNT = 1000
 EVENT_STRESS_TEXT = "x" * EVENT_STRESS_COUNT
 EVENT_STRESS_TITLE = "Bun Native event throughput"
+PAINT_OBSERVER_PATH = Path(__file__).with_name("native-paint-observer.py")
+PAINT_OBSERVER_SPEC = importlib.util.spec_from_file_location(
+    "native_paint_observer", PAINT_OBSERVER_PATH
+)
+PAINT_OBSERVER = importlib.util.module_from_spec(PAINT_OBSERVER_SPEC)
+PAINT_OBSERVER_SPEC.loader.exec_module(PAINT_OBSERVER)
+MAX_LOG_BYTES = PAINT_OBSERVER.MAX_LOG_BYTES
 
 
 class Unsupported(RuntimeError):
@@ -135,7 +142,8 @@ def read_events(path, nonce, offset):
 
 def matches(event, expected):
     return bool(expected) and all(
-        event.get(key) == value for key, value in expected.items()
+        PAINT_OBSERVER.same_json(event.get(key), value)
+        for key, value in expected.items()
     )
 
 
@@ -462,6 +470,7 @@ def main():
             "cold_cache_controlled": False,
             "launch_kind": "fresh application process; OS page cache uncontrolled",
             "observation_poll_interval_ms": 100,
+            "polling_scope": "startup/window/RSS and post-command app checks; concurrent paint observation is reported separately",
             "paint_is_presentation_timestamp": False,
             "samples": [],
         },
@@ -471,6 +480,7 @@ def main():
             "app_input_event": "unsupported",
             "app_initial_render_report": "not-required",
             "app_render_report": "unsupported",
+            "native_paint_file_observation": "not-required",
             "pixel_or_text_assertion": "unsupported",
             "os_close": "not-run",
             "renderer": "not-required",
@@ -480,6 +490,8 @@ def main():
         "tools": {"python": sys.version},
     }
     app = None
+    paint_observer = None
+    harness_fingerprints = []
     threads = []
     observed = {}
     started = time.monotonic()
@@ -549,6 +561,14 @@ def main():
             }
         except (RuntimeError, subprocess.TimeoutExpired):
             report["source"] = {"status": "unavailable"}
+        for path in [Path(__file__), PAINT_OBSERVER_PATH]:
+            harness_fingerprints.append(
+                {
+                    "path": "scripts/quality/" + path.name,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+            )
+        report["source"]["harness_files"] = harness_fingerprints
         expectations = [
             json.loads(item.replace("{nonce}", nonce)) for item in args.expect_event
         ]
@@ -752,6 +772,25 @@ def main():
         focus()
         screenshot("before.png")
         offset = evidence_path.stat().st_size if evidence_path.exists() else 0
+        if render is not None and isinstance(render.get("nodes"), list):
+            report["checks"]["native_paint_file_observation"] = "failed"
+            paint_observer = PAINT_OBSERVER.PaintObserver(
+                evidence_path,
+                nonce,
+                {"stage": "native-paint", **render},
+                timeout=deadline - time.monotonic(),
+            )
+            paint_observer.__enter__()
+        input_commands_returned_ns = None
+
+        def input_command(command, timeout=3):
+            nonlocal input_commands_returned_ns
+            if paint_observer is not None and paint_observer.started_ns is None:
+                paint_observer.begin()
+            output = run(command, timeout=timeout)
+            input_commands_returned_ns = time.monotonic_ns()
+            return output
+
         injection_started = time.monotonic()
         report["measurements"]["input_injection_started_ms"] = (
             injection_started - started
@@ -771,10 +810,10 @@ def main():
                     "Click coordinates are outside the owned application window"
                 )
             run(["xdotool", "mousemove", "--window", window, str(x), str(y)])
-            run(["xdotool", "click", "1"])
+            input_command(["xdotool", "click", "1"])
         for key in args.key:
             focus()
-            run(["xdotool", "key", "--clearmodifiers", key])
+            input_command(["xdotool", "key", "--clearmodifiers", key])
         if args.text is not None:
             focus()
             remaining = deadline - time.monotonic()
@@ -784,7 +823,7 @@ def main():
                 )
             text_started = time.monotonic()
             delay_ms = 1 if args.event_stress else 10
-            run(
+            input_command(
                 [
                     "xdotool",
                     "type",
@@ -814,6 +853,12 @@ def main():
         report["measurements"]["input_injection_completed_ms"] = (
             time.monotonic() - started
         ) * 1000
+        if paint_observer is not None:
+            report["measurements"]["native_paint_file_observation"] = (
+                paint_observer.result(input_commands_returned_ns)
+            )
+            report["checks"]["native_paint_file_observation"] = "passed"
+            paint_observer.close()
         events = []
         input_ok = render_ok = False
         while time.monotonic() < deadline:
@@ -907,6 +952,36 @@ def main():
     finally:
         # Finish bounded child cleanup even if a supervisor repeats termination.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        if paint_observer is not None:
+            try:
+                paint_observer.close()
+                report["paint_observer_cleanup"] = {
+                    "reader_stopped": paint_observer.thread is None
+                    or not paint_observer.thread.is_alive(),
+                    "open_descriptors": len(paint_observer.descriptors),
+                }
+            except (OSError, RuntimeError) as error:
+                report.update(
+                    status="failed",
+                    error=f"Native paint reader cleanup failed: {error}",
+                )
+        if harness_fingerprints:
+            try:
+                for fingerprint in harness_fingerprints:
+                    path = Path(__file__).with_name(Path(fingerprint["path"]).name)
+                    if (
+                        hashlib.sha256(path.read_bytes()).hexdigest()
+                        != fingerprint["sha256"]
+                    ):
+                        report.update(
+                            status="failed",
+                            error="Native evidence harness changed during the run",
+                        )
+            except OSError as error:
+                report.update(
+                    status="failed",
+                    error=f"Cannot verify final native harness identity: {error}",
+                )
         if app is not None:
             try:
                 report["cleanup"] = cleanup(app, observed)

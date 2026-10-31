@@ -236,5 +236,45 @@ raise SystemExit("Cancellation did not interrupt the running trial")
             supervisor.stderr.close()
 
 
+class MeasurementTests(unittest.TestCase):
+    def test_concurrent_and_coarse_observations_remain_distinct(self):
+        # Inert metric fixture: this does not execute or qualify native input.
+        measurements = {
+            "time_to_window_observed_ms": 100,
+            "time_to_first_paint_report_observed_ms": 80,
+            "time_to_expected_initial_paint_report_observed_ms": 120,
+            "sampled_peak_tree_rss_bytes": 1000,
+            "input_start_to_matching_app_event_observed_ms": 110,
+            "input_start_to_matching_paint_report_observed_ms": 120,
+            "native_paint_file_observation": {"command_start_to_paint_observed_ms": 20},
+            "idle": {"median_tree_rss_bytes": 800, "maximum_tree_rss_bytes": 900},
+            "os_close_requested_ms": 400,
+            "application_exit_observed_ms": 450,
+        }
+        values = BASELINE.metrics({"measurements": measurements})
+        self.assertEqual(
+            values["input_start_to_matching_paint_report_observed_ms"], 120
+        )
+        self.assertEqual(values["input_command_to_paint_record_observed_ms"], 20)
+        self.assertEqual(values["os_close_to_app_exit_observed_ms"], 50)
+        del measurements["native_paint_file_observation"]
+        with self.assertRaises(KeyError):
+            BASELINE.metrics({"measurements": measurements})
+
+    def test_invalid_samples_cannot_be_aggregated_as_timing_or_memory(self):
+        for samples in [
+            [],
+            [True],
+            [None],
+            ["1"],
+            [-1],
+            [float("nan")],
+            [float("inf")],
+        ]:
+            with self.subTest(samples=samples):
+                with self.assertRaisesRegex(ValueError, "finite, nonnegative"):
+                    BASELINE.distribution(samples)
+
+
 if __name__ == "__main__":
     unittest.main()

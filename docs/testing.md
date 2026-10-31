@@ -93,7 +93,7 @@ For a baseline trial, pass `--idle-seconds 2` directly to the Python driver. The
 
 After native correctness passes, the Linux job runs the [repeated matched baseline](../benchmarks/NATIVE_BASELINE.md) against the same release host and inspected AOT package. One warm-up and five alternating measured fresh-process trials per mode use a two-second idle interval. Every trial must pass the native input, paint and cleanup assertions. Raw records and descriptive distributions are retained; there is no guessed performance threshold. The shared X11 session helper accepts `-- COMMAND ...` to run this measurement in the same isolated display setup. Driver termination runs bounded cleanup before returning a failed result.
 
-The Linux driver makes itself a process-local child subreaper. If interruption terminates an application parent before its native host, the driver adopts and reaps that observed descendant instead of relying on a container's PID1. The only native call is the fixed Linux `prctl(PR_SET_CHILD_SUBREAPER, 1)` operation through the standard-library `ctypes` interface; it changes no system-wide setting. Cleanup waits only on children whose PID and process start time still match the recorded identities. The real-process safety test deliberately terminates a parent that does not reap its own child.
+The Linux driver makes itself a process-local child subreaper. If interruption terminates an application parent before its native host, the driver adopts and reaps that observed descendant instead of relying on a container's PID1. Subreaper setup uses the fixed Linux `prctl(PR_SET_CHILD_SUBREAPER, 1)` operation through the standard-library `ctypes` interface; it changes no system-wide setting. Cleanup waits only on children whose PID and process start time still match the recorded identities. The real-process safety test deliberately terminates a parent that does not reap its own child.
 
 `--mode aot` declares how the caller launched the app; the input driver never verifies machine-code compilation by itself. The CI lane separately invokes the pinned compiler, validates the emitted compiled-program metadata, hashes the source and both binaries, and retains `package/manifest.json` and build/inspection logs. The actual host build profile is declared in every scenario report and substantiated by the recorded Cargo release command and binary hash. Routine evidence artifacts omit the large executable files while retaining their hashes, sizes, linkage, compiler metadata and actual execution results. A missing or invalid AOT metadata check fails the job before the AOT GUI run.
 
@@ -110,7 +110,18 @@ bash -n scripts/quality/native-linux-session.sh
 
 The process-tree safety case is explicitly skipped if the local PID namespace cannot be reconciled with `/proc`. Hosted Ubuntu runs it in the real namespace. The native GUI lane fails, rather than reporting a pass, when the actual display/input/paint/cleanup requirements are unavailable or unfulfilled.
 
-Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
+Baseline provenance tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Separate metric tests keep concurrent and coarse observations distinct and reject missing or invalid numeric samples. Their inert fixtures are never executed or presented as native/AOT evidence.
+
+The common driver also records a concurrent
+[input-command-to-paint observation](../benchmarks/NATIVE_PAINT.md) whenever the
+fixture supplies a complete expected tree. A bounded Linux file-event reader
+can observe the matching native paint while `xdotool` is still running. Its
+separate monotonic interval includes command, scheduling and log I/O overhead;
+it is not input-delivery or display-presentation latency. Source fingerprints,
+file identity, nonce/revision predicates, log/record/notification bounds and
+reader cleanup are part of the evidence. `test_native_paint_observer.py` exercises
+the real file-watch and cancellation paths; those headless safety tests remain
+separate from actual native qualification.
 
 ## React adapter, native input and lifecycle
 
