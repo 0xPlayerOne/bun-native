@@ -242,7 +242,8 @@ class PlatformInputFailureEvidenceTests(unittest.TestCase):
         driver.observe.return_value = observed
         driver.click.return_value = {
             "windowNumber": 123,
-            "windowPoint": [104, 237],
+            "screenPoint": [336, 348],
+            "windowServerTargetVerified": True,
             "injection": {"postedEvents": 3},
         }
         driver.click.side_effect = click_error
@@ -304,7 +305,8 @@ class PlatformInputFailureEvidenceTests(unittest.TestCase):
         observation, driver = self.run_failure()
         driver.click.assert_called_once_with(104, 144, [560, 381])
         self.assertEqual(observation["phase"], "pointer-posted")
-        self.assertEqual(observation["pointer"]["windowPoint"], [104, 237])
+        self.assertEqual(observation["pointer"]["screenPoint"], [336, 348])
+        self.assertTrue(observation["pointer"]["windowServerTargetVerified"])
         self.assertEqual(
             observation["pointerTarget"],
             {"nodeId": 4, "logicalPoint": [104, 144], "viewport": [560, 381]},

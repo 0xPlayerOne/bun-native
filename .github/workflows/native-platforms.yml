@@ -157,12 +157,12 @@ jobs:
       - name: Build the bounded macOS OS controller
         if: runner.os == 'macOS'
         run: |
-          $associationTest = Join-Path $env:NATIVE_EVIDENCE 'macos-input-events'
+          $eventTest = Join-Path $env:NATIVE_EVIDENCE 'macos-input-events'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
-            tests/native/macos-input-events.m -o $associationTest
-          if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK event-association regression did not compile' }
-          & $associationTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-pointer-association.json')
-          if ($LASTEXITCODE -ne 0) { throw 'The actual AppKit event conversion lost its owned window association' }
+            tests/native/macos-input-events.m -o $eventTest
+          if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK pointer and target-guard control did not compile' }
+          & $eventTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-pointer-events.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The actual Quartz event or exact-window target controls failed' }
           $helper = Join-Path $env:NATIVE_EVIDENCE 'native-platform-macos'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
             scripts/quality/native-platform-macos.m -o $helper

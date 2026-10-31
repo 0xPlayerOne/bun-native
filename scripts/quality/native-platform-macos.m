@@ -145,6 +145,45 @@ static void foreground(NSDictionary *request, NSDictionary *state) {
         unavailable(@"An external pointer button is held; no input was injected");
 }
 
+static void require_foreground(pid_t pid) {
+    if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != pid)
+        fail(@"Native foreground changed before input");
+}
+
+// Quartz returns onscreen windows front-to-back. Reject even a same-process
+// overlay: the measured button must belong to this exact unobscured window.
+static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint point) {
+    if (![windows isKindOfClass:NSArray.class] || windows.count > 4096
+        || !isfinite(point.x) || !isfinite(point.y)) fail(@"Invalid bounded WindowServer target list");
+    for (NSDictionary *candidate in windows) {
+        id alpha = candidate[(__bridge NSString *)kCGWindowAlpha];
+        if (!number(alpha)) fail(@"WindowServer opacity is unavailable");
+        if ([alpha doubleValue] <= 0) continue;
+        id value = candidate[(__bridge NSString *)kCGWindowBounds];
+        CGRect bounds = CGRectZero;
+        if (![value isKindOfClass:NSDictionary.class]
+            || !CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)value, &bounds)
+            || !isfinite(bounds.origin.x) || !isfinite(bounds.origin.y)
+            || !isfinite(bounds.size.width) || !isfinite(bounds.size.height)
+            || bounds.size.width < 0 || bounds.size.height < 0
+            || bounds.size.width > 32768 || bounds.size.height > 32768)
+            fail(@"WindowServer target bounds are invalid");
+        if (!CGRectContainsPoint(bounds, point)) continue;
+        if (![candidate[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]]
+            || ![candidate[(__bridge NSString *)kCGWindowOwnerPID] isEqual:state[@"host"][@"pid"]])
+            unavailable(@"The owned pointer target is obscured by another window; no input was posted");
+        return;
+    }
+    unavailable(@"The owned pointer target is absent from the onscreen window list");
+}
+
+static void require_pointer_target(NSDictionary *state, CGPoint point) {
+    NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(
+        kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
+    if (!windows) unavailable(@"The current GUI session cannot resolve the pointer target");
+    verify_pointer_target(state, windows, point);
+}
+
 static void key(pid_t pid, CGKeyCode code, UniChar character) {
     CGEventRef down = CGEventCreateKeyboardEvent(NULL, code, true);
     CGEventRef up = CGEventCreateKeyboardEvent(NULL, code, false);
@@ -153,35 +192,40 @@ static void key(pid_t pid, CGKeyCode code, UniChar character) {
         if (up) CFRelease(up);
         fail(@"Cannot allocate bounded CoreGraphics keyboard events");
     }
+    // The public session stream performs ordinary WindowServer/AppKit routing.
+    // Check the owned foreground before each down/up pair, not just the text run.
+    @try { require_foreground(pid); }
+    @catch (NSException *error) {
+        CFRelease(up);
+        CFRelease(down);
+        @throw error;
+    }
     for (int i = 0; i < 2; i++) {
         CGEventRef event = i == 0 ? down : up;
         CGEventSetFlags(event, 0);
         if (character) CGEventKeyboardSetUnicodeString(event, 1, &character);
-        CGEventPostToPid(pid, event);
+        CGEventPost(kCGSessionEventTap, event);
     }
     CFRelease(up);
     CFRelease(down);
 }
 
-static NSArray<NSEvent *> *pointer_events(NSInteger window, NSPoint point) {
-    // PID posting bypasses WindowServer targeting. The public AppKit factory
-    // carries the owned window association and window-local coordinates into
-    // CGEvent; a bare CGEventCreateMouseEvent has windowNumber zero.
-    NSEventType types[] = {NSEventTypeMouseMoved, NSEventTypeLeftMouseDown, NSEventTypeLeftMouseUp};
-    NSMutableArray<NSEvent *> *events = [NSMutableArray arrayWithCapacity:3];
+static NSArray *pointer_events(CGPoint point) {
+    // CGEventCreateMouseEvent accepts global Quartz coordinates. Session posting
+    // leaves native target selection to WindowServer after an exact target check.
+    CGEventType types[] = {kCGEventMouseMoved, kCGEventLeftMouseDown, kCGEventLeftMouseUp};
+    NSMutableArray *events = [NSMutableArray arrayWithCapacity:3];
     for (int i = 0; i < 3; i++) {
-        NSEvent *event = [NSEvent mouseEventWithType:types[i] location:point
-            modifierFlags:0 timestamp:NSProcessInfo.processInfo.systemUptime
-            windowNumber:window context:nil eventNumber:i + 1 clickCount:i ? 1 : 0
-            pressure:i == 1 ? 1.0 : 0.0];
-        CGEventRef quartz = event.CGEvent;
-        NSEvent *associated = quartz ? [NSEvent eventWithCGEvent:quartz] : nil;
-        if (!associated || associated.windowNumber != window || associated.type != types[i]
-            || !NSEqualPoints(associated.locationInWindow, point)
-            || (associated.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) != 0
-            || (i && associated.clickCount != 1))
-            fail(@"CoreGraphics conversion did not retain the owned AppKit pointer target");
-        [events addObject:event];
+        CGEventRef event = CGEventCreateMouseEvent(NULL, types[i], point, kCGMouseButtonLeft);
+        if (!event) fail(@"Cannot allocate bounded CoreGraphics pointer events");
+        id owned = CFBridgingRelease(event);
+        CGEventSetFlags(event, 0);
+        CGEventSetIntegerValueField(event, kCGMouseEventClickState, i ? 1 : 0);
+        if (CGEventGetType(event) != types[i] || !CGPointEqualToPoint(CGEventGetLocation(event), point)
+            || CGEventGetFlags(event) != 0
+            || CGEventGetIntegerValueField(event, kCGMouseEventClickState) != (i ? 1 : 0))
+            fail(@"CoreGraphics pointer construction did not retain its exact type and global position");
+        [events addObject:owned];
     }
     return events;
 }
@@ -221,22 +265,22 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         id window = state[@"window"][@"id"];
         if (!number(window) || [window doubleValue] < 1 || [window doubleValue] > UINT32_MAX
             || floor([window doubleValue]) != [window doubleValue]) fail(@"Invalid owned Quartz window number");
-        // Pinned GPUI maps native y as content_size().height - locationInWindow.y.
-        // Use its measured viewport, not an inferred titlebar height or screen point.
-        NSPoint point = NSMakePoint(x, height - y);
-        NSArray<NSEvent *> *mouse = pointer_events([window integerValue], point);
-        for (NSEvent *event in mouse) CGEventPostToPid(pid, event.CGEvent);
+        CGPoint point = CGPointMake([frame[0] doubleValue] + side + x,
+            [frame[1] doubleValue] + top + y);
+        NSArray *mouse = pointer_events(point);
+        require_foreground(pid);
+        require_pointer_target(state, point);
+        for (id event in mouse) CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)event);
         events = 3;
         result[@"windowNumber"] = window;
-        result[@"windowPoint"] = @[@(point.x), @(point.y)];
-        result[@"inferredScreenPoint"] = @[@([frame[0] doubleValue] + side + x),
-            @([frame[1] doubleValue] + top + y)];
-        result[@"contentGeometry"] = @"AppKit window-local coordinates from actual GPUI viewport; CGEvent round-trip retained window/type/location; delivery still requires native target evidence";
+        result[@"screenPoint"] = @[@(point.x), @(point.y)];
+        result[@"windowServerTargetVerified"] = @YES;
+        result[@"contentGeometry"] = @"Global Quartz point from the observed frame and measured GPUI viewport; exact unobscured window checked in the front-to-back WindowServer list; delivery still requires native target evidence";
     } else fail(@"Unknown bounded input action");
     verify(state, snapshot(request));
     if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != pid)
         fail(@"Native foreground changed during input");
-    result[@"injection"] = @{@"method": @"CoreGraphics CGEventPostToPid", @"postedEvents": @(events),
+    result[@"injection"] = @{@"method": @"CoreGraphics CGEventPost(kCGSessionEventTap)", @"postedEvents": @(events),
         @"delivery": @"Requires independent native/Bun event and paint evidence"};
     return result;
 }

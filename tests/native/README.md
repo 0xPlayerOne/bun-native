@@ -194,11 +194,14 @@ native paint on every cycle. It uses target OS APIs and reuses the existing X11
 helpers on Linux. A successful injection API return cannot satisfy delivery.
 The macOS helper requires an explicit prebuilt `BUN_NATIVE_PLATFORM_HELPER`;
 neither target controller requests permission or changes security settings.
-The helper constructs pointer events with AppKit's public mouse-event factory,
-the observed window number, and the actual GPUI viewport's window-local
-coordinates. It verifies that conversion to CoreGraphics retains the target
-before posting only to the owned process. A separate SDK regression creates and
-inspects those event objects without posting input; it cannot qualify delivery.
+The helper constructs global Quartz pointer events from the measured viewport
+and independently observed frame. It requires the exact owned window to be the
+first onscreen window at that point, then posts through the public session event
+stream for WindowServer routing. Keyboard pairs recheck owned foreground state.
+A separate SDK control inspects those objects and pure occlusion/identity guards
+without posting input; it cannot qualify delivery. The previous PID-targeted
+attempts remain failed, including the ready GPUI capture trace with no mouse
+event in run 41245774144. The new routing requires its own hosted delivery proof.
 Each OS observation is retained as soon as ownership is established, with the
 requested logical point and a phase that distinguishes posting from actual
 delivery and complete native paint. Failed runs keep that partial evidence.

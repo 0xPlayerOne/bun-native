@@ -87,13 +87,14 @@ resources before final joined native shutdown.
   verified when Quartz exposes them; absent title access does not replace the
   required PID/image/creation identity. Input requires read-only
   `CGPreflightPostEventAccess`, owned foreground activation and no external held
-  modifiers. Pointer events are created with AppKit's public mouse-event
-  factory, the observed window number and the actual GPUI viewport's local
-  coordinates. Conversion to CoreGraphics must retain the same window, type
-  and local point before any event is posted. Events use `CGEventPostToPid`
-  only for the verified native child. The Quartz frame bounds the measured
-  viewport; an inferred screen point is recorded for diagnosis but does not
-  select the event target. Actual native target delivery is still required.
+  modifiers. Pointer events use global Quartz coordinates derived from the
+  observed frame and the measured GPUI viewport. Before posting, the first
+  visible window containing that point in Quartz's front-to-back list must be
+  the exact owned window; even a same-process overlay rejects. Events enter
+  the public login-session stream with `CGEventPost(kCGSessionEventTap)` so
+  WindowServer performs ordinary routing. Keyboard down/up pairs recheck the
+  owned foreground. This is a controller correction awaiting native delivery
+  verification; an SDK event object or posting call cannot satisfy that gate.
   The helper never requests permissions or changes privacy settings.
 - **Linux:** The same fixture can be checked in the existing isolated Xvfb/DBus
   session. Its small adapter reuses the established process-identity and XTest
@@ -124,11 +125,11 @@ A bounded SDK diagnostic created event objects without posting input. The old
 two public window-under-pointer fields did not establish an AppKit window
 association. Apple's [mouse-event factory](https://developer.apple.com/documentation/appkit/nsevent/mouseevent%28with%3Alocation%3Amodifierflags%3Atimestamp%3Awindownumber%3Acontext%3Aeventnumber%3Aclickcount%3Apressure%3A%29)
 preserved the supplied window number and window-local coordinates through
-CoreGraphics conversion. The correction uses that factory, with the pinned
+CoreGraphics conversion. That correction used the factory, with the pinned
 [GPUI conversion](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/events.rs)
 inverted explicitly: `nativeX = gpuiX`, `nativeY = viewportHeight - gpuiY`.
-The checked-in SDK regression inspects nine such conversions without posting;
-the separate development/AOT runs must still prove actual native delivery.
+Its historical SDK regression inspected nine such conversions without posting;
+those construction passes did not prove actual native delivery.
 
 OS observations are now retained immediately after ownership is established.
 Their phase distinguishes an observed window, a bounded pointer target, posted
@@ -173,7 +174,7 @@ host and checks all 61 source fingerprints against the actual tested merge.
 The delivery failure remains unattributed. The SDK object conversion is not
 evidence that AppKit received or dispatched those events.
 
-The next diagnostic enables `BUN_NATIVE_POINTER_TRACE=1` only for the hosted
+The diagnostic enables `BUN_NATIVE_POINTER_TRACE=1` only for the hosted
 macOS input commands. With the existing nonce-bound evidence log, a non-hitbox
 canvas registers window-global GPUI capture observers before the native body
 is painted. They record readiness once per live window and raw move/down/up
@@ -201,6 +202,37 @@ the full root and target geometry. The actual pointer coordinates retain X11's
 fractional representation; they are checked against the native target bounds,
 not assumed to equal integer injection coordinates exactly. These use a
 development-profile Linux host and do not qualify macOS delivery.
+
+### WindowServer routing correction
+
+[Run 41245774144](https://github.com/0xPlayerOne/bun-native/actions/runs/41245774144/job/124668770902)
+again passed paint-only lifecycle but failed the unchanged macOS input gate.
+The trace emitted its ready marker at index 1 of 64, then no mouse move, down
+or up record. The initial native tree painted, posting permission was true,
+the observed identity remained valid, and all three PID-targeted events were
+submitted. The fixture failed after 10.232 seconds, then joined native shutdown
+with all six public resource counts zero. AOT input did not run after failure.
+The [verified record](../tests/native/evidence/platform-macos-pointer-trace-failure.json)
+checks all 63 source files against the actual merge and rehashes both archived
+native host and helper bytes. The marker's inactive state belongs to initial
+paint; it does not contradict or replace the later foreground check.
+
+The missing event is before the installed GPUI capture observer; the underlying
+PID-posting failure is still unattributed. The controller now uses Apple's
+documented [global-coordinate mouse events](<https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)?language=objc>)
+and [session event stream](<https://developer.apple.com/documentation/coregraphics/cgevent/post(tap:)?language=objc>).
+The [onscreen list](https://developer.apple.com/documentation/coregraphics/cgwindowlistoption/optiononscreenonly)
+is ordered front-to-back, enabling a conservative exact-window occlusion check
+before ordinary WindowServer routing. It refuses obscured/absent targets and
+preserves process creation, executable, geometry, permission, foreground and
+external-modifier checks. There is no automatic alternate posting path or retry.
+
+The SDK control constructs nine global-coordinate events and exercises eight
+pure window-target cases plus the four identity guards without posting input.
+The hosted job must compile and execute that control, then independently pass
+real development and AOT button/text input. This correction has no native
+macOS success claim until those results exist. The GPUI capture trace remains
+enabled to distinguish subsequent delivery from targeting failures.
 
 ## Pinned native requirements
 
