@@ -1,20 +1,45 @@
 # Bun Native implementation handoff
 
-## Current branch state
+## Completed foundation and current source
 
-The BN0 workspace replacement removes the Bunly runtime and browser renderer.
-The source includes matching portable TypeScript and Rust native-pipe protocol
-packages, an owned native-process runtime, an interactive GPUI host, strict
-package-boundary checks, and a pinned Bun AOT/Rust bootstrap.
-No old CEF result qualifies this implementation.
+BN0 is complete. Source replacement #264, pinned compiler/native interoperability
+#265, the actual GPUI window #266, and the repeated release baseline/audit #273
+are merged. The final baseline merge is
+`c7bcf4e63906b97c9639c7a48ca4645d06aa98d2`.
+[Validation 41181547360](https://github.com/0xPlayerOne/bun-native/actions/runs/41181547360)
+passed every required job, including actual release-host development/AOT input,
+all 12 matched baseline trials, the Linux/macOS/Windows headless contracts and
+`Validation / Gate`. BN0 #217 and its implementation issues are closed.
 
-Source replacement [#264](https://github.com/0xPlayerOne/bun-native/pull/264) and
-compiler interoperability [#265](https://github.com/0xPlayerOne/bun-native/pull/265)
-are merged. Native window/AOT integration is in
-[#266](https://github.com/0xPlayerOne/bun-native/pull/266). Both application modes
-have passed real Linux X11 software-GPU click/input/paint/close tests, and five
-close/reopen cycles passed within one native process. The complete evidence,
-known defects and reproduction are in [the integration record](bn0-integration.md).
+The [BN0 audit](bn0-audit.md) and [integration record](bn0-integration.md) retain
+original hashed evidence and earlier failed probes separately from the final
+passing run. That acceptance is Linux X11/XTest with Mesa software rendering;
+it does not qualify other OS GUIs, physical GPU/input, IME, accessibility or
+production installers.
+
+BN1 is complete. The merged source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
+replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
+atomic mutations, independent input revisions and the public
+[`@bun-native/core`](../packages/core/README.md) TS/JS API. Both framework
+consumers import this same contract. Their type fixtures are compile-only;
+actual framework renderers have separate acceptance.
+
+The initial shared layout increment advances the current source to protocol 3
+and requires `layout_v1`. Its [native layout contract](native-layout.md) records
+the supported sizing, scrolling and focus behavior and its actual development/AOT
+qualification. Historical BN1 artifacts remain evidence for their original
+protocol-2 sources; old hosts fail negotiation with the current packages.
+
+Real development and inspected AOT checks cover the public API and JavaScript
+consumer, pointer/text/Enter events, stale-input rejection, 1,000 native
+subtree/listener lifecycle cycles and 1,000 OS-delivered input events.
+The complete required [hosted run 41224338023](https://github.com/0xPlayerOne/bun-native/actions/runs/41224338023)
+passed the expanded release-host suite, actual startup/crash and scheduling
+checks, native allocation profiles, the portable matrix and the aggregate gate.
+The protected merge is `515c0bda14ce4f40c0ddd1469a161315d03356a8`.
+The [BN1 audit](bn1-audit.md) links the retained raw archive, all eight inspected
+AOT manifests, exact source identities and current performance observations.
+Its Linux software-rendering scope does not qualify other native GUI platforms.
 
 ## Removal inventory (#251)
 
@@ -38,27 +63,45 @@ fallback remains in the active packages.
 
 ## Current implementation sequence
 
-1. Finish the required release-profile native CI and artifact inspection in
-   #266; source and compiler setup are already merged.
-2. Complete #227/#258 with repeated, explicitly scoped startup/idle RSS/size
-   observations and preserve failures as well as successful results.
-3. Keep #226 and this handoff current. BN0 closes only after actual acceptance
-   and the engineering-quality checkpoint pass.
-4. Extend the proven integration into BN1's reusable tree, handles, ownership,
-   batching, capabilities and controlled-input revisions. Reuse the same host
-   for Solid and React; do not introduce parallel native backends.
+1. Preserve the merged BN1 scheduling, crash/startup, callback ownership and
+   native allocation regressions. The final release suite passed; use its
+   retained exact-source evidence when comparing future changes.
+2. Continue the first Solid renderer under
+   [#277](https://github.com/0xPlayerOne/bun-native/pull/277). Its isolated branch
+   has actual development/AOT counter, keyed-list and controlled-input evidence.
+   The shared-renderer refactor requires fresh native qualification and matched
+   performance evidence; a failed retention investigation is not a passing
+   comparison.
+3. Complete the React renderer in [#280](https://github.com/0xPlayerOne/bun-native/pull/280),
+   using the same private renderer package and public core as Solid. Preserve
+   its measured handler-lifetime and error-propagation regressions.
+4. Complete the required release checks for native layout/scroll/focus
+   [#281](https://github.com/0xPlayerOne/bun-native/pull/281) and Bun command
+   controls [#278](https://github.com/0xPlayerOne/bun-native/pull/278), then follow
+   their issue dependencies. Ordinary TS/JS edits reuse a prebuilt host and
+   must not silently invoke Cargo.
+
+The native ownership and schema are described in [protocol 3](native-abi.md),
+the [public API ADR](decisions/0004-public-api.md) and the
+[security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
+state before resuming; a draft implementation is not a completed milestone.
 
 ## Validation meaning
 
-`bun install --frozen-lockfile`, `bun run check`, and Rust protocol checks test
-source, framing and dependency boundaries. `bun run build` emits JS modules and
-is explicitly not an AOT executable. Initial unit tests are headless; they do
-not prove GPUI rendering, input, GPU acceleration or AOT compatibility.
+`bun install --frozen-lockfile`, `bun run check` and Rust protocol checks test
+source, framing, ownership and dependency boundaries. `bun run build` emits JS
+modules and is not an AOT executable. Headless subprocess tests use explicitly
+simulated protocol peers; they cannot establish GPUI rendering or OS input.
 
-The native window and same-window AOT have real Linux software-renderer evidence.
-Release-profile hosted validation, stable framework APIs, framework adapters,
-packaged releases and other platform GUI support have separate acceptance.
-Headless protocol success on macOS/Windows does not qualify their native GUI.
+[The native fixture guide](../tests/native/README.md) and [testing](testing.md)
+separate actual native input, native fault containment, paint traversal,
+process cleanup and AOT artifact inspection. Bounded ownership counts, weak
+references and heap observations are not long-running allocator/GPU leak proof.
+A native acknowledgement is not a display-presentation timestamp.
 
-See [testing](testing.md), [toolchain](toolchain.md), and the issue/PR logs for
-exact command results. Keep this document current as each implementation lands.
+The initial baseline records fresh-process window observation, idle RSS and
+executable bytes. Cache/power state is uncontrolled, observation intervals are
+polled, and precise physical input/frame latency remains unmeasured. Preserve
+these limitations when comparing results. BN6 #246 and BN5 #256 own the native
+platform matrix; BN4 #241 owns horizontal input scrolling, IME and complete
+text/accessibility qualification.

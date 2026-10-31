@@ -1,76 +1,318 @@
-use crate::{channel::EventSink, evidence::Evidence, input::TextInput};
-use bun_native_protocol::Event;
-use gpui::{Context, Entity, Window, canvas, div, prelude::*, px, rgb};
+use crate::{
+    channel::EventSink,
+    evidence::{Evidence, LayoutFrame},
+    input::{InputBinding, TextInput},
+    state::SharedWindowState,
+    style,
+};
+use bun_native_protocol::{Element as NativeElement, Event, NodeId, Overflow, Tree, WindowId};
+use gpui::{
+    AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
+    ScrollHandle, Window, actions, canvas, div, prelude::*, px, rgb,
+};
+use std::collections::BTreeMap;
+use std::rc::Rc;
+
+actions!(native_button, [ActivateButton]);
+actions!(native_window, [FocusNext, FocusPrevious]);
+
+pub(crate) fn bind_keys(cx: &mut App) {
+    cx.bind_keys([
+        KeyBinding::new("enter", ActivateButton, Some("NativeButton")),
+        KeyBinding::new("space", ActivateButton, Some("NativeButton")),
+        KeyBinding::new("tab", FocusNext, Some("NativeWindow")),
+        KeyBinding::new("shift-tab", FocusPrevious, Some("NativeWindow")),
+    ]);
+}
 
 pub(crate) struct NativeView {
-    pub(crate) text: String,
-    pub(crate) input: Entity<TextInput>,
+    window_id: WindowId,
+    state: SharedWindowState,
+    inputs: BTreeMap<NodeId, Entity<TextInput>>,
+    buttons: BTreeMap<NodeId, FocusHandle>,
+    scrolls: BTreeMap<NodeId, ScrollHandle>,
     events: EventSink,
     evidence: Evidence,
 }
 
 impl NativeView {
     pub(crate) fn new(
-        text: String,
-        input: Entity<TextInput>,
+        window_id: WindowId,
+        state: SharedWindowState,
         events: EventSink,
         evidence: Evidence,
     ) -> Self {
         Self {
-            text,
-            input,
+            window_id,
+            state,
+            inputs: BTreeMap::new(),
+            buttons: BTreeMap::new(),
+            scrolls: BTreeMap::new(),
             events,
             evidence,
+        }
+    }
+
+    /// Called synchronously after complete transaction preflight. This method
+    /// does not yield or dispatch native input between model and entity updates.
+    pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.borrow_mut().tree = tree;
+        // Snapshot cheap Arc-backed properties before focus/IME notifications:
+        // native callbacks must never run while the shared model is borrowed.
+        let (controls, scroll_modes) = {
+            let state = self.state.borrow();
+            let mut controls = BTreeMap::new();
+            let mut scroll_modes = BTreeMap::new();
+            for (id, node) in state.tree.nodes() {
+                if matches!(
+                    node.element(),
+                    NativeElement::Input { .. } | NativeElement::Button { .. }
+                ) {
+                    controls.insert(id, node.clone());
+                }
+                if let Some(mode) = node
+                    .element()
+                    .style()
+                    .overflow
+                    .filter(|mode| mode.scrolls())
+                {
+                    scroll_modes.insert(id, mode);
+                }
+            }
+            (controls, scroll_modes)
+        };
+        self.scrolls.retain(|id, _| scroll_modes.contains_key(id));
+        for (id, mode) in scroll_modes {
+            let handle = self.scrolls.entry(id).or_default();
+            let mut offset = handle.offset();
+            if mode == Overflow::ScrollX {
+                offset.y = px(0.);
+            } else if mode == Overflow::ScrollY {
+                offset.x = px(0.);
+            }
+            handle.set_offset(offset);
+        }
+        self.inputs.retain(|id, input| {
+            if controls.contains_key(id) {
+                return true;
+            }
+            if input.focus_handle(cx).is_focused(window) {
+                window.blur(cx);
+            }
+            false
+        });
+        self.buttons.retain(|id, focus| {
+            let enabled = controls.get(id).is_some_and(|node| {
+                matches!(
+                    node.element(),
+                    NativeElement::Button {
+                        disabled: false,
+                        ..
+                    }
+                )
+            });
+            if !enabled && focus.is_focused(window) {
+                window.blur(cx);
+            }
+            controls.contains_key(id)
+        });
+        for (node_id, node) in controls {
+            match node.element() {
+                NativeElement::Input {
+                    value, placeholder, ..
+                } => {
+                    if let Some(input) = self.inputs.get(&node_id) {
+                        input.update(cx, |input, cx| {
+                            input.set_properties(value, placeholder, window, cx)
+                        });
+                    } else {
+                        let binding = InputBinding {
+                            state: Rc::downgrade(&self.state),
+                            window_id: self.window_id,
+                            node_id,
+                            events: self.events.clone(),
+                        };
+                        let input = cx.new(|cx| {
+                            TextInput::new(value.clone(), placeholder.clone(), binding, cx)
+                        });
+                        if window.focused(cx).is_none() {
+                            window.focus(&input.focus_handle(cx), cx);
+                        }
+                        self.inputs.insert(node_id, input);
+                    }
+                }
+                NativeElement::Button { .. } => {
+                    self.buttons
+                        .entry(node_id)
+                        .or_insert_with(|| cx.focus_handle().tab_stop(true));
+                }
+                NativeElement::Box { .. } | NativeElement::Text { .. } => {}
+            }
+        }
+        cx.notify();
+    }
+
+    fn click(&self, node_id: NodeId, cx: &mut Context<Self>) {
+        let state = self.state.borrow();
+        if state.active
+            && state.tree.node(node_id).is_some_and(|node| {
+                matches!(
+                    node.element(),
+                    NativeElement::Button {
+                        disabled: false,
+                        ..
+                    }
+                )
+            })
+        {
+            self.events.ui(
+                |sequence| Event::Click {
+                    sequence,
+                    window_id: self.window_id,
+                    node_id,
+                },
+                cx,
+            );
+        }
+    }
+
+    fn render_node(
+        &self,
+        tree: &Tree,
+        node_id: NodeId,
+        layout: Option<&LayoutFrame>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let node = tree
+            .node(node_id)
+            .expect("validated tree contains every child");
+        let mut base = div().flex_shrink_0();
+        if let Some(layout) = layout {
+            base = layout.children(base, node.children(), self.scrolls.get(&node_id));
+        }
+        let base = base.id(node_id.get());
+        match node.element() {
+            NativeElement::Box { style: properties } => {
+                let base = if node_id == tree.root_id() {
+                    base.size_full()
+                } else {
+                    base
+                };
+                let mut container = style::apply(base.flex().flex_col(), properties);
+                if let Some(handle) = self.scrolls.get(&node_id) {
+                    container = container.track_scroll(handle);
+                }
+                container
+                    .children(
+                        node.children()
+                            .iter()
+                            .map(|child| self.render_node(tree, *child, layout, cx)),
+                    )
+                    .into_any_element()
+            }
+            NativeElement::Text {
+                text,
+                style: properties,
+            } => style::apply(base, properties)
+                .child(text.clone())
+                .into_any_element(),
+            NativeElement::Button {
+                text,
+                disabled,
+                style: properties,
+            } => {
+                let mut button = style::apply(
+                    base.flex()
+                        .items_center()
+                        .justify_center()
+                        .h(px(44.))
+                        .px(px(12.))
+                        .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
+                        .text_color(rgb(0xffffff)),
+                    properties,
+                )
+                .child(text.clone());
+                if !disabled {
+                    let focus = self
+                        .buttons
+                        .get(&node_id)
+                        .expect("button reconciled before render")
+                        .clone();
+                    button = button
+                        .track_focus(&focus)
+                        .key_context("NativeButton")
+                        .cursor_pointer()
+                        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                            window.focus(&focus, cx)
+                        })
+                        .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)))
+                        .on_action(cx.listener(move |view, _: &ActivateButton, _, cx| {
+                            view.click(node_id, cx)
+                        }));
+                }
+                button.into_any_element()
+            }
+            NativeElement::Input {
+                style: properties, ..
+            } => style::apply(base, properties)
+                .child(
+                    self.inputs
+                        .get(&node_id)
+                        .expect("input reconciled before render")
+                        .clone(),
+                )
+                .into_any_element(),
         }
     }
 }
 
 impl Render for NativeView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let state = self.state.borrow();
+        let layout = self.evidence.enabled().then(|| {
+            let focus = self
+                .buttons
+                .iter()
+                .map(|(id, focus)| (*id, focus.clone()))
+                .chain(
+                    self.inputs
+                        .iter()
+                        .map(|(id, input)| (*id, input.focus_handle(cx))),
+                );
+            LayoutFrame::new(state.tree.nodes().count(), &self.scrolls, focus)
+        });
+        let body = self.render_node(&state.tree, state.tree.root_id(), layout.as_ref(), cx);
         let evidence = self.evidence.clone();
-        let text = self.text.clone();
-        let input = self.input.clone();
-        div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .p_6()
-            .bg(rgb(0xf4f5f7))
+        let paint_state = self.state.clone();
+        let window_id = self.window_id;
+        let mut base = div();
+        if let Some(layout) = &layout {
+            base = layout.children(base, &[state.tree.root_id()], None);
+        }
+        base.size_full()
+            .relative()
+            .overflow_hidden()
+            .bg(rgb(0xffffff))
             .text_color(rgb(0x17212b))
             .text_size(px(18.))
-            .child(div().text_size(px(28.)).child("Bun Native"))
-            .child(div().id("app-text").child(self.text.clone()))
-            .child(
-                div()
-                    .id("increment")
-                    .w(px(160.))
-                    .h(px(44.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded_md()
-                    .bg(rgb(0x2255cc))
-                    .text_color(rgb(0xffffff))
-                    .cursor_pointer()
-                    .hover(|style| style.bg(rgb(0x1744aa)))
-                    .on_click(cx.listener(|view, _, _, cx| view.events.send(Event::Click, cx)))
-                    .child("Increment"),
-            )
-            .child(div().child("Native editable input"))
-            .child(self.input.clone())
-            .child(
-                div()
-                    .text_size(px(13.))
-                    .child("TypeScript controls the label. GPUI renders every pixel."),
-            )
+            .key_context("NativeWindow")
+            .on_action(|_: &FocusNext, window, cx| window.focus_next(cx))
+            .on_action(|_: &FocusPrevious, window, cx| window.focus_prev(cx))
+            .child(body)
             .child(
                 canvas(
                     |_, _, _| (),
-                    move |_, (), _, cx| {
-                        evidence.painted(&text, input.read(cx).content());
+                    move |_, (), window, _| {
+                        let state = paint_state.borrow();
+                        evidence.painted(window_id, &state.tree);
+                        if let Some(layout) = &layout {
+                            evidence.layout(window_id, state.tree.revision(), layout, window);
+                        }
                     },
                 )
+                .absolute()
+                .top_0()
+                .left_0()
                 .size(px(1.)),
             )
     }

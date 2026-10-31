@@ -2,7 +2,7 @@
 
 This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
 
-**Current state:** the clean workspace, native-process runtime and GPUI window are implemented. The same application has passed Linux X11 input and teardown checks under Bun development and machine-code AOT, using a software GPU. Release-profile CI, measured baselines and the framework/platform roadmap retain their own acceptance. The [BN0 integration record](bn0-integration.md) lists exact evidence and current limits.
+**Current state:** BN0 and BN1 are complete within their documented Linux native scope. The [BN0 audit](bn0-audit.md) preserves the first native/AOT release baseline. The [BN1 audit](bn1-audit.md) records the merged shared native tree, [public TS/JS API](../packages/core/README.md), historical protocol-2 contract, bounded callbacks and passed release-host scheduling/fault/lifecycle/allocator verification. Its retained archive includes eight inspected AOT applications and the exact tested source. Solid [#277](https://github.com/0xPlayerOne/bun-native/pull/277), React [#280](https://github.com/0xPlayerOne/bun-native/pull/280), and the merged shared layout [#281](https://github.com/0xPlayerOne/bun-native/pull/281) are separate implementation increments; the [current private protocol](native-abi.md) is version 3; full adapter, component and platform support retain their own acceptance.
 
 ## Product and architecture
 
@@ -12,7 +12,9 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 4. [Compatibility](compatibility.md) — native UI features, Solid/React, web APIs and platform status
 5. [Architecture decisions](decisions/README.md) — decisions, alternatives and recorded tradeoffs
 
-The [BN0 implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions.
+The [current implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [BN0 audit](bn0-audit.md) maps foundation evidence to #227/#258/#226; the [BN1 audit](bn1-audit.md) maps bridge, safety, security and public API evidence to #219 and its implementation tasks.
+
+The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. It uses protocol 3; the document separates implementation and native verification from the remaining #237 acceptance.
 
 ## Build and operate
 
