@@ -54,12 +54,20 @@ jobs:
         run: rustup show active-toolchain
       - name: Verify Xcode and precompiled Metal tools
         if: runner.os == 'macOS'
+        timeout-minutes: 10
         run: |
           xcodebuild -version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'xcode.txt')
           if ($LASTEXITCODE -ne 0) { throw 'A complete Xcode toolchain is required' }
           xcrun --sdk macosx --show-sdk-path | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'macos-sdk.txt')
           if ($LASTEXITCODE -ne 0) { throw 'The macOS SDK is unavailable' }
-          xcrun --sdk macosx --find metal
+          xcrun --sdk macosx metal --version
+          if ($LASTEXITCODE -ne 0) {
+            xcodebuild -downloadComponent MetalToolchain 2>&1 |
+              Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-toolchain-install.log')
+            if ($LASTEXITCODE -ne 0) { throw 'The hosted Xcode Metal component could not be installed' }
+          }
+          xcrun --sdk macosx metal --version |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-version.txt')
           if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode Metal compiler' }
           xcrun --sdk macosx --find metallib
           if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode metallib linker' }

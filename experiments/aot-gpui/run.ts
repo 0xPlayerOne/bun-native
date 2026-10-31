@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { arch, release, platform, cpus } from 'node:os'
-import { isAbsolute, join } from 'node:path'
+import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import { inspectBunExecutable } from './inspect'
 import { inspectBunRuntime } from './inspect-runtime'
 
@@ -24,21 +24,38 @@ const native = join(destination, `native-echo${executableSuffix}`)
 const aot = join(destination, `probe-aot${executableSuffix}`)
 const jit = join(destination, `probe-jit${executableSuffix}`)
 const compiler = process.env.CC ?? (process.platform === 'win32' ? 'clang' : 'cc')
-const results: { name: string; command: string[]; exitCode: number; durationMs: number }[] = []
+const results: {
+  name: string
+  command: string[]
+  cwd: string
+  exitCode: number
+  durationMs: number
+}[] = []
 
-function run(name: string, command: string[], expected = 0): string {
+function run(name: string, command: string[], expected = 0, cwd = root): string {
   const start = performance.now()
   const result = Bun.spawnSync(command, {
-    cwd: root,
+    cwd,
+    env: {
+      ...process.env,
+      PATH: `${dirname(process.execPath)}${delimiter}${process.env['PATH'] ?? ''}`,
+    },
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: 120_000,
+    maxBuffer: 4 * 1024 * 1024,
   })
   const stdout = result.stdout.toString()
   const stderr = result.stderr.toString()
   writeFileSync(join(outputDirectory, `${name}.stdout.log`), stdout)
   writeFileSync(join(outputDirectory, `${name}.stderr.log`), stderr)
-  results.push({ name, command, exitCode: result.exitCode, durationMs: performance.now() - start })
+  results.push({
+    name,
+    command,
+    cwd,
+    exitCode: result.exitCode,
+    durationMs: performance.now() - start,
+  })
   if (result.exitCode !== expected) {
     throw new Error(
       `${name}: expected exit ${expected}, got ${result.exitCode}\n${stdout}\n${stderr}`
@@ -83,18 +100,41 @@ run('inspector-tests', [
   'test',
   join(root, 'inspect.test.ts'),
   join(root, 'inspect-runtime.test.ts'),
+  join(root, 'inspect-runtime-formats.test.ts'),
 ])
 const dev = run('dev', [process.execPath, join(root, 'probe.ts'), library, native, 'dev'])
-run('compile-aot', [
-  process.execPath,
-  'compile',
-  '--no-script',
-  '--production',
-  '--explain=json',
-  join(root, 'probe.ts'),
-  '--outfile',
-  aot,
-])
+const scriptControl = join(destination, 'package-script-control')
+mkdirSync(scriptControl)
+writeFileSync(
+  join(scriptControl, 'package.json'),
+  JSON.stringify({ private: true, scripts: { compile: 'bun sentinel.cjs' } })
+)
+writeFileSync(
+  join(scriptControl, 'sentinel.cjs'),
+  "require('node:fs').writeFileSync('script-ran', 'package script\\n')\n"
+)
+run('compile-script-control', [process.execPath, 'compile'], 0, scriptControl)
+const scriptMarker = join(scriptControl, 'script-ran')
+if (readFileSync(scriptMarker, 'utf8') !== 'package script\n') {
+  throw new Error('Same-named compile package script did not execute in the control')
+}
+unlinkSync(scriptMarker)
+run(
+  'compile-aot',
+  [
+    process.execPath,
+    'compile',
+    '--no-script',
+    '--production',
+    '--explain=json',
+    join(root, 'probe.ts'),
+    '--outfile',
+    aot,
+  ],
+  0,
+  scriptControl
+)
+if (existsSync(scriptMarker)) throw new Error('AOT compilation ran the package script')
 const compiled = run('aot', [aot, library, native, 'aot'])
 run('compile-jit-control', [
   process.execPath,
@@ -111,13 +151,11 @@ const jitMetadata = inspectBunExecutable(jit)
 if (!aotMetadata.hasCompiledProgram || jitMetadata.hasCompiledProgram) {
   throw new Error('Bun executable metadata does not distinguish AOT from the JIT control')
 }
-const runtimeFeatures =
-  process.platform === 'linux' ? { aot: inspectBunRuntime(aot), jit: inspectBunRuntime(jit) } : null
+const runtimeFeatures = { aot: inspectBunRuntime(aot), jit: inspectBunRuntime(jit) }
 if (
-  runtimeFeatures &&
-  (runtimeFeatures.aot.jit === 'present' ||
-    runtimeFeatures.aot.jitRemovedRanges.count === 0 ||
-    runtimeFeatures.jit.jit !== 'present')
+  runtimeFeatures.aot.jit === 'present' ||
+  runtimeFeatures.aot.jitRemovedRanges.count === 0 ||
+  runtimeFeatures.jit.jit !== 'present'
 )
   throw new Error('Runtime feature metadata does not distinguish JIT removal from the JIT control')
 run('missing-library', [aot, join(destination, 'does-not-exist' + librarySuffix), native, 'aot'], 1)
@@ -130,9 +168,11 @@ if (existsSync(rejectedOutput))
 run(
   'negative-typecheck',
   [process.execPath, 'compile', '--no-script', wrongType, '--outfile', rejectedOutput],
-  1
+  1,
+  scriptControl
 )
 if (existsSync(rejectedOutput)) throw new Error('Compiler emitted an executable for invalid types')
+if (existsSync(scriptMarker)) throw new Error('Invalid-source compilation ran the package script')
 
 let binaryInspection = 'unsupported'
 if (process.platform === 'linux') {
@@ -167,6 +207,7 @@ const report = {
     'inspect.test.ts',
     'inspect-runtime.ts',
     'inspect-runtime.test.ts',
+    'inspect-runtime-formats.test.ts',
     'native.c',
     'tsconfig.json',
   ].map((name) => ({
