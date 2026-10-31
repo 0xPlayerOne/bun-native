@@ -13,7 +13,8 @@ on:
 permissions: {}
 
 concurrency:
-  group: bun-native-codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # Keep skipped draft events from cancelling an active ready-for-review scan.
+  group: bun-native-codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

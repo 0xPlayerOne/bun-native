@@ -12,7 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: bun-native-validation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # A late draft synchronize event must not cancel ready-for-review validation.
+  group: bun-native-validation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
