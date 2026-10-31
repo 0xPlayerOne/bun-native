@@ -135,18 +135,31 @@ jobs:
           retention-days: 14
 
   aot:
-    name: AOT native interop (Linux)
+    name: AOT native interop (${{ matrix.os }})
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Prepare compiler evidence before bootstrap
+        run: |
+          mkdir -p "$RUNNER_TEMP/bun-native-aot"
+          node -e 'const fs=require("node:fs"),p=require("node:path");fs.writeFileSync(p.join(process.env.RUNNER_TEMP,"bun-native-aot","environment.json"),JSON.stringify({revision:process.env.GITHUB_SHA,os:process.platform,arch:process.arch,pins:require("./toolchain.json"),scope:"target-host headless AOT/native interop; no GPUI GUI claim"},null,2))'
       - name: Install checksum-pinned Bun compiler
         env:
           BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+        run: |
+          set -o pipefail
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$RUNNER_TEMP/bun-native-aot/bootstrap.log"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -163,9 +176,10 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
         with:
-          name: aot-native-interop-linux-${{ github.sha }}
+          name: aot-native-interop-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           path: |
             ${{ runner.temp }}/bun-native-aot/report.json
+            ${{ runner.temp }}/bun-native-aot/environment.json
             ${{ runner.temp }}/bun-native-aot/*.log
           if-no-files-found: error
           retention-days: 14
