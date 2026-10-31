@@ -289,10 +289,41 @@ def javascript_fixture_paint(tree_revision, label, value, input_revision):
     return state
 
 
-def display_service_fixture_paint(tree_revision, label):
-    state = fixture_paint(tree_revision, label)
-    state["nodes"][3]["element"]["text"] = "Read display"
-    return state
+def display_service_fixture_paint(tree_revision, label, framework="core"):
+    if framework == "core":
+        state = fixture_paint(tree_revision, label)
+        state["nodes"][3]["element"]["text"] = "Read display"
+        return state
+    if framework not in ("solid", "react"):
+        raise ValueError("Unknown display-service fixture framework")
+    elements = [
+        {"kind": "box", "style": {}},
+        {"kind": "box", "style": {}},
+        {"kind": "box", "style": {"direction": "column", "gap": 12, "padding": 24}},
+        {"kind": "text", "text": "Bun Native services", "style": {"font_size": 28}},
+        {"kind": "text", "text": label, "style": {}},
+        {
+            "kind": "button",
+            "text": "Read display",
+            "disabled": False,
+            "style": {"width": 160, "height": 44},
+        },
+    ]
+    children = {1: [2], 2: [3], 3: [4, 5, 6]}
+    return {
+        "type": "rendered",
+        "stage": "native-paint",
+        "window_id": 1,
+        "tree_revision": tree_revision,
+        "nodes": [
+            {
+                "node_id": identity,
+                "element": element,
+                "children": children.get(identity, []),
+            }
+            for identity, element in enumerate(elements, 1)
+        ],
+    }
 
 
 def lifecycle_fixture_paint(tree_revision, label):

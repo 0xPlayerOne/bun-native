@@ -10,7 +10,7 @@ export interface ServiceRequestOptions {
 }
 
 export interface NativeDisplaySnapshot {
-  /** Current display bounds reported by GPUI, in global logical pixels. */
+  /** GPUI-reported logical display bounds; coordinate origins depend on the backend. */
   readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
   readonly scaleFactor: number
 }

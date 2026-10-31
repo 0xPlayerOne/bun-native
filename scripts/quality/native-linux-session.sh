@@ -10,7 +10,7 @@ evidence_dir=$1
 mode=$2
 shift 2
 case "$mode" in
-  development|aot|aot-input-race|javascript|aot-javascript|core-lifecycle|aot-core-lifecycle|event-throughput|aot-event-throughput|services|aot-services|--)
+  development|aot|aot-input-race|javascript|aot-javascript|core-lifecycle|aot-core-lifecycle|event-throughput|aot-event-throughput|services|aot-services|solid-services|aot-solid-services|react-services|aot-react-services|--)
     ;;
   *)
     echo 'Choose a documented native session mode, or -- followed by an explicit command' >&2
@@ -82,13 +82,16 @@ driver = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(driver)
 if sys.argv[1] in ("javascript", "aot-javascript"):
     state = driver.javascript_fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5]))
-elif sys.argv[1] in ("services", "aot-services"):
+elif sys.argv[1] in ("services", "aot-services", "solid-services", "aot-solid-services", "react-services", "aot-react-services"):
+    framework = sys.argv[1].removeprefix("aot-").removesuffix("-services")
+    if framework == "services":
+        framework = "core"
     if sys.argv[2] == "initial":
-        state = driver.display_service_fixture_paint(2, "Display ready")
+        state = driver.display_service_fixture_paint(2, "Display ready", framework)
     else:
         snapshot = json.loads(sys.argv[2])["snapshot"]
         bounds = snapshot["bounds"]
-        state = driver.display_service_fixture_paint(3, f'Display: {bounds["width"]}x{bounds["height"]} @{snapshot["scaleFactor"]}')
+        state = driver.display_service_fixture_paint(3, f'Display: {bounds["width"]}x{bounds["height"]} @{snapshot["scaleFactor"]}', framework)
 elif sys.argv[1] in ("core-lifecycle", "aot-core-lifecycle"):
     state = (driver.lifecycle_fixture_event() if sys.argv[2] == "launch-event"
              else driver.lifecycle_fixture_paint(int(sys.argv[2]), sys.argv[3]))
@@ -106,8 +109,13 @@ if [[ "$mode" == aot || "$mode" == aot-* ]]; then
   execution_mode=aot
 fi
 
-if [[ "$mode" == services || "$mode" == aot-services ]]; then
-  display_event=$(python3 - "$evidence_dir" <<'PY'
+if [[ "$mode" == services || "$mode" == *-services ]]; then
+  service_framework=${mode#aot-}
+  service_framework=${service_framework%-services}
+  if [[ "$service_framework" == services ]]; then
+    service_framework=core
+  fi
+  display_event=$(python3 - "$evidence_dir" "$service_framework" <<'PY'
 import json
 from pathlib import Path
 import re
@@ -126,7 +134,12 @@ if not 0 < width <= 1048576 or not 0 < height <= 1048576:
     raise RuntimeError("Owned screen dimensions exceed the service contract")
 snapshot = {"bounds": {"x": 0, "y": 0, "width": width, "height": height}, "scaleFactor": 1}
 Path(sys.argv[1], "display-oracle.json").write_text(json.dumps({"source": "xdpyinfo", "scope": "single owned Xvfb screen, GPUI scale forced to1", "snapshot": snapshot}, indent=2) + "\n")
-print(json.dumps({"type": "service-snapshot", "target": "window-display", "stage": "bun-application", "snapshot": snapshot, "outcomes": {"deniedByNativePolicy": True, "queuedCancellation": True, "nativeStaleOwner": True, "nativeUnknownOwner": True, "shutdownBeforeDispatch": True, "publicStaleHandle": False}}))
+event = {"type": "click", "target": "window-display", "stage": "bun-application", "snapshot": snapshot}
+if sys.argv[2] == "core":
+    event["outcomes"] = {"deniedByNativePolicy": True, "queuedCancellation": True, "nativeStaleOwner": True, "nativeUnknownOwner": True, "shutdownBeforeDispatch": True, "publicStaleHandle": False}
+else:
+    event["framework"] = sys.argv[2]
+print(json.dumps(event))
 PY
 )
   python3 scripts/quality/native-input-linux.py \

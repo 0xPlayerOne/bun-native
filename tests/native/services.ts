@@ -99,10 +99,6 @@ try {
     height: 380,
   })
   const { label, button } = await mountContent(window)
-  await window.batch((batch) => {
-    batch.set(label, { kind: 'text', text: 'Display ready' })
-    batch.set(button, { kind: 'button', text: 'Read display', style: { width: 160, height: 44 } })
-  })
   const cancellation = new AbortController()
   const cancelled = window.displaySnapshot({ signal: cancellation.signal })
   cancellation.abort()
@@ -117,7 +113,7 @@ try {
     assert(event.sequence > 0)
     const snapshot = await window.displaySnapshot({ signal: event.signal })
     recordEvidence({
-      type: 'service-snapshot',
+      type: 'click',
       target: 'window-display',
       sequence: event.sequence,
       snapshot,
@@ -129,6 +125,12 @@ try {
         text: `Display: ${snapshot.bounds.width}x${snapshot.bounds.height} @${snapshot.scaleFactor}`,
       })
     )
+  })
+  // Publish the ready paint only after cancellation checks and listener setup;
+  // the input driver cannot mistake an earlier mount for a callable fixture.
+  await window.batch((batch) => {
+    batch.set(label, { kind: 'text', text: 'Display ready' })
+    batch.set(button, { kind: 'button', text: 'Read display', style: { width: 160, height: 44 } })
   })
   await Promise.race([
     window.closed,

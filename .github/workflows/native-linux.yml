@@ -109,7 +109,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -118,6 +118,28 @@ jobs:
               --source "$GITHUB_WORKSPACE" \
               --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
               --entry "$entry" --host-profile release --outdir "$outdir"
+          done
+      - name: Development and AOT native display service through core, Solid and React
+        timeout-minutes: 5
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for entry in services solid-services react-services; do
+            package="$NATIVE_EVIDENCE/$entry-package"
+            for mode in development aot; do
+              session_mode="$entry"
+              command=(bun "$package/development/application.js")
+              if [[ "$entry" == services ]]; then
+                command=(bun tests/native/services.ts)
+              fi
+              if [[ "$mode" == aot ]]; then
+                session_mode="aot-$entry"
+                command=("$package/$entry")
+              fi
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$NATIVE_EVIDENCE/desktop-services-$entry-$mode" "$session_mode" "${command[@]}"
+            done
           done
       - name: Development and AOT Solid native input, keyed updates and event phases
         timeout-minutes: 8
@@ -358,6 +380,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/react-aot-*/
             ${{ runner.temp }}/native-evidence/react-workload/
             ${{ runner.temp }}/native-evidence/react*-package/development/
+            ${{ runner.temp }}/native-evidence/desktop-services-*/
             ${{ runner.temp }}/native-evidence/diagnostics-*/
             ${{ runner.temp }}/native-evidence/allocations-*/
             ${{ runner.temp }}/native-evidence/bridge-development/

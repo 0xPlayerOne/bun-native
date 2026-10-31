@@ -10,20 +10,24 @@ explicit inspected machine-code AOT entries below.
 Run `scripts/quality/native-linux-session.sh` inside a dedicated Xvfb/DBus session.
 Its output directory must be new, and the application command is explicit.
 
-| Mode                   | Application command                    | Required behavior                                                                                                                                                        |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `development`          | `bun examples/native-window/main.ts`   | Public API pointer, text and Enter events; full native tree paints; OS close/relaunch; five lower-level window lifecycle cycles and the development stale-input fixture. |
-| `aot`                  | Compiled `native-window`               | The same public API pointer, text, Enter and close scenarios.                                                                                                            |
-| `aot-input-race`       | Compiled `input-race`                  | A real typed input rejects an outdated replacement revision and survives an unrelated tree update.                                                                       |
-| `javascript`           | `bun tests/native/javascript.js`       | A strict-JSDoc JavaScript consumer creates and updates the native tree, handles click/input callbacks, observes input revisions and releases its resources.              |
-| `aot-javascript`       | Compiled `javascript`                  | The same JavaScript consumer input and cleanup scenarios through Bun AOT.                                                                                                |
-| `core-lifecycle`       | `bun tests/native/public-lifecycle.ts` | One real click starts 1,000 public subtree/listener lifecycle cycles. OS close must abort the still-active callback and clear public resource counts.                    |
-| `aot-core-lifecycle`   | Compiled `core-lifecycle`              | The same public lifecycle and cancellation scenario through Bun AOT.                                                                                                     |
-| `event-throughput`     | `bun tests/native/event-throughput.ts` | Exactly 1,000 OS-delivered input edits, every sequence/revision/value checked, no input echo, final native paint and clean close.                                        |
-| `aot-event-throughput` | Compiled `event-throughput`            | The same fixed input stream through Bun AOT.                                                                                                                             |
-| `services`             | `bun tests/native/services.ts`         | Native default denial, allowed display read checked against the isolated X server, cancellation, stale owners, actual button input, matching paint and shutdown.         |
-| `aot-services`         | Compiled `services`                    | The same native service operation and lifecycle through Bun AOT.                                                                                                         |
-| `--`                   | An explicit benchmark command          | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
+| Mode                   | Application command                      | Required behavior                                                                                                                                                        |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `development`          | `bun examples/native-window/main.ts`     | Public API pointer, text and Enter events; full native tree paints; OS close/relaunch; five lower-level window lifecycle cycles and the development stale-input fixture. |
+| `aot`                  | Compiled `native-window`                 | The same public API pointer, text, Enter and close scenarios.                                                                                                            |
+| `aot-input-race`       | Compiled `input-race`                    | A real typed input rejects an outdated replacement revision and survives an unrelated tree update.                                                                       |
+| `javascript`           | `bun tests/native/javascript.js`         | A strict-JSDoc JavaScript consumer creates and updates the native tree, handles click/input callbacks, observes input revisions and releases its resources.              |
+| `aot-javascript`       | Compiled `javascript`                    | The same JavaScript consumer input and cleanup scenarios through Bun AOT.                                                                                                |
+| `core-lifecycle`       | `bun tests/native/public-lifecycle.ts`   | One real click starts 1,000 public subtree/listener lifecycle cycles. OS close must abort the still-active callback and clear public resource counts.                    |
+| `aot-core-lifecycle`   | Compiled `core-lifecycle`                | The same public lifecycle and cancellation scenario through Bun AOT.                                                                                                     |
+| `event-throughput`     | `bun tests/native/event-throughput.ts`   | Exactly 1,000 OS-delivered input edits, every sequence/revision/value checked, no input echo, final native paint and clean close.                                        |
+| `aot-event-throughput` | Compiled `event-throughput`              | The same fixed input stream through Bun AOT.                                                                                                                             |
+| `services`             | `bun tests/native/services.ts`           | Native default denial, allowed display read checked against the isolated X server, cancellation, stale owners, actual button input, matching paint and shutdown.         |
+| `aot-services`         | Compiled `services`                      | The same native service operation and lifecycle through Bun AOT.                                                                                                         |
+| `solid-services`       | `bun PACKAGE/development/application.js` | A real native display read through the shared public core from a Solid button, independent native geometry/paint checks and framework/owner cleanup.                     |
+| `aot-solid-services`   | Compiled `solid-services`                | The same Solid consumer and native service operation through Bun AOT.                                                                                                    |
+| `react-services`       | `bun PACKAGE/development/application.js` | The same shared public-core display operation from a React button, complete native paint and effect/listener/owner cleanup.                                              |
+| `aot-react-services`   | Compiled `react-services`                | The same React consumer and native service operation through Bun AOT.                                                                                                    |
+| `--`                   | An explicit benchmark command            | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
 
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
@@ -103,7 +107,33 @@ Keep each build manifest beside its corresponding native evidence. The driver
 records the requested execution mode and does not independently determine
 whether an arbitrary supplied executable contains Bun AOT code.
 
+The [native services recipe](../../docs/native-services.md#reproduction-and-evidence-boundaries)
+builds and executes the core, Solid and React display-service consumers in
+development and AOT modes. Each uses an explicit prebuilt protocol-5 host;
+the older retained protocol-4 artifacts cannot qualify these scenarios.
+The framework modes execute the exact generated production modules recorded
+by `--entry solid-services` and `--entry react-services` before compiling them
+to AOT. They share the core operation, policy and native implementation.
+
 ## Evidence and limits
+
+### Shared native desktop service
+
+The [service qualification record](evidence/services-linux-development-aot.json)
+binds six actual Linux runs to the protocol-5 host, each compiler manifest,
+generated framework module and native controller. Core, Solid and React all
+passed development and machine-code AOT scenarios using one immutable
+development-profile host. The button reads the owned GPUI window's display,
+the driver independently checks the X server's 1280×800 scale-1 geometry, and
+the complete native tree must paint that result before OS close. Default
+denial, queued cancellation, stale/unknown ownership and shutdown are checked
+by the core fixture; each framework also proves owner disposal and empty
+renderer resources. The CI step repeats all six cases on its release host.
+
+These records cover a single Xvfb screen and actual Mesa software rendering.
+They do not qualify another platform, mixed-DPI monitor placement, service
+performance or long-term leak freedom. The [service contract](../../docs/native-services.md)
+documents backend-specific display origins and the unavailable service matrix.
 
 ### React adapter
 

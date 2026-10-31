@@ -5,9 +5,11 @@ The shared public core exposes one implemented service in this branch:
 owned native window through the pinned GPUI backend. Solid and React use this
 same window method; neither adapter owns an OS implementation.
 
-The implementation has not yet completed its native development/AOT
-qualification. Parser and type checks are separate evidence. The platform
-matrix below deliberately records that limit until the native fixture runs.
+The core, Solid and React consumers have passed actual Linux development/AOT
+qualification on one isolated Xvfb screen with a development-profile host.
+Hosted release-host acceptance is configured separately; macOS and Windows
+service execution remains unverified. Parser and type checks are separate
+evidence. See the [source-bound record](../tests/native/evidence/services-linux-development-aot.json).
 
 ## Policy and capability contract
 
@@ -75,8 +77,9 @@ interface NativeDisplaySnapshot {
 }
 ```
 
-Bounds are the GPUI platform display's global logical pixels; `scaleFactor` is
-the owning window's current native scale factor. The UI thread resolves the
+Bounds are the GPUI platform display's reported logical pixels; coordinate
+origins depend on its backend. `scaleFactor` is the owning window's current
+native scale factor. The UI thread resolves the
 still-live window and reads `window.display(cx)`, `display.bounds()` and
 `window.scale_factor()`. The response contains the matching request and window
 identities. Both language implementations reject nonfinite or excessive
@@ -95,6 +98,12 @@ one scale-1 screen; it cannot establish mixed-DPI or multi-monitor behavior.
 These semantics follow the pinned
 [X11 display implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/display.rs#L14-L55)
 and [GPUI window accessors](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3144-L3162).
+The pinned [macOS implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L114-L125)
+also returns a zero origin, retaining the size from `CGDisplayBounds` but not
+its global origin. This API therefore does not promise a global monitor
+arrangement or suitable coordinates for cross-display window placement.
+The follow-up must qualify those semantics instead of inferring them from
+the field names.
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or
@@ -128,17 +137,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                 | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------- | ------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Service execution pending | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
-| Clipboard text    | Capability `clipboardText`; unavailable                       | Unavailable               | Unavailable                  | Unavailable                  | Separate read/write grants, byte limits, bounded native transfer, cancellation and truthful OS errors. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                    |
-| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable               | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable               | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable               | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable               | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable               | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable               | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable               | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+| Service           | Current public surface                                        | Linux X11                                                     | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
+| Clipboard text    | Capability `clipboardText`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | Separate read/write grants, byte limits, bounded native transfer, cancellation and truthful OS errors. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                    |
+| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                   | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                   | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                   | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
+| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                   | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                   | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                   | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
 
 The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
@@ -192,5 +201,82 @@ zero public ownership counters plus joined native termination. The inspected
 `--entry services` executable exercises the same source in AOT mode. Neither
 compilation nor the deterministic peer counts as this native acceptance.
 
-Actual development/AOT results, source/artifact identities and any unsupported
-platforms must be recorded here before #255's first slice is declared complete.
+`tests/native/solid-services.tsx` and `tests/native/react-services.tsx` mount the
+same display button and label through their respective adapters. Both call
+the public `NativeWindow.displaySnapshot({ signal: event.signal })`; the
+shared test helper owns the allowed application, checks the frozen result,
+and verifies stale-window rejection, framework cleanup and zero public
+ownership after OS close. Neither fixture adds an adapter-specific native
+service. Their complete native tree expectations are independent of the
+framework snapshots.
+
+Build all three entries with the existing prebuilt host, then run each in its
+own display session. The framework development command executes the generated
+production module recorded by the same compiler recipe; AOT executes that
+module's inspected machine-code output. `BUN_NATIVE_HOST_PROFILE` describes
+the actual host build and must match the recipe's explicit profile.
+
+```sh
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+export BUN_NATIVE_HOST_PROFILE=release
+mkdir -p .bun-native
+run_dir=$(mktemp -d "$PWD/.bun-native/services.XXXXXX")
+
+for entry in services solid-services react-services; do
+  bun experiments/aot-gpui/build-window.ts \
+    --source "$PWD" --host "$BUN_NATIVE_HOST" --host-profile release \
+    --entry "$entry" --outdir "$run_dir/$entry-package"
+  development_entry="$run_dir/$entry-package/development/application.js"
+  if [ "$entry" = services ]; then development_entry=tests/native/services.ts; fi
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+    dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+    "$run_dir/$entry-development" "$entry" bun "$development_entry"
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+    dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+    "$run_dir/$entry-aot" "aot-$entry" "$run_dir/$entry-package/$entry"
+done
+```
+
+The Linux CI lane reuses its single release host for these six scenarios.
+Each retains the independent X screen oracle, actual pointer activation,
+native paint, screenshot, application cleanup and driver process ownership
+report. The adapter fixtures additionally retain
+`service-adapter-result.json` with the framework owner disposal and renderer
+resource counts. This is correctness evidence; the instrumented sessions do
+not establish service throughput, hardware presentation latency or a memory
+leak bound.
+
+## Local native qualification
+
+The [recorded six-scenario qualification](../tests/native/evidence/services-linux-development-aot.json)
+uses the same 111,861,288-byte development-profile native host in every case.
+Its SHA-256 is `69b748ebca2c5784cbd235564efaacb999eb0cd127c53b27a235e32066767f47`.
+The actual GPUI window reports Mesa llvmpipe software rendering. Each fresh
+owned Xvfb session independently reports a 1280×800 screen at forced scale 1.
+
+| Consumer    | Development | Inspected machine-code AOT | Required native result                                                                                                                                                                        |
+| ----------- | ----------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public core | Passed      | Passed                     | Default denial; allowed read; queued cancellation; native stale/unknown owner rejection; shutdown before dispatch; actual pointer activation; matching paint; stale public owner after close. |
+| Solid       | Passed      | Passed                     | Same shared service from the native button; immutable display result; matching paint; one framework owner disposal; stale-owner rejection and zero resources after OS close.                  |
+| React       | Passed      | Passed                     | Same shared service from the native button; immutable display result; matching paint; one effect cleanup; stale-owner rejection and zero resources after OS close.                            |
+
+Every run ended with application exit 0, no forced termination, no remaining
+or unreaped owned process and all six public ownership counts at zero. The
+framework renderers also report zero nodes/listeners and no pending work.
+All three Linux AOT applications carry compiled-program metadata and 27
+removed JIT ranges; their interpreter remains present. The record binds each
+binary, generated production framework module, source file and raw report
+to its SHA-256. Screenshots of the core and React result were visually
+inspected; the automated oracle checks complete native paint reports, not
+pixel recognition or presentation timestamps.
+
+The retained initial attempt failed before application launch because the
+driver correctly rejected a custom `service-snapshot` expectation. The
+fixture now records the actual button `click` with its display result. The
+driver's existing event restrictions and all geometry, ownership, paint and
+deadline requirements remain intact. That rejected attempt is recorded
+separately from the six successful native scenarios.
+
+The complete #255 service matrix remains open. This evidence does not qualify
+the release-host profile, other platforms, mixed-DPI/multi-monitor semantics,
+the unavailable services, performance budgets or long-term leak freedom.
