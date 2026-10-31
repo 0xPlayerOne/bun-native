@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { NativeHost } from '@bun-native/runtime'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { trace } from './trace'
 
 const fixture = resolve(import.meta.dir, 'protocol-peer.ts')
 const options = (mode = 'normal', requestTimeoutMs = 1_000) => ({
@@ -26,6 +27,7 @@ async function deadline<T>(operation: Promise<T>, name: string): Promise<T> {
 }
 
 async function releasePipeHolder(directory: string): Promise<void> {
+  trace('test', 'holder-release-requested', { directory })
   // Only this test's holder reads its private release file. The holder also has
   // a hard self-expiry; cleanup never signals an unrelated process.
   writeFileSync(join(directory, 'release'), '')
@@ -33,7 +35,35 @@ async function releasePipeHolder(directory: string): Promise<void> {
   const finished = join(directory, 'finished')
   const until = performance.now() + 1_500
   while (!existsSync(finished) && performance.now() < until) await Bun.sleep(10)
-  if (!existsSync(finished)) throw new Error('Test-owned pipe holder did not release')
+  if (!existsSync(finished)) {
+    const ownedPid = Number(readFileSync(join(directory, 'ready'), 'utf8'))
+    let signalZero: unknown = 'alive'
+    try {
+      process.kill(ownedPid, 0)
+    } catch (error) {
+      signalZero = String(error)
+    }
+    trace('test', 'holder-release-failed', { directory, ownedPid, signalZero })
+    if (process.platform === 'win32' && Number.isSafeInteger(ownedPid) && ownedPid > 0) {
+      const result = Bun.spawnSync(
+        [
+          'powershell.exe',
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `Get-Process -Id ${ownedPid} -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime,HasExited | ConvertTo-Json -Compress`,
+        ],
+        { stdout: 'pipe', stderr: 'pipe', timeout: 5_000 }
+      )
+      trace('test', 'holder-os-status', {
+        code: result.exitCode,
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString(),
+      })
+    }
+    throw new Error('Test-owned pipe holder did not release')
+  }
+  trace('test', 'holder-released', { directory })
 }
 
 async function withPipeHolder(
@@ -49,6 +79,10 @@ async function withPipeHolder(
       args: [fixture, `inherited-pipe-${mode}`, directory],
     })
     await run(host, finished)
+    trace('test', 'held-pipe-assertions-passed', { mode })
+  } catch (error) {
+    trace('test', 'held-pipe-assertion-failed', { mode, error: String(error) })
+    throw error
   } finally {
     await releasePipeHolder(directory)
     if (host)
@@ -81,10 +115,13 @@ describe('native process transport (headless protocol peer)', () => {
   })
 
   test('command rejection preserves the healthy session', async () => {
+    trace('test', 'rejection-test-start', {})
     const host = await NativeHost.launch(options())
     try {
       await expect(host.send({ type: 'update', text: 'reject' })).rejects.toThrow('invalid_state')
+      trace('test', 'rejection-observed', {})
       await host.send({ type: 'update', text: 'accepted' })
+      trace('test', 'subsequent-update-accepted', {})
     } finally {
       await host.shutdown()
     }

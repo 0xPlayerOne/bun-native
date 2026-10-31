@@ -1,0 +1,55 @@
+name: Windows native transport diagnostic
+
+on:
+  push:
+    branches: [test/windows-native-transport]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    if: vars.CI_BILLING_PAUSED == 'false'
+    runs-on: windows-2022
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the exact compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Record diagnostic scope and revision
+        run: |
+          mkdir -p .bun-native/windows-diagnostic
+          git rev-parse HEAD > .bun-native/windows-diagnostic/revision.txt
+          bun --revision >> .bun-native/windows-diagnostic/revision.txt
+          echo 'Headless Windows transport diagnostic; no native GUI qualification.' >> .bun-native/windows-diagnostic/revision.txt
+      - name: Reproduce with trace I/O disabled
+        id: plain
+        continue-on-error: true
+        run: bun test ./tests/runtime/host.test.ts --test-name-pattern='command rejection|inherited pipes' 2>&1 | tee .bun-native/windows-diagnostic/plain.log
+      - name: Capture private bounded-test traces
+        id: traced
+        continue-on-error: true
+        env:
+          BUN_NATIVE_DIAGNOSTIC_DIR: ${{ github.workspace }}/.bun-native/windows-diagnostic/traces
+        run: bun test ./tests/runtime/host.test.ts --test-name-pattern='command rejection|inherited pipes' 2>&1 | tee .bun-native/windows-diagnostic/traced.log
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: windows-transport-diagnostic-${{ github.sha }}
+          path: .bun-native/windows-diagnostic/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve diagnostic failure status
+        if: ${{ always() }}
+        env:
+          PLAIN: ${{ steps.plain.outcome }}
+          TRACED: ${{ steps.traced.outcome }}
+        run: node -e 'if (process.env.PLAIN !== "success" || process.env.TRACED !== "success") process.exit(1)'

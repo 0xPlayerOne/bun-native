@@ -2,26 +2,32 @@
 import { encodeFrame, FrameDecoder, parseCommand } from '@bun-native/protocol'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { trace } from './trace'
 
 const mode = process.argv[2] ?? 'normal'
+trace('peer', 'start', { mode, argv: process.argv, parent: process.ppid, revision: Bun.revision })
 if (mode === 'pipe-holder') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Pipe holder requires its private control directory')
   writeFileSync(join(directory, 'ready'), String(process.pid))
+  trace('peer', 'holder-ready', { directory })
   const deadline = performance.now() + 10_000
   while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
     await Bun.sleep(10)
+  trace('peer', 'holder-stopped', { released: existsSync(join(directory, 'release')), directory })
   writeFileSync(join(directory, 'finished'), String(process.pid))
   process.exit(0)
 }
 if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
-  Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
+  const holder = Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
     stdin: 'ignore',
     stdout: 'inherit',
     stderr: 'inherit',
   })
+  trace('peer', 'holder-spawned', { pid: holder.pid, directory })
+  void holder.exited.then((code) => trace('peer', 'holder-exited', { pid: holder.pid, code }))
   const deadline = performance.now() + 5_000
   while (!existsSync(join(directory, 'ready'))) {
     if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
@@ -31,13 +37,24 @@ if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
 async function emit(value: unknown): Promise<void> {
-  output.write(encodeFrame(value))
-  await output.flush()
+  trace('peer', 'emit-start', value)
+  const bytes = encodeFrame(value)
+  const written = output.write(bytes)
+  trace('peer', 'emit-written', { written, bytes: bytes.byteLength })
+  const flushed = output.flush()
+  trace('peer', 'emit-flushing', { asynchronous: flushed instanceof Promise })
+  const result = await flushed
+  trace('peer', 'emit-flushed', { result })
 }
 
 for await (const chunk of Bun.stdin.stream()) {
+  trace('peer', 'stdin-chunk', {
+    bytes: chunk.byteLength,
+    base64: Buffer.from(chunk).toString('base64'),
+  })
   for (const value of decoder.push(chunk)) {
     const command = parseCommand(value)
+    trace('peer', 'command', command)
     if (mode === 'silent') continue
     if (mode === 'exit') process.exit(23)
     if (command.type === 'hello') {
@@ -78,6 +95,7 @@ for await (const chunk of Bun.stdin.stream()) {
       await emit({ type: 'ack', id: command.id })
     } else {
       await emit({ type: 'ack', id: command.id })
+      trace('peer', 'exit', { code: 0 })
       process.exit(0)
     }
   }

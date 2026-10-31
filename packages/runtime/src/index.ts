@@ -9,7 +9,26 @@ import {
   type NativeEvent,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
+
+// Temporary diagnostic branch only. Never emits payloads unless explicitly enabled.
+function diagnostic(event: string, detail: unknown): void {
+  const directory = process.env['BUN_NATIVE_DIAGNOSTIC_DIR']
+  if (!directory) return
+  mkdirSync(directory, { recursive: true })
+  appendFileSync(
+    join(directory, `runtime-${process.pid}.jsonl`),
+    JSON.stringify({
+      time: Date.now(),
+      elapsed: performance.now(),
+      pid: process.pid,
+      event,
+      detail,
+    }) + '\n'
+  )
+}
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<Extract<Command, { type: 'open' | 'update' | 'close' }>>
@@ -71,6 +90,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     this.stdout = this.process.stdout.getReader()
     this.stderr = this.process.stderr.getReader()
     this.exited = this.process.exited
+    diagnostic('spawn', { pid: this.process.pid, options })
     this.finished = this.watch()
   }
 
@@ -156,6 +176,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     try {
       command = parseCommand({ ...input, id: this.nextId++ })
       frame = encodeFrame(command)
+      diagnostic('request', command)
     } catch (error) {
       return Promise.reject(error)
     }
@@ -175,8 +196,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     this.writeTail = this.writeTail
       .then(async () => {
         if (this.phase === 'closed') return
-        this.process.stdin.write(frame)
-        await this.process.stdin.flush()
+        const written = this.process.stdin.write(frame)
+        diagnostic('stdin-written', { id: command.id, bytes: frame.byteLength, written })
+        const flushed = await this.process.stdin.flush()
+        diagnostic('stdin-flushed', { id: command.id, flushed })
       })
       .catch((error: unknown) => this.fail(error))
     return result
@@ -187,6 +210,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     try {
       for (;;) {
         const { done, value } = await this.stdout.read()
+        diagnostic('stdout-read', {
+          child: this.process.pid,
+          done,
+          bytes: value?.byteLength,
+          base64: value ? Buffer.from(value).toString('base64') : undefined,
+        })
         if (done) break
         for (const raw of decoder.push(value)) this.receive(parseEvent(raw))
       }
@@ -203,6 +232,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     try {
       for (;;) {
         const { done, value } = await this.stderr.read()
+        diagnostic('stderr-read', {
+          child: this.process.pid,
+          done,
+          bytes: value?.byteLength,
+          base64: value ? Buffer.from(value).toString('base64') : undefined,
+        })
         if (done) break
         this.stderrTail = (this.stderrTail + decoder.decode(value, { stream: true })).slice(-4_096)
       }
@@ -223,6 +258,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     const streams = [this.readStdout(), this.readStderr()]
     let drainDeadline: ReturnType<typeof setTimeout> | undefined
     const exit = this.exited.then((code) => {
+      diagnostic('child-exited', { child: this.process.pid, code, phase: this.phase })
       // Allow buffered acknowledgements/diagnostics to drain, but bound EOF wait.
       drainDeadline = setTimeout(
         () => this.fail(new Error('Native output remained open after host exit')),
@@ -248,6 +284,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   }
 
   private receive(event: NativeEvent): void {
+    diagnostic('receive', { child: this.process.pid, phase: this.phase, event })
     if (this.phase === 'closed') return
     if (event.type === 'ready') {
       if (this.ready || this.phase !== 'starting') throw new ProtocolError('Unexpected ready event')
@@ -287,6 +324,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   }
 
   private fail(cause: unknown): void {
+    diagnostic('fail', {
+      child: this.process.pid,
+      phase: this.phase,
+      error: String(cause),
+      pending: [...this.pending.keys()],
+    })
     if (this.failure) return
     this.failure = cause instanceof Error ? cause : new Error(String(cause))
     this.phase = 'closed'
