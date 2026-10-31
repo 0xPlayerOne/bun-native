@@ -19,7 +19,9 @@ Each target builds the real release GPUI executable with pinned Rust, Bun and
 GPUI sources, runs host Clippy/tests, then executes the same public-core fixture
 in development and inspected machine-code AOT. The fixture opens, updates and
 closes three successive windows. The independent controller requires each
-window's actual renderer metadata and complete initial/update native tree paint.
+window's actual renderer record and complete initial/update native tree paint.
+Adapter telemetry must be valid when present; the pinned macOS backend's explicit
+unavailable result is recorded separately, as described below.
 Input value replacement is an explicit application transaction, not OS typing.
 Each close must revoke public resources; final shutdown joins the runtime's
 native child exit.
@@ -27,7 +29,8 @@ native child exit.
 | Observation              | Qualification in this first increment                                                                                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | Rust compilation         | Separate target tools, release command, build duration, binary bytes and SHA-256.                                         |
-| GPUI execution           | Actual host, three native window protocol lifecycles, renderer device metadata and six complete paint traversals.         |
+| GPUI execution           | Actual host, three native window protocol lifecycles, renderer records and six complete paint traversals.                 |
+| Adapter telemetry        | Required on Linux/Windows; explicitly unavailable from the pinned macOS window API.                                       |
 | Bun AOT                  | Exact fixture compiled through pinned `bun compile`; compiled-program and JIT-removal evidence required before execution. |
 | Public lifecycle         | Native acknowledgement/closed events, joined shutdown and zero public resource counters.                                  |
 | OS-visible window        | **Unverified:** no independent native window enumeration yet.                                                             |
@@ -64,6 +67,29 @@ Requirements come from GPUI revision
   [device implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/directx_devices.rs)
   enumerates DXGI adapters and requires its stated Direct3D features. A usable
   software adapter or interactive desktop is not assumed.
+
+### Renderer telemetry availability
+
+At this exact revision, the [macOS window's `gpu_specs()`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs)
+unconditionally returns `None`. The host faithfully records that as `gpu: null`.
+The controller requires this actual per-window renderer record, then writes
+`rendererTelemetry.status: "unavailable"` with the pinned source and reason. It
+does not infer the adapter name, hardware/software classification or driver.
+The allowance applies only to Darwin and this reviewed GPUI revision; a changed
+pin requires a new source review. Missing renderer records and malformed present
+metadata fail on every platform. Linux and Windows still require valid actual
+adapter telemetry, including the native software-emulation flag.
+That flag is the backend's report, not an independent hardware qualification.
+For example, the initial Windows run reported `Microsoft Basic Render Driver`
+alongside `is_software_emulated: false`; both raw values are retained without
+reclassifying the device.
+
+An independent Metal default-device query would not establish which device the
+window uses: the [pinned renderer's selection](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_apple/src/metal_renderer.rs)
+prefers a non-removable, low-power device when enumerated devices are available.
+Exposing its actual selected adapter remains [#292](https://github.com/0xPlayerOne/bun-native/issues/292).
+This telemetry limitation does not waive complete native paints, lifecycle,
+joined shutdown or any separately enabled OS-input checks.
 
 The Bun installer receives its scoped repository token only during installation
 and verifies the pinned archive hash/revision. The test neither requests macOS
@@ -115,6 +141,25 @@ application termination. These establish the controller/fixture on Linux and
 The first hosted matrix results must be recorded before either new platform is
 marked supported. Failures retain their exact compile, startup, renderer or
 missing-paint reason; a missing capability never becomes a pass.
+
+The initial [macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102)
+passed the release host build, Clippy and native unit tests, then failed the old
+controller's unconditional adapter requirement. Its retained evidence contains
+the actual `gpu: null` record, an empty-root paint and an acknowledged populated
+tree, but no complete populated-tree paint before the abort. That historical
+result remains failed; the telemetry correction requires a fresh hosted run to
+establish the complete native paint/lifecycle result.
+
+The [telemetry correction record](../tests/native/evidence/platform-renderer-telemetry.json)
+retains that failed macOS result and its offline validator replay. Fresh Linux
+controls passed six development paints, required the deliberate wrong-paint
+failure, and passed nine paints plus all 96 OS text edits in both development
+and AOT input modes. All windows closed, public ownership counters cleared and
+native shutdown joined. Those runs use the unchanged dev-profile host and
+actual reported Linux adapter metadata; they validate this controller change
+without qualifying macOS or Windows input. The reused AOT executable and all 49
+build-source hashes were reverified, and each current controller source hash is
+bound to its own report.
 
 Follow-up controllers must independently identify the owned window and its
 process/executable before input, then attest actual keyboard/mouse/OS-close
