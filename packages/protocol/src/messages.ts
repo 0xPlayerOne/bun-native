@@ -11,7 +11,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -81,7 +81,12 @@ export const ERROR_CODES = [
   'native_failure',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
-export type Capability = 'tree' | 'input_revisions'
+export const REQUIRED_CAPABILITIES = Object.freeze([
+  'tree',
+  'input_revisions',
+  'layout_v1',
+] as const)
+export type Capability = (typeof REQUIRED_CAPABILITIES)[number]
 
 export type NativeEvent =
   | { type: 'ready'; protocol: typeof PROTOCOL_VERSION; capabilities: Capability[]; limits: Limits }
@@ -217,13 +222,14 @@ export function parseEvent(value: unknown): NativeEvent {
     case 'ready': {
       keys(message, ['type', 'protocol', 'capabilities', 'limits'])
       const capabilities = message['capabilities']
-      if (!Array.isArray(capabilities) || capabilities.length > 2)
+      if (!Array.isArray(capabilities) || capabilities.length > REQUIRED_CAPABILITIES.length)
         throw new ProtocolError('Invalid native capabilities')
       const parsed: Capability[] = []
       for (const value of capabilities) {
-        if ((value !== 'tree' && value !== 'input_revisions') || parsed.includes(value))
+        const capability = REQUIRED_CAPABILITIES.find((candidate) => candidate === value)
+        if (!capability || parsed.includes(capability))
           throw new ProtocolError('Unknown or duplicate native capability')
-        parsed.push(value)
+        parsed.push(capability)
       }
       return {
         type: 'ready',

@@ -5,6 +5,7 @@ import {
   encodeFrame,
   FrameDecoder,
   parseCommand,
+  PROTOCOL_VERSION,
   type Element,
 } from '@bun-native/protocol'
 
@@ -34,7 +35,12 @@ for await (const chunk of Bun.stdin.stream()) {
               max_text_bytes_per_window: 40,
             }
           : { ...DEFAULT_LIMITS }
-      await emit({ type: 'ready', protocol: 2, capabilities: ['tree', 'input_revisions'], limits })
+      await emit({
+        type: 'ready',
+        protocol: PROTOCOL_VERSION,
+        capabilities: ['tree', 'input_revisions', 'layout_v1'],
+        limits,
+      })
       await emit({ type: 'ack', id: command.id })
     } else if (command.type === 'open') {
       windows.set(

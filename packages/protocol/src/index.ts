@@ -8,6 +8,7 @@ export {
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
+  REQUIRED_CAPABILITIES,
   type Command,
   type NativeEvent,
   type Operation,
