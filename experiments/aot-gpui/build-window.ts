@@ -14,6 +14,7 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { inspectBunExecutable } from './inspect'
+import { inspectBunRuntime } from './inspect-runtime'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -86,6 +87,12 @@ const buildMs = performance.now() - start
 const inspection = inspectBunExecutable(application)
 if (!inspection.hasCompiledProgram)
   throw new Error('Compiler output has no compiled-program record')
+const runtimeFeatures = process.platform === 'linux' ? inspectBunRuntime(application) : null
+if (
+  runtimeFeatures &&
+  (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
+)
+  throw new Error('Compiler output does not record removal of the JIT compiler')
 copyFileSync(values.host, host)
 if (process.platform !== 'win32') chmodSync(host, 0o755)
 
@@ -132,7 +139,12 @@ const sourceHashes = await Promise.all(
 )
 const manifest = {
   schemaVersion: 1,
-  application: { file: `native-window${suffix}`, ...(await artifact(application)), inspection },
+  application: {
+    file: `native-window${suffix}`,
+    ...(await artifact(application)),
+    inspection,
+    runtimeFeatures,
+  },
   host: {
     file: `bun-native-host${suffix}`,
     profile: hostProfile,
@@ -151,6 +163,7 @@ const manifest = {
   },
   verification: {
     aotCompiledProgram: 'passed',
+    jitOmission: runtimeFeatures ? 'passed' : 'not-implemented-for-this-format',
     nativeRendering: 'not-run',
     osInput: 'not-run',
     teardown: 'not-run',
