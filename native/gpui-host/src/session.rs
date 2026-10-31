@@ -131,7 +131,11 @@ impl Session {
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
-                        capabilities: vec![Capability::Tree, Capability::InputRevisions],
+                        capabilities: vec![
+                            Capability::Tree,
+                            Capability::InputRevisions,
+                            Capability::LayoutV1,
+                        ],
                         limits: Limits::default(),
                     },
                     cx,

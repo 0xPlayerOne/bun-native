@@ -55,8 +55,8 @@ requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
 
-`bun-native-protocol` owns the [private v2 contract](../protocol/README.md).
-Protocol 2 replaces the fixed BN0 window fixture; there is no v1 decoder. The
+`bun-native-protocol` owns the [private v3 contract](../protocol/README.md).
+Protocol 3 adds the mandatory shared layout capability and replaces v2 outright. The
 session owns up to 16 windows, each with one box root and at most 4,096 nodes.
 Atomic batches create, update, reparent, reorder and delete box, text, button
 and input elements. All adapters use this same model and renderer. Neither
@@ -76,7 +76,12 @@ model references and check that the window is active and still owns the node.
 Deletion removes the entity and clears its focus. Closing revokes its model
 before entity destruction. Button callbacks also check current ownership and
 disabled state, including callbacks retained from the previous rendered frame.
-Pointer activation and focused Enter/Space use the same event path.
+Pointer activation and focused Enter/Space use the same event path. Enabled
+buttons and inputs are native tab stops; Tab/Shift-Tab traverse the rendered
+child order. Container scroll handles are retained by node ID through style
+changes and reparenting, reset on the axis disabled by a scroll-mode change, and
+removed with their subtree or when scrolling is disabled. GPUI clamps offsets
+after viewport/content changes. See the [layout contract](../../docs/native-layout.md).
 
 Native text changes advance only the affected input revision. Every explicit
 input `set` must present its current revision, so a delayed app update cannot
@@ -96,8 +101,8 @@ ownership, revision, lifecycle or resource limits receive typed errors.
 Input does not yet scroll horizontally when text exceeds its field.
 Full input values are retained and delivered to Bun, while long visual content
 clips at the window edge. Scrolling and complete text/IME/accessibility
-qualification belong to BN4 #241. General Tab navigation, focus rings and
-platform widget accessibility semantics are also still unqualified.
+qualification belong to BN4 #241. Native Tab navigation is implemented; focus rings, automatic scrolling to an
+offscreen tab stop and platform widget accessibility semantics remain separate work.
 
 ## Evidence
 
@@ -109,6 +114,11 @@ states are deduplicated. Evidence records are capped at 65,536 bytes; a larger
 snapshot produces an explicit `status: "omitted"` record with the reason
 `evidence_record_limit`, never a partial snapshot that could satisfy an assertion.
 Batch timing and actual window GPU adapter metadata are separate records.
+A distinct deduplicated `layout` record captures actual logical bounds, ancestor
+clip intersections, viewport/scale, retained scroll offsets and native focus
+from the same paint pass. Geometry is limited to 128 model nodes; larger trees
+produce explicit `layout_node_limit` omission records. No extra layout elements
+are created, and geometry is not collected when evidence is disabled.
 The Bun fixture separately records delivered native input and application state.
 Paint traversal alone is not display presentation: the harness must also capture
 the actual window and correlate OS input with the expected painted state.

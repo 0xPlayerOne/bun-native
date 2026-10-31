@@ -1,0 +1,867 @@
+{
+  "schemaVersion": 1,
+  "issue": 237,
+  "protocol": 3,
+  "capability": "layout_v1",
+  "sourceBaseCommit": "1c83c888653406318e810a81d3eaf936975d9b93",
+  "sourceStatus": "Uncommitted implementation snapshot; exact compiled and diagnostic source hashes below bind this record.",
+  "scope": "Actual Linux X11/XTest, GPUI native rendering, Mesa software GPU, logical scale1, development-profile native host. Correctness diagnostics; no performance or memory-leak qualification.",
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "nativeHost": {
+    "profile": "dev",
+    "bytes": 111468080,
+    "sha256": "fef99321f74ed5e45f532d0de57c20485aa314dade4b08abafdae60165f46b41"
+  },
+  "nativeBuildEnvironment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_PIPELINING": "false"
+  },
+  "aotApplication": {
+    "bytes": 71220264,
+    "sha256": "d1a1b23e184d500360d8f411b919981ca0c18d42660251a31b297568699a0c3b",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3653852,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    }
+  },
+  "aotRuntime": {
+    "jit": "unused",
+    "interpreter": "present",
+    "removedRangeCount": 202,
+    "jitRemovedRanges": {
+      "count": 27,
+      "virtualBytes": 14297303
+    }
+  },
+  "compiledSourceFiles": [
+    {
+      "path": ".bun-version",
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    {
+      "path": "bun.lock",
+      "bytes": 14646,
+      "sha256": "08d79fc2dbcc9ad62ae277964a77a5923ba28dab3ca6d947c4d20ddef556d16e"
+    },
+    {
+      "path": "bunfig.toml",
+      "bytes": 84,
+      "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef"
+    },
+    {
+      "path": "examples/native-window/content.ts",
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    {
+      "path": "examples/native-window/main.ts",
+      "bytes": 1098,
+      "sha256": "dfb562977790bc1f7c36374e16803ca4297c2732b3977fccd1e78e7add82ac62"
+    },
+    {
+      "path": "native/gpui-host/Cargo.toml",
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    {
+      "path": "native/gpui-host/src/channel.rs",
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    {
+      "path": "native/gpui-host/src/evidence.rs",
+      "bytes": 5961,
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d"
+    },
+    {
+      "path": "native/gpui-host/src/evidence/layout.rs",
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    {
+      "path": "native/gpui-host/src/input.rs",
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    {
+      "path": "native/gpui-host/src/input/binding.rs",
+      "bytes": 2675,
+      "sha256": "2f61a306b211c3208a51b35eb8fda800fe5ceb71a82f75c58903779015075d72"
+    },
+    {
+      "path": "native/gpui-host/src/input/paint.rs",
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    {
+      "path": "native/gpui-host/src/main.rs",
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    {
+      "path": "native/gpui-host/src/session.rs",
+      "bytes": 11687,
+      "sha256": "767df1fca322e1b8b53ab9710cbad50d903f906cb20918536558f98451168a09"
+    },
+    {
+      "path": "native/gpui-host/src/state.rs",
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    {
+      "path": "native/gpui-host/src/style.rs",
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    {
+      "path": "native/gpui-host/src/view.rs",
+      "bytes": 11645,
+      "sha256": "50aaf8b361b063f08d18fd13afe3660dba04dad61a5613cb62c86d9d5b3e0e7d"
+    },
+    {
+      "path": "native/protocol/Cargo.toml",
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    {
+      "path": "native/protocol/src/framing.rs",
+      "bytes": 3685,
+      "sha256": "84aac62624b49798e88beccf84551e6534e46ad5ca1c71a74134a05256f95610"
+    },
+    {
+      "path": "native/protocol/src/lib.rs",
+      "bytes": 404,
+      "sha256": "615f5c9ced056c820c47cc7f60b3e420e98c1464f7207268b66ecec171b00805"
+    },
+    {
+      "path": "native/protocol/src/security_tests.rs",
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    {
+      "path": "native/protocol/src/tests.rs",
+      "bytes": 11652,
+      "sha256": "04273c40a2f77109312ca24a25acbdc684557e5e5aa1ff28f0c089d6bcb3525b"
+    },
+    {
+      "path": "native/protocol/src/tree.rs",
+      "bytes": 14053,
+      "sha256": "55aa26d2c25055cab4cd4459dd4622587e4a2377ff780f9affc6812f3ceab4f1"
+    },
+    {
+      "path": "native/protocol/src/tree/tests.rs",
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    {
+      "path": "native/protocol/src/wire.rs",
+      "bytes": 19175,
+      "sha256": "3c6f97bd7f87336cf624eb0400203ac7e8abce81b727771fac4a48f51224a07d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1602,
+      "sha256": "69ef65b95bda206ffe2789e00ab88feed50f86b9b28ba62ebfb9fae9bef760aa"
+    },
+    {
+      "path": "packages/core/package.json",
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    {
+      "path": "packages/core/src/application.ts",
+      "bytes": 15239,
+      "sha256": "937bd0e07e982da6fa2f11c31f0b88de7eca6da929c53647ff5147849bc0fb37"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "bytes": 482,
+      "sha256": "58250b6d85bb271ea9f6fdbafbfc5b10f82ab406fd0cc51e443279e7529130c7"
+    },
+    {
+      "path": "packages/core/src/tree.ts",
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    {
+      "path": "packages/core/src/types.ts",
+      "bytes": 3425,
+      "sha256": "eac93a063ea9591134df76c07b5d5ba2adaeb4b9b041dea6fc16a8be0a3a206a"
+    },
+    {
+      "path": "packages/protocol/package.json",
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    {
+      "path": "packages/protocol/src/elements.ts",
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    {
+      "path": "packages/protocol/src/framing.ts",
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "bytes": 469,
+      "sha256": "c5f11f59f86b5389efa3ae8bd667dcfa202719e14e10a6fc744eca7630107a73"
+    },
+    {
+      "path": "packages/protocol/src/messages.ts",
+      "bytes": 10114,
+      "sha256": "c8f82646dee353bea5d565879f2defdedf1eeb434335348b2ce5c1ec39337323"
+    },
+    {
+      "path": "packages/protocol/src/values.ts",
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    {
+      "path": "packages/runtime/package.json",
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "bytes": 13239,
+      "sha256": "87723a4a1eec72147ed43e3e73a9d52387ce3960e2cd9e52c28aaca9ec22b37b"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    {
+      "path": "tests/native/layout.ts",
+      "bytes": 7785,
+      "sha256": "211e93317ba2b091348320eeabc6960baf987033428064238cffb735a472c641"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 862,
+      "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1"
+    }
+  ],
+  "diagnosticSourceFiles": {
+    "scripts/quality/native-diagnostics-linux.py": {
+      "sha256": "9b09baccfeb0cd52a91172db3deaa80b675ba9c169069f8f6a3d2d6c705b3aa7",
+      "bytes": 18871
+    },
+    "scripts/quality/native-input-linux.py": {
+      "sha256": "e5d61b7694aba2f1ae9b67c13ca127644283d97d199058c860660d09527cfb41",
+      "bytes": 37202
+    },
+    "scripts/quality/native-layout-scenario.py": {
+      "sha256": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+      "bytes": 12855
+    },
+    "tests/native/fault.ts": {
+      "sha256": "e39b0b2e5978bdbfad95399d0a9c7c25f80e3d07120b426b211e5b94469a4d4b",
+      "bytes": 5145
+    },
+    "tests/native/scheduling.ts": {
+      "sha256": "3d83fb3156c7685bf80e53f588f73bb40b62cfcc58e50511fbb0f9c23aedd33f",
+      "bytes": 7929
+    }
+  },
+  "runs": {
+    "development": {
+      "status": "passed",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "layout",
+        "clicks": {
+          "top": 2,
+          "bottom": 3
+        },
+        "inputEvents": [
+          {
+            "value": "ABxC",
+            "revision": 1,
+            "sequence": 3
+          },
+          {
+            "value": "ABxYC",
+            "revision": 3,
+            "sequence": 4
+          }
+        ],
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "geometry": {
+        "initial": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, 0.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 136.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "scrolled": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 8,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 136.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "moved": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "resized420": {
+          "viewport": [420.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 388.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 184.0,
+            "rowWidth": 388.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "resized800": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "horizontal": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [-261.0, 0.0],
+              "maximum": [1625.0, 40.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "shrunk": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 10,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -0.0],
+              "maximum": [0.0, 0.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "disposed": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": null,
+          "nodeCount": 7,
+          "scrolls": [],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        }
+      }
+    },
+    "aot": {
+      "status": "passed",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "layout",
+        "clicks": {
+          "top": 2,
+          "bottom": 3
+        },
+        "inputEvents": [
+          {
+            "value": "ABxC",
+            "revision": 1,
+            "sequence": 3
+          },
+          {
+            "value": "ABxYC",
+            "revision": 3,
+            "sequence": 4
+          }
+        ],
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "geometry": {
+        "initial": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, 0.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 136.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "scrolled": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 8,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 136.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "moved": {
+          "viewport": [640.0, 480.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 608.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 608.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "resized420": {
+          "viewport": [420.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 388.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 184.0,
+            "rowWidth": 388.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "resized800": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -168.0],
+              "maximum": [0.0, 168.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "horizontal": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 12,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [-348.0, 0.0],
+              "maximum": [1625.0, 40.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "shrunk": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": 12,
+          "nodeCount": 10,
+          "scrolls": [
+            {
+              "node_id": 7,
+              "offset": [0.0, -0.0],
+              "maximum": [0.0, 0.0],
+              "viewport": [16.0, 188.0, 768.0, 140.0]
+            }
+          ],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        },
+        "disposed": {
+          "viewport": [800.0, 560.0],
+          "scale": 1.0,
+          "focusedNodeId": null,
+          "nodeCount": 7,
+          "scrolls": [],
+          "rowMeasurements": {
+            "minimumWidth": 80.0,
+            "boundedWidth": 200.0,
+            "rowWidth": 768.0,
+            "centersY": [92.0, 92.0, 92.0, 92.0]
+          }
+        }
+      }
+    }
+  },
+  "priorDiagnosticFailure": {
+    "run": "development-final",
+    "reason": "Controller stored intermediate vertical wheel offset -87 and compared it to the settled -168 offset after reorder. Native layout records show -168 before and after the transaction; the controller now requires the actual scroll endpoint before retaining the baseline.",
+    "test": "LayoutPointerBoundsTests.test_intermediate_wheel_paint_cannot_qualify_as_a_settled_offset",
+    "cleanup": "Owned test processes were forcibly stopped after this assertion; no survivors or unreaped descendants remained. This run was not accepted."
+  },
+  "rawEvidence": {
+    "location": "Task-owned workspace task-artifacts/bn4-layout; not a durable distribution location.",
+    "retention": "This compact summary is checked in. The native Linux release job retains fresh complete logs, snapshots, screenshots and inspected AOT manifests.",
+    "artifacts": {
+      "development-verified/result.json": {
+        "sha256": "72073ec09a7fddb19937e0c317b2a3e96bf414cd11e7007306c197790e94a922",
+        "bytes": 36789
+      },
+      "development-verified/native.jsonl": {
+        "sha256": "4e437b1cb703316ecf564f663e9955c25573a9a57d26468a1231ec9608aef502",
+        "bytes": 53824
+      },
+      "development-verified/application.jsonl": {
+        "sha256": "5e3540cc8e8fa1339ca1efd46e10cbac8021f1a59a8db65bb1243bf8d635c75b",
+        "bytes": 1614
+      },
+      "development-verified/application-result.json": {
+        "sha256": "0d3a45bf3c69135efe0fc2785cee0b06b67ca08d9a576ef615ee87bad2cac62b",
+        "bytes": 286
+      },
+      "development-verified/before.png": {
+        "sha256": "caa2aa4d23939aa662fce3208298076f50d3d058678f0b74c67dbc67ee76e2ec",
+        "bytes": 13995
+      },
+      "development-verified/scrolled.png": {
+        "sha256": "2c8773e102ae7c292ff869288b7a65e36cda9377afc13483587fd79eb9b3f304",
+        "bytes": 16551
+      },
+      "development-verified/resized.png": {
+        "sha256": "386dece2253d55cb357580e385961a25b3e76a7e5ed788a2edc0df0018d9de4f",
+        "bytes": 18396
+      },
+      "development-verified/horizontal.png": {
+        "sha256": "b3b19269f64e5fb1f5de14fca5c724882e42696253d877c2fe64d9a654928103",
+        "bytes": 15838
+      },
+      "development-verified/after.png": {
+        "sha256": "7fdc2bf09a3f2d03954564de426f722d236ca44b6fb755e5241546f048ef1e8d",
+        "bytes": 14501
+      },
+      "aot-verified/result.json": {
+        "sha256": "a6e37e09e29ae79dc4ea0a2480ca31e1f8e4c389896333eea98f4724753c098d",
+        "bytes": 36828
+      },
+      "aot-verified/native.jsonl": {
+        "sha256": "b07d41b75324b5ff4f7f21789dbf07bc6e2dcc26cbd9d64139a464f9849b61ba",
+        "bytes": 52440
+      },
+      "aot-verified/application.jsonl": {
+        "sha256": "6c659dccde153cbaf8a3bbc16599e0b086d201b3586cddaa9335eadd036eda50",
+        "bytes": 1614
+      },
+      "aot-verified/application-result.json": {
+        "sha256": "0d3a45bf3c69135efe0fc2785cee0b06b67ca08d9a576ef615ee87bad2cac62b",
+        "bytes": 286
+      },
+      "aot-verified/before.png": {
+        "sha256": "caa2aa4d23939aa662fce3208298076f50d3d058678f0b74c67dbc67ee76e2ec",
+        "bytes": 13995
+      },
+      "aot-verified/scrolled.png": {
+        "sha256": "2c8773e102ae7c292ff869288b7a65e36cda9377afc13483587fd79eb9b3f304",
+        "bytes": 16551
+      },
+      "aot-verified/resized.png": {
+        "sha256": "386dece2253d55cb357580e385961a25b3e76a7e5ed788a2edc0df0018d9de4f",
+        "bytes": 18396
+      },
+      "aot-verified/horizontal.png": {
+        "sha256": "b3b19269f64e5fb1f5de14fca5c724882e42696253d877c2fe64d9a654928103",
+        "bytes": 15838
+      },
+      "aot-verified/after.png": {
+        "sha256": "7fdc2bf09a3f2d03954564de426f722d236ca44b6fb755e5241546f048ef1e8d",
+        "bytes": 14501
+      },
+      "aot-build-final/manifest.json": {
+        "sha256": "a4c8285250af8cdbfe7979e4340eaa52e104ce79112d127d844d4e9deb8100de",
+        "bytes": 12931
+      }
+    }
+  },
+  "remaining": [
+    "release-profile host verification in hosted CI",
+    "macOS/Windows/Wayland/physical GPU/input",
+    "HiDPI scale transitions",
+    "theme tokens and split panes",
+    "offscreen Tab auto-scroll and focus rings",
+    "nested scroll chaining and touchpad physics",
+    "full input horizontal scrolling/IME/accessibility",
+    "same-scenario Solid/React adapter comparison"
+  ],
+  "validation": {
+    "bun run check": {
+      "status": "passed",
+      "typecheckedFiles": 43,
+      "tests": 232,
+      "assertions": 419,
+      "build": "JavaScript modules; AOT separately inspected and executed"
+    },
+    "cargo test --locked --workspace --all-targets": {
+      "status": "passed",
+      "tests": 31
+    },
+    "cargo clippy --locked --workspace --all-targets -- -D warnings": {
+      "status": "passed"
+    },
+    "python3 -m unittest discover -s tests/quality -v": {
+      "status": "passed",
+      "tests": 37,
+      "scope": "Includes five geometry guard tests and the wheel-endpoint regression."
+    },
+    "actionlint .github/workflows/native-linux.yml": {
+      "status": "passed"
+    }
+  }
+}

@@ -2,7 +2,7 @@
 
 **Bun Native** is an experimental, TypeScript-first desktop framework for building **real native interfaces** with Bun. The first implementation runs a Bun-authored application against Rust GPUI, in development and through **Bun's machine-code ahead-of-time (AOT) compiler**. First-party **SolidJS** and **React** adapters will share the same native host.
 
-> **Status — October 31, 2026:** The legacy Bunly/CEF runtime is removed and the first real GPUI/AOT integration is merged. The current source adds a shared element tree and an [experimental public TS/JS API](packages/core/README.md), with opaque handles, atomic updates and owned callbacks. Actual development/AOT GUI verification uses Linux X11 with a software GPU. Solid/React adapters and supported release packages remain under implementation. See [the BN0 integration record](docs/bn0-integration.md) and [protocol 2](docs/native-abi.md) for exact scope.
+> **Status — October 31, 2026:** The legacy Bunly/CEF runtime is removed and the first real GPUI/AOT integration is merged. The current source adds a shared element tree and an [experimental public TS/JS API](packages/core/README.md), with opaque handles, atomic updates and owned callbacks. Actual development/AOT GUI verification uses Linux X11 with a software GPU. Solid/React adapters and supported release packages remain under implementation. See [the BN0 integration record](docs/bn0-integration.md), [protocol 3](docs/native-abi.md) and the [shared layout contract](docs/native-layout.md) for exact scope.
 
 ## What we're building
 

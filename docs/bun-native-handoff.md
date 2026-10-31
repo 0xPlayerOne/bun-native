@@ -17,12 +17,18 @@ passing run. That acceptance is Linux X11/XTest with Mesa software rendering;
 it does not qualify other OS GUIs, physical GPU/input, IME, accessibility or
 production installers.
 
-The current BN1 source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
-replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
+The BN1 implementation in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
+replaced the fixed fixture with protocol 2, a bounded multi-window native tree,
 atomic mutations, independent input revisions and the public
 [`@bun-native/core`](../packages/core/README.md) TS/JS API. Both framework
 consumers import this same contract. Their type fixtures are compile-only;
 actual framework renderers have separate acceptance.
+
+The initial shared layout increment advances the current source to protocol 3
+and requires `layout_v1`. Its [native layout contract](native-layout.md) records
+the supported sizing, scrolling and focus behavior and its actual development/AOT
+qualification. Historical BN1 artifacts remain evidence for their original
+protocol-2 sources; old hosts fail negotiation with the current packages.
 
 Real development and inspected AOT checks cover the public API and JavaScript
 consumer, pointer/text/Enter events, stale-input rejection, 1,000 native
@@ -69,7 +75,7 @@ fallback remains in the active packages.
    Reuse one public core and GPUI component system. Ordinary TS/JS edits must
    reuse a prebuilt host and must not silently invoke Cargo.
 
-The native ownership and schema are described in [protocol 2](native-abi.md),
+The native ownership and schema are described in [protocol 3](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the
 [security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
 state before resuming; a draft implementation is not a completed milestone.

@@ -281,7 +281,7 @@ impl TextInput {
         let end = content.len();
         Self {
             binding,
-            focus_handle: cx.focus_handle(),
+            focus_handle: cx.focus_handle().tab_stop(true),
             content: content.into(),
             placeholder: placeholder.into(),
             selected_range: end..end,

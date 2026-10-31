@@ -104,10 +104,10 @@ fn malformed_ids_and_obsolete_commands_are_rejected() {
 #[test]
 fn integer_number_spellings_match_javascript() {
     assert_eq!(
-        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":2.0}\n").unwrap(),
+        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":3.0}\n").unwrap(),
         Some(Command::Hello {
             id: request(1),
-            protocol: 2
+            protocol: PROTOCOL_VERSION
         })
     );
     let command = read(b"{\"id\":2.0,\"type\":\"batch\",\"window_id\":1e0,\"base_revision\":0.0,\"operations\":[{\"type\":\"set\",\"node_id\":2.0,\"element\":{\"kind\":\"input\",\"value\":\"\",\"style\":{\"color\":1.0}},\"expected_input_revision\":0e0},{\"type\":\"insert\",\"parent_id\":1,\"child_id\":2,\"index\":0e0}]}\n").unwrap().unwrap();
@@ -190,6 +190,66 @@ fn style_limits_unknown_fields_and_null_values_are_rejected() {
     }
     .validate()
     .is_err());
+}
+
+#[test]
+fn shared_layout_contract_has_the_same_acceptance_in_both_languages() {
+    let fixtures: Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/layout-style.json")).unwrap();
+    assert_eq!(
+        fixtures["capability"],
+        serde_json::to_value(Capability::LayoutV1).unwrap()
+    );
+    for case in fixtures["cases"].as_array().unwrap() {
+        let result = read_json(&batch(case["element"].clone()));
+        assert_eq!(
+            result.is_ok(),
+            case["valid"].as_bool().unwrap(),
+            "{}: {result:?}",
+            case["name"]
+        );
+        if case["valid"] == true {
+            let element: Element = serde_json::from_value(case["element"].clone()).unwrap();
+            let serialized = serde_json::to_value(element.style()).unwrap();
+            let expected = case["element"]["style"].as_object().unwrap();
+            assert_eq!(serialized.as_object().unwrap().len(), expected.len());
+            for (key, value) in expected {
+                // JSON has one numeric type; serde retains the lexical
+                // distinction between 0 and 0.0 in its generic Value.
+                if value.is_number() {
+                    assert_eq!(serialized[key].as_f64(), value.as_f64());
+                } else {
+                    assert_eq!(&serialized[key], value);
+                }
+            }
+        }
+    }
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        for style in [
+            Style {
+                min_width: Some(value),
+                ..Style::default()
+            },
+            Style {
+                max_width: Some(value),
+                ..Style::default()
+            },
+            Style {
+                min_height: Some(value),
+                ..Style::default()
+            },
+            Style {
+                max_height: Some(value),
+                ..Style::default()
+            },
+            Style {
+                flex_shrink: Some(value),
+                ..Style::default()
+            },
+        ] {
+            assert!(style.validate().is_err());
+        }
+    }
 }
 
 #[test]

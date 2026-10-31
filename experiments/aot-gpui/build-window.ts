@@ -39,10 +39,11 @@ if (
   entry !== 'core-lifecycle' &&
   entry !== 'event-throughput' &&
   entry !== 'fault' &&
-  entry !== 'scheduling'
+  entry !== 'scheduling' &&
+  entry !== 'layout'
 )
   throw new Error(
-    '--entry must be native-window, input-race, bridge, javascript, core-lifecycle, event-throughput, fault or scheduling'
+    '--entry must be native-window, input-race, bridge, javascript, core-lifecycle, event-throughput, fault, scheduling or layout'
   )
 const entryPath = {
   'native-window': 'examples/native-window/main.ts',
@@ -53,10 +54,11 @@ const entryPath = {
   'event-throughput': 'tests/native/event-throughput.ts',
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
+  layout: 'tests/native/layout.ts',
 }[entry]
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
-    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry native-window|input-race|bridge|javascript|core-lifecycle|event-throughput|fault|scheduling]'
+    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry native-window|input-race|bridge|javascript|core-lifecycle|event-throughput|fault|scheduling|layout]'
   )
 }
 if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
@@ -71,7 +73,8 @@ if (
     entry === 'core-lifecycle' ||
     entry === 'event-throughput' ||
     entry === 'fault' ||
-    entry === 'scheduling') &&
+    entry === 'scheduling' ||
+    entry === 'layout') &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')

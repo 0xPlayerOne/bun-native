@@ -2,7 +2,7 @@
 
 This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
 
-**Current state:** BN0 is complete after the native window, inspected AOT path and repeated release baseline passed the complete required gate and merged. The [BN0 audit](bn0-audit.md) preserves exact evidence and Linux software-GPU scope. The current BN1 source adds the shared native tree, [public TS/JS API](../packages/core/README.md), [protocol-2 contract](native-abi.md), bounded callbacks and actual development/AOT fixtures. Its final scheduling/fault/release-host audit remains in progress. The separate Solid renderer draft [#277](https://github.com/0xPlayerOne/bun-native/pull/277) has initial native development/AOT evidence; complete framework and platform support have their own acceptance.
+**Current state:** BN0 is complete after the native window, inspected AOT path and repeated release baseline passed the complete required gate and merged. The [BN0 audit](bn0-audit.md) preserves exact evidence and Linux software-GPU scope. The current BN1 source adds the shared native tree, [public TS/JS API](../packages/core/README.md), [current private protocol](native-abi.md), bounded callbacks and actual development/AOT fixtures. Its final scheduling/fault/release-host audit remains in progress. The separate Solid renderer draft [#277](https://github.com/0xPlayerOne/bun-native/pull/277) has initial native development/AOT evidence; complete framework and platform support have their own acceptance.
 
 ## Product and architecture
 
@@ -13,6 +13,8 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 5. [Architecture decisions](decisions/README.md) — decisions, alternatives and recorded tradeoffs
 
 The [current implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [milestone audit](bn0-audit.md) maps implementation and preserved raw evidence to #227/#258/#226.
+
+The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. It uses protocol 3; the document separates implementation and native verification from the remaining #237 acceptance.
 
 ## Build and operate
 

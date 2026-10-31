@@ -1,4 +1,4 @@
-import { ProtocolError, type Limits } from '@bun-native/protocol'
+import { ProtocolError, REQUIRED_CAPABILITIES, type Limits } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
@@ -25,8 +25,8 @@ type Callback = { windowId: number; nodeId: number; event: ClickEvent | InputEve
 class Application implements NativeApplication {
   readonly closed: Promise<void>
   readonly limits: Readonly<Limits>
-  // NativeHost.launch has negotiated both mandatory protocol features.
-  readonly capabilities = Object.freeze(['tree', 'input_revisions'] as const)
+  // NativeHost.launch has negotiated every mandatory protocol feature.
+  readonly capabilities = REQUIRED_CAPABILITIES
   readonly windows = new Map<number, Window>()
   private tail: Promise<void> = Promise.resolve()
   private queued = 0

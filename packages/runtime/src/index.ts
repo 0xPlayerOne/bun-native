@@ -4,6 +4,7 @@ import {
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
+  REQUIRED_CAPABILITIES,
   ProtocolError,
   type Command,
   type NativeEvent,
@@ -291,8 +292,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     if (this.phase === 'closed') return
     if (event.type === 'ready') {
       if (this.ready || this.phase !== 'starting') throw new ProtocolError('Unexpected ready event')
-      if (!event.capabilities.includes('tree') || !event.capabilities.includes('input_revisions'))
-        throw new ProtocolError('Native host lacks the required tree/input capabilities')
+      if (REQUIRED_CAPABILITIES.some((capability) => !event.capabilities.includes(capability)))
+        throw new ProtocolError(
+          'Native host lacks required protocol capabilities: ' + REQUIRED_CAPABILITIES.join(', ')
+        )
       this.negotiatedLimits = Object.freeze(event.limits)
       this.ready = true
       return

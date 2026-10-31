@@ -12,7 +12,7 @@ Use the exact Bun toolchain from [the repository instructions](../../docs/toolch
 BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun examples/native-window/main.ts
 ```
 
-The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree` and `input_revisions` features. Launch fails if the host cannot negotiate both. These are rendering features, not grants to use OS services; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
+The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions` and `layout_v1` features. Launch fails if the host cannot negotiate all three. These are rendering features, not grants to use OS services; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
 
 ```ts
 import { createApplication } from '@bun-native/core'
@@ -110,8 +110,8 @@ Protocol incompatibility prevents launch. Recreating an application creates a ne
 
 ## Supported scope
 
-The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `flex_grow`, `background`, `color` and `font_size`. Dimensions are numeric native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the shared contract.
+The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 2 replaces the BN0 fixture protocol without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 3 requires the shared layout contract and replaces protocol 2 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

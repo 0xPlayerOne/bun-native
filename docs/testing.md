@@ -114,6 +114,15 @@ Seven additional baseline tests reject changed binaries, source or package resol
 
 ## Real native startup, crash and scheduling regressions
 
+The initial BN4 `layout` scenario uses the same driver with
+`tests/native/layout.ts` and the inspected `--entry layout` AOT artifact. It
+asserts actual native bounds, min/max/shrink/alignment, viewport clipping,
+horizontal/vertical wheel scrolling, native resize, retained scroll and
+input/caret state, rendered Tab order and disposal. Geometry is independently
+bounded to 128 nodes; an omission cannot satisfy the layout assertions. See the
+[shared layout contract](native-layout.md) for the exact supported fields,
+commands and remaining platform/HiDPI/theme/split-pane acceptance.
+
 `scripts/quality/native-diagnostics-linux.py` reuses the input driver's process-tree discovery, PID/start-time identity, nonce/log bounds and child-subreaper cleanup. It requires an explicit application command, native executable, execution mode and host profile. Its 30-second outer deadline bounds each diagnostic; source and artifact fingerprints must remain unchanged throughout the run.
 
 `tests/native/fault.ts` has two distinct scenarios. `startup-failure` starts the actual GPUI host with an invalid display and requires a transport EOF/process-exit failure before the request timeout. `host-crash` first requires a real OS-click callback. The controller verifies the child PID, start time, executable and ownership, stops that child, requires two pending transactions, then kills only that child. The application must reject both transactions and `app.closed` with the same transport-exit error, abort the active listener, resolve `window.closed`, clear every public ownership count and exit cleanly. An arbitrary rejected promise or a request timeout cannot pass either scenario. This is process-failure containment, not a sanitizer or native memory-corruption test.
