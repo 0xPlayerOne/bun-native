@@ -21,7 +21,7 @@ cargo clippy --locked --manifest-path Cargo.toml -p bun-native-protocol --all-ta
 cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 ```
 
-`build` checks the TypeScript package build. It is not an AOT release build and must not silently compile Rust for ordinary application edits. The Rust commands explicitly select the portable protocol crate. GPUI compilation, GPU initialization, window interaction and production AOT acceptance have separate commands and evidence as those integration tasks land.
+`build` checks the TypeScript package build. It is not an AOT release build and must not silently compile Rust for ordinary application edits. The Rust commands explicitly select the portable protocol crate. GPUI compilation, GPU initialization, window interaction and production AOT acceptance use the separate native commands below. Consumer TypeScript/JavaScript edits reuse an explicitly supplied prebuilt host.
 
 `bunfig.toml` retains the minimum line-coverage gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
 
@@ -33,15 +33,15 @@ The inherited-pipe cases use a detached, self-expiring test helper that retains 
 
 ## Hosted workflows
 
-| Workflow/job                          | What it proves                                                                                                                                                                              | What it does not prove                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `bun-native.yml` / Source quality     | Formatting, linting, type checking, package boundaries, dependency use, package build, Bun unit coverage, Python harness safety and workflow syntax                                         | Native rendering or production AOT                                   |
-| `bun-native.yml` / Protocol matrix    | TypeScript behavior and Rust protocol fmt/Clippy/tests on Ubuntu 24.04, macOS 15 and Windows Server 2022                                                                                    | GPU/window interaction or physical input                             |
-| `bun-native.yml` / AOT native interop | Actual machine-code execution, native FFI/callback/subprocess behavior, explicit JIT control and compiler metadata checks on Linux                                                          | GPUI rendering or other OS AOT support                               |
-| `native-linux.yml`                    | Release GPUI host compilation/tests and actual development/AOT applications: X11 button/text events, native paint reports, screenshots, clean OS close and fresh launch with a software GPU | Physical input, hardware GPU performance or macOS/Windows GUI        |
-| `security.yml`                        | Dependency review and Bun/Rust advisory audits against the committed lockfiles                                                                                                              | A complete threat model or sandbox                                   |
-| `codeql.yml`                          | Source analysis through the pinned Code Foundry workflow                                                                                                                                    | Runtime correctness                                                  |
-| `Validation / Gate`                   | Every required source, protocol, AOT interop, native Linux and dependency-audit job succeeded                                                                                               | Completion of all platform, physical-device and packaging acceptance |
+| Workflow/job                          | What it proves                                                                                                                                                                                                       | What it does not prove                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `bun-native.yml` / Source quality     | Formatting, linting, type checking, package boundaries, dependency use, package build, Bun unit coverage, Python harness safety and workflow syntax                                                                  | Native rendering or production AOT                                   |
+| `bun-native.yml` / Protocol matrix    | TypeScript behavior and Rust protocol fmt/Clippy/tests on Ubuntu 24.04, macOS 15 and Windows Server 2022                                                                                                             | GPU/window interaction or physical input                             |
+| `bun-native.yml` / AOT native interop | Actual machine-code execution, native FFI/callback/subprocess behavior, explicit JIT control and compiler metadata checks on Linux                                                                                   | GPUI rendering or other OS AOT support                               |
+| `native-linux.yml`                    | Release GPUI host compilation/tests; actual development/AOT public API, checked JavaScript, input revision, event/lifecycle stress and repeated baseline scenarios with X11 input, native paint evidence and cleanup | Physical input, hardware GPU performance or macOS/Windows GUI        |
+| `security.yml`                        | Dependency review and Bun/Rust advisory audits against the committed lockfiles                                                                                                                                       | A complete threat model or sandbox                                   |
+| `codeql.yml`                          | Source analysis through the pinned Code Foundry workflow                                                                                                                                                             | Runtime correctness                                                  |
+| `Validation / Gate`                   | Every required source, protocol, AOT interop, native Linux and dependency-audit job succeeded                                                                                                                        | Completion of all platform, physical-device and packaging acceptance |
 
 The required check keeps its existing name so protected-main rules do not become stale. The aggregate fails if any required job fails, is cancelled or is skipped. No main-branch or administrator bypass is part of the workflow. Ordinary pull requests start as drafts; expensive validation runs after the explicit ready transition. The existing `CI_BILLING_PAUSED` control is preserved.
 
@@ -57,7 +57,19 @@ The Linux lane builds the release profile of `bun-native-host` from the root Car
 
 The development session first runs `tests/native/lifecycle.ts` under a 45-second process-group deadline. It checks five create/update/close/reopen cycles within one actual GPUI host, rejects invalid-state commands and verifies idempotent shutdown and exit zero. This is native lifecycle evidence; it does not assert visible pixels or OS input.
 
-The two input scenarios then launch independent application processes. The first clicks the native Increment button and requires a Bun-observed `click` plus the GPUI paint report for `Clicks: 1`. The second launches after the first has closed, types a fresh session value into the focused input, and requires the matching Bun `input` event and native painted text. Both capture the actual owned window before and after input, then close through the window manager and require an exit code of zero and no observed remaining application processes. The same two input scenarios also run against the inspected AOT application.
+The public API session launches independent processes for three scenarios: a pointer click updates the label, text input preserves the complete fresh session value, and a click followed by Enter produces two distinct callbacks and two tree revisions. Each scenario requires the application event and a complete native tree snapshot with exact node properties, ordering and revisions. An empty-root paint cannot establish initial readiness. The stale-input fixture separately sends an obsolete input revision through the lower-level runtime, requires its native rejection, and verifies that an unrelated label update preserves the newer native text. The AOT race entry is compiled separately; a development run cannot qualify its AOT behavior.
+
+Every normal interaction captures the owned window before and after input, closes through the window manager, and requires exit zero with no observed live or unreaped descendants. `development` includes the five same-host lifecycle cycles and the stale-input fixture; `aot` runs the three public-window scenarios, while `aot-input-race` runs the separately inspected negative fixture.
+
+| Fixture                            | Native acceptance and evidence                                                                                                                         | Session modes                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| `examples/native-window/main.ts`   | Public core pointer, input and Enter callbacks; complete tree paints; fresh launch and OS close                                                        | `development`, `aot`                        |
+| `tests/native/input-race.ts`       | Actual native stale-input rejection and preservation of the newer value                                                                                | Included in `development`; `aot-input-race` |
+| `tests/native/javascript.js`       | Strict-JSDoc JavaScript consumer, real button callback and input revision through the same core API                                                    | `javascript`, `aot-javascript`              |
+| `tests/native/public-lifecycle.ts` | 1,000 real subtree create/update/dispose cycles, 3,000 listener registrations, replacement/removal and OS-close cancellation of an unresolved callback | `core-lifecycle`, `aot-core-lifecycle`      |
+| `tests/native/event-throughput.ts` | Exactly 1,000 OS-delivered text edits with contiguous event/input revisions, every intermediate value, final native paint and clean close              | `event-throughput`, `aot-event-throughput`  |
+
+The lifecycle fixture asserts all public ownership counters return to zero, retains raw acknowledgement timings and samples Bun memory/WeakRefs. Three forced-GC phases also capture `bun:jsc` live-heap/category counts, deltas and diagnostic duration, outside the timed cycle workload. Retained diagnostic objects contribute to those counts. They do not measure cumulative allocations, native allocations or long-duration leak freedom. The event fixture records the input-injection interval and application callback observation span with instrumentation enabled; neither is per-event dispatch latency or maximum sustainable capacity.
 
 Reproduce after installing the Linux packages listed in `.github/workflows/native-linux.yml`:
 
@@ -71,13 +83,13 @@ BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" BUN_NATIVE_HOST_PROFILE=re
   "$run_dir/interaction" development bun examples/native-window/main.ts
 ```
 
-`scripts/quality/native-input-linux.py` also accepts an explicit app command after `--` for targeted runs. It verifies the exact window title and process ownership before focusing or sending input. A random nonce and the log offset immediately before injection prevent previous-session or startup records from satisfying input expectations. Application logs and event evidence are bounded to 4 MiB each. Input actions, subprocess calls and the test run have deadlines; cleanup targets only the process session it launched and identity-checked observed descendants. Environments where `/proc` and child-process IDs use different namespaces are reported unsupported before launch.
+`scripts/quality/native-input-linux.py` also accepts an explicit app command after `--` for targeted runs. It verifies the exact window title and process ownership before focusing or sending input. A random nonce and the log offset immediately before injection prevent previous-session or startup records from satisfying input expectations. Application logs and event evidence are bounded to 4 MiB each. Ordinary smoke input is limited to 200 expanded characters and 16 key actions. The explicit event-stress option accepts only its fixed 1,000-lowercase-`x` workload, title and no extra input actions. Input actions, subprocess calls and the test run have deadlines; cleanup targets only the process session it launched and identity-checked observed descendants. Environments where `/proc` and child-process IDs use different namespaces are reported unsupported before launch.
 
 Each scenario writes `result.json`, actual stdout/stderr, nonce-tagged JSONL events and `before.png`/`after.png`. The report separates OS input injection, application-observed input, native paint traversal, OS close and cleanup. Screenshots are retained for visual inspection; the harness does not claim automatic pixel or text recognition. Renderer metadata comes from `Window::gpu_specs()` in the actual GPUI window, and the hosted scenario requires it to identify a software adapter. System package versions and exact Bun/Rust/source versions are recorded alongside the evidence.
 
 The driver records time from app launch until the owned window is observed, the first native paint report is observed, input injection starts/ends, the matching Bun event and painted state are observed, and OS close/exiting are observed. Paint/event observations are polled at nominal 100 ms intervals and are not display-presentation timestamps. Text input timing includes the entire injected text sequence rather than measuring individual keystroke latency. Sampled process-tree RSS can count shared pages more than once, sampling can miss the true peak, and cache state is uncontrolled. These are fresh-process smoke observations, not controlled cold-cache, time-to-interactive or physical-GPU performance baselines.
 
-For a baseline trial, pass `--idle-seconds 2` directly to the Python driver. The option defaults to zero and accepts at most ten seconds; it samples after the first observed paint and before any input. The report retains raw samples with an `idle` phase plus the actual sampling duration, sample count, median and maximum process-tree RSS. Shared-page double counting still applies. The harness never flushes operating-system caches or changes machine power settings.
+For a baseline trial, pass `--idle-seconds 2` directly to the Python driver. The option defaults to zero and accepts at most ten seconds; it samples after the expected complete initial tree paint and before any input. The report retains raw samples with an `idle` phase plus the actual sampling duration, sample count, median and maximum process-tree RSS. Shared-page double counting still applies. The harness never flushes operating-system caches or changes machine power settings.
 
 After native correctness passes, the Linux job runs the [repeated matched baseline](../benchmarks/NATIVE_BASELINE.md) against the same release host and inspected AOT package. One warm-up and five alternating measured fresh-process trials per mode use a two-second idle interval. Every trial must pass the native input, paint and cleanup assertions. Raw records and descriptive distributions are retained; there is no guessed performance threshold. The shared X11 session helper accepts `-- COMMAND ...` to run this measurement in the same isolated display setup. Driver termination runs bounded cleanup before returning a failed result.
 
@@ -85,7 +97,7 @@ The Linux driver makes itself a process-local child subreaper. If interruption t
 
 `--mode aot` declares how the caller launched the app; the input driver never verifies machine-code compilation by itself. The CI lane separately invokes the pinned compiler, validates the emitted compiled-program metadata, hashes the source and both binaries, and retains `package/manifest.json` and build/inspection logs. The actual host build profile is declared in every scenario report and substantiated by the recorded Cargo release command and binary hash. Routine evidence artifacts omit the large executable files while retaining their hashes, sizes, linkage, compiler metadata and actual execution results. A missing or invalid AOT metadata check fails the job before the AOT GUI run.
 
-The harness uses Python's standard library. Ruff is the sole Python development dependency, pinned by version and wheel hashes in `scripts/quality/requirements.txt`; it is absent from application runtime dependencies. Its six headless safety tests check evidence freshness/nonce validation, incomplete records, bounded logs, unavailable-display behavior and real child-process cleanup. Each test has a ten-second deadline. These tests exercise the harness and do not qualify a native GUI:
+The harness uses Python's standard library. Ruff is the sole Python development dependency, pinned by version and wheel hashes in `scripts/quality/requirements.txt`; it is absent from application runtime dependencies. The headless safety tests check evidence freshness/nonce validation, incomplete records, bounded logs, stress-workload limits and exact event order, unavailable-display behavior, source/artifact provenance, cancellation and real child-process cleanup. Process guard tests reject a foreign child, a changed PID identity and the wrong executable before fault injection. Each process test has a bounded deadline. These tests exercise the harness and do not qualify a native GUI:
 
 ```sh
 python3 -m venv .bun-native/quality-env
@@ -100,6 +112,27 @@ The process-tree safety case is explicitly skipped if the local PID namespace ca
 
 Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
 
+## Real native startup, crash and scheduling regressions
+
+`scripts/quality/native-diagnostics-linux.py` reuses the input driver's process-tree discovery, PID/start-time identity, nonce/log bounds and child-subreaper cleanup. It requires an explicit application command, native executable, execution mode and host profile. Its 30-second outer deadline bounds each diagnostic; source and artifact fingerprints must remain unchanged throughout the run.
+
+`tests/native/fault.ts` has two distinct scenarios. `startup-failure` starts the actual GPUI host with an invalid display and requires a transport EOF/process-exit failure before the request timeout. `host-crash` first requires a real OS-click callback. The controller verifies the child PID, start time, executable and ownership, stops that child, requires two pending transactions, then kills only that child. The application must reject both transactions and `app.closed` with the same transport-exit error, abort the active listener, resolve `window.closed`, clear every public ownership count and exit cleanly. An arbitrary rejected promise or a request timeout cannot pass either scenario. This is process-failure containment, not a sanitizer or native memory-corruption test.
+
+`tests/native/scheduling.ts` keeps 128 legal single-update requests in flight for a three-second producer interval over a 1,031-node native tree. The independent controller injects one actual text edit during that interval. The event must reach Bun while the producer is still active, and native paint traversal must progress during production. Large-tree evidence may omit nodes at the 65,536-byte record bound; those records prove traversal/revision progress only. After the stream, the fixture removes the filler subtree, reorders the surviving label ahead of the heading, and requires the complete six-node painted tree with that child order and preserved input. `scheduling-control` runs the same tree with one acknowledged command and a deliberate one-millisecond application yield. Neither scenario establishes a throughput budget or precise presentation latency.
+
+Run a development diagnostic in a new isolated display, after building the host:
+
+```sh
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" BUN_NATIVE_HOST_PROFILE=release \
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+  "$run_dir/scheduling-session" -- python3 scripts/quality/native-diagnostics-linux.py \
+  --output "$run_dir/scheduling" --scenario scheduling --mode development \
+  --host-profile release -- bun tests/native/scheduling.ts
+```
+
+Use `--scenario startup-failure` or `--scenario host-crash` with `bun tests/native/fault.ts` for the other diagnostics. The shared AOT helper accepts `--entry scheduling` and `--entry fault`; compile/inspect each selected entry, retain its manifest, and pass the emitted executable with `--mode aot`. The driver records the declared mode but does not independently certify AOT. The [BN1 audit](bn1-audit.md) distinguishes local development-host evidence, historical failing controls and hosted release verification.
+
 ## Architecture and negative checks
 
 The current source dependency graph is deliberately small:
@@ -108,8 +141,11 @@ The current source dependency graph is deliberately small:
 | ---------------------- | ---------------------------------------- | ---------------- |
 | `@bun-native/protocol` | None                                     | Forbidden        |
 | `@bun-native/runtime`  | Public exports of `@bun-native/protocol` | Allowed          |
+| `@bun-native/core`     | Public exports of protocol and runtime   | Forbidden        |
 
 `scripts/quality/boundaries.ts` parses actual TypeScript/JavaScript syntax. It checks type-only imports, exports, dynamic imports, CommonJS loads and TypeScript import types, rather than matching code with regular expressions. Cross-package relative paths, undeclared dependencies, nonpublic subpaths, uninspectable dynamic imports and unused runtime dependencies fail. New packages need an explicit policy addition. This is a scoped dependency audit; it does not claim complete whole-program dead-code detection.
+
+The headless TypeScript suites exercise protocol framing and strict schemas, a shared malicious-command corpus, real subprocess protocol failures, public candidate-tree rollback, forged/cross-window handles, input races, queue bounds, ordered callbacks and reentrant cancellation. `tests/core/lifecycle-edge.test.ts` deliberately holds callbacks unresolved while ingesting independent native events. Its peer is a real subprocess that simulates protocol events; this does not replace the actual GPUI fixtures above. `tests/types/public-api.ts` checks the public contract, and `tests/types/framework-consumers.ts` imports the same core through minimal Solid/React consumers. Those framework fixtures are compile-only evidence, not implemented native renderers.
 
 Run the deliberate failure fixtures with:
 
@@ -144,7 +180,14 @@ Verification is agent-owned engineering work. It does not require an additional 
 
 ## Performance evidence
 
-[#258](https://github.com/0xPlayerOne/bun-native/issues/258) remains open until a genuine native baseline exists. Do not populate native metrics with mocked or protocol-only measurements. Capture cold startup, startup-to-interactive, process-tree idle/peak RSS, executable/install size, build duration and real input latency after the corresponding native/AOT fixture works.
+[Native allocation diagnostics](../benchmarks/ALLOCATIONS.md) run separately
+from timing baselines. The required native job uses standard Heaptrack on the
+owned release GPUI process during development and AOT lifecycle runs, preserving
+complete compressed profiles and bounded hotspot reports. The Bun fixture's
+sparse heap-category snapshots measure live cells, not cumulative allocations;
+Heaptrack measures intercepted native allocation calls, not Bun or GPU memory.
+
+The historical protocol-v1 Linux release baseline is retained in [the BN0 audit](bn0-audit.md) with its original source/artifact hashes. The current [BN1 baseline](../benchmarks/NATIVE_BASELINE.md) uses the public core and full-tree assertions; these are different workloads and must not be presented as a matched before/after performance comparison. The required Linux job repeats the current development/AOT workload against the same release host. Unsupported presentation, physical input, CPU/GPU utilization, cache-controlled launch and long-duration leak metrics remain explicit; no mocked measurement or zero substitutes for them.
 
 A baseline record includes source and toolchain revisions, complete commands, OS/CPU/GPU/power mode, fixture correctness assertions, sample count, warm-up procedure, cold/warm distinction, raw samples, units, medians and tail latency. Preserve original logs alongside summaries. Comparisons require matched fixture behavior and environment; unsupported metrics have a reason instead of a zero. A reproducible unexplained regression around ten percent triggers investigation, with absolute impact and noise considered. Budgets follow measured correct behavior, not an assumed performance advantage.
 

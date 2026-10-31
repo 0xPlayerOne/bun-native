@@ -5,7 +5,7 @@
 ## Start with the current implementation task
 
 1. Read the [vision](bun-native-vision.md), [architecture](architecture.md), [engineering-quality policy](engineering-quality.md) and [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
-2. Read the [implementation handoff](bun-native-handoff.md) and inspect [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217). Source migration #251 and toolchain #225 are merged; the current task is the earliest uncompleted dependency, not another rewrite of those foundations.
+2. Read the [implementation handoff](bun-native-handoff.md) and inspect [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217). BN0 is verified complete; continue BN1 #219 / #271 and the earliest uncompleted dependency. Do not repeat the completed source migration or toolchain investigation.
 3. Inspect the current checkout/branch and any existing PRs. Do not assume obsolete Bun 1.4.4 versions, M1 tests or CEF run commands apply to the new framework.
 4. Open a draft PR with the first useful change, push continuously, run focused tests and enable auto-merge when repository checks permit. No routine human design checkpoint is required.
 
@@ -13,7 +13,7 @@
 
 You need the exact pinned Bun, a matching target OS/architecture, Rust/native prerequisites for **framework contributors**, and GitHub-hosted CI or a native desktop for verification. `toolchain.json` and `rust-toolchain.toml` are the implemented pins. Linux X11 with Mesa software Vulkan is the first verified GUI environment; other platforms must be qualified explicitly.
 
-The **new** developer command contract (create/dev/build/test/doctor) is designed in [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and **does not exist yet**. Avoid showing fictional install commands or framework imports as runnable examples.
+The developer command contract (create/dev/build/test/doctor) is designed in [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and **does not exist yet**. The implemented workspace core imports are documented in [the package README](../packages/core/README.md); there is no published general-purpose installation command yet.
 
 To learn the compiler interface, see the official [Bun compiler documentation](https://bun.com/docs/compiler) and [AOT compatibility](https://bun.com/docs/compiler/compatibility). `bun compile` differs from `bun build --compile`: the latter is an ordinary bundled JIT executable and is not accepted as a Bun Native production AOT proof.
 
