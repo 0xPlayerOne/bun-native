@@ -1,0 +1,181 @@
+import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import * as jsc from "bun:jsc";
+import {
+  createApplication,
+  type NativeWindow,
+} from "../../bn2-retention-roots/packages/core/src/index.ts";
+import { watchWindow } from "../../bn2-retention-roots/packages/renderer/src/window-lifetime.ts";
+
+type Watch = typeof watchWindow;
+type Target = { name: string; calls: number };
+type Fixture = { target: Target; listener: () => void };
+
+const output = process.argv[2];
+const variant = process.argv[3];
+assert(output, "Supply a fresh report path");
+assert(variant === "actual" || variant === "captured-first", "Unknown observer variant");
+
+function address(value: object): string {
+  const match = /: (0x[0-9a-f]+) /.exec(jsc.jscDescribe(value));
+  assert(match?.[1], "The pinned runtime must describe the diagnostic cell address");
+  return match[1];
+}
+
+function fixture(index: number): Fixture {
+  const target = { name: `Released observer ${index}`, calls: 0 };
+  return {
+    target,
+    listener: () => {
+      target.calls++;
+    },
+  };
+}
+
+// This observation scope contains no individual listener or target binding.
+function observe(window: NativeWindow) {
+  const callbacks: (() => void)[] = [];
+  const completion = new Proxy(window.closed, {
+    get(promise, property, receiver) {
+      if (property === "then")
+        return (callback: () => void) => {
+          callbacks.push(callback);
+          return promise.then(callback);
+        };
+      return Reflect.get(promise, property, receiver);
+    },
+  });
+  const observed: NativeWindow = {
+    root: window.root,
+    closed: completion,
+    get revision() {
+      return window.revision;
+    },
+    batch: window.batch.bind(window),
+    close: window.close.bind(window),
+    input: window.input.bind(window),
+    on: window.on.bind(window),
+    onClick: window.onClick.bind(window),
+    onInput: window.onInput.bind(window),
+  };
+  return { callbacks, window: observed };
+}
+
+// Deliberately broken ownership, while count/revocation behavior remains correct.
+// The single pending callback retains the first listener even after unsubscribe.
+function capturedFirstObserver(): Watch {
+  const lifetimes = new WeakMap<NativeWindow, { listeners: Set<() => void>; ended: boolean }>();
+  return (window, listener) => {
+    let lifetime = lifetimes.get(window);
+    if (!lifetime) {
+      const created = { listeners: new Set<() => void>(), ended: false };
+      lifetime = created;
+      lifetimes.set(window, created);
+      void window.closed.then(() => {
+        // This query is behaviorally redundant but retains a real JS ownership edge.
+        const firstStillRegistered = created.listeners.has(listener);
+        created.ended = true;
+        const active = [...created.listeners];
+        created.listeners.clear();
+        for (const notify of active) notify();
+        assert.equal(firstStillRegistered, active.includes(listener));
+      });
+    }
+    assert(!lifetime.ended, "Window is already closed");
+    lifetime.listeners.add(listener);
+    return () => {
+      lifetime.listeners.delete(listener);
+    };
+  };
+}
+
+const generateSnapshot: unknown = Reflect.get(jsc, "generateHeapSnapshotForDebugging");
+assert.equal(typeof generateSnapshot, "function", "Pinned Bun GC-debugging export unavailable");
+if (typeof generateSnapshot !== "function") throw new Error("Unreachable missing snapshot export");
+
+const app = await createApplication({
+  executable: process.execPath,
+  args: [resolve(import.meta.dir, "../../bn2-retention-roots/tests/core/protocol-peer.ts")],
+  requestTimeoutMs: 1_000,
+});
+let result: Record<string, unknown> | undefined;
+try {
+  const actualWindow = await app.openWindow({ title: "Pending completion ownership research" });
+  const observed = observe(actualWindow);
+  const watch = variant === "actual" ? watchWindow : capturedFirstObserver();
+  const fixtures = Array.from({ length: 25 }, (_, index) => fixture(index));
+  for (const value of fixtures) {
+    const release = watch(observed.window, value.listener);
+    release();
+    release();
+  }
+  const active = fixture(25);
+  const releaseActive = watch(observed.window, active.listener);
+  assert.equal(observed.callbacks.length, 1, "The old bounded-subscription check must pass");
+  assert(fixtures.every((value) => value.target.calls === 0));
+
+  const source = address(observed.callbacks[0]!);
+  const targets = fixtures.map((value) => ({
+    name: value.target.name,
+    listener: address(value.listener),
+    target: address(value.target),
+  }));
+  const liveControl = { listener: address(active.listener), target: address(active.target) };
+  // All targets remain strongly held in fixtures/active before and after this
+  // snapshot. The oracle asks about an explicit path, never whether GC ran.
+  const snapshot: unknown = generateSnapshot();
+  writeFileSync(`${output}.heap.json`, `${JSON.stringify(snapshot)}\n`, { flag: "wx" });
+  assert(fixtures.every((value) => value.target.calls === 0));
+  assert.equal(active.target.calls, 0);
+  await actualWindow.close();
+  await actualWindow.closed;
+  assert(
+    fixtures.every((value) => value.target.calls === 0),
+    "The old revocation check must pass",
+  );
+  assert.equal(active.target.calls, 1);
+  releaseActive();
+  result = {
+    schemaVersion: 1,
+    sourceCommit: "f41010568900a01aa1051766b760a1d67ed606a4",
+    bunRevision: Bun.revision,
+    executionMode: "development",
+    scope: "actual public-core headless peer and shared watchWindow; no native GUI",
+    variant,
+    source,
+    targets,
+    liveControl,
+    subscriptionCount: observed.callbacks.length,
+    releasedCallbackCountAfterClose: fixtures.reduce((sum, value) => sum + value.target.calls, 0),
+    activeCallbackCountAfterClose: active.target.calls,
+    oracle:
+      "Visible strong ownership path from the single pending completion callback; every target is deliberately kept alive by the diagnostic",
+    snapshotPerformsOwnFullCollection: true,
+    snapshotPath: `${output}.heap.json`,
+  };
+} finally {
+  await app.shutdown();
+  await app.closed;
+}
+assert.deepEqual(app.diagnostics, {
+  windows: 0,
+  nodes: 0,
+  callbacks: 0,
+  queuedTransactions: 0,
+  queuedCallbacks: 0,
+  activeCallbacks: 0,
+});
+assert(result);
+writeFileSync(
+  output,
+  `${JSON.stringify({ ...result, finalOwnership: app.diagnostics }, null, 2)}\n`,
+  { flag: "wx" },
+);
+console.log(
+  JSON.stringify({
+    variant,
+    subscriptionCount: result.subscriptionCount,
+    finalOwnership: app.diagnostics,
+  }),
+);

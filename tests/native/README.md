@@ -2,8 +2,8 @@
 
 These entry points launch the actual prebuilt GPUI host. They are separate from
 the default headless `bun test tests` suite. The required Linux native CI job
-builds one release host and reuses that artifact for development Bun and six
-inspected machine-code AOT entries.
+builds one release host and reuses that artifact for development Bun and the
+explicit inspected machine-code AOT entries below.
 
 ## Session modes
 
@@ -63,10 +63,11 @@ native runtime behavior; the session modes above exercise that separately.
 
 ## Compile and run AOT entries
 
-The shared build helper accepts `native-window`, `input-race`, `bridge`,
-`javascript`, `core-lifecycle` and `event-throughput`. It records source/configuration and executable
-hashes, the exact compiler command, compiled-program metadata and Linux JIT
-omission evidence. `native-window` bundles a copy of the native host for the
+The shared build helper's [entry table](../../experiments/aot-gpui/README.md)
+covers public-core, platform, Solid and React fixtures. It records
+source/configuration and executable hashes, the exact compiler command,
+compiled-program metadata and target-specific JIT omission evidence.
+`native-window` bundles a copy of the native host for the
 distribution/baseline package. The other entries reference the existing host by
 path and hash.
 
@@ -104,6 +105,16 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 ### React adapter
 
+Build each fixture with the common AOT helper before executing its two modes.
+Development uses `bun PACKAGE/development/application.js`, and AOT uses
+`PACKAGE/ENTRY`. The manifest fingerprints the exact generated module supplied
+to the machine-code compiler, as well as its original source and configuration.
+The counter, interactions, behavior and workload entries all use this recipe.
+The [integrated recipe record](evidence/react-hosted-recipe-linux.json) records
+26 actual local counter/event/behavior runs on the unchanged protocol4 development
+host. All four entries were compiled and inspected; the unchanged workload's
+execution and fixed retention observations remain a separate hosted gate.
+
 `tests/native/react-window.py` supplies independent complete-tree expectations for
 `examples/react-counter/main.tsx`, then executes the existing owned-process input
 driver. Its `counter-click` scenario requires one label update, one retained keyed
@@ -114,6 +125,37 @@ inspected `--entry react` AOT executable against its already-built release host.
 See the [adapter instructions](../../packages/react/README.md) and
 [local source-bound evidence](evidence/react-linux-development-aot.json). That local
 record uses a development-profile host and does not qualify release performance.
+
+The protocol4 follow-up uses `tests/native/react-interactions.tsx` with the common
+`renderer-interactions.ts` oracle. Run `tests/native/renderer-interactions.py
+--renderer React --scenario keyboard|caret|selection --mode development|aot
+--output NEW_DIRECTORY -- APPLICATION` inside the existing isolated native
+session. Pass the inspected `--entry react-interactions` executable in AOT mode.
+The scenarios require real pointer/focus/keyboard events, both JavaScript
+propagation-stop policies, caret insertion or selection replacement, exactly two
+native Sets and a complete expected paint tree. Every observed registration signal
+must be revoked after OS close, with all public ownership counts zero. The helper
+adds no process supervisor or framework event-dispatch implementation.
+
+The [protocol4 event record](evidence/react-events-linux-development-aot.json) binds
+those six development/AOT runs and the four counter regressions to exact
+protocol4 source and binary hashes. Global native sequence numbers now include
+focus, pointer and key notifications; typed edit counts remain independently
+checked by input revisions. The shared core validates global ordering.
+
+`react-behavior.tsx` supplies the separate eight-case React behavior qualification.
+Run `python3 tests/native/react-behavior.py --scenario SCENARIO --mode
+development|aot --output NEW_DIRECTORY -- APPLICATION` inside the same isolated
+session; AOT uses the inspected `--entry react-behavior` executable. Cases cover
+batched state/reducer updates and hook/ref lifetime, actual boundary fallback and
+recovery, a transient concurrent retry, terminal recovery-reporter/effect/ref
+errors, and a non-suspending transition. The last three failure cases require an
+independent survivor root to update and paint after the failed root releases its
+ownership. The controller asserts exact initial/final trees and the original
+driver's OS-input and child-cleanup contract. `react-behavior.json` records bounded
+effect traces, ref counts, error identity assertions and final ownership. See the
+[behavior and concurrency matrix](../../docs/react-behavior.md) for every scenario
+and the precise transition-completion limit.
 
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.
@@ -135,7 +177,9 @@ remain unchanged.
 
 The input listener uses the public API and never echoes a value or sends a
 per-edit tree update. Both the application and independent driver validate all
-1,000 contiguous event sequences, input revisions and prefix values. The final
+1,000 increasing input-event sequences, contiguous input revisions and exact
+prefix values. The runtime independently validates the complete contiguous UI
+sequence, including key and focus events between input callbacks. The final
 native paint must contain the complete value at input revision 1,000 while the
 tree revision remains 1. The fixture writes `event-throughput.json` beside the
 event log, with every callback observation time, inter-callback gaps, observed
@@ -164,3 +208,40 @@ The session selects Mesa software Vulkan and the input driver verifies the
 adapter actually reported by GPUI. This evidence covers Linux X11/XTest and
 software rendering. It does not qualify hardware-GPU performance, physical
 input, display-presentation latency or macOS/Windows GUI behavior.
+
+## Shared layout diagnostics
+
+`tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching current host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
+
+## Shared interaction diagnostics
+
+`tests/native/interactions.ts` also uses public core only. The diagnostics runner's
+`interactions` scenario reuses the same owned-window checks, bounded nonce-tagged
+logs, deadlines and cleanup. It supplies pointer/Enter activation, Tab focus,
+caret movement and Shift-selection replacement. It verifies complete
+capture/target/bubble traces, distinguishes both propagation controls at the
+target, and proves that native activation still occurs after JS propagation
+stops. While a callback deliberately awaits a private gate, real events queue;
+reparenting preserves their captured ancestry, whereas target deletion cancels
+delivery and remount does not inherit old callbacks. The final complete native
+paint, OS close, revoked signals and zero ownership counters are required.
+
+Use `--entry interactions` for the corresponding AOT executable and
+`--scenario interactions` with development or AOT in the existing diagnostics
+runner. The [interaction contract](../../docs/native-events.md) contains exact
+commands, current evidence and unsupported scope. None of these finite tests
+claims DOM event compatibility, native default cancellation or full IME support.
+
+## Portable target-host paint smoke
+
+`tests/native/platform-smoke.ts` and `scripts/quality/native-platform-smoke.py`
+exercise the real host through three public-core window/update/close lifecycles.
+The controller reuses the existing bounded evidence parser and full-tree
+expectations, requiring each native renderer and initial/update paint. Its
+`--negative-paint-check` proves an incorrect expected native tree fails while
+the fixture joins native shutdown. The shared AOT entry is `platform-smoke`.
+
+This first macOS/Windows lane explicitly leaves OS-visible-window, real input,
+screenshots and full process-tree observation unverified. A successful portable
+paint test is not those claims. See [native platform qualification](../../docs/native-platforms.md)
+for target requirements, artifact scope and remaining #246/#256 work.

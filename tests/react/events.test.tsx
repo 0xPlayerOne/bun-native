@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { render } from '@bun-native/react'
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { withApp } from '../renderers/support.ts'
+import { until } from './support.ts'
 
 test('React handler rerenders preserve the native subscription and queued click sequence', () =>
   withApp(async (app) => {
@@ -50,13 +51,15 @@ test('React handler rerenders preserve the native subscription and queued click 
       await click()
       await started
       await click()
+      // The peer acknowledges the marker batch before emitting its click.
+      await until(() => app.diagnostics.queuedCallbacks === 1)
       expect(app.diagnostics.queuedCallbacks).toBe(1)
       update(1)
       await root.flush()
       expect(activeSignal.aborted).toBe(false)
       expect(app.diagnostics.queuedCallbacks).toBe(1)
       release()
-      for (let attempt = 0; attempt < 100 && received.length < 2; attempt++) await Bun.sleep(1)
+      await until(() => received.length === 2)
       expect(received).toEqual([
         { sequence: 1, revision: 0 },
         { sequence: 2, revision: 1 },

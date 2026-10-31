@@ -63,7 +63,9 @@ its later newline.
 The limits are 4 MiB for the whole log, 65,536 UTF-8 JSON bytes per record excluding
 the newline (matching the native writer), 32,768 file notifications, and the
 remaining bounded fixture deadline, at most 60 seconds. No record queue grows
-with the number of edits. Complete malformed JSON, duplicate fields, non-finite
+with the number of edits. Watcher setup, input preparation and measurement start
+retain the original absolute deadline; they cannot restart its remaining interval.
+Complete malformed JSON, duplicate fields, non-finite
 numbers, foreign nonces, queue overflow, moved/deleted watches and deadline
 expiration fail the observation. Boolean IDs cannot match numeric expectations.
 Omitted large-tree records cannot satisfy a complete-tree expectation.
@@ -80,25 +82,56 @@ collection never becomes a passing native-paint check.
 temporary owned files. A bounded real writer process stays alive until the reader
 has observed its complete record, demonstrating observation before command return.
 Tests also cover partial records and the exact native byte boundary, predicates,
-invalid JSON, file replacement/truncation/rewrite, log limits, real notification
-budget failure, deadlines, injected input failure and SIGTERM interruption of a
+invalid JSON (including overflowing numeric exponents), file
+replacement/truncation/rewrite, log limits, real notification budget failure,
+deadlines, injected input failure and SIGTERM interruption of a
 separate blocked reader process. The kernel-format overflow notification decoder
 has an explicit negative control; that control does not claim a real kernel-queue
 saturation test. These are headless safety tests, not native rendering tests.
+The fixed-clock deadline regression rejects expiry before input starts and a
+complete matching record received after the original deadline. Both controls
+failed against the earlier interval-restarting implementation.
 
 ```sh
 python3 -W error::ResourceWarning -m unittest discover \
   -s tests/quality -p 'test_native_paint_observer.py' -v
 ```
 
-Actual native qualification uses the existing core and React fixtures in development
-and inspected machine-code AOT modes. The
-[local evidence record](../tests/native/evidence/paint-observer-linux.json) binds
-the exact source, compiler, host, screenshots and raw reports. It uses a
-development-profile protocol-2 host on Linux X11 with Mesa llvmpipe. The required
-native workflow uses the same collector automatically with its independently
-built release host; local development-host evidence must not be relabeled as that
+The [original local evidence record](../tests/native/evidence/paint-observer-linux.json)
+binds eight core and React cases to their exact source, compiler, host,
+screenshots and raw reports. It uses a development-profile protocol-2 host on
+Linux X11 with Mesa llvmpipe. This historical record remains unchanged; it does
+not qualify later protocol or framework build changes. The required native
+workflow uses the same collector automatically with its independently built
+release host. Local development-host evidence must not be relabeled as that
 hosted result.
+
+The [protocol-4 qualification](../tests/native/evidence/paint-observer-protocol4-linux.json)
+adds 12 cases on the current combined core, Solid and React source: one click and
+one complete text-input case per adapter in development and AOT execution. All
+passed on their first execution with the same prebuilt development-profile GPUI
+host, Linux X11 and Mesa llvmpipe. The record binds 84 source and harness files,
+the three inspected AOT executables, generated framework modules, native build
+inputs, matched raw paint records, screenshots and cleanup results. The Solid
+and React source maps establish production framework distribution selection in
+both execution modes.
+
+All six click paints were observed before the corresponding input command
+returned: the observed intervals were 16.41–49.55 ms, while command returns were
+104.66–111.53 ms. Five of the six text cases completed their final paint after
+the input command returned. That outcome remains in the record; the collector
+does not require an artificially early paint. These single cases qualify the
+measurement boundary and exact native behavior, not adapter performance: the
+core and framework fixtures have different trees and no repeated matched
+comparison was run. All 12 application processes exited normally, no observed
+descendants remained running or unreaped, and every observer stopped with zero
+open descriptors.
+
+The 63-test native harness safety suite passed with resource warnings treated
+as errors. Two retained negative controls identify corrections to the original
+collector: JSON exponents overflowing to infinity now fail, and preparation can
+no longer restart the fixture's original remaining deadline. Neither correction
+changes application acceptance or increases a timeout.
 
 For example, run the existing React click fixture inside a fresh isolated session:
 
@@ -106,16 +139,22 @@ For example, run the existing React click fixture inside a fresh isolated sessio
 export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
 export BUN_NATIVE_HOST_PROFILE=release
 mkdir -p .bun-native
+package_dir=$(mktemp -d "$PWD/.bun-native/paint-package.XXXXXX")
+bun experiments/aot-gpui/build-window.ts --entry react --source "$PWD" \
+  --host "$BUN_NATIVE_HOST" --host-profile release --outdir "$package_dir"
 run_dir=$(mktemp -d "$PWD/.bun-native/paint-observer.XXXXXX")
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh \
   "$run_dir/session" -- python3 tests/native/react-window.py \
   --scenario counter-click --mode development --output "$run_dir/result" -- \
-  bun examples/react-counter/main.tsx
+  bun "$package_dir/development/application.js"
 ```
 
-Use the shared AOT helper's `react` entry and the emitted executable for the AOT
-case; retain its inspection manifest. The driver's declared mode alone does not
-prove AOT. Run both click and input cases when qualifying a changed harness.
+For the AOT case, use `--mode aot` and the emitted `$package_dir/react` executable
+instead. The common recipe selects production framework distributions and uses
+the same generated application module for both Bun development execution and
+machine-code AOT compilation. Retain its inspection manifest and module hash;
+the driver's declared mode alone does not prove AOT. Run both click and input
+cases when qualifying a changed harness.
 These bounded observations do not establish a cross-framework ranking, a release
 latency budget, physical input, hardware GPU performance or macOS/Windows support.

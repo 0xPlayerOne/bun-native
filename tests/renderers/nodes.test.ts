@@ -53,8 +53,8 @@ test('native properties validate JavaScript values and element kind before repla
     [text, 'value', 'invalid'],
     [text, 'placeholder', 'invalid'],
     [text, 'disabled', false],
-    [text, 'onClick', () => {}],
-    [text, 'onInput', () => {}],
+    [createTextNode('literal'), 'onClick', () => {}],
+    [createTextNode('literal'), 'onInput', () => {}],
     [text, 'className', undefined],
   ] as const
   for (const [node, name, value] of invalid) expect(() => setProperty(node, name, value)).toThrow()

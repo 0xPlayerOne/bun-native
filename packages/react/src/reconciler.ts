@@ -1,16 +1,13 @@
-import {
-  UnsupportedFeatureError,
-  type ClickEvent,
-  type InputEvent,
-  type Listener,
-} from '@bun-native/core'
+import { UnsupportedFeatureError, type Listener, type NativeUIEvent } from '@bun-native/core'
 import {
   createElement,
   createTextNode,
   insertNode,
+  isEventProperty,
   removeNode,
   replaceText,
   setProperty,
+  type EventProperty,
   type Node,
   type RendererNode,
 } from '@bun-native/renderer'
@@ -49,9 +46,11 @@ type Config = Reconciler.HostConfig<
 const context: HostContext = Object.freeze({})
 let updatePriority: Reconciler.EventPriority = NoEventPriority
 let activeEvent: { type: string; observedAt: number } | undefined
-type NativeEvent = ClickEvent | InputEvent
-type EventBinding = { listener: Listener<NativeEvent> | undefined; dispatch: Listener<NativeEvent> }
-const bindings = new WeakMap<Node, Map<string, EventBinding>>()
+type EventBinding = {
+  listener: Listener<NativeUIEvent> | undefined
+  dispatch: Listener<NativeUIEvent>
+}
+const bindings = new WeakMap<Node, Map<EventProperty, EventBinding>>()
 
 function unsupported(feature: string): never {
   throw new UnsupportedFeatureError('react-' + feature)
@@ -64,9 +63,9 @@ const noInstance = () => null
 const returnFalse = () => false
 const hostContext = () => context
 
-function createBinding(listener: Listener<NativeEvent>): EventBinding {
+function createBinding(listener: Listener<NativeUIEvent>): EventBinding {
   const binding: EventBinding = { listener, dispatch }
-  function dispatch(event: NativeEvent): void | Promise<void> {
+  function dispatch(event: NativeUIEvent): void | Promise<void> {
     const current = binding.listener
     if (!current) return
     const previous = activeEvent
@@ -81,7 +80,7 @@ function createBinding(listener: Listener<NativeEvent>): EventBinding {
   return binding
 }
 
-function updateEvent(node: Node, name: string, value: unknown): void {
+function updateEvent(node: Node, name: EventProperty, value: unknown): void {
   const registered = bindings.get(node)
   const existing = registered?.get(name)
   if (value === undefined) {
@@ -92,16 +91,16 @@ function updateEvent(node: Node, name: string, value: unknown): void {
   }
   if (typeof value !== 'function') throw new TypeError('Native event listeners must be functions')
   // The callable boundary is checked here; core supplies the validated event.
-  const listener = value as Listener<NativeEvent>
+  const listener = value as Listener<NativeUIEvent>
   if (existing) {
     // React replaces inline closures on ordinary rerenders. Keep the node's
-    // native registration alive so queued input/clicks retain their ordering.
+    // native type/phase registration alive so queued events retain their ordering.
     existing.listener = listener
     return
   }
   const binding = createBinding(listener)
   setProperty(node, name, binding.dispatch)
-  const next = registered ?? new Map<string, EventBinding>()
+  const next = registered ?? new Map<EventProperty, EventBinding>()
   next.set(name, binding)
   bindings.set(node, next)
 }
@@ -111,7 +110,7 @@ function updateProperties(node: Node, previous: Props, next: Props): void {
     if (name === 'children' || name === 'ref' || name === 'key') continue
     const value = next[name]
     if (Object.hasOwn(previous, name) && Object.is(previous[name], value)) continue
-    if (name === 'onClick' || name === 'onInput') updateEvent(node, name, value)
+    if (isEventProperty(name)) updateEvent(node, name, value)
     else setProperty(node, name, value)
   }
 }
@@ -161,8 +160,9 @@ const host: Config = {
     bindings.delete(node)
     node.children.length = 0
     node.parent = undefined
-    delete node.properties.onClick
-    delete node.properties.onInput
+    for (const name of Object.keys(node.properties)) {
+      if (isEventProperty(name)) delete node.properties[name]
+    }
   },
   appendChild: insertNode,
   appendChildToContainer: insertNode,
@@ -198,7 +198,12 @@ const host: Config = {
   preloadInstance: () => true,
   startSuspendingCommit: noInstance,
   suspendInstance: unsupported.bind(null, 'suspended-host-commit'),
-  suspendOnActiveViewTransition: unsupported.bind(null, 'view-transitions'),
+  // React 19.3 calls this for ordinary transition lanes too. This host has no
+  // active view-transition animation whose completion could delay a commit.
+  suspendOnActiveViewTransition: noOp,
+  createViewTransitionInstance: unsupported.bind(null, 'view-transitions'),
+  applyViewTransitionName: unsupported.bind(null, 'view-transitions'),
+  startViewTransition: unsupported.bind(null, 'view-transitions'),
   waitForCommitToBeReady: noInstance,
   getSuspendedCommitReason: noInstance,
 }

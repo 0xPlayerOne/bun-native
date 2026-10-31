@@ -1,15 +1,19 @@
-# Native host protocol 2
+# Native host protocol 4
 
-This is the implemented private Bun-to-GPUI contract for BN1. Application code
+This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocol 1 was the BN0 integration fixture and is superseded
-without a compatibility fallback.
+numeric handles. Protocols 1–3 are superseded without a compatibility fallback.
+Protocol 4 requires `tree`, `input_revisions`, `layout_v1` and `interactions_v1`; missing features or
+older versions fail launch before a window is opened. The [layout contract](native-layout.md)
+defines the supported style subset; the [interaction contract](native-events.md)
+defines native event observations and public propagation.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
 [`elements.ts`](../packages/protocol/src/elements.ts), and
-[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs). The
+[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs), and
+[`events.rs`](../native/protocol/src/events.rs). The
 [Rust model](../native/protocol/src/tree.rs) independently validates mutations.
 This document explains their ownership and ordering rules; it is not a second
 schema implementation.
@@ -50,9 +54,9 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `2`. The host emits `ready` with the
+- The first request is `hello` with protocol `4`. The host emits `ready` with the
   same protocol, implemented capabilities and resource limits, then acknowledges
-  the request. Both `tree` and `input_revisions` are mandatory. Missing features,
+  the request. `tree`, `input_revisions`, `layout_v1` and `interactions_v1` are mandatory. Missing features,
   version mismatch, duplicate readiness or acknowledgement before readiness
   fail launch and clean up the child.
 - Request, window, root and node identities are positive JavaScript-safe
@@ -111,11 +115,30 @@ Empty public batches stay local and do not increment the revision.
 
 ## Events and controlled input
 
-`click` carries sequence, window and button identity. `input` additionally
-carries the complete value and its independent `input_revision`. `closed`
-carries sequence and window identity. The transport checks contiguous sequence;
-the core checks the owner, kind and input revision before delivering callbacks.
-Events already in flight for disposed nodes lose callback authority.
+All node events carry `sequence`, `window_id`, `node_id`, `tree_revision` and a
+captured `path` from the committed root to the target. The path contains unique
+positive IDs, ends at `node_id`, and has at most 65 entries: tree depth is bounded
+at 64 edges, not 64 nodes. `click`, `input`, `key_down`, `key_up`, `pointer_down`,
+`pointer_up`, `focus` and `blur` use this route. `closed` carries only sequence and
+window identity. The transport checks contiguous sequence across **all** UI
+events; a click/input callback subset naturally has gaps.
+
+`input` additionally carries the complete value and independent
+`input_revision`. Key events carry `key`, optional `key_char` and five boolean
+modifiers; pointer events carry a supported button, finite window-logical `x`/`y`
+and the same modifiers. The [event contract](native-events.md) defines the exact
+fields and limits. The core validates owner, kind, revision and captured path
+before delivery. It executes capture, target and bubble listeners against that
+immutable route, never against ancestry reconstructed after a later mutation.
+Events already in flight for a deleted target lose all callback authority;
+removing an ancestor registration skips that binding without redirecting it.
+
+The host enqueues `applied(R+1)` before a native event from revision R+1 can be
+emitted. Preflight, commit and reply enqueue share one synchronous foreground
+update; GPUI input/focus notifications run afterward. An older event may remain
+queued while newer tree revisions commit. The core accepts its old snapshot but
+rejects a future revision. Public propagation controls affect subsequent Bun
+listeners only; they cannot cancel a native action that already occurred.
 
 Native input edits increment the input revision without incrementing the tree
 revision. An intentional application `set` of an input must include
@@ -134,6 +157,9 @@ is observed without echoing older values back to the native editor.
 | Live windows                                     |                                                  16 |
 | Nodes per window, including root                 |                                               4,096 |
 | Tree depth, measured in edges from root          |                                                  64 |
+| Event ancestry, root and target included         |                                                  65 |
+| Key / optional logical-text UTF-8 bytes          |                                                 256 |
+| Pointer coordinate magnitude, logical pixels     |                                           1,048,576 |
 | Individual text/input string                     |                                  16,384 UTF-8 bytes |
 | Aggregate model text per window                  |                               4,194,304 UTF-8 bytes |
 | Window title                                     | 256 UTF-8 bytes; nonempty and no control characters |
@@ -177,7 +203,7 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe rendering features, not OS permission grants.
-Protocol 2 has no file, shell, process, network, update or browser service
+Protocol 4 has no file, shell, process, network, update or browser service
 command. The [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

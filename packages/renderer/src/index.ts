@@ -13,6 +13,8 @@ export {
   setProperty,
 } from './nodes.ts'
 export type { Node, RendererNode } from './nodes.ts'
+export { eventProperties, isEventProperty } from './event-properties.ts'
+export type { EventHandlers, EventProperty } from './event-properties.ts'
 
 /** Observe current editing state without upgrading a submitted replacement intent. */
 export function inputState(reference: RendererNode): InputState {

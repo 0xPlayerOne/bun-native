@@ -71,6 +71,13 @@ def invalid_constant(_value):
     raise ValueError("Non-finite native evidence number")
 
 
+def finite_number(encoded):
+    value = float(encoded)
+    if not math.isfinite(value):
+        raise ValueError("Non-finite native evidence number")
+    return value
+
+
 def same_json(left, right):
     # JSON numbers may be emitted as 24 or 24.0, but booleans must never alias
     # window/node IDs or revision numbers through Python's True == 1 behavior.
@@ -128,7 +135,7 @@ class PaintObserver:
         self.path = Path(path)
         self.nonce = nonce
         self.expected = expected
-        self.timeout = timeout
+        self.deadline = time.monotonic() + timeout
         self.descriptors = []
         self.thread = None
         self.begin_signal = threading.Event()
@@ -183,7 +190,9 @@ class PaintObserver:
                 target=self._observe, name="native-paint-observer"
             )
             self.thread.start()
-            if not self.ready.wait(1):
+            if not self.ready.wait(min(1, max(0, self.deadline - time.monotonic()))):
+                if time.monotonic() >= self.deadline:
+                    raise TimeoutError("Native paint observation deadline expired")
                 raise RuntimeError("Native paint observer did not become ready")
             return self
         except BaseException:
@@ -206,6 +215,8 @@ class PaintObserver:
     def begin(self):
         if self.thread is None or self.closed or self.started_ns is not None:
             raise RuntimeError("Native paint observer is not armed exactly once")
+        if time.monotonic() >= self.deadline:
+            raise TimeoutError("Native paint observation deadline expired before input")
         self.offset = self.start_offset = self._file_size()
         # A record already being written before input is ineligible, including
         # its later newline. New complete records after it remain eligible.
@@ -217,7 +228,6 @@ class PaintObserver:
             self.file, min(self.offset, 64), max(0, self.offset - 64)
         )
         self.started_ns = time.monotonic_ns()
-        self.deadline = time.monotonic() + self.timeout
         self.begin_signal.set()
         return self.started_ns
 
@@ -265,6 +275,7 @@ class PaintObserver:
                         line,
                         object_pairs_hook=unique_object,
                         parse_constant=invalid_constant,
+                        parse_float=finite_number,
                     )
                 except (ValueError, UnicodeError, RecursionError) as error:
                     raise RuntimeError(
@@ -308,11 +319,13 @@ class PaintObserver:
                 selector.register(self.notifications_fd, selectors.EVENT_READ)
                 selector.register(self.cancel_read, selectors.EVENT_READ)
                 self.ready.set()
-                self.begin_signal.wait(self.timeout)
+                self.begin_signal.wait(max(0, self.deadline - time.monotonic()))
                 if self.cancelled.is_set():
                     return
                 if self.started_ns is None:
-                    raise RuntimeError("Native paint observation was never started")
+                    raise TimeoutError(
+                        "Native paint observation deadline expired before input"
+                    )
                 while not self.cancelled.is_set():
                     remaining = self.deadline - time.monotonic()
                     if remaining <= 0:

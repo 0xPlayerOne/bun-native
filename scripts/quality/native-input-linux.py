@@ -186,10 +186,11 @@ def event_stress_observations(events, require_complete=False):
     if len(edits) > EVENT_STRESS_COUNT:
         raise RuntimeError("Event stress produced more than 1000 input callbacks")
     observed = []
+    previous_sequence = 0
     for index, event in enumerate(edits, 1):
         if (
             type(event.get("sequence")) is not int
-            or event["sequence"] != index
+            or not previous_sequence < event["sequence"] <= 9_007_199_254_740_991
             or type(event.get("input_revision")) is not int
             or event["input_revision"] != index
             or event.get("value") != "x" * index
@@ -197,6 +198,7 @@ def event_stress_observations(events, require_complete=False):
             raise RuntimeError(
                 f"Event stress callback {index} has a missing, repeated, reordered or invalid edit"
             )
+        previous_sequence = event["sequence"]
         timestamp = event.get("observed_at_ms")
         if (
             not isinstance(timestamp, (int, float))
@@ -277,6 +279,15 @@ def fixture_paint(tree_revision, label, value=""):
     }
 
 
+def fixture_click(activation):
+    return {
+        "type": "click",
+        "stage": "bun-application",
+        "activation": activation,
+        "target": "increment",
+    }
+
+
 def javascript_fixture_paint(tree_revision, label, value, input_revision):
     state = fixture_paint(tree_revision, label, value)
     state["nodes"][1]["element"]["text"] = "JavaScript consumer"
@@ -294,6 +305,16 @@ def lifecycle_fixture_paint(tree_revision, label):
     state["nodes"][3]["element"]["text"] = "Run 1,000 cycles"
     state["nodes"][3]["element"]["style"]["width"] = 200
     return state
+
+
+def lifecycle_fixture_event():
+    # Focus, pointer and key observations share native global sequence numbers.
+    # The launch click is identified by its application target, not position 1.
+    return {
+        "type": "click",
+        "stage": "bun-application",
+        "target": "public-lifecycle",
+    }
 
 
 def event_stress_fixture_paint(value):
@@ -609,7 +630,6 @@ def main():
                 {
                     "type": "input",
                     "stage": "bun-application",
-                    "sequence": EVENT_STRESS_COUNT,
                     "input_revision": EVENT_STRESS_COUNT,
                     "value": EVENT_STRESS_TEXT,
                 }

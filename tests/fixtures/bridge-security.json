@@ -1,11 +1,11 @@
 {
-  "protocol": 2,
+  "protocol": 4,
   "scope": "Headless command decoding and native validation. No GUI, OS capability grant, sandbox or update-integrity claim.",
   "cases": [
     {
-      "name": "version-two-handshake",
+      "name": "version-four-handshake",
       "category": "handshake",
-      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":2}",
+      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":4}",
       "outcome": "accept"
     },
     {
@@ -101,7 +101,7 @@
     {
       "name": "self-granted-service",
       "category": "authorization",
-      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":2,\"capabilities\":[\"shell_exec\"]}",
+      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":4,\"capabilities\":[\"shell_exec\"]}",
       "outcome": "reject"
     },
     {

@@ -179,6 +179,27 @@ class PaintObservationTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "nonce|record"):
                         observer.result(time.monotonic_ns())
 
+    def test_overflow_exponents_cannot_hide_in_a_matching_paint(self):
+        for number in (b"1e999", b"-1e999"):
+            with self.subTest(number=number):
+                self.path.write_bytes(b"")
+                with self.observer() as observer:
+                    observer.begin()
+                    self.append(encoded()[:-2] + b',"extra_number":' + number + b"}\n")
+                    with self.assertRaisesRegex(
+                        RuntimeError, "Invalid complete native evidence record"
+                    ):
+                        observer.result(time.monotonic_ns())
+        self.path.write_bytes(b"")
+        with self.observer() as observer:
+            observer.begin()
+            self.append(encoded()[:-2] + b',"extra_number":1e308}\n')
+            self.assertTrue(
+                observer.result(time.monotonic_ns())["paint"][
+                    "complete_expected_tree_matched"
+                ]
+            )
+
     def test_truncation_rewrite_and_path_replacement_fail(self):
         for change in ["truncate", "rewrite", "replace"]:
             with self.subTest(change=change):
@@ -282,6 +303,29 @@ class PaintObservationTests(unittest.TestCase):
                         observer.begin()
                     raise RuntimeError("input command failed")
             self.assert_closed(observer, descriptors)
+
+    def test_preparation_and_begin_cannot_restart_the_remaining_fixture_deadline(self):
+        for expired_before_begin in [True, False]:
+            with self.subTest(expired_before_begin=expired_before_begin):
+                self.path.write_bytes(b"")
+                with patch.object(
+                    OBSERVER.time, "monotonic", return_value=100
+                ) as clock:
+                    observer = self.observer(timeout=2)
+                    with observer:
+                        descriptors = list(observer.descriptors)
+                        if expired_before_begin:
+                            clock.return_value = 102.5
+                            with self.assertRaisesRegex(TimeoutError, "deadline"):
+                                observer.begin()
+                        else:
+                            clock.return_value = 101
+                            observer.begin()
+                            clock.return_value = 102.5
+                            self.append(encoded())
+                            with self.assertRaisesRegex(TimeoutError, "deadline"):
+                                observer.result(time.monotonic_ns())
+                    self.assert_closed(observer, descriptors)
 
     def test_sigterm_interrupts_and_joins_a_real_blocked_reader_process(self):
         report = self.path.with_suffix(".cleanup.json")

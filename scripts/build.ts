@@ -7,15 +7,17 @@ const result = await Bun.build({
     resolve(import.meta.dir, '../packages/runtime/src/index.ts'),
     resolve(import.meta.dir, '../packages/core/src/index.ts'),
     resolve(import.meta.dir, '../packages/renderer/src/index.ts'),
+    resolve(import.meta.dir, '../packages/solid/src/index.ts'),
     resolve(import.meta.dir, '../packages/react/src/index.ts'),
   ],
   outdir: resolve(import.meta.dir, '../dist'),
   target: 'bun',
+  conditions: ['browser'],
   format: 'esm',
   sourcemap: 'external',
 })
 
 if (!result.success) throw new AggregateError(result.logs, 'TypeScript package build failed')
 console.log(
-  'Built protocol, runtime, core, shared renderer and React packages (JavaScript modules; not an AOT executable)'
+  'Built protocol, runtime, public core, shared renderer, Solid and React packages (JavaScript modules; not an AOT executable)'
 )

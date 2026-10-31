@@ -49,6 +49,33 @@ revokes a registration immediately; changing a callback cannot deliver stale
 queued work to its replacement. No OS or service permission is introduced by a
 staged node or renderer reference.
 
+`eventProperties` is the shared, immutable mapping from framework property names
+to public core event types and capture phases. `EventHandlers` derives each
+callback argument from the corresponding `NativeEventMap` member. It covers
+`onClick`, `onInput`, `onKeyDown`, `onKeyUp`, `onPointerDown`, `onPointerUp`,
+`onFocus` and `onBlur`, plus each property's `Capture` variant. Native boxes can
+observe descendant events; handlers are not restricted to button/input leaves.
+Private text literals cannot own native registrations.
+
+The shared driver reconciles each node/type/phase registration independently
+after native acknowledgement. It passes that registration to `window.on`; the
+public core alone captures and validates native ancestry, freezes queued routes,
+orders capture/target/bubble callbacks, and applies propagation stops. No adapter
+reconstructs a route from its current staged tree. A move preserves the original
+queued route; deleting its target or revoking a registration cancels its remaining
+authority. Callback replacement never redirects old queued work to a new function.
+
+Input observations are branded before every input callback, including ancestor
+capture/bubble callbacks. Passing an actual event back into framework state
+therefore remains an observation at every phase. This does not upgrade the
+revision of an independently captured value intent.
+
+Propagation stops affect JavaScript dispatch only. They do not cancel native
+focus, editing or activation that has already occurred. There is no asynchronous
+`preventDefault` contract, DOM synthetic event, physical key code, repeat flag or
+continuous pointer-move stream. Framework-specific stable callback wrappers and
+event scheduling remain the adapters' responsibility.
+
 ## Verification scope
 
 The shared ordering tests enumerate every four-item permutation. Adapter tests

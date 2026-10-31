@@ -8,9 +8,15 @@ import { Node, snapshot, visit, type Owner, type Snapshot } from './nodes.ts'
 import { commitNativeTree, type Committed, type Counts } from './native-tree.ts'
 import { observeInput } from './input-intent.ts'
 import { watchWindow } from './window-lifetime.ts'
+import {
+  eventProperties,
+  isEventProperty,
+  type EventListener,
+  type EventProperty,
+} from './event-properties.ts'
 
 type Registration = {
-  listener: NonNullable<Snapshot['click'] | Snapshot['input']>
+  listener: EventListener
   unsubscribe: () => void
 }
 
@@ -50,7 +56,7 @@ class Root implements RenderRoot, Owner {
   private disposeFramework: (() => void) | undefined
   private unwatch: (() => void) | undefined
   private committed = new Map<Node, Committed>()
-  private readonly registrations = new Map<Node, Registration>()
+  private readonly registrations = new Map<Node, Map<EventProperty, Registration>>()
   private operation: Promise<void> | undefined
   private version = 0
   private acknowledged = -1
@@ -102,9 +108,11 @@ class Root implements RenderRoot, Owner {
   }
 
   get diagnostics() {
+    let listeners = 0
+    for (const registrations of this.registrations.values()) listeners += registrations.size
     return Object.freeze({
       nodes: this.committed.size,
-      listeners: this.registrations.size,
+      listeners,
       pending: this.operation !== undefined,
       commits: this.commits,
       mutations: Object.freeze({ ...this.mutations }),
@@ -121,10 +129,19 @@ class Root implements RenderRoot, Owner {
     visit(node, (child) => this.revoke(child))
   }
 
-  private revoke(node: Node): void {
-    const registration = this.registrations.get(node)
-    this.registrations.delete(node)
-    registration?.unsubscribe()
+  private revoke(node: Node, property?: EventProperty): void {
+    const registrations = this.registrations.get(node)
+    if (!registrations) return
+    if (property) {
+      const registration = registrations.get(property)
+      registrations.delete(property)
+      if (!registrations.size) this.registrations.delete(node)
+      registration?.unsubscribe()
+    } else {
+      this.registrations.delete(node)
+      for (const registration of registrations.values()) registration.unsubscribe()
+      registrations.clear()
+    }
   }
 
   input(node: Node): InputState {
@@ -205,8 +222,8 @@ class Root implements RenderRoot, Owner {
     for (const node of this.registrations.keys()) this.revoke(node)
     visit(this.root, (node) => {
       node.owner = undefined
-      delete node.properties.onClick
-      delete node.properties.onInput
+      for (const name of Object.keys(node.properties))
+        if (isEventProperty(name)) delete node.properties[name]
     })
   }
 
@@ -251,33 +268,28 @@ class Root implements RenderRoot, Owner {
       if (!next.has(node) || node.owner !== this) this.revoke(node)
     for (const [node, state] of next) {
       if (node.owner !== this) continue
-      const listener = state.click ?? state.input
-      if (this.registrations.get(node)?.listener !== listener) {
-        this.revoke(node)
-        if (state.click) {
-          const listener = state.click
-          const unsubscribe = this.window.onClick(
-            state.handle as NativeNode<'button'>,
-            async (event) => {
-              if (node.owner !== this || node.properties.onClick !== listener) return
-              await listener(event)
-              await this.flush()
-            }
-          )
-          this.registrations.set(node, { listener, unsubscribe })
-        } else if (state.input) {
-          const listener = state.input
-          const unsubscribe = this.window.onInput(
-            state.handle as NativeNode<'input'>,
-            async (event) => {
-              if (node.owner !== this || node.properties.onInput !== listener) return
-              observeInput(event)
-              await listener(event)
-              await this.flush()
-            }
-          )
-          this.registrations.set(node, { listener, unsubscribe })
+      for (const [name, registration] of this.registrations.get(node) ?? [])
+        if (state.events[name] !== registration.listener) this.revoke(node, name)
+      for (const [name, listener] of Object.entries(state.events)) {
+        if (!isEventProperty(name) || !listener || this.registrations.get(node)?.has(name)) continue
+        const binding = eventProperties[name]
+        const unsubscribe = this.window.on(
+          state.handle,
+          binding.type,
+          async (event) => {
+            if (node.owner !== this || node.properties[name] !== listener) return
+            if (event.type === 'input') observeInput(event)
+            await listener(event)
+            await this.flush()
+          },
+          { capture: binding.capture }
+        )
+        let registrations = this.registrations.get(node)
+        if (!registrations) {
+          registrations = new Map()
+          this.registrations.set(node, registrations)
         }
+        registrations.set(name, { listener, unsubscribe })
       }
     }
   }

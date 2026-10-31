@@ -370,7 +370,7 @@ def main():
                         "100",
                         "130",
                         "--expect-event",
-                        '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}',
+                        json.dumps(NATIVE_INPUT.fixture_click(1)),
                         "--expect-render",
                         json.dumps(NATIVE_INPUT.fixture_paint(2, "Clicks: 1")),
                         "--",

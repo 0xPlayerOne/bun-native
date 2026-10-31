@@ -1,14 +1,17 @@
 import {
   NativeStateError,
   UnsupportedFeatureError,
-  type ClickEvent,
   type Element,
-  type InputEvent,
   type InputState,
-  type Listener,
   type Style,
 } from '@bun-native/core'
 import { captureInput, type InputIntent } from './input-intent.ts'
+import {
+  isEventProperty,
+  listeners,
+  type EventListener,
+  type EventListeners,
+} from './event-properties.ts'
 
 declare const identity: unique symbol
 
@@ -24,14 +27,12 @@ export interface Owner {
   input(node: Node): InputState
 }
 
-type Properties = {
+type Properties = EventListeners & {
   style?: Style
   text?: string
   value?: string | InputIntent
   placeholder?: string
   disabled?: boolean
-  onClick?: Listener<ClickEvent>
-  onInput?: Listener<InputEvent>
 }
 
 const nodes = new WeakSet<object>()
@@ -128,6 +129,15 @@ export function replaceText(node: Node, value: string): void {
 
 export function setProperty(node: Node, name: string, value: unknown): void {
   const props = node.properties
+  if (isEventProperty(name)) {
+    if (node.kind === 'text-node')
+      throw new TypeError('Text literals cannot own native event handlers')
+    if (value === undefined) delete props[name]
+    else if (typeof value === 'function') props[name] = value as EventListener
+    else throw new TypeError(`Native ${name} must be a function`)
+    node.owner?.changed()
+    return
+  }
   switch (name) {
     case 'style':
       if (value === undefined) delete props.style
@@ -161,18 +171,6 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (typeof value === 'boolean') props.disabled = value
       else throw new TypeError('Native disabled must be boolean')
       break
-    case 'onClick':
-      if (node.kind !== 'button') throw new TypeError('Only buttons accept onClick')
-      if (value === undefined) delete props.onClick
-      else if (typeof value === 'function') props.onClick = value as Listener<ClickEvent>
-      else throw new TypeError('Native onClick must be a function')
-      break
-    case 'onInput':
-      if (node.kind !== 'input') throw new TypeError('Only inputs accept onInput')
-      if (value === undefined) delete props.onInput
-      else if (typeof value === 'function') props.onInput = value as Listener<InputEvent>
-      else throw new TypeError('Native onInput must be a function')
-      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -183,10 +181,16 @@ export type Snapshot = {
   element: Element
   children: readonly Node[]
   parent: Node | undefined
-  click: Listener<ClickEvent> | undefined
-  input: Listener<InputEvent> | undefined
+  events: Readonly<EventListeners>
   initialValue: string | undefined
   inputIntent: InputIntent | undefined
+}
+
+function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
+  const { overflow, ...rest } = style
+  if (overflow !== undefined && overflow !== 'visible' && overflow !== 'hidden')
+    throw new TypeError('Only native boxes support scrolling')
+  return { ...rest, ...(overflow === undefined ? {} : { overflow }) }
 }
 
 /** Capture values before awaiting the core queue; later effects form another batch. */
@@ -194,9 +198,10 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
   const capture = (node: Node, parent?: Node): void => {
     const props = node.properties
-    const style = props.style ? { style: { ...props.style } } : {}
+    const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
     let element: Element
-    if (node.kind === 'box') element = { kind: 'box', ...style }
+    if (node.kind === 'box')
+      element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
     else if (node.kind === 'input')
       element = {
         kind: 'input',
@@ -226,8 +231,7 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
       element,
       children,
       parent,
-      click: props.onClick,
-      input: props.onInput,
+      events: listeners(props),
       initialValue: typeof props.value === 'string' ? props.value : undefined,
       inputIntent: typeof props.value === 'object' ? props.value : undefined,
     })

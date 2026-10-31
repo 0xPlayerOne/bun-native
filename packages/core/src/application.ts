@@ -1,16 +1,20 @@
-import { ProtocolError, type Limits } from '@bun-native/protocol'
+import { ProtocolError, REQUIRED_CAPABILITIES, type Limits } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
   type HostOptions,
   type WindowEvent,
 } from '@bun-native/runtime'
+import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
   type ClickEvent,
   type InputEvent,
   type Listener,
+  type ListenerOptions,
+  type NativeEventMap,
+  type NativeEventType,
   type NativeApplication,
   type NativeBatch,
   type NativeNode,
@@ -20,13 +24,13 @@ import {
 
 const MAX_QUEUED_TRANSACTIONS = 128
 const MAX_QUEUED_CALLBACKS = 128
-type Callback = { windowId: number; nodeId: number; event: ClickEvent | InputEvent }
+type Callback = { windowId: number; nodeId: number; plan: DispatchPlan }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
   readonly limits: Readonly<Limits>
-  // NativeHost.launch has negotiated both mandatory protocol features.
-  readonly capabilities = Object.freeze(['tree', 'input_revisions'] as const)
+  // NativeHost.launch has negotiated every mandatory protocol feature.
+  readonly capabilities = REQUIRED_CAPABILITIES
   readonly windows = new Map<number, Window>()
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
@@ -52,7 +56,7 @@ class Application implements NativeApplication {
     let callbacks = 0
     for (const window of this.windows.values()) {
       nodes += window.nodes.size
-      callbacks += window.clicks.size + window.inputs.size
+      callbacks += window.listeners.size
     }
     return Object.freeze({
       windows: this.windows.size,
@@ -70,11 +74,14 @@ class Application implements NativeApplication {
     return this.nextNode++
   }
 
-  cancelCallbacks(windowId: number, nodeId?: number): void {
-    this.callbacks = this.callbacks.filter(
-      (callback) =>
-        callback.windowId !== windowId || (nodeId !== undefined && callback.nodeId !== nodeId)
-    )
+  cancelCallbacks(windowId: number): void {
+    const window = this.windows.get(windowId)
+    this.callbacks = this.callbacks.filter((callback) => {
+      if (callback.windowId !== windowId) return true
+      if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
+      window?.listeners.release(callback.plan)
+      return false
+    })
   }
 
   queueCallback(callback: Callback): void {
@@ -103,10 +110,10 @@ class Application implements NativeApplication {
     while (this.callbacks.length) {
       const callback = this.callbacks.shift()!
       const window = this.windows.get(callback.windowId)
-      if (!window || callback.event.signal.aborted) continue
+      if (!window) continue
       this.activeCallbacks = 1
       try {
-        await window.dispatch(callback.nodeId, callback.event)
+        await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
       }
@@ -211,12 +218,10 @@ class Application implements NativeApplication {
 class Window implements NativeWindow {
   readonly root: NativeNode<'box'>
   readonly closed: Promise<void>
-  readonly clicks = new Map<number, Listener<ClickEvent>>()
-  readonly inputs = new Map<number, Listener<InputEvent>>()
+  readonly listeners: EventBindings
   nodes = new Map<number, NodeState>()
   revision = 0
   private active = true
-  private readonly registrations = new Map<number, AbortController>()
   private resolveClosed!: () => void
   private closing: Promise<void> | undefined
 
@@ -228,6 +233,7 @@ class Window implements NativeWindow {
     const node = makeNode(rootId, { kind: 'box' })
     this.root = node.handle
     this.nodes.set(rootId, node)
+    this.listeners = new EventBindings(() => this.application.cancelCallbacks(this.id))
     this.closed = new Promise((resolve) => {
       this.resolveClosed = resolve
     })
@@ -287,27 +293,36 @@ class Window implements NativeWindow {
       }
       this.nodes = transaction.nodes
       this.revision = reply.tree_revision
-      for (const id of this.registrations.keys()) if (!this.nodes.has(id)) this.revokeListener(id)
+      this.listeners.retain(this.nodes)
       return value
     })
+  }
+
+  on<T extends NativeEventType>(
+    handle: NativeNode,
+    type: T,
+    listener: Listener<NativeEventMap[T]>,
+    options?: ListenerOptions
+  ): () => void {
+    this.assertActive()
+    const node = own(this.nodes, handle)
+    return this.listeners.register(node.id, node.handle, type, listener, options)
   }
 
   onClick(handle: NativeNode<'button'>, listener: Listener<ClickEvent>): () => void {
     this.assertActive()
     const node = own(this.nodes, handle)
-    if (node.element.kind !== 'button' || typeof listener !== 'function')
+    if (node.element.kind !== 'button')
       throw new NativeStateError('invalid_state', 'Click listeners require a button and a function')
-    this.clicks.set(node.id, listener)
-    return this.register(node.id)
+    return this.listeners.register(node.id, node.handle, 'click', listener)
   }
 
   onInput(handle: NativeNode<'input'>, listener: Listener<InputEvent>): () => void {
     this.assertActive()
     const node = own(this.nodes, handle)
-    if (node.element.kind !== 'input' || typeof listener !== 'function')
+    if (node.element.kind !== 'input')
       throw new NativeStateError('invalid_state', 'Input listeners require an input and a function')
-    this.inputs.set(node.id, listener)
-    return this.register(node.id)
+    return this.listeners.register(node.id, node.handle, 'input', listener)
   }
 
   input(handle: NativeNode<'input'>) {
@@ -324,7 +339,7 @@ class Window implements NativeWindow {
       return
     }
     this.active = false
-    for (const id of this.registrations.keys()) this.revokeListener(id)
+    this.listeners.clear()
     this.nodes.clear()
     this.closing = this.application.enqueue(async () => {
       try {
@@ -344,31 +359,14 @@ class Window implements NativeWindow {
 
   revoke(): void {
     this.active = false
-    for (const id of this.registrations.keys()) this.revokeListener(id)
+    this.listeners.clear()
     this.nodes.clear()
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
 
-  private register(id: number): () => void {
-    const previous = this.registrations.get(id)
-    this.application.cancelCallbacks(this.id, id)
-    const controller = new AbortController()
-    this.registrations.set(id, controller)
-    // Publish before aborting: an abort handler may install a newer listener.
-    previous?.abort()
-    return () => {
-      if (this.registrations.get(id) === controller) this.revokeListener(id)
-    }
-  }
-
-  private revokeListener(id: number): void {
-    const previous = this.registrations.get(id)
-    this.registrations.delete(id)
-    this.clicks.delete(id)
-    this.inputs.delete(id)
-    this.application.cancelCallbacks(this.id, id)
-    previous?.abort()
+  isTargetLive(id: number): boolean {
+    return this.active && this.nodes.has(id)
   }
 
   receive(event: WindowEvent, nextNode: number): void {
@@ -377,70 +375,50 @@ class Window implements NativeWindow {
       return
     }
     if (!this.active) return
-    const node = this.nodes.get(event.node_id)
-    if (!node) {
-      if (
-        event.node_id >= nextNode ||
-        [...this.application.windows.values()].some((window) => window.nodes.has(event.node_id))
-      )
-        throw new ProtocolError('Native event names a node outside its owner')
-      return // A previously allocated, now revoked node has no callback.
+    if (event.tree_revision > this.revision)
+      throw new ProtocolError('Native event tree revision is ahead of its acknowledgement')
+    if (event.path[0] !== this.rootId)
+      throw new ProtocolError('Native event path starts outside its window root')
+    const ownedPath: NodeState[] = []
+    for (const id of event.path) {
+      if (id >= nextNode) throw new ProtocolError('Native event names a node outside its owner')
+      const node = this.nodes.get(id)
+      if (node) ownedPath.push(node)
+      else
+        for (const window of this.application.windows.values())
+          if (window !== this && window.nodes.has(id))
+            throw new ProtocolError('Native event names a node outside its owner')
     }
+    // Already revoked ownership cannot be recovered by a delayed native frame.
+    if (ownedPath.length !== event.path.length) return
+    if (
+      event.tree_revision === this.revision &&
+      ownedPath.some((node, index) => index > 0 && node.parent !== event.path[index - 1])
+    )
+      throw new ProtocolError('Native event path does not match its committed tree revision')
+    const node = ownedPath.at(-1)!
     if (event.type === 'input') {
       if (node.element.kind !== 'input' || event.input_revision <= node.inputRevision)
         throw new ProtocolError('Native input kind or edit revision is invalid')
       node.inputRevision = event.input_revision
       node.element = { ...node.element, value: event.value }
-      const signal = this.registrations.get(node.id)?.signal
-      if (signal)
-        this.application.queueCallback({
-          windowId: this.id,
-          nodeId: node.id,
-          event: Object.freeze({
-            type: 'input',
-            node: node.handle as NativeNode<'input'>,
-            value: event.value,
-            revision: event.input_revision,
-            sequence: event.sequence,
-            signal,
-          }),
-        })
-    } else {
+    } else if (event.type === 'click') {
       if (node.element.kind !== 'button')
         throw new ProtocolError('Native click targeted a non-button node')
-      const signal = this.registrations.get(node.id)?.signal
-      if (!node.element.disabled && signal)
-        this.application.queueCallback({
-          windowId: this.id,
-          nodeId: node.id,
-          event: Object.freeze({
-            type: 'click',
-            node: node.handle as NativeNode<'button'>,
-            sequence: event.sequence,
-            signal,
-          }),
-        })
+      if (node.element.disabled) return
     }
+    const plan = this.listeners.prepare(
+      event,
+      ownedPath.map((item) => item.handle)
+    )
+    if (plan) this.application.queueCallback({ windowId: this.id, nodeId: node.id, plan })
   }
 
-  async dispatch(nodeId: number, event: ClickEvent | InputEvent): Promise<void> {
-    if (
-      !this.active ||
-      event.signal.aborted ||
-      this.registrations.get(nodeId)?.signal !== event.signal
-    )
-      return
-    let cancel!: () => void
-    const cancelled = new Promise<void>((resolve) => {
-      cancel = resolve
-    })
-    event.signal.addEventListener('abort', cancel, { once: true })
+  async dispatch(nodeId: number, plan: DispatchPlan): Promise<void> {
     try {
-      const called =
-        event.type === 'input' ? this.inputs.get(nodeId)?.(event) : this.clicks.get(nodeId)?.(event)
-      await Promise.race([called, cancelled])
+      await dispatchPlan(plan, () => this.isTargetLive(nodeId))
     } finally {
-      event.signal.removeEventListener('abort', cancel)
+      this.listeners.release(plan)
     }
   }
 }

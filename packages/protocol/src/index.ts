@@ -8,10 +8,13 @@ export {
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
+  REQUIRED_CAPABILITIES,
   type Command,
   type NativeEvent,
   type Operation,
   type Limits,
   type ErrorCode,
   type Capability,
+  type KeyModifiers,
+  type PointerButton,
 } from './messages.ts'

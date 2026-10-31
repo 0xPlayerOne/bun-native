@@ -19,8 +19,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["bun"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "@bun-native/react"
+    "jsx": "preserve",
+    "jsxImportSource": "@bun-native/solid"
   },
   "include": [
     "packages/**/*.ts",
@@ -31,8 +31,8 @@
     "tests/native/javascript.js",
     "experiments/**/*.ts",
     "packages/**/*.tsx",
-    "tests/**/*.tsx",
     "examples/**/*.tsx",
+    "tests/**/*.tsx",
     "benchmarks/**/*.tsx"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/**"]

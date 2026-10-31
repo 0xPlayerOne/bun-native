@@ -55,6 +55,13 @@ acknowledgement.
 acknowledgements. It does not wait for future asynchronous application work or
 lower-priority transitions. Its commit-barrier queue is bounded at 128.
 
+Non-suspending `useTransition` updates can commit. When an application requires
+their resulting native state, observe that transition's committed result and then
+flush; an ordinary root barrier does not promise to drain every transition lane.
+This scheduling support does not implement native view-transition animations.
+The [behavior matrix](../../docs/react-behavior.md) distinguishes tested hooks,
+error recovery and cleanup from unsupported or unqualified concurrency features.
+
 Refs contain an opaque `NativeRef`, not a DOM node or an exposed core handle.
 Object refs and callback refs follow React's attach/detach lifecycle. Native input
 state can be read through `inputState(ref)` after `ready` or a successful flush;
@@ -68,15 +75,42 @@ the shared subtree without closing another renderer's root or the native window.
 
 ## Events and input revisions
 
-`onClick` and `onInput` receive the shared typed native events, including cancellation
-signals. They are dispatched as discrete React updates. There are no DOM synthetic
-events, event bubbling or `event.target` objects. Native event ingestion remains
-owned by the public core; React does not add an independent unbounded event queue.
-Ordinary rerenders update the latest handler behind a stable native subscription.
-Replacing an inline closure therefore keeps an active callback's signal and queued
-events alive. Removing the handler or node revokes that subscription. A throwing
-native event callback follows the public core's terminal application-error policy;
-observe `application.closed` to receive that failure.
+React consumes the same immutable event-property table and public-core dispatcher
+as Solid. Each native element accepts these handlers and their capture variants:
+
+| Handler pair                            | Native payload in addition to the event context       |
+| --------------------------------------- | ----------------------------------------------------- |
+| `onClick`, `onClickCapture`             | Button activation                                     |
+| `onInput`, `onInputCapture`             | Committed input `value` and `revision`                |
+| `onKeyDown`, `onKeyDownCapture`         | Logical `key`, optional `keyChar`, modifiers          |
+| `onKeyUp`, `onKeyUpCapture`             | Logical `key`, optional `keyChar`, modifiers          |
+| `onPointerDown`, `onPointerDownCapture` | Button, logical window coordinates `x`/`y`, modifiers |
+| `onPointerUp`, `onPointerUpCapture`     | Button, logical window coordinates `x`/`y`, modifiers |
+| `onFocus`, `onFocusCapture`             | Native focus gained                                   |
+| `onBlur`, `onBlurCapture`               | Native focus lost                                     |
+
+The core routes the native ancestry through capture, target and bubble phases.
+`event.node` remains the native target; `currentTarget` identifies the current
+registration. The frozen `path`, `treeRevision` and global `sequence` describe the
+native event's committed route. Each type/phase registration has its own
+cancellation `signal`. Ancestor input handlers receive the same branded input
+observation contract as target handlers.
+
+All currently supported event families dispatch as discrete React updates.
+React retains one stable wrapper per node/type/phase and updates its latest
+committed callback on rerender. Updating a closure therefore preserves an active
+callback and queued events; removing one capture handler revokes only that
+registration, while independent target/bubble handlers remain active. Removing
+the node or closing its owner revokes all its registrations. Native ingestion,
+ordering, propagation and queue bounds remain owned by the public core.
+
+`stopPropagation()` and `stopImmediatePropagation()` control subsequent JavaScript
+callbacks. They cannot undo a native action that has already occurred; Enter can
+still activate a native button after its key notification stops propagating.
+These are typed native events, without DOM synthetic events, `event.target`,
+`preventDefault()`, physical keyboard codes or repeat metadata. A throwing
+callback follows the public core's terminal application-error policy; observe
+`application.closed` to receive that failure.
 
 An input accepts an initial string or `{ value, revision }`. Store the actual
 `onInput` event in state to observe native typing without writing it back:
@@ -138,13 +172,13 @@ export BUN_NATIVE_HOST_PROFILE=release
 mkdir -p .bun-native
 run_dir=$(mktemp -d "$PWD/.bun-native/react.XXXXXX")
 
+bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
+  --host-profile release --entry react --outdir "$run_dir/aot-package"
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-dev" -- \
   python3 tests/native/react-window.py --scenario counter-click --mode development \
-    --output "$run_dir/development" -- bun examples/react-counter/main.tsx
+    --output "$run_dir/development" -- bun "$run_dir/aot-package/development/application.js"
 
-bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
-  --host-profile release --entry react --outdir "$run_dir/aot-package"
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-aot" -- \
   python3 tests/native/react-window.py --scenario counter-input --mode aot \
@@ -154,7 +188,20 @@ xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
 Use both scenarios in each mode; required native CI does so with its one release
 host build. The build helper pins compiler identity, records all React/shared
 renderer source hashes, and verifies a compiled-program record and actual JIT
-range removal. The controller's declared `--mode aot` alone is not that proof.
+range removal. It first transforms each React entry with the pinned Bun bundler;
+the exact generated module runs in development and supplies the AOT compiler
+input. Its hash, transform command and duration are recorded in the manifest.
+The generated module explicitly selects production React/reconciler in both
+runtime modes, preventing a prior development bundle from silently carrying
+debug framework code into the AOT executable.
+The controller's declared `--mode aot` alone is not that proof.
+
+The [integrated recipe evidence](../../tests/native/evidence/react-hosted-recipe-linux.json)
+records 26 actual counter, event and behavior cases after combining the Solid
+foundation with this adapter. Development ran the exact generated module used as
+AOT input, and all source, host and application fingerprints remained stable.
+The immutable protocol4 host is development profile with software Vulkan;
+required hosted release verification and matched performance remain separate.
 
 The [local evidence record](../../tests/native/evidence/react-linux-development-aot.json)
 records four passing scenarios on Linux X11 with a development-profile protocol-2
@@ -167,3 +214,43 @@ with 32,000 row owners cleaned and all 3,000 sampled WeakRef targets absent at b
 fixed checkpoints. Its separate evidence record identifies that newer source
 snapshot. A matched, repeated release-host direct-core/Solid/React comparison is
 still pending; issue #236 remains open for the remaining acceptance work.
+
+## Native event acceptance
+
+`tests/native/react-interactions.tsx` supplies a React view to the common
+`renderer-interactions.ts` fixture oracle. Its keyboard, caret and selection
+scenarios require actual pointer, focus, key and committed-input notifications,
+all expected capture/target/bubble routes, both propagation-stop policies, and
+exact final native trees. Keyboard Enter activates the button; caret insertion
+changes `ABCD` to `AxBCD`; replacing the selected `B` changes it to `AYCD`.
+The two application state changes emit exactly two native Sets. Input observations
+at every phase never replace the native widget value or advance its edit revision.
+OS close must dispose the effect and ref, revoke every observed callback signal
+and leave all public ownership counts at zero.
+
+The separate `react-behavior.tsx` fixture and Python controller qualify mount,
+batched state/reducer updates, effects and refs, error-boundary fallback/recovery,
+transient concurrent retry, terminal recovery-reporter errors and effect/ref
+cleanup failures. Failed roots must release their ownership while an independent
+root still updates and paints in the same window. Both development and inspected
+`--entry react-behavior` AOT run all eight cases; see the
+[exact scenario matrix and commands](../../docs/react-behavior.md).
+
+```sh
+bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
+  --host-profile release --entry react-interactions --outdir "$run_dir/events-package"
+xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/events-session" -- \
+  python3 tests/native/renderer-interactions.py --renderer React --scenario selection \
+    --mode development --output "$run_dir/events-development" -- \
+    bun "$run_dir/events-package/development/application.js"
+```
+
+Run `keyboard`, `caret` and `selection` in both modes; for AOT, pass the inspected
+`react-interactions` executable and `--mode aot`. The required native lane does
+this with its existing release host. The [protocol4 local record](../../tests/native/evidence/react-events-linux-development-aot.json)
+binds ten passing development/AOT scenarios to exact source, compiler, application
+and development-host hashes: the six event scenarios and four counter regressions.
+It preserves the earlier protocol2 records as history. Local XTest/software-GPU
+input and paint evidence do not establish physical input, display-presentation
+latency, release performance or macOS/Windows native support.

@@ -96,15 +96,17 @@ def main():
     if click:
         final["tree_revision"] = 2
     event = (
-        {"type": "click", "sequence": 1, "target": "increment"}
+        {"type": "click", "target": "increment"}
         if click
         else {
             "type": "input",
-            "sequence": 38,
             "input_revision": 38,
             "value": "React {nonce}",
         }
     )
+    # Protocol4 sequences count focus/pointer/key events as well as clicks and
+    # committed edits. Core validates the global ordering; the input revision
+    # independently requires every typed edit and the final complete tree.
     event["stage"] = "bun-application"
     driver = (
         Path(__file__).resolve().parents[2] / "scripts/quality/native-input-linux.py"

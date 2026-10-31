@@ -23,6 +23,18 @@ export function checkPublicApi(window: NativeWindow, batch: NativeBatch): void {
   const text = batch.create({ kind: 'text', text: 'Typed native text' })
   const button = batch.create({ kind: 'button', text: 'Update', disabled: false })
   const input = batch.create({ kind: 'input', value: '', placeholder: 'Type here' })
+  const scrolling = batch.create({
+    kind: 'box',
+    style: {
+      min_width: 64,
+      max_width: 512,
+      flex_shrink: 1,
+      align_items: 'center',
+      justify_content: 'space_between',
+      overflow: 'scroll_y',
+    },
+  })
+  batch.append(box, scrolling)
   const inferredKinds: readonly ['box', 'text', 'button', 'input'] = [
     box.kind,
     text.kind,
@@ -64,6 +76,10 @@ export function checkPublicApi(window: NativeWindow, batch: NativeBatch): void {
   void window.batch(() => Promise.resolve())
   // @ts-expect-error Only the explicit native element kinds are supported.
   batch.create({ kind: 'webview', url: 'https://example.invalid' })
+  // @ts-expect-error Only box containers support a scroll viewport.
+  batch.create({ kind: 'text', text: 'Not a scroll container', style: { overflow: 'scroll_y' } })
+  // @ts-expect-error Input editing has its own native viewport, not container scrolling.
+  batch.create({ kind: 'input', value: '', style: { overflow: 'scroll' } })
   // @ts-expect-error A node's element kind cannot change in place.
   batch.set(button, { kind: 'text', text: 'Wrong kind' })
   // @ts-expect-error A plain object cannot manufacture the private handle brand.

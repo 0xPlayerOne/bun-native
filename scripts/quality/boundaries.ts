@@ -12,6 +12,11 @@ const policy: Record<
   runtime: { packages: ['protocol'], platform: true },
   core: { packages: ['protocol', 'runtime'], platform: false },
   renderer: { packages: ['core'], platform: false },
+  solid: {
+    packages: ['core', 'renderer'],
+    platform: false,
+    external: ['solid-js', 'solid-js/universal'],
+  },
   react: {
     packages: ['core', 'renderer'],
     platform: false,

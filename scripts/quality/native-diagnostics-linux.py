@@ -27,7 +27,25 @@ SPEC = importlib.util.spec_from_file_location(
 )
 DRIVER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(DRIVER)
-SCENARIOS = ("startup-failure", "host-crash", "scheduling", "scheduling-control")
+LAYOUT_SPEC = importlib.util.spec_from_file_location(
+    "native_layout_scenario", ROOT / "scripts/quality/native-layout-scenario.py"
+)
+LAYOUT = importlib.util.module_from_spec(LAYOUT_SPEC)
+LAYOUT_SPEC.loader.exec_module(LAYOUT)
+INTERACTIONS_SPEC = importlib.util.spec_from_file_location(
+    "native_interactions_scenario",
+    ROOT / "scripts/quality/native-interactions-scenario.py",
+)
+INTERACTIONS = importlib.util.module_from_spec(INTERACTIONS_SPEC)
+INTERACTIONS_SPEC.loader.exec_module(INTERACTIONS)
+SCENARIOS = (
+    "startup-failure",
+    "host-crash",
+    "scheduling",
+    "scheduling-control",
+    "layout",
+    "interactions",
+)
 
 
 def fingerprint(path):
@@ -42,6 +60,10 @@ def source_snapshot():
     paths = [
         ROOT / "tests/native/fault.ts",
         ROOT / "tests/native/scheduling.ts",
+        ROOT / "tests/native/layout.ts",
+        ROOT / "tests/native/interactions.ts",
+        ROOT / "scripts/quality/native-layout-scenario.py",
+        ROOT / "scripts/quality/native-interactions-scenario.py",
         Path(__file__).resolve(),
         ROOT / "scripts/quality/native-input-linux.py",
     ]
@@ -235,11 +257,11 @@ def main():
             mounted = wait_for(
                 lambda: application_record("mounted"), "mounted native tree"
             )
-            title = (
-                "Bun Native native fault"
-                if args.scenario == "host-crash"
-                else "Bun Native scheduling audit"
-            )
+            title = {
+                "host-crash": "Bun Native native fault",
+                "layout": "Bun Native layout",
+                "interactions": "Bun Native interactions",
+            }.get(args.scenario, "Bun Native scheduling audit")
             window, owner = wait_for(lambda: owned_window(title), "owned native window")
             report["window"] = {
                 "id": window,
@@ -270,7 +292,30 @@ def main():
             if DRIVER.run(["xdotool", "getwindowfocus"]) != window:
                 raise RuntimeError("The owned native window did not gain focus")
             capture_window(window, "before.png")
-            if args.scenario == "host-crash":
+            if args.scenario in ("layout", "interactions"):
+
+                def require_layout_window():
+                    require_owned_host(app, observed, owner, host)
+                    if DRIVER.run(["xdotool", "getwindowpid", window]) != str(owner):
+                        raise RuntimeError(
+                            "The owned diagnostic window changed its native owner"
+                        )
+
+                scenario = LAYOUT if args.scenario == "layout" else INTERACTIONS
+                scenario_arguments = [DRIVER]
+                if args.scenario == "interactions":
+                    scenario_arguments.append(LAYOUT)
+                report[args.scenario + "Observations"] = scenario.run(
+                    *scenario_arguments,
+                    window,
+                    output,
+                    native_records,
+                    application_records,
+                    wait_for,
+                    require_layout_window,
+                    capture_window,
+                )
+            elif args.scenario == "host-crash":
                 DRIVER.run(
                     [
                         "xdotool",

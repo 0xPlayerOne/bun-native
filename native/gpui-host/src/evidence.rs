@@ -1,13 +1,19 @@
 //! Opt-in native paint instrumentation. A paint callback is not proof of display
 //! presentation; screenshots are separate. Every JSONL record is bounded.
 
-use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, Tree, WindowId};
+mod layout;
+use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
+pub(crate) use layout::LayoutFrame;
+use layout::LayoutSnapshot;
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::rc::Rc;
+use std::time::Instant;
+
+const MAX_STARTUP_RECORDS: u16 = 256;
 
 #[derive(Clone, Default)]
 pub(crate) struct Evidence(Option<Rc<RefCell<Log>>>);
@@ -17,6 +23,9 @@ struct Log {
     file: File,
     nonce: String,
     last_state: BTreeMap<WindowId, PaintVersion>,
+    last_layout: BTreeMap<WindowId, LayoutSnapshot>,
+    startup_started: Option<Instant>,
+    startup_records: u16,
 }
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
@@ -46,11 +55,78 @@ impl Evidence {
                 file,
                 nonce,
                 last_state: BTreeMap::new(),
+                last_layout: BTreeMap::new(),
+                startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
+                    .then(Instant::now),
+                startup_records: 0,
             })))),
             Err(error) => {
                 eprintln!("Bun Native native evidence log unavailable: {error}");
                 Self::default()
             }
+        }
+    }
+
+    pub(crate) fn enabled(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// Opt-in phase evidence only; never changes native dispatch or its deadline.
+    pub(crate) fn startup(&self, phase: &'static str, id: RequestId, window_id: WindowId) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let mut log = log.borrow_mut();
+        let Some(started) = log.startup_started else {
+            return;
+        };
+        if log.startup_records >= MAX_STARTUP_RECORDS {
+            return;
+        }
+        log.startup_records += 1;
+        let phase = if log.startup_records == MAX_STARTUP_RECORDS {
+            "record_limit"
+        } else {
+            phase
+        };
+        let record = json!({
+            "nonce": log.nonce,
+            "stage": "startup-diagnostic",
+            "source": "native",
+            "pid": std::process::id(),
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": started.elapsed().as_nanos().to_string(),
+            "index": log.startup_records,
+            "phase": phase,
+            "request_id": id,
+            "window_id": window_id,
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native startup evidence unavailable: {error}");
+            log.startup_started = None;
+        }
+    }
+
+    pub(crate) fn layout(
+        &self,
+        window_id: WindowId,
+        revision: u64,
+        frame: &LayoutFrame,
+        window: &gpui::Window,
+    ) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let snapshot = frame.snapshot(window);
+        let mut log = log.borrow_mut();
+        if log.last_layout.get(&window_id) == Some(&snapshot) {
+            return;
+        }
+        let record = json!({"nonce":log.nonce,"type":"layout","stage":"native-paint","window_id":window_id,"tree_revision":revision,"layout":snapshot.json()});
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native layout evidence unavailable: {error}");
+        } else {
+            log.last_layout.insert(window_id, snapshot);
         }
     }
 
@@ -79,7 +155,9 @@ impl Evidence {
 
     pub(crate) fn closed(&self, window_id: WindowId) {
         if let Some(log) = &self.0 {
-            log.borrow_mut().last_state.remove(&window_id);
+            let mut log = log.borrow_mut();
+            log.last_state.remove(&window_id);
+            log.last_layout.remove(&window_id);
         }
     }
 

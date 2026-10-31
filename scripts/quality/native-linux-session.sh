@@ -62,10 +62,15 @@ fi
 
 if [[ "$mode" == development ]]; then
   # This test reopens five real windows in one host and checks invalid states.
-  timeout 45s bun tests/native/lifecycle.ts 2>&1 | tee "$evidence_dir/lifecycle.log"
+  # Instrument this smoke only. Other correctness/benchmark commands retain their
+  # existing evidence mode and never inherit startup diagnostic I/O.
+  BUN_NATIVE_STARTUP_TRACE=1 \
+    BUN_NATIVE_EVIDENCE_LOG="$evidence_dir/lifecycle-events.jsonl" \
+    BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+    timeout 45s bun tests/native/lifecycle.ts 2>&1 | tee "$evidence_dir/lifecycle.log"
 fi
 
-# Share the independent full-tree expectations with the repeated baseline.
+# Share fixture expectations with the repeated baseline and allocation runner.
 snapshot() {
   python3 - "$mode" "$@" <<'PY'
 import importlib.util
@@ -78,11 +83,13 @@ spec.loader.exec_module(driver)
 if sys.argv[1] in ("javascript", "aot-javascript"):
     state = driver.javascript_fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5]))
 elif sys.argv[1] in ("core-lifecycle", "aot-core-lifecycle"):
-    state = driver.lifecycle_fixture_paint(int(sys.argv[2]), sys.argv[3])
+    state = (driver.lifecycle_fixture_event() if sys.argv[2] == "launch-event"
+             else driver.lifecycle_fixture_paint(int(sys.argv[2]), sys.argv[3]))
 elif sys.argv[1] in ("event-throughput", "aot-event-throughput"):
     state = driver.event_stress_fixture_paint(sys.argv[2])
 else:
-    state = driver.fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4])
+    state = (driver.fixture_click(int(sys.argv[3])) if sys.argv[2] == "activation-event"
+             else driver.fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4]))
 print(json.dumps(state))
 PY
 }
@@ -94,7 +101,7 @@ fi
 
 if [[ "$mode" == event-throughput || "$mode" == aot-event-throughput ]]; then
   stress_text=$(python3 -c 'print("x" * 1000)')
-  final_event=$(python3 -c 'import json; print(json.dumps({"type":"input", "stage":"bun-application", "sequence":1000, "input_revision":1000, "value":"x" * 1000}))')
+  final_event=$(python3 -c 'import json; print(json.dumps({"type":"input", "stage":"bun-application", "input_revision":1000, "value":"x" * 1000}))')
   python3 scripts/quality/native-input-linux.py \
     --output "$evidence_dir/events" --mode "$execution_mode" --timeout 30 \
     --title 'Bun Native event throughput' --expect-software-renderer --event-stress \
@@ -108,7 +115,7 @@ if [[ "$mode" == core-lifecycle || "$mode" == aot-core-lifecycle ]]; then
     --output "$evidence_dir/lifecycle" --mode "$execution_mode" --timeout 60 \
     --title 'Bun Native public lifecycle' --expect-software-renderer \
     --expect-initial-render "$(snapshot 1 Ready)" --click 100 130 \
-    --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"public-lifecycle"}' \
+    --expect-event "$(snapshot launch-event)" \
     --expect-render "$(snapshot 3002 'Completed 1000 cycles')" -- "$@"
   exit
 fi
@@ -118,10 +125,10 @@ if [[ "$mode" == javascript || "$mode" == aot-javascript ]]; then
   driver=(python3 scripts/quality/native-input-linux.py --mode "$execution_mode" --timeout 30
     --title 'Bun Native JavaScript' --expect-software-renderer --expect-initial-render "$initial")
   "${driver[@]}" --output "$evidence_dir/click" --click 100 130 \
-    --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"javascript-update"}' \
+    --expect-event '{"type":"click","stage":"bun-application","activation":1,"target":"javascript-update"}' \
     --expect-render "$(snapshot 3 'Updates: 1' 'JavaScript is ready' 1)" -- "$@"
   "${driver[@]}" --output "$evidence_dir/input" --key ctrl+a --text 'Bun Native {nonce}' \
-    --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":44,"value":"Bun Native {nonce}"}' \
+    --expect-event '{"type":"input","stage":"bun-application","input_revision":44,"value":"Bun Native {nonce}"}' \
     --expect-render "$(snapshot 2 'Updates: 0' 'Bun Native {nonce}' 44)" -- "$@"
   exit
 fi
@@ -132,7 +139,7 @@ driver=(python3 scripts/quality/native-input-linux.py --mode "$execution_mode" -
 
 input_race() {
   "${driver[@]}" --output "$evidence_dir/input-race" --key ctrl+a --text 'Bun Native {nonce}' \
-    --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":43,"value":"Bun Native {nonce}"}' \
+    --expect-event '{"type":"input","stage":"bun-application","input_revision":43,"value":"Bun Native {nonce}"}' \
     --expect-render "$(snapshot 2 'Input preserved after stale rejection' 'Bun Native {nonce}')" \
     -- "$@"
 }
@@ -143,19 +150,19 @@ if [[ "$mode" == aot-input-race ]]; then
 fi
 
 "${driver[@]}" --output "$evidence_dir/click" --click 100 130 \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}' \
+  --expect-event "$(snapshot activation-event 1)" \
   --expect-render "$(snapshot 2 'Clicks: 1' '')" -- "$@"
 
 # A fresh launch after a verified OS close must regain input focus and work.
 "${driver[@]}" --output "$evidence_dir/input" --key ctrl+a --text 'Bun Native {nonce}' \
-  --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":43,"value":"Bun Native {nonce}"}' \
+  --expect-event '{"type":"input","stage":"bun-application","input_revision":43,"value":"Bun Native {nonce}"}' \
   --expect-render "$(snapshot 1 'Clicks: 0' 'Bun Native {nonce}')" -- "$@"
 
 # Clicking focuses the actual button. Enter must produce a distinct second
 # application event and a second committed tree update, not reuse click evidence.
 "${driver[@]}" --output "$evidence_dir/keyboard" --click 100 130 --key Return \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}' \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":2,"target":"increment"}' \
+  --expect-event "$(snapshot activation-event 1)" \
+  --expect-event "$(snapshot activation-event 2)" \
   --expect-render "$(snapshot 3 'Clicks: 2' '')" \
   -- "$@"
 

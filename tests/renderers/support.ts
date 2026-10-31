@@ -8,10 +8,13 @@ import {
 } from '@bun-native/core'
 
 /** Actual public-core IPC to a headless peer; no rendering capability is simulated. */
-export async function withApp(run: (app: NativeApplication) => Promise<void>) {
+export async function withApp(
+  run: (app: NativeApplication) => Promise<void>,
+  peer: 'protocol-peer.ts' | 'events-peer.ts' = 'protocol-peer.ts'
+) {
   const app = await createApplication({
     executable: process.execPath,
-    args: [resolve(import.meta.dir, '../core/protocol-peer.ts')],
+    args: [resolve(import.meta.dir, '../core', peer)],
     requestTimeoutMs: 1_000,
   })
   try {
@@ -45,11 +48,13 @@ export function observeWindow(window: NativeWindow) {
     batch: window.batch.bind(window),
     close: window.close.bind(window),
     input: window.input.bind(window),
-    onClick: window.onClick.bind(window),
-    onInput(node, listener) {
-      observations.inputs.push(node)
-      return window.onInput(node, listener)
+    on(node, type, listener, options) {
+      if (type === 'input' && node.kind === 'input')
+        observations.inputs.push(node as NativeNode<'input'>)
+      return window.on(node, type, listener, options)
     },
+    onClick: window.onClick.bind(window),
+    onInput: window.onInput.bind(window),
   }
   return { window: observed, observations }
 }

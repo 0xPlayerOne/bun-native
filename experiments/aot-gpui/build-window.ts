@@ -39,7 +39,15 @@ const entries = {
   'event-throughput': 'tests/native/event-throughput.ts',
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
+  layout: 'tests/native/layout.ts',
+  interactions: 'tests/native/interactions.ts',
+  'platform-smoke': 'tests/native/platform-smoke.ts',
+  solid: 'examples/solid-counter/main.tsx',
+  'solid-input-intent': 'tests/native/solid-input-intent.tsx',
+  'solid-interactions': 'tests/native/solid-interactions.tsx',
   react: 'examples/react-counter/main.tsx',
+  'react-interactions': 'tests/native/react-interactions.tsx',
+  'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
 function isEntry(value: string | undefined): value is keyof typeof entries {
@@ -48,6 +56,13 @@ function isEntry(value: string | undefined): value is keyof typeof entries {
 const entry = values.entry
 if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(entries).join(', '))
 const entryPath = entries[entry]
+const solidEntry =
+  entry === 'solid' || entry === 'solid-input-intent' || entry === 'solid-interactions'
+const reactEntry =
+  entry === 'react' ||
+  entry === 'react-interactions' ||
+  entry === 'react-behavior' ||
+  entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
     'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry ' +
@@ -68,8 +83,11 @@ if (
     entry === 'event-throughput' ||
     entry === 'fault' ||
     entry === 'scheduling' ||
-    entry === 'react' ||
-    entry === 'react-workload') &&
+    entry === 'layout' ||
+    entry === 'interactions' ||
+    entry === 'platform-smoke' ||
+    solidEntry ||
+    reactEntry) &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')
@@ -137,7 +155,21 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
-  if (entry === 'react' || entry === 'react-workload') {
+  if (solidEntry) {
+    for (const path of [
+      'packages/solid/package.json',
+      'packages/renderer/package.json',
+      'scripts/solid-build.ts',
+      'scripts/solid/transform.ts',
+      'scripts/solid/preset.d.ts',
+    ])
+      sources.add(path)
+    for await (const path of new Bun.Glob('packages/{solid,renderer}/src/**/*.ts').scan({
+      cwd: source,
+    }))
+      sources.add(path)
+  }
+  if (reactEntry) {
     sources.add('packages/react/package.json')
     sources.add('packages/renderer/package.json')
     for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
@@ -145,6 +177,7 @@ async function sourceHashes() {
     }))
       sources.add(path)
   }
+  if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
@@ -158,6 +191,41 @@ async function sourceHashes() {
 const sourceCommit = command('source-revision', ['git', 'rev-parse', 'HEAD'])
 const sourceChanges = command('source-status', ['git', 'status', '--porcelain'])
 const buildSources = await sourceHashes()
+let compileInput = entrypoint
+let developmentModule:
+  | { file: string; bytes: number; sha256: string; transformCommand: string[]; buildMs: number }
+  | undefined
+if (solidEntry || reactEntry) {
+  const developmentDirectory = join(outdir, 'development')
+  mkdirSync(developmentDirectory)
+  compileInput = join(developmentDirectory, 'application.js')
+  const transformCommand = solidEntry
+    ? [process.execPath, join(source, 'scripts/solid-build.ts'), entrypoint, developmentDirectory]
+    : [
+        process.execPath,
+        'build',
+        '--no-script',
+        '--production',
+        '--define',
+        'process.env.NODE_ENV="production"',
+        '--target=bun',
+        '--format=esm',
+        '--sourcemap=external',
+        entrypoint,
+        '--outdir',
+        developmentDirectory,
+        '--entry-naming=application.js',
+      ]
+  const transformStart = performance.now()
+  command(solidEntry ? 'transform-solid' : 'transform-react', transformCommand)
+  developmentModule = {
+    file: 'development/application.js',
+    ...(await artifact(compileInput)),
+    transformCommand,
+    buildMs: performance.now() - transformStart,
+  }
+}
+
 const compileCommand = [
   process.execPath,
   'compile',
@@ -165,7 +233,7 @@ const compileCommand = [
   '--production',
   ...(values.trim ? ['--trim'] : []),
   '--explain=json',
-  entrypoint,
+  compileInput,
   '--outfile',
   application,
 ]
@@ -175,11 +243,8 @@ const buildMs = performance.now() - start
 const inspection = inspectBunExecutable(application)
 if (!inspection.hasCompiledProgram)
   throw new Error('Compiler output has no compiled-program record')
-const runtimeFeatures = process.platform === 'linux' ? inspectBunRuntime(application) : null
-if (
-  runtimeFeatures &&
-  (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
-)
+const runtimeFeatures = inspectBunRuntime(application)
+if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
   throw new Error('Compiler output does not record removal of the JIT compiler')
 if (bundledHost) {
   copyFileSync(values.host, host)
@@ -202,6 +267,8 @@ if (process.platform !== 'win32') {
 
 if (JSON.stringify(buildSources) !== JSON.stringify(await sourceHashes()))
   throw new Error('Application or native source changed during the AOT build')
+if (developmentModule && (await artifact(compileInput)).sha256 !== developmentModule.sha256)
+  throw new Error('The generated development module changed during AOT compilation')
 const launchHost = bundledHost ? '<absolute-output-directory>/bun-native-host' + suffix : host
 const manifest = {
   schemaVersion: 1,
@@ -211,6 +278,7 @@ const manifest = {
     ...(await artifact(application)),
     inspection,
     runtimeFeatures,
+    ...(developmentModule ? { developmentModule } : {}),
   },
   host: {
     file: hostFile,
@@ -254,7 +322,7 @@ const manifest = {
   },
   verification: {
     aotCompiledProgram: 'passed',
-    jitOmission: runtimeFeatures ? 'passed' : 'not-implemented-for-this-format',
+    jitOmission: 'passed',
     nativeRendering: 'not-run',
     osInput: 'not-run',
     teardown: 'not-run',

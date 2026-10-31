@@ -105,13 +105,42 @@ class EvidenceTests(unittest.TestCase):
         stale["nodes"][1]["element"]["value"] = "stale application echo"
         self.assertFalse(DRIVER.matches_paint(stale, expected))
 
-    def test_keyboard_activation_requires_a_distinct_event_sequence(self):
-        click = {"type": "click", "target": "increment", "sequence": 1}
-        keyboard = {"type": "click", "target": "increment", "sequence": 2}
-        self.assertTrue(DRIVER.matches(click, click))
-        self.assertFalse(DRIVER.matches(click, keyboard))
-        self.assertTrue(DRIVER.matches(keyboard, keyboard))
-        self.assertFalse(DRIVER.matches({**click, "sequence": True}, click))
+    def test_keyboard_activation_requires_a_distinct_callback_count(self):
+        click = {
+            "type": "click",
+            "stage": "bun-application",
+            "target": "increment",
+            "activation": 1,
+            "sequence": 3,
+        }
+        keyboard = {**click, "activation": 2, "sequence": 7}
+        self.assertTrue(DRIVER.matches(click, DRIVER.fixture_click(1)))
+        self.assertFalse(
+            DRIVER.matches({**click, "activation": True}, DRIVER.fixture_click(1))
+        )
+        self.assertFalse(DRIVER.matches(click, DRIVER.fixture_click(2)))
+        self.assertTrue(DRIVER.matches(keyboard, DRIVER.fixture_click(2)))
+
+    def test_lifecycle_launch_survives_prior_native_focus_and_pointer_events(self):
+        # This is the actual launch payload from failed hosted run 41236220063.
+        # The lifecycle completed, but an obsolete sequence=1 oracle never closed
+        # the window because protocol4's launch click had global sequence3.
+        click = {
+            "type": "click",
+            "stage": "bun-application",
+            "target": "public-lifecycle",
+            "sequence": 3,
+        }
+        expected = DRIVER.lifecycle_fixture_event()
+        self.assertTrue(DRIVER.matches(click, expected))
+        self.assertFalse(DRIVER.matches(click, {**expected, "sequence": 1}))
+        for change in (
+            {"type": "focus"},
+            {"stage": "native-paint"},
+            {"target": "transient-button"},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(DRIVER.matches({**click, **change}, expected))
 
     def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
         DRIVER.validate_input_request(
@@ -164,6 +193,16 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(result["complete"])
         self.assertEqual(result["verified_callbacks"], 1000)
         self.assertEqual(result["observed_callbacks_per_second"], 2000)
+        # Keyboard/focus events share native global order but are not input
+        # callbacks. Gaps are valid; duplicate or decreasing input order is not.
+        with_other_events = [
+            {**event, "sequence": event["sequence"] * 3} for event in events
+        ]
+        self.assertTrue(
+            DRIVER.event_stress_observations(with_other_events, require_complete=True)[
+                "complete"
+            ]
+        )
         partial = DRIVER.event_stress_observations(events[:-1])
         self.assertFalse(partial["complete"])
         with self.assertRaisesRegex(RuntimeError, "all 1000"):
@@ -173,6 +212,8 @@ class EvidenceTests(unittest.TestCase):
         for changed in [
             {"sequence": 501},
             {"sequence": True},
+            {"sequence": 0},
+            {"sequence": 9_007_199_254_740_992},
             {"input_revision": 499},
             {"value": "x" * 499 + "y"},
             {"observed_at_ms": 0},
