@@ -289,6 +289,12 @@ def javascript_fixture_paint(tree_revision, label, value, input_revision):
     return state
 
 
+def display_service_fixture_paint(tree_revision, label):
+    state = fixture_paint(tree_revision, label)
+    state["nodes"][3]["element"]["text"] = "Read display"
+    return state
+
+
 def lifecycle_fixture_paint(tree_revision, label):
     state = fixture_paint(tree_revision, label)
     state["nodes"] = state["nodes"][:4]

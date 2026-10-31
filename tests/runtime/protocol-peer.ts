@@ -60,11 +60,14 @@ for await (const chunk of Bun.stdin.stream()) {
       }
       const ready = {
         type: 'ready',
+        service_policy: {
+          window_display: process.argv.includes('--bun-native-allow-window-display'),
+        },
         protocol:
           mode === 'wrong-version'
             ? PROTOCOL_VERSION + 1
             : mode === 'obsolete-version'
-              ? 3
+              ? 4
               : PROTOCOL_VERSION,
         capabilities:
           mode === 'missing-capability'
@@ -91,6 +94,12 @@ for await (const chunk of Bun.stdin.stream()) {
         })
       else await emit({ type: 'ack', id: mode === 'wrong-id' ? 123 : command.id })
     } else if (command.type === 'open') {
+      if (mode === 'diagnostic-open-timeout') {
+        const diagnostic = Bun.stderr.writer()
+        diagnostic.write('x'.repeat(5_000) + '\nOwned diagnostic peer is waiting at open\n')
+        await diagnostic.flush()
+        continue
+      }
       roots.set(command.window_id, command.root_id)
       await emit({
         type: 'opened',
@@ -140,7 +149,7 @@ for await (const chunk of Bun.stdin.stream()) {
                 : mode === 'wrong-sequence'
                   ? 2
                   : mode === 'out-of-order-sequence'
-                    ? 3
+                    ? 4
                     : 1
             for (let n = 0; n < count; n += 1) {
               const actual = ++sequence

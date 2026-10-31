@@ -1,0 +1,6158 @@
+{
+  "schemaVersion": 1,
+  "issues": [235, 236],
+  "protocol": 4,
+  "scope": "Integrated Solid/React foundation; the exact generated JavaScript module is executed in development and supplied to the actual Bun AOT compiler. Actual GPUI/XTest/full-tree paint/OS-close qualification is separate from executable inspection.",
+  "sourceBase": "0663fa2d9591ee6dd9b18ef55b99fa4777aee484",
+  "sourceWasDirty": true,
+  "integratedFoundation": "60a70e62ef407bec8260747126247abcabb7e170",
+  "sourceFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    "Cargo.toml": {
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    "benchmarks/native-baseline.py": {
+      "bytes": 17765,
+      "sha256": "6e6c2f4be1416c1d4de4b806e7ba81cf71ddeaf26ef34f6c1e2b3c6f54e62538"
+    },
+    "benchmarks/solid/react.tsx": {
+      "bytes": 2086,
+      "sha256": "328ebc067938da2f973e4dbd966ca7b403e1049280f1f0e83580bcf76882f554"
+    },
+    "benchmarks/solid/workload.ts": {
+      "bytes": 15179,
+      "sha256": "67693ed4f81868b7e49a267b1598314c63f280966b6e5706ec309edc0865f21c"
+    },
+    "bun.lock": {
+      "bytes": 28357,
+      "sha256": "8b58f36ae2b2e036adab62883847d49f02e0bbfc9286cebbf964342091b161f9"
+    },
+    "bunfig.toml": {
+      "bytes": 147,
+      "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31"
+    },
+    "examples/native-window/content.ts": {
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "examples/react-counter/main.tsx": {
+      "bytes": 4152,
+      "sha256": "0a2fd9bab78bc2ed90d72b47b43535fef507e42644021334ba389db66ceba17c"
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "bytes": 11891,
+      "sha256": "77d2bfdd1ee2837353674aaab3311f39b25abc52f112813e1dfda60f043ca851"
+    },
+    "experiments/aot-gpui/inspect-runtime.ts": {
+      "bytes": 12491,
+      "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+    },
+    "experiments/aot-gpui/inspect.ts": {
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    "native/gpui-host/src/channel.rs": {
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "bytes": 5961,
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d"
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    "native/gpui-host/src/input.rs": {
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    "native/gpui-host/src/main.rs": {
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    "native/gpui-host/src/session.rs": {
+      "bytes": 11756,
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077"
+    },
+    "native/gpui-host/src/state.rs": {
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    "native/gpui-host/src/style.rs": {
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    "native/gpui-host/src/view.rs": {
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    "native/protocol/Cargo.toml": {
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    "native/protocol/src/event_tests.rs": {
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    "native/protocol/src/events.rs": {
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    "native/protocol/src/framing.rs": {
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    "native/protocol/src/lib.rs": {
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    "native/protocol/src/security_tests.rs": {
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    "native/protocol/src/tests.rs": {
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    "native/protocol/src/tree.rs": {
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    "native/protocol/src/wire.rs": {
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    "package.json": {
+      "bytes": 1916,
+      "sha256": "bbf48d7f085764322fc652ba9ea2697f13e3367dc98cb0fc1edc4d6dc6bb3a19"
+    },
+    "packages/core/package.json": {
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    "packages/core/src/application.ts": {
+      "bytes": 14616,
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+    },
+    "packages/core/src/events.ts": {
+      "bytes": 7680,
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 646,
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+    },
+    "packages/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "packages/core/src/types.ts": {
+      "bytes": 5566,
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    "packages/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "packages/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    "packages/protocol/src/messages.ts": {
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    "packages/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "packages/react/package.json": {
+      "bytes": 402,
+      "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+    },
+    "packages/react/src/index.ts": {
+      "bytes": 262,
+      "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+    },
+    "packages/react/src/jsx-dev-runtime.ts": {
+      "bytes": 93,
+      "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+    },
+    "packages/react/src/jsx-runtime.ts": {
+      "bytes": 92,
+      "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+    },
+    "packages/react/src/jsx.ts": {
+      "bytes": 1281,
+      "sha256": "0cb1d27d0e49ff376e78208e2c34077e4c901924c9a0765860c349bebd4af898"
+    },
+    "packages/react/src/mount.ts": {
+      "bytes": 6551,
+      "sha256": "e11f0ab0388fcfbe587d17c2a838a3f7f994b7d6ef3b889192f5153f7dd7cd00"
+    },
+    "packages/react/src/reconciler.ts": {
+      "bytes": 7440,
+      "sha256": "ff36df62bc07d2f6b226227803907fe51b6a34709c972dcb811c25bdf25fb4d3"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    "packages/runtime/package.json": {
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    "packages/runtime/src/index.ts": {
+      "bytes": 13240,
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814"
+    },
+    "packages/solid/package.json": {
+      "bytes": 310,
+      "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+    },
+    "packages/solid/src/index.ts": {
+      "bytes": 604,
+      "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+    },
+    "packages/solid/src/jsx.ts": {
+      "bytes": 868,
+      "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+    },
+    "packages/solid/src/mount.ts": {
+      "bytes": 1216,
+      "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+    },
+    "packages/solid/src/renderer.ts": {
+      "bytes": 964,
+      "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    "scripts/quality/native-input-linux.py": {
+      "bytes": 37751,
+      "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f"
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "bytes": 6957,
+      "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf"
+    },
+    "tests/native/react-behavior.py": {
+      "bytes": 5427,
+      "sha256": "31eb824181ea8c6a9459772a5f5486fb032e1be69984f23f24b6d604d9c08150"
+    },
+    "tests/native/react-behavior.tsx": {
+      "bytes": 16912,
+      "sha256": "f431870e582a9bec8289559ec7eabfc83fee2dcceb18c70297685df879c17c98"
+    },
+    "tests/native/react-interactions.tsx": {
+      "bytes": 2244,
+      "sha256": "7e046d9841b012784d7a2014822a69613b49d0c119e0c3e2a75c09bee9f10dbb"
+    },
+    "tests/native/react-window.py": {
+      "bytes": 4397,
+      "sha256": "13fc1f7275a3e1f32174b98f4f019e609965b2eeb6a92748e290710098c23f34"
+    },
+    "tests/native/renderer-interactions.py": {
+      "bytes": 4162,
+      "sha256": "bb2967c57a7f95a455d9ac45a87ae609e83370cb4c5bb08c6594225062bad0db"
+    },
+    "tests/native/renderer-interactions.ts": {
+      "bytes": 10485,
+      "sha256": "fecede8be48123805c341df33134118114405b7048166a0cc5852d35d0ef6c4a"
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "bytes": 1028,
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+    }
+  },
+  "sharedRendererFilesByteIdenticalToFoundation": {
+    "packages/renderer/README.md": {
+      "bytes": 4895,
+      "sha256": "ee07c6319c358a2bb33755332e35a6503bb02cfcd38a434ba0d4592615ecea6e"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    }
+  },
+  "matchedNativeBuildSourceFiles": {
+    "Cargo.lock": {
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+      "bytes": 160678
+    },
+    "Cargo.toml": {
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+      "bytes": 434
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+      "bytes": 628
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+      "bytes": 5961
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+      "bytes": 5330
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "bytes": 19158
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "bytes": 3666
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+      "bytes": 2539
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+      "bytes": 11756
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "bytes": 3732
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+      "bytes": 13370
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "bytes": 9592
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/event_tests.rs": {
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "bytes": 4925
+    },
+    "native/protocol/src/events.rs": {
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+      "bytes": 7635
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "bytes": 3838
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+      "bytes": 469
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+      "bytes": 11716
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "bytes": 14549
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+      "bytes": 18177
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "toolchain.json": {
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+      "bytes": 1725
+    }
+  },
+  "host": {
+    "placement": "external",
+    "profile": "dev",
+    "bytes": 111772680,
+    "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb"
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "target": {
+    "os": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.57"
+  },
+  "renderer": {
+    "is_software_emulated": true,
+    "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "driver_name": "llvmpipe",
+    "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+  },
+  "entries": {
+    "react": {
+      "sourceEntrypoint": "examples/react-counter/main.tsx",
+      "application": {
+        "file": "react",
+        "bytes": 72580136,
+        "sha256": "7d1c1f4d106af0d8298428e47e14ecdf0913d703b779ec3ecfe510f653ec9e01",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5013733,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 188848,
+          "sha256": "d8d8b5571e7cfe5fcf393fc27df0c21ffc5effdd10e04f68b7ec3eb427ba6c5c",
+          "transformCommand": [
+            "<pinned-bun>",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "<repository>/examples/react-counter/main.tsx",
+            "--outdir",
+            "<package>/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 52.98325899999999,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react.production.js",
+            "node_modules/.bun/scheduler@0.28.0/node_modules/scheduler/cjs/scheduler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler-constants.production.js",
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react-jsx-runtime.production.js"
+          ],
+          "sourceMap": {
+            "bytes": 864738,
+            "sha256": "8cfb60a25443152fb3e1158cfaaaa61cbc5b38286741504ad9c61582675d01cd"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/react"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 11145.54553,
+      "manifest": {
+        "path": "react-package/manifest.json",
+        "bytes": 17295,
+        "sha256": "7d973058fe1db48b63fb77dcdd25ec1bebd52548b84e8b5da4d9e59b20516d3c"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "examples/react-counter/main.tsx",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/react/package.json",
+        "packages/react/src/index.ts",
+        "packages/react/src/jsx-dev-runtime.ts",
+        "packages/react/src/jsx-runtime.ts",
+        "packages/react/src/jsx.ts",
+        "packages/react/src/mount.ts",
+        "packages/react/src/reconciler.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "rust-toolchain.toml",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    },
+    "react-interactions": {
+      "sourceEntrypoint": "tests/native/react-interactions.tsx",
+      "application": {
+        "file": "react-interactions",
+        "bytes": 72743976,
+        "sha256": "5e560235373855775ec4512e179d116aa234a60539f83bad338444c3f0e03c0c",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5177586,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 193212,
+          "sha256": "7ec8b93d0244cdc00b9ef633c52f603b791999f0a5042077e8815ed071ca7a42",
+          "transformCommand": [
+            "<pinned-bun>",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "<repository>/tests/native/react-interactions.tsx",
+            "--outdir",
+            "<package>/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 88.13426199999998,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react.production.js",
+            "node_modules/.bun/scheduler@0.28.0/node_modules/scheduler/cjs/scheduler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler-constants.production.js",
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react-jsx-runtime.production.js"
+          ],
+          "sourceMap": {
+            "bytes": 879443,
+            "sha256": "c2dd85ab8838a66bbbe9956d195cc85d43b1a31c2aa22b60d7a24cd32513fcea"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/react-interactions"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 11622.114852,
+      "manifest": {
+        "path": "react-interactions-package/manifest.json",
+        "bytes": 17569,
+        "sha256": "189c68793b7c9c6c295be4b8d780a7750d520aeecdd3013db17a9132a349f093"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/react/package.json",
+        "packages/react/src/index.ts",
+        "packages/react/src/jsx-dev-runtime.ts",
+        "packages/react/src/jsx-runtime.ts",
+        "packages/react/src/jsx.ts",
+        "packages/react/src/mount.ts",
+        "packages/react/src/reconciler.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "rust-toolchain.toml",
+        "tests/native/react-interactions.tsx",
+        "tests/native/renderer-interactions.ts",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    },
+    "react-behavior": {
+      "sourceEntrypoint": "tests/native/react-behavior.tsx",
+      "application": {
+        "file": "react-behavior",
+        "bytes": 72760360,
+        "sha256": "33d95e8ee921654b37fb5c45181fe601e6891c27dc5f8c43ab45a76374831c02",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5193966,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 196218,
+          "sha256": "394c9f99bce6b98f77ad6158a3e67860d33f405d2345bd7dad998cbcacf5ce84",
+          "transformCommand": [
+            "<pinned-bun>",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "<repository>/tests/native/react-behavior.tsx",
+            "--outdir",
+            "<package>/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 82.88837199999999,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react.production.js",
+            "node_modules/.bun/scheduler@0.28.0/node_modules/scheduler/cjs/scheduler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler-constants.production.js",
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react-jsx-runtime.production.js"
+          ],
+          "sourceMap": {
+            "bytes": 885324,
+            "sha256": "1cc1abde538329ac2f9f441a6e57eb428b17d8ef93b1527bdd007167ff5f7bfb"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/react-behavior"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 11068.999673,
+      "manifest": {
+        "path": "react-behavior-package/manifest.json",
+        "bytes": 17351,
+        "sha256": "c19a443fe69ffcd9b4c5575a3d638c1f7159b48525f37c8f4dbf88823beae4ee"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/react/package.json",
+        "packages/react/src/index.ts",
+        "packages/react/src/jsx-dev-runtime.ts",
+        "packages/react/src/jsx-runtime.ts",
+        "packages/react/src/jsx.ts",
+        "packages/react/src/mount.ts",
+        "packages/react/src/reconciler.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "rust-toolchain.toml",
+        "tests/native/react-behavior.tsx",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    },
+    "react-workload": {
+      "sourceEntrypoint": "benchmarks/solid/react.tsx",
+      "application": {
+        "file": "react-workload",
+        "bytes": 72727592,
+        "sha256": "853c0e8d6d3274513876d153ce37ccd484e9ffd529664bcc06f57185a4a776da",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5161198,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 195267,
+          "sha256": "7a012093013d5d624fad12b74aa0eb9463c6ebdd53070f470e26969a4f980fc8",
+          "transformCommand": [
+            "<pinned-bun>",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "<repository>/benchmarks/solid/react.tsx",
+            "--outdir",
+            "<package>/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 77.20146100000001,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react.production.js",
+            "node_modules/.bun/scheduler@0.28.0/node_modules/scheduler/cjs/scheduler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler.production.js",
+            "node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler-constants.production.js",
+            "node_modules/.bun/react@19.3.1/node_modules/react/cjs/react-jsx-runtime.production.js"
+          ],
+          "sourceMap": {
+            "bytes": 882847,
+            "sha256": "f91a02f342fb011cb7e00c2fe32d85bc8902cdd261677c31d1e919df9a166f8e"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/react-workload"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 9246.198946,
+      "manifest": {
+        "path": "react-workload-package/manifest.json",
+        "bytes": 17508,
+        "sha256": "420e61046750d63895dd87a4eefd16dabcdd353b6968c779155ec345d5ff0a1e"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "benchmarks/solid/react.tsx",
+        "benchmarks/solid/workload.ts",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/react/package.json",
+        "packages/react/src/index.ts",
+        "packages/react/src/jsx-dev-runtime.ts",
+        "packages/react/src/jsx-runtime.ts",
+        "packages/react/src/jsx.ts",
+        "packages/react/src/mount.ts",
+        "packages/react/src/reconciler.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "rust-toolchain.toml",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "not-run-in-this-local-increment"
+    }
+  },
+  "runs": [
+    {
+      "mode": "development",
+      "entry": "react",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native React",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: ",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [13, 11]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "4914448d88e2967f2fb6de4c2dd3f173",
+          "type": "click",
+          "sequence": 4,
+          "target": "increment",
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "4914448d88e2967f2fb6de4c2dd3f173",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-counter-click",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        },
+        "app-events.jsonl": {
+          "bytes": 9028,
+          "sha256": "627028dae31c53cb78f2770666adcae05feeb90e6c006a5af007ef04055a3ba2"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "result.json": {
+          "bytes": 29179,
+          "sha256": "57ff1325d87f3c9f7c91003e2ef6a5260da3eccf2366e55d14230bb3441bcc6e"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native React",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 0",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "React dec7ce05f49a01015681571242042ee0",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 38
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: React dec7ce05f49a01015681571242042ee0",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [11, 12, 13]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 12,
+            "element": {
+              "kind": "text",
+              "text": "Beta",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "dec7ce05f49a01015681571242042ee0",
+          "type": "input",
+          "sequence": 116,
+          "value": "React dec7ce05f49a01015681571242042ee0",
+          "input_revision": 38,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "dec7ce05f49a01015681571242042ee0",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-counter-input",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 31889,
+          "sha256": "4c576ac38574cb1735340ecb399cc5c5d56d528b52aad12705a5be3f1b464807"
+        },
+        "app-events.jsonl": {
+          "bytes": 84416,
+          "sha256": "fa731f6472e4d4c67245f0a43afe17ceb278592930a2af226406e1036f4067ae"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "result.json": {
+          "bytes": 192999,
+          "sha256": "f4418f2b7736915c4a1a03773d7459a39b26268ff4a2b1dd6dfbfd1046a8b955"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-interactions",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "ABCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: ABCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "11afad00398ba4a17ee342328d47e36b",
+          "framework": "React",
+          "type": "click",
+          "sequence": 8,
+          "qualified": true,
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "eventGroups": 9,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "11afad00398ba4a17ee342328d47e36b",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-keyboard",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14802,
+          "sha256": "27494631e0bb09c5b53f514594546aeb40e697de18b9b9cb44dccf857d6c53b5"
+        },
+        "app-events.jsonl": {
+          "bytes": 19775,
+          "sha256": "0d7be00e723b974e0a5c551caa0a9641f6588af28811ce1c23fbae7679a196c4"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 41435,
+          "sha256": "9c3ee9bb61a900ca8d942d96ff7e39be28bb29e9216a4c46f565829c12064e9f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-interactions",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "ff1c2a99885915335697cf7c6bf38277",
+          "framework": "React",
+          "type": "input",
+          "sequence": 16,
+          "qualified": true,
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "eventGroups": 17,
+          "value": "AxBCD",
+          "input_revision": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "ff1c2a99885915335697cf7c6bf38277",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-caret",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 15186,
+          "sha256": "3c0372aff9e26db3ba558f9c1b3fa2eb3cedc6a18baa43167085b17a97052939"
+        },
+        "app-events.jsonl": {
+          "bytes": 35343,
+          "sha256": "98a629b0b4dea34fb529e3cdb7df6daf8a5f96dfba2be8ee1eb1a3238779f7bb"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 70014,
+          "sha256": "0ef759a469872059564ee5c267414d4e917898aab07bee11cce1ab49edd4980e"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-interactions",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AYCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AYCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "b34321d91ba9d0313ccf1891fba0cff3",
+          "framework": "React",
+          "type": "input",
+          "sequence": 18,
+          "qualified": true,
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "eventGroups": 19,
+          "value": "AYCD",
+          "input_revision": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "b34321d91ba9d0313ccf1891fba0cff3",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-selection",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14468,
+          "sha256": "6cf1663aec2526151c4dd61d967ac1bb71a34bb530226c931ec9c457ea4b8fa3"
+        },
+        "app-events.jsonl": {
+          "bytes": 38722,
+          "sha256": "21cce165dbf6b34e3f250d37872636eed305c64b334906fed5dcf65f238a7b38"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 75323,
+          "sha256": "0810df0fc6309541388363d4bf5419c6de9854b610fecdd10cb8e5f1cfc337e1"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-lifecycle",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 2 / Reducer 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "4ac1d2a15518aeb615633452ba1c4b8e",
+          "scenario": "lifecycle",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "4ac1d2a15518aeb615633452ba1c4b8e",
+          "scenario": "lifecycle",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-lifecycle",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 10569,
+          "sha256": "6ec5b8ad182e459c5b256ad18993dc5a4886d233fb27299ef605c6dc1ebdf675"
+        },
+        "app-events.jsonl": {
+          "bytes": 6578,
+          "sha256": "20922666386b244755f90b3dc8175b6e68d64b9c8d04b1894d0033ff1c9798d9"
+        },
+        "before.png": {
+          "bytes": 10934,
+          "sha256": "cf3a3ef695785a7961289d83f30666300616ca5c5cec777f5e171332b7d59bb0"
+        },
+        "react-behavior.json": {
+          "bytes": 1054,
+          "sha256": "ba29016800e68e0e7ee82be17c8b1e55830b23f33b21cba94995e69318828eeb"
+        },
+        "result.json": {
+          "bytes": 19745,
+          "sha256": "f22e2da623537c504ea548907ca117e77b134697926e4e770cd25c51140938e1"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "lifecycle",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:2",
+          "label:passive-cleanup:0",
+          "label:passive:2",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:2",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:2"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-boundary-fallback",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 7, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Fallback",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "ebc92ae8b38cf530dce3391c9c3ab3d2",
+          "scenario": "boundary-fallback",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 1,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "ebc92ae8b38cf530dce3391c9c3ab3d2",
+          "scenario": "boundary-fallback",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-boundary-fallback",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8830,
+          "sha256": "19bd6b20c2824e5b7bfa444dbed58d8fd997508d5fa9dc05b848435549da3522"
+        },
+        "app-events.jsonl": {
+          "bytes": 7219,
+          "sha256": "fa203cdbdf0e0e1697ded1a8ba8d04aed267771fadb0ab5dc6eb124e868c598f"
+        },
+        "before.png": {
+          "bytes": 9085,
+          "sha256": "802bdfe15799e71e225a27ebbe159248c81452e701bfa556ae95d8efac18a13a"
+        },
+        "react-behavior.json": {
+          "bytes": 979,
+          "sha256": "fbf396d7c41bdfcfb5d8bd18391d33540e07fc564e0e7320d5bbafbb07cd65a1"
+        },
+        "result.json": {
+          "bytes": 20700,
+          "sha256": "d6ade723e715bba324152e2cc5e87107aa08ddce1509f2e3115686aa3bef5796"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "boundary-fallback",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 1,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "boundary:caught",
+          "label:passive-cleanup:0",
+          "owner:layout-cleanup",
+          "button:cleanup",
+          "owner:passive-cleanup"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 6,
+            "set": 0,
+            "insert": 6,
+            "remove": 1
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-boundary-recovery",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 7, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Healthy 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "aca07e4234387320ae90b9efc6dc8215",
+          "scenario": "boundary-recovery",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 1,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "aca07e4234387320ae90b9efc6dc8215",
+          "scenario": "boundary-recovery",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-boundary-recovery",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8841,
+          "sha256": "025f9327a1bfe5a2d4cc186ca46793c75e5e286d51f65b316aaf297e25602797"
+        },
+        "app-events.jsonl": {
+          "bytes": 6401,
+          "sha256": "be6ae2e6d5ff7a057a75f4f172645145b2af2c948a33c473655999ccc33b416f"
+        },
+        "before.png": {
+          "bytes": 8830,
+          "sha256": "19bd6b20c2824e5b7bfa444dbed58d8fd997508d5fa9dc05b848435549da3522"
+        },
+        "react-behavior.json": {
+          "bytes": 979,
+          "sha256": "4133adbfa13af1d6bcfddfa4a2c006513100d4eb5a3abda3eabb81e2c20be861"
+        },
+        "result.json": {
+          "bytes": 18460,
+          "sha256": "8ed57ac138e13019199772584c91da77b4dd88b6a9d7c2dabf1da9da09156eff"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "boundary-recovery",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 1,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "boundary:caught",
+          "button:attach",
+          "owner:layout",
+          "owner:passive",
+          "label:layout:1",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 6,
+            "set": 0,
+            "insert": 6,
+            "remove": 1
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-recoverable-retry",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "c5cd2d254524cba8651b6f11b9253fcf",
+          "scenario": "recoverable-retry",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c5cd2d254524cba8651b6f11b9253fcf",
+          "scenario": "recoverable-retry",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-recoverable-retry",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8853,
+          "sha256": "596ab388a31dc46cadf670cded4e8eb0df4a692354a02075b838cb7b8219537b"
+        },
+        "app-events.jsonl": {
+          "bytes": 7828,
+          "sha256": "3e4342eebb950c975b8f22c0e4b4e31b6ef20c140fb1f17a3a8af93508858a6d"
+        },
+        "before.png": {
+          "bytes": 8939,
+          "sha256": "d19ad77bed2d362995907d5f9dc69be16c200e2bcf6e51870a155fd91f3e4666"
+        },
+        "react-behavior.json": {
+          "bytes": 1203,
+          "sha256": "46d21b214f5fa9f3e27b918ddb8b1bd02cabcb5710c34d374520f63a7c54c132"
+        },
+        "result.json": {
+          "bytes": 22994,
+          "sha256": "1bc3a5235d40963d3acffc45fe9ec61b913913f00287ffbe60ed888071847772"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "recoverable-retry",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 1,
+        "retryAttempts": 2,
+        "pendingSnapshots": [false, false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "render:recovered",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "label:layout-cleanup:1",
+          "label:layout:2",
+          "label:passive-cleanup:1",
+          "label:passive:2",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:2",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:2"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-throwing-reporter",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 5,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after throwing-reporter",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "68a9b8029f05565032b128fc7f383917",
+          "scenario": "throwing-reporter",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 1,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "68a9b8029f05565032b128fc7f383917",
+          "scenario": "throwing-reporter",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-throwing-reporter",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 6394,
+          "sha256": "162dfffd8961549c04f0141959e15b24b37d254025c9492f35247c7fd1df560d"
+        },
+        "app-events.jsonl": {
+          "bytes": 8097,
+          "sha256": "9902b7a6eb7a1ae2dfdaaa21fcb6715b4cba0411c9b2d84ce7091c24b08da34b"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1278,
+          "sha256": "e2546ba00a7736c1335d17f4ce9fd437de08c4d13773258658758349f385b30d"
+        },
+        "result.json": {
+          "bytes": 20653,
+          "sha256": "697463faf498fc418ad074236b744b4e9d1051a8308f9d23dba77fb83306144f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "throwing-reporter",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 1,
+        "retryAttempts": 2,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "render:recovered",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-cleanup-effect",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 4,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after cleanup-effect",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "c5a54097484d4a5d1edb8482e22eb2ed",
+          "scenario": "cleanup-effect",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c5a54097484d4a5d1edb8482e22eb2ed",
+          "scenario": "cleanup-effect",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-cleanup-effect",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 5968,
+          "sha256": "7432d2f62844818cac0b93a15106e8ef8dede341676b19e2dfbf147d6151eec7"
+        },
+        "app-events.jsonl": {
+          "bytes": 7578,
+          "sha256": "2a54cb42f1910dc36551d15aae55057458951cc3df52599b25119ebcee648d54"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1134,
+          "sha256": "f720e803a16b9f5a1da86a23dddd0134c2dcf7b720d8f6978e06af2e3594c507"
+        },
+        "result.json": {
+          "bytes": 20237,
+          "sha256": "5bee9c420a8145e4da190a33d63c8a2b2a81466599229d3f6057cb13a149e5b8"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "cleanup-effect",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:0",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:0"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 0,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-cleanup-ref",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 4,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after cleanup-ref",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "ad6257e7792bf2b46937564077ac91ec",
+          "scenario": "cleanup-ref",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "ad6257e7792bf2b46937564077ac91ec",
+          "scenario": "cleanup-ref",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-cleanup-ref",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 5395,
+          "sha256": "2626eef3ba96ae832f01cd8de1dab2b8aaa2a583c1872f5d307c7be89c47d0a6"
+        },
+        "app-events.jsonl": {
+          "bytes": 7551,
+          "sha256": "7e9b6300a13dc0194744a13f3ad46ebf26fa00822da9ceb907162b33708fbb24"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1131,
+          "sha256": "d0299a2cbb00dd41b9def36945352b978833f9d499ac63f3168f3f499499fdf7"
+        },
+        "result.json": {
+          "bytes": 19626,
+          "sha256": "2135e1bddfb7f76689b9dacf38115acb161e9c7ea6d3ad5607abb50e680e78ec"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "cleanup-ref",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:0",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:0"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 0,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "react-behavior",
+      "scenario": "behavior-transition",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "1adfdf328af002178076db8df28a012a",
+          "scenario": "transition",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "transitionAtOrdinaryFlush": false,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "1adfdf328af002178076db8df28a012a",
+          "scenario": "transition",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-behavior-transition",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8706,
+          "sha256": "15d2db0851c18ea3d239287db9c0b52e8e5d2440e1a214e506eebdb950e338d8"
+        },
+        "app-events.jsonl": {
+          "bytes": 6596,
+          "sha256": "39059031ba41338621a123a9ff0193e7aeb7fabb1e518cd9737e8edcb20635aa"
+        },
+        "before.png": {
+          "bytes": 8939,
+          "sha256": "d19ad77bed2d362995907d5f9dc69be16c200e2bcf6e51870a155fd91f3e4666"
+        },
+        "react-behavior.json": {
+          "bytes": 1103,
+          "sha256": "997be8b02870fae49ea95f7ad100339fefbb276c365a17c7bc19ea73ff12a23b"
+        },
+        "result.json": {
+          "bytes": 18569,
+          "sha256": "7f2f4775e62bc032c6e77ee2743ff251cec2b67b428e3b83f0f6b9ebaea91b89"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "transition",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "transitionAtOrdinaryFlush": false,
+        "pendingSnapshots": [false, true, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native React",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: ",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [13, 11]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "43a857ce774b6c913d6233720a8f8982",
+          "type": "click",
+          "sequence": 4,
+          "target": "increment",
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "43a857ce774b6c913d6233720a8f8982",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-counter-click",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        },
+        "app-events.jsonl": {
+          "bytes": 7679,
+          "sha256": "0582bb7503488dc4bbb972907be06eb502ffc7301414bc17bb5a29d284dc9e78"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "result.json": {
+          "bytes": 24250,
+          "sha256": "36aae184eac6b6bbf8e5faf1a03395ad86a6e1eb53f89068b982cd4b14cd9ad4"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native React",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 0",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "React 71e3ee38cc835aa06487fdb40d5d3e22",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 38
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: React 71e3ee38cc835aa06487fdb40d5d3e22",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [11, 12, 13]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 12,
+            "element": {
+              "kind": "text",
+              "text": "Beta",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "71e3ee38cc835aa06487fdb40d5d3e22",
+          "type": "input",
+          "sequence": 112,
+          "value": "React 71e3ee38cc835aa06487fdb40d5d3e22",
+          "input_revision": 38,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "71e3ee38cc835aa06487fdb40d5d3e22",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-counter-input",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 33808,
+          "sha256": "906055f2ec29f137654d9ae787ed6358a297c8a1adeba590e99c2aa1b8be5a9c"
+        },
+        "app-events.jsonl": {
+          "bytes": 78317,
+          "sha256": "13fe341e85d575f6241f4606553b39a336831fda361d47ae0cf91cd45a237e8c"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "result.json": {
+          "bytes": 179281,
+          "sha256": "825dd0d0a7da1c309ec6103ce927b8625503bb07f4a1877232c03081d70407d4"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-interactions",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "ABCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: ABCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "859e78bad0dc03bf806efe38bc2cacd3",
+          "framework": "React",
+          "type": "click",
+          "sequence": 8,
+          "qualified": true,
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "eventGroups": 9,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "859e78bad0dc03bf806efe38bc2cacd3",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-keyboard",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14802,
+          "sha256": "27494631e0bb09c5b53f514594546aeb40e697de18b9b9cb44dccf857d6c53b5"
+        },
+        "app-events.jsonl": {
+          "bytes": 19775,
+          "sha256": "fd2b061a7e8b9af2d27c40458fd5c580146dbd0ff1b3d45c27a34b1317451e2a"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 41961,
+          "sha256": "c779dd64ab1c1f4809bd59cd690f6ddcce871c27160df559e14f084f5ca2567e"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-interactions",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "d929a3ae6be899c63d178531c02476d5",
+          "framework": "React",
+          "type": "input",
+          "sequence": 16,
+          "qualified": true,
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "eventGroups": 17,
+          "value": "AxBCD",
+          "input_revision": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "d929a3ae6be899c63d178531c02476d5",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-caret",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 15186,
+          "sha256": "3c0372aff9e26db3ba558f9c1b3fa2eb3cedc6a18baa43167085b17a97052939"
+        },
+        "app-events.jsonl": {
+          "bytes": 34338,
+          "sha256": "c78c72ce9aa5e1bb9f09c69d5b4b8ebe4691a498c12753bca2b2542dee2f4974"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 67615,
+          "sha256": "8501a711ce195050fb72e91779ee55595f659ca0e52fca22f2b1d68cb44e45e1"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-interactions",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AYCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AYCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "6171abbca9286c6f62b4b8912b423a4a",
+          "framework": "React",
+          "type": "input",
+          "sequence": 18,
+          "qualified": true,
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "eventGroups": 19,
+          "value": "AYCD",
+          "input_revision": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "6171abbca9286c6f62b4b8912b423a4a",
+          "framework": "React",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-selection",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14468,
+          "sha256": "6cf1663aec2526151c4dd61d967ac1bb71a34bb530226c931ec9c457ea4b8fa3"
+        },
+        "app-events.jsonl": {
+          "bytes": 37720,
+          "sha256": "486e591b12719d6b6cae7422d8ca105ebe9b39813365e41f49d02da905436042"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "result.json": {
+          "bytes": 73513,
+          "sha256": "ac3fda650e2fa082d1077a8566cafb248dbdb66b738f607e952052c869115d4f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-lifecycle",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 2 / Reducer 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "c9e87250d9674d8c0f494d4783c850a5",
+          "scenario": "lifecycle",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c9e87250d9674d8c0f494d4783c850a5",
+          "scenario": "lifecycle",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-lifecycle",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 10569,
+          "sha256": "6ec5b8ad182e459c5b256ad18993dc5a4886d233fb27299ef605c6dc1ebdf675"
+        },
+        "app-events.jsonl": {
+          "bytes": 6579,
+          "sha256": "1b70a586104f8c7e73a066db5c1add3824f37976f01c0518e3854b2d792a108a"
+        },
+        "before.png": {
+          "bytes": 10934,
+          "sha256": "cf3a3ef695785a7961289d83f30666300616ca5c5cec777f5e171332b7d59bb0"
+        },
+        "react-behavior.json": {
+          "bytes": 1054,
+          "sha256": "ba29016800e68e0e7ee82be17c8b1e55830b23f33b21cba94995e69318828eeb"
+        },
+        "result.json": {
+          "bytes": 18473,
+          "sha256": "ae375fd42c3e2da3fdeb38f26dee3ea6ce57b3fd965ab722d2bb849186e59b85"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "lifecycle",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:2",
+          "label:passive-cleanup:0",
+          "label:passive:2",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:2",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:2"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-boundary-fallback",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 7, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Fallback",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "5fa947b74722dd9a00e8f6f498ecd757",
+          "scenario": "boundary-fallback",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 1,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "5fa947b74722dd9a00e8f6f498ecd757",
+          "scenario": "boundary-fallback",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-boundary-fallback",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8830,
+          "sha256": "19bd6b20c2824e5b7bfa444dbed58d8fd997508d5fa9dc05b848435549da3522"
+        },
+        "app-events.jsonl": {
+          "bytes": 7219,
+          "sha256": "789f0c8cb7e581ffd72e5fe26629519cc8cd121e45a742ee636d69bdeb842ced"
+        },
+        "before.png": {
+          "bytes": 9085,
+          "sha256": "802bdfe15799e71e225a27ebbe159248c81452e701bfa556ae95d8efac18a13a"
+        },
+        "react-behavior.json": {
+          "bytes": 979,
+          "sha256": "fbf396d7c41bdfcfb5d8bd18391d33540e07fc564e0e7320d5bbafbb07cd65a1"
+        },
+        "result.json": {
+          "bytes": 20616,
+          "sha256": "2932c02629b8f0a096eddb30cdfa55ac14a1d8d778458b11ec3036a034ce610c"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "boundary-fallback",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 1,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "boundary:caught",
+          "label:passive-cleanup:0",
+          "owner:layout-cleanup",
+          "button:cleanup",
+          "owner:passive-cleanup"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 6,
+            "set": 0,
+            "insert": 6,
+            "remove": 1
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-boundary-recovery",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 7, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Healthy 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "22ca61f0befba673c59c1f0281e8e2d1",
+          "scenario": "boundary-recovery",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 1,
+          "recoveredErrors": 0,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "22ca61f0befba673c59c1f0281e8e2d1",
+          "scenario": "boundary-recovery",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-boundary-recovery",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8841,
+          "sha256": "025f9327a1bfe5a2d4cc186ca46793c75e5e286d51f65b316aaf297e25602797"
+        },
+        "app-events.jsonl": {
+          "bytes": 6400,
+          "sha256": "4f7ab8c8448490260f44fd8cd17f4f4c3b41d6ad5470367e24b6868f388007d1"
+        },
+        "before.png": {
+          "bytes": 8830,
+          "sha256": "19bd6b20c2824e5b7bfa444dbed58d8fd997508d5fa9dc05b848435549da3522"
+        },
+        "react-behavior.json": {
+          "bytes": 979,
+          "sha256": "4133adbfa13af1d6bcfddfa4a2c006513100d4eb5a3abda3eabb81e2c20be861"
+        },
+        "result.json": {
+          "bytes": 17777,
+          "sha256": "f579251fff1ea2dd936d9a7b054c989fe9063a97c24ca4d49ddbb94b0f26ab85"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "boundary-recovery",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 1,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "boundary:caught",
+          "button:attach",
+          "owner:layout",
+          "owner:passive",
+          "label:layout:1",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 6,
+            "set": 0,
+            "insert": 6,
+            "remove": 1
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-recoverable-retry",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "1ac86e4984613f78e10b487114f66125",
+          "scenario": "recoverable-retry",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "1ac86e4984613f78e10b487114f66125",
+          "scenario": "recoverable-retry",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-recoverable-retry",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8853,
+          "sha256": "596ab388a31dc46cadf670cded4e8eb0df4a692354a02075b838cb7b8219537b"
+        },
+        "app-events.jsonl": {
+          "bytes": 7108,
+          "sha256": "98096fa633d01166e0548596d35fcf34e7aa6b776b64cc2505c29a596d573b3d"
+        },
+        "before.png": {
+          "bytes": 8939,
+          "sha256": "d19ad77bed2d362995907d5f9dc69be16c200e2bcf6e51870a155fd91f3e4666"
+        },
+        "react-behavior.json": {
+          "bytes": 1203,
+          "sha256": "46d21b214f5fa9f3e27b918ddb8b1bd02cabcb5710c34d374520f63a7c54c132"
+        },
+        "result.json": {
+          "bytes": 19442,
+          "sha256": "54a2600a1dcaaebd069320e941fa5d402a8a473b11f376650fe81e9a093fd33e"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "recoverable-retry",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 1,
+        "retryAttempts": 2,
+        "pendingSnapshots": [false, false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "render:recovered",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "label:layout-cleanup:1",
+          "label:layout:2",
+          "label:passive-cleanup:1",
+          "label:passive:2",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:2",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:2"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-throwing-reporter",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 5,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after throwing-reporter",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "6f30fabbbb6ba77e3afe006e70cd624b",
+          "scenario": "throwing-reporter",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 1,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "6f30fabbbb6ba77e3afe006e70cd624b",
+          "scenario": "throwing-reporter",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-throwing-reporter",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 6394,
+          "sha256": "162dfffd8961549c04f0141959e15b24b37d254025c9492f35247c7fd1df560d"
+        },
+        "app-events.jsonl": {
+          "bytes": 8095,
+          "sha256": "d5abbac8895f34bffa607ccc27f9d924191a59a54319792f62bc8e76f84fa0a0"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1278,
+          "sha256": "e2546ba00a7736c1335d17f4ce9fd437de08c4d13773258658758349f385b30d"
+        },
+        "result.json": {
+          "bytes": 19970,
+          "sha256": "941118a46e0a596d07091456c82168488e44b87c99aba826d6dd03a06cecbb06"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "throwing-reporter",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 1,
+        "retryAttempts": 2,
+        "pendingSnapshots": [false, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "render:recovered",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-cleanup-effect",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 4,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after cleanup-effect",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "abedf0854b7cfa53082379c59e3df33b",
+          "scenario": "cleanup-effect",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "abedf0854b7cfa53082379c59e3df33b",
+          "scenario": "cleanup-effect",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-cleanup-effect",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 5968,
+          "sha256": "7432d2f62844818cac0b93a15106e8ef8dede341676b19e2dfbf147d6151eec7"
+        },
+        "app-events.jsonl": {
+          "bytes": 6659,
+          "sha256": "7e99a05ea1390723a5d4a55ca97111f60d80286693a533315dcf1921b15adb7f"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1134,
+          "sha256": "f720e803a16b9f5a1da86a23dddd0134c2dcf7b720d8f6978e06af2e3594c507"
+        },
+        "result.json": {
+          "bytes": 16785,
+          "sha256": "43c7a4b24a2bbb8545c5d18adf49341a6ce28ce50206cb106fb7501252945e5d"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "cleanup-effect",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:0",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:0"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 0,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-cleanup-ref",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 4,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [7]
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [8]
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Survivor after cleanup-ref",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "bfdc59c128154d386f53c7df2e925380",
+          "scenario": "cleanup-ref",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": true,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "survivor": {
+            "nodes": 2,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 2,
+              "set": 1,
+              "insert": 2,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "bfdc59c128154d386f53c7df2e925380",
+          "scenario": "cleanup-ref",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-cleanup-ref",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 5395,
+          "sha256": "2626eef3ba96ae832f01cd8de1dab2b8aaa2a583c1872f5d307c7be89c47d0a6"
+        },
+        "app-events.jsonl": {
+          "bytes": 6632,
+          "sha256": "126bab87383775ae2b6e6ae37a7a3bd276fc926573c4d46fa7ef6ebbb926ee45"
+        },
+        "before.png": {
+          "bytes": 11425,
+          "sha256": "32819e4e71e84bba74c40d3ab180cd0fa31386f78399f89cc74dc4f962690448"
+        },
+        "react-behavior.json": {
+          "bytes": 1131,
+          "sha256": "d0299a2cbb00dd41b9def36945352b978833f9d499ac63f3168f3f499499fdf7"
+        },
+        "result.json": {
+          "bytes": 16175,
+          "sha256": "ae6a26c4bb789247eeb5a9e3c23d588970004347478f5584a9658f1a34798f59"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "cleanup-ref",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": true,
+        "originalTerminalIdentityVerified": true,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "pendingSnapshots": [false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:0",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:0"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 0,
+            "insert": 5,
+            "remove": 1
+          }
+        },
+        "survivor": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 2,
+            "set": 1,
+            "insert": 2,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "react-behavior",
+      "scenario": "behavior-transition",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "React behavior",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "State 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Run behavior",
+              "disabled": false,
+              "style": {
+                "width": 240.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "lastApplicationEvents": [
+        {
+          "nonce": "c82db4540d64fa04fe7bb37a7d0a7bdf",
+          "scenario": "transition",
+          "type": "click",
+          "sequence": 3,
+          "qualified": true,
+          "terminalRejected": false,
+          "boundaryErrors": 0,
+          "recoveredErrors": 0,
+          "transitionAtOrdinaryFlush": false,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c82db4540d64fa04fe7bb37a7d0a7bdf",
+          "scenario": "transition",
+          "type": "closed",
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-behavior-transition",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 8706,
+          "sha256": "15d2db0851c18ea3d239287db9c0b52e8e5d2440e1a214e506eebdb950e338d8"
+        },
+        "app-events.jsonl": {
+          "bytes": 6597,
+          "sha256": "bd8a1627248b1013fe7e16794dcbcd2bd780bdfc85cdaa736c02d0aca00d3c77"
+        },
+        "before.png": {
+          "bytes": 8939,
+          "sha256": "d19ad77bed2d362995907d5f9dc69be16c200e2bcf6e51870a155fd91f3e4666"
+        },
+        "react-behavior.json": {
+          "bytes": 1103,
+          "sha256": "997be8b02870fae49ea95f7ad100339fefbb276c365a17c7bc19ea73ff12a23b"
+        },
+        "result.json": {
+          "bytes": 17879,
+          "sha256": "2f9a5400505c9825da4ceff59bc2927ede148b89e175401fce9e3bcc3baa27b5"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "applicationAssertions": {
+        "schema": 1,
+        "scenario": "transition",
+        "status": "passed",
+        "qualified": true,
+        "terminalRejected": false,
+        "originalTerminalIdentityVerified": false,
+        "boundaryErrors": 0,
+        "recoveredErrors": 0,
+        "retryAttempts": 0,
+        "transitionAtOrdinaryFlush": false,
+        "pendingSnapshots": [false, true, false],
+        "buttonAttachments": 1,
+        "buttonCleanups": 1,
+        "traces": [
+          "label:layout:0",
+          "button:attach",
+          "owner:layout",
+          "label:passive:0",
+          "owner:passive",
+          "label:layout-cleanup:0",
+          "label:layout:1",
+          "label:passive-cleanup:0",
+          "label:passive:1",
+          "owner:layout-cleanup",
+          "label:layout-cleanup:1",
+          "button:cleanup",
+          "owner:passive-cleanup",
+          "label:passive-cleanup:1"
+        ],
+        "diagnostics": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 2,
+          "mutations": {
+            "create": 5,
+            "set": 1,
+            "insert": 5,
+            "remove": 0
+          }
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        }
+      }
+    }
+  ],
+  "sourceStability": "Every recorded source/harness hash plus host, generated modules and AOT binaries was checked before and after each run. Manifest input hashes were separately validated. No product or harness source changed during qualification.",
+  "historicalEvidenceUnchanged": {
+    "tests/native/evidence/react-linux-development-aot.json": {
+      "bytes": 32987,
+      "sha256": "3d3100cfc04d1f9f3098a9feb9475af4e8c7f785195e9330105bd4b170e79da5"
+    },
+    "tests/native/evidence/react-events-linux-development-aot.json": {
+      "bytes": 146514,
+      "sha256": "214b43e55eb7226e7a025652304019a556c27afb04636621142acdd20b13afcf"
+    },
+    "tests/native/evidence/react-behavior-linux-development-aot.json": {
+      "bytes": 125633,
+      "sha256": "015b281e3e3e7410fc65ec65b417185ad1e533b087f7446d0c34c51b7ef94405"
+    },
+    "benchmarks/evidence/react-linux-lifecycle.json": {
+      "bytes": 26506,
+      "sha256": "743bb6553c5c745f2635c2b21701c70d9ae9728f10725a62099dec91b7c70a0c"
+    }
+  },
+  "rawArtifacts": "task-artifacts/bn3-react-ci",
+  "diagnostics": [
+    {
+      "path": "source-gate/commands.log",
+      "result": "A new real bundler control failed before any native launch: the pinned compiler requires --outdir for external source maps. The recipe was corrected; no assertion was weakened.",
+      "bytes": 1389,
+      "sha256": "883b637c8513820138597cc9b84bada688976d727472558b1743f1dbec68bacc"
+    },
+    {
+      "path": "source-gate/commands-production-defined.log",
+      "result": "All 4 pinned-command/script-shadow/negative tests passed, 51 expect calls; includes actual production dependency selection, generated module execution and malformed source rejection.",
+      "bytes": 794,
+      "sha256": "062427ca082b8b332cc7f5610811011ae7dad867d987c42479b715f1e2b9a85e"
+    },
+    {
+      "path": "preflight-schema-diagnostic.log",
+      "result": "The local qualification preflight initially read toolchain defaults instead of the manifest compileCommand field. It rejected before launching an application; the local record reader was corrected.",
+      "bytes": 355,
+      "sha256": "795c37fbd7f4b574aa5d30e0b473f08661fa6d6b350555d88940d881a0f986a7"
+    }
+  ],
+  "preliminaryDevelopmentFrameworkRun": {
+    "path": "preliminary-development-react/recipe-evidence.json",
+    "bytes": 180960,
+    "sha256": "6505652ea948e7a34969bd2bb4a74f34dcec2a58161ea6b7684ba53e2e47daff",
+    "status": "26 correctness passes retained separately; the default bundle selected development React and was not accepted as the production-framework recipe."
+  },
+  "frameworkModeControl": {
+    "path": "framework-mode-controls.json",
+    "bytes": 906,
+    "sha256": "0c2aa9f035530a963aa2a467e92004b989dc2d864bee167a770867fc88979055",
+    "result": "Actual isolated dependency code selected development with default flags or --production under caller NODE_ENV=test; the explicit definition selected production. No original failure or artifact was overwritten."
+  },
+  "historicalSolidFrameworkInspection": {
+    "scope": "Historical qualified Solid generated module inspection only. No new Solid native run or production-framework claim.",
+    "manifest": {
+      "path": "task-artifacts/solid-ci/solid-package/manifest.json",
+      "bytes": 17237,
+      "sha256": "95ff3bac8331498102869e20ad92c07fb2a22b95e51261e3f87d128c1623fda1"
+    },
+    "generatedModule": {
+      "path": "development/application.js",
+      "bytes": 117132,
+      "sha256": "22115f74b427f444ff9fef62d8d9f0c495bc32cb8ec4b4ce3aea462182df7ba6"
+    },
+    "sourceMap": {
+      "bytes": 275171,
+      "sha256": "b8277ac6204f8115f5a16e85292d87a6835f1715f7da0cc5584e82f247338cdc"
+    },
+    "selectedFrameworkModules": [
+      "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/dev.js",
+      "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/dev.js"
+    ],
+    "sourceBase": "76a89923ec86daf8e402bafddd137a93bae449ad",
+    "unchangedBuildAndAdapterSource": {
+      "packages/renderer/package.json": {
+        "bytes": 192,
+        "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+      },
+      "packages/renderer/src/event-properties.ts": {
+        "bytes": 2075,
+        "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+      },
+      "packages/renderer/src/index.ts": {
+        "bytes": 910,
+        "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+      },
+      "packages/renderer/src/input-intent.ts": {
+        "bytes": 1698,
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+      },
+      "packages/renderer/src/native-tree.ts": {
+        "bytes": 6235,
+        "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+      },
+      "packages/renderer/src/nodes.ts": {
+        "bytes": 8443,
+        "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+      },
+      "packages/renderer/src/order.ts": {
+        "bytes": 956,
+        "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+      },
+      "packages/renderer/src/root.ts": {
+        "bytes": 9861,
+        "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+      },
+      "packages/renderer/src/window-lifetime.ts": {
+        "bytes": 1220,
+        "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+      },
+      "packages/solid/package.json": {
+        "bytes": 310,
+        "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+      },
+      "packages/solid/src/index.ts": {
+        "bytes": 604,
+        "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+      },
+      "packages/solid/src/jsx.ts": {
+        "bytes": 868,
+        "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+      },
+      "packages/solid/src/mount.ts": {
+        "bytes": 1216,
+        "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+      },
+      "packages/solid/src/renderer.ts": {
+        "bytes": 964,
+        "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+      },
+      "scripts/solid-build.ts": {
+        "bytes": 1559,
+        "sha256": "7253e6a82a9aaf3a853b9fd0aed7305300e4907a1a30f6842b63b4442decd75d"
+      },
+      "scripts/solid/preset.d.ts": {
+        "bytes": 139,
+        "sha256": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228"
+      },
+      "scripts/solid/transform.ts": {
+        "bytes": 642,
+        "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+      }
+    },
+    "settings": {
+      "BunBuildConditions": ["browser"],
+      "BunBuildExplicitNodeEnvDefinition": null,
+      "BabelUniversalTransformDev": false
+    },
+    "result": "The recorded module includes development reactive and universal distributions. Babel dev:false does not establish dependency production mode."
+  },
+  "artifactSizeDiagnostic": {
+    "path": "production-bundle-comparison.json",
+    "bytes": 3294,
+    "sha256": "277df3b9bd539d99a024692ee4fff00dc5ae1bed11930e78d67043f8d11927bb",
+    "scope": "Single-build byte sizes before/after explicit production dependency selection and bundler minification; no startup, runtime latency or matched framework speed claim."
+  },
+  "limits": [
+    "The immutable protocol4 native host is development profile; hosted release-host qualification is still required. No local release performance or matched cross-framework timing claim.",
+    "The unchanged react-workload entry was transformed, machine-code compiled and inspected here, but its 1,000-cycle/WeakRef execution was not repeated locally. Its existing required hosted gate remains, and shared retention issue287 remains open.",
+    "Twenty-six cases passed once each against the final generated-module recipe. This does not erase historical transition/startup/close failures bound to earlier sources.",
+    "XTest/software Vulkan and native paint traversal do not qualify physical input, hardware-GPU performance, display-presentation latency, IME, accessibility or macOS/Windows React behavior.",
+    "Public zero-ownership, ref/effect cleanup and process exit are bounded assertions; they are not proof that all managed or native allocations are reclaimed."
+  ]
+}

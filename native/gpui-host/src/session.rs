@@ -1,12 +1,13 @@
 use crate::{
     channel::EventSink,
     evidence::Evidence,
+    services,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
     Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, Operation,
-    PROTOCOL_VERSION, RequestId, Tree, WindowId,
+    PROTOCOL_VERSION, RequestId, ServicePolicy, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -38,10 +39,16 @@ pub(crate) struct Session {
     finishing: Rc<Cell<bool>>,
     events: EventSink,
     evidence: Evidence,
+    policy: ServicePolicy,
 }
 
 impl Session {
-    pub(crate) fn new(events: EventSink, evidence: Evidence, cx: &mut App) -> Self {
+    pub(crate) fn new(
+        events: EventSink,
+        evidence: Evidence,
+        policy: ServicePolicy,
+        cx: &mut App,
+    ) -> Self {
         let windows = Rc::new(RefCell::new(BTreeMap::<WindowId, WindowEntry>::new()));
         let finishing = Rc::new(Cell::new(false));
         cx.on_window_closed({
@@ -81,6 +88,7 @@ impl Session {
             finishing,
             events,
             evidence,
+            policy,
         }
     }
 
@@ -136,8 +144,10 @@ impl Session {
                             Capability::InputRevisions,
                             Capability::LayoutV1,
                             Capability::InteractionsV1,
+                            Capability::WindowDisplayV1,
                         ],
                         limits: Limits::default(),
+                        service_policy: self.policy,
                     },
                     cx,
                 );
@@ -180,6 +190,7 @@ impl Session {
                 ..
             } => self.batch(id, window_id, base_revision, operations, cx),
             Command::Close { window_id, .. } => self.close(id, window_id, cx),
+            Command::DisplaySnapshot { window_id, .. } => self.display_snapshot(id, window_id, cx),
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -194,6 +205,7 @@ impl Session {
             width,
             height,
         } = request;
+        self.evidence.startup("open_dispatched", id, window_id);
         if self.windows.borrow().len() >= MAX_WINDOWS {
             self.error(
                 id,
@@ -220,6 +232,7 @@ impl Session {
         let events = self.events.clone();
         let evidence = self.evidence.clone();
         let bounds = Bounds::centered(None, size(px(width as f32), px(height as f32)), cx);
+        self.evidence.startup("open_window_enter", id, window_id);
         let result = cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -231,10 +244,16 @@ impl Session {
                 ..Default::default()
             },
             move |window, cx| {
+                evidence.startup("root_constructor_enter", id, window_id);
                 evidence.renderer(window_id, window.gpu_specs());
-                cx.new(|cx| NativeView::new(window_id, view_state, events, evidence, window, cx))
+                let view = cx.new(|cx| {
+                    NativeView::new(window_id, view_state, events, evidence.clone(), window, cx)
+                });
+                evidence.startup("root_constructor_returned", id, window_id);
+                view
             },
         );
+        self.evidence.startup("open_window_returned", id, window_id);
         match result {
             Ok(handle) => {
                 self.windows
@@ -243,6 +262,7 @@ impl Session {
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
                 cx.activate(true);
+                self.evidence.startup("activation_returned", id, window_id);
                 self.events.send(
                     Event::Opened {
                         id,
@@ -252,6 +272,8 @@ impl Session {
                     },
                     cx,
                 );
+                self.evidence
+                    .startup("opened_submit_returned", id, window_id);
             }
             Err(error) => {
                 state.borrow_mut().active = false;
@@ -330,6 +352,38 @@ impl Session {
                 "native window update failed",
                 cx,
             );
+        }
+    }
+
+    fn display_snapshot(&self, id: RequestId, window_id: WindowId, cx: &mut App) {
+        if !self.policy.window_display {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "window display access was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        match handle.update(cx, |_, window, cx| services::display_snapshot(window, cx)) {
+            Ok(Ok(snapshot)) => self.events.send(
+                Event::DisplaySnapshot {
+                    id,
+                    window_id,
+                    snapshot,
+                },
+                cx,
+            ),
+            Ok(Err((code, message))) => self.error(id, code, message, cx),
+            Err(_) => self.error(
+                id,
+                ErrorCode::InvalidHandle,
+                "native window is no longer available",
+                cx,
+            ),
         }
     }
 

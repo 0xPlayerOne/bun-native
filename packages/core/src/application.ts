@@ -6,6 +6,15 @@ import {
   type WindowEvent,
 } from '@bun-native/runtime'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
+import {
+  checkServiceCancellation,
+  NativeServiceError,
+  serviceCapabilities,
+  serviceSignal,
+  type NativeDisplaySnapshot,
+  type ServiceCapabilities,
+  type ServiceRequestOptions,
+} from './services.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -31,6 +40,7 @@ class Application implements NativeApplication {
   readonly limits: Readonly<Limits>
   // NativeHost.launch has negotiated every mandatory protocol feature.
   readonly capabilities = REQUIRED_CAPABILITIES
+  readonly serviceCapabilities: Readonly<ServiceCapabilities>
   readonly windows = new Map<number, Window>()
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
@@ -45,6 +55,7 @@ class Application implements NativeApplication {
 
   constructor(readonly host: NativeHost) {
     this.limits = host.limits
+    this.serviceCapabilities = serviceCapabilities(host.servicePolicy)
     this.closed = this.consume()
     // Keep background failures observable through closed/shutdown without an
     // unhandled rejection while the application is still installing listeners.
@@ -331,6 +342,40 @@ class Window implements NativeWindow {
     if (node.element.kind !== 'input')
       throw new NativeStateError('invalid_state', 'Only an input has an edit state')
     return Object.freeze({ value: node.element.value, revision: node.inputRevision })
+  }
+
+  async displaySnapshot(options: ServiceRequestOptions = {}): Promise<NativeDisplaySnapshot> {
+    const signal = serviceSignal(options)
+    this.assertActive()
+    checkServiceCancellation(signal)
+    return this.application.enqueue(async () => {
+      this.assertActive()
+      checkServiceCancellation(signal)
+      try {
+        const response = await this.application.host.send({
+          type: 'display_snapshot',
+          window_id: this.id,
+        })
+        // Cancellation and owner revocation suppress data after a submitted
+        // read, while the transport still drains and validates its response.
+        this.assertActive()
+        checkServiceCancellation(signal)
+        return Object.freeze({
+          bounds: Object.freeze({ ...response.snapshot.bounds }),
+          scaleFactor: response.snapshot.scale_factor,
+        })
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        checkServiceCancellation(signal)
+        if (
+          error instanceof NativeCommandError &&
+          (error.code === 'permission_denied' || error.code === 'service_unavailable')
+        )
+          throw new NativeServiceError(error.code, error.message)
+        throw error
+      }
+    })
   }
 
   async close(): Promise<void> {

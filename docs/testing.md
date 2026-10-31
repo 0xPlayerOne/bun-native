@@ -57,6 +57,8 @@ The Linux lane builds the release profile of `bun-native-host` from the root Car
 
 The development session first runs `tests/native/lifecycle.ts` under a 45-second process-group deadline. It checks five create/update/close/reopen cycles within one actual GPUI host, rejects invalid-state commands and verifies idempotent shutdown and exit zero. This is native lifecycle evidence; it does not assert visible pixels or OS input.
 
+That smoke alone enables the [bounded startup phase trace](native-startup-diagnostics.md), retained as `lifecycle-events.jsonl`. Its direct transport write/flush/response timestamps, native first-window phases and bounded failure stderr distinguish missing progress without changing the 5-second request deadline. Other input and benchmark scenarios do not inherit this diagnostic mode. The original hosted first-open timeout and exact unchanged-source comparison remain in the linked evidence; a later passing run does not erase or explain it.
+
 The public API session launches independent processes for three scenarios: a pointer click updates the label, text input preserves the complete fresh session value, and a click followed by Enter produces two distinct callbacks and two tree revisions. Each scenario requires the application event and a complete native tree snapshot with exact node properties, ordering and revisions. An empty-root paint cannot establish initial readiness. The stale-input fixture separately sends an obsolete input revision through the lower-level runtime, requires its native rejection, and verifies that an unrelated label update preserves the newer native text. The AOT race entry is compiled separately; a development run cannot qualify its AOT behavior.
 
 Every normal interaction captures the owned window before and after input, closes through the window manager, and requires exit zero with no observed live or unreaped descendants. `development` includes the five same-host lifecycle cycles and the stale-input fixture; `aot` runs the three public-window scenarios, while `aot-input-race` runs the separately inspected negative fixture.
@@ -111,6 +113,139 @@ bash -n scripts/quality/native-linux-session.sh
 The process-tree safety case is explicitly skipped if the local PID namespace cannot be reconciled with `/proc`. Hosted Ubuntu runs it in the real namespace. The native GUI lane fails, rather than reporting a pass, when the actual display/input/paint/cleanup requirements are unavailable or unfulfilled.
 
 Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
+
+## Solid native acceptance
+
+The required Linux release-host workflow compiles the counter, revision-aware
+input-intent and shared interaction fixtures through the common AOT helper. Each
+manifest fingerprints the original Solid and shared-renderer sources, JSX build
+steps and the exact generated development module. The same module runs through
+ordinary Bun and the inspected machine-code compiler; neither build invokes Cargo.
+
+`tests/solid/build.test.ts` runs the actual pinned builder and a conditional-export
+negative under `NODE_ENV=test`. It requires production dependency selection and
+constant folding from the explicit definition, proves that export conditions
+alone do not produce that result, and inspects the actual counter source map for
+production reactive/universal Solid with no development or server distribution.
+This compiler evidence is separate from the twelve actual native passes in the
+[production-module record](../benchmarks/bn2/solid-production-recipe-linux.json).
+Both execution modes use that same production framework module; development
+labels the ordinary Bun runtime. The earlier development-framework artifacts and
+their correctness records remain unchanged.
+
+`tests/native/solid-window.py` supplies independent full-tree expectations to the
+existing OS input/process supervisor. Six scenarios run in each mode: keyed
+counter click, all nonce text edits, delayed input intent, keyboard activation,
+caret insertion and selection replacement. They require real XTest delivery,
+application events, native GPUI paint, OS close and bounded owner/process cleanup.
+Hosted artifacts retain compiler/transform logs, manifests, generated modules,
+controller reports and screenshots even when a scenario fails.
+
+Local source/fixture evidence is recorded in [the Solid integration record](bn2-solid-integration.md).
+A separate [current-main integration control](../tests/native/evidence/solid-main-integration-linux.json)
+binds the newer native dependency lock to development/AOT five-window startup
+traces and actual caret editing. Its four narrow cases supplement the prior
+twelve-case production-module record, whose historical hashes remain unchanged.
+A configured job is not a passed target run. These correctness cases do not
+resolve [the retained-object investigation](https://github.com/0xPlayerOne/bun-native/issues/287)
+or establish comparative performance, physical input, display presentation or
+macOS/Windows native support. The original WeakRef oracle remains unchanged.
+
+The headless listener-replacement test waits for `root.flush()` before requesting
+its next peer event, preserving the expected replacement callback and cleanup
+counts. A separate real-IPC regression holds the framework continuation after
+the native acknowledgement: an event received before replacement publication
+must not acquire the later callback's authority. This makes both orderings
+explicit without changing the shared renderer or extending the existing bounds.
+
+## React adapter, native input and lifecycle
+
+The common AOT helper transforms all four React entries with the pinned Bun
+bundler, retains `development/application.js` and its source map, and compiles
+that same module to machine code. Required native development commands execute
+the recorded generated module; AOT commands execute the corresponding inspected
+binary. Manifests record original source/configuration hashes, generated-module
+hashes and the exact commands. This recipe preserves the same shared renderer,
+native host and assertions used by the framework fixtures.
+React dependency selection is explicitly production in both runtime modes; the
+pinned bundler otherwise folds dependency branches before the AOT step. A real
+dependency control verifies the definition even when the caller uses `NODE_ENV=test`.
+The [integrated recipe record](../tests/native/evidence/react-hosted-recipe-linux.json)
+binds 26 passing local native runs to the merged foundation, all four inspected
+React entries and 84 source/harness hashes. The shared renderer is byte-identical
+to the Solid foundation. The counter, event and behavior cases ran in both modes
+with the explicitly identified development host and software GPU; the workload
+was compiled and inspected, while its execution remains a separate hosted gate.
+
+`tests/react/*.test.tsx` runs the pinned React reconciler over the public core and
+a real headless protocol subprocess. It covers state batching, keyed identity,
+native input revisions, callback-subscription stability, refs/effects, bounded
+commit barriers and disposal during a commit. Real React error boundaries must
+retain a usable fallback; a recoverable concurrent retry must retain its root.
+A throwing recovery reporter fails that root while leaving a sibling usable.
+Uncaught effect/ref-cleanup errors must reject disposal after native ownership
+has been released. These tests do not render GPUI.
+The scheduling suite also requires non-suspending transitions to commit without
+requesting native view animations, while a `ViewTransition` native ref must fail
+explicitly and release its root.
+
+`tests/react/propagation.test.tsx` adds six actual-IPC cases for the shared
+capture/target/bubble contract. They exercise a capture state update followed by
+fresh target/bubble closures on the original route, all eight native event
+families, both propagation-stop methods, independently revoked phases while a
+target callback and another event remain queued, and ancestor input observations
+that update React state without echoing text back to the native widget. The
+previous React callback mapping fails the queued-phase regression by aborting the
+still-live target callback; the negative-control log is retained with the local
+event evidence. These deterministic protocol-peer cases establish JavaScript
+dispatch and lifecycle behavior, not OS delivery.
+
+`tests/native/react-window.py` drives `examples/react-counter/main.tsx` through the
+existing owned-process X11 supervisor. Required native CI runs both counter-click
+and counter-input against development Bun and the inspected AOT `react` entry,
+using its one release host. Full native paint snapshots check keyed reuse and
+input revisions. Application assertions require a callback to remain active
+through rerender, all row/effect cleanup on OS close and zero owned children at
+exit. The [local interaction record](../tests/native/evidence/react-linux-development-aot.json)
+is separately bound to its development-host source and binary hashes.
+
+The shared `tests/native/renderer-interactions.ts` oracle and Python expectation
+wrapper run React's native keyboard, caret and selection view in development and
+inspected AOT. Every scenario checks complete native trees, actual pointer/focus/
+key/input events, the full expected route, fixed mutation counts, input revisions
+and OS-close cleanup. JavaScript propagation stops must not undo native Enter
+activation. The [earlier protocol4 React record](../tests/native/evidence/react-events-linux-development-aot.json)
+retains ten passing runs: these six scenarios plus four existing counter runs.
+All use the same explicitly identified development host and software GPU, with
+source/harness/artifact fingerprints checked before and after each run. Required
+hosted CI repeats them on its release host; local evidence does not establish
+release performance or a macOS/Windows native result.
+
+`tests/native/react-behavior.tsx` and its independent Python tree oracle exercise
+eight actual native cases in each mode: mount/update/unmount hooks and refs,
+boundary fallback and recovery, transient concurrent retry, a throwing recovery
+reporter, throwing effect/ref cleanups, and a non-suspending transition. Terminal
+errors preserve exact object identity and must leave an independently usable
+survivor root in the same window. Each run requires real OS activation, complete
+initial/final native paint, the application assertions and clean OS close.
+The [behavior matrix](react-behavior.md) documents completion boundaries and
+limitations; `flush()` is not a general transition-drain API. The required native
+lane compiles `--entry react-behavior` once and runs all 16 cases against its single
+release-profile host. The [local record](../tests/native/evidence/react-behavior-linux-development-aot.json)
+identifies 16 passing cases, the original transition-hook failure that they
+correct, and separately retained earlier execution failures.
+
+The [React native workload](../benchmarks/REACT.md) uses the same framework-neutral
+workload as the Solid/direct-core experiments. Each mode performs 1,000 individual
+state updates, 1,000 values coalesced into 100 updates, 1,000 keyed rotations and
+1,000 complete mount/update/dispose cycles. Exact mutation counts, 32,000 row-owner
+cleanups, two fixed WeakRef observations and all six public ownership counts are
+checked. Separate small calibration processes require complete expected native
+paint trees and actual GPU descriptions. The required native lane retains the
+calibration and raw timing/heap reports, while the [committed local evidence](../benchmarks/evidence/react-linux-lifecycle.json)
+uses a development-profile protocol-2 host. Single-run acknowledgement timings
+are diagnostic; they do not establish a release budget, presentation latency or
+a cross-framework speed comparison.
 
 ## Real native startup, crash and scheduling regressions
 

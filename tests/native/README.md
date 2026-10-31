@@ -21,6 +21,8 @@ Its output directory must be new, and the application command is explicit.
 | `aot-core-lifecycle`   | Compiled `core-lifecycle`              | The same public lifecycle and cancellation scenario through Bun AOT.                                                                                                     |
 | `event-throughput`     | `bun tests/native/event-throughput.ts` | Exactly 1,000 OS-delivered input edits, every sequence/revision/value checked, no input echo, final native paint and clean close.                                        |
 | `aot-event-throughput` | Compiled `event-throughput`            | The same fixed input stream through Bun AOT.                                                                                                                             |
+| `services`             | `bun tests/native/services.ts`         | Native default denial, allowed display read checked against the isolated X server, cancellation, stale owners, actual button input, matching paint and shutdown.         |
+| `aot-services`         | Compiled `services`                    | The same native service operation and lifecycle through Bun AOT.                                                                                                         |
 | `--`                   | An explicit benchmark command          | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
 
 The input driver verifies that the target window belongs to the launched
@@ -63,11 +65,11 @@ native runtime behavior; the session modes above exercise that separately.
 
 ## Compile and run AOT entries
 
-The shared build helper accepts `native-window`, `input-race`, `bridge`,
-`javascript`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`,
-`interactions` and `platform-smoke`. It records source/configuration and executable
-hashes, the exact compiler command, compiled-program metadata and Linux JIT
-omission evidence. `native-window` bundles a copy of the native host for the
+The shared build helper's [entry table](../../experiments/aot-gpui/README.md)
+covers public-core, platform, Solid and React fixtures. It records
+source/configuration and executable hashes, the exact compiler command,
+compiled-program metadata and target-specific JIT omission evidence.
+`native-window` bundles a copy of the native host for the
 distribution/baseline package. The other entries reference the existing host by
 path and hash.
 
@@ -102,6 +104,60 @@ records the requested execution mode and does not independently determine
 whether an arbitrary supplied executable contains Bun AOT code.
 
 ## Evidence and limits
+
+### React adapter
+
+Build each fixture with the common AOT helper before executing its two modes.
+Development uses `bun PACKAGE/development/application.js`, and AOT uses
+`PACKAGE/ENTRY`. The manifest fingerprints the exact generated module supplied
+to the machine-code compiler, as well as its original source and configuration.
+The counter, interactions, behavior and workload entries all use this recipe.
+The [integrated recipe record](evidence/react-hosted-recipe-linux.json) records
+26 actual local counter/event/behavior runs on the unchanged protocol4 development
+host. All four entries were compiled and inspected; the unchanged workload's
+execution and fixed retention observations remain a separate hosted gate.
+
+`tests/native/react-window.py` supplies independent complete-tree expectations for
+`examples/react-counter/main.tsx`, then executes the existing owned-process input
+driver. Its `counter-click` scenario requires one label update, one retained keyed
+move and one deletion with React row cleanup. `counter-input` requires every native
+edit revision and the final input/echo values. Both require OS close and effect/
+listener cleanup. The required native job runs both with development Bun and the
+inspected `--entry react` AOT executable against its already-built release host.
+See the [adapter instructions](../../packages/react/README.md) and
+[local source-bound evidence](evidence/react-linux-development-aot.json). That local
+record uses a development-profile host and does not qualify release performance.
+
+The protocol4 follow-up uses `tests/native/react-interactions.tsx` with the common
+`renderer-interactions.ts` oracle. Run `tests/native/renderer-interactions.py
+--renderer React --scenario keyboard|caret|selection --mode development|aot
+--output NEW_DIRECTORY -- APPLICATION` inside the existing isolated native
+session. Pass the inspected `--entry react-interactions` executable in AOT mode.
+The scenarios require real pointer/focus/keyboard events, both JavaScript
+propagation-stop policies, caret insertion or selection replacement, exactly two
+native Sets and a complete expected paint tree. Every observed registration signal
+must be revoked after OS close, with all public ownership counts zero. The helper
+adds no process supervisor or framework event-dispatch implementation.
+
+The [protocol4 event record](evidence/react-events-linux-development-aot.json) binds
+those six development/AOT runs and the four counter regressions to exact
+protocol4 source and binary hashes. Global native sequence numbers now include
+focus, pointer and key notifications; typed edit counts remain independently
+checked by input revisions. The shared core validates global ordering.
+
+`react-behavior.tsx` supplies the separate eight-case React behavior qualification.
+Run `python3 tests/native/react-behavior.py --scenario SCENARIO --mode
+development|aot --output NEW_DIRECTORY -- APPLICATION` inside the same isolated
+session; AOT uses the inspected `--entry react-behavior` executable. Cases cover
+batched state/reducer updates and hook/ref lifetime, actual boundary fallback and
+recovery, a transient concurrent retry, terminal recovery-reporter/effect/ref
+errors, and a non-suspending transition. The last three failure cases require an
+independent survivor root to update and paint after the failed root releases its
+ownership. The controller asserts exact initial/final trees and the original
+driver's OS-input and child-cleanup contract. `react-behavior.json` records bounded
+effect traces, ref counts, error identity assertions and final ownership. See the
+[behavior and concurrency matrix](../../docs/react-behavior.md) for every scenario
+and the precise transition-completion limit.
 
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.

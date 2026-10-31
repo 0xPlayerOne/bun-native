@@ -1,0 +1,764 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local React lifecycle correctness and acknowledgement diagnostics; development-profile host; not release qualification or a framework comparison.",
+  "recordedAt": "2026-10-31T18:30:39.728129+00:00",
+  "source": {
+    "baseCommit": "e5124a249764ad2e4ba09cb9d3abd42a15ff1025",
+    "uncommittedChangesAtCompilation": true,
+    "hashesUnchangedAfterRuns": true,
+    "files": [
+      {
+        "path": ".bun-version",
+        "bytes": 15,
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+      },
+      {
+        "path": "Cargo.lock",
+        "bytes": 160678,
+        "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 434,
+        "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+      },
+      {
+        "path": "benchmarks/solid/react.tsx",
+        "bytes": 2086,
+        "sha256": "328ebc067938da2f973e4dbd966ca7b403e1049280f1f0e83580bcf76882f554"
+      },
+      {
+        "path": "benchmarks/solid/workload.ts",
+        "bytes": 15179,
+        "sha256": "67693ed4f81868b7e49a267b1598314c63f280966b6e5706ec309edc0865f21c"
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 16009,
+        "sha256": "2e863283b5eba9ab69ee2bbe7773e45e688a02ec386dd9a5b941d032ab2f43e6"
+      },
+      {
+        "path": "bunfig.toml",
+        "bytes": 101,
+        "sha256": "d8c2e64d274d36b77538425312901881ddcd7b3f5e78ca6dda3fcd0e294dd1b0"
+      },
+      {
+        "path": "examples/native-window/content.ts",
+        "bytes": 1766,
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+      },
+      {
+        "path": "examples/native-window/main.ts",
+        "bytes": 1098,
+        "sha256": "dfb562977790bc1f7c36374e16803ca4297c2732b3977fccd1e78e7add82ac62"
+      },
+      {
+        "path": "native/gpui-host/Cargo.toml",
+        "bytes": 628,
+        "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+      },
+      {
+        "path": "native/gpui-host/src/channel.rs",
+        "bytes": 3201,
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+      },
+      {
+        "path": "native/gpui-host/src/evidence.rs",
+        "bytes": 4834,
+        "sha256": "bfb385ec618f75ea21b4ac9209aac3895b99fecb530b15f59f7d962c8cdce2df"
+      },
+      {
+        "path": "native/gpui-host/src/input.rs",
+        "bytes": 19143,
+        "sha256": "35f5e1f3b5c7e2807566013e1d781d37be1da54fef047eae0cef2beecf6bdbea"
+      },
+      {
+        "path": "native/gpui-host/src/input/binding.rs",
+        "bytes": 2675,
+        "sha256": "2f61a306b211c3208a51b35eb8fda800fe5ceb71a82f75c58903779015075d72"
+      },
+      {
+        "path": "native/gpui-host/src/input/paint.rs",
+        "bytes": 5796,
+        "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+      },
+      {
+        "path": "native/gpui-host/src/main.rs",
+        "bytes": 2539,
+        "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+      },
+      {
+        "path": "native/gpui-host/src/session.rs",
+        "bytes": 11554,
+        "sha256": "55587241bf6b9ca4d0e3e0027a25b1cfb425b5535d1e3b52071c28f380035c68"
+      },
+      {
+        "path": "native/gpui-host/src/state.rs",
+        "bytes": 388,
+        "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+      },
+      {
+        "path": "native/gpui-host/src/style.rs",
+        "bytes": 1568,
+        "sha256": "78310951954517b10a1575798b4b9d9a00e3874279a26aaca72490e329814bc4"
+      },
+      {
+        "path": "native/gpui-host/src/view.rs",
+        "bytes": 8990,
+        "sha256": "245dea7986c31ffba598836f64e4f40e5edbabee1349b6e70ed00ff6d0568c01"
+      },
+      {
+        "path": "native/protocol/Cargo.toml",
+        "bytes": 225,
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+      },
+      {
+        "path": "native/protocol/src/framing.rs",
+        "bytes": 3685,
+        "sha256": "84aac62624b49798e88beccf84551e6534e46ad5ca1c71a74134a05256f95610"
+      },
+      {
+        "path": "native/protocol/src/lib.rs",
+        "bytes": 402,
+        "sha256": "a4426bedb7b9e5848537a1270884afcbdaf3ce63ad72d10f621e81aef04e4861"
+      },
+      {
+        "path": "native/protocol/src/security_tests.rs",
+        "bytes": 2133,
+        "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+      },
+      {
+        "path": "native/protocol/src/tests.rs",
+        "bytes": 9530,
+        "sha256": "627932f6be2dd267866bdfd345b7db58fa5a41229aebddaebde736c1af41dc2a"
+      },
+      {
+        "path": "native/protocol/src/tree.rs",
+        "bytes": 14053,
+        "sha256": "55aa26d2c25055cab4cd4459dd4622587e4a2377ff780f9affc6812f3ceab4f1"
+      },
+      {
+        "path": "native/protocol/src/tree/tests.rs",
+        "bytes": 13131,
+        "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+      },
+      {
+        "path": "native/protocol/src/wire.rs",
+        "bytes": 16179,
+        "sha256": "fcffff41db7407c00183a1ae76772f567467c76671738ca309f526f12b5e5856"
+      },
+      {
+        "path": "package.json",
+        "bytes": 1726,
+        "sha256": "ebf6a108358721e91ef17ef50ee5f7f99e2ef982225af9328aa5759f6135b97b"
+      },
+      {
+        "path": "packages/core/package.json",
+        "bytes": 234,
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+      },
+      {
+        "path": "packages/core/src/application.ts",
+        "bytes": 15246,
+        "sha256": "91110f20548a8205214d682e94e133608efbc14a0d1241a44f2dcb15b3994943"
+      },
+      {
+        "path": "packages/core/src/index.ts",
+        "bytes": 482,
+        "sha256": "58250b6d85bb271ea9f6fdbafbfc5b10f82ab406fd0cc51e443279e7529130c7"
+      },
+      {
+        "path": "packages/core/src/tree.ts",
+        "bytes": 7898,
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+      },
+      {
+        "path": "packages/core/src/types.ts",
+        "bytes": 3425,
+        "sha256": "eac93a063ea9591134df76c07b5d5ba2adaeb4b9b041dea6fc16a8be0a3a206a"
+      },
+      {
+        "path": "packages/protocol/package.json",
+        "bytes": 129,
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+      },
+      {
+        "path": "packages/protocol/src/elements.ts",
+        "bytes": 2915,
+        "sha256": "f76169c71a390aa44b4f4dbc0a138d5c1a1d6516ca6fdb6dca628dabb9f94d70"
+      },
+      {
+        "path": "packages/protocol/src/framing.ts",
+        "bytes": 2806,
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+      },
+      {
+        "path": "packages/protocol/src/index.ts",
+        "bytes": 444,
+        "sha256": "02d2e3887e52b07496e0d63ab2dfa36b6d71c1eb4504a4315accde128438b24e"
+      },
+      {
+        "path": "packages/protocol/src/messages.ts",
+        "bytes": 9902,
+        "sha256": "8e52c2adc4c22fb7074253f1aed758fe0be310e9f69eabb9e152e2f299f5ecc1"
+      },
+      {
+        "path": "packages/protocol/src/values.ts",
+        "bytes": 1732,
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+      },
+      {
+        "path": "packages/react/package.json",
+        "bytes": 402,
+        "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+      },
+      {
+        "path": "packages/react/src/index.ts",
+        "bytes": 262,
+        "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+      },
+      {
+        "path": "packages/react/src/jsx-dev-runtime.ts",
+        "bytes": 93,
+        "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+      },
+      {
+        "path": "packages/react/src/jsx-runtime.ts",
+        "bytes": 92,
+        "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+      },
+      {
+        "path": "packages/react/src/jsx.ts",
+        "bytes": 1364,
+        "sha256": "da255ec0301c3baf99ea175e087d32bb7b90693824e284e46a89fd0af0677dbb"
+      },
+      {
+        "path": "packages/react/src/mount.ts",
+        "bytes": 6551,
+        "sha256": "e11f0ab0388fcfbe587d17c2a838a3f7f994b7d6ef3b889192f5153f7dd7cd00"
+      },
+      {
+        "path": "packages/react/src/reconciler.ts",
+        "bytes": 7060,
+        "sha256": "0e16e868d9a9cb8a2697e6bca3beb21b5d2895a4fb7a626eb1bf0ffe92a364b1"
+      },
+      {
+        "path": "packages/renderer/package.json",
+        "bytes": 192,
+        "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+      },
+      {
+        "path": "packages/renderer/src/index.ts",
+        "bytes": 763,
+        "sha256": "eddbb7296ea3537ec545d65d71d21dc1c212804c427589af9a9d4afde30b2fb7"
+      },
+      {
+        "path": "packages/renderer/src/input-intent.ts",
+        "bytes": 1698,
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+      },
+      {
+        "path": "packages/renderer/src/native-tree.ts",
+        "bytes": 6235,
+        "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+      },
+      {
+        "path": "packages/renderer/src/nodes.ts",
+        "bytes": 8353,
+        "sha256": "578c9e9bc66aa7ff01bc95722bcfcbbae8b60ef710fd452757694b43b938c86c"
+      },
+      {
+        "path": "packages/renderer/src/order.ts",
+        "bytes": 956,
+        "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+      },
+      {
+        "path": "packages/renderer/src/root.ts",
+        "bytes": 9323,
+        "sha256": "b9cab9272b819d1e708715b1309c68341fb77c6fceb7eca3d991a4c3636fb685"
+      },
+      {
+        "path": "packages/renderer/src/window-lifetime.ts",
+        "bytes": 1220,
+        "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+      },
+      {
+        "path": "packages/runtime/package.json",
+        "bytes": 195,
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "bytes": 13166,
+        "sha256": "2ccbca88fc25b04bf2de3201888dc97bdc5d5d13f01f6b9fc00df3d793a67bcb"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 86,
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+      },
+      {
+        "path": "toolchain.json",
+        "bytes": 1725,
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+      },
+      {
+        "path": "tsconfig.json",
+        "bytes": 1029,
+        "sha256": "0d91a562bb02d0cb7e0ad2552d082139d3e3fede6356bbcdc5cf7c3460525b74"
+      }
+    ]
+  },
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "kernel": "6.18.57",
+    "display": "isolated Xvfb X11 with Openbox",
+    "nativeProtocol": 2,
+    "nativeHostProfile": "dev"
+  },
+  "compiler": {
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "compileArguments": ["compile", "--no-script", "--production", "--explain=json"],
+    "compilationManifestSha256": "207e0516d6a07de38e5dee1f8a0a299c2ea08c9aa5270566c5f6aa99f53d1038"
+  },
+  "application": {
+    "file": "react-workload",
+    "bytes": 72793128,
+    "sha256": "1120cd9d10ab99852d886a93f1181b1227a770307bfcf428a2e6c97e2686a9ff",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 5226724,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    },
+    "runtime": {
+      "jit": "unused",
+      "interpreter": "present",
+      "trimmedProgramFeatures": false
+    },
+    "jitRemovedRanges": 27
+  },
+  "host": {
+    "profile": "dev",
+    "bytes": 110851600,
+    "sha256": "55d2b9312529a01ccc3c4720f03040c4d685e7d51d9b7ece160f8b8e64ad7a49",
+    "placement": "external"
+  },
+  "workloadSourceSha256": "67693ed4f81868b7e49a267b1598314c63f280966b6e5706ec309edc0865f21c",
+  "runs": [
+    {
+      "mode": "development",
+      "status": "passed",
+      "workload": {
+        "iterations": 1000,
+        "rotations": 1000,
+        "mounts": 1000,
+        "rows": 32,
+        "warmup": 20
+      },
+      "methodology": {
+        "timings": "application update submission through public-core acknowledgement",
+        "synchronousSubmission": "only the synchronous setter/batch call; deferred planning is in acknowledgement time",
+        "presentation": "not measured; an acknowledgement is not display presentation",
+        "heap": "live JSC heap after full GC; not cumulative allocation or native heap totals",
+        "nativeRss": "not measured by this runner",
+        "instrumentation": "native evidence disabled for the timed comparison",
+        "retainedProbeObjects": 3000,
+        "lifecycle": "mount, one acknowledged label update, then dispose"
+      },
+      "phases": {
+        "signals": {
+          "acknowledgement": {
+            "count": 1000,
+            "p50Ms": 2.2606009999999515,
+            "p95Ms": 26.936353000000054,
+            "p99Ms": 51.61720499999865,
+            "totalMs": 7729.289300000017
+          },
+          "synchronousSubmission": {
+            "count": 1000,
+            "p50Ms": 0.01680099999975937,
+            "p95Ms": 0.08867300000019895,
+            "p99Ms": 0.44541099999969447,
+            "totalMs": 45.22542400000293
+          },
+          "mutations": {
+            "create": 0,
+            "set": 1000,
+            "insert": 0,
+            "remove": 0
+          }
+        },
+        "coalesced": {
+          "acknowledgement": {
+            "count": 100,
+            "p50Ms": 1.9817069999990053,
+            "p95Ms": 47.076224999998885,
+            "p99Ms": 54.4407570000003,
+            "totalMs": 1064.8676870000072
+          },
+          "synchronousSubmission": {
+            "count": 100,
+            "p50Ms": 0.02036699999916891,
+            "p95Ms": 0.07584800000040559,
+            "p99Ms": 0.13427600000068196,
+            "totalMs": 3.226744999999937
+          },
+          "mutations": {
+            "create": 0,
+            "set": 100,
+            "insert": 0,
+            "remove": 0
+          }
+        },
+        "keyedRotations": {
+          "acknowledgement": {
+            "count": 1000,
+            "p50Ms": 2.1910179999995307,
+            "p95Ms": 32.2739619999993,
+            "p99Ms": 49.48876800000107,
+            "totalMs": 7664.172765999989
+          },
+          "synchronousSubmission": {
+            "count": 1000,
+            "p50Ms": 0.011804000001575332,
+            "p95Ms": 0.04905800000051386,
+            "p99Ms": 0.42748199999914505,
+            "totalMs": 39.469947999990836
+          },
+          "mutations": {
+            "create": 0,
+            "set": 0,
+            "insert": 1000,
+            "remove": 0
+          }
+        }
+      },
+      "lifecycles": {
+        "count": 1000,
+        "p50Ms": 15.83458999999857,
+        "p95Ms": 68.3074820000038,
+        "p99Ms": 117.94074099999852,
+        "totalMs": 24146.712007000053,
+        "rowsCreated": 32000,
+        "rowsDisposed": 32000,
+        "acknowledgedUpdates": 1000,
+        "retainedWeakRefObjects": 3000
+      },
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "heap": {
+        "before": {
+          "phase": "mounted view after 20 warmup updates",
+          "collectionAndWalkMs": 11.082073000000037,
+          "heapSize": 4105594,
+          "heapCapacity": 5835722,
+          "extraMemorySize": 2795722,
+          "objectCount": 16408,
+          "protectedObjectCount": 43,
+          "applicationRss": 53157888
+        },
+        "afterUpdates": {
+          "phase": "view disposed; timing arrays retained",
+          "collectionAndWalkMs": 14.065889999998035,
+          "heapSize": 4884506,
+          "heapCapacity": 6496666,
+          "extraMemorySize": 3669658,
+          "objectCount": 13710,
+          "protectedObjectCount": 43,
+          "applicationRss": 64647168
+        },
+        "afterLifecycles": {
+          "phase": "all views disposed; collection after a core queue fence and timer turn; timing/WeakRef instrumentation retained",
+          "collectionAndWalkMs": 6.119807999995828,
+          "heapSize": 5934911,
+          "heapCapacity": 7551231,
+          "extraMemorySize": 4516863,
+          "objectCount": 17211,
+          "protectedObjectCount": 43,
+          "applicationRss": 71233536
+        }
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "totalWorkloadMs": 42055.027646,
+      "calibration": {
+        "initialNativePaint": {
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+          },
+          "windowId": 1,
+          "treeRevision": 1,
+          "nodeCount": 38,
+          "completeExpectedTreeMatched": true
+        },
+        "finalNativePaint": {
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+          },
+          "windowId": 1,
+          "treeRevision": 42,
+          "nodeCount": 38,
+          "completeExpectedTreeMatched": true
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/development.json",
+          "bytes": 170302,
+          "sha256": "e508c2e9cd80942bd9c01c7aa3b7fd3d7dc5d0d80647decb0294496c12526c8d"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/development.log",
+          "bytes": 144,
+          "sha256": "39053736783b4b81b64daa469b294afcf1a106b51e183be0cf93961754f154ae"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-development.json",
+          "bytes": 37343,
+          "sha256": "bb49027774f97b0a02ec6ad49eb43495fcc8b9fd7879386aaab5457f5566dd08"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-development.jsonl",
+          "bytes": 87104,
+          "sha256": "7d9239ad56483f683e93bb37f035043c844bb916a9080a3defff14a1469f79ae"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-development.log",
+          "bytes": 144,
+          "sha256": "c406082a8709b268c17cccbdc7b2c91a881f5bcb47676c76544b9be1cffcfff8"
+        }
+      ]
+    },
+    {
+      "mode": "aot",
+      "status": "passed",
+      "workload": {
+        "iterations": 1000,
+        "rotations": 1000,
+        "mounts": 1000,
+        "rows": 32,
+        "warmup": 20
+      },
+      "methodology": {
+        "timings": "application update submission through public-core acknowledgement",
+        "synchronousSubmission": "only the synchronous setter/batch call; deferred planning is in acknowledgement time",
+        "presentation": "not measured; an acknowledgement is not display presentation",
+        "heap": "live JSC heap after full GC; not cumulative allocation or native heap totals",
+        "nativeRss": "not measured by this runner",
+        "instrumentation": "native evidence disabled for the timed comparison",
+        "retainedProbeObjects": 3000,
+        "lifecycle": "mount, one acknowledged label update, then dispose"
+      },
+      "phases": {
+        "signals": {
+          "acknowledgement": {
+            "count": 1000,
+            "p50Ms": 1.6761679999999615,
+            "p95Ms": 34.76044000000002,
+            "p99Ms": 48.8848210000001,
+            "totalMs": 6966.738355999995
+          },
+          "synchronousSubmission": {
+            "count": 1000,
+            "p50Ms": 0.004179000000021915,
+            "p95Ms": 0.01865700000007564,
+            "p99Ms": 0.28614599999991697,
+            "totalMs": 14.968767999999045
+          },
+          "mutations": {
+            "create": 0,
+            "set": 1000,
+            "insert": 0,
+            "remove": 0
+          }
+        },
+        "coalesced": {
+          "acknowledgement": {
+            "count": 100,
+            "p50Ms": 1.6523180000003777,
+            "p95Ms": 37.23463400000037,
+            "p99Ms": 48.61430399999972,
+            "totalMs": 819.3940699999976
+          },
+          "synchronousSubmission": {
+            "count": 100,
+            "p50Ms": 0.004872999999861349,
+            "p95Ms": 0.027364999999917927,
+            "p99Ms": 0.09392099999968195,
+            "totalMs": 2.477484000005461
+          },
+          "mutations": {
+            "create": 0,
+            "set": 100,
+            "insert": 0,
+            "remove": 0
+          }
+        },
+        "keyedRotations": {
+          "acknowledgement": {
+            "count": 1000,
+            "p50Ms": 1.503869999998642,
+            "p95Ms": 20.968254999999772,
+            "p99Ms": 40.58374600000025,
+            "totalMs": 5192.89219099999
+          },
+          "synchronousSubmission": {
+            "count": 1000,
+            "p50Ms": 0.004307999999582535,
+            "p95Ms": 0.013714000000618398,
+            "p99Ms": 0.20103799999924377,
+            "totalMs": 20.28225000000566
+          },
+          "mutations": {
+            "create": 0,
+            "set": 0,
+            "insert": 1000,
+            "remove": 0
+          }
+        }
+      },
+      "lifecycles": {
+        "count": 1000,
+        "p50Ms": 8.148850000001403,
+        "p95Ms": 35.57999900000141,
+        "p99Ms": 54.23700800000006,
+        "totalMs": 12648.953779000072,
+        "rowsCreated": 32000,
+        "rowsDisposed": 32000,
+        "acknowledgedUpdates": 1000,
+        "retainedWeakRefObjects": 3000
+      },
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "heap": {
+        "before": {
+          "phase": "mounted view after 20 warmup updates",
+          "collectionAndWalkMs": 8.749081999999817,
+          "heapSize": 826871,
+          "heapCapacity": 1924599,
+          "extraMemorySize": 433655,
+          "objectCount": 6198,
+          "protectedObjectCount": 15,
+          "applicationRss": 28884992
+        },
+        "afterUpdates": {
+          "phase": "view disposed; timing arrays retained",
+          "collectionAndWalkMs": 4.693691000000399,
+          "heapSize": 781773,
+          "heapCapacity": 1794269,
+          "extraMemorySize": 434397,
+          "objectCount": 5775,
+          "protectedObjectCount": 15,
+          "applicationRss": 33251328
+        },
+        "afterLifecycles": {
+          "phase": "all views disposed; collection after a core queue fence and timer turn; timing/WeakRef instrumentation retained",
+          "collectionAndWalkMs": 2.539713000001939,
+          "heapSize": 916781,
+          "heapCapacity": 1986685,
+          "extraMemorySize": 435773,
+          "objectCount": 8794,
+          "protectedObjectCount": 15,
+          "applicationRss": 34471936
+        }
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "totalWorkloadMs": 26728.358734,
+      "calibration": {
+        "initialNativePaint": {
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+          },
+          "windowId": 1,
+          "treeRevision": 1,
+          "nodeCount": 38,
+          "completeExpectedTreeMatched": true
+        },
+        "finalNativePaint": {
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+          },
+          "windowId": 1,
+          "treeRevision": 42,
+          "nodeCount": 38,
+          "completeExpectedTreeMatched": true
+        }
+      },
+      "rawEvidence": [
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/aot.json",
+          "bytes": 169464,
+          "sha256": "73e2de67b0c189ca24cd7e8a7b8b616193f47e5ddf7d6c4287abdfc55ee79727"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/aot.log",
+          "bytes": 144,
+          "sha256": "b6d85063b415623e92f75f7044bd1e09ee2eece79cd5cc489a1409858d717028"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-aot.json",
+          "bytes": 35226,
+          "sha256": "9a3f30b1a1718cade6f9b98bb4dd543603ef5977760c9cbad9b21dc41042e04a"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-aot.jsonl",
+          "bytes": 48332,
+          "sha256": "0264bf13c4a4ea37c34992a84f2870fbb1d29f780c229b975be1043b3a72948a"
+        },
+        {
+          "file": "task-artifacts/bn3-react/lifecycle-update/calibration-aot.log",
+          "bytes": 144,
+          "sha256": "d38f936864bc927fd11ece3ae520d0ae5d5e2e0ae31e7feaebd46622b37861b0"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "One full trial per mode; no uncontrolled-load or dependency-build-condition speed comparison.",
+    "Calibration observes complete native paint traversal, not display presentation; no physical input or screenshot acceptance in this workload.",
+    "Timed phases disable native paint evidence; their native mutation counts are acknowledged shared-renderer counters.",
+    "Full-GC live object and application RSS observations are not cumulative allocations, native RSS, GPU memory or long-term leak proof.",
+    "Original direct-core AOT retention failures remain unresolved independent evidence.",
+    "macOS/Windows GUI, hardware GPU, release-host performance and lower-priority transition semantics are not qualified here."
+  ]
+}

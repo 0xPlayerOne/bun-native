@@ -7,6 +7,11 @@ import type {
   Style,
 } from '@bun-native/protocol'
 import type { HostOptions } from '@bun-native/runtime'
+import type {
+  NativeDisplaySnapshot,
+  ServiceCapabilities,
+  ServiceRequestOptions,
+} from './services.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -135,6 +140,8 @@ export interface NativeWindow {
   onClick(node: NativeNode<'button'>, listener: Listener<ClickEvent>): () => void
   onInput(node: NativeNode<'input'>, listener: Listener<InputEvent>): () => void
   input(node: NativeNode<'input'>): InputState
+  /** Requires an immutable launch grant; cancellation never publishes a late snapshot. */
+  displaySnapshot(options?: ServiceRequestOptions): Promise<NativeDisplaySnapshot>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }
@@ -143,6 +150,8 @@ export interface NativeApplication {
   readonly closed: Promise<void>
   readonly limits: Readonly<Limits>
   readonly capabilities: readonly NativeCapability[]
+  /** Implemented service features and their effective grants, not an OS sandbox. */
+  readonly serviceCapabilities: Readonly<ServiceCapabilities>
   readonly diagnostics: Readonly<{
     windows: number
     nodes: number

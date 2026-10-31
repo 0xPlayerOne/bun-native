@@ -55,12 +55,22 @@ requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
 
-`bun-native-protocol` owns the [private v4 contract](../protocol/README.md).
-Protocol 4 requires shared layout and interaction capabilities and replaces v3 outright. The
+`bun-native-protocol` owns the [private v5 contract](../protocol/README.md).
+Protocol 5 requires shared layout, interaction and window-display service
+capabilities and replaces v4 outright. The
 session owns up to 16 windows, each with one box root and at most 4,096 nodes.
 Atomic batches create, update, reparent, reorder and delete box, text, button
 and input elements. All adapters use this same model and renderer. Neither
 Solid nor React introduces a second native implementation.
+
+The service policy is immutable and default-denied. Only
+`--bun-native-allow-window-display` enables the owned-window display read;
+unknown or duplicate launch arguments fail before GPUI starts. The public
+runtime supplies this reserved flag only from its typed permissions option.
+The native session checks policy and the live window before reading GPUI
+display bounds/scale. No clipboard, file, process or general service endpoint
+is exposed. See [native services](../../docs/native-services.md) for precise
+errors, lifecycle and pending platform qualification.
 
 Request, window and node IDs are positive JavaScript-safe integers and increase
 across the session in separate namespaces. A deleted node or closed window ID
