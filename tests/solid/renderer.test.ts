@@ -9,7 +9,9 @@ import {
   render,
   setProp,
   type RenderRoot,
+  type SolidNode,
 } from '@bun-native/solid'
+import { asNode } from '@bun-native/renderer'
 import { batch, createEffect, createSignal, onCleanup } from 'solid-js'
 import assert from 'node:assert/strict'
 
@@ -22,6 +24,61 @@ function label(text: string) {
 }
 
 describe('Solid universal adapter over the public core (headless subprocess)', () => {
+  test('dynamic regions replace text and keyed children without consuming adjacent siblings', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid dynamic region' })
+      const box = createElement('box')
+      const before = label('Before')
+      const after = label('After')
+      const a = label('A')
+      const b = label('B')
+      type Content = string | SolidNode[] | null
+      let replace!: (value: Content) => void
+      const root = render(() => {
+        const [content, setContent] = createSignal<Content>('Initial')
+        replace = (value) => {
+          setContent(value)
+        }
+        insertNode(box, before)
+        insertNode(box, after)
+        insert(box, content, after)
+        return box
+      }, window)
+      const order = () =>
+        asNode(box).children.map((node) =>
+          node.kind === 'text-node' ? node.data : node.properties.text
+        )
+      await root.ready
+      expect(order()).toEqual(['Before', 'Initial', 'After'])
+      const initial = root.diagnostics
+      replace('Updated')
+      await root.flush()
+      expect(order()).toEqual(['Before', 'Updated', 'After'])
+      expect(root.diagnostics.mutations.create).toBe(initial.mutations.create)
+      expect(root.diagnostics.mutations.set - initial.mutations.set).toBe(1)
+
+      replace([a, b])
+      await root.flush()
+      expect(order()).toEqual(['Before', 'A', 'B', 'After'])
+      const mounted = root.diagnostics
+      replace([b, a])
+      await root.flush()
+      expect(order()).toEqual(['Before', 'B', 'A', 'After'])
+      expect(root.diagnostics.mutations.create).toBe(mounted.mutations.create)
+      expect(root.diagnostics.mutations.remove).toBe(mounted.mutations.remove)
+
+      replace(null)
+      await root.flush()
+      expect(order()).toEqual(['Before', '', 'After'])
+      replace('Final')
+      await root.flush()
+      expect(order()).toEqual(['Before', 'Final', 'After'])
+      await root.dispose()
+      replace('After disposal')
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(app.diagnostics.nodes).toBe(1)
+    }))
+
   test('signals coalesce native updates; unmount disposes effects and owned nodes', () =>
     withApp(async (app) => {
       const window = await app.openWindow({ title: 'Solid signals' })
@@ -161,6 +218,36 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       for (let attempt = 0; attempt < 100 && clicks === 0; attempt++) await Bun.sleep(5)
       expect(clicks).toBe(10)
       await root.dispose()
+      expect(app.diagnostics.callbacks).toBe(0)
+    }))
+
+  test('a throwing native callback terminates its application and disposes the Solid owner', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid callback failure' })
+      const marker = await window.batch((batch) => {
+        const node = batch.create({ kind: 'text', text: 'Marker' })
+        batch.append(window.root, node)
+        return node
+      })
+      const error = new Error('Solid native callback failed')
+      let cleaned = 0
+      const root = render(() => {
+        onCleanup(() => cleaned++)
+        const button = createElement('button')
+        setProp(button, 'text', 'Fail')
+        setProp(button, 'onClick', () => {
+          throw error
+        })
+        return button
+      }, window)
+      await root.ready
+      await window.batch((batch) => batch.set(marker, { kind: 'text', text: 'emit click' }))
+      await expect(app.closed).rejects.toBe(error)
+      await root.closed
+      expect(cleaned).toBe(1)
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(root.diagnostics.listeners).toBe(0)
+      expect(app.diagnostics.nodes).toBe(0)
       expect(app.diagnostics.callbacks).toBe(0)
     }))
 
