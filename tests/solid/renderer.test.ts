@@ -242,7 +242,7 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       }, window)
       await root.ready
       await window.batch((batch) => batch.set(marker, { kind: 'text', text: 'emit click' }))
-      await expect(app.closed).rejects.toBe(error)
+      await assert.rejects(app.closed, (actual) => actual === error)
       await root.closed
       expect(cleaned).toBe(1)
       expect(root.diagnostics.nodes).toBe(0)
