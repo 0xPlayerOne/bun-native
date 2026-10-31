@@ -30,23 +30,7 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: false,
 })
-const entry = values.entry
-if (
-  entry !== 'native-window' &&
-  entry !== 'input-race' &&
-  entry !== 'bridge' &&
-  entry !== 'javascript' &&
-  entry !== 'core-lifecycle' &&
-  entry !== 'event-throughput' &&
-  entry !== 'fault' &&
-  entry !== 'scheduling' &&
-  entry !== 'layout' &&
-  entry !== 'interactions'
-)
-  throw new Error(
-    '--entry must be native-window, input-race, bridge, javascript, core-lifecycle, event-throughput, fault, scheduling, layout or interactions'
-  )
-const entryPath = {
+const entries = {
   'native-window': 'examples/native-window/main.ts',
   'input-race': 'tests/native/input-race.ts',
   bridge: 'benchmarks/bridge.ts',
@@ -57,10 +41,23 @@ const entryPath = {
   scheduling: 'tests/native/scheduling.ts',
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
-}[entry]
+  solid: 'examples/solid-counter/main.tsx',
+  'solid-input-intent': 'tests/native/solid-input-intent.tsx',
+  'solid-interactions': 'tests/native/solid-interactions.tsx',
+} as const
+function isEntry(value: string | undefined): value is keyof typeof entries {
+  return typeof value === 'string' && Object.hasOwn(entries, value)
+}
+const entry = values.entry
+if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(entries).join(', '))
+const entryPath = entries[entry]
+const solidEntry =
+  entry === 'solid' || entry === 'solid-input-intent' || entry === 'solid-interactions'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
-    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry native-window|input-race|bridge|javascript|core-lifecycle|event-throughput|fault|scheduling|layout|interactions]'
+    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry ' +
+      Object.keys(entries).join('|') +
+      ']'
   )
 }
 if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
@@ -77,7 +74,8 @@ if (
     entry === 'fault' ||
     entry === 'scheduling' ||
     entry === 'layout' ||
-    entry === 'interactions') &&
+    entry === 'interactions' ||
+    solidEntry) &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')
@@ -145,6 +143,20 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
+  if (solidEntry) {
+    for (const path of [
+      'packages/solid/package.json',
+      'packages/renderer/package.json',
+      'scripts/solid-build.ts',
+      'scripts/solid/transform.ts',
+      'scripts/solid/preset.d.ts',
+    ])
+      sources.add(path)
+    for await (const path of new Bun.Glob('packages/{solid,renderer}/src/**/*.ts').scan({
+      cwd: source,
+    }))
+      sources.add(path)
+  }
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
   }))
@@ -157,6 +169,27 @@ async function sourceHashes() {
 const sourceCommit = command('source-revision', ['git', 'rev-parse', 'HEAD'])
 const sourceChanges = command('source-status', ['git', 'status', '--porcelain'])
 const buildSources = await sourceHashes()
+let compileInput = entrypoint
+let developmentModule:
+  | { file: string; bytes: number; sha256: string; transformCommand: string[]; buildMs: number }
+  | undefined
+if (solidEntry) {
+  const transformCommand = [
+    process.execPath,
+    join(source, 'scripts/solid-build.ts'),
+    entrypoint,
+    join(outdir, 'development'),
+  ]
+  const transformStart = performance.now()
+  command('transform-solid', transformCommand)
+  compileInput = join(outdir, 'development/application.js')
+  developmentModule = {
+    file: 'development/application.js',
+    ...(await artifact(compileInput)),
+    transformCommand,
+    buildMs: performance.now() - transformStart,
+  }
+}
 const compileCommand = [
   process.execPath,
   'compile',
@@ -164,7 +197,7 @@ const compileCommand = [
   '--production',
   ...(values.trim ? ['--trim'] : []),
   '--explain=json',
-  entrypoint,
+  compileInput,
   '--outfile',
   application,
 ]
@@ -174,11 +207,8 @@ const buildMs = performance.now() - start
 const inspection = inspectBunExecutable(application)
 if (!inspection.hasCompiledProgram)
   throw new Error('Compiler output has no compiled-program record')
-const runtimeFeatures = process.platform === 'linux' ? inspectBunRuntime(application) : null
-if (
-  runtimeFeatures &&
-  (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
-)
+const runtimeFeatures = inspectBunRuntime(application)
+if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
   throw new Error('Compiler output does not record removal of the JIT compiler')
 if (bundledHost) {
   copyFileSync(values.host, host)
@@ -201,6 +231,8 @@ if (process.platform !== 'win32') {
 
 if (JSON.stringify(buildSources) !== JSON.stringify(await sourceHashes()))
   throw new Error('Application or native source changed during the AOT build')
+if (developmentModule && (await artifact(compileInput)).sha256 !== developmentModule.sha256)
+  throw new Error('The generated Solid development module changed during AOT compilation')
 const launchHost = bundledHost ? '<absolute-output-directory>/bun-native-host' + suffix : host
 const manifest = {
   schemaVersion: 1,
@@ -210,6 +242,7 @@ const manifest = {
     ...(await artifact(application)),
     inspection,
     runtimeFeatures,
+    ...(developmentModule ? { developmentModule } : {}),
   },
   host: {
     file: hostFile,
@@ -253,7 +286,7 @@ const manifest = {
   },
   verification: {
     aotCompiledProgram: 'passed',
-    jitOmission: runtimeFeatures ? 'passed' : 'not-implemented-for-this-format',
+    jitOmission: 'passed',
     nativeRendering: 'not-run',
     osInput: 'not-run',
     teardown: 'not-run',

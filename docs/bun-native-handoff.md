@@ -17,8 +17,8 @@ passing run. That acceptance is Linux X11/XTest with Mesa software rendering;
 it does not qualify other OS GUIs, physical GPU/input, IME, accessibility or
 production installers.
 
-The BN1 implementation in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
-replaced the fixed fixture with protocol 2, a bounded multi-window native tree,
+BN1 is complete. The merged source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
+replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
 atomic mutations, independent input revisions and the public
 [`@bun-native/core`](../packages/core/README.md) TS/JS API. Both framework
 consumers import this same contract. Their type fixtures are compile-only;
@@ -33,8 +33,13 @@ protocol-2 sources; old hosts fail negotiation with the current packages.
 Real development and inspected AOT checks cover the public API and JavaScript
 consumer, pointer/text/Enter events, stale-input rejection, 1,000 native
 subtree/listener lifecycle cycles and 1,000 OS-delivered input events.
-Those initial BN1 runs use a development-profile host. The expanded hosted
-release suite and final BN1 audit must pass before closing #219.
+The complete required [hosted run 41224338023](https://github.com/0xPlayerOne/bun-native/actions/runs/41224338023)
+passed the expanded release-host suite, actual startup/crash and scheduling
+checks, native allocation profiles, the portable matrix and the aggregate gate.
+The protected merge is `515c0bda14ce4f40c0ddd1469a161315d03356a8`.
+The [BN1 audit](bn1-audit.md) links the retained raw archive, all eight inspected
+AOT manifests, exact source identities and current performance observations.
+Its Linux software-rendering scope does not qualify other native GUI platforms.
 
 ## Removal inventory (#251)
 
@@ -58,22 +63,23 @@ fallback remains in the active packages.
 
 ## Current implementation sequence
 
-1. Preserve BN1's measured scheduling correction, real GPUI crash/startup
-   failure tests and retention audit. The corrected development host passes
-   actual input and painting during a sustained command stream; the preserved
-   original host failed the regression. The native allocation runner separately
-   profiles the real GPUI process during 1,000 lifecycle cycles.
-2. Run the complete required release-host suite against the final current
-   source, preserve compiler/native artifact hashes and measurements, then
-   verify the protected #271 merge before closing its issue checklist.
-3. Continue the first Solid renderer under
+1. Preserve the merged BN1 scheduling, crash/startup, callback ownership and
+   native allocation regressions. The final release suite passed; use its
+   retained exact-source evidence when comparing future changes.
+2. Continue the first Solid renderer under
    [#277](https://github.com/0xPlayerOne/bun-native/pull/277). Its isolated branch
    has actual development/AOT counter, keyed-list and controlled-input evidence.
-   Its later listener ownership and keyed-ordering corrections require their
-   own exact-source native qualification and repeated performance evidence.
-4. Advance React and shared native components by their issue dependencies.
-   Reuse one public core and GPUI component system. Ordinary TS/JS edits must
-   reuse a prebuilt host and must not silently invoke Cargo.
+   The shared-renderer refactor requires fresh native qualification and matched
+   performance evidence; a failed retention investigation is not a passing
+   comparison.
+3. Complete the React renderer in [#280](https://github.com/0xPlayerOne/bun-native/pull/280),
+   using the same private renderer package and public core as Solid. Preserve
+   its measured handler-lifetime and error-propagation regressions.
+4. Complete the required release checks for native layout/scroll/focus
+   [#281](https://github.com/0xPlayerOne/bun-native/pull/281) and Bun command
+   controls [#278](https://github.com/0xPlayerOne/bun-native/pull/278), then follow
+   their issue dependencies. Ordinary TS/JS edits reuse a prebuilt host and
+   must not silently invoke Cargo.
 
 The native ownership and schema are described in [protocol 4](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the

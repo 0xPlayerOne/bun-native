@@ -255,4 +255,31 @@ A synchronous Solid tree must stage work until the asynchronous public core acce
 
 Controlled replacement now carries an immutable value/revision intent from property submission through commit. An actual native event echo is an observation and emits no replacement, even after newer input arrives. Unversioned string changes fail explicitly. A stale explicit intent rejects and terminates that render root under the documented error policy; it is never silently authorized with a newer revision. `inputState(ref)` exposes the current shared-core editing state when forming a new intent. Protocol-4 props now expose the shared typed event and propagation contract; broader [#234](https://github.com/0xPlayerOne/bun-native/issues/234) text/platform qualification retains the explicit gaps above.
 
-Before #231 is complete, retain repeatable dev/AOT keyed/reactive measurements, compare the same workload against direct core operations, exercise repeated mount/unmount and allocation/retention behavior, and integrate native acceptance into the required hosted lane. macOS/Windows GUI, IME, programmatic selection/focus, complete scrolling and accessibility retain their explicit platform/BN4 requirements. The five Adea component compatibility fixtures remain #233 work.
+Before #231 is complete, retain repeatable dev/AOT keyed/reactive measurements, compare the same workload against direct core operations, exercise repeated mount/unmount and allocation/retention behavior, and complete the required hosted native acceptance lane. macOS/Windows GUI, IME, programmatic selection/focus, complete scrolling and accessibility retain their explicit platform/BN4 requirements. The five Adea component compatibility fixtures remain #233 work.
+
+## Required hosted native acceptance
+
+The required Linux native workflow now builds the three Solid entries through the
+shared AOT helper: `solid`, `solid-input-intent` and `solid-interactions`. It runs
+the exact fingerprinted generated module in development and its inspected AOT
+executable against one independently built release GPUI host. Twelve scenarios
+require the keyed counter, all input revisions, delayed explicit input intent,
+keyboard/pointer/focus phases, caret insertion, selection replacement, complete
+native paints and OS-close owner cleanup. The job retains the generated modules,
+compiler manifests and raw controller evidence, including evidence after failure.
+
+Adding this lane is source/configuration evidence until a hosted run passes.
+Earlier development-host records above retain their original source hashes. The
+lane's correctness assertions do not resolve #287, establish matched framework
+performance or qualify a physical GPU, compositor presentation or another OS.
+
+The integrated required-job recipe was then executed locally with the frozen
+protocol-4 development host. [Its new evidence record](../benchmarks/bn2/solid-hosted-recipe-linux.json)
+binds three source-fingerprinted generated modules, three inspected AOT artifacts
+and all twelve passing native scenarios to the updated source and lockfile. It
+retains original stdout/stderr/report/screenshot hashes and zero-survivor cleanup.
+These local executions still do not substitute for the independent hosted release
+build. The unchanged source coverage run passed 377 tests with 2,401 assertions;
+an earlier run with six positive-peer startup timeouts is retained separately.
+No timeout, coverage threshold, WeakRef assertion or production source was altered
+to obtain the serial result.

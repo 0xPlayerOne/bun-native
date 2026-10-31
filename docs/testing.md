@@ -37,7 +37,7 @@ The inherited-pipe cases use a detached, self-expiring test helper that retains 
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `bun-native.yml` / Source quality     | Formatting, linting, type checking, package boundaries, dependency use, package build, Bun unit coverage, Python harness safety and workflow syntax                                                                  | Native rendering or production AOT                                   |
 | `bun-native.yml` / Protocol matrix    | TypeScript behavior and Rust protocol fmt/Clippy/tests on Ubuntu 24.04, macOS 15 and Windows Server 2022                                                                                                             | GPU/window interaction or physical input                             |
-| `bun-native.yml` / AOT native interop | Actual machine-code execution, native FFI/callback/subprocess behavior, explicit JIT control and compiler metadata checks on Linux                                                                                   | GPUI rendering or other OS AOT support                               |
+| `bun-native.yml` / AOT native interop | Target-host compilation/execution on Ubuntu, macOS and Windows; native FFI/callback/subprocess, explicit JIT control and compiled-program/runtime-feature checks. Each target needs its own passing report.          | GPUI rendering, OS input, installation or an unexecuted target       |
 | `native-linux.yml`                    | Release GPUI host compilation/tests; actual development/AOT public API, checked JavaScript, input revision, event/lifecycle stress and repeated baseline scenarios with X11 input, native paint evidence and cleanup | Physical input, hardware GPU performance or macOS/Windows GUI        |
 | `security.yml`                        | Dependency review and Bun/Rust advisory audits against the committed lockfiles                                                                                                                                       | A complete threat model or sandbox                                   |
 | `codeql.yml`                          | Source analysis through the pinned Code Foundry workflow                                                                                                                                                             | Runtime correctness                                                  |
@@ -45,7 +45,7 @@ The inherited-pipe cases use a detached, self-expiring test helper that retains 
 
 The required check keeps its existing name so protected-main rules do not become stale. The aggregate fails if any required job fails, is cancelled or is skipped. No main-branch or administrator bypass is part of the workflow. Ordinary pull requests start as drafts; expensive validation runs after the explicit ready transition. The existing `CI_BILLING_PAUSED` control is preserved.
 
-Workflow actions, Bun, Rust and lockfiles are pinned. Cache entries contain dependency downloads only and are keyed by OS, architecture and toolchain/lockfile hashes; build outputs, dependency installations and credentials are not cached. Main-branch runs queue rather than cancel a previous run. Source checks target five minutes; the three portable protocol jobs allow ten minutes for a clean compiler/dependency setup. The separate native Linux lane allows sixty minutes for a clean release GPUI build and AOT compilation; it records build time and binary size and avoids a second debug host build. Cross-platform GUI and long-running soak coverage continue under [#256](https://github.com/0xPlayerOne/bun-native/issues/256).
+Workflow actions, Bun, Rust and lockfiles are pinned. Cache entries contain dependency downloads only and are keyed by OS, architecture and toolchain/lockfile hashes; build outputs, dependency installations and credentials are not cached. Main-branch runs queue rather than cancel a previous run. Source checks target five minutes; the three portable protocol jobs allow ten minutes for a clean compiler/dependency setup. Each AOT interop matrix job allows twelve minutes and retains environment/pin metadata before compiler bootstrap plus failure logs. The separate native Linux lane allows sixty minutes for a clean release GPUI build and AOT compilation; it records build time and binary size and avoids a second debug host build. Cross-platform GUI and long-running soak coverage continue under [#256](https://github.com/0xPlayerOne/bun-native/issues/256).
 
 Each protocol job records the source SHA, Bun revision, verbose Rust version, OS/architecture and explicit development/headless scope in a retained Actions artifact. Passing foundation CI must never be presented as a native-window or no-JIT release result.
 
@@ -111,6 +111,28 @@ bash -n scripts/quality/native-linux-session.sh
 The process-tree safety case is explicitly skipped if the local PID namespace cannot be reconciled with `/proc`. Hosted Ubuntu runs it in the real namespace. The native GUI lane fails, rather than reporting a pass, when the actual display/input/paint/cleanup requirements are unavailable or unfulfilled.
 
 Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
+
+## Solid native acceptance
+
+The required Linux release-host workflow compiles the counter, revision-aware
+input-intent and shared interaction fixtures through the common AOT helper. Each
+manifest fingerprints the original Solid and shared-renderer sources, JSX build
+steps and the exact generated development module. The same module runs through
+ordinary Bun and the inspected machine-code compiler; neither build invokes Cargo.
+
+`tests/native/solid-window.py` supplies independent full-tree expectations to the
+existing OS input/process supervisor. Six scenarios run in each mode: keyed
+counter click, all nonce text edits, delayed input intent, keyboard activation,
+caret insertion and selection replacement. They require real XTest delivery,
+application events, native GPUI paint, OS close and bounded owner/process cleanup.
+Hosted artifacts retain compiler/transform logs, manifests, generated modules,
+controller reports and screenshots even when a scenario fails.
+
+Local source/fixture evidence is recorded in [the Solid integration record](bn2-solid-integration.md).
+A configured job is not a passed target run. These correctness cases do not
+resolve [the retained-object investigation](https://github.com/0xPlayerOne/bun-native/issues/287)
+or establish comparative performance, physical input, display presentation or
+macOS/Windows native support. The original WeakRef oracle remains unchanged.
 
 ## Real native startup, crash and scheduling regressions
 
