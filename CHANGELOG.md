@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/0xPlayerOne/bun-native/compare/v0.6.12...v0.7.0) (2026-10-31)
+
+
+### Features
+
+* render an interactive GPUI window controlled by Bun ([#266](https://github.com/0xPlayerOne/bun-native/issues/266)) ([2c04f0e](https://github.com/0xPlayerOne/bun-native/commit/2c04f0ed991e8b5c5eecf56c9e07cbe3196e452c))
+
+
+### Performance
+
+* record release native baselines and complete the BN0 evidence audit ([#273](https://github.com/0xPlayerOne/bun-native/issues/273)) ([c7bcf4e](https://github.com/0xPlayerOne/bun-native/commit/c7bcf4e63906b97c9639c7a48ca4645d06aa98d2))
+
 ## [0.6.12](https://github.com/0xPlayerOne/bun-native/compare/v0.6.11...v0.6.12) (2026-10-31)
 
 
