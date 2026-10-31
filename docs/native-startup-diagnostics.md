@@ -171,3 +171,20 @@ formatting/writes. The opt-in Linux lifecycle fixture additionally requires the
 installation record and actual X11 visual / selected-GPU records after its
 unchanged five successful window cycles. A passing diagnostic run does not
 explain the historical stall or close #296.
+
+The [first current-source controls](../tests/native/evidence/startup-log-linux.json)
+retain exact source and artifact hashes, raw logger/open-phase records and the
+complete-trace fingerprints. Logging-disabled development, logging-enabled
+development and an inspected Bun machine-code AOT executable each passed five
+actual GPUI window cycles, native exit zero and disappearance of the recorded
+application/host PIDs. Disabled mode produced no logger records. Each enabled
+case produced 17 records totaling 6,075 bytes, with a maximum line of 407 bytes;
+actual X11 visual, colormap, adapter enumeration and selected-GPU messages were
+present without limit or truncation markers. All 47 qualified source/configuration
+hashes were unchanged before and after these cases.
+
+Those controls use one immutable **development-profile** native host and Mesa
+llvmpipe software Vulkan. The AOT application has compiled-program metadata and
+27 removed JIT ranges; its interpreter remains present. No OS input, hardware
+GPU, hosted release qualification, startup speed or cause of #296 is inferred
+from these successful diagnostic cases.
