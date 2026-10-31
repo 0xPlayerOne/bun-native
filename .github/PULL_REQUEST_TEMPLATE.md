@@ -1,19 +1,33 @@
-## Outcome
+## Bun Native outcome
 
-## Linked issues
+Describe the native framework behavior changed and link the specific BN issue. Use `Closes #...` only when all acceptance criteria are genuinely met; otherwise use `Refs #...`.
 
-Use `Closes #...` only for fully satisfied acceptance criteria. Link partial work with `Refs #...`.
+## Architecture and code hygiene
 
-## Validation
+- Package/native boundary affected:
+- Obsolete code, dependencies, exports, docs, configs or tests removed:
+- Duplication, layering, implicit coupling, unsafe handles and lifecycle changes:
+- ADR/justified implementation tradeoff, if needed:
 
-- Commands and results:
-- Platforms actually exercised:
-- Behavior still unverified:
+## Validation (passed / failed / skipped / unsupported)
 
-## Security and provenance
+- Bun TS/JS checks and tests:
+- Rust native/ABI tests:
+- Real native window and input behavior:
+- Development Bun versus production `bun compile` AOT:
+- Platforms/CPU/GPU actually exercised:
+- Crash, cleanup, capability denial and accessibility/input coverage:
+- Exact unrun/unsupported checks with linked follow-up:
 
-Describe trust/lifetime changes, native or browser imports, and provenance/SBOM updates.
+## Performance and size
 
-## Performance
+- Baseline source/versions/hardware/fixture:
+- Startup, RSS, CPU/GPU, event/frame/input latency, build/reload and artifact bytes impacted:
+- Raw samples and before/after result, or why no performance metric applies:
+- Significant regression investigated or documented with measured tradeoff:
 
-Link raw measurements or state that performance was not measured. Do not report goals as results.
+## PR lifecycle
+
+Open draft on first commit, iterate, run focused checks, mark ready and enable auto-merge when protected checks permit. **No routine human design checkpoint.** Never bypass a required check or claim an untested native feature works.
+
+See [engineering quality](../docs/engineering-quality.md) and [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).

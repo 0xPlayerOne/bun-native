@@ -1,115 +1,53 @@
-# Bun Native: Bun AOT + GPUI native desktop framework
+# Bun Native — product vision
 
-**Decision (2026-10-31):** The experimental Bunly project is now **Bun Native**. The engineering target is **Bun machine-code AOT + Rust GPUI**. The legacy CEF/WebView implementation is **obsolete and scheduled for immediate source removal** under #251; old M1–M12 work remains recoverable in Git history. This is an unconditional direct migration, **not** a project continuation vote based on a prototype. AOT+GPUI runtime behavior still needs engineering and honest validation.
+**Decision:** Bunly's experimental browser-based desktop runtime is being replaced by **Bun Native**, a new TypeScript-first native desktop application framework. This is an unconditional rewrite, not a feasibility vote. The old CEF/WebView code is obsolete and will be removed from the active source under [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251).
 
-## Goal
+## The promise
 
-Make native desktop software approachable to JavaScript and TypeScript developers (**TypeScript preferred**) with first-party **SolidJS (preferred)** and **React** support:
+> Write native desktop applications in TypeScript or JavaScript, use SolidJS or React, develop with Bun's fast feedback loop, and distribute machine-code AOT application logic driving a real browserless native interface.
 
-> Write desktop applications in TypeScript or JavaScript using SolidJS or React, iterate with Bun's fast development loop, and ship ahead-of-time-compiled application code driving Rust GPUI's browserless native UI.
+TypeScript is preferred but JavaScript is a supported consumer language. Developers should not need to write Rust, understand GPUI or run Cargo on normal application-source edits.
 
-Optimize for **both** developer experience and shipped application experience. The aspiration is low startup latency, low idle memory, small distribution size, responsive rendering, accessible native interaction, and reproducible packaging on macOS, Windows and Linux. We will measure rather than assume those outcomes.
+## Two independent parts
 
-The **initial native renderer is Rust GPUI**, with a documented option for the implementation agent to choose another genuine browserless native renderer if measured evidence justifies it. Application authors should not have to write Rust. The shipped AOT app may contain Bun's runtime and GC alongside GPUI; it is not a pure-Rust binary.
+**Native rendering** controls how a desktop interface is displayed and interacted with. Bun Native uses native GPU/OS rendering and a typed host tree rather than a Chromium/CEF or system WebView document. **Rust GPUI is the initial engine**, and an assigned agent can select a different genuine native renderer based on reproducible technical evidence and an architecture decision record.
 
-## Two independent technical requirements
+**Bun AOT** controls how application JavaScript/TypeScript executes in a production build. Experimental `bun compile` converts supported code into CPU machine instructions ahead of time and ships a reduced Bun runtime without its JIT. It does not turn JSX, CSS or browser DOM components into native widgets. It does not erase the event loop, garbage collection or every runtime cost.
 
-1. **Native rendering** determines how UI is drawn. A renderer backed by operating-system widgets or a GPU engine can display UI without a Chromium, CEF or system-WebView document. This is possible with regular, JIT-driven Bun; GPUIX, Electrobun's experimental Warren UI, and Blitsen are relevant prior art.
-2. **Bun machine-code AOT** determines how application JavaScript/TypeScript executes. Experimental `bun compile` (equivalent to `bun build --compile --aot`) compiles supported program code to machine instructions before launch and ships a trimmed Bun runtime without its JIT. It retains runtime facilities such as garbage collection, the event loop, and an interpreter for dynamically generated code. AOT does **not** translate HTML/CSS/DOM components into native controls.
+The product depends on both pieces functioning together. Development may use normal Bun; the published AOT claim requires real `bun compile` output.
 
-A successful Bun Native release needs **both** for the ordinary desktop UI. It does not get the benefit of native rendering merely by applying `--aot` to today's CEF/WebView application.
+## Developer experience target
 
-Sources:
-- [Bun compiler overview](https://bun.com/docs/compiler)
-- [Bun compiler internals](https://bun.com/docs/compiler/internals)
-- [Bun AOT compatibility](https://bun.com/docs/compiler/compatibility)
-- [Warren native renderer](https://framework.blackboard.sh/electrobun/guides/electrobun-ui/)
-- [Blitsen architecture](https://blitsen.dev/docs/tech/)
-- [GPUIX](https://www.gpuix.dev/)
+- One coherent, typed native host API shared by **SolidJS first** and **React second** adapters.
+- Native components for layout, text, inputs, menus, dialogs, scrolling, virtualization and desktop OS services.
+- App code changes with fast reload; the native renderer and Rust toolchain are not rebuilt unnecessarily.
+- Project generation, checks, formatting, tests, builds and diagnostics managed through Bun-oriented tooling.
+- Prebuilt host artifacts and explicit target platform support. macOS, Windows and Linux are the intended platforms; actual acceptance is tracked independently.
+- Reasonable default security and lifecycle semantics: capability-scoped OS APIs, handle ownership, bounded updates and safe cleanup.
 
-## Product promise and non-goals
+## What is not promised
 
-**Desired developer contract**
+- Existing DOM-dependent Solid/React apps, Tailwind, shadcn, Radix or Kobalte running unchanged.
+- A browser sandbox, arbitrary untrusted website rendering or hidden WebView fallback.
+- Zero GC, no Bun runtime, pure-Rust app logic, Rust-equivalent speed or guaranteed tiny binaries.
+- Universal AOT package compatibility, cross-compilation or supported GPU hardware before testing proves it.
+- Adea production migration as an incidental side effect of building reference examples.
 
-- TypeScript-first (`.ts/.tsx`) and JavaScript-compatible (`.js/.jsx`) application entry points, typed native APIs and fast development reloads.
-- **SolidJS and React are both supported via separate first-party renderers** over shared GPUI primitives. Solid is prioritized for the first implementation.
-- Production build uses Bun's machine-code AOT **when qualified**; AOT correctness and stable native addon compatibility are release gates, not assumed.
-- Browserless native drawing of application UI with serious text input, focus, accessibility, selection, layout and internationalization support.
-- Familiar SolidJS/React JSX authoring, with explicit documentation of the component-compatibility boundary.
-- Bun toolchain for packages/runtime, `bun check` TypeScript checking, `bun fmt` formatting, `bun test` testing, and `bun compile` production AOT. In projects defining scripts named `check` or `fmt`, use `--no-script` to invoke the actual built-in.
-- Prebuilt native framework artifacts; ordinary consumer builds should not silently compile native toolchains. Per-OS/architecture AOT builds must be explicit.
+## Success means
 
-**Not promised**
+A new developer can follow documented Bun Native commands to create a real native app in TS/JS with Solid or React, edit components rapidly and produce an AOT application package that launches and accepts input on a documented supported OS—**without using a browser renderer or writing Rust**.
 
-- Arbitrary DOM, Kobalte, shadcn-style or Tailwind applications running unchanged.
-- Rust-equivalent runtime speed, universally smaller files, zero runtime or zero garbage collection.
-- A browser engine, safe rendering of arbitrary untrusted websites, or an invisible fallback to a WebView.
-- Cross-compiling AOT binaries on one host before Bun supports that; compile on each target host as needed.
+We will measure startup-to-interactive, process-tree memory, CPU/GPU load, frame/input tail latency, executable/install bytes, AOT compile time, native bridge cost, accessibility, text editing, lifecycle correctness and reload latency. Performance budgets derive from correct measured baselines. The [engineering-quality standard](engineering-quality.md) requires repeated architecture and optimization audits throughout the build.
 
-## Candidate architecture
+## Delivery phases
 
-```text
-Application source: TypeScript or JavaScript + SolidJS or React JSX
-        |
-        +-- Development: Bun runtime, fast edit loop, native renderer
-        |
-        +-- Production: Bun AOT compilation (type checks + machine code)
-                             |
-                Compiled app logic + trimmed Bun runtime
-                             |
-                Framework-specific Solid or React reconciler
-                             |
-                Typed Bun-to-GPUI native host bridge
-                             |
-                Rust GPUI native window + GPU rendering (no WebView)
-```
+- [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) — remove Bunly/CEF, establish real native window and Bun AOT integration.
+- [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) — typed native host API and security/lifecycle contract.
+- [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) — SolidJS renderer.
+- [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) — React renderer.
+- [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) — shared native components, accessibility and OS services.
+- [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) — CLI, fast reload and CI.
+- [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) — native AOT installers, updates, rollback.
+- [BN7](https://github.com/0xPlayerOne/bun-native/issues/224) — real apps, compatibility, benchmarks and final cleanup.
 
-GPUI is the **initial** rendering engine, not a requirement to block autonomous delivery. An assigned agent may adopt a better-supported genuine native renderer if a reproducible technical finding warrants it, document the ADR, and update dependent issues/CI without human sign-off. Implement a small, versioned, typed Bun-to-GPUI bridge with clear ownership, events and shutdown behavior. A Solid adapter (investigate `solid-js/universal`) and React adapter (investigate `react-reconciler`) both target the same GPUI-backed host elements. Native GPUI internals are compiled separately from the app's Bun AOT code; AOT does not translate JSX to Rust. Prior work such as GPUIX can inform the bridge but is not the product boundary. Do not assume arbitrary DOM-dependent Solid or React components can be automatically translated.
-
-The former Bunly CEF host and legacy build/test code are to be deleted from the active source during BN0 #251, without waiting for a feasibility proof. Git history preserves M1–M12 evidence and attribution; old tracking issues are superseded. Only tooling demonstrably useful to Bun Native should be adapted.
-
-## First evidence milestones
-
-### 0 — Direct source migration and first native implementation
-
-- **First remove and replace the obsolete CEF/WebView implementation** with a clean Bun Native workspace (#251), update agent instructions and retire obsolete commands rather than maintaining a compatibility fallback.
-- Confirm exact Bun version and `bun compile` availability on actual target OS/architectures (#225).
-- Build a real **GPUI** native window with text, button and text input from a TypeScript entry point under regular Bun.
-- Build and run the **same application** with `bun compile`; verify the shipped executable has no JIT, no CEF/WebView dependency, and that the renderer/native addon loads correctly.
-- Exercise click, keyboard input, teardown, errors and repeat launches. Keep a runnable reproduction and failure logs.
-- If Bun AOT-to-GPUI integration fails, create an owned reproducible engineering issue and solve compiler, binding, packaging or native host constraints. **Do not stop the migration or reintroduce CEF/WebView.** A JIT-only executable may assist development but does not satisfy production AOT acceptance.
-
-### 1 — Real component implementation and compatibility
-
-First implement a **SolidJS** renderer, then a separate **React** renderer over shared GPUI primitives. Port five representative components from the actual Adea Solid UI library: a simple button, styled input, menu, dialog and a complex streaming/conversation view. Validate a separate React component fixture with hooks, events and reconciler lifecycle. For each, record (a) reused source, (b) adapted source, (c) newly implemented native behavior, and (d) unsupported features. Prioritize typography, focus management, accessibility, IME, keyboard navigation and selection. A near-zero-change import is a hypothesis to test, not a claim.
-
-### 2 — Measured developer and user experience
-
-Compare identical workloads and builds against at least a Bun JIT + native renderer baseline and a representative existing desktop framework. Record startup time, peak/idle RSS, bundle/install size, interactive responsiveness, CPU/GPU under load, reload latency, state preservation, build time and OS-specific behavior. Include unsuccessful runs; do not extrapolate claims from competitors' unrelated benchmarks.
-
-### 3 — Distribution and maintainability
-
-As the new native implementation matures, package signed/native artifacts across macOS, Windows and Linux; validate updates, crash reporting, security model, accessibility, packaging reproducibility and release evidence. Keep the native framework maintainable for contributors who do not use Rust.
-
-## Current implementation tracker
-
-- **BN0:** [#217](https://github.com/0xPlayerOne/bun-native/issues/217) — direct codebase migration, real GPUI app and AOT integration
-- **BN1:** [#219](https://github.com/0xPlayerOne/bun-native/issues/219) — typed host ABI, event and ownership model
-- **BN2:** [#218](https://github.com/0xPlayerOne/bun-native/issues/218) — SolidJS first-party renderer
-- **BN3:** [#221](https://github.com/0xPlayerOne/bun-native/issues/221) — React first-party renderer
-- **BN4:** [#222](https://github.com/0xPlayerOne/bun-native/issues/222) — native components, styling, accessibility, IME
-- **BN5:** [#220](https://github.com/0xPlayerOne/bun-native/issues/220) — Bun-first development tools and HMR
-- **BN6:** [#223](https://github.com/0xPlayerOne/bun-native/issues/223) — cross-platform AOT distribution
-- **BN7:** [#224](https://github.com/0xPlayerOne/bun-native/issues/224) — Adea/React adoption and comparative evidence
-
-The active product roadmap is [issue #1](https://github.com/0xPlayerOne/bun-native/issues/1). Old CEF and WebView issues should be retired as superseded, and their active source removed immediately under #251; Git history remains intact. Do not migrate Adea production as an incidental side effect.
-
-## Agent autonomy and test environments
-
-The owner has authorized assigned agents to complete the full experimental repository rewrite without routine human sign-off, design checkpoints or manual test requests. Follow [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [AGENTS.md](../AGENTS.md) for exact task order and safe scope. Choose implementations, debug problems and keep the next unblocked issue moving. Ordinary GitHub branch protection, credential limitations and truthful test evidence still apply; do not bypass security gates.
-
-Prefer **GitHub Actions hosted Linux, Windows and macOS runners** for builds and automated native validation. Use the owner's connected Mac through **Remote Desktop Commander** for native GUI/keyboard/IME validation when CI cannot credibly test it; discover device status at runtime, and keep changes confined to temporary test areas. Avoid heavy persistent Docker/VM use on the Mac. Record unavailable physical coverage as unsupported without waiting for the owner. Experimental unsigned artifacts are acceptable until actual signing/notarization is configured and proven.
-
-## Decision rule
-
-**Bun Native replaces Bunly unconditionally.** Delete old CEF/WebView code first; build TS/JS applications with a real native UI engine (starting with Rust GPUI) and integrate machine-code Bun AOT for production. Component APIs/adapters may advance in parallel as native contracts stabilize. AOT failures are defects to fix—not a project go/no-go or a reason for browser fallback. Ship only after real native input/accessibility, compiled AOT behavior, cross-platform packaging and measured performance meet explicit release criteria.
+These are parallelizable engineering scopes, not owner approval checkpoints. An agent starting any milestone should execute missing prerequisites and continue. [Full roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).

@@ -1,186 +1,83 @@
 # Bun Native
 
-**Product direction:** Build **Bun Native**, a TypeScript-first (JavaScript-compatible) desktop framework: **Bun machine-code AOT** for application logic and **Rust GPUI** for native GPU-rendered UI. Support **SolidJS first** and **React second** with shared native primitives. See the [architecture and BN0–BN7 plan](docs/bun-native-vision.md) and [new roadmap](https://github.com/0xPlayerOne/bunly/issues/1).
+**Bun Native** is an experimental, TypeScript-first desktop framework for building **real native interfaces** with Bun. Applications can be authored in TypeScript or JavaScript, using first-party **SolidJS** and **React** renderers over one shared native host. Production application logic is intended to use **Bun's machine-code ahead-of-time (AOT) compiler**.
 
-**Current implementation:** The checked-in v0.6.9 code remains the superseded experimental **Bunly CEF host**. This is historical work, not the new foundation. The GPUI+AOT application is **not implemented or qualified** yet; follow [BN0 feasibility](https://github.com/0xPlayerOne/bunly/issues/217) before making release or performance claims. The prior M1–M7 status below is retained as historical evidence, not the active roadmap.
+> **Status — October 31, 2026:** Bun Native is a **complete rewrite in progress**, not a released or working desktop framework yet. The repository still contains legacy Bunly/CEF source until [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251) replaces it. Do not mistake the previous Bunly 0.6.x code or successful historical tests for Bun Native functionality.
 
-## Existing Bunly implementation and qualification
+## What we're building
 
-**Historical status (superseded):** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. [M6 completion](docs/m6-completion.md) records 500 actual managed replacements and a distinct controlled relaunch on all three hosted platforms, plus a separately pinned macOS workflow comparison; [PR #130](https://github.com/0xPlayerOne/bunly/pull/130) is merged. M7's bounded desktop/browser APIs and diagnostics are implemented; #36's bounded file-workflow software gate is complete on v0.6.8. #35 was unresolved at the final legacy checkpoint for the strict Linux initial-hidden composition failure, physical focus/IME/accessibility/display qualification and measured rendering tradeoffs; it has since been closed as **not planned** under Bun Native. The [M7 implementation and evidence status](docs/m7-status.md) records the accepted software scope, per-platform capability matrix and remaining qualification gates. This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
+- **Browserless desktop UI.** A native GPU/OS renderer draws windows, layout, text, inputs, menus and overlays. **Rust GPUI is the initial engine**, and the implementation agent may select another genuine native renderer if measured evidence supports it.
+- **Bun-first application code.** TypeScript is preferred; JavaScript is supported. App developers should not need to write Rust or rebuild native code after normal TS/JS edits.
+- **Ahead-of-time releases.** Development uses Bun's regular fast runtime. Production uses experimental `bun compile`, which compiles supported application logic to machine code without a shipped JIT. It still includes necessary Bun runtime functionality; AOT does not translate JSX or CSS into native widgets.
+- **Two first-party UI adapters.** SolidJS is implemented first, React second. Both use the same typed native host, common components and platform capabilities.
+- **Developer tooling and distribution.** A native CLI, fast hot reload, prebuilt native host binaries, macOS/Windows/Linux packaging, updates, rollback and reproducible tests.
+- **Measured quality.** Low startup time, idle memory, CPU/GPU work, native bridge overhead and artifact size are engineering goals. No performance or component-compatibility advantage is claimed before measurements.
 
-Bunly is building a standalone TypeScript-first desktop framework around real Bun,
-prebuilt native components, and managed backend reloads. Better iteration and
-competitive runtime efficiency are hypotheses to validate, not current performance claims.
+### Architecture at a glance
 
-## Run the foundation
-
-Use Bun **1.4.4** for repository tooling and formatting. The qualified packaged desktop runtime
-remains Bun 1.4.4. These application-side commands do not invoke a systems compiler:
-
-```sh
-bun install --frozen-lockfile
-bun run check
-bun run typecheck:browser
-bun run example
-bun packages/cli/src/main.ts doctor
-bun run benchmark:smoke
+```text
+TypeScript / JavaScript application
+        │
+   SolidJS or React renderer adapter
+        │
+  Shared typed native host API
+        │
+ Rust native rendering + OS capabilities
+        │
+  macOS / Windows / Linux windows
 ```
 
-Type checks use Bun's native TypeScript checker; editor/reference TypeScript stays pinned.
-See [Bun-native tooling](docs/bun-tooling.md) for qualification, measurements and API choices.
+In development, Bun runs the app code normally. For distribution, Bun's AOT compiler generates CPU-specific machine code for the application while the separately built native host renders the interface. **Native rendering and AOT solve different problems; Bun Native needs both.**
 
-`example` exercises the explicit mock backend: resource lifetime, navigation,
-capabilities, cancellation, and cleanup. It does not open a native window.
-`benchmark:smoke` writes a complete scenario matrix with unsupported operations
-identified rather than assigned invented zero-cost timings.
+## Current implementation status
 
-## Formatting
+| Capability | Status |
+| --- | --- |
+| Repo rename and BN0–BN7 roadmap | Planned and tracked |
+| New native codebase (replacement for Bunly/CEF) | Not yet implemented — [#251](https://github.com/0xPlayerOne/bun-native/issues/251) |
+| Real Bun → native renderer window | Not yet verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230) |
+| Production Bun AOT + native renderer integration | Not yet verified — [#227](https://github.com/0xPlayerOne/bun-native/issues/227) |
+| SolidJS, React, components and CLI | Planned — BN2–BN5 |
+| Cross-platform native packaging, benchmarks | Planned — BN6–BN7 |
 
-Run `bun run format` to apply Bun's built-in formatter and
-`bun run format:check` to verify it.
-`bun run check` enforces formatting before the other checks. See
-[formatting](docs/formatting.md) for Python/Rust commands and preserved evidence.
+The current source code is **not** an endorsed implementation foundation. Legacy CEF, WebView, browser API and M1–M7 documentation has been removed from the active documentation; it remains available in Git history for archaeology. The code itself is removed by the first migration implementation issue.
 
-## Managed development
+## Start here
 
-The opt-in development APIs keep the native desktop owner alive while replacing
-supported backend code. `ServiceReloadHost` runs one application generation in a
-fresh Bun Worker; `ManagedDesktopResources` reattaches authorized windows, browser
-sessions and terminals. `DevelopmentSession` bundles changed dependencies and
-serializes reloads independently from the application's frontend tooling.
+- [Product vision](docs/bun-native-vision.md) — scope, goals and non-goals
+- [Architecture](docs/architecture.md) — native host, framework renderers and runtime boundaries
+- [Getting started](docs/getting-started.md) — contributor setup, current limits and first implementation tasks
+- [Developer workflow](docs/development.md) — intended CLI, hot reload, package boundaries
+- [Toolchain and AOT](docs/toolchain.md) — Bun compilation, versioning and compatibility
+- [Compatibility](docs/compatibility.md) — Solid/React, CSS/DOM and platform support boundaries
+- [Testing](docs/testing.md) and [benchmarks](benchmarks/README.md) — automation, physical native checks and performance evidence
+- [Release engineering](docs/releasing.md) — signed/unsigned packages, updates and rollback
+- [Engineering-quality standard](docs/engineering-quality.md) — architecture hygiene, code audits and measured optimization
+- [Complete documentation index](docs/README.md)
 
-Use [service reload](docs/service-reload.md) for the application contract,
-[managed desktop resources](docs/managed-desktop.md) for retained resource APIs,
-and [development hosts](docs/development-host.md) for cache and watcher setup.
-The executable `examples/managed-desktop` fixture combines these APIs with a real
-CEF window and numbered-output native PTY. Its explicit native qualification
-entrypoint accepts an already prepared host and its immutable source commit:
+## Roadmap
 
-```sh
-bun run qualify:managed-development /absolute/path/to/prebuilt-app --native-source=COMMIT
-```
+| Phase | Deliverable |
+| --- | --- |
+| [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app |
+| [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security |
+| [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) | SolidJS native renderer |
+| [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) | React native renderer |
+| [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) | Shared native components, OS services and accessibility |
+| [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) | CLI, Bun tooling, hot reload and native CI |
+| [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) | Native AOT packaging, installation, updates and recovery |
+| [BN7](https://github.com/0xPlayerOne/bun-native/issues/224) | Real apps, equivalent-workload benchmarks, documentation and optimization |
 
-Replace `COMMIT` with the full 40-character source commit used to build that host.
-The qualifier checks matching native source and records the actual artifact bytes.
-It creates a private fixture, runs the fixed 500-replacement plan and preserves
-its report under `.bunly/m6/managed-development`. A separate observed relaunch
-checks changed configuration and the full-restart boundary. The
-[qualification guide](docs/managed-development-qualification.md) defines the
-workload, resource gates and retained evidence; the
-[edit outcome comparison](docs/managed-comparison.md) covers pinned reference
-frameworks. The qualifier does not compile a native host.
-Configuration/native changes and unmanaged state require a controlled restart;
-irreversible external effects are never automatically replayed.
+The [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) contains 8 self-contained milestone epics and linked implementation tasks. It is the current source of engineering work; milestones can progress in parallel when contracts allow.
 
-[The M6 record](docs/m6-completion.md) maps issues #28–#33 to their implementation
-and qualification scope and preserves three failed development attempts beside
-the accepted native and comparison runs. Replay the five retained archives without
-launching a desktop or implicitly fetching historical source:
+## Product boundaries
 
-```sh
-bun run verify:managed-acceptance
-```
+Bun Native is **not** an Electron, Electrobun, Tauri or WebView wrapper. It does not promise arbitrary HTML/CSS, browser DOM APIs, Tailwind, shadcn, Radix or Kobalte components running unchanged. Their functionality must be represented through actual native host elements/adapters, and support is documented per feature.
 
-The comparison reports raw timings for different engine and restart/persistence
-cohorts; it makes no speedup claim. Native reliability issues
-[#124](https://github.com/0xPlayerOne/bunly/issues/124) and
-[#129](https://github.com/0xPlayerOne/bunly/issues/129) remain open.
+The public app API is still being designed. **Do not copy hypothetical CLI or component examples as working commands.** See [BN1 public API #253](https://github.com/0xPlayerOne/bun-native/issues/253) and [BN5 CLI #242](https://github.com/0xPlayerOne/bun-native/issues/242) for implementation status.
 
-## Interactive comparison workbench
+## Contributing
 
-```sh
-bun scripts/bootstrap-benchmark-dependencies.ts
-bun run workbench
-```
+This is a fully experimental rewrite. Agents and contributors should follow [AGENTS.md](AGENTS.md), [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) and the [engineering-quality policy](docs/engineering-quality.md). Automated code/performance checkpoints are expected throughout the implementation, with no routine human design approval. GitHub-hosted Linux/Windows/macOS runners are preferred; the connected Mac can be used for native GUI tests through Remote Desktop Commander when needed.
 
-Open the printed local URL to exercise real xterm.js rendering, deterministic
-streaming, cancellation, form navigation, and local file fixtures. The web-only
-preview is a sandboxed iframe, not a native embedded browser. Terminal data is a
-numbered ANSI fixture, not a real shell or PTY.
-
-The [benchmark guide](benchmarks/README.md) also covers a pinned Electron adapter
-with actual browser windows, isolated profiles, sandboxed renderer execution,
-terminal rendering, and deliberate renderer-failure observation. Electron is a
-benchmark dependency, never Bunly's runtime.
-
-## Interactive native hardware workbench
-
-The maintained [native hardware workbench](docs/hardware-workbench.md) gives M7
-operators two independent remote browser panes, application controls, a native
-overlay, multilingual text fields and live window/input observations. It stays
-open until explicitly closed. Preparation accepts an existing native app and its
-full native build commit, bundles only application assets, and does not launch a
-GUI:
-
-```sh
-bun run workbench:native prepare /absolute/path/to/prebuilt-app --native-source=COMMIT
-```
-
-The guide covers the separate `run PREPARATION_JSON --launch` opt-in, supported
-operator steps, unsupported adapters and equipment-record template. Manual IME,
-assistive-technology, high-DPI/display and suspend/resume cases remain not run;
-no preparation or UI action automatically passes them.
-
-## Framework contributor probes
-
-Contributors need the pinned Rust toolchain for the native fixtures. The optional
-process-tree observer uses Python with `psutil==7.0.0`; set `PYTHON` to the same
-executable used to install it.
-
-```sh
-bun run native:test
-bun run native:build
-bun run qualify:host
-bun run qualify:lifecycle
-bun run artifact:probe
-```
-
-The fixtures exercise native-main-thread/Bun-Worker handoff through FFI and
-Node-API, same-host Worker replacement, GC/reentrancy and failure cases, and a
-native-owner/Bun-subprocess candidate selected by [ADR 0002](docs/decisions/0002-host-qualification.md).
-The probes themselves are **not CEF, AppKit, Win32 or GTK window implementations**.
-Process-tree resources and Linux/macOS kernel counters have recorded observations.
-Windows wakeup measurement remains explicitly unsupported. Artifact tests use
-ephemeral test keys, not production trust roots. See the [M1 closeout](docs/m1-completion.md).
-
-## Repository
-
-| Location             | Responsibility                                                         |
-| -------------------- | ---------------------------------------------------------------------- |
-| `packages/contracts` | Browser-safe contracts and capability/version rules                    |
-| `packages/client`    | Browser-side discovery; no native authority                            |
-| `packages/runtime`   | Native adapters, resource ownership, service supervision and reload    |
-| `packages/artifacts` | Authenticated manifests, archive verification and cache                |
-| `packages/cli`       | Diagnostics, artifact resolution, prepared hosts and development edits |
-| `native/host-probe`  | Original Node-API/FFI and native subprocess fixtures                   |
-| `examples/workbench` | Mock consumer and shared browser workbench UI                          |
-| `benchmarks`         | Deterministic fixtures, reports, inventory and adapters                |
-| `tests`              | Contracts, artifacts, faults, result validation and real process tests |
-| `docs`               | Architecture, provenance and qualification boundaries                  |
-
-## Roadmap and evidence
-
-[Manual cloud qualification](docs/manual-native-qualification.md) runs portable or native tests on disposable Windows, Linux, and macOS runners without restarting local VMs or enabling automatic CI.
-
-The [M3 closeout](docs/m3-completion.md) records the declared macOS, Windows and Linux native functional acceptance, packaged resources, lifecycle and verified acquisition. Hosted smoke results do not establish hardware-input, GPU performance or release qualification.
-
-The [pre-M4 foundation pass](docs/pre-m4-foundation.md) covers bounded native asset
-loading, verified macOS helper cleanup and maintained regression workloads.
-[Foundation profiling](docs/foundation-performance.md) documents the explicit
-portable/native measurement commands and their qualification limits.
-
-[Master roadmap](https://github.com/0xPlayerOne/bunly/issues/1) ·
-[Milestones](https://github.com/0xPlayerOne/bunly/milestones) ·
-[M1/M2 implementation notes](docs/history/m1-m2-progress.md)
-
-M1 establishes the accepted foundation and host decision. M2 supplies reproducible
-comparison infrastructure and competitor baselines. M3 qualifies the visible CEF
-host; M4 and M5 add native authority, isolated sessions, streams, PTYs and service
-supervision. M6 integrates persistent development sessions and their acceptance
-workloads. Packaging and additional native webviews belong to later milestones.
-
-Start with [the documentation index](docs/README.md), [architecture](docs/architecture.md), [host decision](docs/decisions/0002-host-qualification.md),
-[validation](docs/validation.md), and [contributing](.github/CONTRIBUTING.md).
-
-This is not a Tauri plugin, Bun fork, package manager, or full Electron clone.
-No production Adea settings, repository visibility, or public publishing are changed.
+See [LICENSE](LICENSE), [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for project and dependency terms. Historical Bunly releases and evidence are preserved in Git tags/history, not maintained as Bun Native product documentation.
