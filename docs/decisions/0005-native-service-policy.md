@@ -1,6 +1,8 @@
 # ADR 0005 — Native service policy and owned-window display reads
 
-Status: accepted architecture; native qualification pending
+Status: accepted architecture; core/Solid/React Linux development/AOT service
+qualification passed locally with a development-profile host. Hosted release
+and other-platform service qualification remain pending.
 
 Date: October 31, 2026
 
@@ -65,6 +67,9 @@ scope, platform status, deferred services and the Adea path. Shared parser
 cases and real-process peer tests cover validation/lifecycle; the actual
 native fixture separately requires an OS click, independently checked display
 dimensions, matching complete native paint and clean shutdown in development
-and inspected AOT. Native results are pending and may not be inferred from
-the headless tests. No new runtime dependency or framework-specific native
-implementation is introduced.
+and inspected AOT. The [source-bound native record](../../tests/native/evidence/services-linux-development-aot.json)
+reports six successful core/Solid/React scenarios on one isolated Xvfb
+screen with a development-profile host. It does not qualify release-host,
+other-platform or mixed-DPI/global-monitor behavior; those checks remain
+separate from the headless tests. No new runtime dependency or
+framework-specific native implementation is introduced.
