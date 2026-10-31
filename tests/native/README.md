@@ -102,6 +102,19 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 ## Evidence and limits
 
+### React adapter
+
+`tests/native/react-window.py` supplies independent complete-tree expectations for
+`examples/react-counter/main.tsx`, then executes the existing owned-process input
+driver. Its `counter-click` scenario requires one label update, one retained keyed
+move and one deletion with React row cleanup. `counter-input` requires every native
+edit revision and the final input/echo values. Both require OS close and effect/
+listener cleanup. The required native job runs both with development Bun and the
+inspected `--entry react` AOT executable against its already-built release host.
+See the [adapter instructions](../../packages/react/README.md) and
+[local source-bound evidence](evidence/react-linux-development-aot.json). That local
+record uses a development-profile host and does not qualify release performance.
+
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.
 The lifecycle fixture also writes `public-lifecycle.json` beside the event log,

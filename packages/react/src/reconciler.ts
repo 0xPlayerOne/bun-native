@@ -49,26 +49,61 @@ type Config = Reconciler.HostConfig<
 const context: HostContext = Object.freeze({})
 let updatePriority: Reconciler.EventPriority = NoEventPriority
 let activeEvent: { type: string; observedAt: number } | undefined
+type NativeEvent = ClickEvent | InputEvent
+type EventBinding = { listener: Listener<NativeEvent> | undefined; dispatch: Listener<NativeEvent> }
+const bindings = new WeakMap<Node, Map<string, EventBinding>>()
 
 function unsupported(feature: string): never {
   throw new UnsupportedFeatureError('react-' + feature)
 }
 
-function eventListener(value: unknown): Listener<ClickEvent | InputEvent> {
-  if (typeof value !== 'function') throw new TypeError('Native event listeners must be functions')
-  // Runtime validation establishes callable identity; the native core validates
-  // the event and supplies the precise typed event for the registered node.
-  const listener = value as Listener<ClickEvent | InputEvent>
-  return (event) => {
+// React requires these hooks even when a host has no corresponding resource.
+// Reuse their identical semantics instead of maintaining separate empty bodies.
+const noOp = (): void => {}
+const noInstance = () => null
+const returnFalse = () => false
+const hostContext = () => context
+
+function createBinding(listener: Listener<NativeEvent>): EventBinding {
+  const binding: EventBinding = { listener, dispatch }
+  function dispatch(event: NativeEvent): void | Promise<void> {
+    const current = binding.listener
+    if (!current) return
     const previous = activeEvent
     activeEvent = { type: event.type, observedAt: performance.now() }
     try {
-      return reconciler.discreteUpdates(listener, event, undefined, undefined, undefined)
+      return reconciler.discreteUpdates(current, event, undefined, undefined, undefined)
     } finally {
       activeEvent = previous
       reconciler.flushSyncWork()
     }
   }
+  return binding
+}
+
+function updateEvent(node: Node, name: string, value: unknown): void {
+  const registered = bindings.get(node)
+  const existing = registered?.get(name)
+  if (value === undefined) {
+    if (existing) existing.listener = undefined
+    registered?.delete(name)
+    setProperty(node, name, undefined)
+    return
+  }
+  if (typeof value !== 'function') throw new TypeError('Native event listeners must be functions')
+  // The callable boundary is checked here; core supplies the validated event.
+  const listener = value as Listener<NativeEvent>
+  if (existing) {
+    // React replaces inline closures on ordinary rerenders. Keep the node's
+    // native registration alive so queued input/clicks retain their ordering.
+    existing.listener = listener
+    return
+  }
+  const binding = createBinding(listener)
+  setProperty(node, name, binding.dispatch)
+  const next = registered ?? new Map<string, EventBinding>()
+  next.set(name, binding)
+  bindings.set(node, next)
 }
 
 function updateProperties(node: Node, previous: Props, next: Props): void {
@@ -76,13 +111,8 @@ function updateProperties(node: Node, previous: Props, next: Props): void {
     if (name === 'children' || name === 'ref' || name === 'key') continue
     const value = next[name]
     if (Object.hasOwn(previous, name) && Object.is(previous[name], value)) continue
-    setProperty(
-      node,
-      name,
-      (name === 'onClick' || name === 'onInput') && value !== undefined
-        ? eventListener(value)
-        : value
-    )
+    if (name === 'onClick' || name === 'onInput') updateEvent(node, name, value)
+    else setProperty(node, name, value)
   }
 }
 
@@ -99,7 +129,7 @@ const host: Config = {
   extraDevToolsConfig: null,
   bindToConsole(method, args) {
     const log = method === 'warn' ? console.warn : method === 'error' ? console.error : console.log
-    return () => log(...args)
+    return log.bind(console, ...args)
   },
   createInstance(type, props) {
     const node = createElement(type)
@@ -108,25 +138,27 @@ const host: Config = {
   },
   createTextInstance: createTextNode,
   appendInitialChild: insertNode,
-  finalizeInitialChildren: () => false,
-  shouldSetTextContent: () => false,
-  getRootHostContext: () => context,
-  getChildHostContext: () => context,
+  finalizeInitialChildren: returnFalse,
+  shouldSetTextContent: returnFalse,
+  getRootHostContext: hostContext,
+  getChildHostContext: hostContext,
   getPublicInstance: (node) => node,
-  prepareForCommit: () => null,
-  resetAfterCommit() {},
-  preparePortalMount: () => unsupported('portals'),
-  scheduleTimeout: (callback, delay) => setTimeout(callback, delay),
+  prepareForCommit: noInstance,
+  resetAfterCommit: noOp,
+  preparePortalMount: unsupported.bind(null, 'portals'),
+  scheduleTimeout: setTimeout,
   cancelTimeout: clearTimeout,
   noTimeout: null,
   supportsMicrotasks: true,
   scheduleMicrotask: queueMicrotask,
-  getInstanceFromNode: () => null,
-  beforeActiveInstanceBlur() {},
-  afterActiveInstanceBlur() {},
-  prepareScopeUpdate: () => unsupported('scope'),
-  getInstanceFromScope: () => null,
+  getInstanceFromNode: noInstance,
+  beforeActiveInstanceBlur: noOp,
+  afterActiveInstanceBlur: noOp,
+  prepareScopeUpdate: unsupported.bind(null, 'scope'),
+  getInstanceFromScope: noInstance,
   detachDeletedInstance(node) {
+    for (const binding of bindings.get(node)?.values() ?? []) binding.listener = undefined
+    bindings.delete(node)
     node.children.length = 0
     node.parent = undefined
     delete node.properties.onClick
@@ -140,10 +172,10 @@ const host: Config = {
   removeChildFromContainer: removeNode,
   commitTextUpdate: (node, _previous, next) => replaceText(node, next),
   commitUpdate: (node, _type, previous, next) => updateProperties(node, previous, next),
-  hideInstance: () => unsupported('hidden-subtrees'),
-  hideTextInstance: () => unsupported('hidden-subtrees'),
-  unhideInstance: () => unsupported('hidden-subtrees'),
-  unhideTextInstance: () => unsupported('hidden-subtrees'),
+  hideInstance: unsupported.bind(null, 'hidden-subtrees'),
+  hideTextInstance: unsupported.bind(null, 'hidden-subtrees'),
+  unhideInstance: unsupported.bind(null, 'hidden-subtrees'),
+  unhideTextInstance: unsupported.bind(null, 'hidden-subtrees'),
   clearContainer(container) {
     while (container.children.length) removeNode(container, container.children[0]!)
   },
@@ -154,21 +186,21 @@ const host: Config = {
   },
   getCurrentUpdatePriority: () => updatePriority,
   resolveUpdatePriority: () => updatePriority || DefaultEventPriority,
-  resetFormInstance: () => unsupported('forms'),
-  requestPostPaintCallback: () => unsupported('presentation-timing'),
-  shouldAttemptEagerTransition: () => false,
-  trackSchedulerEvent() {},
+  resetFormInstance: unsupported.bind(null, 'forms'),
+  requestPostPaintCallback: unsupported.bind(null, 'presentation-timing'),
+  shouldAttemptEagerTransition: returnFalse,
+  trackSchedulerEvent: noOp,
   resolveEventType: () => activeEvent?.type ?? null,
   resolveEventTimeStamp: () => activeEvent?.observedAt ?? -1,
-  maySuspendCommit: () => false,
-  maySuspendCommitOnUpdate: () => false,
-  maySuspendCommitInSyncRender: () => false,
+  maySuspendCommit: returnFalse,
+  maySuspendCommitOnUpdate: returnFalse,
+  maySuspendCommitInSyncRender: returnFalse,
   preloadInstance: () => true,
-  startSuspendingCommit: () => null,
-  suspendInstance: () => unsupported('suspended-host-commit'),
-  suspendOnActiveViewTransition: () => unsupported('view-transitions'),
-  waitForCommitToBeReady: () => null,
-  getSuspendedCommitReason: () => null,
+  startSuspendingCommit: noInstance,
+  suspendInstance: unsupported.bind(null, 'suspended-host-commit'),
+  suspendOnActiveViewTransition: unsupported.bind(null, 'view-transitions'),
+  waitForCommitToBeReady: noInstance,
+  getSuspendedCommitReason: noInstance,
 }
 
 export const reconciler = Reconciler(host)

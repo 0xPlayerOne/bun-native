@@ -23,7 +23,7 @@ cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 
 `build` checks the TypeScript package build. It is not an AOT release build and must not silently compile Rust for ordinary application edits. The Rust commands explicitly select the portable protocol crate. GPUI compilation, GPU initialization, window interaction and production AOT acceptance use the separate native commands below. Consumer TypeScript/JavaScript edits reuse an explicitly supplied prebuilt host.
 
-`bunfig.toml` retains the minimum line-coverage gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
+`bunfig.toml` requires at least 80% line and 90% function coverage per reported file. The function threshold makes the pinned Bun runner's existing default explicit; it does not reduce the effective gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
 
 ### Real subprocess failure tests
 
@@ -102,8 +102,8 @@ The harness uses Python's standard library. Ruff is the sole Python development 
 ```sh
 python3 -m venv .bun-native/quality-env
 .bun-native/quality-env/bin/pip install --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
-.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
-.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
+.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py tests/native/*.py
+.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py tests/native/*.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
 bash -n scripts/quality/native-linux-session.sh
 ```

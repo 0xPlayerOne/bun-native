@@ -3,4 +3,4 @@ exact = true
 
 [test]
 root = "./tests"
-coverageThreshold = { lines = 0.8 }
+coverageThreshold = { lines = 0.8, functions = 0.9 }

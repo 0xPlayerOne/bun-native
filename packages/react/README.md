@@ -72,6 +72,11 @@ the shared subtree without closing another renderer's root or the native window.
 signals. They are dispatched as discrete React updates. There are no DOM synthetic
 events, event bubbling or `event.target` objects. Native event ingestion remains
 owned by the public core; React does not add an independent unbounded event queue.
+Ordinary rerenders update the latest handler behind a stable native subscription.
+Replacing an inline closure therefore keeps an active callback's signal and queued
+events alive. Removing the handler or node revokes that subscription. A throwing
+native event callback follows the public core's terminal application-error policy;
+observe `application.closed` to receive that failure.
 
 An input accepts an initial string or `{ value, revision }`. Store the actual
 `onInput` event in state to observe native typing without writing it back:
@@ -101,9 +106,51 @@ implemented. Unsupported native tags and properties fail explicitly; unknown
 fields are rejected even when their values are `undefined`. Layout, focus, IME,
 accessibility and platform-service support remain exactly the shared host's scope.
 
-Current source tests exercise actual React and public-core subprocess IPC, with
-state batching, keyed identity, refs/effect cleanup, error boundaries, invalid
-elements/properties, native rejection and window close. The peer is headless.
-Actual native development/AOT and the 1,000-cycle performance checkpoint are
-separate acceptance work; this initial implementation does not claim those checks
-have passed.
+Source tests exercise actual React and public-core subprocess IPC, with state
+batching, keyed identity, refs/effect cleanup, bounded commit barriers, disposal
+during a layout effect, error boundaries, invalid elements/properties, native
+rejection, callback failure, input revision races and window close. The peer is
+headless. Shared renderer tests independently verify ownership, subtree rescue,
+atomic failure cleanup and one observer per native window.
+
+## Real native development and AOT fixture
+
+`examples/react-counter/main.tsx` mounts a real counter, editable input and keyed
+list through the public adapter. The [native controller](../../tests/native/react-window.py)
+uses the existing owned-process X11 driver, requiring complete expected native
+trees and matching application events. The first click must update one label,
+move one retained row and remove one row without recreating the remaining nodes.
+Typing must preserve every native edit revision while updating the echo label.
+OS close must run all row/effect cleanup and leave no observed child process.
+
+```sh
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+export BUN_NATIVE_HOST_PROFILE=release
+mkdir -p .bun-native
+run_dir=$(mktemp -d "$PWD/.bun-native/react.XXXXXX")
+
+xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-dev" -- \
+  python3 tests/native/react-window.py --scenario counter-click --mode development \
+    --output "$run_dir/development" -- bun examples/react-counter/main.tsx
+
+bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
+  --host-profile release --entry react --outdir "$run_dir/aot-package"
+xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-aot" -- \
+  python3 tests/native/react-window.py --scenario counter-input --mode aot \
+    --output "$run_dir/aot" -- "$run_dir/aot-package/react"
+```
+
+Use both scenarios in each mode; required native CI does so with its one release
+host build. The build helper pins compiler identity, records all React/shared
+renderer source hashes, and verifies a compiled-program record and actual JIT
+range removal. The controller's declared `--mode aot` alone is not that proof.
+
+The [local evidence record](../../tests/native/evidence/react-linux-development-aot.json)
+records four passing scenarios on Linux X11 with a development-profile protocol-2
+host and Mesa llvmpipe software rendering. Screenshots show actual rendered pixels;
+the full-tree paint records are not display-presentation timestamps. These runs
+do not qualify macOS/Windows GUI, physical input, hardware GPU, HiDPI/IME, release
+performance, or the still-pending 1,000-cycle and matched direct-core/Solid/React
+performance checkpoint. Issue #236 remains open for those acceptance items.

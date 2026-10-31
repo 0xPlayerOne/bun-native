@@ -30,21 +30,7 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: false,
 })
-const entry = values.entry
-if (
-  entry !== 'native-window' &&
-  entry !== 'input-race' &&
-  entry !== 'bridge' &&
-  entry !== 'javascript' &&
-  entry !== 'core-lifecycle' &&
-  entry !== 'event-throughput' &&
-  entry !== 'fault' &&
-  entry !== 'scheduling'
-)
-  throw new Error(
-    '--entry must be native-window, input-race, bridge, javascript, core-lifecycle, event-throughput, fault or scheduling'
-  )
-const entryPath = {
+const entries = {
   'native-window': 'examples/native-window/main.ts',
   'input-race': 'tests/native/input-race.ts',
   bridge: 'benchmarks/bridge.ts',
@@ -53,10 +39,19 @@ const entryPath = {
   'event-throughput': 'tests/native/event-throughput.ts',
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
-}[entry]
+  react: 'examples/react-counter/main.tsx',
+} as const
+function isEntry(value: string | undefined): value is keyof typeof entries {
+  return typeof value === 'string' && Object.hasOwn(entries, value)
+}
+const entry = values.entry
+if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(entries).join(', '))
+const entryPath = entries[entry]
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
-    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry native-window|input-race|bridge|javascript|core-lifecycle|event-throughput|fault|scheduling]'
+    'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry ' +
+      Object.keys(entries).join('|') +
+      ']'
   )
 }
 if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
@@ -71,7 +66,8 @@ if (
     entry === 'core-lifecycle' ||
     entry === 'event-throughput' ||
     entry === 'fault' ||
-    entry === 'scheduling') &&
+    entry === 'scheduling' ||
+    entry === 'react') &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')
@@ -139,6 +135,14 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
+  if (entry === 'react') {
+    sources.add('packages/react/package.json')
+    sources.add('packages/renderer/package.json')
+    for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
+      cwd: source,
+    }))
+      sources.add(path)
+  }
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
   }))

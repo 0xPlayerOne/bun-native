@@ -57,7 +57,14 @@ class Root implements ReactRenderRoot {
       if (this.failure !== undefined) throw this.failure
       reconciler.flushPassiveEffects()
     })
-    this.ready = this.native.ready
+    this.ready = this.native.ready.then(() => {
+      if (this.phase !== 'active')
+        throw new NativeStateError(
+          'invalid_handle',
+          'React root closed before initial native acknowledgement'
+        )
+    })
+    void this.ready.catch(() => {})
     this.closed = this.native.closed
     void this.closed.then(
       () => this.finish(),
@@ -112,6 +119,9 @@ class Root implements ReactRenderRoot {
         resolve()
       })
     })
+    // Native failure cleanup may already have entered disposal. Join it before
+    // checking local lifetime so the triggering operation preserves its cause.
+    await this.native.flush()
     this.assertActive()
     // Effect code may schedule future work; its mere execution is not evidence
     // that another render is pending. Re-enqueuing barriers until this returns
@@ -125,7 +135,9 @@ class Root implements ReactRenderRoot {
       this.phase = 'disposing'
       // A listener/layout effect may request disposal. Never reenter Fiber's
       // render or commit from the current application callback stack.
-      this.disposal = Promise.resolve().then(() => this.native.dispose())
+      this.disposal = reconciler.isAlreadyRendering()
+        ? Promise.resolve().then(() => this.native.dispose())
+        : this.native.dispose()
     }
     return this.disposal
   }
