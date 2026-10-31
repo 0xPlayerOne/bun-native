@@ -1,6 +1,10 @@
-# Bunly
+# Bun Native
 
-The Bun-native desktop framework.
+**Proposed direction:** A Bun-first, AOT-compiled TypeScript desktop framework with browserless native UI rendering. Read the [Bun Native vision and feasibility gates](docs/bun-native-vision.md).
+
+**Implementation status:** The code in this repository is still the experimental **Bunly** desktop host built around CEF and a managed Bun runtime. The existing M1–M7 evidence below describes that host; it does **not** yet establish Bun AOT support, native GPU rendering, or migration readiness. The product direction is being evaluated without deleting prior work or invalidating open qualification issues.
+
+## Existing Bunly implementation and qualification
 
 **Status:** Experimental. M1 foundations and M2 local benchmark acceptance are complete. M3 initial macOS/Windows/Linux functional acceptance is complete. [M4 delivery and final acceptance](docs/m4-completion.md) cover native IPC authority, session isolation, protected cookies and transport selection. [M5 completion](docs/m5-completion.md) records bounded native streams, terminals, service supervision and measured graphical load. [M6 completion](docs/m6-completion.md) records 500 actual managed replacements and a distinct controlled relaunch on all three hosted platforms, plus a separately pinned macOS workflow comparison; [PR #130](https://github.com/0xPlayerOne/bunly/pull/130) is merged. M7's bounded desktop/browser APIs and diagnostics are implemented; #36's bounded file-workflow software gate is complete on v0.6.8. #35 remains open for the strict Linux initial-hidden composition failure, physical focus/IME/accessibility/display qualification and measured rendering tradeoffs. The [M7 implementation and evidence status](docs/m7-status.md) records the accepted software scope, per-platform capability matrix and remaining qualification gates. This is not a release-qualified desktop runtime. [M2 closeout](docs/m2-completion.md) records the skipped Apple signing and pending final performance qualification.
 
