@@ -9,6 +9,7 @@ never flushed. Results are descriptive; no guessed performance budget applies.
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -23,6 +24,9 @@ import time
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 DRIVER = REPOSITORY / "scripts/quality/native-input-linux.py"
+DRIVER_SPEC = importlib.util.spec_from_file_location("native_input_linux", DRIVER)
+NATIVE_INPUT = importlib.util.module_from_spec(DRIVER_SPEC)
+DRIVER_SPEC.loader.exec_module(NATIVE_INPUT)
 
 
 class Unsupported(RuntimeError):
@@ -77,12 +81,14 @@ def distribution(values):
 def expected_sources(repository):
     paths = {
         "examples/native-window/main.ts",
+        "examples/native-window/content.ts",
         "package.json",
         "bun.lock",
         "bunfig.toml",
         "tsconfig.json",
         "packages/protocol/package.json",
         "packages/runtime/package.json",
+        "packages/core/package.json",
         ".bun-version",
         "rust-toolchain.toml",
         "toolchain.json",
@@ -94,6 +100,7 @@ def expected_sources(repository):
     for directory, extension in [
         ("packages/protocol/src", "ts"),
         ("packages/runtime/src", "ts"),
+        ("packages/core/src", "ts"),
         ("native/gpui-host/src", "rs"),
         ("native/protocol/src", "rs"),
     ]:
@@ -126,6 +133,10 @@ def verify_package(package, repository):
     manifest = json.loads(path.read_text())
     if manifest["schemaVersion"] != 1:
         raise ValueError("Unsupported AOT manifest schema")
+    if manifest.get("entrypoint") != "examples/native-window/main.ts":
+        raise ValueError("The baseline requires the compiled native-window fixture")
+    if manifest["host"].get("placement") != "bundled":
+        raise ValueError("The baseline requires the matching bundled native host")
     if manifest["host"]["profile"] != "release":
         raise ValueError(
             "A comparable production baseline requires a release-profile host"
@@ -207,6 +218,7 @@ def metrics(report):
         for key in [
             "time_to_window_observed_ms",
             "time_to_first_paint_report_observed_ms",
+            "time_to_expected_initial_paint_report_observed_ms",
             "sampled_peak_tree_rss_bytes",
             "input_start_to_matching_app_event_observed_ms",
             "input_start_to_matching_paint_report_observed_ms",
@@ -257,6 +269,7 @@ def main():
             "launch": "fresh application and native-host processes for every trial",
             "cache": "OS page cache uncontrolled; no cache flushes",
             "input": "XTest pointer click; the same native button and Bun update",
+            "fixture": "BN1 public application API; complete initial and changed native tree snapshots",
             "renderer": "software GPU, actual adapter must match across trials",
             "rss": "sum of process RSS; shared pages may be counted more than once",
             "timing": "driver observations at nominal 100 ms polling; no presentation timestamps",
@@ -342,13 +355,17 @@ def main():
                         "--idle-seconds",
                         str(args.idle_seconds),
                         "--expect-software-renderer",
+                        "--title",
+                        "Bun Native BN1",
+                        "--expect-initial-render",
+                        json.dumps(NATIVE_INPUT.fixture_paint(1, "Clicks: 0")),
                         "--click",
                         "100",
-                        "145",
+                        "130",
                         "--expect-event",
-                        '{"type":"click","stage":"bun-application"}',
+                        '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}',
                         "--expect-render",
-                        '{"type":"rendered","stage":"native-paint","text":"Clicks: 1","input":""}',
+                        json.dumps(NATIVE_INPUT.fixture_paint(2, "Clicks: 1")),
                         "--",
                         *commands[mode],
                     ]

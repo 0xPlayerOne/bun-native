@@ -1,9 +1,17 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
+export { parseElement, type Element, type Style } from './elements.ts'
+export { MAX_TEXT_BYTES } from './values.ts'
 export {
-  MAX_TEXT_BYTES,
+  DEFAULT_LIMITS,
+  ERROR_CODES,
+  MAX_OPERATIONS,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
   type Command,
   type NativeEvent,
+  type Operation,
+  type Limits,
+  type ErrorCode,
+  type Capability,
 } from './messages.ts'

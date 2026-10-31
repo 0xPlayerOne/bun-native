@@ -1,34 +1,34 @@
 # Bun Native implementation handoff
 
-## Current branch state
+## Completed foundation and current source
 
-The BN0 workspace replacement removes the Bunly runtime and browser renderer.
-The source includes matching portable TypeScript and Rust native-pipe protocol
-packages, an owned native-process runtime, an interactive GPUI host, strict
-package-boundary checks, and a pinned Bun AOT/Rust bootstrap.
-No old CEF result qualifies this implementation.
+BN0 is complete. Source replacement #264, pinned compiler/native interoperability
+#265, the actual GPUI window #266, and the repeated release baseline/audit #273
+are merged. The final baseline merge is
+`c7bcf4e63906b97c9639c7a48ca4645d06aa98d2`.
+[Validation 41181547360](https://github.com/0xPlayerOne/bun-native/actions/runs/41181547360)
+passed every required job, including actual release-host development/AOT input,
+all 12 matched baseline trials, the Linux/macOS/Windows headless contracts and
+`Validation / Gate`. BN0 #217 and its implementation issues are closed.
 
-Source replacement [#264](https://github.com/0xPlayerOne/bun-native/pull/264) and
-compiler interoperability [#265](https://github.com/0xPlayerOne/bun-native/pull/265)
-are merged. Native window/AOT integration
-[#266](https://github.com/0xPlayerOne/bun-native/pull/266) also merged as
-`2c04f0ed991e8b5c5eecf56c9e07cbe3196e452c` after its full required validation
-[passed](https://github.com/0xPlayerOne/bun-native/actions/runs/41180169500).
-The repeated baseline/audit remains in
-[#273](https://github.com/0xPlayerOne/bun-native/pull/273). Both application
-modes have passed real Linux X11 software-GPU click/input/paint/close tests, and
-five close/reopen cycles passed within one native process. Hosted native job
-[124474016479](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675/job/124474016479)
-also passed with the release-profile GPUI host and all 12 matched baseline trials.
-The complete historical workflow failed its Windows protocol job. The corrected
-Windows tests and all other #266 jobs subsequently passed; the rebased #273
-checks and merge remain outstanding.
+The [BN0 audit](bn0-audit.md) and [integration record](bn0-integration.md) retain
+original hashed evidence and earlier failed probes separately from the final
+passing run. That acceptance is Linux X11/XTest with Mesa software rendering;
+it does not qualify other OS GUIs, physical GPU/input, IME, accessibility or
+production installers.
 
-The [BN0 audit](bn0-audit.md) maps #227/#258/#226 to exact evidence, pending closure
-conditions and later-platform ownership. The [integration record](bn0-integration.md)
-preserves implementation decisions, earlier probes and reproduction. Neither
-document declares #273 or the milestone complete before its remaining checks
-and merge are verified.
+The current BN1 source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
+replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
+atomic mutations, independent input revisions and the public
+[`@bun-native/core`](../packages/core/README.md) TS/JS API. Both framework
+consumers import this same contract. Their type fixtures are compile-only;
+actual framework renderers have separate acceptance.
+
+Real development and inspected AOT checks cover the public API and JavaScript
+consumer, pointer/text/Enter events, stale-input rejection, 1,000 native
+subtree/listener lifecycle cycles and 1,000 OS-delivered input events.
+Those initial BN1 runs use a development-profile host. The expanded hosted
+release suite and final BN1 audit must pass before closing #219.
 
 ## Removal inventory (#251)
 
@@ -52,35 +52,44 @@ fallback remains in the active packages.
 
 ## Current implementation sequence
 
-1. Complete the current #273 checks on merged #266 and run its final required checks. Its bounded
-   supervisor-termination correction and real-process regression are present;
-   all 14 Python safety tests pass locally. The unused public re-export found
-   during the audit is removed, with the internal validation bound retained.
-2. Verify #273's merge, then update #227/#258/#226 and the milestone from that
-   merged state. Preserve the hosted release baseline and its original raw
-   reports; the initial 12-trial native capture already passed.
-3. Use the recorded fresh-process window observations, idle RSS and artifact
-   bytes as the initial baseline. Controlled cold-cache startup and true
-   input/frame latency remain unmeasured.
-4. Extend the proven integration into BN1's reusable tree, handles, ownership,
-   batching, capabilities and controlled-input revisions. Reuse the same host
-   for Solid and React; do not introduce parallel native backends.
+1. Preserve BN1's measured scheduling correction, real GPUI crash/startup
+   failure tests and retention audit. The corrected development host passes
+   actual input and painting during a sustained command stream; the preserved
+   original host failed the regression. The native allocation runner separately
+   profiles the real GPUI process during 1,000 lifecycle cycles.
+2. Run the complete required release-host suite against the final current
+   source, preserve compiler/native artifact hashes and measurements, then
+   verify the protected #271 merge before closing its issue checklist.
+3. Continue the first Solid renderer under
+   [#277](https://github.com/0xPlayerOne/bun-native/pull/277). Its isolated branch
+   has actual development/AOT counter, keyed-list and controlled-input evidence.
+   Its later listener ownership and keyed-ordering corrections require their
+   own exact-source native qualification and repeated performance evidence.
+4. Advance React and shared native components by their issue dependencies.
+   Reuse one public core and GPUI component system. Ordinary TS/JS edits must
+   reuse a prebuilt host and must not silently invoke Cargo.
+
+The native ownership and schema are described in [protocol 2](native-abi.md),
+the [public API ADR](decisions/0004-public-api.md) and the
+[security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
+state before resuming; a draft implementation is not a completed milestone.
 
 ## Validation meaning
 
-`bun install --frozen-lockfile`, `bun run check`, and Rust protocol checks test
-source, framing and dependency boundaries. `bun run build` emits JS modules and
-is explicitly not an AOT executable. Initial unit tests are headless; they do
-not prove GPUI rendering, input, GPU acceleration or AOT compatibility.
+`bun install --frozen-lockfile`, `bun run check` and Rust protocol checks test
+source, framing, ownership and dependency boundaries. `bun run build` emits JS
+modules and is not an AOT executable. Headless subprocess tests use explicitly
+simulated protocol peers; they cannot establish GPUI rendering or OS input.
 
-The native window and same-window AOT have real Linux software-renderer evidence
-with both development-profile and release-profile native hosts. A successful
-native job does not imply a passing aggregate workflow or a production release.
-Stable framework APIs, framework adapters, packaged releases and other platform
-GUI support have separate acceptance.
-Headless protocol success on macOS/Windows does not qualify their native GUI.
-BN6 #246 and BN5 #256 own the remaining native platform matrix; BN4 #241 owns
-horizontal input scrolling, IME and complete accessibility qualification.
+[The native fixture guide](../tests/native/README.md) and [testing](testing.md)
+separate actual native input, native fault containment, paint traversal,
+process cleanup and AOT artifact inspection. Bounded ownership counts, weak
+references and heap observations are not long-running allocator/GPU leak proof.
+A native acknowledgement is not a display-presentation timestamp.
 
-See [testing](testing.md), [toolchain](toolchain.md), and the issue/PR logs for
-exact command results. Keep this document current as each implementation lands.
+The initial baseline records fresh-process window observation, idle RSS and
+executable bytes. Cache/power state is uncontrolled, observation intervals are
+polled, and precise physical input/frame latency remains unmeasured. Preserve
+these limitations when comparing results. BN6 #246 and BN5 #256 own the native
+platform matrix; BN4 #241 owns horizontal input scrolling, IME and complete
+text/accessibility qualification.
