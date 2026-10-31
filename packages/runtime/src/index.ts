@@ -16,7 +16,7 @@ import type { ReadableStreamDefaultReader } from 'node:stream/web'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<Extract<Command, { type: 'open' | 'batch' | 'close' }>>
-export type WindowEvent = Extract<NativeEvent, { type: 'click' | 'input' | 'closed' }>
+export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
 export type HostResponse = Extract<NativeEvent, { type: 'ack' | 'opened' | 'applied' }>
 
 export class NativeCommandError extends Error {

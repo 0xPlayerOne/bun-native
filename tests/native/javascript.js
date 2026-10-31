@@ -67,8 +67,13 @@ try {
 
     let updates = 0
     window.onClick(button, async (event) => {
-      recordEvidence({ type: event.type, sequence: event.sequence, target: 'javascript-update' })
       updates += 1
+      recordEvidence({
+        type: event.type,
+        sequence: event.sequence,
+        activation: updates,
+        target: 'javascript-update',
+      })
       await window.batch((batch) => batch.set(label, { kind: 'text', text: `Updates: ${updates}` }))
     })
     window.onInput(input, (event) => {

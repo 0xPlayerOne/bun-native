@@ -94,7 +94,7 @@ fi
 
 if [[ "$mode" == event-throughput || "$mode" == aot-event-throughput ]]; then
   stress_text=$(python3 -c 'print("x" * 1000)')
-  final_event=$(python3 -c 'import json; print(json.dumps({"type":"input", "stage":"bun-application", "sequence":1000, "input_revision":1000, "value":"x" * 1000}))')
+  final_event=$(python3 -c 'import json; print(json.dumps({"type":"input", "stage":"bun-application", "input_revision":1000, "value":"x" * 1000}))')
   python3 scripts/quality/native-input-linux.py \
     --output "$evidence_dir/events" --mode "$execution_mode" --timeout 30 \
     --title 'Bun Native event throughput' --expect-software-renderer --event-stress \
@@ -108,7 +108,7 @@ if [[ "$mode" == core-lifecycle || "$mode" == aot-core-lifecycle ]]; then
     --output "$evidence_dir/lifecycle" --mode "$execution_mode" --timeout 60 \
     --title 'Bun Native public lifecycle' --expect-software-renderer \
     --expect-initial-render "$(snapshot 1 Ready)" --click 100 130 \
-    --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"public-lifecycle"}' \
+    --expect-event '{"type":"click","stage":"bun-application","target":"public-lifecycle"}' \
     --expect-render "$(snapshot 3002 'Completed 1000 cycles')" -- "$@"
   exit
 fi
@@ -118,10 +118,10 @@ if [[ "$mode" == javascript || "$mode" == aot-javascript ]]; then
   driver=(python3 scripts/quality/native-input-linux.py --mode "$execution_mode" --timeout 30
     --title 'Bun Native JavaScript' --expect-software-renderer --expect-initial-render "$initial")
   "${driver[@]}" --output "$evidence_dir/click" --click 100 130 \
-    --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"javascript-update"}' \
+    --expect-event '{"type":"click","stage":"bun-application","activation":1,"target":"javascript-update"}' \
     --expect-render "$(snapshot 3 'Updates: 1' 'JavaScript is ready' 1)" -- "$@"
   "${driver[@]}" --output "$evidence_dir/input" --key ctrl+a --text 'Bun Native {nonce}' \
-    --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":44,"value":"Bun Native {nonce}"}' \
+    --expect-event '{"type":"input","stage":"bun-application","input_revision":44,"value":"Bun Native {nonce}"}' \
     --expect-render "$(snapshot 2 'Updates: 0' 'Bun Native {nonce}' 44)" -- "$@"
   exit
 fi
@@ -132,7 +132,7 @@ driver=(python3 scripts/quality/native-input-linux.py --mode "$execution_mode" -
 
 input_race() {
   "${driver[@]}" --output "$evidence_dir/input-race" --key ctrl+a --text 'Bun Native {nonce}' \
-    --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":43,"value":"Bun Native {nonce}"}' \
+    --expect-event '{"type":"input","stage":"bun-application","input_revision":43,"value":"Bun Native {nonce}"}' \
     --expect-render "$(snapshot 2 'Input preserved after stale rejection' 'Bun Native {nonce}')" \
     -- "$@"
 }
@@ -143,19 +143,19 @@ if [[ "$mode" == aot-input-race ]]; then
 fi
 
 "${driver[@]}" --output "$evidence_dir/click" --click 100 130 \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}' \
+  --expect-event '{"type":"click","stage":"bun-application","activation":1,"target":"increment"}' \
   --expect-render "$(snapshot 2 'Clicks: 1' '')" -- "$@"
 
 # A fresh launch after a verified OS close must regain input focus and work.
 "${driver[@]}" --output "$evidence_dir/input" --key ctrl+a --text 'Bun Native {nonce}' \
-  --expect-event '{"type":"input","stage":"bun-application","sequence":43,"input_revision":43,"value":"Bun Native {nonce}"}' \
+  --expect-event '{"type":"input","stage":"bun-application","input_revision":43,"value":"Bun Native {nonce}"}' \
   --expect-render "$(snapshot 1 'Clicks: 0' 'Bun Native {nonce}')" -- "$@"
 
 # Clicking focuses the actual button. Enter must produce a distinct second
 # application event and a second committed tree update, not reuse click evidence.
 "${driver[@]}" --output "$evidence_dir/keyboard" --click 100 130 --key Return \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":1,"target":"increment"}' \
-  --expect-event '{"type":"click","stage":"bun-application","sequence":2,"target":"increment"}' \
+  --expect-event '{"type":"click","stage":"bun-application","activation":1,"target":"increment"}' \
+  --expect-event '{"type":"click","stage":"bun-application","activation":2,"target":"increment"}' \
   --expect-render "$(snapshot 3 'Clicks: 2' '')" \
   -- "$@"
 

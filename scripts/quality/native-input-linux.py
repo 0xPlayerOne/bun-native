@@ -178,10 +178,11 @@ def event_stress_observations(events, require_complete=False):
     if len(edits) > EVENT_STRESS_COUNT:
         raise RuntimeError("Event stress produced more than 1000 input callbacks")
     observed = []
+    previous_sequence = 0
     for index, event in enumerate(edits, 1):
         if (
             type(event.get("sequence")) is not int
-            or event["sequence"] != index
+            or not previous_sequence < event["sequence"] <= 9_007_199_254_740_991
             or type(event.get("input_revision")) is not int
             or event["input_revision"] != index
             or event.get("value") != "x" * index
@@ -189,6 +190,7 @@ def event_stress_observations(events, require_complete=False):
             raise RuntimeError(
                 f"Event stress callback {index} has a missing, repeated, reordered or invalid edit"
             )
+        previous_sequence = event["sequence"]
         timestamp = event.get("observed_at_ms")
         if (
             not isinstance(timestamp, (int, float))
@@ -589,7 +591,6 @@ def main():
                 {
                     "type": "input",
                     "stage": "bun-application",
-                    "sequence": EVENT_STRESS_COUNT,
                     "input_revision": EVENT_STRESS_COUNT,
                     "value": EVENT_STRESS_TEXT,
                 }
