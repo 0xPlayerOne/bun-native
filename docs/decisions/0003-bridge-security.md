@@ -37,7 +37,7 @@ The native UI thread is the sole mutation owner. A batch is prepared against the
 
 ## Native service policy
 
-The negotiated `tree` and `input_revisions` flags describe implemented rendering features. They are not grants to read files, run programs or access other OS services. Protocol 2 exposes no general service invocation or capability-grant command. The shared negative corpus verifies that attempts to self-grant privileges or invoke the following unsupported bindings are rejected by both language implementations.
+The negotiated `tree`, `input_revisions` and `layout_v1` flags describe implemented rendering features. They are not grants to read files, run programs or access other OS services. The current protocol exposes no general service invocation or capability-grant command. The shared negative corpus verifies that attempts to self-grant privileges or invoke the following unsupported bindings are rejected by both language implementations.
 
 | Capability or binding        | Current boundary and negative case                                                                                                    | Required follow-up before exposure                                                                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |

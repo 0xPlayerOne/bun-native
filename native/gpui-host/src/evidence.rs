@@ -1,7 +1,10 @@
 //! Opt-in native paint instrumentation. A paint callback is not proof of display
 //! presentation; screenshots are separate. Every JSONL record is bounded.
 
+mod layout;
 use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, Tree, WindowId};
+pub(crate) use layout::LayoutFrame;
+use layout::LayoutSnapshot;
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -17,6 +20,7 @@ struct Log {
     file: File,
     nonce: String,
     last_state: BTreeMap<WindowId, PaintVersion>,
+    last_layout: BTreeMap<WindowId, LayoutSnapshot>,
 }
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
@@ -46,11 +50,39 @@ impl Evidence {
                 file,
                 nonce,
                 last_state: BTreeMap::new(),
+                last_layout: BTreeMap::new(),
             })))),
             Err(error) => {
                 eprintln!("Bun Native native evidence log unavailable: {error}");
                 Self::default()
             }
+        }
+    }
+
+    pub(crate) fn enabled(&self) -> bool {
+        self.0.is_some()
+    }
+
+    pub(crate) fn layout(
+        &self,
+        window_id: WindowId,
+        revision: u64,
+        frame: &LayoutFrame,
+        window: &gpui::Window,
+    ) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let snapshot = frame.snapshot(window);
+        let mut log = log.borrow_mut();
+        if log.last_layout.get(&window_id) == Some(&snapshot) {
+            return;
+        }
+        let record = json!({"nonce":log.nonce,"type":"layout","stage":"native-paint","window_id":window_id,"tree_revision":revision,"layout":snapshot.json()});
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native layout evidence unavailable: {error}");
+        } else {
+            log.last_layout.insert(window_id, snapshot);
         }
     }
 
@@ -79,7 +111,9 @@ impl Evidence {
 
     pub(crate) fn closed(&self, window_id: WindowId) {
         if let Some(log) = &self.0 {
-            log.borrow_mut().last_state.remove(&window_id);
+            let mut log = log.borrow_mut();
+            log.last_state.remove(&window_id);
+            log.last_layout.remove(&window_id);
         }
     }
 

@@ -151,3 +151,7 @@ The session selects Mesa software Vulkan and the input driver verifies the
 adapter actually reported by GPUI. This evidence covers Linux X11/XTest and
 software rendering. It does not qualify hardware-GPU performance, physical
 input, display-presentation latency or macOS/Windows GUI behavior.
+
+## Shared layout diagnostics
+
+`tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching protocol-3 host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.

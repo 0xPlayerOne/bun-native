@@ -197,7 +197,15 @@ describe('native process transport (headless protocol peer)', () => {
 
   test.each([
     ['wrong-version', 'Native protocol version mismatch'],
-    ['missing-capability', 'Native host lacks the required tree/input capabilities'],
+    ['obsolete-version', 'Native protocol version mismatch'],
+    [
+      'missing-layout',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+    ],
+    [
+      'missing-capability',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1',
+    ],
     ['bad-json', 'Invalid UTF-8 or JSON in native frame'],
     ['wrong-id', 'Unknown native response id'],
     ['wrong-ack', 'Native response does not match its request, owner or revision'],

@@ -5,6 +5,7 @@ import {
   encodeFrame,
   FrameDecoder,
   parseCommand,
+  PROTOCOL_VERSION,
   type Element,
   type NativeEvent,
 } from '@bun-native/protocol'
@@ -43,9 +44,9 @@ async function marker(window_id: number, value: string, nodes: Map<number, Node>
     for (let index = 0; index < count; index++) await click(window_id, ids[0])
   } else if (value === 'edge:input') {
     const entry = [...nodes].find(([, node]) => node.element.kind === 'input')
-    if (!entry || entry[1].element.kind !== 'input')
-      throw new Error('Test marker requires an input')
+    if (!entry) throw new Error('Test marker requires an input')
     const [node_id, node] = entry
+    if (node.element.kind !== 'input') throw new Error('Test marker requires an input')
     node.inputRevision += 1
     node.element = { ...node.element, kind: 'input', value: 'sibling native edit' }
     await emit({
@@ -70,8 +71,8 @@ for await (const chunk of Bun.stdin.stream()) {
     if (command.type === 'hello') {
       await emit({
         type: 'ready',
-        protocol: 2,
-        capabilities: ['tree', 'input_revisions'],
+        protocol: PROTOCOL_VERSION,
+        capabilities: ['tree', 'input_revisions', 'layout_v1'],
         limits: { ...DEFAULT_LIMITS },
       })
       await emit({ type: 'ack', id: command.id })
