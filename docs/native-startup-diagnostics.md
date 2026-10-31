@@ -110,3 +110,64 @@ each pass the same five-window/35-marker assertions and a separate actual caret
 input control. The earlier diagnostic record and raw traces remain byte-identical
 to their original older-lock source. These local controls do not establish the
 cause of #296 or substitute for the controlled hosted release run.
+
+## Existing GPUI log points
+
+The later required native job in [run 41245052851](https://github.com/0xPlayerOne/bun-native/actions/runs/41245052851)
+retained hello and expected invalid-close responses, the completed open-request
+flush, and native `open_dispatched` / `open_window_enter`. It timed out before
+`root_constructor_enter`; stderr was empty. The first draw in GPUI's
+`App::open_window` follows that constructor, so this failure precedes both the
+application view constructor and that draw. The trace does not identify which
+operation inside platform-window creation stalled. The GPUI log facade had no
+backend; empty stderr does not prove that its logging sites were not reached.
+
+`BUN_NATIVE_STARTUP_LOG=1` additionally installs a narrow native logger, but only
+when the existing startup flag, absolute evidence path and valid nonce are also
+present. It is default-off. Only the affected Linux workflow's development
+first-window step enables the new flag; the session's existing startup flag is
+scoped to its lifecycle subprocess, so later input cases and benchmarks do not
+activate the logger. It never writes to protocol stdout and ignores `RUST_LOG`.
+No upstream source or GPUI/compiler revision is changed. The host directly
+depends on the same `log` 0.4.35 already present in `Cargo.lock`.
+
+The exact Info-or-higher target allowlist is:
+
+- `gpui_linux::linux::x11::window`: existing visual/colormap and X11 diagnostics.
+- `gpui_wgpu::wgpu_context`: existing adapter enumeration, selection, device and
+  surface-configuration diagnostics.
+- `gpui_wgpu::wgpu_renderer`: existing renderer error and recovery diagnostics.
+
+These are the pinned [X11 window](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs),
+[WGPU context](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_wgpu/src/wgpu_context.rs)
+and [renderer](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_wgpu/src/wgpu_renderer.rs)
+log points, not newly inserted phase boundaries. A missing log cannot distinguish
+an operation not reached from a path that does not log, truncation, an I/O failure
+or exhausted capture. GPU selection precedes synchronous pipeline creation and
+does not establish a completed window or frame.
+
+Records use `stage: "startup-log"`, `source: "native-log"`, a separate logger
+clock origin, process ID, index, target, level and source line. Installation
+records declare the allowlist and limits. The logger writes at most **64 records,
+2,048 bytes per JSONL line and 65,536 bytes total**, reserving space for one
+explicit record/byte-limit marker. Message formatting stops at 512 UTF-8 bytes;
+truncation and formatting errors are explicit. If JSON escaping exceeds the line
+budget, the message is replaced by an explicit omission. No command, window
+title, input value or application object is added by this backend.
+
+When enabled, the logger serializes selected records under a mutex and performs
+synchronous bounded file appends/flushes. Its formatting, locking and filesystem
+work can perturb startup; the record/byte bounds are not a filesystem latency
+guarantee. The facade's Info level is enabled globally while the backend rejects
+other targets before message formatting. These runs are diagnostic controls,
+not uninstrumented startup/performance measurements. Disabled mode installs no
+backend or file handle. Registration/open/write failures produce one bounded
+stderr notice per failed setup or writer and leave the native protocol,
+5-second request deadline, immediate failure cleanup and renderer unchanged.
+
+Focused native unit controls cover opt-in configuration, exact target/level
+filtering, UTF-8 truncation, JSON expansion, total/record budgets and failed
+formatting/writes. The opt-in Linux lifecycle fixture additionally requires the
+installation record and actual X11 visual / selected-GPU records after its
+unchanged five successful window cycles. A passing diagnostic run does not
+explain the historical stall or close #296.

@@ -82,6 +82,7 @@ jobs:
       - name: Development public API input, stale revision and window lifecycle
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_STARTUP_LOG: '1'
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
