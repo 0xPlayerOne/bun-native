@@ -1,4 +1,13 @@
-# Bun Native changelog
+# Changelog
+
+## [0.6.10](https://github.com/0xPlayerOne/bun-native/compare/v0.6.9...v0.6.10) (2026-10-31)
+
+
+### Documentation
+
+* replace Bunly documentation with Bun Native guides ([#216](https://github.com/0xPlayerOne/bun-native/issues/216)) ([7300768](https://github.com/0xPlayerOne/bun-native/commit/73007688639eeab21d309a4b6d330f8a037f4090))
+
+## Bun Native changelog
 
 ## Unreleased — October 31, 2026
 
