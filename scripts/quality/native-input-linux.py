@@ -271,6 +271,15 @@ def fixture_paint(tree_revision, label, value=""):
     }
 
 
+def fixture_click(activation):
+    return {
+        "type": "click",
+        "stage": "bun-application",
+        "activation": activation,
+        "target": "increment",
+    }
+
+
 def javascript_fixture_paint(tree_revision, label, value, input_revision):
     state = fixture_paint(tree_revision, label, value)
     state["nodes"][1]["element"]["text"] = "JavaScript consumer"
@@ -288,6 +297,16 @@ def lifecycle_fixture_paint(tree_revision, label):
     state["nodes"][3]["element"]["text"] = "Run 1,000 cycles"
     state["nodes"][3]["element"]["style"]["width"] = 200
     return state
+
+
+def lifecycle_fixture_event():
+    # Focus, pointer and key observations share native global sequence numbers.
+    # The launch click is identified by its application target, not position 1.
+    return {
+        "type": "click",
+        "stage": "bun-application",
+        "target": "public-lifecycle",
+    }
 
 
 def event_stress_fixture_paint(value):
