@@ -110,7 +110,9 @@ async function withPipeHolder(
       args: [fixture, `inherited-pipe-${mode}`, directory],
     })
     await run(host, finished)
-    trace('test', 'held-pipe-assertions-passed', { mode, holderAlive: holderIsAlive(directory) })
+    const holderAlive = holderIsAlive(directory)
+    trace('test', 'held-pipe-assertions-passed', { mode, holderAlive })
+    expect(holderAlive).toBe(true)
   } catch (error) {
     trace('test', 'held-pipe-assertion-failed', { mode, error: String(error) })
     throw error

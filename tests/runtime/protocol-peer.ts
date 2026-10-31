@@ -22,6 +22,10 @@ if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
   const holder = Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
+    // A Windows child in the default libuv job is terminated when this peer
+    // exits. Keep this self-expiring test helper outside that job so its
+    // inherited pipe handles remain open until our private release handshake.
+    detached: true,
     stdin: 'ignore',
     stdout: 'inherit',
     stderr: 'inherit',
