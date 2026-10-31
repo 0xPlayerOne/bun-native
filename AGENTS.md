@@ -1,31 +1,29 @@
-# Bunly implementation rules
+# Bun Native — autonomous implementation instructions
 
-Read README, docs/architecture.md, and the relevant issue before implementation.
-Use real Bun and strict TypeScript. Application builds must not silently compile
-native code. M1's mock and native probes are not a working CEF runtime.
+**Active direction (October 31, 2026):** Bun Native is a **complete, unconditional rewrite** of the old Bunly experimental CEF/WebView desktop framework. The old runtime, DOM/CEF APIs and tests are obsolete and should be deleted/replaced under [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251), not retained as fallbacks. Historical source remains in Git history. Build native desktop apps authored in TypeScript/JavaScript with Bun, native UI rendering (Rust GPUI is the initial engine), and **Bun AOT production compilation**. SolidJS comes first, React second. No WebView or CEF fallback.
 
-Keep contracts/client browser-safe; run the browser-only typecheck and AST
-boundary tests. IDs are not authority. Native identity and generation must be
-validated at every future IPC boundary. Retain lifecycle and cancellation tests.
+**Owner's authorization:** This public repository is a fully experimental project. An assigned agent may autonomously perform every implementation and cleanup task in [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1), including source deletion, refactors, dependencies/toolchain changes, issues, branches, draft/ready PRs, CI, repo release tooling, and auto-merge when GitHub rules permit. **Do not ask for routine approvals, design sign-offs, milestone checkpoints, or manual testing.** Make practical decisions and document major architecture changes. Continue onto other unblocked tasks while CI runs or blockers are repaired.
 
-Use Bun 1.4.4 for repository tooling and formatting; packaged desktop runtime
-qualification remains pinned to Bun 1.4.4. Formatting uses Bun's built-in
-formatter, JavaScript lint uses Oxlint, Python uses Ruff, and Rust uses rustfmt
-and Clippy.
+## Start and operating sequence
 
-Commands: `bun install --frozen-lockfile`, `bun run check`,
-`bun run typecheck:browser`, `bun run native:test`, `bun run native:build`,
-`bun run qualify:host`, `bun run artifact:probe`.
+1. Read this file, the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and relevant GitHub issue, and inspect the actual branch/worktree and managed contribution policy below. Do not treat the old `docs/architecture.md`, README or legacy Bun 1.4.4 configuration as Bun Native requirements when they describe CEF.
+2. Start [#251](https://github.com/0xPlayerOne/bun-native/issues/251) (remove/replace CEF codebase) and [#225](https://github.com/0xPlayerOne/bun-native/issues/225) (pin current Bun AOT/GPUI toolchain) without waiting on a prototype or human choice. Then native window #230, AOT binary #227, integration blockers #226, and follow dependencies across BN1–BN7.
+3. Open a draft PR with the first useful commit, push incremental work, run focused validation, mark ready when prepared and enable auto-merge if repository checks allow. Never bypass protected branch checks, fabricate a passing test, or force a merge. Keep other ready tasks moving.
+4. If an integration test fails, reproduce it, log exact tools/OS/build mode, fix or choose another valid native implementation, and continue. No project stop/go gate. Bun's normal JIT may be used in development; **do not** label a JIT release as AOT. Keep browserless native UI and Bun AOT as the production objective.
+5. Use strict TypeScript for authored core code when appropriate; JavaScript is a first-class supported consumer language. Build Rust native internals once/prebuild artifacts; ordinary consumer TS/JS edits must not silently compile native sources.
 
-Use a feature branch, link actual validation, and leave incomplete issue criteria
-open. Do not invent platform tests or benchmark wins. Record unsupported paths
-explicitly; do not pass no-op tests for missing browser capabilities.
+## Autonomous validation strategy
 
-Do not add a Tauri integration, Bun fork, custom package manager, hidden CEF
-fallback, or per-service process fan-out without an evidence-backed decision.
-Preserve upstream notices and update provenance when code is copied. Never
-publish packages, change repository visibility, or alter Adea production as a
-side effect of completing a framework issue.
+- **Default: GitHub Actions hosted runners.** Use Linux, Windows and macOS matrices for build, test, actual GPUI/native-window interaction when available, packaging and benchmark evidence. Preserve exact Bun, compiler, native host and OS versions; distinguish real window tests from mocks and compile-only tests.
+- **Secondary: Remote Desktop Commander on the owner's connected Mac.** Discover the currently online device at runtime. Use it for native GUI, keyboard, text/IME and OS-specific validation where hosted CI is insufficient. Keep test files in a bounded temporary project directory and never alter the user's personal data, security settings, credentials or unrelated processes. No human test operator is required.
+- **Containers:** Prefer hosted CI. Use Docker on the Mac only for a scoped necessity, with disk budget and cleanup; avoid large persistent images, volumes and caches.
+- If an exact physical/GPU/accessibility check is unavailable, document the unsupported coverage and file a follow-up; work on the next unblocked issue. Unsupported is **not** passed, but it is not a reason to hold up unrelated development.
+
+## Safety and scope
+
+The agent has broad discretion **inside `0xPlayerOne/bun-native`**. This does not grant authority to mutate Adea production, unrelated repositories, personal Mac files or external accounts. Use only already configured tool credentials and service flows. Protected branches, sign-in and actual external platform permissions still apply. Preserve required upstream copyright/provenance when reusing code. Do not publish secrets. Experimental unsigned artifacts may be distributed within project workflows; production signing/notarization is only claimed when actually verified.
+
+The Code Foundry-managed requirements below remain applicable. Interpret them alongside this explicit owner authorization to avoid unnecessary human checkpoints; they do not require retaining CEF code.
 
 <!-- code-foundry-managed: config-aware-policy -->
 
