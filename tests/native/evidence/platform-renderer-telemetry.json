@@ -1,0 +1,982 @@
+{
+  "schemaVersion": 1,
+  "scope": "Controller telemetry correction; historical macOS failure replay and fresh actual Linux dev/AOT validation. No fresh macOS native pass or independent physical adapter qualification.",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/292",
+  "parents": {
+    "platforms": "f09a13ea459631e85f353a96b77ef1f80a1e8e24",
+    "input": "443586950d9e05a8953dbf1fbac2aa2df89c5254"
+  },
+  "sourceWasDirty": true,
+  "propagatedOracleCommit": "9f374c33e32356a9e4723b8ed5538b86048033a0",
+  "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+  "upstreamSource": {
+    "crates/gpui_macos/src/window.rs": {
+      "bytes": 164089,
+      "sha256": "73fce4ce13ef5f28d1424eabbbccd96e044e7cf81513a3e70993f5c92c32ad70"
+    },
+    "crates/gpui_apple/src/metal_renderer.rs": {
+      "bytes": 82174,
+      "sha256": "5f8c6aaa5ebc19d4db351c63bde87c2f0c45486b35911420bf19fc79f3c3eefa"
+    },
+    "crates/gpui_windows/src/directx_renderer.rs": {
+      "bytes": 72823,
+      "sha256": "cc31db6a7354825e062c4a7a2de12bb31ce3dcbfe34969f18dbd2da1faf078ae"
+    }
+  },
+  "retainedMacFailure": {
+    "run": "https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102",
+    "artifactId": 13056257372,
+    "archiveSha256": "1e37448b367a403ae8be6bc81584404d9e03b6c7ead02a1f9d4cd03cae08cac5",
+    "status": "failed",
+    "error": {
+      "type": "RuntimeError",
+      "message": "Actual native renderer did not report its adapter"
+    },
+    "host": {
+      "bytes": 8165488,
+      "sha256": "35df18aa7a3eee7c0ca69080b332f7fd68633d72e635dff39cae9359292db6a1"
+    },
+    "rendererRecord": {
+      "type": "renderer",
+      "window_id": 1,
+      "gpu": null
+    },
+    "paintNodeCounts": [1],
+    "rawEvidence": {
+      "result.json": {
+        "bytes": 10321,
+        "sha256": "f2794a59371f3fc10278e1491274e99007d471592fcd6db589b2714f2d4fcd35"
+      },
+      "native.jsonl": {
+        "bytes": 790,
+        "sha256": "fce60ee80dc05c71473d185bdfbbf97ed9f2985628a3b99c462c1b03e64b6583"
+      },
+      "application-result.json": {
+        "bytes": 418,
+        "sha256": "e6c9cb284e676cfe2ca1b2eadda45bd38470949873653907ab9248bd689c8eb0"
+      }
+    },
+    "offlineReplay": {
+      "status": "unavailable",
+      "result": {
+        "window_id": 1,
+        "status": "unavailable",
+        "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+        "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+        "source": "https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs"
+      },
+      "freshNativeExecution": false,
+      "linuxAndWindowsNullRejected": true
+    }
+  },
+  "validation": {
+    "sourceTests": {
+      "passed": 332,
+      "assertions": 734
+    },
+    "platformPythonTests": 48,
+    "inputPythonTests": 56,
+    "focusedTelemetryTests": 4,
+    "nativeProductChanged": false,
+    "freshTargetMacExecution": "pending hosted rerun",
+    "sandboxAttempt": "Initial restricted run denied pipe writes and skipped process-ownership tests; logs retained separately, unchanged unrestricted gates passed."
+  },
+  "nativeHost": {
+    "bytes": 111772680,
+    "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb"
+  },
+  "application": {
+    "file": "platform-smoke",
+    "bytes": 71285800,
+    "sha256": "ee877c39d1df10935155603afa0045e9ddf8c6a3d125b6494144a673271619c7",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3719412,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    },
+    "runtimeFeatures": {
+      "format": "elf64-le",
+      "section": {
+        "name": ".bun_features",
+        "offset": 19504728,
+        "bytes": 536
+      },
+      "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "trimmedProgramFeatures": false,
+      "removedRangeCount": 202,
+      "jit": "unused",
+      "interpreter": "present",
+      "imageCompiler": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      }
+    }
+  },
+  "aotManifest": {
+    "bytes": 13710,
+    "sha256": "c597e80fd1ab4a38375fe59f80ef2c7a67f73c643b926c3831890c9b62d664c2"
+  },
+  "aotReuse": "All 49 build-source hashes and the actual previously inspected executable matched before reusing it; current controller source is bound separately below.",
+  "sourceFilesByVariant": {
+    "platforms": {
+      ".bun-version": {
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "bytes": 15
+      },
+      "Cargo.lock": {
+        "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+        "bytes": 160678
+      },
+      "Cargo.toml": {
+        "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+        "bytes": 434
+      },
+      "bun.lock": {
+        "sha256": "3f6c1228f5015c7ad93ee03a6b357a19cfb1ecd702559c0e4f5acf75b4b38394",
+        "bytes": 14380
+      },
+      "bunfig.toml": {
+        "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+        "bytes": 84
+      },
+      "native/gpui-host/Cargo.toml": {
+        "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+        "bytes": 628
+      },
+      "native/gpui-host/src/channel.rs": {
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+        "bytes": 3201
+      },
+      "native/gpui-host/src/evidence/layout.rs": {
+        "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+        "bytes": 5330
+      },
+      "native/gpui-host/src/evidence.rs": {
+        "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+        "bytes": 5961
+      },
+      "native/gpui-host/src/input/binding.rs": {
+        "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+        "bytes": 3666
+      },
+      "native/gpui-host/src/input/paint.rs": {
+        "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+        "bytes": 5796
+      },
+      "native/gpui-host/src/input.rs": {
+        "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+        "bytes": 19158
+      },
+      "native/gpui-host/src/main.rs": {
+        "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+        "bytes": 2539
+      },
+      "native/gpui-host/src/session.rs": {
+        "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+        "bytes": 11756
+      },
+      "native/gpui-host/src/state.rs": {
+        "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+        "bytes": 388
+      },
+      "native/gpui-host/src/style.rs": {
+        "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+        "bytes": 3732
+      },
+      "native/gpui-host/src/view/interactions.rs": {
+        "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+        "bytes": 9592
+      },
+      "native/gpui-host/src/view.rs": {
+        "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+        "bytes": 13370
+      },
+      "native/protocol/Cargo.toml": {
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+        "bytes": 225
+      },
+      "native/protocol/src/event_tests.rs": {
+        "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+        "bytes": 4925
+      },
+      "native/protocol/src/events.rs": {
+        "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+        "bytes": 7635
+      },
+      "native/protocol/src/framing.rs": {
+        "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+        "bytes": 3838
+      },
+      "native/protocol/src/lib.rs": {
+        "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+        "bytes": 469
+      },
+      "native/protocol/src/security_tests.rs": {
+        "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+        "bytes": 2133
+      },
+      "native/protocol/src/tests.rs": {
+        "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+        "bytes": 11716
+      },
+      "native/protocol/src/tree/tests.rs": {
+        "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+        "bytes": 13131
+      },
+      "native/protocol/src/tree.rs": {
+        "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+        "bytes": 14549
+      },
+      "native/protocol/src/wire.rs": {
+        "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+        "bytes": 18177
+      },
+      "package.json": {
+        "sha256": "37324d60866f96743160448c2a7406b9aa63c7283fe39d88bc3ee32b1aa5db2a",
+        "bytes": 1602
+      },
+      "packages/core/package.json": {
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+        "bytes": 234
+      },
+      "packages/core/src/application.ts": {
+        "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+        "bytes": 14616
+      },
+      "packages/core/src/events.ts": {
+        "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+        "bytes": 7680
+      },
+      "packages/core/src/index.ts": {
+        "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+        "bytes": 646
+      },
+      "packages/core/src/tree.ts": {
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+        "bytes": 7898
+      },
+      "packages/core/src/types.ts": {
+        "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+        "bytes": 5566
+      },
+      "packages/protocol/package.json": {
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+        "bytes": 129
+      },
+      "packages/protocol/src/elements.ts": {
+        "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+        "bytes": 5003
+      },
+      "packages/protocol/src/framing.ts": {
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+        "bytes": 2806
+      },
+      "packages/protocol/src/index.ts": {
+        "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+        "bytes": 512
+      },
+      "packages/protocol/src/messages.ts": {
+        "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+        "bytes": 13102
+      },
+      "packages/protocol/src/values.ts": {
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+        "bytes": 1732
+      },
+      "packages/runtime/package.json": {
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+        "bytes": 195
+      },
+      "packages/runtime/src/index.ts": {
+        "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+        "bytes": 13240
+      },
+      "rust-toolchain.toml": {
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+        "bytes": 86
+      },
+      "scripts/quality/native-diagnostics-linux.py": {
+        "sha256": "3c9446b00c3501c17c1b00255e49c364ffc774644e2d8c76da9225d7bf117f1a",
+        "bytes": 19620
+      },
+      "scripts/quality/native-input-linux.py": {
+        "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f",
+        "bytes": 37751
+      },
+      "scripts/quality/native-interactions-scenario.py": {
+        "sha256": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+        "bytes": 13251
+      },
+      "scripts/quality/native-layout-scenario.py": {
+        "sha256": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+        "bytes": 12855
+      },
+      "tests/native/fault.ts": {
+        "sha256": "f4494b7c6732539d692ec8cc1e0bfaab7b62529d72d9ef6d1345fb06701acc50",
+        "bytes": 5198
+      },
+      "tests/native/interactions.ts": {
+        "sha256": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+        "bytes": 10546
+      },
+      "tests/native/layout.ts": {
+        "sha256": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+        "bytes": 7966
+      },
+      "tests/native/scheduling.ts": {
+        "sha256": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+        "bytes": 7980
+      },
+      "toolchain.json": {
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+        "bytes": 1725
+      },
+      "tsconfig.json": {
+        "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+        "bytes": 862
+      },
+      "tests/native/platform-smoke.ts": {
+        "sha256": "9be1a96b4a18d3fbc5c7329b8733032368b2faf01d7ac92bb67481d8d7a771b4",
+        "bytes": 3737
+      },
+      "examples/native-window/content.ts": {
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+        "bytes": 1766
+      },
+      "scripts/quality/native-platform-smoke.py": {
+        "sha256": "710d2197f2a6198a52911f10c38e481b1417f4eaba74849640f319d04259d851",
+        "bytes": 12904
+      }
+    },
+    "input": {
+      ".bun-version": {
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "bytes": 15
+      },
+      "Cargo.lock": {
+        "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+        "bytes": 160678
+      },
+      "Cargo.toml": {
+        "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+        "bytes": 434
+      },
+      "bun.lock": {
+        "sha256": "3f6c1228f5015c7ad93ee03a6b357a19cfb1ecd702559c0e4f5acf75b4b38394",
+        "bytes": 14380
+      },
+      "bunfig.toml": {
+        "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+        "bytes": 84
+      },
+      "native/gpui-host/Cargo.toml": {
+        "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+        "bytes": 628
+      },
+      "native/gpui-host/src/channel.rs": {
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+        "bytes": 3201
+      },
+      "native/gpui-host/src/evidence/layout.rs": {
+        "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+        "bytes": 5330
+      },
+      "native/gpui-host/src/evidence.rs": {
+        "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+        "bytes": 5961
+      },
+      "native/gpui-host/src/input/binding.rs": {
+        "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+        "bytes": 3666
+      },
+      "native/gpui-host/src/input/paint.rs": {
+        "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+        "bytes": 5796
+      },
+      "native/gpui-host/src/input.rs": {
+        "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+        "bytes": 19158
+      },
+      "native/gpui-host/src/main.rs": {
+        "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+        "bytes": 2539
+      },
+      "native/gpui-host/src/session.rs": {
+        "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+        "bytes": 11756
+      },
+      "native/gpui-host/src/state.rs": {
+        "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+        "bytes": 388
+      },
+      "native/gpui-host/src/style.rs": {
+        "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+        "bytes": 3732
+      },
+      "native/gpui-host/src/view/interactions.rs": {
+        "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+        "bytes": 9592
+      },
+      "native/gpui-host/src/view.rs": {
+        "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+        "bytes": 13370
+      },
+      "native/protocol/Cargo.toml": {
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+        "bytes": 225
+      },
+      "native/protocol/src/event_tests.rs": {
+        "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+        "bytes": 4925
+      },
+      "native/protocol/src/events.rs": {
+        "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+        "bytes": 7635
+      },
+      "native/protocol/src/framing.rs": {
+        "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+        "bytes": 3838
+      },
+      "native/protocol/src/lib.rs": {
+        "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+        "bytes": 469
+      },
+      "native/protocol/src/security_tests.rs": {
+        "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+        "bytes": 2133
+      },
+      "native/protocol/src/tests.rs": {
+        "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+        "bytes": 11716
+      },
+      "native/protocol/src/tree/tests.rs": {
+        "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+        "bytes": 13131
+      },
+      "native/protocol/src/tree.rs": {
+        "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+        "bytes": 14549
+      },
+      "native/protocol/src/wire.rs": {
+        "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+        "bytes": 18177
+      },
+      "package.json": {
+        "sha256": "37324d60866f96743160448c2a7406b9aa63c7283fe39d88bc3ee32b1aa5db2a",
+        "bytes": 1602
+      },
+      "packages/core/package.json": {
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+        "bytes": 234
+      },
+      "packages/core/src/application.ts": {
+        "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+        "bytes": 14616
+      },
+      "packages/core/src/events.ts": {
+        "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+        "bytes": 7680
+      },
+      "packages/core/src/index.ts": {
+        "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+        "bytes": 646
+      },
+      "packages/core/src/tree.ts": {
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+        "bytes": 7898
+      },
+      "packages/core/src/types.ts": {
+        "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+        "bytes": 5566
+      },
+      "packages/protocol/package.json": {
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+        "bytes": 129
+      },
+      "packages/protocol/src/elements.ts": {
+        "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+        "bytes": 5003
+      },
+      "packages/protocol/src/framing.ts": {
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+        "bytes": 2806
+      },
+      "packages/protocol/src/index.ts": {
+        "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+        "bytes": 512
+      },
+      "packages/protocol/src/messages.ts": {
+        "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+        "bytes": 13102
+      },
+      "packages/protocol/src/values.ts": {
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+        "bytes": 1732
+      },
+      "packages/runtime/package.json": {
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+        "bytes": 195
+      },
+      "packages/runtime/src/index.ts": {
+        "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+        "bytes": 13240
+      },
+      "rust-toolchain.toml": {
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+        "bytes": 86
+      },
+      "scripts/quality/native-diagnostics-linux.py": {
+        "sha256": "3c9446b00c3501c17c1b00255e49c364ffc774644e2d8c76da9225d7bf117f1a",
+        "bytes": 19620
+      },
+      "scripts/quality/native-input-linux.py": {
+        "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f",
+        "bytes": 37751
+      },
+      "scripts/quality/native-interactions-scenario.py": {
+        "sha256": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+        "bytes": 13251
+      },
+      "scripts/quality/native-layout-scenario.py": {
+        "sha256": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+        "bytes": 12855
+      },
+      "tests/native/fault.ts": {
+        "sha256": "f4494b7c6732539d692ec8cc1e0bfaab7b62529d72d9ef6d1345fb06701acc50",
+        "bytes": 5198
+      },
+      "tests/native/interactions.ts": {
+        "sha256": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+        "bytes": 10546
+      },
+      "tests/native/layout.ts": {
+        "sha256": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+        "bytes": 7966
+      },
+      "tests/native/scheduling.ts": {
+        "sha256": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+        "bytes": 7980
+      },
+      "toolchain.json": {
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+        "bytes": 1725
+      },
+      "tsconfig.json": {
+        "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+        "bytes": 862
+      },
+      "tests/native/platform-smoke.ts": {
+        "sha256": "d239a2c034a4832a5e94819e80ffbb7d508e3a8f50b49d93bfb10f5ff87b7869",
+        "bytes": 5361
+      },
+      "examples/native-window/content.ts": {
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+        "bytes": 1766
+      },
+      "scripts/quality/native-platform-smoke.py": {
+        "sha256": "50b4792c79cdff3c6f1c46f188a9e5320a429e09f555d60d435d812c5b46666e",
+        "bytes": 19794
+      },
+      "scripts/quality/native-platform-input.py": {
+        "sha256": "7114494e5ede0165cc547c0bb4a4bbab544de05cc50c4e5d72c02cb35e09522c",
+        "bytes": 11789
+      },
+      "scripts/quality/native-platform-windows.py": {
+        "sha256": "d6730f5401eb052389077210d08b9368bd52efbba6a9051a76de8e05a71c3afb",
+        "bytes": 20940
+      },
+      "scripts/quality/native-platform-macos.m": {
+        "sha256": "46b5282d476b04a34a1e23ac73eb7e6015d58f5527e7404e4fbc60c7924e77eb",
+        "bytes": 13296
+      }
+    }
+  },
+  "runs": [
+    {
+      "name": "platform-development",
+      "status": "passed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "paintCount": 6,
+      "rendererTelemetry": [
+        {
+          "window_id": 1,
+          "status": "reported"
+        },
+        {
+          "window_id": 2,
+          "status": "reported"
+        },
+        {
+          "window_id": 3,
+          "status": "reported"
+        }
+      ],
+      "rawRenderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "platform-smoke",
+        "completedCycles": 3,
+        "nativeShutdownAndExitVerified": true,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "unexpectedInput": 0,
+        "elapsedMs": 2049.154389
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "osInput": "not-attempted",
+      "osWindowVisibility": "unverified",
+      "osControllerCleanup": null,
+      "inputDelivery": [],
+      "error": null,
+      "rawEvidence": {
+        "result.json": {
+          "bytes": 23995,
+          "sha256": "21847bff1d9c5911cb68c80cc9b0a3036865fb5dbc277759eb357f3ac5db6d88"
+        },
+        "application-result.json": {
+          "bytes": 330,
+          "sha256": "f0fa117dd33b568ed185e1575eb6557bbc77e294b715cb620a3a80c7b8f16389"
+        },
+        "native.jsonl": {
+          "bytes": 9953,
+          "sha256": "1aa45bacf3ae324144a4bfea9e24696efa5c2de4a7591327b0019ff4247f437e"
+        },
+        "application.jsonl": {
+          "bytes": 1241,
+          "sha256": "4a04b4bfed87ef877624839d19fe7bf96ab8d7abe3a3728701da86791fbbfadd"
+        },
+        "stdout.log": {
+          "bytes": 262,
+          "sha256": "fe460e00bed884a85eb3db27d93ff0cb3bd87eff0d6b9ca65a08e1e85acd3494"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "platform-negative",
+      "status": "failed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "paintCount": 0,
+      "rendererTelemetry": [
+        {
+          "window_id": 1,
+          "status": "reported"
+        }
+      ],
+      "rawRenderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "failed",
+        "scenario": "platform-smoke",
+        "completedCycles": 0,
+        "nativeShutdownAndExitVerified": true,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "unexpectedInput": 0,
+        "elapsedMs": 2673.501237,
+        "error": {
+          "name": "Error",
+          "message": "Controller aborted native smoke"
+        }
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "osInput": "not-attempted",
+      "osWindowVisibility": "unverified",
+      "osControllerCleanup": null,
+      "inputDelivery": [],
+      "error": {
+        "type": "NativePaintMismatch",
+        "message": "Timed out waiting for complete native paint"
+      },
+      "rawEvidence": {
+        "result.json": {
+          "bytes": 10806,
+          "sha256": "56f28624b28c96dbfb5c9e218143844cac14c59e984f5dcd086284ff05d5f011"
+        },
+        "application-result.json": {
+          "bytes": 418,
+          "sha256": "af5561bb68654881ae2ac824553152ac4a7204877a8f260a5f0466e131f39249"
+        },
+        "native.jsonl": {
+          "bytes": 2540,
+          "sha256": "08660996902c041ebbe55eae4bcdcdf6b0a3c6b2b3327db8d7ed8daf60af04cc"
+        },
+        "application.jsonl": {
+          "bytes": 123,
+          "sha256": "7194c90a950bf39db385243c178198b4b3a1b123b5c369cb299b32a61c2f54e0"
+        },
+        "stdout.log": {
+          "bytes": 331,
+          "sha256": "ddce3c5d3d433ce15068eb0e540f376c103d4fa246ebcc2d7702352da122fd59"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "input-development",
+      "status": "passed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "paintCount": 9,
+      "rendererTelemetry": [
+        {
+          "window_id": 1,
+          "status": "reported"
+        },
+        {
+          "window_id": 2,
+          "status": "reported"
+        },
+        {
+          "window_id": 3,
+          "status": "reported"
+        }
+      ],
+      "rawRenderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "platform-smoke",
+        "osInput": true,
+        "completedCycles": 3,
+        "nativeShutdownAndExitVerified": true,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "observedInputEvents": 99,
+        "elapsedMs": 3103.8211170000004
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "osInput": "verified pointer activation, Tab traversal and every nonce edit",
+      "osWindowVisibility": "observed through target OS window APIs",
+      "osControllerCleanup": "completed",
+      "inputDelivery": [
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 104
+        },
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 210
+        },
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 317
+        }
+      ],
+      "error": null,
+      "rawEvidence": {
+        "result.json": {
+          "bytes": 34259,
+          "sha256": "46a49d4afc427062c1247add574fdc86c004c41cbcc852c0934a973cd30c6b86"
+        },
+        "application-result.json": {
+          "bytes": 361,
+          "sha256": "cb77447dc75df7eee5b5d86943bb556c60aa1d6ab7759c28a1ad5a7f65d188bd"
+        },
+        "native.jsonl": {
+          "bytes": 97852,
+          "sha256": "05769fc51cde8f0b9fe47e13cc18fe39374b4f158cbf5a92790297c21d6bf220"
+        },
+        "application.jsonl": {
+          "bytes": 67623,
+          "sha256": "fbc11c5d4e4b746f39cdc033c10da4cba838e7f79393d3e3e87a47ac611c52e9"
+        },
+        "stdout.log": {
+          "bytes": 289,
+          "sha256": "f723bc45b6fdd56c64b0437633cec03d0f3de9aa48eea753e633eb089779e04b"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "input-aot",
+      "status": "passed",
+      "mode": "aot",
+      "hostProfile": "dev",
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      },
+      "paintCount": 9,
+      "rendererTelemetry": [
+        {
+          "window_id": 1,
+          "status": "reported"
+        },
+        {
+          "window_id": 2,
+          "status": "reported"
+        },
+        {
+          "window_id": 3,
+          "status": "reported"
+        }
+      ],
+      "rawRenderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "application": {
+        "status": "passed",
+        "scenario": "platform-smoke",
+        "osInput": true,
+        "completedCycles": 3,
+        "nativeShutdownAndExitVerified": true,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0
+        },
+        "observedInputEvents": 99,
+        "elapsedMs": 2966.064566
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "osInput": "verified pointer activation, Tab traversal and every nonce edit",
+      "osWindowVisibility": "observed through target OS window APIs",
+      "osControllerCleanup": "completed",
+      "inputDelivery": [
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 103
+        },
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 210
+        },
+        {
+          "complete": true,
+          "clicks": 1,
+          "edits": 32,
+          "lastSequence": 317
+        }
+      ],
+      "error": null,
+      "rawEvidence": {
+        "result.json": {
+          "bytes": 34313,
+          "sha256": "9d41b2dc68a51e05ebbc518cad66db24c5259cf475e9c9fe9e68eeb31ec28b56"
+        },
+        "application-result.json": {
+          "bytes": 354,
+          "sha256": "4e256b16e5f62bd80ccf5245d07500503f9f876ba98e9a50392cb6448a8e6556"
+        },
+        "native.jsonl": {
+          "bytes": 97853,
+          "sha256": "38cb8ab746915a12ed5b43a90ea598474508d669979a8883f9683d64c78cabf0"
+        },
+        "application.jsonl": {
+          "bytes": 67623,
+          "sha256": "879a9e341573e67a73bc859ad37d4c385a46783f5ec353a9f959b455c3253f19"
+        },
+        "stdout.log": {
+          "bytes": 282,
+          "sha256": "134663e01b47eecf8c1e1e70fc373be748a7724444d7a1c472426aa5b06a0e02"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "limits": "All original paint, lifecycle, input, log-size and shutdown deadlines remain unchanged. Elapsed observations are correctness evidence, not comparative performance measurements.",
+  "rawArtifacts": "task-artifacts/native-platforms/telemetry-fix; original macOS artifact remains at task-artifacts/native-macos-41236725102/native",
+  "guardAndSessionFilesAfterExecutionByVariant": {
+    "platforms": {
+      "scripts/quality/native-linux-session.sh": {
+        "bytes": 6957,
+        "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf"
+      },
+      "tests/quality/test_native_platform_smoke.py": {
+        "bytes": 5494,
+        "sha256": "c1d7782822174dca8550b0890a74347677a142c8ba17b74c69e466f21259e0c9"
+      }
+    },
+    "input": {
+      "scripts/quality/native-linux-session.sh": {
+        "bytes": 6957,
+        "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf"
+      },
+      "tests/quality/test_native_platform_smoke.py": {
+        "bytes": 15186,
+        "sha256": "360f9a6139e5829f1992d64cf2593d2330a86887dd65671032e0f6b6b16b331c"
+      }
+    }
+  }
+}

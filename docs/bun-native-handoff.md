@@ -75,11 +75,12 @@ fallback remains in the active packages.
 3. Complete the React renderer in [#280](https://github.com/0xPlayerOne/bun-native/pull/280),
    using the same private renderer package and public core as Solid. Preserve
    its measured handler-lifetime and error-propagation regressions.
-4. Complete the required release checks for native layout/scroll/focus
+4. Preserve the merged native layout/scroll/focus qualification in
    [#281](https://github.com/0xPlayerOne/bun-native/pull/281) and Bun command
-   controls [#278](https://github.com/0xPlayerOne/bun-native/pull/278), then follow
-   their issue dependencies. Ordinary TS/JS edits reuse a prebuilt host and
-   must not silently invoke Cargo.
+   controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278). Continue
+   shared native interactions and platform qualification by their issue
+   dependencies. Ordinary TS/JS edits reuse a prebuilt host and must not
+   silently invoke Cargo.
 
 The native ownership and schema are described in [protocol 4](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the
