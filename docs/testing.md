@@ -25,6 +25,12 @@ cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 
 `bunfig.toml` retains the minimum line-coverage gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
 
+### Real subprocess failure tests
+
+`tests/runtime/host.test.ts` starts a real Bun protocol peer and checks ordered pipe traffic, exact handshake errors, recoverable command rejection, timeouts, event overflow and process cleanup. The peer does not render GPUI. Negative cases await the operation normally before making synchronous assertions. The pinned Bun [asynchronous matcher waits inside the VM](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/runtime/test_runner/expect.rs#L498-L511); [the Windows diagnostic](https://github.com/0xPlayerOne/bun-native/actions/runs/41179587556) demonstrated that ordinary `await` delivers a pipe response which the `.rejects` matcher left pending until the request timeout. Tests retain their deadlines and require the intended protocol error, so an unrelated timeout cannot satisfy a malformed-handshake check.
+
+The inherited-pipe cases use a detached, self-expiring test helper that retains the direct peer's stdout/stderr handles. Detaching prevents the peer's Windows process job from terminating that helper when the peer exits. Each case requires the direct peer to have exited, the client operation to have failed within its deadline, and the helper to still be alive; a terminated descendant is not held-open-pipe evidence. Cleanup uses a private release file and checks only the PID recorded by that test's helper. Host and directory cleanup still run if the helper cleanup fails.
+
 ## Hosted workflows
 
 | Workflow/job                          | What it proves                                                                                                                                                                              | What it does not prove                                               |
