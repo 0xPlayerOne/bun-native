@@ -100,6 +100,7 @@ run('inspector-tests', [
   'test',
   join(root, 'inspect.test.ts'),
   join(root, 'inspect-runtime.test.ts'),
+  join(root, 'inspect-runtime-formats.test.ts'),
 ])
 const dev = run('dev', [process.execPath, join(root, 'probe.ts'), library, native, 'dev'])
 const scriptControl = join(destination, 'package-script-control')
@@ -150,13 +151,11 @@ const jitMetadata = inspectBunExecutable(jit)
 if (!aotMetadata.hasCompiledProgram || jitMetadata.hasCompiledProgram) {
   throw new Error('Bun executable metadata does not distinguish AOT from the JIT control')
 }
-const runtimeFeatures =
-  process.platform === 'linux' ? { aot: inspectBunRuntime(aot), jit: inspectBunRuntime(jit) } : null
+const runtimeFeatures = { aot: inspectBunRuntime(aot), jit: inspectBunRuntime(jit) }
 if (
-  runtimeFeatures &&
-  (runtimeFeatures.aot.jit === 'present' ||
-    runtimeFeatures.aot.jitRemovedRanges.count === 0 ||
-    runtimeFeatures.jit.jit !== 'present')
+  runtimeFeatures.aot.jit === 'present' ||
+  runtimeFeatures.aot.jitRemovedRanges.count === 0 ||
+  runtimeFeatures.jit.jit !== 'present'
 )
   throw new Error('Runtime feature metadata does not distinguish JIT removal from the JIT control')
 run('missing-library', [aot, join(destination, 'does-not-exist' + librarySuffix), native, 'aot'], 1)
@@ -208,6 +207,7 @@ const report = {
     'inspect.test.ts',
     'inspect-runtime.ts',
     'inspect-runtime.test.ts',
+    'inspect-runtime-formats.test.ts',
     'native.c',
     'tsconfig.json',
   ].map((name) => ({
