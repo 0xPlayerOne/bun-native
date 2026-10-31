@@ -26,6 +26,31 @@ async function deadline<T>(operation: Promise<T>, name: string): Promise<T> {
   }
 }
 
+async function rejectedError(operation: Promise<unknown>): Promise<Error> {
+  // Await the operation normally. The diagnostic compares this with the prior
+  // Bun .rejects matcher, which did not deliver ready Windows pipe callbacks.
+  try {
+    await operation
+  } catch (error) {
+    if (error instanceof Error) return error
+    throw error
+  }
+  throw new Error('Expected operation to reject')
+}
+
+function holderIsAlive(directory: string): boolean {
+  const ownedPid = Number(readFileSync(join(directory, 'ready'), 'utf8'))
+  if (!Number.isSafeInteger(ownedPid) || ownedPid <= 0)
+    throw new Error('Invalid test-owned pipe holder PID')
+  try {
+    process.kill(ownedPid, 0)
+    return true
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ESRCH') return false
+    throw error
+  }
+}
+
 async function releasePipeHolder(directory: string): Promise<void> {
   trace('test', 'holder-release-requested', { directory })
   // Only this test's holder reads its private release file. The holder also has
@@ -34,7 +59,13 @@ async function releasePipeHolder(directory: string): Promise<void> {
   if (!existsSync(join(directory, 'ready'))) return
   const finished = join(directory, 'finished')
   const until = performance.now() + 1_500
-  while (!existsSync(finished) && performance.now() < until) await Bun.sleep(10)
+  while (!existsSync(finished) && performance.now() < until) {
+    if (!holderIsAlive(directory)) {
+      trace('test', 'holder-already-exited', { directory })
+      return
+    }
+    await Bun.sleep(10)
+  }
   if (!existsSync(finished)) {
     const ownedPid = Number(readFileSync(join(directory, 'ready'), 'utf8'))
     let signalZero: unknown = 'alive'
@@ -79,18 +110,24 @@ async function withPipeHolder(
       args: [fixture, `inherited-pipe-${mode}`, directory],
     })
     await run(host, finished)
-    trace('test', 'held-pipe-assertions-passed', { mode })
+    trace('test', 'held-pipe-assertions-passed', { mode, holderAlive: holderIsAlive(directory) })
   } catch (error) {
     trace('test', 'held-pipe-assertion-failed', { mode, error: String(error) })
     throw error
   } finally {
-    await releasePipeHolder(directory)
-    if (host)
-      await deadline(
-        host.shutdown().catch(() => {}),
-        'host cleanup'
-      )
-    rmSync(directory, { recursive: true, force: true })
+    try {
+      await releasePipeHolder(directory)
+    } finally {
+      try {
+        if (host)
+          await deadline(
+            host.shutdown().catch(() => {}),
+            'host cleanup'
+          )
+      } finally {
+        rmSync(directory, { recursive: true, force: true })
+      }
+    }
   }
 }
 
@@ -118,7 +155,8 @@ describe('native process transport (headless protocol peer)', () => {
     trace('test', 'rejection-test-start', {})
     const host = await NativeHost.launch(options())
     try {
-      await expect(host.send({ type: 'update', text: 'reject' })).rejects.toThrow('invalid_state')
+      const error = await rejectedError(host.send({ type: 'update', text: 'reject' }))
+      expect(error.message).toContain('invalid_state')
       trace('test', 'rejection-observed', {})
       await host.send({ type: 'update', text: 'accepted' })
       trace('test', 'subsequent-update-accepted', {})
@@ -163,7 +201,8 @@ describe('native process transport (headless protocol peer)', () => {
 
   test('bounds shutdown after native exit when inherited pipes stay open', async () => {
     await withPipeHolder('shutdown', async (host, finished) => {
-      await expect(deadline(host.shutdown(), 'shutdown')).rejects.toThrow('Native')
+      const error = await rejectedError(deadline(host.shutdown(), 'shutdown'))
+      expect(error.message).toContain('Native')
       expect(await host.exited).toBe(0)
       expect(existsSync(finished)).toBe(false)
     })
@@ -176,7 +215,8 @@ describe('native process transport (headless protocol peer)', () => {
       // The peer acknowledges this request before exiting. There is no pending
       // command timeout to rescue the event iterator when the process exits.
       await host.send({ type: 'update', text: 'exit-after-ack' })
-      await expect(pending).rejects.toThrow('Native')
+      const error = await rejectedError(pending)
+      expect(error.message).toContain('Native')
       expect(await host.exited).toBe(23)
       expect(existsSync(finished)).toBe(false)
     })
