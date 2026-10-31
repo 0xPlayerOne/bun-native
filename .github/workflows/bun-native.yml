@@ -190,6 +190,11 @@ jobs:
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     uses: ./.github/workflows/native-linux.yml
 
+  native-platforms:
+    name: Native macOS and Windows
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    uses: ./.github/workflows/native-platforms.yml
+
   security:
     name: Security
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -198,7 +203,7 @@ jobs:
   gate:
     # This exact check context is required by the existing protected-main ruleset.
     name: Validation / Gate
-    needs: [source, protocol, aot, native, security]
+    needs: [source, protocol, aot, native, native-platforms, security]
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -209,4 +214,4 @@ jobs:
         run: |
           node -e 'const jobs=JSON.parse(process.env.RESULTS); const failed=Object.entries(jobs).filter(([,job])=>job.result!=="success"); if(failed.length){console.error(failed);process.exit(1)}'
       - name: Describe coverage precisely
-        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. The suite requires development/AOT public API and JavaScript input, stale-input rejection, public listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and a repeated startup/RSS baseline. Input uses XTest and actual GPUI paint evidence on a software GPU. Physical input, hardware GPU performance and macOS/Windows GUI remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal and joined lifecycle cleanup, plus a deliberately invalid paint negative control. macOS/Windows OS-visible window and input checks, physical input and display presentation remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"
