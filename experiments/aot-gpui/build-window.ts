@@ -118,6 +118,12 @@ async function artifact(path: string) {
 
 const sources = [
   'examples/native-window/main.ts',
+  'package.json',
+  'bun.lock',
+  'bunfig.toml',
+  'tsconfig.json',
+  'packages/protocol/package.json',
+  'packages/runtime/package.json',
   '.bun-version',
   'rust-toolchain.toml',
   'toolchain.json',

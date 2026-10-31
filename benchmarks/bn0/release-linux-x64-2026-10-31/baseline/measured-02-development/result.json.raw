@@ -1,0 +1,762 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "nonce": "3ff636e9462b3efe6f9ac57f5200f52c",
+  "command": [
+    "/home/runner/work/_temp/bun-native-bun/bun",
+    "/home/runner/work/bun-native/bun-native/examples/native-window/main.ts"
+  ],
+  "execution_mode": {
+    "declared": "development",
+    "aot_verified_by_driver": false
+  },
+  "verification_scope": "owned X11 window, OS-injected input, application event/paint reports and close",
+  "platform": {
+    "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "display": ":99",
+    "display_protocol": "X11",
+    "physical_input_tested": false,
+    "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+    "software_gl_requested": "1",
+    "child_subreaper": true
+  },
+  "renderer": {
+    "status": "reported-by-native-window",
+    "gpu": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+    }
+  },
+  "measurements": {
+    "rss_method": "sampled sum of process RSS; shared pages may be counted twice",
+    "cold_cache_controlled": false,
+    "launch_kind": "fresh application process; OS page cache uncontrolled",
+    "observation_poll_interval_ms": 100,
+    "paint_is_presentation_timestamp": false,
+    "samples": [
+      {
+        "elapsed_ms": 4.829040999993595,
+        "phase": "startup",
+        "tree_rss_bytes": 18313216,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "R",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 18313216
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 9.85718899994481,
+        "phase": "startup",
+        "tree_rss_bytes": 32051200,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 32051200
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 118.98126500000217,
+        "phase": "startup",
+        "tree_rss_bytes": 156135424,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33517568
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 132.3102789999666,
+        "phase": "idle",
+        "tree_rss_bytes": 156135424,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33517568
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 235.92902999996568,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 339.5673389999274,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 443.16358599996875,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 546.7588719999412,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 650.4218589999482,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 754.3144259999508,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 858.1508500000155,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 961.933834999968,
+        "phase": "idle",
+        "tree_rss_bytes": 155869184,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33251328
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1065.6428789999381,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1169.5053019999477,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1273.214275999976,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1376.7742300000236,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1480.3637869999875,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1583.875699000032,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1687.4363030000268,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1791.11156700003,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1894.647043999953,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 1998.3019179999246,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 2101.9210590000057,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 2132.5538810000353,
+        "phase": "idle",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 2138.2345470000246,
+        "phase": "interaction",
+        "tree_rss_bytes": 156463104,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33845248
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 122617856
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 2304.9889689999645,
+        "phase": "interaction",
+        "tree_rss_bytes": 157642752,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33976320
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 123666432
+          }
+        ]
+      },
+      {
+        "elapsed_ms": 2333.0981130000055,
+        "phase": "interaction",
+        "tree_rss_bytes": 157642752,
+        "processes": [
+          {
+            "pid": 12895,
+            "state": "S",
+            "parent_pid": 12889,
+            "process_group": 12895,
+            "start_ticks": 68838,
+            "rss_bytes": 33976320
+          },
+          {
+            "pid": 12903,
+            "state": "S",
+            "parent_pid": 12895,
+            "process_group": 12895,
+            "start_ticks": 68839,
+            "rss_bytes": 123666432
+          }
+        ]
+      }
+    ],
+    "time_to_first_paint_report_observed_ms": 119.08279599992966,
+    "time_to_window_observed_ms": 128.98302799999328,
+    "idle": {
+      "requested_seconds": 2.0,
+      "observed_duration_ms": 2003.5746979999658,
+      "sample_count": 21,
+      "median_tree_rss_bytes": 156463104,
+      "maximum_tree_rss_bytes": 156463104
+    },
+    "input_injection_started_ms": 2195.0899119999576,
+    "input_injection_completed_ms": 2301.4715949999527,
+    "input_start_to_matching_app_event_observed_ms": 109.9958400000105,
+    "input_start_to_matching_paint_report_observed_ms": 109.99666200007141,
+    "os_close_requested_ms": 2367.9901699999846,
+    "application_exit_observed_ms": 2395.3341669999872,
+    "sampled_peak_tree_rss_bytes": 157642752
+  },
+  "checks": {
+    "window": "passed",
+    "os_input": "injected-through-XTest",
+    "app_input_event": "passed",
+    "app_render_report": "passed",
+    "pixel_or_text_assertion": "unsupported",
+    "os_close": "passed",
+    "renderer": "passed"
+  },
+  "logs": {
+    "stdout": {
+      "written_bytes": 0,
+      "discarded_bytes": 0
+    },
+    "stderr": {
+      "written_bytes": 0,
+      "discarded_bytes": 0
+    }
+  },
+  "tools": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "xdotool": "xdotool version 3.20160805.1",
+    "imagemagick": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org\nCopyright: (C) 1999 ImageMagick Studio LLC\nLicense: https://imagemagick.org/script/license.php\nFeatures: Cipher DPC Modules OpenMP(4.5) \nDelegates (built-in): bzlib djvu fftw fontconfig freetype heic jbig jng jp2 jpeg lcms lqr ltdl lzma openexr pangocairo png raw tiff webp wmf x xml zlib"
+  },
+  "intended_toolchain": {
+    "manifest_sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+    "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rust": {
+      "version": "1.98.1",
+      "components": [
+        "rustfmt",
+        "clippy"
+      ]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "source": {
+    "commit": "e89d1511708f4230eae3318c9d6acb0612b60ca4",
+    "dirty": false
+  },
+  "scenario": {
+    "click": [
+      100,
+      145
+    ],
+    "keys": [],
+    "text": null,
+    "expected_events": [
+      {
+        "type": "click",
+        "stage": "bun-application"
+      }
+    ],
+    "expected_render": {
+      "type": "rendered",
+      "stage": "native-paint",
+      "text": "Clicks: 1",
+      "input": ""
+    }
+  },
+  "native_host": {
+    "path": "/home/runner/work/_temp/native-evidence/package/bun-native-host",
+    "declared_profile": "release"
+  },
+  "window_id": "4194305",
+  "screenshots": {
+    "before.png": {
+      "bytes": 16155,
+      "sha256": "b789f111430acdc153c84ec4d14383f482402180c52e7ec6a7aa9c5be3a39ce1"
+    },
+    "after.png": {
+      "bytes": 15908,
+      "sha256": "4b6485a143da9f57630898ef081a59ec86f89ec0edea988bb32c46f6a712fffe"
+    }
+  },
+  "observed_events": [
+    {
+      "nonce": "3ff636e9462b3efe6f9ac57f5200f52c",
+      "type": "click",
+      "stage": "bun-application"
+    },
+    {
+      "nonce": "3ff636e9462b3efe6f9ac57f5200f52c",
+      "type": "rendered",
+      "text": "Clicks: 1",
+      "input": "",
+      "stage": "native-paint"
+    }
+  ],
+  "cleanup": {
+    "forced_termination": false,
+    "remaining_observed_pids": [],
+    "unreaped_observed_pids": [],
+    "application_exit_code": 0
+  }
+}

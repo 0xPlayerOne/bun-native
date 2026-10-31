@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/0xPlayerOne/bun-native",
+  "scope": "BN0 protocol 1; actual Linux X11/software-GPU native input with a release-profile GPUI host",
+  "captureStartedAt": "2026-10-31T07:18:47.544292+00:00",
+  "pullRequest": 273,
+  "headRevision": "06b8859acbc93de721b889867fbb811fd817bada",
+  "checkoutRevision": "e89d1511708f4230eae3318c9d6acb0612b60ca4",
+  "workflow": {
+    "id": 41179568675,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675",
+    "conclusion": "failure",
+    "failureScope": "Windows protocol job and aggregate Gate; the native job succeeded"
+  },
+  "nativeJob": {
+    "id": 124474016479,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675/job/124474016479",
+    "conclusion": "success"
+  },
+  "artifactId": 13034880706,
+  "retention": {
+    "originalFiles": 20,
+    "originalBytes": 340931,
+    "jsonSuffix": ".json.raw preserves original bytes against source formatting",
+    "notIncluded": [
+      "executables",
+      "screenshots",
+      "complete application/host event logs",
+      "other files from the complete hosted artifact"
+    ]
+  },
+  "auditVerification": {
+    "manifestFingerprintMatchesSummary": true,
+    "parsedManifestMatchesEmbeddedSummary": true,
+    "allTrialReportsPassed": 12,
+    "measuredReportsPerMode": 5,
+    "warmupReportsPerMode": 1,
+    "allCleanupReportsExitZeroWithoutObservedSurvivors": true,
+    "metricDistributionsRecomputedFromOriginalReports": true,
+    "historicalSourceFilesMatched": 26,
+    "historicalSourceRevision": "06b8859acbc93de721b889867fbb811fd817bada",
+    "originalCopiesMatchSha256": true,
+    "scope": "Report and source consistency checks; does not repeat the native execution or rehash absent executable files"
+  },
+  "files": [
+    {
+      "artifactPath": "baseline/measured-01-aot/result.json",
+      "retainedPath": "baseline/measured-01-aot/result.json.raw",
+      "bytes": 20100,
+      "sha256": "114d4afa9d326f618008e3ed569da5e119bb3db307448e916004939bfa254518"
+    },
+    {
+      "artifactPath": "baseline/measured-01-development/result.json",
+      "retainedPath": "baseline/measured-01-development/result.json.raw",
+      "bytes": 20167,
+      "sha256": "c258c65734687fd73eb54e3a77a4e832375d4cdd3a278074df26320c46bf8e20"
+    },
+    {
+      "artifactPath": "baseline/measured-02-aot/result.json",
+      "retainedPath": "baseline/measured-02-aot/result.json.raw",
+      "bytes": 20314,
+      "sha256": "2f53e7143effa9a36eb1228d110a719909c1108184ee65d13876d872af14f86f"
+    },
+    {
+      "artifactPath": "baseline/measured-02-development/result.json",
+      "retainedPath": "baseline/measured-02-development/result.json.raw",
+      "bytes": 20172,
+      "sha256": "3e625c1ab5a08bcb2e95f3bf42c9fc9e70fb2daaceff2a66d91fc2ff88e25b05"
+    },
+    {
+      "artifactPath": "baseline/measured-03-aot/result.json",
+      "retainedPath": "baseline/measured-03-aot/result.json.raw",
+      "bytes": 20105,
+      "sha256": "e745dd0342c0d921a48949542ac8271d80fcd2562466c6f1b62a50615b3ce79e"
+    },
+    {
+      "artifactPath": "baseline/measured-03-development/result.json",
+      "retainedPath": "baseline/measured-03-development/result.json.raw",
+      "bytes": 20170,
+      "sha256": "041df5edf309f0499c63ff7f041e1ee1d7c923f0f10c71ed311cec472ea63582"
+    },
+    {
+      "artifactPath": "baseline/measured-04-aot/result.json",
+      "retainedPath": "baseline/measured-04-aot/result.json.raw",
+      "bytes": 20105,
+      "sha256": "39c0dc59b2cc6c2857c2691e7b31f354f85c1fa99e6c4f5ed65073b366bfda9a"
+    },
+    {
+      "artifactPath": "baseline/measured-04-development/result.json",
+      "retainedPath": "baseline/measured-04-development/result.json.raw",
+      "bytes": 20163,
+      "sha256": "2dc017c180c149c55847ec0fac749fbc7f716ccae33cc652eb768de3180cb6b7"
+    },
+    {
+      "artifactPath": "baseline/measured-05-aot/result.json",
+      "retainedPath": "baseline/measured-05-aot/result.json.raw",
+      "bytes": 20098,
+      "sha256": "8cbd74617c477bd32bb16aaed866926223120dd69524e07cd5f71406fcedffe1"
+    },
+    {
+      "artifactPath": "baseline/measured-05-development/result.json",
+      "retainedPath": "baseline/measured-05-development/result.json.raw",
+      "bytes": 20175,
+      "sha256": "c3f65ca7a366d9c2755c634bc45fc8a7ec25a23a55aa61992245f6541daedf24"
+    },
+    {
+      "artifactPath": "baseline/summary.json",
+      "retainedPath": "baseline/summary.json.raw",
+      "bytes": 18836,
+      "sha256": "9e4d81abf0fcbf22bde23e3265d382014711ed9496b14d7809cf1c93a8804155"
+    },
+    {
+      "artifactPath": "baseline/warmup-01-aot/result.json",
+      "retainedPath": "baseline/warmup-01-aot/result.json.raw",
+      "bytes": 20106,
+      "sha256": "480f4b62de573187a8cfb3233d2cd0da6d57ab345ce270a04dc26849a8171133"
+    },
+    {
+      "artifactPath": "baseline/warmup-01-development/result.json",
+      "retainedPath": "baseline/warmup-01-development/result.json.raw",
+      "bytes": 20171,
+      "sha256": "70ea76aa8aea2fea1c34559ce9f4f4cd874d2162b7009d504c59acdeaa2eb12a"
+    },
+    {
+      "artifactPath": "build.log",
+      "retainedPath": "build.log",
+      "bytes": 31652,
+      "sha256": "ab044636dd5a64249669fb29842945e17e97d03f151a0efdb9121b684d473775"
+    },
+    {
+      "artifactPath": "package/application-linkage.stdout.log",
+      "retainedPath": "package/application-linkage.stdout.log",
+      "bytes": 370,
+      "sha256": "591059ace7e3a50618fb8043eabeb55ae664cd3289f0a43bc1312b390f996ff6"
+    },
+    {
+      "artifactPath": "package/application-sections.stdout.log",
+      "retainedPath": "package/application-sections.stdout.log",
+      "bytes": 4848,
+      "sha256": "0feb772eb88073344318208f6ef683384ca9569ebb4d7208ba92f0126c922fe0"
+    },
+    {
+      "artifactPath": "package/compile-aot.stdout.log",
+      "retainedPath": "package/compile-aot.stdout.log",
+      "bytes": 31937,
+      "sha256": "74e4992de098468cbc79051dc27d92e6ed5967fe8ede285662e42bf4a3801c6b"
+    },
+    {
+      "artifactPath": "package/host-linkage.stdout.log",
+      "retainedPath": "package/host-linkage.stdout.log",
+      "bytes": 907,
+      "sha256": "f62a41bb2cc3ffb59470f9a774f136b78ba100a68ed692a54c15fd7eb7b88be6"
+    },
+    {
+      "artifactPath": "package/manifest.json",
+      "retainedPath": "package/manifest.json.raw",
+      "bytes": 9376,
+      "sha256": "0f1443b79dd84fab6daed3df3d3dea212bfadd1a187c05c53af97755332b599b"
+    },
+    {
+      "artifactPath": "toolchain.txt",
+      "retainedPath": "toolchain.txt",
+      "bytes": 1159,
+      "sha256": "312236947d83b7d18e91e200628f8f66c56c8495e934b2c9b24914a4ebe00297"
+    }
+  ]
+}

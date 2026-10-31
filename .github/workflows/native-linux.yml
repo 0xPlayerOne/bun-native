@@ -97,6 +97,13 @@ jobs:
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/aot" aot "$NATIVE_EVIDENCE/package/native-window"
+      - name: Repeated matched development and AOT baseline
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/baseline-session" -- python3 benchmarks/native-baseline.py \
+            --output "$NATIVE_EVIDENCE/baseline" --package "$NATIVE_EVIDENCE/package" \
+            --bun "$(command -v bun)" --samples 5 --warmups 1 --idle-seconds 2
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
@@ -108,6 +115,8 @@ jobs:
             ${{ runner.temp }}/native-evidence/binary-*.txt
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
+            ${{ runner.temp }}/native-evidence/baseline/
+            ${{ runner.temp }}/native-evidence/baseline-session/
             ${{ runner.temp }}/native-evidence/package/manifest.json
             ${{ runner.temp }}/native-evidence/package/*.log
           include-hidden-files: true

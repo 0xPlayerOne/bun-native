@@ -79,6 +79,10 @@ The driver records time from app launch until the owned window is observed, the 
 
 For a baseline trial, pass `--idle-seconds 2` directly to the Python driver. The option defaults to zero and accepts at most ten seconds; it samples after the first observed paint and before any input. The report retains raw samples with an `idle` phase plus the actual sampling duration, sample count, median and maximum process-tree RSS. Shared-page double counting still applies. The harness never flushes operating-system caches or changes machine power settings.
 
+After native correctness passes, the Linux job runs the [repeated matched baseline](../benchmarks/NATIVE_BASELINE.md) against the same release host and inspected AOT package. One warm-up and five alternating measured fresh-process trials per mode use a two-second idle interval. Every trial must pass the native input, paint and cleanup assertions. Raw records and descriptive distributions are retained; there is no guessed performance threshold. The shared X11 session helper accepts `-- COMMAND ...` to run this measurement in the same isolated display setup. Driver termination runs bounded cleanup before returning a failed result.
+
+The Linux driver makes itself a process-local child subreaper. If interruption terminates an application parent before its native host, the driver adopts and reaps that observed descendant instead of relying on a container's PID1. The only native call is the fixed Linux `prctl(PR_SET_CHILD_SUBREAPER, 1)` operation through the standard-library `ctypes` interface; it changes no system-wide setting. Cleanup waits only on children whose PID and process start time still match the recorded identities. The real-process safety test deliberately terminates a parent that does not reap its own child.
+
 `--mode aot` declares how the caller launched the app; the input driver never verifies machine-code compilation by itself. The CI lane separately invokes the pinned compiler, validates the emitted compiled-program metadata, hashes the source and both binaries, and retains `package/manifest.json` and build/inspection logs. The actual host build profile is declared in every scenario report and substantiated by the recorded Cargo release command and binary hash. Routine evidence artifacts omit the large executable files while retaining their hashes, sizes, linkage, compiler metadata and actual execution results. A missing or invalid AOT metadata check fails the job before the AOT GUI run.
 
 The harness uses Python's standard library. Ruff is the sole Python development dependency, pinned by version and wheel hashes in `scripts/quality/requirements.txt`; it is absent from application runtime dependencies. Its six headless safety tests check evidence freshness/nonce validation, incomplete records, bounded logs, unavailable-display behavior and real child-process cleanup. Each test has a ten-second deadline. These tests exercise the harness and do not qualify a native GUI:
@@ -86,13 +90,15 @@ The harness uses Python's standard library. Ruff is the sole Python development 
 ```sh
 python3 -m venv .bun-native/quality-env
 .bun-native/quality-env/bin/pip install --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
-.bun-native/quality-env/bin/ruff format --check scripts/quality/native-input-linux.py tests/quality/test_native_input_linux.py
-.bun-native/quality-env/bin/ruff check scripts/quality/native-input-linux.py tests/quality/test_native_input_linux.py
+.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
+.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
 bash -n scripts/quality/native-linux-session.sh
 ```
 
 The process-tree safety case is explicitly skipped if the local PID namespace cannot be reconciled with `/proc`. Hosted Ubuntu runs it in the real namespace. The native GUI lane fails, rather than reporting a pass, when the actual display/input/paint/cleanup requirements are unavailable or unfulfilled.
+
+Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
 
 ## Architecture and negative checks
 
