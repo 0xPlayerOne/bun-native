@@ -37,11 +37,13 @@ through the acknowledged checkpoint, not an atomic measurement of compositor
 presentation or OS input routing. Existing native and renderer assertions
 continue to qualify the subsequent show/hide sequence.
 
-The v2 application receipt ceiling is 32 KiB for the three bounded histories and
-the original interaction sections. The original sections still satisfy the v1
-16 KiB bound. The 30-second workload deadline, 45-second outer observer budget,
-sandbox, native-owner cleanup and all physical-input/performance limitations
-remain unchanged.
+The complete v2 application receipt, including all three histories and the
+original interaction sections, must fit the existing 16 KiB native diagnostic
+line budget. The 32-record per-pane limit does not guarantee that the aggregate
+fits; history overflow or an oversized receipt fails qualification without
+truncating evidence. The v1 budget, 30-second workload deadline, 45-second outer
+observer budget, sandbox, native-owner cleanup and all physical-input/performance
+limitations remain unchanged.
 
 Retained `native-composition-interactions-v1` reports use their explicit
 historical validator and original acceptance object. They observed renderer
@@ -51,3 +53,9 @@ outcomes. New executions require v2 and cannot use a v1 receipt as acceptance.
 
 This fixture improvement does not correct CEF's initially-hidden Linux
 WebContents state. That runtime defect remains separately open.
+
+The [retained stock v2 observations](../../evidence/m7-composition-initial-v2/README.md)
+include a Linux first-script `visible` state in the native-hidden overlay and a
+complete Mac interaction pass on a virtual display. Their original outcomes,
+histories, exact source/runtime identities and cleanup remain available for
+replay; these provide no hardware or runtime-fix qualification.

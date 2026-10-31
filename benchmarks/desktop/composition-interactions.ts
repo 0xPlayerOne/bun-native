@@ -270,9 +270,12 @@ export function acceptCompositionInteractionReceiptV1(input: unknown) {
 export function acceptCompositionInteractionReceipt(input: unknown) {
   const receipt = record(input)
   assert.equal(receipt['schema'], 2, 'Current interaction execution requires schema 2')
-  // Three histories of at most 32 events, plus the unchanged bounded v1 sections.
-  // Retained v1 keeps its original 16 KiB ceiling and acceptance object.
-  assert.ok(Buffer.byteLength(JSON.stringify(receipt)) <= 32 * 1024)
+  // The per-pane history bound does not guarantee the aggregate fits the
+  // existing native diagnostic transport. Reject oversized receipts in full.
+  assert.ok(
+    Buffer.byteLength(JSON.stringify(receipt)) <= 16 * 1024,
+    'Interaction receipt exceeds native diagnostic budget'
+  )
   const { initialObservation, ...priorSections } = receipt
   const accepted = acceptCompositionInteractionReceiptV1({ ...priorSections, schema: 1 })
   const initial = fields(initialObservation, ['panes', 'creation'])

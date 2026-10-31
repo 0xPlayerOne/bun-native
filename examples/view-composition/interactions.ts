@@ -581,7 +581,7 @@ export default async function qualifyCompositionInteractions(backend: CefBackend
       performanceEligible: false,
     })
     assert.ok(
-      Buffer.byteLength(receipt) <= 32 * 1024,
+      Buffer.byteLength(receipt) <= 16 * 1024,
       'Interaction receipt exceeds native diagnostic budget'
     )
     console.error(receipt)

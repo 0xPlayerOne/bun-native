@@ -1,0 +1,15 @@
+{
+  "passed": false,
+  "processes": [
+    {
+      "role": "Xvfb",
+      "pid": 91890
+    },
+    {
+      "role": "openbox",
+      "pid": 91893
+    }
+  ],
+  "cleanup": true,
+  "exitCode": 1
+}

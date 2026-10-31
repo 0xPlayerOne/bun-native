@@ -46,6 +46,26 @@ checkpoint; the subsequent IPC interval before showing is not observed by that
 history. The original six v1 reports keep their exact acceptance and failure
 outcomes. Neither profile fabricates renderer state or relaxes the native gate.
 
+The [actual v2 cohort](../evidence/m7-composition-initial-v2/README.md) records
+application source `af32858a0edcfbeed74c4e7f73e21a2f8cce745d`, native tree
+`9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88`. The stock Linux run rejected the
+overlay's first-script `visible` observation at `initial-observation-after-create`.
+Native visibility/drawing/focus remained false, and the existing right pane
+retained focus. SDK owners were released and disposable-display cleanup passed;
+the workload and host result correctly remained failed. On macOS, v2 passed the
+early hidden history and focus-preservation checks, ten ordered focus observations,
+three popup cancellations and the visible file-panel cancellation with competing
+menu exclusion. Both outcomes retain their exact source, artifact and cleanup
+records. They are not executions of the source-only upstream CEF patch or a later
+native tree.
+
+Review found that v2's initial producer/parser allowed 32 KiB while the shared
+diagnostic transport still enforced 16 KiB. The current producer/parser use the
+existing 16 KiB aggregate limit, independently of the 32-record per-pane bound.
+The actual native receipts fit that shared limit and retain their original bytes;
+the source and validation records distinguish the historical assertion from the
+corrected current contract.
+
 The [prepared CEF source candidate](../upstream/cef/initial-hidden-views/README.md)
 sets initial WebContents visibility from the BrowserView and its actual widget.
 Separate test-only and candidate patches make the expected baseline failure and
@@ -57,6 +77,17 @@ candidate binary or native pass is claimed. The package does not change Bunly's
 runtime dependency or release identity. A full native CEF build and the strict
 Linux qualification remain prerequisites, alongside #35's physical and measured
 rendering criteria.
+
+A bounded equipment inventory at 2026-10-30 23:51 UTC found one connected Mac
+(64 GiB RAM, about 166 GB free disk), a Screen Sharing Virtual Display and no
+accessibility-control trust for the query process. No Docker, Colima, Lima,
+Multipass, Podman or QEMU executable was available on its tool PATH; the repository
+reported zero self-hosted runners. The local Linux environment has an 8 GiB memory
+limit and insufficient disk. No suitable existing Linux CEF builder was identified.
+The source package records the upstream 16 GB RAM / 200 GB free-disk minimum and
+the exact proposed build procedure. The prepared hardware workbench remains
+available; this inventory and the native API-driven Mac pass do not supply the
+physical input/IME/accessibility/display or measured rendering-tradeoff records.
 
 ## October 30 continuation: Windows correction and composition blocker
 

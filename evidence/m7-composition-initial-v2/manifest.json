@@ -1,0 +1,488 @@
+{
+  "schema": 1,
+  "profile": "native-composition-interactions-v2",
+  "source": {
+    "commit": "af32858a0edcfbeed74c4e7f73e21a2f8cce745d",
+    "tree": "5a3263cbc36748d7566727f7f21a909b1e3ad56f",
+    "cleanBeforeAndAfter": true,
+    "selectedFiles": 367,
+    "allSelectedSourceHashesVerified": true
+  },
+  "nativeSource": {
+    "declaredCommit": "af32858a0edcfbeed74c4e7f73e21a2f8cce745d",
+    "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+    "embeddedBuildAttestation": false
+  },
+  "nativeBuild": {
+    "toolchain": "Rust 1.91.0",
+    "command": [
+      "bun",
+      "scripts/cargo.ts",
+      "+1.91.0",
+      "build",
+      "--locked",
+      "--manifest-path",
+      "native/cef-host/Cargo.toml",
+      "--features",
+      "packaging,rpc-qualification",
+      "--release"
+    ],
+    "features": [
+      "sandbox (default)",
+      "packaging",
+      "rpc-qualification"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 35.39072498499809,
+    "source": "af32858a0edcfbeed74c4e7f73e21a2f8cce745d",
+    "nativeTree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+    "assemblyExitCode": 0,
+    "embeddedBuildAttestation": false
+  },
+  "preparation": {
+    "nativeExecutions": 1,
+    "prelaunchCorrection": "The new native bundle initially lacked application resources. Inventory stopped before native launch; the exact generated resources were then copied using the maintained hosted preparation operation.",
+    "withdrawnCandidateReused": false,
+    "priorFailedReportsPreserved": true
+  },
+  "runtime": {
+    "bun": "1.4.4",
+    "identity": {
+      "event": "cef-binary-identity",
+      "schema": 1,
+      "sha256": "d6ae34b71b65685b9fc84f24b53214cdb71a17ceecca0034c3a95a9d4358d86f",
+      "cefVersion": "156.0.7",
+      "chromiumVersion": "156.0.8078.17",
+      "cefCommitNumber": 3652,
+      "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+      "source": "exported-api",
+      "sandbox": "unverified"
+    },
+    "inputHostSha256": "60a2995de98afc61520954bf64593713819e12f79b0f07cf6ee5aa2d52d5898a",
+    "preparedHostSha256": "60a2995de98afc61520954bf64593713819e12f79b0f07cf6ee5aa2d52d5898a",
+    "bundledBunSha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235"
+  },
+  "environment": {
+    "target": "linux-x64",
+    "observer": {
+      "os": "Linux",
+      "release": "6.18.57",
+      "arch": "x86_64",
+      "logicalCpus": 9,
+      "memoryBytes": 10451427328,
+      "psutil": "7.0.0",
+      "python": "3.12.14",
+      "runClass": "local-smoke"
+    },
+    "kind": "Ubuntu Linux x86_64 container with disposable Xvfb/Openbox",
+    "uid": 65534,
+    "gid": 65534,
+    "account": "nobody",
+    "disposableDisplay": [
+      "Xvfb",
+      "Openbox"
+    ],
+    "dbusSession": "owned disposable session",
+    "namespacePreflightExitCode": 0,
+    "sandboxDefaultFeature": true,
+    "nativeNoSandboxSetting": 0,
+    "sandboxDisablingFlagsUsed": false,
+    "standaloneSandboxAttestation": false,
+    "githubEnvironmentSpoofed": false
+  },
+  "report": {
+    "archive": "linux-stock-initial-visible.json.gz",
+    "originalBytes": 449356,
+    "originalSha256": "be85e8461b210f55782b747592f5ec370b51cec6b143b8baa34fd7594524ff45",
+    "archiveBytes": 62903,
+    "archiveSha256": "3ea80a9059ba4da2c50bfc67bcff9c1834427d0787922fb0357d7a3ed4947761",
+    "expandedBytes": 449516,
+    "expandedSha256": "ebc620c8113d6536a48223cbd46aaf79b96cb0dff63fbb90b72d6ed7c3ca7cc4"
+  },
+  "sanitization": {
+    "exporter": "scripts/export_native_evidence.py",
+    "exporterSha256": "2c54114b1a681bc025620f03d2463c67e2b8101da36aa230c850dc502fa96a91",
+    "redactions": [
+      "fixture-nonces",
+      "composition-worktree-prefix",
+      "local-linux-fixture-prefix",
+      "workspace-prefix"
+    ],
+    "applicationReceiptExactlyPreserved": true,
+    "outcomeSourceRuntimeAndCleanupPreserved": true
+  },
+  "outcome": {
+    "passed": false,
+    "applicationPassed": false,
+    "failure": "Command failed: unexpected exit 1 (expected 0)",
+    "applicationFailure": "initial-observation-after-create: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  {\n    drawn: false,\n    focusable: false,\n    nativeFocused: false,\n    pageFocused: false,\n+   pageVisibility: 'visible',\n-   pageVisibility: 'hidden',\n    visible: false\n  }\n",
+    "workloadMs": 212.87332200000003,
+    "observerElapsedMs": 677.4298839991388,
+    "qualifierDurationSeconds": 11.218901248001202,
+    "applicationReceiptSchema": 2,
+    "initialObservation": {
+      "panes": {
+        "left": {
+          "viewId": "72ebabaf-7b11-48ba-b643-d117fe2caede",
+          "documentId": "native-3-1",
+          "history": {
+            "pane": "left",
+            "instance": "ea7902af-6334-4ca9-b99f-eb43cc507538",
+            "phase": "after-create",
+            "events": [
+              {
+                "event": "initial",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              },
+              {
+                "event": "before-create",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              },
+              {
+                "event": "after-create",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              }
+            ],
+            "overflow": false
+          }
+        },
+        "right": {
+          "viewId": "2bdbf276-4354-4686-bd40-541be1c8b01f",
+          "documentId": "native-7-1",
+          "history": {
+            "pane": "right",
+            "instance": "68eea42c-287d-4879-aa8d-37a34e863494",
+            "phase": "after-create",
+            "events": [
+              {
+                "event": "initial",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              },
+              {
+                "event": "focus",
+                "visibility": "visible",
+                "focused": true,
+                "trusted": true
+              },
+              {
+                "event": "focus",
+                "visibility": "visible",
+                "focused": true,
+                "trusted": true
+              },
+              {
+                "event": "before-create",
+                "visibility": "visible",
+                "focused": true,
+                "trusted": null
+              },
+              {
+                "event": "after-create",
+                "visibility": "visible",
+                "focused": true,
+                "trusted": null
+              }
+            ],
+            "overflow": false
+          }
+        },
+        "overlay": {
+          "viewId": "33c765c0-ef43-43e6-8eaa-b47a44c7203f",
+          "documentId": "native-11-1",
+          "history": {
+            "pane": "overlay",
+            "instance": "59144089-19de-42a5-8d2f-d7483d91d2ab",
+            "phase": "after-create",
+            "events": [
+              {
+                "event": "initial",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              },
+              {
+                "event": "after-create",
+                "visibility": "visible",
+                "focused": false,
+                "trusted": null
+              }
+            ],
+            "overflow": false
+          }
+        }
+      },
+      "creation": {
+        "before": {
+          "left": {
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "nativeFocused": false,
+            "pageVisibility": "visible",
+            "pageFocused": false
+          },
+          "right": {
+            "visible": true,
+            "drawn": true,
+            "focusable": true,
+            "nativeFocused": true,
+            "pageVisibility": "visible",
+            "pageFocused": true
+          }
+        },
+        "after": null
+      }
+    },
+    "firstExplicitOverlayShowReached": false,
+    "menusOrDialogsReached": false
+  },
+  "cleanup": {
+    "sdkFinal": {
+      "windows": 0,
+      "views": 0,
+      "sessions": 0,
+      "listeners": 0,
+      "listenerErrors": 0
+    },
+    "applicationShutdownSucceeded": true,
+    "nativeFinal": null,
+    "hostClean": false,
+    "exitCode": 1,
+    "timedOut": false,
+    "cancelled": false,
+    "observerFailure": null,
+    "outputOverflow": false,
+    "observedOrphans": [],
+    "cleanupSurvivors": [],
+    "displayRunnerCleanup": true,
+    "displayProcesses": [
+      {
+        "role": "Xvfb",
+        "pid": 91890,
+        "pidExistsAfterRun": false
+      },
+      {
+        "role": "openbox",
+        "pid": 91893,
+        "pidExistsAfterRun": false
+      }
+    ],
+    "displayRunnerFile": "linux-display-runner.json",
+    "displayRunnerBytes": 190,
+    "displayRunnerSha256": "997452845fc9537c15334801fe6aea9e6045e16a7c89fafe1d45bdd5aed32960"
+  },
+  "artifactReview": {
+    "inputEntries": 258,
+    "preparedEntries": 248,
+    "qualifierAfterChecksReached": false,
+    "independentPostRunInputBytesUnchanged": true,
+    "independentPostRunPreparedBytesUnchanged": true,
+    "independentPostRunPreparedMetadata": {
+      "identityUnchanged": true,
+      "ctimeChangedPaths": [],
+      "ctimeChangeReason": "none"
+    }
+  },
+  "replay": {
+    "expected": "rejected",
+    "reason": "The retained report and application receipt both record failure."
+  },
+  "limits": {
+    "workloadMs": 30000,
+    "observerMs": 45000,
+    "historyRecordsPerPane": 32,
+    "currentReceiptBytes": 16384,
+    "recordedSourceReceiptAssertionBytes": 32768,
+    "diagnosticLineBytes": 16384,
+    "actualDiagnosticBytes": 4397,
+    "historicalV1ReceiptBytes": 16384,
+    "historyBoundary": "Through each authenticated before-show snapshot; the later IPC/native-show interval is not observed. This failed run stopped at after-create."
+  },
+  "physicalInputQualified": false,
+  "imeQualified": false,
+  "hardwareDpiQualified": false,
+  "assistiveTechnologyQualified": false,
+  "performanceEligible": false,
+  "runtimeFixQualified": false,
+  "m7Completed": false,
+  "additionalRuns": [
+    {
+      "id": "macos-stock-passed",
+      "target": "darwin-arm64",
+      "passed": true,
+      "archive": "macos-stock-passed.json.gz",
+      "archiveBytes": 91129,
+      "archiveSha256": "2b3db038e28e13f540ac414de5b8da373cf52cfb4db2113e77df873b56085421",
+      "expandedBytes": 992358,
+      "expandedSha256": "ae76c3de0baecaeec73a3070fc029caa125dd14d4ab1a25683f96e79c16e04dd",
+      "originalBytes": 992185,
+      "originalSha256": "56ce6d6a15e5568c85453357640bf2ae85c675d3301ac94da3fb8e2561c4f208",
+      "originalHashVerification": "Raw report verified on the source Mac before export; private raw bytes are not in this package.",
+      "metadata": "macos-stock-passed.metadata.json",
+      "metadataBytes": 3020,
+      "metadataSha256": "cb1ad05466f27590fd5f53095b75cd8709ebb12cda2ca0571fe81d735a57e163",
+      "source": {
+        "commit": "af32858a0edcfbeed74c4e7f73e21a2f8cce745d",
+        "clean": true,
+        "reason": "clean-checkout"
+      },
+      "sourceTree": "5a3263cbc36748d7566727f7f21a909b1e3ad56f",
+      "selectedSourceFiles": 367,
+      "nativeSource": {
+        "declaredCommit": "be22c89a1c680c3262316e516f22a4816cbf4e9c",
+        "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+        "embeddedBuildAttestation": false
+      },
+      "actualDiagnosticBytes": 10433,
+      "recordedSourceReceiptAssertionBytes": 32768,
+      "sharedDiagnosticLineBytes": 16384,
+      "workloadMs": 2570.732875,
+      "observerElapsedMs": 3426.2049170210958,
+      "initialHistories": {
+        "left": {
+          "phase": "before-show",
+          "records": 7,
+          "overflow": false
+        },
+        "right": {
+          "phase": "before-show",
+          "records": 8,
+          "overflow": false
+        },
+        "overlay": {
+          "phase": "before-show",
+          "records": 3,
+          "overflow": false
+        }
+      },
+      "acceptance": {
+        "panes": 3,
+        "focusObservations": 10,
+        "cancelledMenus": 3,
+        "dialog": "cancelled",
+        "menuRejectedWhileDialogOpen": true,
+        "retainedDocuments": 3,
+        "nativeOwnershipReleased": true,
+        "physicalInputQualified": false,
+        "imeQualified": false,
+        "hardwareDpiQualified": false,
+        "assistiveTechnologyQualified": false,
+        "performanceEligible": false,
+        "initialVisibilityObserved": true,
+        "creationFocusPreserved": true
+      },
+      "artifactReview": {
+        "inputEntries": 274,
+        "preparedEntries": 264,
+        "inputArtifactUnchanged": true,
+        "preparedArtifactUnchanged": true,
+        "preparedMetadata": {
+          "identityUnchanged": true,
+          "ctimeChangedPaths": [
+            "Contents/MacOS/bunly_host"
+          ],
+          "ctimeChangeReason": "verified-macos-code-sign-clone-link-lifecycle"
+        }
+      },
+      "cleanup": {
+        "nativeFinal": {
+          "windows": 1,
+          "views": 0,
+          "sessions": 0,
+          "rpcBindings": 0,
+          "pending": 0,
+          "downloads": 0,
+          "nativeDeliveryPackets": 0,
+          "nativeDeliveryBytes": 0,
+          "rpcIncomingBytes": 0,
+          "streamIncomingBytes": 0
+        },
+        "sdkFinal": {
+          "windows": 0,
+          "views": 0,
+          "sessions": 0,
+          "listeners": 0,
+          "listenerErrors": 0
+        },
+        "shutdownSucceeded": true,
+        "hostClean": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false,
+        "observerFailure": null,
+        "outputOverflow": false,
+        "observedOrphans": [],
+        "cleanupSurvivors": [],
+        "postExitCleanup": {
+          "schema": 1,
+          "profile": "macos-verified-code-sign-clone-v1",
+          "limitMs": 3000,
+          "elapsedMs": 71.98645779863,
+          "observedClones": 1,
+          "cloneInventory": {
+            "prelaunchEntries": 69,
+            "entryLimit": 256,
+            "scope": "new-names-after-prelaunch-snapshot"
+          },
+          "helpers": [
+            {
+              "pid": 80308,
+              "creationTime": 1793404399.413631,
+              "role": "code-sign-clone-cleanup",
+              "executableSha256": "44cfb5ba0700f15f0d9fc757ae88c1cf4dfdd061c2177a9b7f553db754f1de62",
+              "ownership": "retained-kernel-parent-and-matching-clone-inode",
+              "kernelIdentity": {
+                "rootUniqueId": "63123263",
+                "uniqueId": "63123475",
+                "parentUniqueId": "63123263"
+              },
+              "processExited": true,
+              "cloneRemoved": true,
+              "completed": true
+            }
+          ],
+          "passed": true,
+          "qualified": true,
+          "status": "completed",
+          "verification": "sampled identity and exact clone removal, not helper exit-code attestation",
+          "recovery": {
+            "attempted": true,
+            "candidates": 703,
+            "candidateLimit": 4096,
+            "scanLimit": 1
+          },
+          "resources": {
+            "sampleCount": 3,
+            "peakRssBytes": 64405504,
+            "peakThreads": 5,
+            "sampledCpuSeconds": 0.025956708999999998,
+            "accounting": "post-exit samples; adjacent same-PID/birth CPU deltas; gaps and exits are not zero CPU"
+          }
+        }
+      },
+      "equipment": {
+        "gpu": "Apple M2 Max",
+        "display": "Screen Sharing Virtual Display",
+        "resolution": "1920 x1080 at60Hz",
+        "accessibilityTrusted": false,
+        "physicalInputQualified": false
+      },
+      "replay": {
+        "expected": "accepted",
+        "exitCode": 0,
+        "checkerSource": "b735c6633fb61938ee885c3f1f133279f7126029",
+        "allSelectedSourceHashesAndNativeTreeVerified": true
+      },
+      "runtimeFixQualified": false,
+      "m7Completed": false
+    }
+  ]
+}

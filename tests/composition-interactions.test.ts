@@ -20,9 +20,11 @@ import {
 } from '../examples/view-composition/interactions-plan.ts'
 import { desktopReportFixture } from './helpers/desktop-evidence.ts'
 import { hasCode } from '../examples/view-composition/interactions.ts'
-import type {
-  InitialObservation,
-  InitialObservationEvent,
+import {
+  INITIAL_OBSERVATION_LIMIT,
+  requireInitialObservation,
+  type InitialObservation,
+  type InitialObservationEvent,
 } from '../examples/view-composition/initial-observation.ts'
 
 // Synthetic rejection fixtures only; these are not native qualification evidence.
@@ -512,6 +514,44 @@ test('initial interaction evidence rejects early exposure and transient focus th
   const accepted = acceptCompositionInteractionReceipt(receipt())
   assert.equal(accepted.initialVisibilityObserved, true)
   assert.equal(accepted.creationFocusPreserved, true)
+})
+
+test('bounded individual histories cannot exceed the shared diagnostic receipt budget', () => {
+  const value = receipt(true)
+  for (const pane of panes) {
+    const sample = value.initialObservation.panes[pane]!
+    const events = sample.history.events
+    events.splice(
+      events.length - 1,
+      0,
+      ...Array.from(
+        { length: INITIAL_OBSERVATION_LIMIT - events.length },
+        (): InitialObservationEvent => ({
+          event: 'visibilitychange',
+          visibility: pane === 'overlay' ? 'hidden' : 'visible',
+          focused: pane === 'right',
+          trusted: true,
+        })
+      )
+    )
+    assert.equal(events.length, INITIAL_OBSERVATION_LIMIT)
+    assert.equal(requireInitialObservation(sample.history).overflow, false)
+    // All identities remain within the existing 128-character contract.
+    for (const key of ['viewId', 'documentId', 'sessionId'] as const)
+      value.pages[pane]![key] = `${pane}-${key}-`.padEnd(128, 'x')
+    sample.viewId = value.pages[pane]!.viewId
+    sample.documentId = value.pages[pane]!.documentId
+  }
+  const { initialObservation: _early, ...priorSections } = value
+  assert.equal(
+    acceptCompositionInteractionReceiptV1({ ...priorSections, schema: 1 }).cancelledMenus,
+    3
+  )
+  assert.ok(Buffer.byteLength(JSON.stringify(value)) > 16 * 1024)
+  assert.throws(
+    () => acceptCompositionInteractionReceipt(value),
+    /Interaction receipt exceeds native diagnostic budget/
+  )
 })
 
 test('retained v1 receipts keep their original acceptance and cannot satisfy current execution', () => {

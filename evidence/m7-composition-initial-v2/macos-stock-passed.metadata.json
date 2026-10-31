@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "kind": "macos-stock-v2-native-pass",
+  "sourceCommit": "af32858a0edcfbeed74c4e7f73e21a2f8cce745d",
+  "sourceTree": "5a3263cbc36748d7566727f7f21a909b1e3ad56f",
+  "nativeSource": {
+    "declaredCommit": "be22c89a1c680c3262316e516f22a4816cbf4e9c",
+    "tree": "9ed1b04c6d65b5351c064c4b3ea03ae0e7d4cc88",
+    "embeddedBuildAttestation": false
+  },
+  "sourceHashes": 367,
+  "originalSha256": "56ce6d6a15e5568c85453357640bf2ae85c675d3301ac94da3fb8e2561c4f208",
+  "originalBytes": 992185,
+  "exportSha256": "ae76c3de0baecaeec73a3070fc029caa125dd14d4ab1a25683f96e79c16e04dd",
+  "exportBytes": 992358,
+  "archiveSha256": "2b3db038e28e13f540ac414de5b8da373cf52cfb4db2113e77df873b56085421",
+  "archiveBytes": 91129,
+  "pathReplacements": [
+    {
+      "replacement": "<composition-checkout>",
+      "occurrences": 0
+    },
+    {
+      "replacement": "<native-build-checkout>",
+      "occurrences": 0
+    },
+    {
+      "replacement": "<home>",
+      "occurrences": 0
+    },
+    {
+      "replacement": "<mac-host>",
+      "occurrences": 0
+    },
+    {
+      "replacement": "<temporary-root>",
+      "occurrences": 0
+    }
+  ],
+  "nativeEvidenceExport": {
+    "schema": 1,
+    "redactions": [
+      "fixture-nonces"
+    ],
+    "correlation": "not-retained"
+  },
+  "acceptance": {
+    "panes": 3,
+    "focusObservations": 10,
+    "cancelledMenus": 3,
+    "dialog": "cancelled",
+    "menuRejectedWhileDialogOpen": true,
+    "retainedDocuments": 3,
+    "nativeOwnershipReleased": true,
+    "physicalInputQualified": false,
+    "imeQualified": false,
+    "hardwareDpiQualified": false,
+    "assistiveTechnologyQualified": false,
+    "performanceEligible": false,
+    "initialVisibilityObserved": true,
+    "creationFocusPreserved": true
+  },
+  "target": "darwin-arm64",
+  "runtimeIdentity": {
+    "event": "cef-binary-identity",
+    "schema": 1,
+    "sha256": "d639aafd8cb6dbe7b1aedb7da575d71ce9195c22254345f9ebf54a6260ca9902",
+    "cefVersion": "156.0.7",
+    "chromiumVersion": "156.0.8078.17",
+    "cefCommitNumber": 3652,
+    "fullVersion": "156.0.7+g47dbc1d+chromium-156.0.8078.17",
+    "source": "exported-api",
+    "sandbox": "unverified"
+  },
+  "inputHostSha256": "690e8164830de24c99b80acd97cb16d3344f971e3f35f523011843de96581a0f",
+  "preparedHostSha256": "fe4d7f3acc145441f9027f4033ac5f48b6b255e83442680a608969fe246c6a96",
+  "inputArtifactUnchanged": true,
+  "preparedArtifactUnchanged": true,
+  "preparedMetadata": {
+    "identityUnchanged": true,
+    "ctimeChangedPaths": [
+      "Contents/MacOS/bunly_host"
+    ],
+    "ctimeChangeReason": "verified-macos-code-sign-clone-link-lifecycle"
+  },
+  "equipment": {
+    "gpu": "Apple M2 Max",
+    "display": "Screen Sharing Virtual Display",
+    "resolution": "1920 x1080 at60Hz",
+    "accessibilityTrusted": false,
+    "physicalInputQualified": false
+  },
+  "sourceIdentityKind": "exact-public-Git-commit",
+  "nativeBuildIdentityKind": "declared plus inventoried; not embedded build attestation",
+  "githubBlobSha": "cf3243c95be2a2dd262a68e7eb98900bca0580cd"
+}

@@ -136,7 +136,9 @@ the same native document and page instance through `before-create`,
 `after-create` and `before-show` checkpoints. The hidden overlay must remain
 hidden and unfocused throughout its history; creating it must not interrupt the
 existing right pane's focus. Each history has a fixed 32-record limit and rejects
-overflow. The v2 receipt is bounded to 32 KiB. Collectors seal at the acknowledged
+overflow. The complete v2 receipt must also fit the shared 16 KiB native
+diagnostic-line budget; reaching each history's independent record limit does
+not waive that aggregate limit. Collectors seal at the acknowledged
 `before-show` checkpoint, so this history does not observe the later IPC interval
 before the native show call. See the [fixture contract](../examples/view-composition/README.md)
 for that boundary and the unchanged native assertions.
