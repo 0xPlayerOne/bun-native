@@ -1,10 +1,12 @@
-# Native host protocol 2
+# Native host protocol 3
 
-This is the implemented private Bun-to-GPUI contract for BN1. Application code
+This is the implemented private Bun-to-GPUI contract for BN1 plus the initial shared BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocol 1 was the BN0 integration fixture and is superseded
-without a compatibility fallback.
+numeric handles. Protocols 1 and 2 are superseded without a compatibility fallback.
+Protocol 3 requires `tree`, `input_revisions` and `layout_v1`; missing features or
+older versions fail launch before a window is opened. The [layout contract](native-layout.md)
+defines the supported style subset.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -50,9 +52,9 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `2`. The host emits `ready` with the
+- The first request is `hello` with protocol `3`. The host emits `ready` with the
   same protocol, implemented capabilities and resource limits, then acknowledges
-  the request. Both `tree` and `input_revisions` are mandatory. Missing features,
+  the request. `tree`, `input_revisions` and `layout_v1` are mandatory. Missing features,
   version mismatch, duplicate readiness or acknowledgement before readiness
   fail launch and clean up the child.
 - Request, window, root and node identities are positive JavaScript-safe
@@ -177,7 +179,7 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe rendering features, not OS permission grants.
-Protocol 2 has no file, shell, process, network, update or browser service
+Protocol 3 has no file, shell, process, network, update or browser service
 command. The [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

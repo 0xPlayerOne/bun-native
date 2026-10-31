@@ -1,9 +1,9 @@
-//! Version 2's private native wire contract. No DOM or renderer-specific types.
+//! Version 3's private native wire contract. No DOM or renderer-specific types.
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 3;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -119,6 +119,42 @@ pub enum Direction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum AlignItems {
+    Start,
+    Center,
+    End,
+    Stretch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JustifyContent {
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Overflow {
+    Visible,
+    Hidden,
+    ScrollX,
+    ScrollY,
+    Scroll,
+}
+
+impl Overflow {
+    pub fn scrolls(self) -> bool {
+        matches!(self, Self::ScrollX | Self::ScrollY | Self::Scroll)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Fill {
     Fill,
 }
@@ -176,7 +212,55 @@ pub struct Style {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "non_null"
     )]
+    pub min_width: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub max_width: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub min_height: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub max_height: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
     pub flex_grow: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub flex_shrink: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub align_items: Option<AlignItems>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub justify_content: Option<JustifyContent>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub overflow: Option<Overflow>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -302,6 +386,7 @@ pub enum ErrorCode {
 pub enum Capability {
     Tree,
     InputRevisions,
+    LayoutV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -481,6 +566,10 @@ impl Element {
     }
 
     pub fn validate(&self) -> Result<(), &'static str> {
+        if !matches!(self, Self::Box { .. }) && self.style().overflow.is_some_and(Overflow::scrolls)
+        {
+            return Err("scrolling is supported only on box elements");
+        }
         match self {
             Self::Text { text, .. } | Self::Button { text, .. } => validate_text(text)?,
             Self::Input {
@@ -515,8 +604,35 @@ impl Style {
                 )?;
             }
         }
-        if let Some(value) = self.flex_grow {
-            bounded(value, 0., 1_000., "flex_grow must be between 0 and 1000")?;
+        for value in [
+            self.min_width,
+            self.max_width,
+            self.min_height,
+            self.max_height,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            bounded(
+                value,
+                0.,
+                16_384.,
+                "size constraints must be between 0 and 16384 pixels",
+            )?;
+        }
+        for (minimum, maximum) in [
+            (self.min_width, self.max_width),
+            (self.min_height, self.max_height),
+        ] {
+            if minimum
+                .zip(maximum)
+                .is_some_and(|(minimum, maximum)| minimum > maximum)
+            {
+                return Err("minimum size must not exceed maximum size");
+            }
+        }
+        for value in [self.flex_grow, self.flex_shrink].into_iter().flatten() {
+            bounded(value, 0., 1_000., "flex factors must be between 0 and 1000")?;
         }
         if let Some(value) = self.font_size {
             bounded(

@@ -1,9 +1,10 @@
-# Private native protocol 2
+# Private native protocol 3
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 2
-replaces the BN0 fixed-window protocol outright.
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 3
+requires the shared `layout_v1` contract and replaces protocol 2 outright.
+Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors
 
@@ -26,8 +27,9 @@ responses.
 
 ## Session and identifiers
 
-The first successful request is `hello` with `protocol: 2`. It returns `ready`
-with capabilities `tree` and `input_revisions` plus the limits below, then `ack`.
+The first successful request is `hello` with `protocol: 3`. It returns `ready`
+with mandatory capabilities `tree`, `input_revisions` and `layout_v1` plus the
+limits below, then `ack`. The runtime rejects a host missing any mandatory feature.
 Another hello after success is invalid. `open` requires a new `window_id`, new
 `root_id`, a nonempty title, and width/height in pixels. It returns `opened` with
 those IDs and tree revision 0. The initial root is an empty box.
@@ -97,11 +99,21 @@ Elements use `kind`:
 
 Style is one shared explicit contract: `direction` is `row` or `column`;
 `gap`/`padding` are 0–4,096 pixels; `width`/`height` are 0–16,384 pixels or
-`fill`; `flex_grow` is 0–1,000; `background`/`color` are unsigned 24-bit RGB;
+`fill`; `min_width`, `max_width`, `min_height` and `max_height` are finite
+0–16,384 logical pixels with minimum no greater than maximum on each axis;
+`flex_grow` and `flex_shrink` are 0–1,000; `background`/`color` are unsigned 24-bit RGB;
 `font_size` is 1–512 pixels. Numbers must be finite. Omitted properties use host
 defaults; null values and unknown properties are rejected. Validation retains
 f64 precision and converts to renderer pixels afterward. `set` replaces the
 entire property object; it is not a partial merge.
+
+`align_items` accepts `start`, `center`, `end` or `stretch`; `justify_content`
+accepts `start`, `center`, `end`, `space_between`, `space_around` or `space_evenly`.
+`overflow` accepts `visible` or `hidden` on any element, plus container-only
+`scroll_x`, `scroll_y` or `scroll`. Every non-visible mode clips both native axes;
+scroll modes select the axes accepting scroll input. These are explicit GPUI
+semantics, not CSS overflow-axis compatibility. See the [shared layout contract](../../docs/native-layout.md)
+for defaults, retained state, focus and evidence scope.
 
 ## Input and event ordering
 

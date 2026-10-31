@@ -58,8 +58,18 @@ for await (const chunk of Bun.stdin.stream()) {
       }
       const ready = {
         type: 'ready',
-        protocol: mode === 'wrong-version' ? PROTOCOL_VERSION + 1 : PROTOCOL_VERSION,
-        capabilities: mode === 'missing-capability' ? ['tree'] : ['tree', 'input_revisions'],
+        protocol:
+          mode === 'wrong-version'
+            ? PROTOCOL_VERSION + 1
+            : mode === 'obsolete-version'
+              ? 2
+              : PROTOCOL_VERSION,
+        capabilities:
+          mode === 'missing-capability'
+            ? ['tree']
+            : mode === 'missing-layout'
+              ? ['tree', 'input_revisions']
+              : ['tree', 'input_revisions', 'layout_v1'],
         limits: DEFAULT_LIMITS,
       }
       await emit(ready)

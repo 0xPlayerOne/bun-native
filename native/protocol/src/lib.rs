@@ -1,5 +1,5 @@
 //! Bun Native's bounded, versioned private host protocol and atomic tree model.
-//! Protocol 2 replaces the BN0 fixture protocol; there is no fallback decoder.
+//! Protocol 3 requires shared layout support; there is no older-version decoder.
 
 mod framing;
 mod tree;

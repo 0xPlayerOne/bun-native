@@ -1,0 +1,640 @@
+{
+  "capability": "layout_v1",
+  "cases": [
+    {
+      "name": "omitted-layout-fields-stay-omitted",
+      "element": {
+        "kind": "box",
+        "style": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "bounded-layout-extremes",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": 0,
+          "max_width": 16384,
+          "min_height": 0,
+          "max_height": 16384,
+          "flex_shrink": 1000,
+          "align_items": "stretch",
+          "justify_content": "space_evenly",
+          "overflow": "scroll"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "fractional-logical-pixels",
+      "element": {
+        "kind": "box",
+        "style": {
+          "width": 32.25,
+          "min_width": 16.125,
+          "max_width": 64.5,
+          "height": "fill",
+          "min_height": 16,
+          "max_height": 512,
+          "flex_shrink": 0.5
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alignment-start",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": "start"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alignment-center",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": "center"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alignment-end",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": "end"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "alignment-stretch",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": "stretch"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-start",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "start"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-center",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "center"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-end",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "end"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-space_between",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "space_between"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-space_around",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "space_around"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "justification-space_evenly",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "space_evenly"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "overflow-visible",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "visible"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "overflow-hidden",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "hidden"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "overflow-scroll_x",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll_x"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "overflow-scroll_y",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll_y"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "overflow-scroll",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "hidden-text",
+      "element": {
+        "kind": "text",
+        "style": {
+          "overflow": "hidden"
+        },
+        "text": "Native"
+      },
+      "valid": true
+    },
+    {
+      "name": "scroll_x-rejects-text",
+      "element": {
+        "kind": "text",
+        "style": {
+          "overflow": "scroll_x"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll_y-rejects-text",
+      "element": {
+        "kind": "text",
+        "style": {
+          "overflow": "scroll_y"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll-rejects-text",
+      "element": {
+        "kind": "text",
+        "style": {
+          "overflow": "scroll"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "hidden-button",
+      "element": {
+        "kind": "button",
+        "style": {
+          "overflow": "hidden"
+        },
+        "text": "Native"
+      },
+      "valid": true
+    },
+    {
+      "name": "scroll_x-rejects-button",
+      "element": {
+        "kind": "button",
+        "style": {
+          "overflow": "scroll_x"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll_y-rejects-button",
+      "element": {
+        "kind": "button",
+        "style": {
+          "overflow": "scroll_y"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll-rejects-button",
+      "element": {
+        "kind": "button",
+        "style": {
+          "overflow": "scroll"
+        },
+        "text": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "hidden-input",
+      "element": {
+        "kind": "input",
+        "style": {
+          "overflow": "hidden"
+        },
+        "value": "Native"
+      },
+      "valid": true
+    },
+    {
+      "name": "scroll_x-rejects-input",
+      "element": {
+        "kind": "input",
+        "style": {
+          "overflow": "scroll_x"
+        },
+        "value": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll_y-rejects-input",
+      "element": {
+        "kind": "input",
+        "style": {
+          "overflow": "scroll_y"
+        },
+        "value": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "scroll-rejects-input",
+      "element": {
+        "kind": "input",
+        "style": {
+          "overflow": "scroll"
+        },
+        "value": "Native"
+      },
+      "valid": false
+    },
+    {
+      "name": "min_width-negative",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": -0.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_width-over-limit",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": 16384.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_width-null",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_width-fill",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": "fill"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_width-negative",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_width": -0.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_width-over-limit",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_width": 16384.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_width-null",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_width": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_width-fill",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_width": "fill"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_height-negative",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_height": -0.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_height-over-limit",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_height": 16384.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_height-null",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_height": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "min_height-fill",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_height": "fill"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_height-negative",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_height": -0.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_height-over-limit",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_height": 16384.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_height-null",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_height": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "max_height-fill",
+      "element": {
+        "kind": "box",
+        "style": {
+          "max_height": "fill"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "flex-shrink-negative",
+      "element": {
+        "kind": "box",
+        "style": {
+          "flex_shrink": -0.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "flex-shrink-over-limit",
+      "element": {
+        "kind": "box",
+        "style": {
+          "flex_shrink": 1000.001
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "flex-shrink-null",
+      "element": {
+        "kind": "box",
+        "style": {
+          "flex_shrink": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "flex-shrink-string",
+      "element": {
+        "kind": "box",
+        "style": {
+          "flex_shrink": "1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "inverted-width-constraints",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_width": 41,
+          "max_width": 40
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "inverted-height-constraints",
+      "element": {
+        "kind": "box",
+        "style": {
+          "min_height": 41,
+          "max_height": 40
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-align_items-baseline",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": "baseline"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-align_items-None",
+      "element": {
+        "kind": "box",
+        "style": {
+          "align_items": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-justify_content-space-between",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": "space-between"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-justify_content-None",
+      "element": {
+        "kind": "box",
+        "style": {
+          "justify_content": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-overflow-auto",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "auto"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-overflow-None",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-overflow_x-scroll",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow_x": "scroll"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-class-overflow-auto",
+      "element": {
+        "kind": "box",
+        "style": {
+          "class": "overflow-auto"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unsupported-position-absolute",
+      "element": {
+        "kind": "box",
+        "style": {
+          "position": "absolute"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

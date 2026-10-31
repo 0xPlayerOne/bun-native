@@ -105,9 +105,9 @@ jobs:
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
-      - name: Compile and inspect the eight actual AOT entries
+      - name: Compile and inspect the nine actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -152,16 +152,17 @@ jobs:
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-aot" aot-event-throughput "$NATIVE_EVIDENCE/event-throughput-package/event-throughput"
-      - name: Development and AOT native failure containment and scheduling
+      - name: Development and AOT native failure, scheduling and layout contracts
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
           for mode in development aot; do
-            for scenario in startup-failure host-crash scheduling scheduling-control; do
+            for scenario in startup-failure host-crash scheduling scheduling-control layout; do
               case "$scenario" in
                 startup-failure|host-crash) fixture=fault ;;
                 scheduling|scheduling-control) fixture=scheduling ;;
+                layout) fixture=layout ;;
               esac
               command=(bun "tests/native/$fixture.ts")
               if [[ "$mode" == aot ]]; then
