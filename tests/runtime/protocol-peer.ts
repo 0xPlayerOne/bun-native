@@ -91,6 +91,12 @@ for await (const chunk of Bun.stdin.stream()) {
         })
       else await emit({ type: 'ack', id: mode === 'wrong-id' ? 123 : command.id })
     } else if (command.type === 'open') {
+      if (mode === 'diagnostic-open-timeout') {
+        const diagnostic = Bun.stderr.writer()
+        diagnostic.write('x'.repeat(5_000) + '\nOwned diagnostic peer is waiting at open\n')
+        await diagnostic.flush()
+        continue
+      }
       roots.set(command.window_id, command.root_id)
       await emit({
         type: 'opened',

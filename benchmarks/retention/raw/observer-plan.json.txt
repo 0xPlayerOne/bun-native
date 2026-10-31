@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "hypothesis": "A bounded shared completion callback may retain a released listener through a JS closure even when subscription-count and callback-revocation checks pass. The existing separated lifetimeFor scope should remove that specific path.",
+  "cases": [
+    "actual",
+    "captured-first"
+  ],
+  "repetitionsPerCase": 1,
+  "executionMode": "development",
+  "oracle": "No reachability from the single pending completion callback to 25 released listener/target pairs; one still-active listener/target must remain reachable. All targets intentionally stay strongly held by the diagnostic.",
+  "expectedNegative": "captured-first passes subscription/revocation checks but reveals the first released listener path",
+  "unchanged": "No production source, WeakRef oracle, GC entry point, collection count, sleep or benchmark acceptance changes",
+  "source": {
+    "bn2-retention-roots/packages/renderer/src/window-lifetime.ts": {
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242",
+      "bytes": 1220
+    },
+    "bn2-retention-roots/tests/core/protocol-peer.ts": {
+      "sha256": "7f13282b185eda831b63098019bf9f6565d2000ef6248d2c3ce7dfb199b1a47f",
+      "bytes": 4418
+    },
+    "bn2-retention-roots/package.json": {
+      "sha256": "0b5a787e6bed5cbaba8799865f432f998720cdc0a478d27301a51fd9dcef952e",
+      "bytes": 1835
+    },
+    "bn2-retention-roots/bun.lock": {
+      "sha256": "036c8d607788e52c3bcb9a465a4ef0eed079dfccf63ae2ed818fb68c1e91b66a",
+      "bytes": 27564
+    },
+    "bn2-retention-roots/tsconfig.json": {
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29",
+      "bytes": 1028
+    },
+    "bn2-retention-roots/packages/core/src/application.ts": {
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03",
+      "bytes": 14616
+    },
+    "bn2-retention-roots/packages/core/src/events.ts": {
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+      "bytes": 7680
+    },
+    "bn2-retention-roots/packages/core/src/index.ts": {
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98",
+      "bytes": 646
+    },
+    "bn2-retention-roots/packages/core/src/tree.ts": {
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "bytes": 7898
+    },
+    "bn2-retention-roots/packages/core/src/types.ts": {
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7",
+      "bytes": 5566
+    },
+    "bn2-retention-roots/packages/protocol/src/elements.ts": {
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+      "bytes": 5003
+    },
+    "bn2-retention-roots/packages/protocol/src/framing.ts": {
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "bytes": 2806
+    },
+    "bn2-retention-roots/packages/protocol/src/index.ts": {
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf",
+      "bytes": 512
+    },
+    "bn2-retention-roots/packages/protocol/src/messages.ts": {
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359",
+      "bytes": 13102
+    },
+    "bn2-retention-roots/packages/protocol/src/values.ts": {
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "bytes": 1732
+    },
+    "bn2-retention-roots/packages/runtime/src/index.ts": {
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814",
+      "bytes": 13240
+    },
+    "task-artifacts/retention-roots-v1/observer-path.ts": {
+      "sha256": "61269c1bb340c5394eb6d30804ea03b9c112a87af60c9de14d00c54f93faa37e",
+      "bytes": 6538
+    }
+  },
+  "sourceCommit": "f41010568900a01aa1051766b760a1d67ed606a4"
+}

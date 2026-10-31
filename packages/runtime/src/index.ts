@@ -13,6 +13,7 @@ import {
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
+import { StartupTrace } from './startup-trace.ts'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<Extract<Command, { type: 'open' | 'batch' | 'close' }>>
@@ -76,6 +77,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private writeTail: Promise<void> = Promise.resolve()
   private stderrTail = ''
   private iteratorTaken = false
+  private readonly startupTrace = StartupTrace.fromEnvironment()
 
   private constructor(options: HostOptions) {
     this.timeout = options.requestTimeoutMs ?? 5_000
@@ -212,12 +214,17 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         timer,
       })
     })
+    this.startupTrace?.request('request_queued', command, this.process.pid)
     // FileSink buffering is bounded by the pending-command cap and frame limit.
     this.writeTail = this.writeTail
       .then(async () => {
         if (this.phase === 'closed') return
+        this.startupTrace?.request('stdin_write_enter', command, this.process.pid)
         this.process.stdin.write(frame)
+        this.startupTrace?.request('stdin_write_returned', command, this.process.pid)
+        this.startupTrace?.request('stdin_flush_enter', command, this.process.pid)
         await this.process.stdin.flush()
+        this.startupTrace?.request('stdin_flushed', command, this.process.pid)
       })
       .catch((error: unknown) => this.fail(error))
     return result
@@ -285,11 +292,13 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       clearTimeout(drainDeadline)
       this.cancelOutput()
       await Promise.allSettled(streams)
+      this.startupTrace?.finished(this.process.exitCode, this.stderrTail, this.process.pid)
     }
   }
 
   private receive(event: NativeEvent): void {
     if (this.phase === 'closed') return
+    this.startupTrace?.response(event, this.process.pid)
     if (event.type === 'ready') {
       if (this.ready || this.phase !== 'starting') throw new ProtocolError('Unexpected ready event')
       if (REQUIRED_CAPABILITIES.some((capability) => !event.capabilities.includes(capability)))
@@ -367,6 +376,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private fail(cause: unknown): void {
     if (this.failure) return
     this.failure = cause instanceof Error ? cause : new Error(String(cause))
+    this.startupTrace?.failure(this.failure, this.stderrTail, this.process.pid)
     this.phase = 'closed'
     for (const request of this.pending.values()) {
       clearTimeout(request.timer)

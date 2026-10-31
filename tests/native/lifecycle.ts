@@ -1,5 +1,6 @@
 import { NativeHost } from '@bun-native/runtime'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // Explicit native integration entry point. Default unit tests never substitute
@@ -80,4 +81,45 @@ try {
 
 await host.shutdown()
 assert.equal(await host.exited, 0)
+if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
+  const path = process.env['BUN_NATIVE_EVIDENCE_LOG']
+  const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
+  assert(path && nonce)
+  const records = readFileSync(path, 'utf8')
+    .trimEnd()
+    .split('\n')
+    .map((line) => {
+      const value: unknown = JSON.parse(line)
+      assert(value && typeof value === 'object' && !Array.isArray(value))
+      const record = value as Record<string, unknown>
+      assert.equal(record['nonce'], nonce)
+      return record
+    })
+    .filter((record) => record['stage'] === 'startup-diagnostic')
+  const opened = records.filter(
+    (record) => record['source'] === 'transport' && record['response'] === 'opened'
+  )
+  assert.equal(opened.length, cycles)
+  for (const response of opened) {
+    const phases = records
+      .filter(
+        (record) => record['source'] === 'native' && record['request_id'] === response['request_id']
+      )
+      .map((record) => record['phase'])
+    assert.deepEqual(phases, [
+      'open_dispatched',
+      'open_window_enter',
+      'root_constructor_enter',
+      'root_constructor_returned',
+      'open_window_returned',
+      'activation_returned',
+      'opened_submit_returned',
+    ])
+  }
+  assert(!records.some((record) => record['phase'] === 'record_limit'))
+  assert(!records.some((record) => record['phase'] === 'transport_failed'))
+  assert(
+    records.some((record) => record['phase'] === 'transport_finished' && record['exit_code'] === 0)
+  )
+}
 console.log(JSON.stringify({ status: 'passed', nativeWindowCycles: cycles, nativeExitCode: 0 }))

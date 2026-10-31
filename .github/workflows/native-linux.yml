@@ -107,9 +107,9 @@ jobs:
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
-      - name: Compile and inspect the ten actual AOT entries
+      - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions solid solid-input-intent solid-interactions; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -118,6 +118,31 @@ jobs:
               --source "$GITHUB_WORKSPACE" \
               --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
               --entry "$entry" --host-profile release --outdir "$outdir"
+          done
+      - name: Development and AOT Solid native input, keyed updates and event phases
+        timeout-minutes: 8
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            for scenario in counter-click counter-input input-intent interactions-keyboard interactions-caret interactions-selection; do
+              entry=solid
+              if [[ "$scenario" == input-intent ]]; then
+                entry=solid-input-intent
+              elif [[ "$scenario" == interactions-* ]]; then
+                entry=solid-interactions
+              fi
+              package="$NATIVE_EVIDENCE/$entry-package"
+              command=(bun "$package/development/application.js")
+              if [[ "$mode" == aot ]]; then
+                command=("$package/$entry")
+              fi
+              evidence="$NATIVE_EVIDENCE/solid-$mode-$scenario"
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- python3 tests/native/solid-window.py \
+                --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
+            done
           done
       - name: AOT public API pointer, text, keyboard, paint and close
         env:
@@ -240,6 +265,9 @@ jobs:
             ${{ runner.temp }}/native-evidence/lifecycle-aot/
             ${{ runner.temp }}/native-evidence/events-development/
             ${{ runner.temp }}/native-evidence/events-aot/
+            ${{ runner.temp }}/native-evidence/solid-development-*/
+            ${{ runner.temp }}/native-evidence/solid-aot-*/
+            ${{ runner.temp }}/native-evidence/solid*-package/development/
             ${{ runner.temp }}/native-evidence/diagnostics-*/
             ${{ runner.temp }}/native-evidence/allocations-*/
             ${{ runner.temp }}/native-evidence/bridge-development/
@@ -264,6 +292,7 @@ jobs:
             echo 'The event-throughput fixture requires 1,000 OS-delivered text edits with contiguous event/input revisions and matching final native paint; its observation intervals do not establish input-to-presentation latency.'
             echo 'Startup rollback, an ownership-checked native child crash, final native child reordering, and input delivered during a sustained bounded command stream run in development and inspected AOT. A serial control records the same input observation without the command flood.'
             echo 'The native input checks use isolated X11, XTest and verified Mesa software rendering. Exact paint trees, screenshots, source/artifact hashes and cleanup reports are retained.'
+            echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'
             echo 'These bounded runs do not establish long-term leak freedom, physical input, hardware GPU performance or macOS/Windows native GUI support.'

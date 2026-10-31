@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "status": "inconclusive: mandatory live-listener positive control failed in both cases",
+  "collectionOracleChanged": false,
+  "planSha256": "8d8869600171ef6d14325fcf754efa4894bedd546ebacd32025a0c2a4952cd0f",
+  "producerSha256": "61269c1bb340c5394eb6d30804ea03b9c112a87af60c9de14d00c54f93faa37e",
+  "analyzerSha256": "30feaab4e54908506bcc49e9eebac6cbd97898e1531168cd554ea435a13cbc4a",
+  "caseCount": 2,
+  "caseRepetitions": 1,
+  "records": [
+    {
+      "variant": "actual",
+      "reportSha256": "181844fb81889a9c84ecbd7333a62ea8477dfe604987fba8b115be21c9b8e701",
+      "snapshotSha256": "c8020d28ba09b1e501dc23e637ad6bc38fbabb3d550c2486883ad32943531963",
+      "nodeCount": 6408,
+      "reachableNodeCount": 5740,
+      "traversal": "All recorded edges, no type, name, depth or root filtering",
+      "releasedTargets": [
+        {
+          "name": "Released observer 0",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 1",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 2",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 3",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 4",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 5",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 6",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 7",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 8",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 9",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 10",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 11",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 12",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 13",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 14",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 15",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 16",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 17",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 18",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 19",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 20",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 21",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 22",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 23",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 24",
+          "listener": null,
+          "target": null
+        }
+      ],
+      "activePositiveControl": {
+        "listener": null,
+        "target": null
+      },
+      "positiveControlPassed": false,
+      "subscriptionCount": 1,
+      "releasedCallbackCountAfterClose": 0,
+      "activeCallbackCountAfterClose": 1,
+      "finalOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "rootReasonCounts": {
+        "StrongHandles": 168,
+        "StrongReferences": 289,
+        "DOMGCOutput": 1,
+        "JITWorkList": 4,
+        "ProtectedValues": 4,
+        "Output": 1
+      },
+      "noIncomingNodeClasses": {
+        "AsyncFunctionGenerator": 1,
+        "string": 2,
+        "Object": 4,
+        "Promise": 1,
+        "Array": 2,
+        "SlimPromiseReaction": 1,
+        "AsyncFunction": 1,
+        "Function": 2,
+        "Callee": 1
+      }
+    },
+    {
+      "variant": "captured-first",
+      "reportSha256": "b346bb2259d547071e3c90987507942c77ca3d8e712308953cc2b1741bff247a",
+      "snapshotSha256": "f435ffe3d3ecadbb76a17fbe0616013c429580e9bad963ea1bec7e7ecc75fcd1",
+      "nodeCount": 6410,
+      "reachableNodeCount": 5746,
+      "traversal": "All recorded edges, no type, name, depth or root filtering",
+      "releasedTargets": [
+        {
+          "name": "Released observer 0",
+          "listener": [
+            {
+              "node": {
+                "id": 2912,
+                "size": 32,
+                "class": "Function",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbc570f00"
+              }
+            },
+            {
+              "node": {
+                "id": 2914,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb606230"
+              },
+              "edge": {
+                "from": 2912,
+                "to": 2914,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2921,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb606200"
+              },
+              "edge": {
+                "from": 2914,
+                "to": 2921,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2923,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb6061d0"
+              },
+              "edge": {
+                "from": 2921,
+                "to": 2923,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2925,
+                "size": 32,
+                "class": "Function",
+                "flags": 0,
+                "label": "listener",
+                "address": "0x34fbc570bc0"
+              },
+              "edge": {
+                "from": 2923,
+                "to": 2925,
+                "type": "Variable",
+                "name": "listener"
+              }
+            }
+          ],
+          "target": [
+            {
+              "node": {
+                "id": 2912,
+                "size": 32,
+                "class": "Function",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbc570f00"
+              }
+            },
+            {
+              "node": {
+                "id": 2914,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb606230"
+              },
+              "edge": {
+                "from": 2912,
+                "to": 2914,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2921,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb606200"
+              },
+              "edge": {
+                "from": 2914,
+                "to": 2921,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2923,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb6061d0"
+              },
+              "edge": {
+                "from": 2921,
+                "to": 2923,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2925,
+                "size": 32,
+                "class": "Function",
+                "flags": 0,
+                "label": "listener",
+                "address": "0x34fbc570bc0"
+              },
+              "edge": {
+                "from": 2923,
+                "to": 2925,
+                "type": "Variable",
+                "name": "listener"
+              }
+            },
+            {
+              "node": {
+                "id": 2927,
+                "size": 48,
+                "class": "JSLexicalEnvironment",
+                "flags": 0,
+                "label": "",
+                "address": "0x34fbb605d20"
+              },
+              "edge": {
+                "from": 2925,
+                "to": 2927,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 2929,
+                "size": 32,
+                "class": "Object",
+                "flags": 2,
+                "label": "",
+                "address": "0x34fbac14700"
+              },
+              "edge": {
+                "from": 2927,
+                "to": 2929,
+                "type": "Variable",
+                "name": "target"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Released observer 1",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 2",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 3",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 4",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 5",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 6",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 7",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 8",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 9",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 10",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 11",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 12",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 13",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 14",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 15",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 16",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 17",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 18",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 19",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 20",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 21",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 22",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 23",
+          "listener": null,
+          "target": null
+        },
+        {
+          "name": "Released observer 24",
+          "listener": null,
+          "target": null
+        }
+      ],
+      "activePositiveControl": {
+        "listener": null,
+        "target": null
+      },
+      "positiveControlPassed": false,
+      "subscriptionCount": 1,
+      "releasedCallbackCountAfterClose": 0,
+      "activeCallbackCountAfterClose": 1,
+      "finalOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "rootReasonCounts": {
+        "StrongReferences": 289,
+        "StrongHandles": 168,
+        "ProtectedValues": 4,
+        "DOMGCOutput": 1,
+        "Output": 1
+      },
+      "noIncomingNodeClasses": {
+        "AsyncFunctionGenerator": 1,
+        "string": 2,
+        "Object": 4,
+        "Promise": 1,
+        "Array": 2,
+        "SlimPromiseReaction": 1,
+        "Callee": 1,
+        "AsyncFunction": 1,
+        "Function": 3
+      }
+    }
+  ],
+  "sourceExplanation": {
+    "revision": "8c6c963e3c49fe39942d9625d1fc924128fad26e",
+    "JSSet": "JSSet inherits JSOrderedHashSet and stores values in JSCellButterfly",
+    "visitFields": "JSCellButterfly::visitFields uses appendValuesHidden",
+    "hiddenMarking": "SlotVisitor::appendHiddenSlow omits HeapAnalyzer::analyzeEdge",
+    "consequence": "A missing incoming edge can hide ordinary JS collection ownership as well as conservative/runtime roots"
+  }
+}

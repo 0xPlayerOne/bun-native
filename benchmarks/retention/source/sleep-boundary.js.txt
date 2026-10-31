@@ -1,0 +1,24 @@
+import { writeFileSync } from 'node:fs'
+const [kind, output] = process.argv.slice(2)
+if (!['sleep0','sleep1','timeout0','resolved'].includes(kind) || !output) throw new Error('Supply a fixed boundary kind and a fresh report path')
+function boundary() {
+  if (kind === 'sleep0') return Bun.sleep(0)
+  if (kind === 'sleep1') return Bun.sleep(1)
+  if (kind === 'timeout0') return new Promise(resolve => setTimeout(resolve, 0))
+  return Promise.resolve()
+}
+function make(index) { return new WeakRef(Object.freeze({ marker: index })) }
+const probes = Array.from({length:100},(_,index)=>make(index))
+Bun.gc(true)
+const before = probes.reduce((count,ref)=>count+Number(ref.deref()!==undefined),0)
+const checkpoints=[]
+for (let index=0;index<2;index++) {
+  const next=boundary()
+  const immediateStatus=Bun.peek.status(next)
+  await next
+  Bun.gc(true)
+  const alive=probes.reduce((count,ref)=>count+Number(ref.deref()!==undefined),0)
+  checkpoints.push({immediateStatus,alive})
+}
+writeFileSync(output,JSON.stringify({kind,bunRevision:Bun.revision,executable:process.execPath,before,checkpoints},null,2)+'\n',{flag:'wx'})
+console.log(JSON.stringify({kind,before,checkpoints}))

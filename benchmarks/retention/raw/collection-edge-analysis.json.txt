@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "planSha256": "e76bb7430357fe5bb705065166d5fdbe5671541b1653f18801fc698a72c31c69",
+  "sourceSha256": "d574106a2d5153bdbe8530c400e1d6f14ead6feee16854943f9aaaac9edcd29a",
+  "analyzerSha256": "21494b481b67c976e47033df0a08551a08102621318f4ed2b102deab6fadf25c",
+  "observations": [
+    {
+      "mode": "development",
+      "reportSha256": "abdffde01a9d57074b4db14dde9fc88750216d51ff5644d2ace79640bbdd250e",
+      "snapshotSha256": "62c828d2c35ea89e917fd9352571eaf566a098c3e20165d28a68b0d5c7451c55",
+      "nodes": 3964,
+      "traversal": "All recorded edges without depth, type, name or root filtering",
+      "holders": {
+        "objectHolder": {
+          "reachableNodeCount": 3611,
+          "path": [
+            {
+              "node": {
+                "id": 1630,
+                "class": "Object",
+                "label": "",
+                "address": "0x4ef38f94460"
+              }
+            },
+            {
+              "node": {
+                "id": 1578,
+                "class": "Object",
+                "label": "",
+                "address": "0x4ef38f94440"
+              },
+              "edge": {
+                "from": 1630,
+                "to": 1578,
+                "type": "Property",
+                "name": "target"
+              }
+            }
+          ],
+          "expectedReachable": true
+        },
+        "setHolder": {
+          "reachableNodeCount": 3611,
+          "path": null,
+          "expectedReachable": false
+        }
+      },
+      "objectMembershipAfterSnapshot": true,
+      "setMembershipAfterSnapshot": true
+    },
+    {
+      "mode": "aot",
+      "reportSha256": "33afe9b03084bb13c265167840cf3c2a0da78bda1d038b742662b3b73bb09aa5",
+      "snapshotSha256": "1f9c55d0cca32900ec70c474e355f3e22939588c5ba23faee25c46ef86a55116",
+      "nodes": 2841,
+      "traversal": "All recorded edges without depth, type, name or root filtering",
+      "holders": {
+        "objectHolder": {
+          "reachableNodeCount": 1789,
+          "path": [
+            {
+              "node": {
+                "id": 1413,
+                "class": "Object",
+                "label": "",
+                "address": "0x2f4849aac220"
+              }
+            },
+            {
+              "node": {
+                "id": 1431,
+                "class": "Object",
+                "label": "",
+                "address": "0x2f4849aac200"
+              },
+              "edge": {
+                "from": 1413,
+                "to": 1431,
+                "type": "Internal",
+                "name": null
+              }
+            }
+          ],
+          "expectedReachable": true
+        },
+        "setHolder": {
+          "reachableNodeCount": 1790,
+          "path": [
+            {
+              "node": {
+                "id": 1411,
+                "class": "Set",
+                "label": "",
+                "address": "0x2f4849a735c8"
+              }
+            },
+            {
+              "node": {
+                "id": 1412,
+                "class": "CompactTable",
+                "label": "",
+                "address": "0x2f4849ac4d80"
+              },
+              "edge": {
+                "from": 1411,
+                "to": 1412,
+                "type": "Internal",
+                "name": null
+              }
+            },
+            {
+              "node": {
+                "id": 1431,
+                "class": "Object",
+                "label": "",
+                "address": "0x2f4849aac200"
+              },
+              "edge": {
+                "from": 1412,
+                "to": 1431,
+                "type": "Internal",
+                "name": null
+              }
+            }
+          ],
+          "expectedReachable": true
+        }
+      },
+      "objectMembershipAfterSnapshot": true,
+      "setMembershipAfterSnapshot": true
+    }
+  ],
+  "hypothesisSupported": true,
+  "originalAotRetentionExplained": false
+}

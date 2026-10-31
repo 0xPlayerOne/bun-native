@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
+import * as jsc from "bun:jsc";
+
+const output = process.argv[2];
+const mode = process.argv[3];
+assert(output, "Supply a fresh output path");
+assert(mode === "development" || mode === "aot", "Supply the declared execution mode");
+
+function address(value: object): string {
+  const match = /: (0x[0-9a-f]+) /.exec(jsc.jscDescribe(value));
+  assert(match?.[1], "Pinned diagnostic cell address unavailable");
+  return match[1];
+}
+
+const target = { name: "Intentionally live target" };
+const objectHolder = { target };
+const setHolder = new Set([target]);
+const addresses = {
+  target: address(target),
+  objectHolder: address(objectHolder),
+  setHolder: address(setHolder),
+};
+const generateSnapshot: unknown = Reflect.get(jsc, "generateHeapSnapshotForDebugging");
+assert.equal(typeof generateSnapshot, "function");
+if (typeof generateSnapshot !== "function") throw new Error("Snapshot export unavailable");
+const snapshot: unknown = generateSnapshot();
+assert.equal(objectHolder.target, target);
+assert(setHolder.has(target));
+writeFileSync(`${output}.heap.json`, `${JSON.stringify(snapshot)}\n`, { flag: "wx" });
+writeFileSync(
+  output,
+  `${JSON.stringify(
+    {
+      schemaVersion: 1,
+      bunRevision: Bun.revision,
+      executable: process.execPath,
+      declaredMode: mode,
+      addresses,
+      objectMembershipAfterSnapshot: objectHolder.target === target,
+      setMembershipAfterSnapshot: setHolder.has(target),
+      scope:
+        "No framework, native host, WeakRef, explicit GC or timer; all objects remain deliberately strongly held",
+      snapshotPerformsOwnFullCollection: true,
+    },
+    null,
+    2,
+  )}\n`,
+  { flag: "wx" },
+);

@@ -1,0 +1,119 @@
+import { generateHeapSnapshotForDebugging, heapStats, jscDescribe } from 'bun:jsc'
+import { writeFileSync } from 'node:fs'
+
+const output = process.argv[2]
+if (!output) throw new Error('Supply a fresh output path')
+const mounts = 100
+const initialRows = Array.from({ length: 32 }, (_, index) => ({ index, text: `Row ${index}` }))
+let tail = Promise.resolve()
+let queued = 0
+function enqueue<T>(operation: () => T): Promise<T> {
+  queued++
+  const result = tail.then(async () => {
+    const value = operation()
+    await Bun.sleep(1)
+    return value
+  }).finally(() => { queued-- })
+  tail = result.then(() => {}, () => {})
+  return result
+}
+const addresses: string[] = []
+function weak(target: object): WeakRef<object> {
+  const address = /: (0x[0-9a-f]+) /.exec(jscDescribe(target))?.[1]
+  if (!address) throw new Error('Cannot identify diagnostic target address')
+  addresses.push(address)
+  return new WeakRef(target)
+}
+async function makeView() {
+  let disposed = false
+  let rowsDisposed = 0
+  let clicked = 0
+  const listener = () => { clicked++ }
+  const { root, label, rows } = await enqueue(() => ({
+    root: Object.freeze({ kind: 'box' }),
+    label: Object.freeze({ kind: 'text' }),
+    rows: new Map(initialRows.map(row => [row.index, { text: row.text }])),
+  }))
+  return {
+    async update(values: string[]) {
+      let pending = ''
+      for (const value of values) pending = value
+      await enqueue(() => {
+        if (label.kind !== 'text') throw new Error('Wrong control label')
+        return { kind: label.kind, text: pending }
+      })
+    },
+    async dispose() {
+      if (disposed) return
+      disposed = true
+      await enqueue(() => {
+        if (root.kind !== 'box') throw new Error('Wrong control root')
+        rows.clear()
+      })
+      rowsDisposed = initialRows.length
+    },
+    probes: [weak(root), weak(label), weak(listener)],
+    inspect: () => ({ rowsDisposed, clicked }),
+  }
+}
+async function run(mount: typeof makeView) {
+  // Unlike v1, exercise the returned method object before repeated cycles;
+  // the compiler must preserve its method captures and asynchronous queue.
+  let active: Awaited<ReturnType<typeof makeView>> | undefined = await mount()
+  for (let index = 0; index < 20; index++) await active.update([`Warmup ${index}`])
+  await active.dispose()
+  active = undefined
+  await Bun.sleep(1)
+  Bun.gc(true)
+  heapStats()
+  const probes: WeakRef<object>[] = []
+  const timings: number[] = []
+  let totalRowsDisposed = 0
+  async function cycle() {
+    const view = await mount()
+    await view.dispose()
+    const state = view.inspect()
+    totalRowsDisposed += state.rowsDisposed
+    if (state.clicked) throw new Error('The no-framework control received an impossible click')
+    return view.probes
+  }
+  for (let index = 0; index < mounts; index++) {
+    const started = performance.now()
+    probes.push(...await cycle())
+    timings.push(performance.now() - started)
+    if (queued) throw new Error('Control queue is not empty')
+  }
+  if (totalRowsDisposed !== 3200 || addresses.length !== probes.length + 3)
+    throw new Error('Control did not dispose its intended workload')
+  await Bun.sleep(1)
+  Bun.gc(true)
+  const firstReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index])
+  await enqueue(() => undefined)
+  await Bun.sleep(1)
+  Bun.gc(true)
+  const heap = heapStats()
+  const stillReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index])
+  const report: Record<string, unknown> = {
+    schemaVersion: 1,
+    bunRevision: Bun.revision,
+    executable: process.execPath,
+    scope: 'pure JavaScript async queue/view control; no Bun Native, framework, native or DOM imports',
+    variationFromV1: 'timer-delivered queue completions, exercised update method, and same view/disposal/report shape as the benchmark',
+    mounts,
+    totalRowsDisposed,
+    queued,
+    firstReachable,
+    stillReachable,
+    targets: stillReachable.map(index => ({ index, address: addresses[index + 3] })),
+    heap: { objectCount: heap.objectCount, heapSize: heap.heapSize },
+    timingsDiagnosticOnly: timings,
+  }
+  if (stillReachable.length) {
+    await Bun.sleep(1)
+    writeFileSync(output + '.heap.json', JSON.stringify(generateHeapSnapshotForDebugging()) + '\n', { flag: 'wx' })
+    report['snapshot'] = output + '.heap.json'
+  }
+  writeFileSync(output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' })
+  console.log(JSON.stringify({ firstReachable, stillReachable }))
+}
+await run(makeView)

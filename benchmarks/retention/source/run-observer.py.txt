@@ -1,0 +1,59 @@
+"""Execute the two predeclared ownership controls once in owned process groups."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+
+ROOT = Path(__file__).resolve().parent
+WORKSPACE = ROOT.parents[1]
+BUN = WORKSPACE / "toolchains/bun-da867c60b/bun"
+plan = json.loads((ROOT / "observer-plan.json").read_text())
+for relative, expected in plan["source"].items():
+    data = (WORKSPACE / relative).read_bytes()
+    assert hashlib.sha256(data).hexdigest() == expected["sha256"], relative
+
+results = []
+for variant in plan["cases"]:
+    report = ROOT / f"observer-{variant}.json"
+    assert not report.exists()
+    command = [str(BUN), str(ROOT / "observer-path.ts"), str(report), variant]
+    with (
+        (ROOT / f"observer-{variant}.stdout.log").open("xb") as stdout,
+        (ROOT / f"observer-{variant}.stderr.log").open("xb") as stderr,
+    ):
+        process = subprocess.Popen(
+            command,
+            cwd=WORKSPACE / "bn2-retention-roots",
+            stdout=stdout,
+            stderr=stderr,
+            start_new_session=True,
+        )
+        timed_out = False
+        try:
+            exit_code = process.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            os.killpg(process.pid, signal.SIGTERM)
+            try:
+                exit_code = process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                exit_code = process.wait(timeout=3)
+        results.append(
+            {
+                "variant": variant,
+                "command": command,
+                "exitCode": exit_code,
+                "timedOut": timed_out,
+                "reportWritten": report.exists(),
+            }
+        )
+
+with (ROOT / "observer-execution.json").open("x") as output:
+    json.dump(results, output, indent=2)
+    output.write("\n")
+print(json.dumps(results))
+raise SystemExit(0 if all(row["exitCode"] == 0 for row in results) else 1)

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "hypothesis": "Pinned development JSSet storage marks entries through appendValuesHidden; compiled AOT CompactTable visits entries through normal appendUnbarriered. With targets deliberately held live, the object-property control should expose its target in both modes, while the Set path should be omitted in development and visible under compiled compact storage.",
+  "source": {
+    "path": "collection-edge.ts",
+    "sha256": "d574106a2d5153bdbe8530c400e1d6f14ead6feee16854943f9aaaac9edcd29a"
+  },
+  "cases": [
+    "development",
+    "aot"
+  ],
+  "repetitionsPerCase": 1,
+  "noChangesTo": "WeakRef oracles, timers, GC settings or production code",
+  "missingOrContradictoryControl": "Retain the result and report the hypothesis unsupported; no rerun or acceptance adjustment"
+}

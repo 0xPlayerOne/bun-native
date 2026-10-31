@@ -1,0 +1,23 @@
+[
+  {
+    "mode": "development",
+    "command": [
+      "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/collection-edge.ts",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/collection-edge-development.json",
+      "development"
+    ],
+    "exitCode": 0,
+    "reportWritten": true
+  },
+  {
+    "mode": "aot",
+    "command": [
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/collection-edge-aot",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/collection-edge-aot.json",
+      "aot"
+    ],
+    "exitCode": 0,
+    "reportWritten": true
+  }
+]

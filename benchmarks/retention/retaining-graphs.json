@@ -1,0 +1,306 @@
+{
+  "nativeAot": {
+    "snapshot": {
+      "bytes": 517981,
+      "sha256": "95f5ed2fce650591434508bb488ff3680ca609643c90924762c17fd72af89945"
+    },
+    "snapshotAfterAdditionalTimerAndOwnCollection": true,
+    "scope": "all visible incoming ancestors; hidden/conservative edges may be absent from GCDebugging",
+    "targets": [
+      {
+        "target": 1728,
+        "nodes": [
+          {
+            "id": 1690,
+            "class": "Object",
+            "size": 64,
+            "flags": 2,
+            "label": "",
+            "address": "0x52884a1b8b40",
+            "rootReasons": [],
+            "incomingCount": 0
+          },
+          {
+            "id": 1707,
+            "class": "Function",
+            "size": 96,
+            "flags": 0,
+            "label": "dispose",
+            "address": "0x52884a37c4c0",
+            "rootReasons": [],
+            "incomingCount": 2
+          },
+          {
+            "id": 1728,
+            "class": "Object",
+            "size": 32,
+            "flags": 2,
+            "label": "",
+            "address": "0x52884a25d7e0",
+            "rootReasons": [],
+            "incomingCount": 2
+          }
+        ],
+        "edges": [
+          {
+            "from": 1707,
+            "to": 1728,
+            "type": "Internal",
+            "name": null
+          },
+          {
+            "from": 1707,
+            "to": 1728,
+            "type": "Index",
+            "name": 4
+          },
+          {
+            "from": 1690,
+            "to": 1707,
+            "type": "Internal",
+            "name": null
+          },
+          {
+            "from": 1690,
+            "to": 1707,
+            "type": "Property",
+            "name": "dispose"
+          }
+        ]
+      },
+      {
+        "target": 1692,
+        "nodes": [
+          {
+            "id": 1690,
+            "class": "Object",
+            "size": 64,
+            "flags": 2,
+            "label": "",
+            "address": "0x52884a1b8b40",
+            "rootReasons": [],
+            "incomingCount": 0
+          },
+          {
+            "id": 1691,
+            "class": "Function",
+            "size": 48,
+            "flags": 0,
+            "label": "",
+            "address": "0x52884a06f790",
+            "rootReasons": [],
+            "incomingCount": 2
+          },
+          {
+            "id": 1692,
+            "class": "Object",
+            "size": 32,
+            "flags": 2,
+            "label": "",
+            "address": "0x52884a25d8c0",
+            "rootReasons": [],
+            "incomingCount": 2
+          }
+        ],
+        "edges": [
+          {
+            "from": 1691,
+            "to": 1692,
+            "type": "Index",
+            "name": 2
+          },
+          {
+            "from": 1691,
+            "to": 1692,
+            "type": "Internal",
+            "name": null
+          },
+          {
+            "from": 1690,
+            "to": 1691,
+            "type": "Property",
+            "name": "update"
+          },
+          {
+            "from": 1690,
+            "to": 1691,
+            "type": "Internal",
+            "name": null
+          }
+        ]
+      }
+    ]
+  },
+  "noFrameworkDevelopment": {
+    "snapshot": {
+      "bytes": 436227,
+      "sha256": "85f3b0fdbd023847245d3399994c2d830aa34ef56dadef0cfbb76fb1ab5263a8"
+    },
+    "snapshotAfterAdditionalTimerAndOwnCollection": true,
+    "scope": "all visible incoming ancestors; hidden/conservative edges may be absent from GCDebugging",
+    "targets": [
+      {
+        "target": 1475,
+        "nodes": [
+          {
+            "id": 1467,
+            "class": "AsyncFunction",
+            "size": 32,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a2e280",
+            "rootReasons": [],
+            "incomingCount": 0
+          },
+          {
+            "id": 1469,
+            "class": "JSLexicalEnvironment",
+            "size": 48,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a39b10",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1470,
+            "class": "Function",
+            "size": 32,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a2e260",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1471,
+            "class": "JSLexicalEnvironment",
+            "size": 80,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734012160",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1475,
+            "class": "Object",
+            "size": 32,
+            "flags": 2,
+            "label": "",
+            "address": "0x53734a37ec0",
+            "rootReasons": [],
+            "incomingCount": 1
+          }
+        ],
+        "edges": [
+          {
+            "from": 1471,
+            "to": 1475,
+            "type": "Variable",
+            "name": "root"
+          },
+          {
+            "from": 1470,
+            "to": 1471,
+            "type": "Internal",
+            "name": null
+          },
+          {
+            "from": 1469,
+            "to": 1470,
+            "type": "Variable",
+            "name": "operation"
+          },
+          {
+            "from": 1467,
+            "to": 1469,
+            "type": "Internal",
+            "name": null
+          }
+        ]
+      },
+      {
+        "target": 1473,
+        "nodes": [
+          {
+            "id": 1467,
+            "class": "AsyncFunction",
+            "size": 32,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a2e280",
+            "rootReasons": [],
+            "incomingCount": 0
+          },
+          {
+            "id": 1469,
+            "class": "JSLexicalEnvironment",
+            "size": 48,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a39b10",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1470,
+            "class": "Function",
+            "size": 32,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734a2e260",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1471,
+            "class": "JSLexicalEnvironment",
+            "size": 80,
+            "flags": 0,
+            "label": "",
+            "address": "0x53734012160",
+            "rootReasons": [],
+            "incomingCount": 1
+          },
+          {
+            "id": 1473,
+            "class": "Object",
+            "size": 32,
+            "flags": 2,
+            "label": "",
+            "address": "0x53734a37ee0",
+            "rootReasons": [],
+            "incomingCount": 1
+          }
+        ],
+        "edges": [
+          {
+            "from": 1471,
+            "to": 1473,
+            "type": "Variable",
+            "name": "label"
+          },
+          {
+            "from": 1470,
+            "to": 1471,
+            "type": "Internal",
+            "name": null
+          },
+          {
+            "from": 1469,
+            "to": 1470,
+            "type": "Variable",
+            "name": "operation"
+          },
+          {
+            "from": 1467,
+            "to": 1469,
+            "type": "Internal",
+            "name": null
+          }
+        ]
+      }
+    ]
+  }
+}

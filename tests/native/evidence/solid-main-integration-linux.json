@@ -1,0 +1,2206 @@
+{
+  "schemaVersion": 1,
+  "scope": "Current-main merge control for the production Solid builder and opt-in native startup trace. This adds a new current-lock host observation and does not relabel historical artifacts or repeat the twelve-case qualification.",
+  "sourceBase": "60a70e62ef407bec8260747126247abcabb7e170",
+  "additionalParent": "d8bcae3130f9f95833bdfe864852d07078ab4dab",
+  "sourceWasDirty": true,
+  "productionTree": "b7e84dc20955c9e5da484ff8c61099a8a57d846d",
+  "startupDiagnosticTree": "f779168ef38ee4dfdfc53ae11971ff5e34c52344",
+  "sourceFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "bytes": 160879,
+      "sha256": "f2a40ecaf8b62fd7154f9d9460f6ef64f2ef615ebc657aa9f803e68fe844abdb"
+    },
+    "Cargo.toml": {
+      "bytes": 434,
+      "sha256": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0"
+    },
+    "benchmarks/native-baseline.py": {
+      "bytes": 17765,
+      "sha256": "6e6c2f4be1416c1d4de4b806e7ba81cf71ddeaf26ef34f6c1e2b3c6f54e62538"
+    },
+    "bun.lock": {
+      "bytes": 27298,
+      "sha256": "92a4725df235b6234e33603e7f60ff2171ffd23289e583951232ef30e5b521f3"
+    },
+    "bunfig.toml": {
+      "bytes": 130,
+      "sha256": "f368aec980d8b0a3b6fc12b9a42e218fb4472565d32aaeb4c494925c180fa697"
+    },
+    "examples/native-window/content.ts": {
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "examples/solid-counter/main.tsx": {
+      "bytes": 4199,
+      "sha256": "62000e72e0c3887047fad7920b5116ed9f5455f8590c9a9e16508a75853dcb22"
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "bytes": 10597,
+      "sha256": "ebd98542d71336986932b711fea71ef9a5f5aea5fa1337417714ad45eedd99f3"
+    },
+    "experiments/aot-gpui/inspect-runtime.ts": {
+      "bytes": 12491,
+      "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+    },
+    "experiments/aot-gpui/inspect.ts": {
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "bytes": 628,
+      "sha256": "38f2854c445a3d31ab668b91d8fd73a510d3ff2d515100f128b1e90e56a13a8c"
+    },
+    "native/gpui-host/LICENSE-APACHE": {
+      "bytes": 10768,
+      "sha256": "752daf2fb234ca4a1fa372c073fe127f44b7b90fd2529ae44273a64f9d53da7a"
+    },
+    "native/gpui-host/NOTICE": {
+      "bytes": 428,
+      "sha256": "b9fd2e0defe1396369b38e8efcdc36a67949d5d28d3b7481cd9dadba0caaf660"
+    },
+    "native/gpui-host/README.md": {
+      "bytes": 9080,
+      "sha256": "5345c43d18094fd1ccf611451a7bd2b4763bc0be6f28cdb85fdaecd7458ee8bc"
+    },
+    "native/gpui-host/src/channel.rs": {
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "bytes": 7542,
+      "sha256": "89d23a859d09be0327709f921a4096da73589ff4406437ce4e9c427b2ee1a072"
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    "native/gpui-host/src/input.rs": {
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    "native/gpui-host/src/main.rs": {
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    "native/gpui-host/src/session.rs": {
+      "bytes": 12370,
+      "sha256": "511ccc15edc4c3b3ed8a0f9563616998918e8f251ca95bc26c48713d37b33b67"
+    },
+    "native/gpui-host/src/state.rs": {
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    "native/gpui-host/src/style.rs": {
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    "native/gpui-host/src/view.rs": {
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    "native/protocol/Cargo.toml": {
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    "native/protocol/README.md": {
+      "bytes": 9202,
+      "sha256": "06066d9c5f99ee913cf21d44dc75198d4e3972e18efb2f858b91713681e872d2"
+    },
+    "native/protocol/src/event_tests.rs": {
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    "native/protocol/src/events.rs": {
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    "native/protocol/src/framing.rs": {
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    "native/protocol/src/lib.rs": {
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    "native/protocol/src/security_tests.rs": {
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    "native/protocol/src/tests.rs": {
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    "native/protocol/src/tree.rs": {
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    "native/protocol/src/wire.rs": {
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    "package.json": {
+      "bytes": 1836,
+      "sha256": "47aabb88ae2cbe1453ecae72e0689864f180d35840c6a0b25997cd396ac2f28f"
+    },
+    "packages/core/package.json": {
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    "packages/core/src/application.ts": {
+      "bytes": 14616,
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+    },
+    "packages/core/src/events.ts": {
+      "bytes": 7680,
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 646,
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+    },
+    "packages/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "packages/core/src/types.ts": {
+      "bytes": 5566,
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    "packages/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "packages/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    "packages/protocol/src/messages.ts": {
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    "packages/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    "packages/runtime/package.json": {
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    "packages/runtime/src/index.ts": {
+      "bytes": 13991,
+      "sha256": "ce86a386c4299a44b259a55d181a01ab9f31b2894366a241d1896d6a17a81ca0"
+    },
+    "packages/runtime/src/startup-trace.ts": {
+      "bytes": 3021,
+      "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d"
+    },
+    "packages/solid/package.json": {
+      "bytes": 310,
+      "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+    },
+    "packages/solid/src/index.ts": {
+      "bytes": 604,
+      "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+    },
+    "packages/solid/src/jsx.ts": {
+      "bytes": 868,
+      "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+    },
+    "packages/solid/src/mount.ts": {
+      "bytes": 1216,
+      "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+    },
+    "packages/solid/src/renderer.ts": {
+      "bytes": 964,
+      "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    "scripts/quality/native-input-linux.py": {
+      "bytes": 37751,
+      "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f"
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "bytes": 7305,
+      "sha256": "87d4d187251e4483ba31f6ed673056c7dd846aa23a4de6501de6dcbcdd8e1fd3"
+    },
+    "scripts/solid-build.ts": {
+      "bytes": 1615,
+      "sha256": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908"
+    },
+    "scripts/solid/preset.d.ts": {
+      "bytes": 139,
+      "sha256": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228"
+    },
+    "scripts/solid/transform.ts": {
+      "bytes": 642,
+      "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+    },
+    "tests/native/lifecycle.ts": {
+      "bytes": 4338,
+      "sha256": "fdf3f6e682cc1b93ee884f056119208c9b7f506ab4910a716f37dad44b0a4269"
+    },
+    "tests/native/solid-input-intent.tsx": {
+      "bytes": 3982,
+      "sha256": "861b0be2a8d73c587e1fe6b26161b680c7159cd1d76a905f65509d737d8e981a"
+    },
+    "tests/native/solid-interactions.tsx": {
+      "bytes": 10532,
+      "sha256": "adc005ddce69922037a5180069197f61fe136220741c55181b6fba75d7cf4318"
+    },
+    "tests/native/solid-window.py": {
+      "bytes": 8382,
+      "sha256": "ceec0858f5b0f6af5f4cbdd52dd9e075a9871300325257dd051da35c5a3256a1"
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "bytes": 1028,
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+    }
+  },
+  "sourceStability": "All 81 recorded source/controller/inspector files were hashed before native compilation and after each application control; no captured file changed. Both generated module and executable manifests were separately checked.",
+  "nativeDependencies": {
+    "serde": "=1.0.229",
+    "serde_json": "=1.0.154",
+    "unicode-segmentation": "=1.13.3"
+  },
+  "host": {
+    "bytes": 111786864,
+    "sha256": "72db09e99bd8956c7922498af007fe7bcd55030d8654d2ed7e2e30d1bb21bd4f",
+    "profile": "dev"
+  },
+  "nativeBuild": {
+    "command": ["cargo", "build", "--locked", "-p", "bun-native-host"],
+    "environment": {
+      "CARGO_TARGET_DIR": "<toolchains>/bn1-clippy-target",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_BUILD_PIPELINING": "false",
+      "CARGO_BUILD_JOBS": "2",
+      "CARGO_NET_OFFLINE": "true"
+    }
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "target": {
+    "os": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.57"
+  },
+  "applications": {
+    "lifecycle": {
+      "file": "<artifacts>/lifecycle-package/lifecycle",
+      "bytes": 71138344,
+      "sha256": "80831e26b59c440c0a23ee730489ded423d7a824ef501cb5b20f47e87c2a589a",
+      "inspection": {
+        "format": "elf",
+        "payloadOffset": 67510280,
+        "payloadBytes": 3571941,
+        "flags": 16764,
+        "hasCompiledProgram": true
+      },
+      "runtimeFeatures": {
+        "format": "elf64-le",
+        "section": {
+          "name": ".bun_features",
+          "offset": 19504728,
+          "bytes": 536
+        },
+        "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "trimmedProgramFeatures": false,
+        "removedRangeCount": 202,
+        "jit": "unused",
+        "interpreter": "present",
+        "imageCompiler": "unused",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "compiler": {
+        "version": "1.4.4",
+        "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+      },
+      "compile": {
+        "command": [
+          "<toolchains>/bun-da867c60b/bun",
+          "compile",
+          "--no-script",
+          "--production",
+          "--explain=json",
+          "tests/native/lifecycle.ts",
+          "--outfile",
+          "<artifacts>/lifecycle-package/lifecycle"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 3.0429890239975066
+      },
+      "sourceEntrypoint": "tests/native/lifecycle.ts"
+    },
+    "solid-interactions": {
+      "sourceEntrypoint": "tests/native/solid-interactions.tsx",
+      "application": {
+        "file": "solid-interactions",
+        "bytes": 71760936,
+        "sha256": "db562869f65bad09e3041423f907fcca19e85d4fe4728456b0bb94d794322de9",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 4194546,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 119580,
+          "sha256": "6aabc5fe4fab287c1636ed3c1b9b396d00700a63f24dc1bdab5f278ed6e6723b",
+          "transformCommand": [
+            "<toolchains>/bun-da867c60b/bun",
+            "<repository>/scripts/solid-build.ts",
+            "<repository>/tests/native/solid-interactions.tsx",
+            "<artifacts>/solid-interactions-package/development"
+          ],
+          "buildMs": 785.687247
+        }
+      },
+      "compileCommand": [
+        "<toolchains>/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<artifacts>/solid-interactions-package/development/application.js",
+        "--outfile",
+        "<artifacts>/solid-interactions-package/solid-interactions"
+      ],
+      "manifest": {
+        "bytes": 17522,
+        "sha256": "9cefb97dc3663162090bd1837be153f2ca3d858d9ed8896ebc6d5817b2b43212"
+      },
+      "sourceMap": {
+        "bytes": 285164,
+        "sha256": "0a0ae414b3c6615d4dcc0df485209f06d2e4e36f581fec105990cf3200a6df3f"
+      },
+      "compileInputIsDevelopmentModule": true
+    }
+  },
+  "controls": [
+    {
+      "case": "five-window-lifecycle",
+      "mode": "development",
+      "status": "passed",
+      "execution": {
+        "case": "lifecycle",
+        "mode": "development",
+        "exitCode": 0,
+        "elapsedSeconds": 2.2438019429973792,
+        "command": [
+          "xvfb-run",
+          "--auto-servernum",
+          "--server-args=-screen 0 1280x800x24 -nolisten tcp",
+          "dbus-run-session",
+          "--",
+          "bash",
+          "scripts/quality/native-linux-session.sh",
+          "<artifacts>/native-controls/development-lifecycle/session",
+          "--",
+          "timeout",
+          "45s",
+          "<toolchains>/bun-da867c60b/bun",
+          "tests/native/lifecycle.ts"
+        ],
+        "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+        "requestDeadlineMs": 5000,
+        "fixtureDeadlineSeconds": 45
+      },
+      "nativePaintedWindows": [1, 2, 3, 4, 5],
+      "validatedOpens": [
+        {
+          "response": {
+            "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152274,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "411613088",
+            "index": 18,
+            "phase": "response_received",
+            "host_pid": 152285,
+            "request_id": 3,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "45450707",
+              "index": 1,
+              "phase": "open_dispatched",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "45521694",
+              "index": 2,
+              "phase": "open_window_enter",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "403819703",
+              "index": 3,
+              "phase": "root_constructor_enter",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "404103819",
+              "index": 4,
+              "phase": "root_constructor_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "405402058",
+              "index": 5,
+              "phase": "open_window_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "405442755",
+              "index": 6,
+              "phase": "activation_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "405485320",
+              "index": 7,
+              "phase": "opened_submit_returned",
+              "request_id": 3,
+              "window_id": 1
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152274,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "657911830",
+            "index": 60,
+            "phase": "response_received",
+            "host_pid": 152285,
+            "request_id": 10,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "418421044",
+              "index": 9,
+              "phase": "open_dispatched",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "418475241",
+              "index": 10,
+              "phase": "open_window_enter",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "650322584",
+              "index": 11,
+              "phase": "root_constructor_enter",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "650502456",
+              "index": 12,
+              "phase": "root_constructor_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "651631823",
+              "index": 13,
+              "phase": "open_window_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "651673358",
+              "index": 14,
+              "phase": "activation_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "651826098",
+              "index": 15,
+              "phase": "opened_submit_returned",
+              "request_id": 10,
+              "window_id": 2
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152274,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "1050929359",
+            "index": 102,
+            "phase": "response_received",
+            "host_pid": 152285,
+            "request_id": 17,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "803208081",
+              "index": 17,
+              "phase": "open_dispatched",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "803275706",
+              "index": 18,
+              "phase": "open_window_enter",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1043649893",
+              "index": 19,
+              "phase": "root_constructor_enter",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1043809200",
+              "index": 20,
+              "phase": "root_constructor_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1044718260",
+              "index": 21,
+              "phase": "open_window_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1044756942",
+              "index": 22,
+              "phase": "activation_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1044817730",
+              "index": 23,
+              "phase": "opened_submit_returned",
+              "request_id": 17,
+              "window_id": 3
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152274,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "1302833943",
+            "index": 144,
+            "phase": "response_received",
+            "host_pid": 152285,
+            "request_id": 24,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1063975876",
+              "index": 25,
+              "phase": "open_dispatched",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1064047217",
+              "index": 26,
+              "phase": "open_window_enter",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1294638587",
+              "index": 27,
+              "phase": "root_constructor_enter",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1295025726",
+              "index": 28,
+              "phase": "root_constructor_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1296194241",
+              "index": 29,
+              "phase": "open_window_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1296237802",
+              "index": 30,
+              "phase": "activation_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1296279352",
+              "index": 31,
+              "phase": "opened_submit_returned",
+              "request_id": 24,
+              "window_id": 4
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152274,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "1619637170",
+            "index": 186,
+            "phase": "response_received",
+            "host_pid": 152285,
+            "request_id": 31,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1318579482",
+              "index": 33,
+              "phase": "open_dispatched",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1318656864",
+              "index": 34,
+              "phase": "open_window_enter",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1610662962",
+              "index": 35,
+              "phase": "root_constructor_enter",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1611340629",
+              "index": 36,
+              "phase": "root_constructor_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1612487982",
+              "index": 37,
+              "phase": "open_window_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1612528660",
+              "index": 38,
+              "phase": "activation_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152285,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1612600613",
+              "index": 39,
+              "phase": "opened_submit_returned",
+              "request_id": 31,
+              "window_id": 5
+            }
+          ]
+        }
+      ],
+      "transportFinished": {
+        "nonce": "c4e5221a4b16b9dcefc6165a0979f91b",
+        "stage": "startup-diagnostic",
+        "source": "transport",
+        "pid": 152274,
+        "clock": "process_monotonic_relative",
+        "elapsed_ns": "1680557120",
+        "index": 229,
+        "phase": "transport_finished",
+        "host_pid": 152285,
+        "exit_code": 0,
+        "stderr_tail": ""
+      },
+      "rawFiles": {
+        "native-controls/development-lifecycle/execution.json": {
+          "bytes": 677,
+          "sha256": "1349db11ec639f7bf2cfc9817c914a123cc6766feb7e04bd62be18fd1cf04135"
+        },
+        "native-controls/development-lifecycle/lifecycle-events.jsonl": {
+          "bytes": 80555,
+          "sha256": "9e0c1400fd71cd7f88ffd13ed17dac3051a8949b0bafa998874add35d262d09b"
+        },
+        "native-controls/development-lifecycle/lifecycle.log": {
+          "bytes": 208,
+          "sha256": "d6d1a07bdf0dd1fdd148d261303d179e60032c4eb74b9cadec694cdf671d8033"
+        },
+        "native-controls/development-lifecycle/session/window-manager.log": {
+          "bytes": 85,
+          "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c"
+        }
+      }
+    },
+    {
+      "case": "production-solid-caret",
+      "mode": "development",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "finalNativePaint": {
+        "nonce": "c89b54325435750a971063e19c2a8231",
+        "type": "rendered",
+        "stage": "native-paint",
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "terminalApplicationAssertions": [
+        {
+          "nonce": "c89b54325435750a971063e19c2a8231",
+          "type": "solid-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c89b54325435750a971063e19c2a8231",
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawFiles": {
+        "native-controls/development-caret/after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "native-controls/development-caret/app-events.jsonl": {
+          "bytes": 33670,
+          "sha256": "c99e8a4d64390c55ebe8b5d706bf47720ceed2cb7b5cca8451cd2f2419923020"
+        },
+        "native-controls/development-caret/before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "native-controls/development-caret/result.json": {
+          "bytes": 67390,
+          "sha256": "f6f9f99d6ef629024b3040796828c04dfb29c603d2d72660915c5a674b30c93d"
+        },
+        "native-controls/development-caret/stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-controls/development-caret/stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "case": "five-window-lifecycle",
+      "mode": "aot",
+      "status": "passed",
+      "execution": {
+        "case": "lifecycle",
+        "mode": "aot",
+        "exitCode": 0,
+        "elapsedSeconds": 2.1473173340018548,
+        "command": [
+          "xvfb-run",
+          "--auto-servernum",
+          "--server-args=-screen 0 1280x800x24 -nolisten tcp",
+          "dbus-run-session",
+          "--",
+          "bash",
+          "scripts/quality/native-linux-session.sh",
+          "<artifacts>/native-controls/aot-lifecycle/session",
+          "--",
+          "timeout",
+          "45s",
+          "<artifacts>/lifecycle-package/lifecycle"
+        ],
+        "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+        "requestDeadlineMs": 5000,
+        "fixtureDeadlineSeconds": 45
+      },
+      "nativePaintedWindows": [1, 2, 3, 4, 5],
+      "validatedOpens": [
+        {
+          "response": {
+            "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152567,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "372307662",
+            "index": 18,
+            "phase": "response_received",
+            "host_pid": 152568,
+            "request_id": 3,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "36457739",
+              "index": 1,
+              "phase": "open_dispatched",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "36525735",
+              "index": 2,
+              "phase": "open_window_enter",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "365138374",
+              "index": 3,
+              "phase": "root_constructor_enter",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "365343946",
+              "index": 4,
+              "phase": "root_constructor_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "366396024",
+              "index": 5,
+              "phase": "open_window_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "366437879",
+              "index": 6,
+              "phase": "activation_returned",
+              "request_id": 3,
+              "window_id": 1
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "366497588",
+              "index": 7,
+              "phase": "opened_submit_returned",
+              "request_id": 3,
+              "window_id": 1
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152567,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "694992245",
+            "index": 60,
+            "phase": "response_received",
+            "host_pid": 152568,
+            "request_id": 10,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "380545647",
+              "index": 9,
+              "phase": "open_dispatched",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "380601258",
+              "index": 10,
+              "phase": "open_window_enter",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "687998869",
+              "index": 11,
+              "phase": "root_constructor_enter",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "688129143",
+              "index": 12,
+              "phase": "root_constructor_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "689093465",
+              "index": 13,
+              "phase": "open_window_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "689121310",
+              "index": 14,
+              "phase": "activation_returned",
+              "request_id": 10,
+              "window_id": 2
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "689168328",
+              "index": 15,
+              "phase": "opened_submit_returned",
+              "request_id": 10,
+              "window_id": 2
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152567,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "997385016",
+            "index": 102,
+            "phase": "response_received",
+            "host_pid": 152568,
+            "request_id": 17,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "743275868",
+              "index": 17,
+              "phase": "open_dispatched",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "743476391",
+              "index": 18,
+              "phase": "open_window_enter",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "989935678",
+              "index": 19,
+              "phase": "root_constructor_enter",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "990187992",
+              "index": 20,
+              "phase": "root_constructor_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "991465854",
+              "index": 21,
+              "phase": "open_window_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "991513572",
+              "index": 22,
+              "phase": "activation_returned",
+              "request_id": 17,
+              "window_id": 3
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "991573868",
+              "index": 23,
+              "phase": "opened_submit_returned",
+              "request_id": 17,
+              "window_id": 3
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152567,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "1360390188",
+            "index": 144,
+            "phase": "response_received",
+            "host_pid": 152568,
+            "request_id": 24,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1019880897",
+              "index": 25,
+              "phase": "open_dispatched",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1019966761",
+              "index": 26,
+              "phase": "open_window_enter",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1353359029",
+              "index": 27,
+              "phase": "root_constructor_enter",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1353520409",
+              "index": 28,
+              "phase": "root_constructor_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1354454373",
+              "index": 29,
+              "phase": "open_window_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1354497372",
+              "index": 30,
+              "phase": "activation_returned",
+              "request_id": 24,
+              "window_id": 4
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1354691517",
+              "index": 31,
+              "phase": "opened_submit_returned",
+              "request_id": 24,
+              "window_id": 4
+            }
+          ]
+        },
+        {
+          "response": {
+            "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+            "stage": "startup-diagnostic",
+            "source": "transport",
+            "pid": 152567,
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": "1705948816",
+            "index": 186,
+            "phase": "response_received",
+            "host_pid": 152568,
+            "request_id": 31,
+            "response": "opened"
+          },
+          "nativePhases": [
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1372627688",
+              "index": 33,
+              "phase": "open_dispatched",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1372731839",
+              "index": 34,
+              "phase": "open_window_enter",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1698002527",
+              "index": 35,
+              "phase": "root_constructor_enter",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1698166437",
+              "index": 36,
+              "phase": "root_constructor_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1699543577",
+              "index": 37,
+              "phase": "open_window_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1699587618",
+              "index": 38,
+              "phase": "activation_returned",
+              "request_id": 31,
+              "window_id": 5
+            },
+            {
+              "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+              "stage": "startup-diagnostic",
+              "source": "native",
+              "pid": 152568,
+              "clock": "process_monotonic_relative",
+              "elapsed_ns": "1700057041",
+              "index": 39,
+              "phase": "opened_submit_returned",
+              "request_id": 31,
+              "window_id": 5
+            }
+          ]
+        }
+      ],
+      "transportFinished": {
+        "nonce": "b857ba6f1592f4af00c6f7add6e0fc7e",
+        "stage": "startup-diagnostic",
+        "source": "transport",
+        "pid": 152567,
+        "clock": "process_monotonic_relative",
+        "elapsed_ns": "1757454066",
+        "index": 229,
+        "phase": "transport_finished",
+        "host_pid": 152568,
+        "exit_code": 0,
+        "stderr_tail": ""
+      },
+      "rawFiles": {
+        "native-controls/aot-lifecycle/execution.json": {
+          "bytes": 657,
+          "sha256": "6631584835ea8689b71b9456e12adf08c4b9dd835d72f2e25091f0f31ec74563"
+        },
+        "native-controls/aot-lifecycle/lifecycle-events.jsonl": {
+          "bytes": 79229,
+          "sha256": "37cffa0e3f97d279ddd238856b600f63a6b46dfda3d7f7b7c7a453b563332e27"
+        },
+        "native-controls/aot-lifecycle/lifecycle.log": {
+          "bytes": 208,
+          "sha256": "ca7ce1191ebcf4642043751af5d1ffcb9b33fee61966b475efd12e6548165d6b"
+        },
+        "native-controls/aot-lifecycle/session/window-manager.log": {
+          "bytes": 85,
+          "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c"
+        }
+      }
+    },
+    {
+      "case": "production-solid-caret",
+      "mode": "aot",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "finalNativePaint": {
+        "nonce": "5c60f682b2165fcf5500a3656ca6f021",
+        "type": "rendered",
+        "stage": "native-paint",
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "terminalApplicationAssertions": [
+        {
+          "nonce": "5c60f682b2165fcf5500a3656ca6f021",
+          "type": "solid-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "5c60f682b2165fcf5500a3656ca6f021",
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawFiles": {
+        "native-controls/aot-caret/after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "native-controls/aot-caret/app-events.jsonl": {
+          "bytes": 32665,
+          "sha256": "9b58cd9480d79508a3c0ff2454d8fb7c0a907f82e1ca5c74ffaf39611809c17d"
+        },
+        "native-controls/aot-caret/before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "native-controls/aot-caret/result.json": {
+          "bytes": 64981,
+          "sha256": "8c86cf656d4a62cb0456f725c5a48fd6745a6513741de487726204e708c9d6e5"
+        },
+        "native-controls/aot-caret/stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-controls/aot-caret/stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "sourceGate": [
+    {
+      "check": "install",
+      "command": ["bun", "install", "--frozen-lockfile", "--ignore-scripts"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.03247121699860145
+    },
+    {
+      "check": "format",
+      "command": ["bun", "run", "format:check"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.06465686999945319
+    },
+    {
+      "check": "lint",
+      "command": ["bun", "run", "lint"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.1644807579996268
+    },
+    {
+      "check": "typecheck",
+      "command": ["bun", "run", "typecheck"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.11660748000031163
+    },
+    {
+      "check": "boundaries",
+      "command": ["bun", "run", "check:boundaries"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.11501377099921228
+    },
+    {
+      "check": "coverage",
+      "command": ["bun", "test", "--coverage", "tests"],
+      "exitCode": 0,
+      "elapsedSeconds": 4.60227642800055
+    },
+    {
+      "check": "build",
+      "command": ["bun", "run", "build"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.0673752090006019
+    },
+    {
+      "check": "actionlint",
+      "command": ["<toolchains>/actionlint-1.7.12/actionlint"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.016541621000214946
+    },
+    {
+      "check": "session-syntax",
+      "command": ["bash", "-n", "scripts/quality/native-linux-session.sh"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.003955582000344293
+    }
+  ],
+  "nativeGate": [
+    {
+      "check": "format",
+      "command": ["cargo", "fmt", "--all", "--", "--check"],
+      "exitCode": 0,
+      "elapsedSeconds": 0.36299276199861197
+    },
+    {
+      "check": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 1.173736110999016
+    },
+    {
+      "check": "protocol",
+      "command": ["cargo", "test", "--locked", "-p", "bun-native-protocol"],
+      "exitCode": 0,
+      "elapsedSeconds": 8.234998392999842
+    },
+    {
+      "check": "build",
+      "command": ["cargo", "build", "--locked", "-p", "bun-native-host"],
+      "exitCode": 0,
+      "elapsedSeconds": 94.03641429100026
+    }
+  ],
+  "historicalEvidenceUnchanged": {
+    "benchmarks/bn2/solid-events-native.json": {
+      "bytes": 440109,
+      "sha256": "f35c190ed1be9e6b0b1ff86ce231234d8069bef09c198ba4a209071290eb364b"
+    },
+    "benchmarks/bn2/solid-events-regressions.json": {
+      "bytes": 784255,
+      "sha256": "eb4c0daeb5ef0affc9c5a864a00f47210e049221157a375b7d11feb4c1799425"
+    },
+    "benchmarks/bn2/solid-hosted-recipe-linux.json": {
+      "bytes": 47927,
+      "sha256": "27547f096af823a2eaee87bdc8a2bc56336b70943580600222aab13cc393d0ea"
+    },
+    "benchmarks/bn2/solid-native-correctness.json": {
+      "bytes": 26027,
+      "sha256": "6d92c14e0295de2a6c497844f2500719220979b039b7409734fa5ce6d3e2ebf1"
+    },
+    "benchmarks/bn2/solid-native-regenerated.json": {
+      "bytes": 791799,
+      "sha256": "758234d75c9a39e1d7fb67ad692d9054045d608050b811d9af0fa70eaa01ea25"
+    },
+    "benchmarks/bn2/solid-production-recipe-linux.json": {
+      "bytes": 108668,
+      "sha256": "f6b7a7a0e0805864bb3adb6961647ff8b1666c4f8e397b2782653928a7ed343c"
+    },
+    "benchmarks/bn2/solid-shared-native.json": {
+      "bytes": 813545,
+      "sha256": "f120746ca6f9563344ad14497c0a7789de6f0004b85bd81fdeafd8566170ef9b"
+    },
+    "tests/native/evidence/interactions-linux-development-aot.json": {
+      "bytes": 44103,
+      "sha256": "6ab39d7665b8bbd74e3a96d041af7b0659b94e6f597194ce85a08dbeccf29c16"
+    },
+    "tests/native/evidence/layout-linux-development-aot.json": {
+      "bytes": 27419,
+      "sha256": "88293c02aae5df9f6f8377611cf4be5566ce361722c09cd4866453140cdc18e7"
+    },
+    "tests/native/evidence/open-timeout-linux.json": {
+      "bytes": 5086,
+      "sha256": "3298baece4bf75621322904fd1caa096a6bd8bb87c441ac462168dd745935b04"
+    },
+    "tests/native/evidence/startup-trace-aot.jsonl.txt": {
+      "bytes": 79270,
+      "sha256": "3ae959fc0f376f832f3eeaba785b06e37b36b3b53573d7f0f50bde302373e24b"
+    },
+    "tests/native/evidence/startup-trace-development.jsonl.txt": {
+      "bytes": 78372,
+      "sha256": "51f8b38fef17eed7c87d63a10b67f845b17dde42c8919cb4b6f1d1cbb3f3f37e"
+    },
+    "tests/native/evidence/startup-trace-linux.json": {
+      "bytes": 15644,
+      "sha256": "a0780d800d4e0c1d962f45e684639c82d930dbb2d004a20c72f86bf36c1f029f"
+    }
+  },
+  "rawArtifacts": "task-artifacts/solid-combined",
+  "limits": [
+    "One lifecycle and one caret control ran once in each mode. These narrow merge controls do not replace the required hosted release-host native suite or claim complete Unicode/IME/platform coverage.",
+    "Lifecycle traces require five actual GPUI windows, all 35 native open markers, five painted window identities and joined exit 0. Their unchanged bounds are 5 seconds per request and 45 seconds per fixture; phase clocks are process-relative and not comparable across processes.",
+    "Caret cases require actual XTest pointer/key delivery, exact full-tree paint of AxBCD at revision 1, OS close and zero observed owned survivors. The AOT caret screenshot was visually inspected; automated pixel/OCR assertions remain unsupported.",
+    "Both executables have actual compiled-program metadata, JIT unused and 27 removed ranges; interpreters remain present. The caret development module and AOT input are identical and contain production Solid dependencies.",
+    "The new host is development profile and uses software Vulkan. No release performance, input-to-presentation latency, physical-input or hardware-GPU claim follows.",
+    "Issue #296 remains open; the original hosted first-open failure is retained, and passing local controls do not explain it. Issue #287 and its unchanged WeakRef oracle also remain open."
+  ]
+}

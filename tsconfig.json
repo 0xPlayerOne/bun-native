@@ -18,7 +18,9 @@
     "noUnusedParameters": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["bun"]
+    "types": ["bun"],
+    "jsx": "preserve",
+    "jsxImportSource": "@bun-native/solid"
   },
   "include": [
     "packages/**/*.ts",
@@ -27,7 +29,11 @@
     "examples/**/*.ts",
     "benchmarks/**/*.ts",
     "tests/native/javascript.js",
-    "experiments/**/*.ts"
+    "experiments/**/*.ts",
+    "packages/**/*.tsx",
+    "examples/**/*.tsx",
+    "tests/**/*.tsx",
+    "benchmarks/**/*.tsx"
   ],
   "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/**"]
 }

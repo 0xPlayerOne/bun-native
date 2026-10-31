@@ -194,6 +194,7 @@ impl Session {
             width,
             height,
         } = request;
+        self.evidence.startup("open_dispatched", id, window_id);
         if self.windows.borrow().len() >= MAX_WINDOWS {
             self.error(
                 id,
@@ -220,6 +221,7 @@ impl Session {
         let events = self.events.clone();
         let evidence = self.evidence.clone();
         let bounds = Bounds::centered(None, size(px(width as f32), px(height as f32)), cx);
+        self.evidence.startup("open_window_enter", id, window_id);
         let result = cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -231,10 +233,16 @@ impl Session {
                 ..Default::default()
             },
             move |window, cx| {
+                evidence.startup("root_constructor_enter", id, window_id);
                 evidence.renderer(window_id, window.gpu_specs());
-                cx.new(|cx| NativeView::new(window_id, view_state, events, evidence, window, cx))
+                let view = cx.new(|cx| {
+                    NativeView::new(window_id, view_state, events, evidence.clone(), window, cx)
+                });
+                evidence.startup("root_constructor_returned", id, window_id);
+                view
             },
         );
+        self.evidence.startup("open_window_returned", id, window_id);
         match result {
             Ok(handle) => {
                 self.windows
@@ -243,6 +251,7 @@ impl Session {
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
                 cx.activate(true);
+                self.evidence.startup("activation_returned", id, window_id);
                 self.events.send(
                     Event::Opened {
                         id,
@@ -252,6 +261,8 @@ impl Session {
                     },
                     cx,
                 );
+                self.evidence
+                    .startup("opened_submit_returned", id, window_id);
             }
             Err(error) => {
                 state.borrow_mut().active = false;
