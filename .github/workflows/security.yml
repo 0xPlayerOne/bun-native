@@ -1,0 +1,39 @@
+name: Bun Native Dependency Security
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '31 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bun-native-security-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependencies:
+    name: Dependency audit
+    if: vars.CI_BILLING_PAUSED == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Review changed dependencies
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
+        with:
+          fail-on-severity: high
+      - name: Audit Bun lockfile
+        run: bun audit --audit-level high
+      - uses: taiki-e/install-action@cb33e69fad06166ca28a42b2575e4dadabf62ee8 # v2
+        with:
+          tool: cargo-audit@0.22.2
+      - name: Audit Rust lockfile
+        run: cargo audit --file Cargo.lock

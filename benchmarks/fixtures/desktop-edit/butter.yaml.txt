@@ -1,8 +1,0 @@
-window:
-  title: BunlyReference
-  width: 480
-  height: 320
-build:
-  entry: index.html
-  host: src/butter.ts
-plugins: []
