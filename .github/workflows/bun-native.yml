@@ -66,8 +66,8 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: 1
         run: |
-          ruff format --check scripts/quality/*.py benchmarks/native-baseline.py tests/quality
-          ruff check scripts/quality/*.py benchmarks/native-baseline.py tests/quality
+          ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality
+          ruff check scripts/quality/*.py benchmarks/*.py tests/quality
           python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
           bash -n scripts/quality/native-linux-session.sh
 

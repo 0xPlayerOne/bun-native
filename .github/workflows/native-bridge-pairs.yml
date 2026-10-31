@@ -1,0 +1,125 @@
+name: Native bridge pairs
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review, synchronize]
+    paths:
+      - .github/workflows/native-bridge-pairs.yml
+      - benchmarks/bridge-pairs.py
+      - benchmarks/BRIDGE_PAIRS.md
+      - benchmarks/native-baseline.py
+      - tests/quality/test_bridge_pairs.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-bridge-pairs-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pairs:
+    name: Historical release bridge comparison
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Record environment before bootstrap
+        run: |
+          mkdir "$RUNNER_TEMP/bridge-pairs"
+          echo "PAIRED_EVIDENCE=$RUNNER_TEMP/bridge-pairs" >> "$GITHUB_ENV"
+          {
+            git rev-parse HEAD
+            node --version
+            uname -a
+            printf 'Runner OS=%s architecture=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+            cat toolchain.json
+          } > "$RUNNER_TEMP/bridge-pairs/bootstrap.txt"
+      - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$PAIRED_EVIDENCE/bootstrap.log"
+      - name: Checkout exact BN1 tested merge
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 6ea507b58d0249b752ff62691ebc1879f3fcf6da
+          path: .bun-native/performance-sources/bn1
+          persist-credentials: false
+      - name: Checkout exact native-events tested merge
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 4549e75ca5463f136898a2f5fb49d22b58dffa11
+          path: .bun-native/performance-sources/events
+          persist-credentials: false
+      - name: Install exact Rust and native prerequisites
+        run: |
+          rustup show active-toolchain
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox dbus-x11 fonts-dejavu-core
+          {
+            rustc --version --verbose
+            cargo --version
+            cc --version
+            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox
+          } > "$PAIRED_EVIDENCE/native-tools.txt"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: bridge-pairs-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', '.bun-native/performance-sources/*/bun.lock', '.bun-native/performance-sources/*/Cargo.lock') }}
+      - name: Build both exact release hosts and inspect matching AOT clients before collection
+        timeout-minutes: 40
+        run: |
+          python3 benchmarks/bridge-pairs.py prepare \
+            --sources "$GITHUB_WORKSPACE/.bun-native/performance-sources" \
+            --target "$RUNNER_TEMP/bridge-pairs-cargo" \
+            --bun "$(command -v bun)" --output "$PAIRED_EVIDENCE/prepared"
+      - name: Collect the predeclared AB/BA sequence in one isolated native session
+        timeout-minutes: 50
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$PAIRED_EVIDENCE/session" -- python3 benchmarks/bridge-pairs.py run \
+            --prepared "$PAIRED_EVIDENCE/prepared" --bun "$(command -v bun)" \
+            --output "$PAIRED_EVIDENCE/observations" --pairs 5 --warmups 1
+      - name: Retain every build and observation, including failures
+        # This bounded evidence upload is useful after a cancelled collection too.
+        if: ${{ always() && env.PAIRED_EVIDENCE != '' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bridge-pairs-linux-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/bridge-pairs/
+            !${{ runner.temp }}/bridge-pairs/prepared/*/bun-native-host
+            !${{ runner.temp }}/bridge-pairs/prepared/*/package/bridge
+            !${{ runner.temp }}/bridge-pairs/session/runtime/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - name: State measurement scope
+        run: |
+          {
+            echo 'The exact BN1 and native-events revisions completed five predeclared AB/BA pairs per execution mode, plus one full warmup per variant and mode.'
+            echo 'Each revision uses its own release host, locks, unchanged client and inspected machine-code AOT binary. No interaction feature is disabled.'
+            echo 'Raw samples, failed attempts, source/build/artifact identities and process-cleanup reports are retained. A passed job means every native workload and cleanup check passed, not that performance improved.'
+            echo 'This is a whole-revision, software-renderer-request comparison. Acknowledgements are not presentation timestamps. Phase/stack attribution, physical GPU results and long-duration allocation claims remain untested here.'
+          } >> "$GITHUB_STEP_SUMMARY"
