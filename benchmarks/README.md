@@ -31,3 +31,22 @@ for window discovery, native paint, OS input and teardown. They are sampled
 process observations, not hardware frame-presentation timestamps. Repeated
 matched development/AOT trials and release-host measurements extend this baseline
 without rewriting the original record.
+
+## Repeated release-host baseline
+
+[Reproduce the matched baseline](NATIVE_BASELINE.md) with the inspected AOT
+package and the same release host for both execution modes. Native Linux CI
+records one warm-up and five alternating measured fresh-process trials per mode,
+including a two-second idle sampling interval. It retains every raw observation,
+renderer identity, source/configuration hashes and descriptive distributions.
+Cache state is uncontrolled; no cache flushing or machine power changes occur.
+The result is a reproducible initial measurement, with no guessed pass budget or
+claim of statistical speedup.
+
+The [October 31 hosted release capture](bn0/release-linux-x64-2026-10-31/README.md)
+preserves the original summary, all 12 per-trial reports, compiler diagnostics,
+linkage and build environment. Its native job passed; the historical whole
+workflow failed Windows protocol checks. The [BN0 audit](../docs/bn0-audit.md)
+explains that distinction, the later passing/merged native integration and the
+baseline PR's remaining checks and merge. Original
+JSON uses `.json.raw` so source formatting cannot alter artifact fingerprints.

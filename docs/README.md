@@ -2,7 +2,7 @@
 
 This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
 
-**Current state:** the clean workspace, native-process runtime and GPUI window are implemented. The same application has passed Linux X11 input and teardown checks under Bun development and machine-code AOT, using a software GPU. Release-profile CI, measured baselines and the framework/platform roadmap retain their own acceptance. The [BN0 integration record](bn0-integration.md) lists exact evidence and current limits.
+**Current state:** the clean workspace, native-process runtime and GPUI window are implemented. The same application has passed Linux X11 input and teardown checks under Bun development and machine-code AOT, using a software GPU. A hosted native job also passed with the release-profile host and all 12 matched baseline trials. The historical baseline workflow failed its Windows protocol job; the corrected native integration subsequently passed its complete required validation and merged in #266. The baseline/audit PR #273 still requires its rebased checks and merge. The [BN0 audit](bn0-audit.md) and [integration record](bn0-integration.md) distinguish demonstrated behavior, closure conditions and unverified framework/platform capabilities.
 
 ## Product and architecture
 
@@ -12,7 +12,7 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 4. [Compatibility](compatibility.md) — native UI features, Solid/React, web APIs and platform status
 5. [Architecture decisions](decisions/README.md) — decisions, alternatives and recorded tradeoffs
 
-The [BN0 implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions.
+The [BN0 implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [milestone audit](bn0-audit.md) maps implementation and preserved raw evidence to #227/#258/#226.
 
 ## Build and operate
 

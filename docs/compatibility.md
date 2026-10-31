@@ -1,20 +1,23 @@
 # Compatibility and support scope
 
-**Status:** Bun Native is a new framework under implementation. The matrix below distinguishes **intended scope** from **verified support**; no native app release has been qualified yet. Update this matrix from real tests and linked issues, not optimism.
+**Status:** Bun Native is a new framework under implementation. The matrix below distinguishes **intended scope** from the observed BN0 fixture. The Linux application has real native/AOT evidence, including a release-profile host; no signed, installed, cross-platform application release is qualified. The [BN0 audit](bn0-audit.md) records exact artifacts, measurements and pending merge/check conditions.
 
 ## Intended languages, frameworks and platforms
 
-| Capability                                     | Intended support                             | Verified today      |
-| ---------------------------------------------- | -------------------------------------------- | ------------------- |
-| TypeScript `.ts/.tsx`                          | First-class app and framework authoring      | Not yet qualified   |
-| JavaScript `.js/.jsx`                          | First-class consumer authoring               | Not yet qualified   |
-| SolidJS                                        | First native UI adapter                      | Not yet implemented |
-| React                                          | Separate native UI adapter using shared host | Not yet implemented |
-| macOS native GPU window                        | Target                                       | Not yet verified    |
-| Windows native GPU window                      | Target                                       | Not yet verified    |
-| Linux native GPU window                        | Target                                       | Not yet verified    |
-| Bun machine-code AOT release                   | Required production target                   | Not yet verified    |
-| Native text, input, accessibility, OS services | Required useful desktop functionality        | Not yet verified    |
+| Capability                                                 | Intended support                              | Observed BN0 evidence                                                                                                 |
+| ---------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| TypeScript `.ts/.tsx`                                      | First-class app and framework authoring       | The `.ts` native fixture works in development and AOT; framework TSX is not implemented                               |
+| JavaScript `.js/.jsx`                                      | First-class consumer authoring                | Native consumer API/JSX compatibility is not qualified by the TypeScript fixture                                      |
+| SolidJS                                                    | First native UI adapter                       | Not yet implemented in BN0                                                                                            |
+| React                                                      | Separate native UI adapter using shared host  | Not yet implemented in BN0                                                                                            |
+| macOS native GUI                                           | Target                                        | Headless protocol evidence only; native GUI/AOT target qualification belongs to BN6 #246 and CI #256                  |
+| Windows native GUI                                         | Target                                        | Headless protocol/testing work only; native GUI/AOT target qualification belongs to BN6 #246 and CI #256              |
+| Linux native window                                        | Target                                        | X11/llvmpipe pointer, text, paint, close and relaunch passed in development and AOT, including a release-profile host |
+| Physical GPU/Wayland behavior                              | Target                                        | Not verified by the X11 software-renderer capture                                                                     |
+| Bun machine-code AOT application                           | Required production execution path            | Same Linux fixture compiled, inspected for compiled-program/JIT-removal records and executed successfully             |
+| Native text/button/input primitives                        | Required useful desktop functionality         | Counter updates and full text events work in the fixture; long input clips because horizontal scrolling is incomplete |
+| IME, assistive technology and complete focus/text behavior | Required platform qualification               | Not qualified; BN4 #241 owns the support matrix and hardware evidence                                                 |
+| General OS services, signing and installation              | Required later framework/release capabilities | Not qualified by the BN0 fixture or its two-executable payload                                                        |
 
 The renderer starts with Rust GPUI. An agent may choose a different real native renderer with recorded evidence and update this document; WebView/CEF is not a fallback.
 
