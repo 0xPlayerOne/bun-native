@@ -106,11 +106,38 @@ class EvidenceTests(unittest.TestCase):
         self.assertFalse(DRIVER.matches_paint(stale, expected))
 
     def test_keyboard_activation_requires_a_distinct_callback_count(self):
-        click = {"type": "click", "target": "increment", "activation": 1}
-        keyboard = {"type": "click", "target": "increment", "activation": 2}
-        self.assertTrue(DRIVER.matches(click, click))
-        self.assertFalse(DRIVER.matches(click, keyboard))
-        self.assertTrue(DRIVER.matches(keyboard, keyboard))
+        click = {
+            "type": "click",
+            "stage": "bun-application",
+            "target": "increment",
+            "activation": 1,
+            "sequence": 3,
+        }
+        keyboard = {**click, "activation": 2, "sequence": 7}
+        self.assertTrue(DRIVER.matches(click, DRIVER.fixture_click(1)))
+        self.assertFalse(DRIVER.matches(click, DRIVER.fixture_click(2)))
+        self.assertTrue(DRIVER.matches(keyboard, DRIVER.fixture_click(2)))
+
+    def test_lifecycle_launch_survives_prior_native_focus_and_pointer_events(self):
+        # This is the actual launch payload from failed hosted run 41236220063.
+        # The lifecycle completed, but an obsolete sequence=1 oracle never closed
+        # the window because protocol4's launch click had global sequence3.
+        click = {
+            "type": "click",
+            "stage": "bun-application",
+            "target": "public-lifecycle",
+            "sequence": 3,
+        }
+        expected = DRIVER.lifecycle_fixture_event()
+        self.assertTrue(DRIVER.matches(click, expected))
+        self.assertFalse(DRIVER.matches(click, {**expected, "sequence": 1}))
+        for change in (
+            {"type": "focus"},
+            {"stage": "native-paint"},
+            {"target": "transient-button"},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(DRIVER.matches({**click, **change}, expected))
 
     def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
         DRIVER.validate_input_request(

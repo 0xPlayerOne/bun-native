@@ -25,6 +25,7 @@ SPEC = importlib.util.spec_from_file_location(
 DIAGNOSTICS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(DIAGNOSTICS)
 EVIDENCE = DIAGNOSTICS.DRIVER
+MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
 INPUT_SPEC = importlib.util.spec_from_file_location(
     "native_platform_input", ROOT / "scripts/quality/native-platform-input.py"
 )
@@ -34,6 +35,41 @@ INPUT_SPEC.loader.exec_module(OS_INPUT)
 
 class NativePaintMismatch(RuntimeError):
     """A complete expected native paint did not arrive within its deadline."""
+
+
+def renderer_telemetry(renderer, operating_system, gpui_revision):
+    """Validate the actual window record without inventing unavailable metadata."""
+    if (
+        renderer.get("type") != "renderer"
+        or type(renderer.get("window_id")) is not int
+        or renderer["window_id"] <= 0
+        or "gpu" not in renderer
+    ):
+        raise RuntimeError("Actual native renderer record is malformed")
+    gpu = renderer["gpu"]
+    if gpu is None:
+        if (
+            operating_system != "Darwin"
+            or gpui_revision != MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION
+        ):
+            raise RuntimeError("Actual native renderer did not report its adapter")
+        return {
+            "window_id": renderer["window_id"],
+            "status": "unavailable",
+            "reason": "The pinned GPUI macOS window returns None from gpu_specs(); adapter identity and software emulation are unverified.",
+            "gpuiRevision": gpui_revision,
+            "source": f"https://github.com/zed-industries/zed/blob/{gpui_revision}/crates/gpui_macos/src/window.rs",
+        }
+    if (
+        not isinstance(gpu, dict)
+        or type(gpu.get("is_software_emulated")) is not bool
+        or not isinstance(gpu.get("device_name"), str)
+        or not gpu["device_name"]
+        or not isinstance(gpu.get("driver_name"), str)
+        or not isinstance(gpu.get("driver_info"), str)
+    ):
+        raise RuntimeError("Actual native renderer adapter metadata is malformed")
+    return {"window_id": renderer["window_id"], "status": "reported"}
 
 
 def source_snapshot():
@@ -90,6 +126,9 @@ def main():
     output = args.output.resolve()
     nonce = secrets.token_hex(16)
     sources = source_snapshot()
+    gpui_revision = json.loads((ROOT / "toolchain.json").read_text())["gpui"][
+        "revision"
+    ]
     fingerprint = DIAGNOSTICS.fingerprint(host)
     report = {
         "schemaVersion": 1,
@@ -104,13 +143,14 @@ def main():
         "sourceFiles": sources,
         "negativePaintCheck": args.negative_paint_check,
         "osInputRequested": args.os_input,
-        "scope": "Actual GPUI lifecycle, renderer metadata and complete paint traversal; --os-input additionally requires independently owned visible windows and native pointer/Tab/text delivery. No display-presentation, hardware-input, screenshot or complete process-tree claim.",
+        "scope": "Actual GPUI lifecycle, a native renderer record with explicit adapter telemetry availability, and complete paint traversal; --os-input additionally requires independently owned visible windows and native pointer/Tab/text delivery. No display-presentation, hardware-input, screenshot or complete process-tree claim.",
         "osWindowVisibility": "unverified",
         "osInput": "not-attempted",
         "screenshots": "not-attempted",
         "processTreeCleanup": "unverified",
         "paintObservations": [],
         "renderers": [],
+        "rendererTelemetry": [],
         "osObservations": [],
         "logs": {},
     }
@@ -310,16 +350,11 @@ def main():
                     ),
                     None,
                 ),
-                "actual native renderer metadata",
+                "actual native renderer record",
             )
-            gpu = renderer.get("gpu")
-            if (
-                not isinstance(gpu, dict)
-                or type(gpu.get("is_software_emulated")) is not bool
-                or not isinstance(gpu.get("device_name"), str)
-                or not gpu["device_name"]
-            ):
-                raise RuntimeError("Actual native renderer did not report its adapter")
+            report["rendererTelemetry"].append(
+                renderer_telemetry(renderer, platform.system(), gpui_revision)
+            )
             report["renderers"].append(renderer)
             for updated in (False, True):
                 if updated:
