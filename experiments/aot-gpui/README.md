@@ -17,7 +17,7 @@ The runner requires the exact `Bun.revision` from `toolchain.json`, so a stable 
 
 1. Compile the C fixture into an OS shared library and a native echo executable. Both use warnings as errors. The echo process is an IPC fixture only.
 2. In Bun development mode, load the library with `bun:ffi`, call native arithmetic, call back synchronously into JavaScript, close the callback and library, and round-trip a Unicode JSON line through `Bun.spawn` stdin/stdout. The native subprocess must exit successfully after stdin closes.
-3. Compile the **same TypeScript source** with `bun compile --no-script --production --explain=json`, then run the emitted executable against the same native artifacts.
+3. Create a successful same-named `compile` package script and prove a control invocation executes it. Compile the **same TypeScript source** from that directory with `bun compile --no-script --production --explain=json`, require the package-script marker to remain absent, then run the emitted executable against the same native artifacts.
 4. Compile a deliberately JIT-based control with `bun compile --no-aot`. A runtime mutation of a protected built-in is accepted in development/JIT and rejected with `TypeError` in AOT, as specified by the pinned compiler. This provides an execution witness alongside the explicit AOT build and binary inspection.
 5. Require errors for a missing shared library and a TypeScript type mismatch. A rejected typecheck must emit no executable.
 6. Inspect the standalone module graph using the pinned compiler's actual [`HAS_COMPILED_PROGRAM` flag](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/standalone_graph/StandaloneModuleGraph.rs). Require the flag in AOT and its absence in the JIT control. Reject malformed lengths, offsets, module records, entry points and unknown flags. This identifies a compiled program; it is not a general executable security validator.
@@ -49,15 +49,20 @@ Use `--host-profile dev` when qualifying a development host; omitting it records
 
 The package directory receives the AOT application, native host, compiler diagnostics, native linkage logs and a manifest with exact toolchain, source/lockfile hashes, dirty-worktree status, artifact hashes and sizes. Native rendering, OS input, teardown, installation and signing start as **not verified** in this build record; actual execution evidence is separate. The build itself cannot turn those checks into passes.
 
-The same compiler and inspection pipeline supports three explicit entries:
+The same compiler and inspection pipeline supports eight explicit entries:
 
-| `--entry`                 | Source                           | Executable      | Native host placement                              |
-| ------------------------- | -------------------------------- | --------------- | -------------------------------------------------- |
-| `native-window` (default) | `examples/native-window/main.ts` | `native-window` | Copied into the package                            |
-| `input-race`              | `tests/native/input-race.ts`     | `input-race`    | Existing prebuilt host referenced by absolute path |
-| `bridge`                  | `benchmarks/bridge.ts`           | `bridge`        | Existing prebuilt host referenced by absolute path |
+| `--entry`                 | Source                             | Executable         | Native host placement                              |
+| ------------------------- | ---------------------------------- | ------------------ | -------------------------------------------------- |
+| `native-window` (default) | `examples/native-window/main.ts`   | `native-window`    | Copied into the package                            |
+| `input-race`              | `tests/native/input-race.ts`       | `input-race`       | Existing prebuilt host referenced by absolute path |
+| `bridge`                  | `benchmarks/bridge.ts`             | `bridge`           | Existing prebuilt host referenced by absolute path |
+| `javascript`              | `tests/native/javascript.js`       | `javascript`       | Existing prebuilt host referenced by absolute path |
+| `core-lifecycle`          | `tests/native/public-lifecycle.ts` | `core-lifecycle`   | Existing prebuilt host referenced by absolute path |
+| `event-throughput`        | `tests/native/event-throughput.ts` | `event-throughput` | Existing prebuilt host referenced by absolute path |
+| `fault`                   | `tests/native/fault.ts`            | `fault`            | Existing prebuilt host referenced by absolute path |
+| `scheduling`              | `tests/native/scheduling.ts`       | `scheduling`       | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The two test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. `--entry bridge` requires an explicit `--host-profile dev` or `release`. Its [benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
+All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Bridge, fault and scheduling entries require an explicit `--host-profile dev` or `release`. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \

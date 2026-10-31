@@ -41,6 +41,23 @@ bun compile --no-script --production ./application.ts --outfile ./application
 
 `--no-script` prevents a same-named package script from impersonating the built-in checker, formatter or compiler. TypeScript declarations currently match Bun's stable `1.4.4` API; the actual compiler is the pinned canary. Bun checks types during AOT compilation and rejects invalid source before emitting an executable. AOT targets the platform performing the build; use target-native hosted runners.
 
+The [command regression tests](../tests/toolchain/commands.test.ts) create owned,
+temporary projects with deliberately successful `check`, `fmt` and `test`
+package scripts. They prove that ordinary `bun check`/`bun fmt` select those
+scripts, while `--no-script` detects actual type/format errors; a formatting
+check must leave the file unchanged. Correcting each fixture then passes the
+built-in. `bun test` independently rejects a failing test even when `bun run
+test` invokes a successful package script. The required portable test matrix
+runs these controls; they do not render a native window.
+
+The [AOT interop runner](../experiments/aot-gpui/run.ts) similarly creates a
+same-named `compile` script and observes it in a control invocation. It then
+compiles from that directory with `--no-script`, requires the script marker to
+remain absent, inspects the actual output and executes its native FFI/IPC
+fixture. Invalid types must still fail without an output executable or script
+marker. Its command log includes the working directory so script selection is
+reproducible. Actual GPUI input remains the separate required native suite.
+
 | Mode                                            | Purpose                     | Runtime behavior                                   |
 | ----------------------------------------------- | --------------------------- | -------------------------------------------------- |
 | `bun run`                                       | Development                 | Normal Bun runtime/JIT                             |
