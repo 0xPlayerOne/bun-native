@@ -65,9 +65,10 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
 | `react`                   | `examples/react-counter/main.tsx`     | `react`              | Existing prebuilt host referenced by absolute path |
 | `react-interactions`      | `tests/native/react-interactions.tsx` | `react-interactions` | Existing prebuilt host referenced by absolute path |
+| `react-behavior`          | `tests/native/react-behavior.tsx`     | `react-behavior`     | Existing prebuilt host referenced by absolute path |
 | `react-workload`          | `benchmarks/solid/react.tsx`          | `react-workload`     | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. Entries other than `native-window` avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. `bridge`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`, `interactions`, `react`, `react-interactions` and `react-workload` require an explicit `--host-profile dev` or `release`. The [bridge runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
+All executable names gain `.exe` on Windows. Entries other than `native-window` avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. `bridge`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`, `interactions`, `react`, `react-interactions`, `react-behavior` and `react-workload` require an explicit `--host-profile dev` or `release`. The [bridge runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -93,6 +94,13 @@ fixture oracle. Its inspected executable runs through
 selection scenarios. The native fixture separately verifies shared event phases,
 input revisions and framework cleanup; artifact inspection does not supply that
 input evidence.
+
+`--entry react-behavior` fingerprints the same React/shared-renderer source and
+the eight-case hook/error/lifetime fixture. Its independent
+`tests/native/react-behavior.py` controller verifies actual native mount, update,
+unmount, boundary recovery, terminal cleanup failures and non-suspending
+transitions. Run all eight scenarios in both modes; an inspected executable alone
+does not qualify their behavior. See the [React behavior matrix](../../docs/react-behavior.md).
 
 On Linux, the helper additionally requires the emitted application to record JIT compiler removal and includes its full runtime-feature record in the manifest. An interpreter may remain present; this check does not claim otherwise. Other executable formats report the JIT inspection as unimplemented.
 

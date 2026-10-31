@@ -198,7 +198,12 @@ const host: Config = {
   preloadInstance: () => true,
   startSuspendingCommit: noInstance,
   suspendInstance: unsupported.bind(null, 'suspended-host-commit'),
-  suspendOnActiveViewTransition: unsupported.bind(null, 'view-transitions'),
+  // React 19.3 calls this for ordinary transition lanes too. This host has no
+  // active view-transition animation whose completion could delay a commit.
+  suspendOnActiveViewTransition: noOp,
+  createViewTransitionInstance: unsupported.bind(null, 'view-transitions'),
+  applyViewTransitionName: unsupported.bind(null, 'view-transitions'),
+  startViewTransition: unsupported.bind(null, 'view-transitions'),
   waitForCommitToBeReady: noInstance,
   getSuspendedCommitReason: noInstance,
 }

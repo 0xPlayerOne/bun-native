@@ -43,6 +43,7 @@ const entries = {
   interactions: 'tests/native/interactions.ts',
   react: 'examples/react-counter/main.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
+  'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
 function isEntry(value: string | undefined): value is keyof typeof entries {
@@ -75,6 +76,7 @@ if (
     entry === 'interactions' ||
     entry === 'react' ||
     entry === 'react-interactions' ||
+    entry === 'react-behavior' ||
     entry === 'react-workload') &&
   hostProfile === 'unverified'
 )
@@ -143,7 +145,12 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
-  if (entry === 'react' || entry === 'react-interactions' || entry === 'react-workload') {
+  if (
+    entry === 'react' ||
+    entry === 'react-interactions' ||
+    entry === 'react-behavior' ||
+    entry === 'react-workload'
+  ) {
     sources.add('packages/react/package.json')
     sources.add('packages/renderer/package.json')
     for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({

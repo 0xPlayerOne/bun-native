@@ -107,7 +107,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions react react-interactions react-workload; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions react react-interactions react-behavior react-workload; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -152,6 +152,24 @@ jobs:
                 "$evidence-session" -- python3 tests/native/renderer-interactions.py \
                 --renderer React --scenario "$scenario" --mode "$mode" \
                 --output "$evidence" -- "${command[@]}"
+            done
+          done
+      - name: Development and AOT React hooks, boundaries and cleanup failures
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/react-behavior.tsx)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/react-behavior-package/react-behavior")
+            fi
+            for scenario in lifecycle boundary-fallback boundary-recovery recoverable-retry throwing-reporter cleanup-effect cleanup-ref transition; do
+              evidence="$NATIVE_EVIDENCE/react-$mode-behavior-$scenario"
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- python3 tests/native/react-behavior.py \
+                --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
             done
           done
       - name: Development and AOT React update and lifecycle diagnostics
@@ -335,6 +353,7 @@ jobs:
             echo 'The native input checks use isolated X11, XTest and verified Mesa software rendering. Exact paint trees, screenshots, source/artifact hashes and cleanup reports are retained.'
             echo 'The React counter runs in development and inspected AOT against that same release host. It requires a stable active callback through rerender, one property Set/one keyed move/one deletion, complete native input revisions, final native paint, effect/ref cleanup and clean OS close.'
             echo 'React also consumes the shared capture/target/bubble event mapping. Development and AOT scenarios require real pointer/focus/keyboard events, Enter activation despite JavaScript propagation stops, caret insertion and selection replacement without native input echo, and revocation of every observed callback signal after OS close.'
+            echo 'Eight React behavior scenarios in each mode require real native mount/update/unmount, state/reducer batching, effect/ref lifetime, boundary fallback/recovery, transient concurrent retry, terminal reporter and cleanup failures, and an independently usable survivor root. The non-suspending transition case waits for an explicit React commit and native acknowledgement; ordinary flush does not promise to drain every transition lane.'
             echo 'The React diagnostic requires 1,000 individual state updates, 1,000 values coalesced into 100 native updates, 1,000 keyed rotations, and 1,000 mount/update/dispose cycles in each mode. Fixed WeakRef checkpoints, row-owner counts and public resource counts guard bounded cleanup. Separate native-paint calibration observes the complete expected tree and actual GPU; recorded acknowledgement timings are single-run diagnostics, not a cross-framework performance claim.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

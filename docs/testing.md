@@ -122,6 +122,9 @@ retain a usable fallback; a recoverable concurrent retry must retain its root.
 A throwing recovery reporter fails that root while leaving a sibling usable.
 Uncaught effect/ref-cleanup errors must reject disposal after native ownership
 has been released. These tests do not render GPUI.
+The scheduling suite also requires non-suspending transitions to commit without
+requesting native view animations, while a `ViewTransition` native ref must fail
+explicitly and release its root.
 
 `tests/react/propagation.test.tsx` adds six actual-IPC cases for the shared
 capture/target/bubble contract. They exercise a capture state update followed by
@@ -154,6 +157,20 @@ All use the same explicitly identified development host and software GPU, with
 source/harness/artifact fingerprints checked before and after each run. Required
 hosted CI repeats them on its release host; local evidence does not establish
 release performance or a macOS/Windows native result.
+
+`tests/native/react-behavior.tsx` and its independent Python tree oracle exercise
+eight actual native cases in each mode: mount/update/unmount hooks and refs,
+boundary fallback and recovery, transient concurrent retry, a throwing recovery
+reporter, throwing effect/ref cleanups, and a non-suspending transition. Terminal
+errors preserve exact object identity and must leave an independently usable
+survivor root in the same window. Each run requires real OS activation, complete
+initial/final native paint, the application assertions and clean OS close.
+The [behavior matrix](react-behavior.md) documents completion boundaries and
+limitations; `flush()` is not a general transition-drain API. The required native
+lane compiles `--entry react-behavior` once and runs all 16 cases against its single
+release-profile host. The [local record](../tests/native/evidence/react-behavior-linux-development-aot.json)
+identifies 16 passing cases, the original transition-hook failure that they
+correct, and separately retained earlier execution failures.
 
 The [React native workload](../benchmarks/REACT.md) uses the same framework-neutral
 workload as the Solid/direct-core experiments. Each mode performs 1,000 individual

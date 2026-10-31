@@ -2,8 +2,82 @@
 import { expect, spyOn, test } from 'bun:test'
 import assert from 'node:assert/strict'
 import { render, type NativeRef } from '@bun-native/react'
-import { createRef, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  ViewTransition,
+  createRef,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useTransition,
+  type Dispatch,
+  type SetStateAction,
+  type ViewTransitionInstance,
+} from 'react'
 import { withApp } from '../renderers/support.ts'
+import { until } from './support.ts'
+
+test('a non-suspending transition commits without requesting a native view animation', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'React ordinary transition' })
+    let begin!: () => void
+    let update!: (value: number) => void
+    let committed = 0
+    let pending = false
+    let cleaned = 0
+    function App() {
+      const [value, setValue] = useState(0)
+      const [isPending, startTransition] = useTransition()
+      begin = () => startTransition(() => setValue(1))
+      update = setValue
+      useLayoutEffect(() => {
+        committed = value
+        pending = isPending
+      })
+      useEffect(
+        () => () => {
+          cleaned++
+        },
+        []
+      )
+      return <text>Value: {value}</text>
+    }
+    const root = render(<App />, window)
+    try {
+      await root.ready
+      begin()
+      // This ordinary barrier may finish before the lower-priority transition.
+      await root.flush()
+      await until(() => committed === 1 && !pending)
+      await root.flush()
+      expect(root.diagnostics.mutations.set).toBe(1)
+      expect(root.diagnostics.nodes).toBe(2)
+      update(2)
+      await root.flush()
+      expect(committed).toBe(2)
+      expect(root.diagnostics.mutations.set).toBe(2)
+    } finally {
+      await root.dispose()
+    }
+    expect(cleaned).toBe(1)
+  }))
+
+test('view-transition native refs still fail explicitly and release the root', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'React unsupported view animation' })
+    const reference = createRef<ViewTransitionInstance>()
+    const root = render(
+      <ViewTransition ref={reference}>
+        <text>Unsupported animation</text>
+      </ViewTransition>,
+      window
+    )
+    await assert.rejects(root.ready, /Unsupported native feature: react-view-transitions/)
+    await assert.rejects(root.closed, /Unsupported native feature: react-view-transitions/)
+    expect(reference.current).toBeNull()
+    expect(root.diagnostics.nodes).toBe(0)
+    expect(app.diagnostics.nodes).toBe(1)
+    expect(app.diagnostics.callbacks).toBe(0)
+  }))
 
 test('a recoverable concurrent render retry keeps the React root usable', () =>
   withApp(async (app) => {

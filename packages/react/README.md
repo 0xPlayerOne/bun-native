@@ -55,6 +55,13 @@ acknowledgement.
 acknowledgements. It does not wait for future asynchronous application work or
 lower-priority transitions. Its commit-barrier queue is bounded at 128.
 
+Non-suspending `useTransition` updates can commit. When an application requires
+their resulting native state, observe that transition's committed result and then
+flush; an ordinary root barrier does not promise to drain every transition lane.
+This scheduling support does not implement native view-transition animations.
+The [behavior matrix](../../docs/react-behavior.md) distinguishes tested hooks,
+error recovery and cleanup from unsupported or unqualified concurrency features.
+
 Refs contain an opaque `NativeRef`, not a DOM node or an exposed core handle.
 Object refs and callback refs follow React's attach/detach lifecycle. Native input
 state can be read through `inputState(ref)` after `ready` or a successful flush;
@@ -207,6 +214,14 @@ The two application state changes emit exactly two native Sets. Input observatio
 at every phase never replace the native widget value or advance its edit revision.
 OS close must dispose the effect and ref, revoke every observed callback signal
 and leave all public ownership counts at zero.
+
+The separate `react-behavior.tsx` fixture and Python controller qualify mount,
+batched state/reducer updates, effects and refs, error-boundary fallback/recovery,
+transient concurrent retry, terminal recovery-reporter errors and effect/ref
+cleanup failures. Failed roots must release their ownership while an independent
+root still updates and paints in the same window. Both development and inspected
+`--entry react-behavior` AOT run all eight cases; see the
+[exact scenario matrix and commands](../../docs/react-behavior.md).
 
 ```sh
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \

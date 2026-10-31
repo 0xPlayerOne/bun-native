@@ -133,6 +133,20 @@ protocol4 source and binary hashes. Global native sequence numbers now include
 focus, pointer and key notifications; typed edit counts remain independently
 checked by input revisions. The shared core validates global ordering.
 
+`react-behavior.tsx` supplies the separate eight-case React behavior qualification.
+Run `python3 tests/native/react-behavior.py --scenario SCENARIO --mode
+development|aot --output NEW_DIRECTORY -- APPLICATION` inside the same isolated
+session; AOT uses the inspected `--entry react-behavior` executable. Cases cover
+batched state/reducer updates and hook/ref lifetime, actual boundary fallback and
+recovery, a transient concurrent retry, terminal recovery-reporter/effect/ref
+errors, and a non-suspending transition. The last three failure cases require an
+independent survivor root to update and paint after the failed root releases its
+ownership. The controller asserts exact initial/final trees and the original
+driver's OS-input and child-cleanup contract. `react-behavior.json` records bounded
+effect traces, ref counts, error identity assertions and final ownership. See the
+[behavior and concurrency matrix](../../docs/react-behavior.md) for every scenario
+and the precise transition-completion limit.
+
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.
 The lifecycle fixture also writes `public-lifecycle.json` beside the event log,
