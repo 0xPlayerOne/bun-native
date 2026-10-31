@@ -12,6 +12,7 @@ const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
 if (!directory || !isAbsolute(directory) || !executable || !isAbsolute(executable) || !nonce)
   throw new Error('An explicit diagnostics directory, native host and nonce are required')
 const outputDirectory = directory
+const osInput = process.env['BUN_NATIVE_PLATFORM_INPUT'] === '1'
 const record = (type: string, fields: Record<string, unknown>) =>
   appendFileSync(
     join(outputDirectory, 'application.jsonl'),
@@ -31,7 +32,7 @@ let app: NativeApplication | undefined
 let failure: unknown
 let nativeShutdownAndExitVerified = false
 let completedCycles = 0
-let unexpectedInput = 0
+let observedInputEvents = 0
 const started = performance.now()
 try {
   app = await createApplication({ executable })
@@ -42,20 +43,69 @@ try {
       height: 380,
     })
     const { label, button, input } = await mountContent(window)
-    window.onClick(button, () => {
-      unexpectedInput += 1
+    window.onClick(button, (event) => {
+      observedInputEvents += 1
+      if (osInput)
+        record('os-click', {
+          cycle,
+          kind: event.node.kind,
+          sequence: event.sequence,
+          treeRevision: event.treeRevision,
+        })
     })
-    window.onInput(input, () => {
-      unexpectedInput += 1
+    window.onInput(input, (event) => {
+      observedInputEvents += 1
+      if (osInput)
+        record('os-input', {
+          cycle,
+          kind: event.node.kind,
+          sequence: event.sequence,
+          treeRevision: event.treeRevision,
+          value: event.value,
+          revision: event.revision,
+        })
     })
+    if (osInput) {
+      for (const type of [
+        'pointer_down',
+        'pointer_up',
+        'key_down',
+        'key_up',
+        'focus',
+        'blur',
+      ] as const)
+        window.on(
+          window.root,
+          type,
+          (event) => {
+            record('os-route', {
+              cycle,
+              event: event.type,
+              kind: event.node.kind,
+              sequence: event.sequence,
+              treeRevision: event.treeRevision,
+              ...('key' in event ? { key: event.key, modifiers: event.modifiers } : {}),
+              ...('button' in event
+                ? { button: event.button, x: event.x, y: event.y, modifiers: event.modifiers }
+                : {}),
+            })
+          },
+          { capture: true }
+        )
+    }
     record('mounted', { cycle, treeRevision: window.revision, input: window.input(input) })
     await step('update-' + cycle)
+    const before = window.input(input)
+    assert.deepEqual(
+      before,
+      osInput ? { value: nonce, revision: nonce.length } : { value: '', revision: 0 }
+    )
     const value: string = `Native ${cycle} ${nonce}`
     await window.batch((batch) => {
       batch.set(label, { kind: 'text', text: 'Native update ' + cycle })
-      batch.set(input, { ...INITIAL_ELEMENTS[4], value }, 0)
+      batch.set(input, { ...INITIAL_ELEMENTS[4], value }, before.revision)
     })
-    assert.deepEqual(window.input(input), { value, revision: 1 })
+    assert.deepEqual(window.input(input), { value, revision: before.revision + 1 })
     record('updated', { cycle, treeRevision: window.revision, input: window.input(input) })
     await step('close-' + cycle)
     await window.close()
@@ -64,7 +114,11 @@ try {
     completedCycles += 1
     record('cycle-closed', { cycle, ownership: app.diagnostics })
   }
-  assert.equal(unexpectedInput, 0, 'This smoke does not request OS input')
+  assert.equal(
+    observedInputEvents,
+    osInput ? 3 * (1 + nonce.length) : 0,
+    'Every requested native OS activation/edit must be observed exactly once'
+  )
 } catch (error) {
   failure = error
 } finally {
@@ -82,10 +136,11 @@ try {
 const result = {
   status: failure ? 'failed' : 'passed',
   scenario: 'platform-smoke',
+  osInput,
   completedCycles,
   nativeShutdownAndExitVerified,
   ownership: app?.diagnostics,
-  unexpectedInput,
+  observedInputEvents,
   elapsedMs: performance.now() - started,
   error: failure instanceof Error ? { name: failure.name, message: failure.message } : failure,
 }

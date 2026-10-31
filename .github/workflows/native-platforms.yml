@@ -46,6 +46,15 @@ jobs:
           $evidence = Join-Path $env:RUNNER_TEMP 'bun-native-platform-evidence'
           New-Item -ItemType Directory $evidence | Out-Null
           "NATIVE_EVIDENCE=$evidence" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          @{
+            source = (git rev-parse HEAD)
+            platform = [Runtime.InteropServices.RuntimeInformation]::OSDescription
+            architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+            imageOS = $env:ImageOS
+            imageVersion = $env:ImageVersion
+            node = (node --version)
+            phase = 'before Bun bootstrap; native build and input not yet verified'
+          } | ConvertTo-Json | Out-File (Join-Path $evidence 'bootstrap-environment.json')
       - name: Install checksum-pinned Bun compiler
         env:
           BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
@@ -111,7 +120,7 @@ jobs:
             rustc --version --verbose
             cargo --version
             & '${{ matrix.python }}' --version
-            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint traversal; OS visibility/input unverified"}))'
+            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint/lifecycle and separate owned OS-input qualification; results recorded per phase"}))'
           } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
       - name: Build the genuine target-platform GPUI executable
         id: native-build
@@ -145,6 +154,31 @@ jobs:
             --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
             --mode development --host-profile release -- bun tests/native/platform-smoke.ts
           if ($LASTEXITCODE -ne 0) { throw 'Development native paint/lifecycle was not verified' }
+      - name: Build the bounded macOS OS controller
+        if: runner.os == 'macOS'
+        run: |
+          $eventTest = Join-Path $env:NATIVE_EVIDENCE 'macos-input-events'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            tests/native/macos-input-events.m -o $eventTest
+          if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK pointer and target-guard control did not compile' }
+          & $eventTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-pointer-events.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The actual Quartz event or exact-window target controls failed' }
+          $helper = Join-Path $env:NATIVE_EVIDENCE 'native-platform-macos'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            scripts/quality/native-platform-macos.m -o $helper
+          if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK controller did not compile' }
+          "BUN_NATIVE_PLATFORM_HELPER=$helper" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-FileHash -Algorithm SHA256 $helper |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'os-helper-sha256.txt')
+      - name: Development owned native window and OS input
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
+            --mode development --host-profile release --os-input -- bun tests/native/platform-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Actual owned window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Prove a wrong native paint expectation fails
         timeout-minutes: 3
         run: |
@@ -183,6 +217,16 @@ jobs:
             --mode aot --host-profile release -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
+      - name: AOT owned native window and OS input
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+        run: |
+          & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `
+            --mode aot --host-profile release --os-input -- `
+            (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
+          if ($LASTEXITCODE -ne 0) { throw 'Actual AOT window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |

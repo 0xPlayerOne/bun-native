@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable actual-host paint/lifecycle smoke; no OS visibility/input claim.
+"""Portable actual-host paint/lifecycle smoke with opt-in owned OS input.
 
 Reuses the native diagnostic driver's pure log, fingerprint and full-tree
 expectation helpers. Its Linux process/input functions are never called here.
@@ -26,6 +26,11 @@ DIAGNOSTICS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(DIAGNOSTICS)
 EVIDENCE = DIAGNOSTICS.DRIVER
 MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
+INPUT_SPEC = importlib.util.spec_from_file_location(
+    "native_platform_input", ROOT / "scripts/quality/native-platform-input.py"
+)
+OS_INPUT = importlib.util.module_from_spec(INPUT_SPEC)
+INPUT_SPEC.loader.exec_module(OS_INPUT)
 
 
 class NativePaintMismatch(RuntimeError):
@@ -68,17 +73,24 @@ def renderer_telemetry(renderer, operating_system, gpui_revision):
 
 
 def source_snapshot():
-    sources = DIAGNOSTICS.source_snapshot()
+    sources = {
+        Path(relative).as_posix(): value
+        for relative, value in DIAGNOSTICS.source_snapshot().items()
+    }
     for relative in (
         "tests/native/platform-smoke.ts",
         "examples/native-window/content.ts",
         "scripts/quality/native-platform-smoke.py",
+        "scripts/quality/native-platform-input.py",
+        "scripts/quality/native-platform-windows.py",
+        "scripts/quality/native-platform-macos.m",
+        "tests/native/macos-input-events.m",
     ):
         sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
     return sources
 
 
-def expected_paint(cycle, updated, nonce):
+def expected_paint(cycle, updated, nonce, *, os_input=False):
     value = f"Native {cycle} {nonce}" if updated else ""
     label = f"Native update {cycle}" if updated else "Clicks: 0"
     result = EVIDENCE.fixture_paint(2 if updated else 1, label, value)
@@ -87,8 +99,138 @@ def expected_paint(cycle, updated, nonce):
     for node in result["nodes"]:
         node["node_id"] += offset
         node["children"] = [child + offset for child in node["children"]]
-    result["nodes"][-1]["input_revision"] = 1 if updated else 0
+    result["nodes"][-1]["input_revision"] = (
+        (len(nonce) if os_input else 0) + 1 if updated else 0
+    )
     return result
+
+
+def exercise_input(
+    cycle, initial, *, input_driver, report, records, wait_for, nonce, started
+):
+    observation = dict(
+        wait_for(
+            lambda: input_driver.observe(f"Bun Native platform smoke {cycle}"),
+            "independently owned and visible native window",
+        )
+    )
+    observation.update(cycle=cycle, phase="window-observed")
+    # Keep partial ownership, geometry and posting evidence when delivery fails.
+    # The final phase and report status still require every actual event/paint.
+    report["osObservations"].append(observation)
+    report["osWindowVisibility"] = "observed through target OS window APIs"
+    report["osInput"] = "not-yet-verified"
+    button_id = initial["nodes"][3]["node_id"]
+    input_id = initial["nodes"][-1]["node_id"]
+
+    def latest_layout():
+        layouts = [
+            row["layout"]
+            for row in records("native.jsonl")
+            if row.get("type") == "layout"
+            and row.get("window_id") == cycle
+            and row.get("tree_revision") == 1
+        ]
+        return layouts[-1] if layouts else None
+
+    layout = wait_for(latest_layout, "actual native input geometry")
+    x, y, viewport = OS_INPUT.pointer_target(layout, button_id)
+    observation["pointerTarget"] = {
+        "nodeId": button_id,
+        "logicalPoint": [x, y],
+        "viewport": viewport,
+    }
+    observation["phase"] = "pointer-targeted"
+    observation["pointer"] = input_driver.click(x, y, viewport)
+    observation["phase"] = "pointer-posted"
+    wait_for(
+        lambda: (
+            OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
+                "clicks"
+            ]
+            == 1
+        ),
+        "actual OS pointer activation at the public button listener",
+    )
+    observation["phase"] = "pointer-delivered"
+    observation["tab"] = input_driver.tab()
+    observation["phase"] = "tab-posted"
+
+    def input_focused():
+        layout = latest_layout()
+        return (
+            layout
+            and layout.get("focused_node_id") == input_id
+            and any(
+                row.get("type") == "os-route"
+                and row.get("cycle") == cycle
+                and row.get("event") == "focus"
+                and row.get("kind") == "input"
+                for row in records("application.jsonl")
+            )
+        )
+
+    wait_for(input_focused, "actual Tab traversal into the native editor")
+    observation["phase"] = "input-focused"
+    observation["typing"] = input_driver.type_text(nonce)
+    observation["phase"] = "text-posted"
+    wait_for(
+        lambda: OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
+            "complete"
+        ],
+        "every actual OS nonce edit in sequence",
+    )
+    observation["phase"] = "text-delivered"
+    rows = records("application.jsonl")
+    routes = [
+        row
+        for row in rows
+        if row.get("type") == "os-route" and row.get("cycle") == cycle
+    ]
+    for event in ("pointer_down", "pointer_up"):
+        matching = [row for row in routes if row.get("event") == event]
+        if (
+            len(matching) != 1
+            or matching[0].get("kind") != "button"
+            or matching[0].get("button") != "left"
+        ):
+            raise RuntimeError("Actual native pointer event was missing or misrouted")
+    for event in ("key_down", "key_up"):
+        if (
+            len(
+                [
+                    row
+                    for row in routes
+                    if row.get("event") == event and row.get("key") == "tab"
+                ]
+            )
+            != 1
+        ):
+            raise RuntimeError("Actual native Tab key event was missing or duplicated")
+    expected = expected_paint(cycle, False, nonce)
+    expected["nodes"][-1]["element"]["value"] = nonce
+    expected["nodes"][-1]["input_revision"] = len(nonce)
+    painted = wait_for(
+        lambda: next(
+            (
+                row
+                for row in records("native.jsonl")
+                if EVIDENCE.matches_paint(row, expected)
+            ),
+            None,
+        ),
+        "complete native paint retaining every OS edit",
+        paint=True,
+    )
+    report["paintObservations"].append(
+        {
+            "phase": "os-input",
+            "elapsedMs": (time.monotonic() - started) * 1000,
+            "paint": painted,
+        }
+    )
+    observation["delivery"] = OS_INPUT.input_delivery(rows, cycle, nonce, complete=True)
+    observation["phase"] = "complete"
 
 
 def main():
@@ -97,8 +239,11 @@ def main():
     parser.add_argument("--mode", required=True, choices=("development", "aot"))
     parser.add_argument("--host-profile", required=True, choices=("dev", "release"))
     parser.add_argument("--negative-paint-check", action="store_true")
+    parser.add_argument("--os-input", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    if args.os_input and args.negative_paint_check:
+        parser.error("Run the negative paint guard separately from actual OS input")
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     host = Path(os.environ.get("BUN_NATIVE_HOST", ""))
     if not command or not host.is_absolute() or not host.is_file():
@@ -126,7 +271,8 @@ def main():
         "system": {"platform": platform.platform(), "architecture": platform.machine()},
         "sourceFiles": sources,
         "negativePaintCheck": args.negative_paint_check,
-        "scope": "Actual GPUI protocol lifecycle, a native renderer record with explicit adapter telemetry availability, and complete paint traversal. No OS-visible-window, display-presentation or physical input observation.",
+        "osInputRequested": args.os_input,
+        "scope": "Actual GPUI lifecycle, a native renderer record with explicit adapter telemetry availability, and complete paint traversal; --os-input additionally requires independently owned visible windows and native pointer/Tab/text delivery. No display-presentation, hardware-input, screenshot or complete process-tree claim.",
         "osWindowVisibility": "unverified",
         "osInput": "not-attempted",
         "screenshots": "not-attempted",
@@ -134,6 +280,7 @@ def main():
         "paintObservations": [],
         "renderers": [],
         "rendererTelemetry": [],
+        "osObservations": [],
         "logs": {},
     }
     environment = {
@@ -142,9 +289,13 @@ def main():
         "BUN_NATIVE_DIAGNOSTICS_DIR": str(output),
         "BUN_NATIVE_EVIDENCE_LOG": str(output / "native.jsonl"),
         "BUN_NATIVE_EVIDENCE_NONCE": nonce,
+        "BUN_NATIVE_PLATFORM_INPUT": "1" if args.os_input else "0",
     }
     app = None
     threads = []
+    input_driver = None
+    input_errors = (OS_INPUT.InputUnavailable,)
+    helper_fingerprint = None
     started = time.monotonic()
 
     def interrupt(signum, _frame):
@@ -188,6 +339,15 @@ def main():
             )
             thread.start()
             threads.append(thread)
+        if args.os_input:
+            input_driver, extra_errors = OS_INPUT.create(app, host, DIAGNOSTICS)
+            input_errors += extra_errors
+            if hasattr(input_driver, "helper"):
+                helper_fingerprint = DIAGNOSTICS.fingerprint(input_driver.helper)
+                report["osHelper"] = {
+                    "path": str(input_driver.helper),
+                    **helper_fingerprint,
+                }
         for cycle in range(1, 4):
             wait_for(
                 lambda: any(
@@ -222,7 +382,7 @@ def main():
                         ),
                         "acknowledged native update",
                     )
-                expected = expected_paint(cycle, updated, nonce)
+                expected = expected_paint(cycle, updated, nonce, os_input=args.os_input)
                 if args.negative_paint_check:
                     expected["nodes"][2]["element"]["text"] = (
                         "Deliberate invalid paint expectation"
@@ -243,6 +403,17 @@ def main():
                 report["paintObservations"].append(
                     {"elapsedMs": (time.monotonic() - started) * 1000, "paint": painted}
                 )
+                if args.os_input and not updated:
+                    exercise_input(
+                        cycle,
+                        expected,
+                        input_driver=input_driver,
+                        report=report,
+                        records=records,
+                        wait_for=wait_for,
+                        nonce=nonce,
+                        started=started,
+                    )
             (output / f"close-{cycle}").touch()
             wait_for(
                 lambda: any(
@@ -256,7 +427,21 @@ def main():
             raise RuntimeError("The native smoke application failed")
         if source_snapshot() != sources or DIAGNOSTICS.fingerprint(host) != fingerprint:
             raise RuntimeError("Native source or executable changed during the smoke")
+        if (
+            helper_fingerprint
+            and DIAGNOSTICS.fingerprint(input_driver.helper) != helper_fingerprint
+        ):
+            raise RuntimeError(
+                "The actual OS helper executable changed during the smoke"
+            )
+        if args.os_input:
+            report["osInput"] = (
+                "verified pointer activation, Tab traversal and every nonce edit"
+            )
         report["status"] = "passed"
+    except input_errors as error:
+        report["status"] = "unsupported"
+        report["error"] = {"type": type(error).__name__, "message": str(error)}
     except Exception as error:
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:
@@ -277,6 +462,13 @@ def main():
                     app.wait(timeout=3)
             report["applicationExitCode"] = app.returncode
         report["forcedApplicationTermination"] = forced
+        if input_driver is not None:
+            try:
+                input_driver.close()
+                report["osControllerCleanup"] = "completed"
+            except Exception as error:
+                report["status"] = "failed"
+                report["osControllerCleanup"] = str(error)
         for thread in threads:
             thread.join(timeout=1)
         if (
@@ -290,13 +482,16 @@ def main():
             if application_result.exists():
                 if application_result.stat().st_size > EVIDENCE.MAX_LOG_BYTES:
                     raise RuntimeError("Application result exceeded its evidence bound")
-                report["application"] = json.loads(application_result.read_text())
+                report["application"] = json.loads(
+                    application_result.read_text(encoding="utf-8")
+                )
         except (OSError, ValueError, RuntimeError) as error:
             report["status"] = "failed"
             report["applicationResultError"] = str(error)
         application = report.get("application", {})
         if report["status"] == "passed" and (
             application.get("status") != "passed"
+            or application.get("osInput") is not args.os_input
             or application.get("completedCycles") != 3
             or application.get("nativeShutdownAndExitVerified") is not True
             or not application.get("ownership")
@@ -306,7 +501,9 @@ def main():
         report["nativeShutdownAndExitVerified"] = application.get(
             "nativeShutdownAndExitVerified", False
         )
-        (output / "result.json").write_text(json.dumps(report, indent=2) + "\n")
+        (output / "result.json").write_text(
+            json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n"
+        )
     print(
         json.dumps(
             {

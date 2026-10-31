@@ -6,7 +6,7 @@ Both issues remain open. Linux's existing owned-window/input suite stays require
 this lane adds genuine target-host compilation and a portable native lifecycle
 fixture for macOS and Windows. It does not infer GUI interaction from compilation.
 
-## First increment and its claims
+## Paint/lifecycle mode and its claims
 
 The reusable [`Native Platforms` workflow](../.github/workflows/native-platforms.yml)
 uses `macos-15` and `windows-2022`, a 60-minute per-target budget and independent
@@ -51,6 +51,207 @@ nonzero with `NativePaintMismatch`, joined native shutdown and no forced
 application termination. An arbitrary startup failure cannot satisfy this
 negative check. The ordinary development and AOT runs must pass their correct
 complete tree expectations.
+
+## Owned native OS input extension
+
+`native-platform-smoke.py --os-input` adds a separate phase to the same public
+fixture and bounded controller. Every cycle independently identifies the
+launched application's native child and a visible window. It uses the host's
+actual paint geometry to select the button, delivers a pointer click, sends Tab
+to focus the editor, then types a fresh 32-character hexadecimal run nonce. The
+controller requires the native pointer-down/up and click route, Tab down/up,
+native input focus, every input prefix with its independent revision, and the
+complete final native paint. Injection API success alone never qualifies input.
+The subsequent programmatic replacement uses the observed revision and must
+advance it exactly once. All three windows still close and release their public
+resources before final joined native shutdown.
+
+- **Windows:** SDK-compatible `ctypes` declarations call Toolhelp32,
+  `GetProcessTimes`, `QueryFullProcessImageNameW`, `EnumWindows` and User32. Query
+  handles retain each process identity. A matching child must have been created
+  at or after this launched application, excluding older orphans that retain a
+  recycled numeric parent PID. Every input rechecks the expected native
+  executable/window and foreground state. Visible windows must be uncloaked and
+  unminimized, on a visible window station and the controller's current input
+  desktop. The controller queries these objects without switching desktops;
+  borrowed handles remain borrowed and the input-desktop query handle is closed.
+  Pointer coordinates use the actual client rectangle with a
+  thread-local, temporarily selected per-monitor DPI context. The controller
+  refuses held external modifiers and checks `SendInput` counts. A partial
+  insertion attempts to release only the down event it just inserted, then
+  fails. Missing interactive desktop/foreground/UIPI capability is reported as
+  unsupported, without attempting to change security settings.
+- **macOS:** A small Objective-C helper is compiled against the actual Xcode SDK.
+  It checks `libproc` creation identity, same-user ownership, direct parentage,
+  executable path and Quartz onscreen window ownership. Window titles are
+  verified when Quartz exposes them; absent title access does not replace the
+  required PID/image/creation identity. Input requires read-only
+  `CGPreflightPostEventAccess`, owned foreground activation and no external held
+  modifiers. Pointer events use global Quartz coordinates derived from the
+  observed frame and the measured GPUI viewport. Before posting, the first
+  visible window containing that point in Quartz's front-to-back list must be
+  the exact owned window; even a same-process overlay rejects. Events enter
+  the public login-session stream with `CGEventPost(kCGSessionEventTap)` so
+  WindowServer performs ordinary routing. Keyboard down/up pairs recheck the
+  owned foreground. This is a controller correction awaiting native delivery
+  verification; an SDK event object or posting call cannot satisfy that gate.
+  The helper never requests permissions or changes privacy settings.
+- **Linux:** The same fixture can be checked in the existing isolated Xvfb/DBus
+  session. Its small adapter reuses the established process-identity and XTest
+  helpers. This exercises the common assertions locally without claiming that
+  Linux behavior qualifies another OS.
+
+OS controllers retain no application event handlers or renderer implementation.
+Each command and observation has a bounded deadline, all logs retain the common
+nonce and size checks, and macOS helper source/executable hashes join the run's
+provenance. The workflow runs development and AOT input as separate commands
+after paint-only qualification. An unsupported input session exits nonzero and
+retains its exact reason; it is never counted as a pass. Programmatic close is
+still not an OS close-button test. Screenshots, presentation, hardware input,
+accessibility/IME and complete process-tree enumeration remain unverified by
+this extension.
+
+### macOS pointer association regression
+
+The [subsequent hosted macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41238698609/job/124647813058)
+passed complete development native paint/lifecycle and owned-window/permission
+checks, then failed OS-input qualification. The initial six-node tree painted
+and its input received focus, but no pointer event reached the application.
+The fixture reached its unchanged controller-command deadline and joined
+native shutdown with zero public resources. That failed result is retained.
+
+A bounded SDK diagnostic created event objects without posting input. The old
+`CGEventCreateMouseEvent` path yielded `NSEvent.windowNumber == 0`; setting the
+two public window-under-pointer fields did not establish an AppKit window
+association. Apple's [mouse-event factory](https://developer.apple.com/documentation/appkit/nsevent/mouseevent%28with%3Alocation%3Amodifierflags%3Atimestamp%3Awindownumber%3Acontext%3Aeventnumber%3Aclickcount%3Apressure%3A%29)
+preserved the supplied window number and window-local coordinates through
+CoreGraphics conversion. That correction used the factory, with the pinned
+[GPUI conversion](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/events.rs)
+inverted explicitly: `nativeX = gpuiX`, `nativeY = viewportHeight - gpuiY`.
+Its historical SDK regression inspected nine such conversions without posting;
+those construction passes did not prove actual native delivery.
+
+OS observations are now retained immediately after ownership is established.
+Their phase distinguishes an observed window, a bounded pointer target, posted
+events, actual delivery and a complete native paint. A failed activation retains
+the window identity, geometry and posting result instead of losing them while
+waiting for later keyboard steps. Three pure controller regressions cover
+missing geometry, rejected posting and posted events without native delivery;
+none claims to exercise macOS input.
+
+The [compact correction record](../tests/native/evidence/platform-macos-pointer-association.json)
+preserves that hosted failure, the event-object diagnostic, and a subsequent
+connected-Mac attempt using the exact hosted **release** executable. Its SDK
+build and nine association checks passed. The actual development run observed
+the owned window and initial native paint, then failed the strict snapshot
+comparison before delivery. The historical helper did not retain the current
+comparison snapshot, so the changed field is unknown. Its read-only
+`CGPreflightPostEventAccess` result was also explicitly false: this machine
+cannot qualify permitted event posting. No permission was requested or granted,
+no native input was observed, all public counters returned to zero, and native
+shutdown joined without forced termination. The original failed result is not
+reclassified as a pass, and AOT input was not attempted there.
+
+The controller now rejects an observed false posting capability before invoking
+any input helper and reports that capability as unavailable. A true observation
+still requires all current native identity, geometry, foreground and permission
+checks. Snapshot failures distinguish application identity, native-process
+identity and window metadata/geometry, retaining the current window metadata
+for comparison with the original observation. These diagnostics do not relax
+ownership. Corrected macOS event delivery remains subject to the hosted
+development and AOT checks; SDK conversion and Linux runs cannot establish it.
+
+The [next hosted attempt](https://github.com/0xPlayerOne/bun-native/actions/runs/41242660014/job/124659569247)
+passed the corrected SDK controls and native paint-only fixture, then still
+failed actual pointer activation. Its retained observation shows posting access
+was true, the exact owned window and process identities matched, and three
+PID-targeted events were posted. The application recorded its initial focus
+but no pointer or click event before the unchanged controller-command deadline.
+Shutdown joined with all six public ownership counters zero. AOT input did not
+run after this failure. The [source-verified failure record](../tests/native/evidence/platform-macos-delivery-failure.json)
+retains all observations and trace records; it rehashes the archived release
+host and checks all 61 source fingerprints against the actual tested merge.
+The delivery failure remains unattributed. The SDK object conversion is not
+evidence that AppKit received or dispatched those events.
+
+The diagnostic enables `BUN_NATIVE_POINTER_TRACE=1` only for the hosted
+macOS input commands. With the existing nonce-bound evidence log, a non-hitbox
+canvas registers window-global GPUI capture observers before the native body
+is painted. They record readiness once per live window and raw move/down/up
+positions, button, viewport and active state, including positions outside the
+viewport. They never stop propagation, change focus or replace input. The
+process-wide limit is 64 records including readiness; the last record marks
+the exhausted limit, and closing a window does not reset that budget.
+
+This distinguishes GPUI delivery from the later target/viewport filters. It
+cannot observe events dropped before GPUI dispatch, and absent records only
+become meaningful after a readiness record and before the limit is reached.
+The flag is off for paint-only, baseline and allocation-profile runs. No
+diagnostic result qualifies the required native button/text observations or
+changes their original deadlines.
+
+The [Linux diagnostic controls](../tests/native/evidence/platform-pointer-diagnostics-linux.json)
+passed ordinary Bun with tracing on and off, plus inspected AOT with tracing
+on. Each case completed three windows, three clicks, all 96 ordered edits and
+nine complete paints with joined shutdown and zero public resources. The
+enabled cases emitted 12 trace records each; the disabled case emitted none.
+An initial diagnostic-only layout-index defect is preserved separately: the
+new first canvas was incorrectly recorded as the model root's bounds. Explicit
+child indexing fixed that evidence mapping, and the corrected controls require
+the full root and target geometry. The actual pointer coordinates retain X11's
+fractional representation; they are checked against the native target bounds,
+not assumed to equal integer injection coordinates exactly. These use a
+development-profile Linux host and do not qualify macOS delivery.
+
+### WindowServer routing correction
+
+[Run 41245774144](https://github.com/0xPlayerOne/bun-native/actions/runs/41245774144/job/124668770902)
+again passed paint-only lifecycle but failed the unchanged macOS input gate.
+The trace emitted its ready marker at index 1 of 64, then no mouse move, down
+or up record. The initial native tree painted, posting permission was true,
+the observed identity remained valid, and all three PID-targeted events were
+submitted. The fixture failed after 10.232 seconds, then joined native shutdown
+with all six public resource counts zero. AOT input did not run after failure.
+The [verified record](../tests/native/evidence/platform-macos-pointer-trace-failure.json)
+checks all 63 source files against the actual merge and rehashes both archived
+native host and helper bytes. The marker's inactive state belongs to initial
+paint; it does not contradict or replace the later foreground check.
+
+The missing event is before the installed GPUI capture observer; the underlying
+PID-posting failure is still unattributed. The controller now uses Apple's
+documented [global-coordinate mouse events](<https://developer.apple.com/documentation/coregraphics/cgevent/init(mouseeventsource:mousetype:mousecursorposition:mousebutton:)?language=objc>)
+and [session event stream](<https://developer.apple.com/documentation/coregraphics/cgevent/post(tap:)?language=objc>).
+The [onscreen list](https://developer.apple.com/documentation/coregraphics/cgwindowlistoption/optiononscreenonly)
+is ordered front-to-back, enabling a conservative exact-window occlusion check
+before ordinary WindowServer routing. It refuses obscured/absent targets and
+preserves process creation, executable, geometry, permission, foreground and
+external-modifier checks. There is no automatic alternate posting path or retry.
+
+The SDK control constructs nine global-coordinate events and exercises eight
+pure window-target cases plus the four identity guards without posting input.
+The hosted job must compile and execute that control, then independently pass
+real development and AOT button/text input. This correction has no native
+macOS success claim until those results exist. The GPUI capture trace remains
+enabled to distinguish subsequent delivery from targeting failures.
+
+[Run 41247808999](https://github.com/0xPlayerOne/bun-native/actions/runs/41247808999/job/124674782271)
+passed native paint and the actual SDK controls, then rejected the development
+pointer target before posting any event: the first intersecting WindowServer
+rectangle did not match the exact owned window. The window remained visible,
+posting access was available, and the application joined native shutdown with
+all six public resource counts zero. AOT input was not attempted. The
+[verified rejection record](../tests/native/evidence/platform-macos-target-rejection.json)
+checks the 63 source files and rehashes the archived release host and SDK helper.
+The rejecting rectangle's identity and layer were absent from that artifact;
+its cause and whether it was transient remain unknown.
+
+Rejection evidence now includes only that first rectangle's numeric window ID,
+owner PID, layer, alpha and frame, along with the expected owned IDs and global
+point. It never records another window's title, application name, image path or
+contents. Three SDK cases require those exact fields and two reject malformed
+identity metadata. This diagnostic changes no posting route, target rule,
+foreground wait, retry behavior or native acceptance criterion. Its SDK build
+and subsequent real input attempt remain hosted checks, not local successes.
 
 ## Pinned native requirements
 
@@ -120,6 +321,20 @@ retain the matching build manifest. CI additionally requires actual
 compiled-program metadata and nonempty removed JIT ranges on that target format.
 An interpreter may remain present.
 
+Add `--os-input` to the controller command to request independent native window,
+pointer and keyboard qualification. On macOS, first compile the checked-in SDK
+helper and supply its explicit absolute path:
+
+```sh
+xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics \
+  scripts/quality/native-platform-macos.m -o /absolute/owned/native-platform-macos
+export BUN_NATIVE_PLATFORM_HELPER=/absolute/owned/native-platform-macos
+```
+
+On Linux, run these commands only inside the existing isolated Xvfb/DBus session
+wrapper, as the native CI does. The new input mode retains the same small fixed
+workload: three windows and 32 hexadecimal characters per window.
+
 Artifacts retain toolchain/SDK/build logs, source hashes, native binary hash/size,
 actual paint/application records, AOT inspection/build metadata and controller
 results. A successfully built unsigned native host is archived with executable
@@ -138,7 +353,27 @@ application termination. These establish the controller/fixture on Linux and
 **do not qualify macOS or Windows**. The compact source-bound record is
 [platform-smoke-linux-development-aot.json](../tests/native/evidence/platform-smoke-linux-development-aot.json).
 
-The [hosted matrix](https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201)
+The owned-input extension also passed actual Linux development and inspected
+AOT runs: each exercised three pointer activations, native Tab key/focus
+traversal, all 96 ordered text edits and nine complete paints. Every public
+resource counter returned to zero and native shutdown joined without forced
+application termination. An AOT paint-only control still passed six paints with
+no input callbacks. The exact source, executable, renderer and raw-report hashes
+are in [platform-input-linux-development-aot.json](../tests/native/evidence/platform-input-linux-development-aot.json).
+These runs used the immutable **dev-profile** host; hosted jobs require the
+release host. macOS SDK compilation and macOS/Windows input are not qualified by
+these Linux results. The Windows pure guards cover ABI sizes, clipped geometry,
+edit ordering, callback exception containment, borrowed/owned desktop handles,
+partial input release and recycled parent-PID rejection; they are headless tests.
+
+After integrating the current bootstrap, cross-format AOT inspector and locked
+dependencies, the same actual Linux development/AOT input checks passed again.
+The [integration record](../tests/native/evidence/platform-input-integrated-linux.json)
+binds both runs to their 61 current compiler/controller source fingerprints and
+the newly compiled application. It retains the dev-host and software-GPU scope;
+these correctness runs are not comparative timing measurements.
+
+The [hosted paint matrix](https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201)
 passed all twelve required jobs. Its [source-bound target record](../tests/native/evidence/platform-smoke-hosted-macos-windows.json)
 verifies both target archives and every recorded source against the actual tested
 merge. On both macOS ARM64 and Windows x64, development and independently
