@@ -110,6 +110,40 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  aot:
+    name: AOT native interop (Linux)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Strict probe checks
+        run: |
+          bun check --no-script -p experiments/aot-gpui/tsconfig.json
+          bunx oxlint --deny-warnings experiments/aot-gpui
+      - name: Execute genuine AOT, JIT control and native boundary probes
+        run: bun experiments/aot-gpui/run.ts "$RUNNER_TEMP/bun-native-aot"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: aot-native-interop-linux-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/bun-native-aot/report.json
+            ${{ runner.temp }}/bun-native-aot/*.log
+          if-no-files-found: error
+          retention-days: 14
+
   security:
     name: Security
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -118,7 +152,7 @@ jobs:
   gate:
     # This exact check context is required by the existing protected-main ruleset.
     name: Validation / Gate
-    needs: [source, protocol, security]
+    needs: [source, protocol, aot, security]
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -129,4 +163,4 @@ jobs:
         run: |
           node -e 'const jobs=JSON.parse(process.env.RESULTS); const failed=Object.entries(jobs).filter(([,job])=>job.result!=="success"); if(failed.length){console.error(failed);process.exit(1)}'
       - name: Describe coverage precisely
-        run: echo 'Passed source, headless protocol and dependency checks. Real native rendering, OS input and Bun AOT acceptance are separate BN0 gates.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Passed source, headless protocol, Linux machine-code AOT/native interop and dependency checks. Real native rendering and OS input remain separate acceptance gates.' >> "$GITHUB_STEP_SUMMARY"
