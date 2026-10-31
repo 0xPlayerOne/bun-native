@@ -14,9 +14,9 @@ bun run typecheck
 bun run check:boundaries
 bun test tests --coverage
 bun run build
-cargo fmt --manifest-path native/Cargo.toml --all -- --check
-cargo clippy --locked --manifest-path native/Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
-cargo test --locked --manifest-path native/Cargo.toml -p bun-native-protocol
+cargo fmt --manifest-path Cargo.toml --all -- --check
+cargo clippy --locked --manifest-path Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
+cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 ```
 
 `build` checks the TypeScript package build. It is not an AOT release build and must not silently compile Rust for ordinary application edits. The Rust commands explicitly select the portable protocol crate. GPUI compilation, GPU initialization, window interaction and production AOT acceptance have separate commands and evidence as those integration tasks land.

@@ -3,8 +3,8 @@
 ## Current branch state
 
 The BN0 workspace replacement removes the Bunly runtime and browser renderer.
-The initial source is a portable TypeScript native-pipe framing package, strict
-package-boundary checks, and a Rust workspace introduced with the native host.
+The source includes matching portable TypeScript and Rust native-pipe protocol
+packages, strict package-boundary checks, and a pinned Bun AOT/Rust bootstrap.
 No old CEF result qualifies this implementation.
 
 ## Removal inventory (#251)
@@ -30,8 +30,8 @@ fallback remains in the active packages.
 ## Immediate implementation sequence
 
 1. [#225](https://github.com/0xPlayerOne/bun-native/issues/225): verify and pin
-   the actual Bun AOT compiler, Rust and GPUI. Initial inherited tool versions
-   are development bootstrap only until this work qualifies them.
+   the actual Bun AOT compiler, Rust and GPUI. `toolchain.json` now pins the actual AOT-enabled canary and immutable archive
+   checksums; the dedicated interop probes remain in #265.
 2. [#230](https://github.com/0xPlayerOne/bun-native/issues/230): connect Bun to
    the GPUI host, render a real window, click, edit text, close and relaunch.
 3. [#227](https://github.com/0xPlayerOne/bun-native/issues/227): compile that
@@ -48,7 +48,7 @@ source, framing and dependency boundaries. `bun run build` emits JS modules and
 is explicitly not an AOT executable. Initial unit tests are headless; they do
 not prove GPUI rendering, input, GPU acceleration or AOT compatibility.
 
-Native window, AOT, framework renderers, packaged releases and platform support
+Native window, same-window AOT integration, framework renderers, packaged releases and platform support
 remain unaccepted until their dedicated evidence exists. Work on BN1 contracts
 may proceed alongside compiler integration; milestone closure may not.
 

@@ -7,7 +7,12 @@ export class ProtocolError extends Error {
 
 /** Encodes one JSON value. This does not validate a command or event schema. */
 export function encodeFrame(value: unknown): Uint8Array {
-  const json = JSON.stringify(value)
+  let json: string | undefined
+  try {
+    json = JSON.stringify(value)
+  } catch (error) {
+    throw new ProtocolError('Frame is not a JSON value', { cause: error })
+  }
   if (json === undefined) throw new ProtocolError('Frame is not a JSON value')
   const encoded = new TextEncoder().encode(`${json}\n`)
   if (encoded.byteLength - 1 > MAX_FRAME_BYTES) throw new ProtocolError('Frame exceeds byte limit')
@@ -17,15 +22,22 @@ export function encodeFrame(value: unknown): Uint8Array {
 /**
  * Incremental, bounded JSON-lines decoder for a native process pipe.
  * A protocol error poisons the decoder; the caller must terminate that session.
+ * Successful finish closes the decoder and is idempotent.
  */
 export class FrameDecoder {
   private readonly buffer = new Uint8Array(MAX_FRAME_BYTES)
-  private readonly utf8 = new TextDecoder('utf-8', { fatal: true })
+  // Preserve a leading BOM so JSON.parse rejects it, matching Rust serde_json.
+  private readonly utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
   private length = 0
-  private failed = false
+  private state: 'open' | 'finished' | 'failed' = 'open'
 
   push(chunk: Uint8Array): unknown[] {
-    if (this.failed) throw new ProtocolError('Decoder is closed after a protocol error')
+    if (this.state !== 'open')
+      throw new ProtocolError(
+        this.state === 'failed'
+          ? 'Decoder is closed after a protocol error'
+          : 'Decoder is closed after end of stream'
+      )
     const frames: unknown[] = []
     let start = 0
     try {
@@ -45,7 +57,7 @@ export class FrameDecoder {
         start = newline + 1
       }
     } catch (error) {
-      this.failed = true
+      this.state = 'failed'
       if (error instanceof ProtocolError) throw error
       throw new ProtocolError('Invalid UTF-8 or JSON in native frame', { cause: error })
     }
@@ -53,10 +65,11 @@ export class FrameDecoder {
   }
 
   finish(): void {
-    if (this.failed) throw new ProtocolError('Decoder is closed after a protocol error')
+    if (this.state === 'failed') throw new ProtocolError('Decoder is closed after a protocol error')
     if (this.length !== 0) {
-      this.failed = true
+      this.state = 'failed'
       throw new ProtocolError('Native stream ended inside a frame')
     }
+    this.state = 'finished'
   }
 }

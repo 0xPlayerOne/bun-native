@@ -26,7 +26,7 @@ updates:
         applies-to: version-updates
         patterns: ['*']
   - package-ecosystem: cargo
-    directory: /native
+    directory: /
     target-branch: main
     schedule:
       interval: weekly

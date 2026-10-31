@@ -5,7 +5,7 @@ are not application runtime dependencies. Their license notices remain with
 their distributions. Code Foundry's retained maintenance templates and managed
 policy blocks carry the attribution in [NOTICE](NOTICE).
 
-Native dependencies and exact versions belong in `native/Cargo.lock`. GPUI and
+Native dependencies and exact versions belong in `Cargo.lock`. GPUI and
 any adapted upstream examples must retain their license and source attribution
 when introduced. The native host's pinned source inventory is maintained in
 [docs/provenance.md](docs/provenance.md).

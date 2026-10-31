@@ -14,9 +14,9 @@ bun run typecheck
 bun run check:boundaries
 bun test tests --coverage
 bun run build
-cargo fmt --manifest-path native/Cargo.toml --all -- --check
-cargo clippy --locked --manifest-path native/Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
-cargo test --locked --manifest-path native/Cargo.toml -p bun-native-protocol
+cargo fmt --manifest-path Cargo.toml --all -- --check
+cargo clippy --locked --manifest-path Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
+cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 ```
 
 The foundation gate runs TypeScript and Rust protocol tests on Linux, macOS and Windows. Its check name remains `Validation / Gate` to preserve branch protection. It fails if any required job fails, is cancelled or is skipped. Draft guards, the repository billing control, dependency audits and CodeQL remain active. Actual native-window/input and AOT executable evidence are tracked separately in BN0; the protocol tests are headless.
