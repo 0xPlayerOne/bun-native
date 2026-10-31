@@ -1,6 +1,25 @@
 # Contributing to Bun Native
 
-**This is a disposable experimental project undergoing a direct rewrite from Bunly/CEF to native Bun + GPU UI + AOT.** The older source layout, CEF host, Bun 1.4.4 qualification, M1–M12 docs and related commands are historical. Follow the [active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and [agent operating instructions](../AGENTS.md), beginning with #251 and #225. The first implementation PR is expected to remove/restructure the old code; old APIs do not require backward compatibility.
+**Bun Native is a browserless native desktop framework under active implementation.** The Bunly browser runtime is retired; its source remains in Git history. Follow the [active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1), [agent operating instructions](../AGENTS.md), and [current testing commands](../docs/testing.md). Native rendering and production Bun AOT have distinct acceptance criteria; passing the foundation checks alone does not qualify either capability.
+
+## Current foundation checks
+
+Install the exact Bun version in `.bun-version` and the Rust toolchain in `rust-toolchain.toml`, then run:
+
+```sh
+bun install --frozen-lockfile
+bun run format:check
+bun run lint
+bun run typecheck
+bun run check:boundaries
+bun test tests --coverage
+bun run build
+cargo fmt --manifest-path native/Cargo.toml --all -- --check
+cargo clippy --locked --manifest-path native/Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
+cargo test --locked --manifest-path native/Cargo.toml -p bun-native-protocol
+```
+
+The foundation gate runs TypeScript and Rust protocol tests on Linux, macOS and Windows. Its check name remains `Validation / Gate` to preserve branch protection. It fails if any required job fails, is cancelled or is skipped. Draft guards, the repository billing control, dependency audits and CodeQL remain active. Actual native-window/input and AOT executable evidence are tracked separately in BN0; the protocol tests are headless.
 
 ## Autonomous contribution workflow
 

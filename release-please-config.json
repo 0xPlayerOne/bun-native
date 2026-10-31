@@ -49,43 +49,9 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "bunly-monorepo",
+      "package-name": "bun-native-workspace",
       "include-component-in-tag": false,
-      "extra-files": [
-        {
-          "type": "json",
-          "path": "packages/artifacts/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "packages/cli/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "packages/client/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "packages/contracts/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "packages/runtime/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "generic",
-          "path": "packages/runtime/src/cef.ts"
-        },
-        {
-          "type": "generic",
-          "path": "packages/runtime/src/mock.ts"
-        }
-      ],
+      "extra-files": [],
       "initial-version": "0.1.0"
     }
   }

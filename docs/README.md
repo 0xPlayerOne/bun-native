@@ -2,7 +2,7 @@
 
 This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
 
-**Current state:** architecture and roadmap are defined; the new native runtime, framework renderers and release artifacts are not yet implemented. The [BN0 implementation milestone](https://github.com/0xPlayerOne/bun-native/issues/217) owns replacing legacy source and creating the first working native application.
+**Current state:** the clean workspace and native protocol foundation are implemented; the native window, framework renderers and AOT release artifacts still require their own acceptance. The [BN0 implementation milestone](https://github.com/0xPlayerOne/bun-native/issues/217) owns replacing legacy source and creating the first working native application.
 
 ## Product and architecture
 
@@ -11,6 +11,8 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 3. [AOT and toolchain](toolchain.md) — Bun compilation, native artifacts and compatibility
 4. [Compatibility](compatibility.md) — native UI features, Solid/React, web APIs and platform status
 5. [Architecture decisions](decisions/README.md) — decisions, alternatives and recorded tradeoffs
+
+The [BN0 implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions.
 
 ## Build and operate
 

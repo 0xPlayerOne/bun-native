@@ -4,65 +4,35 @@ updates:
     directory: /
     target-branch: main
     schedule:
-      interval: monthly # billing_paused: reduced cadence
+      interval: weekly
       day: sunday
-    open-pull-requests-limit: 0 # billing_paused: version updates disabled
+    open-pull-requests-limit: 3
     ignore:
-      # Code Foundry runtime pins are sync-managed (runtime_ref in
-      # code-foundry.yml). Dependabot must never bump them; a stale
-      # github-actions group PR branched before a sync can resurrect
-      # legacy caller files when merged.
+      # Code Foundry runtime pins are maintained together with runtime_ref.
       - dependency-name: '0xPlayerOne/code-foundry*'
     groups:
       github-actions:
         applies-to: version-updates
         patterns: ['*']
   - package-ecosystem: bun
-    directories:
-      - /
-      - /benchmarks/adapters/electron
-      - /benchmarks/adapters/electrobun
-      - /benchmarks/fixtures
+    directory: /
     target-branch: main
     schedule:
-      interval: monthly # billing_paused: reduced cadence
+      interval: weekly
       day: sunday
-    open-pull-requests-limit: 0 # billing_paused: version updates disabled
+    open-pull-requests-limit: 3
     groups:
       bun-dependencies:
         applies-to: version-updates
         patterns: ['*']
-    ignore:
-      # TypeScript 7 (the native compiler) is supported by Bun's type checker
-      # and Oxlint; the tsconfig must use NodeNext or bundler resolution since
-      # legacy node10 resolution was removed. Held with 5.9 until each
-      # repository's tsconfig is verified on 7.
-      - dependency-name: 'typescript'
-        versions: ['>=7.0.0']
-      # Held with TypeScript 5.9 above.
-      - dependency-name: '@types/node'
-        versions: ['>=23']
   - package-ecosystem: cargo
-    directories:
-      - /native
-      - /native/cef-host
+    directory: /native
     target-branch: main
     schedule:
-      interval: monthly # billing_paused: reduced cadence
+      interval: weekly
       day: sunday
-    open-pull-requests-limit: 0 # billing_paused: version updates disabled
+    open-pull-requests-limit: 3
     groups:
       cargo-dependencies:
-        applies-to: version-updates
-        patterns: ['*']
-  - package-ecosystem: pip
-    directory: /
-    target-branch: main
-    schedule:
-      interval: monthly # billing_paused: reduced cadence
-      day: sunday
-    open-pull-requests-limit: 0 # billing_paused: version updates disabled
-    groups:
-      python-dependencies:
         applies-to: version-updates
         patterns: ['*']

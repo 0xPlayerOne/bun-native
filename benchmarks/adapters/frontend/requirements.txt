@@ -1,2 +1,0 @@
-# Optional contributor-only frontend browser driver. Install browser separately.
-playwright==1.57.0

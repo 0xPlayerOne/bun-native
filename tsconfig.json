@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022"],
     "module": "Preserve",
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
@@ -16,14 +16,8 @@
     "noUnusedParameters": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["bun", "node"]
+    "types": ["bun"]
   },
-  "include": [
-    "packages/**/*.ts",
-    "scripts/**/*.ts",
-    "tests/**/*.ts",
-    "examples/**/*.ts",
-    "benchmarks/**/*.ts"
-  ],
-  "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/boundaries/**"]
+  "include": ["packages/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/**"]
 }
