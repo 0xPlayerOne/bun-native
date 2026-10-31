@@ -1,36 +1,21 @@
-# Contributing to Bunly
+# Contributing to Bun Native
 
-## Bunly development setup
+**This is a disposable experimental project undergoing a direct rewrite from Bunly/CEF to native Bun + GPU UI + AOT.** The older source layout, CEF host, Bun 1.4.4 qualification, M1–M12 docs and related commands are historical. Follow the [active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and [agent operating instructions](../AGENTS.md), beginning with #251 and #225. The first implementation PR is expected to remove/restructure the old code; old APIs do not require backward compatibility.
 
-Use the pinned Bun 1.4.4 and `bun install --frozen-lockfile`. Run
-`bun run check` and `bun run typecheck:browser` for the application-side code;
-these do not invoke a systems compiler. The process-observer tests need Python:
-create/activate `.venv`, install `requirements.txt`, and set `PYTHON` to that
-interpreter. `bun run check:portable` is the shared local/hosted complete gate;
-`bun run check:ci` also runs the real Foundry audit and installed `actionlint`.
-See [validation](../docs/validation.md) for native and platform-specific checks.
-`bun run example` is the explicit mock
-contract fixture, not a native desktop application.
+## Autonomous contribution workflow
 
-Native contributors use two independent, locked Cargo workspaces: the M1 probe
-under `native/` (Rust 1.85.1) and the CEF host under `native/cef-host/` (Rust 1.91.0).
-Follow [native acceptance](../docs/m3-runtime-acceptance.md) and
-[manual hosted qualification](../docs/manual-native-qualification.md) rather
-than substituting cross-compilation for actual platform execution. Application
-consumers use prebuilt artifacts; they do not silently compile native code.
+The owner authorizes assigned agents to implement BN0–BN7, refactor/delete experimental source, update dependencies and CI, maintain issues/PRs and use auto-merge where allowed, **without human design checkpoints or routine approval requests**. Choose concrete technical solutions, document noteworthy ADRs and validation, then continue to the next unblocked task. If a toolchain or GPU native interaction fails, record a reproducer, fix it or take another native approach; do not restore CEF/WebView as fallback.
 
-Run `bun run foundry:sync` for repository tooling and `bun run foundry:doctor`
-to verify the result. Do not use an unpinned global Foundry or overwrite authored
-policy with `--force`. This file is the sole contribution guide; keep GitHub
-policies and issue/PR templates under `.github/`.
+Use small, continuously updated draft PRs; when implementation is ready, mark ready and let CI/review requirements and auto-merge complete according to the managed rules below. Do not bypass required checks or misrepresent unsupported tests. Production Adea and unrelated resources are outside this grant.
 
-Report the exact source commit, developer and packaged Bun versions, browser
-version, OS/CPU, security profile, and redacted diagnostics. Preserve failed and
-unsupported outcomes. Record copied code in `docs/provenance.md`; never weaken
-isolation, cleanup, accessibility or workload correctness for a favorable score.
-Production signing, publishing and Adea changes require separate authorization.
-Private fixture keys are not production trust roots. Keep credentials, browser
-binaries, VM disks, crash dumps and local experiments out of Git.
+## Test environments
+
+1. Prioritize GitHub-hosted Linux, Windows and macOS runners for independent native builds/tests, smoke and packaging, keeping exact versioned artifacts and logs.
+2. For actual Mac GUI, IME, keyboard or accessibility tests that hosted runners cannot establish, use the owner's connected macOS device via Remote Desktop Commander after discovering its online status. No manual owner testing is expected. Use bounded temporary test files; do not touch personal files.
+3. Avoid large Docker/VM storage on the owner's Mac. Prefer CI containers, and clean task-created resources.
+4. State unsupported hardware or signing evidence honestly, file a follow-up, and continue other work. Experimental unsigned builds are permitted; never invent signing or notarization success.
+
+The Code Foundry contribution and pull-request policy below still applies where its platform controls are enforceable. It is not an extra human checkpoint.
 
 <!-- code-foundry-managed: config-aware-policy -->
 
