@@ -24,6 +24,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Review changed dependencies
         if: github.event_name == 'pull_request'

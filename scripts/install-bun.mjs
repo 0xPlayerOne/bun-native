@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import {
   appendFileSync,
@@ -15,9 +14,14 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
+import { downloadPinnedArchive } from './install-bun/download.mjs'
 
 // Node bootstraps Bun so a clean hosted runner does not need another Bun version.
 const manifest = JSON.parse(readFileSync(new URL('../toolchain.json', import.meta.url), 'utf8'))
+// The optional Actions credential belongs only to the immutable asset request.
+// Unzip/PowerShell and even a verified Bun subprocess must not inherit it.
+const downloadToken = process.env.BUN_NATIVE_GITHUB_TOKEN
+delete process.env.BUN_NATIVE_GITHUB_TOKEN
 const args = process.argv.slice(2)
 if (args.length !== 2 || args[0] !== '--destination' || !isAbsolute(args[1])) {
   throw new Error('Usage: node scripts/install-bun.mjs --destination <absolute directory>')
@@ -55,17 +59,7 @@ if (existsSync(executable)) {
   try {
     // Asset IDs are immutable. An expired/deleted canary asset fails closed;
     // never fall back to the mutable `canary` download URL or another version.
-    const url = `https://api.github.com/repos/oven-sh/bun/releases/assets/${archive.assetId}`
-    const response = await fetch(url, {
-      headers: { Accept: 'application/octet-stream' },
-      signal: AbortSignal.timeout(120_000),
-    })
-    if (!response.ok) throw new Error(`Pinned Bun download failed with HTTP ${response.status}`)
-    const bytes = Buffer.from(await response.arrayBuffer())
-    const digest = createHash('sha256').update(bytes).digest('hex')
-    if (digest !== archive.sha256) {
-      throw new Error(`Bun archive checksum mismatch: expected ${archive.sha256}, got ${digest}`)
-    }
+    const bytes = await downloadPinnedArchive(archive, { token: downloadToken })
     const archivePath = join(temporary, archive.name)
     const extracted = join(temporary, 'extracted')
     writeFileSync(archivePath, bytes)
