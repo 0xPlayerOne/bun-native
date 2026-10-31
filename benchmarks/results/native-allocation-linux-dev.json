@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "qualification": "One instrumented development-host Linux software-GPU diagnostic; not a performance baseline or leak proof.",
+  "startedAt": "2026-10-31T08:12:47.428Z",
+  "nativeHost": {
+    "sha256": "55d2b9312529a01ccc3c4720f03040c4d685e7d51d9b7ece160f8b8e64ad7a49",
+    "bytes": 110851600,
+    "profile": "dev"
+  },
+  "applicationMode": "development",
+  "profilerVersion": "heaptrack 1.5.0",
+  "demanglerVersion": "GNU c++filt (GNU Binutils for Ubuntu) 2.42",
+  "profilingToolArtifacts": {
+    "wrapper": {
+      "sha256": "db44c8769477548aef90569054585ae001ae6e59f9034b9405e0a4439ccbdc20",
+      "bytes": 944
+    },
+    "heaptrackPreload": {
+      "sha256": "134760dbba8d9a2cd1b45f639c119f5c0cd779674a496fb7ed2b6baacac15ca9",
+      "bytes": 51608
+    },
+    "heaptrackInterpret": {
+      "sha256": "ad4e06cd5f43b4b4850a032a3d7abdaf557dba16eeb551668ce8122e3d7e3661",
+      "bytes": 113056
+    },
+    "heaptrackPrint": {
+      "sha256": "518c7958efd5ef75781ad5eeed06fc017dbb1368699f1f3c4794321ac0ab8308",
+      "bytes": 342392
+    },
+    "heaptrackFrontend": {
+      "sha256": "11ef8b89a93d43b63e4dec187f4c7dca2644f10254c5639e55a563fb5465b574",
+      "bytes": 12702
+    },
+    "rustDemangler": {
+      "sha256": "0260fc9ad0f5a6ef498fae04cda0bd737b29d31cf6afc49099f35f766349f4c0",
+      "bytes": 22800
+    }
+  },
+  "allocationCalls": 760502,
+  "temporaryAllocationCalls": 88675,
+  "allocationSizeBuckets": {
+    "0..64": 431867,
+    "65..256": 195851,
+    "257..4096": 127349,
+    "4097..": 5435
+  },
+  "sizeUnit": "requested bytes",
+  "reportedTotals": {
+    "peak heap memory consumption": "83.00M",
+    "peak RSS (including heaptrack overhead)": "187.25M",
+    "total memory leaked": "625.95K"
+  },
+  "outstandingAtExitIsNotProvenLeak": true,
+  "nativeEvidenceEnabled": true,
+  "nativeLifecycleChecks": {
+    "completedCycles": 1000,
+    "callbackRegistrations": 3000,
+    "callbackReplacements": 1000,
+    "disposedSubtrees": 1000,
+    "launchInvocations": 1,
+    "launchAborted": true,
+    "unexpectedCallbacks": 0,
+    "finalOwnership": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0
+    },
+    "peakOwnership": {
+      "windows": 1,
+      "nodes": 8,
+      "callbacks": 3,
+      "queuedTransactions": 1,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 1
+    }
+  },
+  "cleanup": {
+    "forced_termination": false,
+    "remaining_observed_pids": [],
+    "unreaped_observed_pids": [],
+    "application_exit_code": 0
+  },
+  "scope": "Full native host lifetime: startup, 1000 public lifecycle cycles, OS close and shutdown. Only the GPUI host is preloaded; Bun is not profiled. Standard heaptrack allocation-function interception excludes GPU memory, stacks and allocator paths bypassing malloc. Symbol-only host builds cannot provide full source-line/inline attribution. Instrumented timing/RSS are not baseline measurements; heaptrack's leaked label means allocations outstanding at exit, not proven application leaks.",
+  "sourceFiles": {
+    "Cargo.lock": {
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+      "bytes": 160678
+    },
+    "Cargo.toml": {
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+      "bytes": 434
+    },
+    "bun.lock": {
+      "sha256": "08d79fc2dbcc9ad62ae277964a77a5923ba28dab3ca6d947c4d20ddef556d16e",
+      "bytes": 14646
+    },
+    "bunfig.toml": {
+      "sha256": "12b9bb84c2d474d5bc6562337e397dd80a515189fb4a0ada82dda55bb3f92bef",
+      "bytes": 84
+    },
+    "examples/native-window/content.ts": {
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+      "bytes": 1766
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+      "bytes": 628
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "bfb385ec618f75ea21b4ac9209aac3895b99fecb530b15f59f7d962c8cdce2df",
+      "bytes": 4834
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "2f61a306b211c3208a51b35eb8fda800fe5ceb71a82f75c58903779015075d72",
+      "bytes": 2675
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "35f5e1f3b5c7e2807566013e1d781d37be1da54fef047eae0cef2beecf6bdbea",
+      "bytes": 19143
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+      "bytes": 2539
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "55587241bf6b9ca4d0e3e0027a25b1cfb425b5535d1e3b52071c28f380035c68",
+      "bytes": 11554
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "78310951954517b10a1575798b4b9d9a00e3874279a26aaca72490e329814bc4",
+      "bytes": 1568
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "245dea7986c31ffba598836f64e4f40e5edbabee1349b6e70ed00ff6d0568c01",
+      "bytes": 8990
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "84aac62624b49798e88beccf84551e6534e46ad5ca1c71a74134a05256f95610",
+      "bytes": 3685
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "a4426bedb7b9e5848537a1270884afcbdaf3ce63ad72d10f621e81aef04e4861",
+      "bytes": 402
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "627932f6be2dd267866bdfd345b7db58fa5a41229aebddaebde736c1af41dc2a",
+      "bytes": 9530
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "55aa26d2c25055cab4cd4459dd4622587e4a2377ff780f9affc6812f3ceab4f1",
+      "bytes": 14053
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "fcffff41db7407c00183a1ae76772f567467c76671738ca309f526f12b5e5856",
+      "bytes": 16179
+    },
+    "package.json": {
+      "sha256": "761f1c23d15b7c839d910aabfcf89c10267e43bda26399451e547402173cde96",
+      "bytes": 1603
+    },
+    "packages/core/package.json": {
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "bytes": 234
+    },
+    "packages/core/src/application.ts": {
+      "sha256": "91110f20548a8205214d682e94e133608efbc14a0d1241a44f2dcb15b3994943",
+      "bytes": 15246
+    },
+    "packages/core/src/index.ts": {
+      "sha256": "58250b6d85bb271ea9f6fdbafbfc5b10f82ab406fd0cc51e443279e7529130c7",
+      "bytes": 482
+    },
+    "packages/core/src/tree.ts": {
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "bytes": 7898
+    },
+    "packages/core/src/types.ts": {
+      "sha256": "eac93a063ea9591134df76c07b5d5ba2adaeb4b9b041dea6fc16a8be0a3a206a",
+      "bytes": 3425
+    },
+    "packages/protocol/package.json": {
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "bytes": 129
+    },
+    "packages/protocol/src/elements.ts": {
+      "sha256": "f76169c71a390aa44b4f4dbc0a138d5c1a1d6516ca6fdb6dca628dabb9f94d70",
+      "bytes": 2915
+    },
+    "packages/protocol/src/framing.ts": {
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "bytes": 2806
+    },
+    "packages/protocol/src/index.ts": {
+      "sha256": "02d2e3887e52b07496e0d63ab2dfa36b6d71c1eb4504a4315accde128438b24e",
+      "bytes": 444
+    },
+    "packages/protocol/src/messages.ts": {
+      "sha256": "8e52c2adc4c22fb7074253f1aed758fe0be310e9f69eabb9e152e2f299f5ecc1",
+      "bytes": 9902
+    },
+    "packages/protocol/src/values.ts": {
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "bytes": 1732
+    },
+    "packages/runtime/package.json": {
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "bytes": 195
+    },
+    "packages/runtime/src/index.ts": {
+      "sha256": "2ccbca88fc25b04bf2de3201888dc97bdc5d5d13f01f6b9fc00df3d793a67bcb",
+      "bytes": 13166
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "scripts/quality/native-allocation-linux.py": {
+      "sha256": "d9baa9d685ca78ab20484de421b901b60963786783f4b9ae1e006bdd63ff1593",
+      "bytes": 15522
+    },
+    "scripts/quality/native-input-linux.py": {
+      "sha256": "e5d61b7694aba2f1ae9b67c13ca127644283d97d199058c860660d09527cfb41",
+      "bytes": 37202
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "sha256": "7265362b758de410c2e35eeee70cd08a7790b070bbef07e982f5bb84ff9e25ab",
+      "bytes": 7025
+    },
+    "tests/native/public-lifecycle.ts": {
+      "sha256": "d571fcf02e624c03ff4fbc1d97894c3749ee0f7c2f8e3dab6fd6eb2ecc0f7e61",
+      "bytes": 14742
+    },
+    "tsconfig.json": {
+      "sha256": "6e5c64578a49c3bc6f3824d61db7abc003b80f7699aebec4ede2b34e75951be1",
+      "bytes": 862
+    }
+  },
+  "evidence": {
+    "result.json": {
+      "sha256": "3605d1111dc321da850b675e76960d2a59f013175f681065e970874665387016",
+      "bytes": 14618
+    },
+    "native.heaptrack.gz": {
+      "sha256": "b38e93102973d4fbfcfd10d095feea806bd3e4cf1eb2865c2ba92a24814e5ab0",
+      "bytes": 3126788
+    },
+    "summary.txt": {
+      "sha256": "97472ff385897fefa887a6dbbaff43d024d277594e5afa77f89fb1e6a6224f4a",
+      "bytes": 235213
+    },
+    "summary-demangled.txt": {
+      "sha256": "250a4c261a122322ff3fee7d2bd4adfa057313f8ffe41cbda59e6b1f6833da1f",
+      "bytes": 244614
+    },
+    "allocation-sizes.tsv": {
+      "sha256": "01da55c3112c533168f8230520de671eddbd1ddce0cb69359b85b028eac07944",
+      "bytes": 7613
+    },
+    "lifecycle/result.json": {
+      "sha256": "89f1054082692b70f67d065149687902ef6e90fe4106da57be3c10a0570f79d4",
+      "bytes": 1207808
+    },
+    "lifecycle/public-lifecycle.json": {
+      "sha256": "304dcdc740397d7bf289404a38f3a9cd4f88716025aede0347b40223300cb910",
+      "bytes": 57027
+    }
+  },
+  "rawTrace": {
+    "sha256": "15e60415ac17f8903d4289b97e34e19303e5fe4cc5411b6f74cf5084bf53188f",
+    "bytes": 37128406,
+    "retained": false
+  }
+}

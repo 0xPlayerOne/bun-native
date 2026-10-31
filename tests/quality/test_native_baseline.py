@@ -17,11 +17,6 @@ SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/native-baseline.py"
 SPEC = importlib.util.spec_from_file_location("native_baseline", SCRIPT)
 BASELINE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BASELINE)
-DRIVER_SPEC = importlib.util.spec_from_file_location(
-    "native_input_linux", BASELINE.DRIVER
-)
-DRIVER = importlib.util.module_from_spec(DRIVER_SPEC)
-DRIVER_SPEC.loader.exec_module(DRIVER)
 
 
 class ProvenanceTests(unittest.TestCase):
@@ -33,6 +28,10 @@ class ProvenanceTests(unittest.TestCase):
         self.package = root / "package"
         self.repository.mkdir()
         self.package.mkdir()
+        for directory in ["core", "protocol", "runtime"]:
+            path = self.repository / f"packages/{directory}/src/index.ts"
+            path.parent.mkdir(parents=True)
+            path.write_text("source fixture\n")
         for relative in BASELINE.expected_sources(self.repository):
             path = self.repository / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,6 +40,7 @@ class ProvenanceTests(unittest.TestCase):
         (self.repository / "toolchain.json").write_text(json.dumps(pins))
         self.manifest = {
             "schemaVersion": 1,
+            "entrypoint": "examples/native-window/main.ts",
             "verification": {"aotCompiledProgram": "passed", "jitOmission": "passed"},
             "target": {
                 "os": "linux",
@@ -65,6 +65,7 @@ class ProvenanceTests(unittest.TestCase):
             os.chmod(path, 0o700)
             self.manifest[key] = {"file": name, **BASELINE.fingerprint(path)}
         self.manifest["host"]["profile"] = "release"
+        self.manifest["host"]["placement"] = "bundled"
         self.manifest["application"]["inspection"] = {"hasCompiledProgram": True}
         self.save_manifest()
 
@@ -88,6 +89,37 @@ class ProvenanceTests(unittest.TestCase):
             '{"exports":"./different.ts"}\n'
         )
         with self.assertRaisesRegex(ValueError, "Source differs from the AOT build"):
+            BASELINE.verify_package(self.package, self.repository)
+
+    def test_core_source_changes_cannot_be_compared_to_old_aot(self):
+        (self.repository / "packages/core/src/index.ts").write_text(
+            "changed public application behavior\n"
+        )
+        with self.assertRaisesRegex(ValueError, "Source differs from the AOT build"):
+            BASELINE.verify_package(self.package, self.repository)
+
+    def test_manifest_must_include_shared_fixture_content(self):
+        self.manifest["source"]["files"] = [
+            record
+            for record in self.manifest["source"]["files"]
+            if record["path"] != "examples/native-window/content.ts"
+        ]
+        self.save_manifest()
+        with self.assertRaisesRegex(
+            ValueError, "every current application/host source"
+        ):
+            BASELINE.verify_package(self.package, self.repository)
+
+    def test_another_compiled_fixture_cannot_be_a_window_baseline(self):
+        self.manifest["entrypoint"] = "tests/native/input-race.ts"
+        self.save_manifest()
+        with self.assertRaisesRegex(ValueError, "native-window fixture"):
+            BASELINE.verify_package(self.package, self.repository)
+
+    def test_external_host_cannot_be_mistaken_for_the_bundled_baseline(self):
+        self.manifest["host"]["placement"] = "external"
+        self.save_manifest()
+        with self.assertRaisesRegex(ValueError, "matching bundled native host"):
             BASELINE.verify_package(self.package, self.repository)
 
     def test_debug_host_cannot_be_presented_as_production_baseline(self):
@@ -136,11 +168,11 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(report["trials"], [])
 
     @unittest.skipUnless(
-        sys.platform == "linux" and DRIVER.proc_identity_matches(),
+        sys.platform == "linux" and BASELINE.NATIVE_INPUT.proc_identity_matches(),
         "Linux process IDs and /proc must share a PID namespace",
     )
     def test_supervisor_sigterm_stops_and_reaps_the_running_trial(self):
-        DRIVER.enable_subreaper()
+        BASELINE.NATIVE_INPUT.enable_subreaper()
         log = Path(self.temporary.name) / "trial.log"
         code = """
 import importlib.util
@@ -179,14 +211,14 @@ raise SystemExit("Cancellation did not interrupt the running trial")
                     )
                 time.sleep(0.01)
             child = int(log.read_text().strip())
-            table = DRIVER.process_table()
+            table = BASELINE.NATIVE_INPUT.process_table()
             for pid in [supervisor.pid, child]:
                 observed[pid] = table[pid]["start_ticks"]
             supervisor.send_signal(signal.SIGTERM)
             stdout, stderr = supervisor.communicate(timeout=5)
             self.assertEqual(supervisor.returncode, 42, stderr)
             self.assertIn("Native baseline received signal", stdout)
-            remaining = DRIVER.process_table().get(child)
+            remaining = BASELINE.NATIVE_INPUT.process_table().get(child)
             self.assertTrue(
                 remaining is None or remaining["start_ticks"] != observed[child],
                 "Cancellation retained the running trial or an unreaped zombie",
@@ -195,11 +227,11 @@ raise SystemExit("Cancellation did not interrupt the running trial")
             if not observed:
                 observed = {
                     row["pid"]: row["start_ticks"]
-                    for row in DRIVER.owned_processes(
-                        supervisor.pid, DRIVER.process_table()
+                    for row in BASELINE.NATIVE_INPUT.owned_processes(
+                        supervisor.pid, BASELINE.NATIVE_INPUT.process_table()
                     )
                 }
-            DRIVER.cleanup(supervisor, observed)
+            BASELINE.NATIVE_INPUT.cleanup(supervisor, observed)
             supervisor.stdout.close()
             supervisor.stderr.close()
 
