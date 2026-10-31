@@ -103,6 +103,36 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 ## Evidence and limits
 
+### React adapter
+
+`tests/native/react-window.py` supplies independent complete-tree expectations for
+`examples/react-counter/main.tsx`, then executes the existing owned-process input
+driver. Its `counter-click` scenario requires one label update, one retained keyed
+move and one deletion with React row cleanup. `counter-input` requires every native
+edit revision and the final input/echo values. Both require OS close and effect/
+listener cleanup. The required native job runs both with development Bun and the
+inspected `--entry react` AOT executable against its already-built release host.
+See the [adapter instructions](../../packages/react/README.md) and
+[local source-bound evidence](evidence/react-linux-development-aot.json). That local
+record uses a development-profile host and does not qualify release performance.
+
+The protocol4 follow-up uses `tests/native/react-interactions.tsx` with the common
+`renderer-interactions.ts` oracle. Run `tests/native/renderer-interactions.py
+--renderer React --scenario keyboard|caret|selection --mode development|aot
+--output NEW_DIRECTORY -- APPLICATION` inside the existing isolated native
+session. Pass the inspected `--entry react-interactions` executable in AOT mode.
+The scenarios require real pointer/focus/keyboard events, both JavaScript
+propagation-stop policies, caret insertion or selection replacement, exactly two
+native Sets and a complete expected paint tree. Every observed registration signal
+must be revoked after OS close, with all public ownership counts zero. The helper
+adds no process supervisor or framework event-dispatch implementation.
+
+The [current event record](evidence/react-events-linux-development-aot.json) binds
+those six development/AOT runs and the four counter regressions to exact
+protocol4 source and binary hashes. Global native sequence numbers now include
+focus, pointer and key notifications; typed edit counts remain independently
+checked by input revisions. The shared core validates global ordering.
+
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.
 The lifecycle fixture also writes `public-lifecycle.json` beside the event log,

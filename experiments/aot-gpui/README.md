@@ -49,22 +49,25 @@ Use `--host-profile dev` when qualifying a development host; omitting it records
 
 The package directory receives the AOT application, native host, compiler diagnostics, native linkage logs and a manifest with exact toolchain, source/lockfile hashes, dirty-worktree status, artifact hashes and sizes. Native rendering, OS input, teardown, installation and signing start as **not verified** in this build record; actual execution evidence is separate. The build itself cannot turn those checks into passes.
 
-The same compiler and inspection pipeline supports ten explicit entries:
+The same compiler and inspection pipeline supports these explicit entries:
 
-| `--entry`                 | Source                             | Executable         | Native host placement                              |
-| ------------------------- | ---------------------------------- | ------------------ | -------------------------------------------------- |
-| `native-window` (default) | `examples/native-window/main.ts`   | `native-window`    | Copied into the package                            |
-| `input-race`              | `tests/native/input-race.ts`       | `input-race`       | Existing prebuilt host referenced by absolute path |
-| `bridge`                  | `benchmarks/bridge.ts`             | `bridge`           | Existing prebuilt host referenced by absolute path |
-| `javascript`              | `tests/native/javascript.js`       | `javascript`       | Existing prebuilt host referenced by absolute path |
-| `core-lifecycle`          | `tests/native/public-lifecycle.ts` | `core-lifecycle`   | Existing prebuilt host referenced by absolute path |
-| `event-throughput`        | `tests/native/event-throughput.ts` | `event-throughput` | Existing prebuilt host referenced by absolute path |
-| `fault`                   | `tests/native/fault.ts`            | `fault`            | Existing prebuilt host referenced by absolute path |
-| `scheduling`              | `tests/native/scheduling.ts`       | `scheduling`       | Existing prebuilt host referenced by absolute path |
-| `layout`                  | `tests/native/layout.ts`           | `layout`           | Existing prebuilt host referenced by absolute path |
-| `interactions`            | `tests/native/interactions.ts`     | `interactions`     | Existing prebuilt host referenced by absolute path |
+| `--entry`                 | Source                                | Executable           | Native host placement                              |
+| ------------------------- | ------------------------------------- | -------------------- | -------------------------------------------------- |
+| `native-window` (default) | `examples/native-window/main.ts`      | `native-window`      | Copied into the package                            |
+| `input-race`              | `tests/native/input-race.ts`          | `input-race`         | Existing prebuilt host referenced by absolute path |
+| `bridge`                  | `benchmarks/bridge.ts`                | `bridge`             | Existing prebuilt host referenced by absolute path |
+| `javascript`              | `tests/native/javascript.js`          | `javascript`         | Existing prebuilt host referenced by absolute path |
+| `core-lifecycle`          | `tests/native/public-lifecycle.ts`    | `core-lifecycle`     | Existing prebuilt host referenced by absolute path |
+| `event-throughput`        | `tests/native/event-throughput.ts`    | `event-throughput`   | Existing prebuilt host referenced by absolute path |
+| `fault`                   | `tests/native/fault.ts`               | `fault`              | Existing prebuilt host referenced by absolute path |
+| `scheduling`              | `tests/native/scheduling.ts`          | `scheduling`         | Existing prebuilt host referenced by absolute path |
+| `layout`                  | `tests/native/layout.ts`              | `layout`             | Existing prebuilt host referenced by absolute path |
+| `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
+| `react`                   | `examples/react-counter/main.tsx`     | `react`              | Existing prebuilt host referenced by absolute path |
+| `react-interactions`      | `tests/native/react-interactions.tsx` | `react-interactions` | Existing prebuilt host referenced by absolute path |
+| `react-workload`          | `benchmarks/solid/react.tsx`          | `react-workload`     | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The nine test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Each requires an explicit `--host-profile dev` or `release`. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
+All executable names gain `.exe` on Windows. Entries other than `native-window` avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. `bridge`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`, `interactions`, `react`, `react-interactions` and `react-workload` require an explicit `--host-profile dev` or `release`. The [bridge runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -81,6 +84,15 @@ bun experiments/aot-gpui/build-window.ts \
 ```
 
 The input-race fixture needs an actual native input session and a fresh evidence nonce; compiling it does not execute that regression. Each manifest identifies its selected entry and hashes the core, protocol and runtime sources, shared window content, native sources, package manifests and root build configuration. The helper checks those hashes before and after compilation and fails if the source changes during the build. Different entries cannot be substituted in a matched native-window baseline.
+
+The React entry also hashes the React adapter and shared renderer source and package manifests. Its separate [native controller](../../tests/native/react-window.py) runs the keyed counter and input scenarios against the inspected executable; neither a successful compile nor the controller's declared execution mode is evidence by itself for the other half of qualification.
+
+`--entry react-interactions` additionally hashes the common renderer-interaction
+fixture oracle. Its inspected executable runs through
+`tests/native/renderer-interactions.py --renderer React` with keyboard, caret and
+selection scenarios. The native fixture separately verifies shared event phases,
+input revisions and framework cleanup; artifact inspection does not supply that
+input evidence.
 
 On Linux, the helper additionally requires the emitted application to record JIT compiler removal and includes its full runtime-feature record in the manifest. An interpreter may remain present; this check does not claim otherwise. Other executable formats report the JIT inspection as unimplemented.
 

@@ -1,0 +1,5013 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-31T19:16:43.770436+00:00",
+  "scope": "Actual Linux GPUI/X11/XTest React native events and counter regressions; development-profile protocol4 host, not a release performance baseline.",
+  "sourceBase": "3f9a3c8957bdb0d30455de0415bc3ae6f5e7da07",
+  "sourceWasDirty": true,
+  "protocol": 4,
+  "capability": "interactions_v1",
+  "sharedRendererTree": "33738da8d9c094638fa07a6566fbc10b0a336231",
+  "sourceAndHarnessFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    "Cargo.toml": {
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    "benchmarks/native-baseline.py": {
+      "bytes": 17802,
+      "sha256": "328042292f7bba66a5718dee8fbd116c07af1e48a112d5e6c16eb738e832aad3"
+    },
+    "bun.lock": {
+      "bytes": 16009,
+      "sha256": "2e863283b5eba9ab69ee2bbe7773e45e688a02ec386dd9a5b941d032ab2f43e6"
+    },
+    "bunfig.toml": {
+      "bytes": 101,
+      "sha256": "d8c2e64d274d36b77538425312901881ddcd7b3f5e78ca6dda3fcd0e294dd1b0"
+    },
+    "examples/native-window/content.ts": {
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "examples/react-counter/main.tsx": {
+      "bytes": 4152,
+      "sha256": "0a2fd9bab78bc2ed90d72b47b43535fef507e42644021334ba389db66ceba17c"
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "bytes": 9879,
+      "sha256": "69501462ce5f1c9ea135b79660d668472f77931b8f42d94d70e649aedb447847"
+    },
+    "experiments/aot-gpui/inspect-runtime.ts": {
+      "bytes": 5444,
+      "sha256": "77244eec83d8fe1a1ae8ac43c7cceef2ecd6484f3f9e695a43e5aa89945e1380"
+    },
+    "experiments/aot-gpui/inspect.ts": {
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    "native/gpui-host/src/channel.rs": {
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "bytes": 5961,
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d"
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    "native/gpui-host/src/input.rs": {
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    "native/gpui-host/src/main.rs": {
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    "native/gpui-host/src/session.rs": {
+      "bytes": 11756,
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077"
+    },
+    "native/gpui-host/src/state.rs": {
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    "native/gpui-host/src/style.rs": {
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    "native/gpui-host/src/view.rs": {
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    "native/protocol/Cargo.toml": {
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    "native/protocol/src/event_tests.rs": {
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    "native/protocol/src/events.rs": {
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    "native/protocol/src/framing.rs": {
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    "native/protocol/src/lib.rs": {
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    "native/protocol/src/security_tests.rs": {
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    "native/protocol/src/tests.rs": {
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    "native/protocol/src/tree.rs": {
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    "native/protocol/src/wire.rs": {
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    "package.json": {
+      "bytes": 1726,
+      "sha256": "ebf6a108358721e91ef17ef50ee5f7f99e2ef982225af9328aa5759f6135b97b"
+    },
+    "packages/core/package.json": {
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    "packages/core/src/application.ts": {
+      "bytes": 14616,
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+    },
+    "packages/core/src/events.ts": {
+      "bytes": 7680,
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 646,
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+    },
+    "packages/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "packages/core/src/types.ts": {
+      "bytes": 5566,
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    "packages/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "packages/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    "packages/protocol/src/messages.ts": {
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    "packages/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "packages/react/package.json": {
+      "bytes": 402,
+      "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+    },
+    "packages/react/src/index.ts": {
+      "bytes": 262,
+      "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+    },
+    "packages/react/src/jsx-dev-runtime.ts": {
+      "bytes": 93,
+      "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+    },
+    "packages/react/src/jsx-runtime.ts": {
+      "bytes": 92,
+      "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+    },
+    "packages/react/src/jsx.ts": {
+      "bytes": 1281,
+      "sha256": "0cb1d27d0e49ff376e78208e2c34077e4c901924c9a0765860c349bebd4af898"
+    },
+    "packages/react/src/mount.ts": {
+      "bytes": 6551,
+      "sha256": "e11f0ab0388fcfbe587d17c2a838a3f7f994b7d6ef3b889192f5153f7dd7cd00"
+    },
+    "packages/react/src/reconciler.ts": {
+      "bytes": 7108,
+      "sha256": "360c0ab28c021405e81df5a2d748676fd6de6d356e94d05fdc811b51fcd7b2a5"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    "packages/runtime/package.json": {
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    "packages/runtime/src/index.ts": {
+      "bytes": 13240,
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    "scripts/quality/native-input-linux.py": {
+      "bytes": 37262,
+      "sha256": "0b7cc4ce9c33a32a1ba27adafe8d2bf28ff8fd9c455cbe1ddde99bb3f06ae82e"
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "bytes": 6961,
+      "sha256": "aa9442f99fbd6aa0b9491e8903abf03ee00b54761b561c9db7daeed94d3cf219"
+    },
+    "tests/native/react-interactions.tsx": {
+      "bytes": 2244,
+      "sha256": "7e046d9841b012784d7a2014822a69613b49d0c119e0c3e2a75c09bee9f10dbb"
+    },
+    "tests/native/react-window.py": {
+      "bytes": 4397,
+      "sha256": "13fc1f7275a3e1f32174b98f4f019e609965b2eeb6a92748e290710098c23f34"
+    },
+    "tests/native/renderer-interactions.py": {
+      "bytes": 4162,
+      "sha256": "bb2967c57a7f95a455d9ac45a87ae609e83370cb4c5bb08c6594225062bad0db"
+    },
+    "tests/native/renderer-interactions.ts": {
+      "bytes": 10485,
+      "sha256": "fecede8be48123805c341df33134118114405b7048166a0cc5852d35d0ef6c4a"
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "bytes": 1029,
+      "sha256": "0d91a562bb02d0cb7e0ad2552d082139d3e3fede6356bbcdc5cf7c3460525b74"
+    }
+  },
+  "sourceStability": {
+    "beforeAndAfterEveryRun": "passed",
+    "beforeAndAfterRecordsIdentical": true,
+    "sourceBefore": {
+      "bytes": 8363,
+      "sha256": "625858973fde6eb3117bc1ca6c8342a6e19b6d17ca03c35892c6fb4fe44bc219"
+    },
+    "sourceAfter": {
+      "bytes": 8363,
+      "sha256": "625858973fde6eb3117bc1ca6c8342a6e19b6d17ca03c35892c6fb4fe44bc219"
+    }
+  },
+  "host": {
+    "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+    "bytes": 111772680,
+    "profile": "dev"
+  },
+  "nativeSourceMatch": {
+    "previousQualification": "tests/native/evidence/interactions-linux-development-aot.json",
+    "record": {
+      "bytes": 44103,
+      "sha256": "6ab39d7665b8bbd74e3a96d041af7b0659b94e6f597194ce85a08dbeccf29c16"
+    },
+    "matchedBuildFiles": [
+      "Cargo.lock",
+      "Cargo.toml",
+      "native/gpui-host/Cargo.toml",
+      "native/gpui-host/src/channel.rs",
+      "native/gpui-host/src/evidence.rs",
+      "native/gpui-host/src/evidence/layout.rs",
+      "native/gpui-host/src/input.rs",
+      "native/gpui-host/src/input/binding.rs",
+      "native/gpui-host/src/input/paint.rs",
+      "native/gpui-host/src/main.rs",
+      "native/gpui-host/src/session.rs",
+      "native/gpui-host/src/state.rs",
+      "native/gpui-host/src/style.rs",
+      "native/gpui-host/src/view.rs",
+      "native/gpui-host/src/view/interactions.rs",
+      "native/protocol/Cargo.toml",
+      "native/protocol/src/event_tests.rs",
+      "native/protocol/src/events.rs",
+      "native/protocol/src/framing.rs",
+      "native/protocol/src/lib.rs",
+      "native/protocol/src/security_tests.rs",
+      "native/protocol/src/tests.rs",
+      "native/protocol/src/tree.rs",
+      "native/protocol/src/tree/tests.rs",
+      "native/protocol/src/wire.rs",
+      "rust-toolchain.toml",
+      "toolchain.json"
+    ]
+  },
+  "applications": {
+    "counter": {
+      "entrypoint": "examples/react-counter/main.tsx",
+      "artifact": {
+        "file": "react",
+        "bytes": 72743976,
+        "sha256": "553db74ce53e39169761d4fb31818fb923d209e463021426e68f55923e5e7a66",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5177561,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "manifest": {
+        "path": "task-artifacts/bn3-react-events/aot-counter/manifest.json",
+        "bytes": 16491,
+        "sha256": "086ae95f0b3643ebf260b90a093ff3b021c5fc490657ef5f9fd5afda35bcffb9"
+      },
+      "sourceFiles": 65,
+      "target": {
+        "os": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "installation": "not-tested",
+        "signing": "unsigned"
+      }
+    },
+    "interactions": {
+      "entrypoint": "tests/native/react-interactions.tsx",
+      "artifact": {
+        "file": "react-interactions",
+        "bytes": 72891432,
+        "sha256": "8ff8df9c840386dc71dd488ecf3d141b584ae3656c2737b3d9049bd0c4193735",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5325058,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "manifest": {
+        "path": "task-artifacts/bn3-react-events/aot-interactions/manifest.json",
+        "bytes": 16737,
+        "sha256": "e16b91d4ea70e2043873577707e557bb77f5e286b7f9efe40e37eae7d567c6a3"
+      },
+      "sourceFiles": 66,
+      "target": {
+        "os": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "installation": "not-tested",
+        "signing": "unsigned"
+      }
+    }
+  },
+  "negativeControl": {
+    "previousImplementation": "568f4906e0f1200521568325feed21eacdb504c2:packages/react/src/reconciler.ts",
+    "command": ["bun", "test", "tests/react/propagation.test.tsx", "-t", "removing capture"],
+    "result": "failed as expected: removing capture/ordinary rerender incorrectly aborted the active target keyboard callback",
+    "expected": false,
+    "received": true,
+    "productionSourceRestored": "360c0ab28c021405e81df5a2d748676fd6de6d356e94d05fdc811b51fcd7b2a5",
+    "rawLog": {
+      "path": "task-artifacts/bn3-react-events/queued-phase-negative-control.log",
+      "bytes": 1004,
+      "sha256": "e9f17b8ab3a686cef298e0eddca8e58e3699c1cf252f11dce8d1c8314d50e584"
+    },
+    "testSourceSha256": "3eade5bd9b1a666f66cf4a4013a5368dfbf51cf43050d9ca4e28cde273f8290d",
+    "testSourceNote": "The subsequent test-only change extracts the same bounded wait into tests/react/support.ts; the phase and signal assertions remain unchanged."
+  },
+  "runs": [
+    {
+      "name": "interactions-development-keyboard",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "development",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "625b19054997a8b670e9d86c4457b3c0",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "traces": 33,
+          "eventGroups": 9,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "traceCount": 33,
+          "observedSignalsRevoked": 27,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "key": "enter",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "click",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "enter",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-development-keyboard",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 41225,
+          "sha256": "ec807bfd50e78add951bd37ca8c660e8428c2469a8377fae750357314ddd023b"
+        },
+        "app-events.jsonl": {
+          "bytes": 19775,
+          "sha256": "c4fe8d64464b6a8fca5e8359853f1e319c9a2f0f4a201b5e697377b01a2b51a9"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "after.png": {
+          "bytes": 14802,
+          "sha256": "27494631e0bb09c5b53f514594546aeb40e697de18b9b9cb44dccf857d6c53b5"
+        }
+      }
+    },
+    {
+      "name": "interactions-development-caret",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "development",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "dfa1895f610e2f01f1684afe4f5f971f",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "traces": 67,
+          "eventGroups": 17,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 10,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 11,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 12,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 13,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 14,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 15,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "x",
+          "keyChar": "x",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 16,
+          "event": "input",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "value": "AxBCD",
+          "revision": 1
+        },
+        {
+          "sequence": 17,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "x",
+          "keyChar": "x",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-development-caret",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 69769,
+          "sha256": "4c47148572d4a8a06978ed70dfbcc3eb233981bf3bba5e33fa1b96e61c8796e3"
+        },
+        "app-events.jsonl": {
+          "bytes": 35342,
+          "sha256": "6bb3db576d19c3c3a7f66fa282372b7148ffa49ae713282ba35392b200bdaa26"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "after.png": {
+          "bytes": 15186,
+          "sha256": "3c0372aff9e26db3ba558f9c1b3fa2eb3cedc6a18baa43167085b17a97052939"
+        }
+      }
+    },
+    {
+      "name": "interactions-development-selection",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "development",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "855426a37eacb90c7122c74bcd5aeb11",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "traces": 75,
+          "eventGroups": 19,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 75,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 10,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 11,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 12,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 13,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 14,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 15,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": true,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 16,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 17,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "y",
+          "keyChar": "Y",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": true,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 18,
+          "event": "input",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "value": "AYCD",
+          "revision": 1
+        },
+        {
+          "sequence": 19,
+          "event": "key_up",
+          "treeRevision": 3,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "y",
+          "keyChar": "y",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-development-selection",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 72742,
+          "sha256": "75bbd9bf4006635937e82624cd8d2e1601b78a61c58cc857b677c2df036c1bce"
+        },
+        "app-events.jsonl": {
+          "bytes": 37719,
+          "sha256": "8a83f5f4e4db23a76be826fba60e705b965607d214669c8aa92376a7b5b37483"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "after.png": {
+          "bytes": 14468,
+          "sha256": "6cf1663aec2526151c4dd61d967ac1bb71a34bb530226c931ec9c457ea4b8fa3"
+        }
+      }
+    },
+    {
+      "name": "interactions-aot-keyboard",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "aot",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "a34e051d672e4b26a9196cfc5ca751f4",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "traces": 33,
+          "eventGroups": 9,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "traceCount": 33,
+          "observedSignalsRevoked": 27,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "key": "enter",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "click",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "enter",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-aot-keyboard",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 40673,
+          "sha256": "b8aca9d4cb399c890cab8275c4109c9d409110646db0edd3e4a93916fb7551f4"
+        },
+        "app-events.jsonl": {
+          "bytes": 19775,
+          "sha256": "6e958710a5b746993b18412983bc6ee19b9630587d374a84779466337c8603df"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 112,
+          "sha256": "def5d7b87b7e86b9ee71af8eef2da4cbce5dca24e186233efef75d8f4cee5724"
+        },
+        "after.png": {
+          "bytes": 14802,
+          "sha256": "27494631e0bb09c5b53f514594546aeb40e697de18b9b9cb44dccf857d6c53b5"
+        }
+      }
+    },
+    {
+      "name": "interactions-aot-caret",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "aot",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "0aa4bb22cb55d4d5cec28f6a0f594e36",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "traces": 67,
+          "eventGroups": 17,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 10,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 11,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 12,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 13,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 14,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 15,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "x",
+          "keyChar": "x",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 16,
+          "event": "input",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "value": "AxBCD",
+          "revision": 1
+        },
+        {
+          "sequence": 17,
+          "event": "key_up",
+          "treeRevision": 3,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "x",
+          "keyChar": "x",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-aot-caret",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 67490,
+          "sha256": "2d0624a53386a2fa98a2b3d4df73abf64f3eb30bb88153fb5615d46020f7fcac"
+        },
+        "app-events.jsonl": {
+          "bytes": 34339,
+          "sha256": "7725115b3b8ccb077ba2a991a5cc1ffefd29b12d42456947a2fdd0b9838fb8ef"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "after.png": {
+          "bytes": 15186,
+          "sha256": "3c0372aff9e26db3ba558f9c1b3fa2eb3cedc6a18baa43167085b17a97052939"
+        }
+      }
+    },
+    {
+      "name": "interactions-aot-selection",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "aot",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "ad375d97709f6b8b561edd7fb71c9ddc",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ready",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "traces": 75,
+          "eventGroups": 19,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-complete",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 75,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "framework": "React",
+          "type": "renderer-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [
+        {
+          "sequence": 1,
+          "event": "focus",
+          "treeRevision": 1,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 2,
+          "event": "pointer_down",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": true
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": true
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 3,
+          "event": "pointer_up",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          },
+          "button": "left",
+          "x": 100.00152587890625,
+          "y": 130.00198364257812
+        },
+        {
+          "sequence": 4,
+          "event": "click",
+          "treeRevision": 1,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 5,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 6,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 7,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 8,
+          "event": "blur",
+          "treeRevision": 2,
+          "targetKind": "button",
+          "pathKinds": ["box", "box", "box", "button"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "button",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 9,
+          "event": "focus",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ]
+        },
+        {
+          "sequence": 10,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "tab",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 11,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 12,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "home",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 13,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 14,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 15,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": true,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 16,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "right",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 17,
+          "event": "key_down",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "y",
+          "keyChar": "Y",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": true,
+            "platform": false,
+            "function": false
+          }
+        },
+        {
+          "sequence": 18,
+          "event": "input",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "value": "AYCD",
+          "revision": 1
+        },
+        {
+          "sequence": 19,
+          "event": "key_up",
+          "treeRevision": 2,
+          "targetKind": "input",
+          "pathKinds": ["box", "box", "box", "input"],
+          "callbacks": [
+            {
+              "role": "frame",
+              "capture": true,
+              "phase": "capture",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": true,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "input",
+              "capture": false,
+              "phase": "target",
+              "propagationStopped": false
+            },
+            {
+              "role": "frame",
+              "capture": false,
+              "phase": "bubble",
+              "propagationStopped": false
+            }
+          ],
+          "key": "y",
+          "keyChar": "y",
+          "modifiers": {
+            "control": false,
+            "alt": false,
+            "shift": false,
+            "platform": false,
+            "function": false
+          }
+        }
+      ],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/interactions-aot-selection",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 75119,
+          "sha256": "535690c04b0af32d3d71d8f9aaa1293a939c888c5014bf0f75ea6a8012343898"
+        },
+        "app-events.jsonl": {
+          "bytes": 38722,
+          "sha256": "0390403d583b36167d12c0376e27a1961b499c6cc1ce2108768f74aea0d728ce"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 14895,
+          "sha256": "b8d9bac002813b8bde812d464870e49a21a5876c4582389e4f5ece2bd60cd965"
+        },
+        "after.png": {
+          "bytes": 14468,
+          "sha256": "6cf1663aec2526151c4dd61d967ac1bb71a34bb530226c931ec9c457ea4b8fa3"
+        }
+      }
+    },
+    {
+      "name": "counter-development-counter-click",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "development",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "99f1d44b3b5828d0b330459c0c408c9a",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "type": "react-keyed-update",
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "react-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/counter-development-counter-click",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 28397,
+          "sha256": "f69dd94fe7c7bbe600a2ed0bbcd7d9241323e7f33d6c181dbfd2f5b5dc5f552c"
+        },
+        "app-events.jsonl": {
+          "bytes": 9027,
+          "sha256": "57d81362bde4e15fb8282269d8430bd6a672b8ee24019fd993296dc874bdefe5"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        }
+      }
+    },
+    {
+      "name": "counter-development-counter-input",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "development",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "eb33eb3213db81432d0a8fcaa34fa423",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "type": "react-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/counter-development-counter-input",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 205990,
+          "sha256": "22bce595b0064439f6f24a1a442b62cc4ebc7859e079d9ed5de640285c38b117"
+        },
+        "app-events.jsonl": {
+          "bytes": 90087,
+          "sha256": "129a9741ff429120da57648f15c8b1400d2c86ecd813a007f1b6bc3fa3e5611e"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 31984,
+          "sha256": "f81bd61fda57e467f877c7ce5b4a7ba287bb6fd06d879cd33a9458c86fb892c2"
+        }
+      }
+    },
+    {
+      "name": "counter-aot-counter-click",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "aot",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "98fd013f0f86a0aa9fc8b06932e1dbf7",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "type": "react-keyed-update",
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "react-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/counter-aot-counter-click",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 29023,
+          "sha256": "54013f5f51fb5e7bf61fe954a69655d01891043e6aadf93c05a996522fe0bddd"
+        },
+        "app-events.jsonl": {
+          "bytes": 9028,
+          "sha256": "b9347dacfb4dc85c871e52d00b61d201f2ae61cdd4324f0b8355d404ad514403"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        }
+      }
+    },
+    {
+      "name": "counter-aot-counter-input",
+      "status": "passed",
+      "exitCode": 0,
+      "mode": {
+        "declared": "aot",
+        "aot_verified_by_driver": false
+      },
+      "nonce": "1b6cf527d5252a6cb2de5ba7327a500c",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "renderer": {
+        "status": "reported-by-native-window",
+        "gpu": {
+          "is_software_emulated": true,
+          "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+          "driver_name": "llvmpipe",
+          "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+        }
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "applicationOutcomes": [
+        {
+          "type": "react-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "routeGroups": [],
+      "rawDirectory": "task-artifacts/bn3-react-events/qualified-native/counter-aot-counter-input",
+      "rawFiles": {
+        "result.json": {
+          "bytes": 191537,
+          "sha256": "d53b4e0709c6018629c813f00021e8c6dd4f5f8b5bbc6fcd6935f6180996f80a"
+        },
+        "app-events.jsonl": {
+          "bytes": 82694,
+          "sha256": "e6744e5c321b3f2eeab982e81333dd935a90e9463d7677ee1f307f63e8df1afb"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 33587,
+          "sha256": "6278ade182ca5217be177d351d8c86ec518d24633403c00110b7f6bdcef9debe"
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "The declared driver AOT mode is corroborated by each inspected artifact manifest; it is not independent compiler proof.",
+    "Screenshots show real rendered pixels; the automated gate uses complete native paint records, not pixel OCR or display-presentation timing.",
+    "No physical input, hardware GPU, macOS/Windows GUI, release-profile performance or long-term leak-freedom claim.",
+    "These correctness runs do not resolve the separate shared Solid/direct-core retention finding or complete issue236 performance acceptance.",
+    "Original protocol2 React interaction and lifecycle evidence remains bound to its historical source and has not been rewritten."
+  ]
+}

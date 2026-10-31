@@ -23,7 +23,7 @@ cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
 
 `build` checks the TypeScript package build. It is not an AOT release build and must not silently compile Rust for ordinary application edits. The Rust commands explicitly select the portable protocol crate. GPUI compilation, GPU initialization, window interaction and production AOT acceptance use the separate native commands below. Consumer TypeScript/JavaScript edits reuse an explicitly supplied prebuilt host.
 
-`bunfig.toml` retains the minimum line-coverage gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
+`bunfig.toml` requires at least 80% line and 90% function coverage per reported file. The function threshold makes the pinned Bun runner's existing default explicit; it does not reduce the effective gate. Coverage is useful for the implemented source; it does not establish native UI or platform support.
 
 ### Real subprocess failure tests
 
@@ -102,8 +102,8 @@ The harness uses Python's standard library. Ruff is the sole Python development 
 ```sh
 python3 -m venv .bun-native/quality-env
 .bun-native/quality-env/bin/pip install --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
-.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
-.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
+.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py tests/native/*.py
+.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py tests/native/*.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
 bash -n scripts/quality/native-linux-session.sh
 ```
@@ -111,6 +111,61 @@ bash -n scripts/quality/native-linux-session.sh
 The process-tree safety case is explicitly skipped if the local PID namespace cannot be reconciled with `/proc`. Hosted Ubuntu runs it in the real namespace. The native GUI lane fails, rather than reporting a pass, when the actual display/input/paint/cleanup requirements are unavailable or unfulfilled.
 
 Seven additional baseline tests reject changed binaries, source or package resolution, a development-profile host, missing JIT-omission verification, source-path escapes and an unavailable display. Their inert metadata fixtures are never executed or presented as native/AOT evidence.
+
+## React adapter, native input and lifecycle
+
+`tests/react/*.test.tsx` runs the pinned React reconciler over the public core and
+a real headless protocol subprocess. It covers state batching, keyed identity,
+native input revisions, callback-subscription stability, refs/effects, bounded
+commit barriers and disposal during a commit. Real React error boundaries must
+retain a usable fallback; a recoverable concurrent retry must retain its root.
+A throwing recovery reporter fails that root while leaving a sibling usable.
+Uncaught effect/ref-cleanup errors must reject disposal after native ownership
+has been released. These tests do not render GPUI.
+
+`tests/react/propagation.test.tsx` adds six actual-IPC cases for the shared
+capture/target/bubble contract. They exercise a capture state update followed by
+fresh target/bubble closures on the original route, all eight native event
+families, both propagation-stop methods, independently revoked phases while a
+target callback and another event remain queued, and ancestor input observations
+that update React state without echoing text back to the native widget. The
+previous React callback mapping fails the queued-phase regression by aborting the
+still-live target callback; the negative-control log is retained with the local
+event evidence. These deterministic protocol-peer cases establish JavaScript
+dispatch and lifecycle behavior, not OS delivery.
+
+`tests/native/react-window.py` drives `examples/react-counter/main.tsx` through the
+existing owned-process X11 supervisor. Required native CI runs both counter-click
+and counter-input against development Bun and the inspected AOT `react` entry,
+using its one release host. Full native paint snapshots check keyed reuse and
+input revisions. Application assertions require a callback to remain active
+through rerender, all row/effect cleanup on OS close and zero owned children at
+exit. The [local interaction record](../tests/native/evidence/react-linux-development-aot.json)
+is separately bound to its development-host source and binary hashes.
+
+The shared `tests/native/renderer-interactions.ts` oracle and Python expectation
+wrapper run React's native keyboard, caret and selection view in development and
+inspected AOT. Every scenario checks complete native trees, actual pointer/focus/
+key/input events, the full expected route, fixed mutation counts, input revisions
+and OS-close cleanup. JavaScript propagation stops must not undo native Enter
+activation. The [protocol4 React record](../tests/native/evidence/react-events-linux-development-aot.json)
+retains ten passing runs: these six scenarios plus four existing counter runs.
+All use the same explicitly identified development host and software GPU, with
+source/harness/artifact fingerprints checked before and after each run. Required
+hosted CI repeats them on its release host; local evidence does not establish
+release performance or a macOS/Windows native result.
+
+The [React native workload](../benchmarks/REACT.md) uses the same framework-neutral
+workload as the Solid/direct-core experiments. Each mode performs 1,000 individual
+state updates, 1,000 values coalesced into 100 updates, 1,000 keyed rotations and
+1,000 complete mount/update/dispose cycles. Exact mutation counts, 32,000 row-owner
+cleanups, two fixed WeakRef observations and all six public ownership counts are
+checked. Separate small calibration processes require complete expected native
+paint trees and actual GPU descriptions. The required native lane retains the
+calibration and raw timing/heap reports, while the [committed local evidence](../benchmarks/evidence/react-linux-lifecycle.json)
+uses a development-profile protocol-2 host. Single-run acknowledgement timings
+are diagnostic; they do not establish a release budget, presentation latency or
+a cross-framework speed comparison.
 
 ## Real native startup, crash and scheduling regressions
 
