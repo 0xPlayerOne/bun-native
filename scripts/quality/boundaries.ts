@@ -17,6 +17,17 @@ const policy: Record<
     platform: false,
     external: ['solid-js', 'solid-js/universal'],
   },
+  react: {
+    packages: ['core', 'renderer'],
+    platform: false,
+    external: [
+      'react',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-reconciler',
+      'react-reconciler/constants',
+    ],
+  },
 }
 
 type Manifest = {

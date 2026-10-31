@@ -8,12 +8,14 @@
         "@babel/core": "7.29.7",
         "@bun-native/core": "workspace:*",
         "@bun-native/protocol": "workspace:*",
+        "@bun-native/react": "workspace:*",
         "@bun-native/renderer": "workspace:*",
         "@bun-native/runtime": "workspace:*",
         "@bun-native/solid": "workspace:*",
         "@types/babel__core": "7.20.5",
         "@types/bun": "1.4.4",
         "@types/react": "19.3.0",
+        "@types/react-reconciler": "0.34.1",
         "babel-preset-solid": "1.9.16",
         "code-foundry": "1.48.8",
         "oxc-parser": "0.156.0",
@@ -33,6 +35,16 @@
     "packages/protocol": {
       "name": "@bun-native/protocol",
       "version": "0.0.0",
+    },
+    "packages/react": {
+      "name": "@bun-native/react",
+      "version": "0.0.0",
+      "dependencies": {
+        "@bun-native/core": "workspace:*",
+        "@bun-native/renderer": "workspace:*",
+        "react": "19.3.1",
+        "react-reconciler": "0.34.0",
+      },
     },
     "packages/renderer": {
       "name": "@bun-native/renderer",
@@ -98,6 +110,8 @@
     "@bun-native/core": ["@bun-native/core@workspace:packages/core"],
 
     "@bun-native/protocol": ["@bun-native/protocol@workspace:packages/protocol"],
+
+    "@bun-native/react": ["@bun-native/react@workspace:packages/react"],
 
     "@bun-native/renderer": ["@bun-native/renderer@workspace:packages/renderer"],
 
@@ -207,6 +221,8 @@
 
     "@types/react": ["@types/react@19.3.0", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg=="],
 
+    "@types/react-reconciler": ["@types/react-reconciler@0.34.1", "", { "peerDependencies": { "@types/react": "*" } }, "sha512-XAzeH3rARrfApMETpkcFmfJQRS3rPpXsSR/XA8H3sV8WgA0bp6UE7sLNM92l1ZbCclUKmrH28Ik2fSejh9UxRg=="],
+
     "babel-plugin-jsx-dom-expressions": ["babel-plugin-jsx-dom-expressions@0.40.11", "", { "dependencies": { "@babel/helper-module-imports": "7.18.6", "@babel/plugin-syntax-jsx": "^7.18.6", "@babel/types": "^7.20.7", "html-entities": "2.3.3", "parse5": "^7.1.2" }, "peerDependencies": { "@babel/core": "^7.20.12" } }, "sha512-k7TkOv7uVYnrq/bYyVvG5cWOC9IObAGfmyW3aMkG8l2sq2qt/5THkUBja69PMLEGGi8G+fXB2Fh7eS4OwZRBoQ=="],
 
     "babel-preset-solid": ["babel-preset-solid@1.9.16", "", { "dependencies": { "babel-plugin-jsx-dom-expressions": "^0.40.11" }, "peerDependencies": { "@babel/core": "^7.0.0", "solid-js": "^1.9.16" }, "optionalPeers": ["solid-js"] }, "sha512-+0h40Qk2oBfkQ4OGDBHIDtvq/XQiOnCfzjNHmMxriAr8MmdsaIbyJgqYglDs4d70sF8O08sSpx61TKdpUt3oRw=="],
@@ -258,6 +274,10 @@
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "react": ["react@19.3.1", "", {}, "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw=="],
+
+    "react-reconciler": ["react-reconciler@0.34.0", "", { "dependencies": { "scheduler": "^0.28.0" }, "peerDependencies": { "react": "^19.3.0" } }, "sha512-eVibvB1fc9j5Qf1KRkiM3GzRPBdjg2P6G6QV2f3P6Eb3OGMxRBhdg2rrUwjbV5JrQaJj8nOa8uajmmJA5tJWjQ=="],
+
+    "scheduler": ["scheduler@0.28.0", "", {}, "sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw=="],
 
     "semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 

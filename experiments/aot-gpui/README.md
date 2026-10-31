@@ -67,6 +67,10 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |
 | `solid-interactions`      | `tests/native/solid-interactions.tsx` | `solid-interactions` | Existing prebuilt host referenced by absolute path |
+| `react`                   | `examples/react-counter/main.tsx`     | `react`              | Existing prebuilt host referenced by absolute path |
+| `react-interactions`      | `tests/native/react-interactions.tsx` | `react-interactions` | Existing prebuilt host referenced by absolute path |
+| `react-behavior`          | `tests/native/react-behavior.tsx`     | `react-behavior`     | Existing prebuilt host referenced by absolute path |
+| `react-workload`          | `benchmarks/solid/react.tsx`          | `react-workload`     | Existing prebuilt host referenced by absolute path |
 
 All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification; supported invocations that omit it record an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 
@@ -85,6 +89,22 @@ bun experiments/aot-gpui/build-window.ts \
 ```
 
 The input-race fixture needs an actual native input session and a fresh evidence nonce; compiling it does not execute that regression. Each manifest identifies its selected entry and hashes the core, protocol and runtime sources, shared window content, native sources, package manifests and root build configuration. The helper checks those hashes before and after compilation and fails if the source changes during the build. Different entries cannot be substituted in a matched native-window baseline.
+
+The React entry also hashes the React adapter and shared renderer source and package manifests. Its separate [native controller](../../tests/native/react-window.py) runs the keyed counter and input scenarios against the inspected executable; neither a successful compile nor the controller's declared execution mode is evidence by itself for the other half of qualification.
+
+`--entry react-interactions` additionally hashes the common renderer-interaction
+fixture oracle. Its inspected executable runs through
+`tests/native/renderer-interactions.py --renderer React` with keyboard, caret and
+selection scenarios. The native fixture separately verifies shared event phases,
+input revisions and framework cleanup; artifact inspection does not supply that
+input evidence.
+
+`--entry react-behavior` fingerprints the same React/shared-renderer source and
+the eight-case hook/error/lifetime fixture. Its independent
+`tests/native/react-behavior.py` controller verifies actual native mount, update,
+unmount, boundary recovery, terminal cleanup failures and non-suspending
+transitions. Run all eight scenarios in both modes; an inspected executable alone
+does not qualify their behavior. See the [React behavior matrix](../../docs/react-behavior.md).
 
 The helper requires the emitted application to record JIT compiler removal and includes its full runtime-feature record in the manifest. ELF64, thin Mach-O64 and PE32+ have bounded decoders; unsupported or malformed metadata fails the build. An interpreter may remain present; this check does not claim otherwise. Actual target compilation/execution and GPUI input evidence remain separate from metadata parsing.
 
@@ -142,3 +162,40 @@ development and `/absolute/path/to/empty-solid-package/solid-interactions` for A
 with the same absolute `BUN_NATIVE_HOST`. These fixtures need the independent
 native input controller described in `tests/native/solid-window.py`; merely
 launching or compiling them does not satisfy their input, paint or cleanup gates.
+
+## React development and AOT inputs
+
+The four React entries use the pinned Bun bundler to transform their explicit
+React JSX source into `development/application.js`. The helper invokes the built-in
+`build --no-script --production --target=bun --format=esm --sourcemap=external`,
+explicitly defines `process.env.NODE_ENV` as `"production"`, and uses an output
+directory with a fixed `application.js` entry name. This selects production React,
+reconciler and scheduler code regardless of the caller's environment. Both modes
+use that framework configuration: development means running the generated module
+through Bun, and AOT means running its machine-code executable. The helper supplies
+the exact module to `bun compile --no-script --production --explain=json`. No DOM transform,
+second native renderer or additional bundler dependency is introduced.
+
+Each manifest records the generated module's bytes, SHA-256, exact transform
+command and transform duration under `application.developmentModule`, separately
+from AOT compilation. Original source/configuration and generated-module hashes
+must remain unchanged across compilation. Source maps and generated modules are
+retained with hosted evidence. `tests/toolchain/commands.test.ts` proves that the
+bundler executes despite a same-named package script, selects the production
+branch of a real dependency, emits an executable module and rejects malformed
+source. A plain development bundle has already removed production dependency
+branches; a later AOT compile cannot restore them.
+
+For any React entry, run `bun PACKAGE/development/application.js` in development
+and `PACKAGE/ENTRY` in AOT mode with the same prebuilt host and controller. The
+required native lane applies this recipe to the counter, shared event scenarios,
+eight behavior cases and unchanged 1,000-cycle workload. Compiling the workload
+does not prove its cleanup or performance assertions; those remain independent
+execution gates, including the existing fixed WeakRef observations.
+
+The [local recipe record](../../tests/native/evidence/react-hosted-recipe-linux.json)
+binds all four inspected applications and 26 passing counter/event/behavior runs
+to the combined source. The unchanged workload was compiled but not rerun in
+that local increment. The host is explicitly development profile; this record
+does not substitute for required hosted release execution or settle the shared
+retention investigation.
