@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.11.1](https://github.com/0xPlayerOne/bun-native/compare/v0.11.0...v0.11.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **ci:** isolate draft events from ready native validation ([#293](https://github.com/0xPlayerOne/bun-native/issues/293)) ([0720276](https://github.com/0xPlayerOne/bun-native/commit/07202765b359221faae05098b2b9a2f6d014cd2f))
+
+## [0.11.0](https://github.com/0xPlayerOne/bun-native/compare/v0.10.0...v0.11.0) (2026-10-31)
+
+
+### Features
+
+* **events:** add shared native keyboard, pointer and focus routing ([#285](https://github.com/0xPlayerOne/bun-native/issues/285)) ([2112325](https://github.com/0xPlayerOne/bun-native/commit/211232585378a13aef5b5786831062ac235da845))
+
+## [0.10.0](https://github.com/0xPlayerOne/bun-native/compare/v0.9.0...v0.10.0) (2026-10-31)
+
+
+### Features
+
+* **aot:** verify native compiler controls across Linux macOS and Windows ([#286](https://github.com/0xPlayerOne/bun-native/issues/286)) ([9355549](https://github.com/0xPlayerOne/bun-native/commit/9355549666bc9ac057fcc6cfd9b97a25c1dd9157))
+
+
+### Documentation
+
+* record verified BN1 release audit and retained evidence ([#282](https://github.com/0xPlayerOne/bun-native/issues/282)) ([df9eb12](https://github.com/0xPlayerOne/bun-native/commit/df9eb12d7ec28722580db447eeb7ca89a24996bb))
+
 ## [0.9.0](https://github.com/0xPlayerOne/bun-native/compare/v0.8.0...v0.9.0) (2026-10-31)
 
 

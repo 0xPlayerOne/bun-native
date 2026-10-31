@@ -63,11 +63,11 @@ native runtime behavior; the session modes above exercise that separately.
 
 ## Compile and run AOT entries
 
-The shared build helper accepts `native-window`, `input-race`, `bridge`,
-`javascript`, `core-lifecycle`, `event-throughput`, `fault`, `scheduling`, `layout`
-and `interactions`. It records source/configuration and executable
-hashes, the exact compiler command, compiled-program metadata and Linux JIT
-omission evidence. `native-window` bundles a copy of the native host for the
+The shared build helper's [entry table](../../experiments/aot-gpui/README.md)
+covers public-core, platform, Solid and React fixtures. It records
+source/configuration and executable hashes, the exact compiler command,
+compiled-program metadata and target-specific JIT omission evidence.
+`native-window` bundles a copy of the native host for the
 distribution/baseline package. The other entries reference the existing host by
 path and hash.
 
@@ -231,3 +231,17 @@ Use `--entry interactions` for the corresponding AOT executable and
 runner. The [interaction contract](../../docs/native-events.md) contains exact
 commands, current evidence and unsupported scope. None of these finite tests
 claims DOM event compatibility, native default cancellation or full IME support.
+
+## Portable target-host paint smoke
+
+`tests/native/platform-smoke.ts` and `scripts/quality/native-platform-smoke.py`
+exercise the real host through three public-core window/update/close lifecycles.
+The controller reuses the existing bounded evidence parser and full-tree
+expectations, requiring each native renderer and initial/update paint. Its
+`--negative-paint-check` proves an incorrect expected native tree fails while
+the fixture joins native shutdown. The shared AOT entry is `platform-smoke`.
+
+This first macOS/Windows lane explicitly leaves OS-visible-window, real input,
+screenshots and full process-tree observation unverified. A successful portable
+paint test is not those claims. See [native platform qualification](../../docs/native-platforms.md)
+for target requirements, artifact scope and remaining #246/#256 work.

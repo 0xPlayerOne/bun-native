@@ -63,6 +63,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `scheduling`              | `tests/native/scheduling.ts`          | `scheduling`         | Existing prebuilt host referenced by absolute path |
 | `layout`                  | `tests/native/layout.ts`              | `layout`             | Existing prebuilt host referenced by absolute path |
 | `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
+| `platform-smoke`          | `tests/native/platform-smoke.ts`      | `platform-smoke`     | Existing prebuilt host referenced by absolute path |
 | `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |
 | `solid-interactions`      | `tests/native/solid-interactions.tsx` | `solid-interactions` | Existing prebuilt host referenced by absolute path |
@@ -71,7 +72,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `react-behavior`          | `tests/native/react-behavior.tsx`     | `react-behavior`     | Existing prebuilt host referenced by absolute path |
 | `react-workload`          | `benchmarks/solid/react.tsx`          | `react-workload`     | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Supply the actual `--host-profile dev` or `release`; the benchmark and framework entries reject an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
+All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification; supported invocations that omit it record an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -119,6 +120,10 @@ queued-event lifetime across reparent/delete/remount. Follow the
 and AOT commands. Inspecting the executable alone does not qualify those native
 behaviors or any remaining adapter/platform acceptance.
 
+`--entry platform-smoke` runs the portable three-window lifecycle and paint fixture.
+The [native platform qualification](../../docs/native-platforms.md) records its
+separate build, native paint, AOT and unverified OS-input/visibility scope.
+
 ## Solid development and AOT inputs
 
 The three Solid entries first run the repository's pinned universal JSX transform,
@@ -130,13 +135,20 @@ module and all original Solid/shared-renderer/build sources stayed unchanged.
 The module and source map are retained with hosted evidence. No Cargo process is
 started, and `buildMs` remains AOT compiler duration, separate from transform time.
 
-Dependency mode is a separate property from the universal JSX transform's
-`dev: false`. The preserved local Solid package's source map records
-`solid-js/dist/dev.js` and `solid-js/universal/dist/dev.js` under the existing
-`conditions: ['browser']` build. Those historical cases establish genuine AOT and
-native correctness with the recorded development framework distribution. They do
-not establish a production-framework comparison; selecting production conditions
-and qualifying that new module remain separate work.
+The transform selects the `browser` export condition for Solid reactivity and
+explicitly defines `process.env.NODE_ENV` as `"production"`. Both execution modes
+therefore use production `solid.js` and `universal.js`, independently of the
+environment running the builder. The real bundler controls in
+`tests/solid/build.test.ts` show that a `production` condition alone still selects
+development exports on this pin under `NODE_ENV=test`. The Babel JSX preset's
+`dev: false` controls transformation and does not choose dependency distributions.
+
+The [production-module qualification](../../benchmarks/bn2/solid-production-recipe-linux.json)
+records all twelve native scenarios against the exact generated modules and their
+inspected AOT executables. Earlier source maps in the retained hosted-recipe local
+record selected Solid's development distributions; that historical correctness
+evidence keeps its original hashes and is not relabelled. These new runs still use
+the immutable development-profile software-GPU host, not a release-host baseline.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \

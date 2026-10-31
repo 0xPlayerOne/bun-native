@@ -57,6 +57,8 @@ The Linux lane builds the release profile of `bun-native-host` from the root Car
 
 The development session first runs `tests/native/lifecycle.ts` under a 45-second process-group deadline. It checks five create/update/close/reopen cycles within one actual GPUI host, rejects invalid-state commands and verifies idempotent shutdown and exit zero. This is native lifecycle evidence; it does not assert visible pixels or OS input.
 
+That smoke alone enables the [bounded startup phase trace](native-startup-diagnostics.md), retained as `lifecycle-events.jsonl`. Its direct transport write/flush/response timestamps, native first-window phases and bounded failure stderr distinguish missing progress without changing the 5-second request deadline. Other input and benchmark scenarios do not inherit this diagnostic mode. The original hosted first-open timeout and exact unchanged-source comparison remain in the linked evidence; a later passing run does not erase or explain it.
+
 The public API session launches independent processes for three scenarios: a pointer click updates the label, text input preserves the complete fresh session value, and a click followed by Enter produces two distinct callbacks and two tree revisions. Each scenario requires the application event and a complete native tree snapshot with exact node properties, ordering and revisions. An empty-root paint cannot establish initial readiness. The stale-input fixture separately sends an obsolete input revision through the lower-level runtime, requires its native rejection, and verifies that an unrelated label update preserves the newer native text. The AOT race entry is compiled separately; a development run cannot qualify its AOT behavior.
 
 Every normal interaction captures the owned window before and after input, closes through the window manager, and requires exit zero with no observed live or unreaped descendants. `development` includes the five same-host lifecycle cycles and the stale-input fixture; `aot` runs the three public-window scenarios, while `aot-input-race` runs the separately inspected negative fixture.
@@ -120,6 +122,17 @@ manifest fingerprints the original Solid and shared-renderer sources, JSX build
 steps and the exact generated development module. The same module runs through
 ordinary Bun and the inspected machine-code compiler; neither build invokes Cargo.
 
+`tests/solid/build.test.ts` runs the actual pinned builder and a conditional-export
+negative under `NODE_ENV=test`. It requires production dependency selection and
+constant folding from the explicit definition, proves that export conditions
+alone do not produce that result, and inspects the actual counter source map for
+production reactive/universal Solid with no development or server distribution.
+This compiler evidence is separate from the twelve actual native passes in the
+[production-module record](../benchmarks/bn2/solid-production-recipe-linux.json).
+Both execution modes use that same production framework module; development
+labels the ordinary Bun runtime. The earlier development-framework artifacts and
+their correctness records remain unchanged.
+
 `tests/native/solid-window.py` supplies independent full-tree expectations to the
 existing OS input/process supervisor. Six scenarios run in each mode: keyed
 counter click, all nonce text edits, delayed input intent, keyboard activation,
@@ -129,6 +142,10 @@ Hosted artifacts retain compiler/transform logs, manifests, generated modules,
 controller reports and screenshots even when a scenario fails.
 
 Local source/fixture evidence is recorded in [the Solid integration record](bn2-solid-integration.md).
+A separate [current-main integration control](../tests/native/evidence/solid-main-integration-linux.json)
+binds the newer native dependency lock to development/AOT five-window startup
+traces and actual caret editing. Its four narrow cases supplement the prior
+twelve-case production-module record, whose historical hashes remain unchanged.
 A configured job is not a passed target run. These correctness cases do not
 resolve [the retained-object investigation](https://github.com/0xPlayerOne/bun-native/issues/287)
 or establish comparative performance, physical input, display presentation or

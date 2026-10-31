@@ -169,3 +169,23 @@ This behavior work does not close the matched direct-core/Solid/React performanc
 comparison or [shared retention investigation #287](https://github.com/0xPlayerOne/bun-native/issues/287).
 Public zero-ownership assertions and sampled reference observations are not proof
 that the whole managed or native heap is empty.
+
+## Shared foundation integration
+
+The next integration joins the qualified React recipe `708823c4` with shared
+foundation `59d92146`: current main's native dependency pins and draft/ready CI
+fix, production Solid module selection, bounded startup tracing, and the accepted
+macOS/Windows native-paint lane. The React adapter, behavior/event fixtures,
+production bundling command, shared workload and historical React evidence remain
+unchanged. The shared runtime, core, native host, renderer and Solid packages are
+identical to that foundation; React introduces no separate native implementation.
+
+The [current-lock control](../tests/native/evidence/solid-main-integration-linux.json)
+records the shared host's development/AOT five-window lifecycle and native caret
+checks against its newer dependency lock. Those four controls have their own
+source and artifact identities. The earlier 26 React recipe results remain bound
+to their recorded sources and binaries; the required release-host workflow
+rebuilds all React entries and repeats their behavior/input cases plus the
+unchanged workload on the integrated source. The independent platform paint lane
+does not qualify React input on macOS or Windows. Startup investigation #296 and
+retention investigation #287 remain open.
