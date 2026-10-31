@@ -26,6 +26,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -84,8 +86,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record bootstrap environment before installing toolchains
+        run: |
+          mkdir -p .bun-native/evidence
+          {
+            git rev-parse HEAD
+            node --version
+            node -e 'const os = require("node:os"); const fs = require("node:fs"); const crypto = require("node:crypto"); const bytes = fs.readFileSync("toolchain.json"); const pin = JSON.parse(bytes).bun; console.log(JSON.stringify({os:os.platform(),arch:os.arch(),release:os.release(),expectedBunRevision:pin.cliRevision,manifestSha256:crypto.createHash("sha256").update(bytes).digest("hex"),phase:"before Bun bootstrap"}))'
+          } > .bun-native/evidence/bootstrap.txt
       - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee .bun-native/evidence/bun-bootstrap.log
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -99,7 +111,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Record exact environment
         run: |
-          mkdir -p .bun-native/evidence
           {
             git rev-parse HEAD
             bun --version
@@ -133,6 +144,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain

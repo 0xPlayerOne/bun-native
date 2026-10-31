@@ -34,6 +34,8 @@ jobs:
           mkdir "$RUNNER_TEMP/native-evidence"
           echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
       - name: Install checksum-pinned Bun compiler
+        env:
+          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
