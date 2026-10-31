@@ -3,12 +3,16 @@
 set -euo pipefail
 
 if (( $# < 3 )); then
-  echo 'usage: native-linux-session.sh NEW_OUTPUT_DIR development|aot APP [ARGS...]' >&2
+  echo 'usage: native-linux-session.sh NEW_OUTPUT_DIR {development|aot|--} COMMAND [ARGS...]' >&2
   exit 1
 fi
 evidence_dir=$1
 mode=$2
 shift 2
+if [[ "$mode" != development && "$mode" != aot && "$mode" != -- ]]; then
+  echo 'Choose development, aot, or -- followed by an explicit session command' >&2
+  exit 1
+fi
 mkdir "$evidence_dir"
 evidence_dir=$(cd "$evidence_dir" && pwd)
 export XDG_RUNTIME_DIR="$evidence_dir/runtime"
@@ -46,6 +50,11 @@ for attempt in {1..50}; do
   sleep 0.1
 done
 xprop -root _NET_SUPPORTING_WM_CHECK | grep -q 'window id'
+
+if [[ "$mode" == -- ]]; then
+  "$@"
+  exit
+fi
 
 if [[ "$mode" == development ]]; then
   # This test reopens five real windows in one host and checks invalid states.

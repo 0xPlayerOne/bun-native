@@ -119,16 +119,13 @@ class EvidenceTests(unittest.TestCase):
         "Linux process IDs and /proc must share a PID namespace",
     )
     def test_real_process_tree_is_observed_and_stopped_without_killing_the_test(self):
+        DRIVER.enable_subreaper()
         app = subprocess.Popen(
             [
                 sys.executable,
                 "-c",
-                "import signal,subprocess,sys,time\n"
+                "import subprocess,sys,time\n"
                 'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\n'
-                "def stop(_signal,_frame):\n"
-                "    child.wait(timeout=2)\n"
-                "    raise SystemExit(0)\n"
-                "signal.signal(signal.SIGTERM,stop)\n"
                 "print(child.pid,flush=True)\n"
                 "time.sleep(30)",
             ],

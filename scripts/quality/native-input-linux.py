@@ -9,6 +9,7 @@ Screenshots are evidence, never automatically asserted to contain expected text.
 """
 
 import argparse
+import ctypes
 import hashlib
 import json
 import os
@@ -37,6 +38,22 @@ def proc_identity_matches():
         return int(Path("/proc/self/stat").read_text().split(" ", 1)[0]) == os.getpid()
     except (OSError, ValueError):
         return False
+
+
+def enable_subreaper():
+    """Adopt orphaned descendants so cleanup can reap them without relying on PID1."""
+    # Process-local Linux API; no privilege or system-wide setting is changed.
+    # https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html
+    try:
+        prctl = ctypes.CDLL(None, use_errno=True).prctl
+    except (AttributeError, OSError) as error:
+        raise Unsupported("Linux child-subreaper support is unavailable") from error
+    prctl.argtypes = [ctypes.c_int, *([ctypes.c_ulong] * 4)]
+    prctl.restype = ctypes.c_int
+    if prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
+        raise Unsupported(
+            f"Cannot supervise orphaned children: {os.strerror(ctypes.get_errno())}"
+        )
 
 
 def run(command, timeout=3):
@@ -118,11 +135,33 @@ def matches(event, expected):
     )
 
 
+def interrupted(signum, _frame):
+    raise InterruptedError(f"Native input driver received signal {signum}")
+
+
 def cleanup(app, observed):
     """Signal only this launched session and identity-checked observed descendants."""
+
+    def reap_adopted():
+        app.poll()
+        table = process_table()
+        for pid, started in observed.items():
+            row = table.get(pid)
+            if (
+                pid != app.pid
+                and row is not None
+                and row["start_ticks"] == started
+                and row["parent_pid"] == os.getpid()
+                and row["state"] == "Z"
+            ):
+                try:
+                    os.waitpid(pid, os.WNOHANG)
+                except ChildProcessError:
+                    pass
+
     forced = False
     for sig, grace in [(signal.SIGTERM, 2), (signal.SIGKILL, 1)]:
-        app.poll()
+        reap_adopted()
         table = process_table()
         alive = [
             row
@@ -150,7 +189,7 @@ def cleanup(app, observed):
         except subprocess.TimeoutExpired:
             pass
         time.sleep(0.1)
-    app.poll()
+    reap_adopted()
     table = process_table()
     remaining = [
         pid
@@ -265,6 +304,7 @@ def main():
     threads = []
     observed = {}
     started = time.monotonic()
+    previous_sigterm = signal.signal(signal.SIGTERM, interrupted)
 
     def sample(phase="interaction"):
         rows = owned_processes(app.pid, process_table())
@@ -311,6 +351,8 @@ def main():
             raise Unsupported(
                 "Process IDs and /proc belong to different namespaces; ownership and RSS cannot be verified"
             )
+        enable_subreaper()
+        report["platform"]["child_subreaper"] = True
         missing = [tool for tool in ["xdotool", "import"] if not shutil.which(tool)]
         if missing:
             raise Unsupported(
@@ -607,6 +649,8 @@ def main():
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         report.update(status="failed", error=str(error))
     finally:
+        # Finish bounded child cleanup even if a supervisor repeats termination.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         if app is not None:
             try:
                 report["cleanup"] = cleanup(app, observed)
@@ -645,6 +689,7 @@ def main():
                 }
             )
         )
+        signal.signal(signal.SIGTERM, previous_sigterm)
     return (
         0
         if report["status"] == "passed"
