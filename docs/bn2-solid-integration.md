@@ -1,6 +1,6 @@
 # BN2 initial Solid integration
 
-This is an implementation-in-progress record for [#231](https://github.com/0xPlayerOne/bun-native/issues/231), depending on [BN1 #271](https://github.com/0xPlayerOne/bun-native/pull/271). It does not close BN2 or claim framework-wide/platform release support.
+This is an implementation-in-progress record for [#231](https://github.com/0xPlayerOne/bun-native/issues/231), using merged [BN1 #271](https://github.com/0xPlayerOne/bun-native/pull/271). It does not close BN2 or claim framework-wide/platform release support.
 
 ## Implemented route
 
@@ -117,11 +117,28 @@ The exact frozen host is 110,851,600 bytes with SHA-256 `55d2b9312529a01ccc3c472
 
 The restored environment reports software llvmpipe LLVM 20.1.2 and Mesa `25.2.8-0ubuntu0.24.04.2`. This differs from the older recorded `.4` package revision, so the dependency hashes and package versions are captured afresh. The checks use actual XTest events in isolated Xvfb/Openbox sessions. They do not qualify physical input, hardware GPUs, macOS/Windows UI or a release-profile host. Native compilation elsewhere was permitted concurrently; every timing field in these correctness records is excluded from accepted comparative performance results.
 
+## Shared renderer and merged BN1 qualification
+
+After the shared renderer extraction and rebase onto the merged BN1 core, all six native scenarios passed again from clean source `331ef725b9da09313754473aa2e74cc2d404cb0e`. [The new qualification record](../benchmarks/bn2/solid-shared-native.json) binds the results to 45 source/verification hashes, including `packages/renderer`, the actual artifacts, 36 native/graphics-library fingerprints, complete driver observations, raw event-log digests and terminal owner-cleanup records. The older records above remain historical observations of their own source hashes.
+
+The rebuilt development and machine-code AOT applications both handled the real counter click/keyed change, all 38 nonce-tagged input events, and the delayed native observation followed by a new explicit replacement. The independent native-paint expectations passed. Every launch closed through the OS, exited 0 without forced cleanup or observed live/unreaped descendants, and reported zero renderer nodes/listeners after owner disposal. Both AOT after-state screenshots were visually inspected; there is still no automated pixel assertion.
+
+| Artifact                        |      Bytes | SHA-256                                                            |
+| ------------------------------- | ---------: | ------------------------------------------------------------------ |
+| Counter development module      |    108,713 | `909ea87fc3a39d399b13d6c87c04b8c9458a4ffc3ef59210640a102a26462f2a` |
+| Counter AOT executable          | 71,302,184 | `cd01a1c083d8530bf61b063a059b027ecdb3d931f61b4816446c6e6448645e2d` |
+| Input-intent development module |    103,612 | `332891fe61ff1c0c5a95b01233cad9ef779e9247c063ebb0bcf3e5b7ad5684ab` |
+| Input-intent AOT executable     | 71,236,648 | `5f0af757326e0757a65743ba3f4b583d0cf089a0c5f0e2fe4331755b75122fca` |
+
+The frozen host remains development-profile `55d2b9312529a01ccc3c4720f03040c4d685e7d51d9b7ece160f8b8e64ad7a49`; the GPU remains software llvmpipe with the recorded Mesa `.2` dependencies. Both AOT artifacts have the genuine compiled-program flag, JIT marked unused and 27 validated removed JIT ranges. The interpreter is present. No host rebuild was performed. These correctness runs do not establish release-host performance, physical input, GPU presentation latency, macOS/Windows UI, or the still-incomplete repeated benchmark.
+
+The rebased source gate passed formatting, warnings-denied lint, strict checking of 67 files, package boundaries, 188 tests with 1,625 assertions and all JavaScript package builds. The actual pre-commit hook passed with the complete 43-file rebased candidate staged against merged main.
+
 ## Problems found and next work
 
 ### Shared renderer extraction
 
-The React implementation established a second consumer for the existing staging and native commit behavior. These implementations now reside once in `packages/renderer`, with framework-neutral node ownership and errors. Solid's mount wrapper registers `createRoot` disposal before component evaluation and inserts its component through the same Solid universal renderer. Its public `SolidNode` type names the shared opaque renderer node. The old Solid-private tree, input-intent, keyed-order and window-lifetime modules have been removed. Tests retain the existing delayed-acknowledgement listener race, revision-capture negatives, retained-descendant moves and closed-initial-mount checks against the shared implementation; this source refactor requires its own native/AOT qualification before inheriting earlier artifact claims.
+The React implementation established a second consumer for the existing staging and native commit behavior. These implementations now reside once in `packages/renderer`, with framework-neutral node ownership and errors. Solid's mount wrapper registers `createRoot` disposal before component evaluation and inserts its component through the same Solid universal renderer. Its public `SolidNode` type names the shared opaque renderer node. The old Solid-private tree, input-intent, keyed-order and window-lifetime modules have been removed. Tests retain the existing delayed-acknowledgement listener race, revision-capture negatives, retained-descendant moves and closed-initial-mount checks against the shared implementation; the new six-scenario qualification above exercises this source refactor and merged core with its own exact artifact hashes.
 
 The first fresh repeated workload on the pre-extraction source stopped at the direct-core AOT control's fixed weak-target checkpoint. Four native paint calibrations, four complete warmups and the first Solid development/AOT trials passed. The direct-core AOT trial observed two disposed handle targets from mount 61 after both fixed collection checkpoints, while all 3,200 repeated rows were disposed and every public ownership/queue counter returned to zero. The failed run is retained for investigation; it is not a completed timing comparison or proof of a renderer-owned retaining path. Weak-reference collection and actual native/core ownership are separate observations.
 
