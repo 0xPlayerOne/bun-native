@@ -12,6 +12,17 @@
 4. If an integration test fails, reproduce it, log exact tools/OS/build mode, fix or choose another valid native implementation, and continue. No project stop/go gate. Bun's normal JIT may be used in development; **do not** label a JIT release as AOT. Keep browserless native UI and Bun AOT as the production objective.
 5. Use strict TypeScript for authored core code when appropriate; JavaScript is a first-class supported consumer language. Build Rust native internals once/prebuild artifacts; ordinary consumer TS/JS edits must not silently compile native sources.
 
+## Architecture and code-quality contract (mandatory)
+
+Read [docs/engineering-quality.md](docs/engineering-quality.md) before implementation. Enforce its architecture boundaries, code hygiene and measurement/checkpoint policy continuously:
+
+- **No stale or duplicate code:** remove obsolete files/exports/dependencies/tests/configs in touched areas; run unused-code/dependency/boundary audits. Git history holds the obsolete Bunly architecture.
+- **No design slop:** check for implicit coupling, circular/layer violations, god files, shotgun surgery, pass-through wrappers, duplicated native primitives, unsafe handles, and illegal states representable in types. Prefer explicit stable contracts, lifecycle cleanup and runtime validation at the native boundary.
+- **Optimize with evidence:** profile Bun AOT hot paths (`bun compile --explain` where available), native bridge batching/event overhead, GPU frame pacing, input latency, RSS, cold startup, reload and binary size. Keep pinned raw baselines and explain regressions.
+- **Automated checkpoints:** focused health checks every PR, targeted performance/correctness checks for changed hot paths, deep code/performance audits at each BN milestone, and full cross-platform/soak analysis before release-scope claims. These are agent-owned technical checks, **not human sign-offs**. Fix regressions or document a measured tradeoff and linked follow-up.
+
+A milestone is incomplete if significant dead/duplicate code, unexplained performance regressions, unsupported claimed behavior or unverified native acceptance remains. Do not halt independent work while repairing one blocked lane.
+
 ## Autonomous validation strategy
 
 - **Default: GitHub Actions hosted runners.** Use Linux, Windows and macOS matrices for build, test, actual GPUI/native-window interaction when available, packaging and benchmark evidence. Preserve exact Bun, compiler, native host and OS versions; distinguish real window tests from mocks and compile-only tests.
