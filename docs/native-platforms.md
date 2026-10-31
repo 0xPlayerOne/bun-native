@@ -193,6 +193,13 @@ these Linux results. The Windows pure guards cover ABI sizes, clipped geometry,
 edit ordering, callback exception containment, borrowed/owned desktop handles,
 partial input release and recycled parent-PID rejection; they are headless tests.
 
+After integrating the current bootstrap, cross-format AOT inspector and locked
+dependencies, the same actual Linux development/AOT input checks passed again.
+The [integration record](../tests/native/evidence/platform-input-integrated-linux.json)
+binds both runs to their 61 current compiler/controller source fingerprints and
+the newly compiled application. It retains the dev-host and software-GPU scope;
+these correctness runs are not comparative timing measurements.
+
 The first hosted matrix results must be recorded before either new platform is
 marked supported. Failures retain their exact compile, startup, renderer or
 missing-paint reason; a missing capability never becomes a pass.

@@ -46,6 +46,15 @@ jobs:
           $evidence = Join-Path $env:RUNNER_TEMP 'bun-native-platform-evidence'
           New-Item -ItemType Directory $evidence | Out-Null
           "NATIVE_EVIDENCE=$evidence" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          @{
+            source = (git rev-parse HEAD)
+            platform = [Runtime.InteropServices.RuntimeInformation]::OSDescription
+            architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+            imageOS = $env:ImageOS
+            imageVersion = $env:ImageVersion
+            node = (node --version)
+            phase = 'before Bun bootstrap; native build and input not yet verified'
+          } | ConvertTo-Json | Out-File (Join-Path $evidence 'bootstrap-environment.json')
       - name: Install checksum-pinned Bun compiler
         env:
           BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
@@ -54,12 +63,20 @@ jobs:
         run: rustup show active-toolchain
       - name: Verify Xcode and precompiled Metal tools
         if: runner.os == 'macOS'
+        timeout-minutes: 10
         run: |
           xcodebuild -version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'xcode.txt')
           if ($LASTEXITCODE -ne 0) { throw 'A complete Xcode toolchain is required' }
           xcrun --sdk macosx --show-sdk-path | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'macos-sdk.txt')
           if ($LASTEXITCODE -ne 0) { throw 'The macOS SDK is unavailable' }
-          xcrun --sdk macosx --find metal
+          xcrun --sdk macosx metal --version
+          if ($LASTEXITCODE -ne 0) {
+            xcodebuild -downloadComponent MetalToolchain 2>&1 |
+              Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-toolchain-install.log')
+            if ($LASTEXITCODE -ne 0) { throw 'The hosted Xcode Metal component could not be installed' }
+          }
+          xcrun --sdk macosx metal --version |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-version.txt')
           if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode Metal compiler' }
           xcrun --sdk macosx --find metallib
           if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode metallib linker' }
@@ -103,7 +120,7 @@ jobs:
             rustc --version --verbose
             cargo --version
             & '${{ matrix.python }}' --version
-            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint traversal; OS visibility/input unverified"}))'
+            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint/lifecycle and separate owned OS-input qualification; results recorded per phase"}))'
           } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
       - name: Build the genuine target-platform GPUI executable
         id: native-build

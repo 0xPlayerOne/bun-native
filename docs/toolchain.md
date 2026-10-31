@@ -26,7 +26,11 @@ rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
 
 On Windows, pass an absolute Windows path and add it to `PATH`; PowerShell expands the archive. Linux/macOS require `unzip`. GitHub Actions receives the installed directory through `GITHUB_PATH`. Environments requiring an HTTP proxy can use a Node version that supports `--use-env-proxy`; this does not disable TLS or checksum verification.
 
-The installer downloads the exact asset ID, verifies SHA-256 **before extracting or executing**, then verifies `bun --revision`. It never follows the mutable `canary` tag to a replacement build. If upstream removes an asset or changes the build, installation fails explicitly; select and qualify a new exact revision instead of silently accepting a newer compiler. Existing installations must report the matching revision. No signing credential or access token is required.
+The installer downloads the exact asset ID, verifies SHA-256 **before extracting or executing**, then verifies `bun --revision`. It never follows the mutable `canary` tag to a replacement build. If upstream removes an asset or changes the build, installation fails explicitly; select and qualify a new exact revision instead of silently accepting a newer compiler. Existing installations must report the matching revision. Public downloads can run anonymously; no signing credential is required.
+
+GitHub Actions scopes its existing read-only job token to the installer step through optional `BUN_NATIVE_GITHUB_TOKEN`. The installer sends it only to the initial immutable GitHub API asset URL, strips it from the environment before launching any child program, and never forwards it to storage redirects. Redirects must use the approved GitHub HTTPS asset-storage hosts, and the entire request chain/body retains one 120-second deadline. HTTP permission failures fail immediately; there is no retry, anonymous fallback, mutable-release lookup or altered checksum.
+
+Download diagnostics contain HTTP status, whether authentication was supplied, a validated GitHub request ID and numeric rate-limit/retry headers when present. Response bodies, authorization headers and signed redirect URLs are never logged. An HTTP 403 alone does not identify its cause. Portable CI creates its evidence directory and records source/OS/Node/toolchain identity before bootstrap, so a failed download retains the installer log and safe response metadata without requiring Bun to start.
 
 `rust-toolchain.toml` pins the same Rust release with Clippy and rustfmt. GPUI's native libraries vary by OS; follow the exact [pinned source's build instructions](https://github.com/zed-industries/zed/tree/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/docs/src/development) and the native-host CI recipe. GPUI uses Metal on macOS, a supported GPU/display backend on Linux, and its Windows native backend. Compilation alone does not prove a working window or GPU. Host CI and native tests own the precise backend/prerequisite evidence.
 
@@ -40,6 +44,23 @@ bun compile --no-script --production ./application.ts --outfile ./application
 ```
 
 `--no-script` prevents a same-named package script from impersonating the built-in checker, formatter or compiler. TypeScript declarations currently match Bun's stable `1.4.4` API; the actual compiler is the pinned canary. Bun checks types during AOT compilation and rejects invalid source before emitting an executable. AOT targets the platform performing the build; use target-native hosted runners.
+
+The [command regression tests](../tests/toolchain/commands.test.ts) create owned,
+temporary projects with deliberately successful `check`, `fmt` and `test`
+package scripts. They prove that ordinary `bun check`/`bun fmt` select those
+scripts, while `--no-script` detects actual type/format errors; a formatting
+check must leave the file unchanged. Correcting each fixture then passes the
+built-in. `bun test` independently rejects a failing test even when `bun run
+test` invokes a successful package script. The required portable test matrix
+runs these controls; they do not render a native window.
+
+The [AOT interop runner](../experiments/aot-gpui/run.ts) similarly creates a
+same-named `compile` script and observes it in a control invocation. It then
+compiles from that directory with `--no-script`, requires the script marker to
+remain absent, inspects the actual output and executes its native FFI/IPC
+fixture. Invalid types must still fail without an output executable or script
+marker. Its command log includes the working directory so script selection is
+reproducible. Actual GPUI input remains the separate required native suite.
 
 | Mode                                            | Purpose                     | Runtime behavior                                   |
 | ----------------------------------------------- | --------------------------- | -------------------------------------------------- |

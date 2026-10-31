@@ -1,6 +1,6 @@
 {
   "name": "bun-native-workspace",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -31,8 +31,8 @@
     "@types/bun": "1.4.4",
     "@types/react": "19.3.0",
     "code-foundry": "1.48.8",
-    "oxc-parser": "0.154.0",
-    "oxlint": "1.83.0",
+    "oxc-parser": "0.156.0",
+    "oxlint": "1.90.0",
     "react": "19.3.1",
     "solid-js": "1.9.18"
   },
