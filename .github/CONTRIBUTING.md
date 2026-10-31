@@ -8,6 +8,10 @@ The owner authorizes assigned agents to implement BN0–BN7, refactor/delete exp
 
 Use small, continuously updated draft PRs; when implementation is ready, mark ready and let CI/review requirements and auto-merge complete according to the managed rules below. Do not bypass required checks or misrepresent unsupported tests. Production Adea and unrelated resources are outside this grant.
 
+## Engineering quality expectations
+
+Every implementation PR must follow [the Bun Native architecture and optimization standard](../docs/engineering-quality.md): clean package boundaries, no dead/duplicate files or browser shims, strict typed/native contracts, lifecycle and security tests, and benchmark evidence for performance-sensitive paths. Run focused checks continuously, complete the relevant BN milestone audit before closing it, and attach raw measurements for claimed improvements. Quality checkpoints are automated agent-owned work, **not extra human approvals**.
+
 ## Test environments
 
 1. Prioritize GitHub-hosted Linux, Windows and macOS runners for independent native builds/tests, smoke and packaging, keeping exact versioned artifacts and logs.
