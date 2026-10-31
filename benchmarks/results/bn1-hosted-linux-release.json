@@ -1,0 +1,1323 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "scope": "BN1 final required hosted release verification. Observation/acknowledgement timings are not display presentation; software Vulkan is not hardware GPU qualification. Heaptrack outstanding allocations are not proof of leaks. No cross-platform GUI claim.",
+  "github": {
+    "pullRequest": 271,
+    "runId": 41224338023,
+    "nativeJobId": 124605234201,
+    "prHead": "1c83c888653406318e810a81d3eaf936975d9b93",
+    "ciCheckoutCommit": "6ea507b58d0249b752ff62691ebc1879f3fcf6da",
+    "mergedCommit": "515c0bda14ce4f40c0ddd1469a161315d03356a8",
+    "requiredJobs": [
+      {
+        "id": 124605234085,
+        "name": "Source quality",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234184,
+        "name": "Protocol (ubuntu-24.04)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234189,
+        "name": "AOT native interop (Linux)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234201,
+        "name": "Native Linux / GPUI release, native contracts and baselines",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234203,
+        "name": "Protocol (macos-15)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234250,
+        "name": "Protocol (windows-2022)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124605234330,
+        "name": "Security / Dependency audit",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 124607772793,
+        "name": "Validation / Gate",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "archive": {
+    "artifactId": 13050932645,
+    "name": "native-linux-X64",
+    "bytes": 5251090,
+    "sha256": "262e5d2c5b80f3203d39eecdd0a95eccff647a6e3c1e179c5c4cc1a7803ac58e",
+    "retainedRelease": "v0.8.0",
+    "assetName": "bn1-native-linux-x64-run-41224338023.zip",
+    "releaseAssetId": 696074280,
+    "url": "https://github.com/0xPlayerOne/bun-native/releases/download/v0.8.0/bn1-native-linux-x64-run-41224338023.zip"
+  },
+  "host": {
+    "file": "bun-native-host",
+    "placement": "bundled",
+    "profile": "release",
+    "bytes": 29000752,
+    "sha256": "652a0a7889e177c9600b34d67a2e5ebc201c4cb1f38a90ee89214583ddc1a482",
+    "provenance": "Caller-supplied prebuilt host copied into this package. Match this hash to native build and interaction evidence."
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "sourceVerification": {
+    "manifestSourceFileRecordsChecked": 351,
+    "distinctFilesChecked": 50,
+    "matchedCommit": "515c0bda14ce4f40c0ddd1469a161315d03356a8"
+  },
+  "nativeResults": [
+    {
+      "path": "allocations-aot/lifecycle/result.json",
+      "bytes": 862295,
+      "sha256": "4fdce6009a3ba5e6aeb77a40988353055cc42d007e85930bae44e067cd2c8799",
+      "status": "passed"
+    },
+    {
+      "path": "allocations-aot/result.json",
+      "bytes": 14580,
+      "sha256": "1b50e5d17b664b9671cd4f65d36b93d05ff67abc76ed54486e3b5eb2c3b84347",
+      "status": "passed"
+    },
+    {
+      "path": "allocations-development/lifecycle/result.json",
+      "bytes": 868133,
+      "sha256": "2cd6d87d34c860bfcb95e40c2014a47f1897911311d24fcff17dbc8c085f87dd",
+      "status": "passed"
+    },
+    {
+      "path": "allocations-development/result.json",
+      "bytes": 14610,
+      "sha256": "44667d0ce1cc1b36b247298219f9b6b40e4ad6f0387a16d31d53b3565b0032fc",
+      "status": "passed"
+    },
+    {
+      "path": "aot/click/result.json",
+      "bytes": 13582,
+      "sha256": "5869ef76674c3e75c55ddead974cea0d234584f6c2ec0deb223adef1bc628953",
+      "status": "passed"
+    },
+    {
+      "path": "aot/input/result.json",
+      "bytes": 102386,
+      "sha256": "18b32fbc7eb2fb89631e640abe0f8effcda6ca6f2540e1abafbb2c8763098def",
+      "status": "passed"
+    },
+    {
+      "path": "aot/keyboard/result.json",
+      "bytes": 16585,
+      "sha256": "0c47957e8a4569977957f03fe3ac9cb69fc4be92aa473d5a60045e01f1e0a285",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-01-aot/result.json",
+      "bytes": 26011,
+      "sha256": "0ea6874d48c0df7657224db7f7d21a693ec63619de404d984ccf3b4d59a8556b",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-01-development/result.json",
+      "bytes": 25858,
+      "sha256": "89eedcd4b95cb445d7b467e89b074767735e47230fab30807bbf1156cb47401b",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-02-aot/result.json",
+      "bytes": 26007,
+      "sha256": "7d09cec41ca4ee9ac6ee03f6b87cc2130258c0627585c33f9c0b06cf01db5edb",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-02-development/result.json",
+      "bytes": 25858,
+      "sha256": "04b6a63575e2b587e3d4cf104c6415c6fd40eb6178168a672837a87c0d9ef134",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-03-aot/result.json",
+      "bytes": 26005,
+      "sha256": "0037383f8adb82859c2cff8bfdf81154295b664993a4ef94016644a506564e22",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-03-development/result.json",
+      "bytes": 25851,
+      "sha256": "f5b71bc4cd15c53853d5a93a7fb1d9167ed2578ed29eca74d9a7970d844bf100",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-04-aot/result.json",
+      "bytes": 26008,
+      "sha256": "ca5adcc2de59c9d78475819e729c3b5f892e0ff5a49eb843c5c5a638eda44b00",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-04-development/result.json",
+      "bytes": 25857,
+      "sha256": "bafb54d35923d0ca066fe710f76b0c416a7c7e09b9d690ef1a7eb00ec4d23881",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-05-aot/result.json",
+      "bytes": 26001,
+      "sha256": "bf4aecb82f51d5e0e8faa4d02f3e210e258dd1a252ab2ed6b32d9355ba61e70c",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/measured-05-development/result.json",
+      "bytes": 25849,
+      "sha256": "fba63a383a45cbc664d5c023da1dc4ad8038bdd9075473d34fbad20c882bedc6",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/warmup-01-aot/result.json",
+      "bytes": 26008,
+      "sha256": "bc37eb1d0705e839bdb48bd6309bfc08e2eaa572430d240a9bba0277d6f611e4",
+      "status": "passed"
+    },
+    {
+      "path": "baseline/warmup-01-development/result.json",
+      "bytes": 25854,
+      "sha256": "d62852675708aec1c91d1bb40938e99692e1abc1d1f8b3a8da0b4b4eebaca3f7",
+      "status": "passed"
+    },
+    {
+      "path": "bridge-aot/result.json",
+      "bytes": 41240,
+      "sha256": "be5d4b25cf3cccfc2428e9602cb77b6b2b31ba61ac5bd5eab77b32071f2c9fcc",
+      "status": "passed"
+    },
+    {
+      "path": "bridge-development/result.json",
+      "bytes": 39153,
+      "sha256": "666f7bc958aa1659bcbccae6b0c99d3c3f699487b0a8d2c8d71c83f4a7eedf18",
+      "status": "passed"
+    },
+    {
+      "path": "development/click/result.json",
+      "bytes": 14530,
+      "sha256": "3cc15e2ce3e03e9b5a73f10d4bd0e64f4d09749e177e8481b772395961024509",
+      "status": "passed"
+    },
+    {
+      "path": "development/input/result.json",
+      "bytes": 102164,
+      "sha256": "0f9d978771d6566870081f98b03a2000194dbb5c0850e2186cdf608bc398cbdf",
+      "status": "passed"
+    },
+    {
+      "path": "development/input-race/result.json",
+      "bytes": 104276,
+      "sha256": "da2cb50ab850a38a683482c9a3519c3c1aada9721084044a035931c35ee9e735",
+      "status": "passed"
+    },
+    {
+      "path": "development/keyboard/result.json",
+      "bytes": 16365,
+      "sha256": "2c5b099a59f15d3ce26749f85b2e625e50dfb719e47975ae40a6cae9b86742b5",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-aot-host-crash/result.json",
+      "bytes": 9039,
+      "sha256": "feb5b5b16cdcbcd1eba08a9fdb1c5ac2a8bda3cde5eefbd43f1fb4418a36d4c7",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-aot-scheduling/result.json",
+      "bytes": 228378,
+      "sha256": "99b1b34998628c5340ae3f2cb73cf1411de7ba3ae54a8c0cdfa0834509342040",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-aot-scheduling-control/result.json",
+      "bytes": 38823,
+      "sha256": "575ab872fc6e65501a617cbb2e2db298aa477a837c10eec8ff4556d5b7589767",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-aot-startup-failure/result.json",
+      "bytes": 8095,
+      "sha256": "b5f65cf609c0b6998d3a70af2545634def5154457ec0dd9c2591e732b01010de",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-development-host-crash/result.json",
+      "bytes": 9029,
+      "sha256": "8fb5feb5036f1413b204966c39076bf652db1ba4076b68f13f690f3dc5499f97",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-development-scheduling/result.json",
+      "bytes": 203991,
+      "sha256": "fe14b8e95a614c1cd3949af533c41646e7392e1f701e97c0f80131c9cc934a61",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-development-scheduling-control/result.json",
+      "bytes": 39423,
+      "sha256": "b818733b3c1d4f7cb22b21b78859413f1aa07a4250e2fd2e95d5dd03717df735",
+      "status": "passed"
+    },
+    {
+      "path": "diagnostics-development-startup-failure/result.json",
+      "bytes": 8069,
+      "sha256": "e0b06c647bd88a2e3618828ed59966c8c07faf918cc4e5db5e192a858438660c",
+      "status": "passed"
+    },
+    {
+      "path": "events-aot/events/result.json",
+      "bytes": 2605967,
+      "sha256": "8d406667a5fe8b9dd3ba38034ef81c602a6f5881abec68241f42af6674a11967",
+      "status": "passed"
+    },
+    {
+      "path": "events-development/events/result.json",
+      "bytes": 2605548,
+      "sha256": "228e0d8497c5fa73d3625a3fcede044163a01f91c8607f38de3bf581105640ef",
+      "status": "passed"
+    },
+    {
+      "path": "input-race-aot/input-race/result.json",
+      "bytes": 104510,
+      "sha256": "096d837589630b6ecab1392ead6a65bb01c2e55d38b0daa7b172a207a40cd282",
+      "status": "passed"
+    },
+    {
+      "path": "javascript-aot/click/result.json",
+      "bytes": 13712,
+      "sha256": "3e8eb8b9c9e35e5ec4cddb23d4efa83f868d6b9f30a28f9e2cf93f75226c9764",
+      "status": "passed"
+    },
+    {
+      "path": "javascript-aot/input/result.json",
+      "bytes": 103056,
+      "sha256": "a59ef4ba48ba448bf43e937510404745f48c990fb668711fe70f1ca428e910a3",
+      "status": "passed"
+    },
+    {
+      "path": "javascript-development/click/result.json",
+      "bytes": 13467,
+      "sha256": "701ae8154437a75213ab8bd66ee92add2cbbb2573f29c8dbaab3afeb48d4c537",
+      "status": "passed"
+    },
+    {
+      "path": "javascript-development/input/result.json",
+      "bytes": 102812,
+      "sha256": "68d63f18f383866f7046daff01ccea796adbd307b5c798e743199fe17f644a22",
+      "status": "passed"
+    },
+    {
+      "path": "lifecycle-aot/lifecycle/result.json",
+      "bytes": 830749,
+      "sha256": "6e0dbc87dbe491ce24f8ecf42560f91100d558169cacc5716d079482dfa465ea",
+      "status": "passed"
+    },
+    {
+      "path": "lifecycle-development/lifecycle/result.json",
+      "bytes": 844985,
+      "sha256": "f8a9701638668a928c3944277490070da249ffaa8a8d92f7a295b4f0780deec3",
+      "status": "passed"
+    }
+  ],
+  "aotManifests": [
+    {
+      "path": "bridge-package/manifest.json",
+      "bytes": 12952,
+      "sha256": "f49ddf76956cfdbdf6e3760e7d34dd82ed6bbed35618cc18460d9120bd504825",
+      "entrypoint": "benchmarks/bridge.ts",
+      "application": {
+        "file": "bridge",
+        "bytes": 71220264,
+        "sha256": "8806163231d8dfdf5801fa42b72203a71b537ed9de742f529c57cf72b6df2ffc"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "core-lifecycle-package/manifest.json",
+      "bytes": 12748,
+      "sha256": "03acaec21cec23a78bdb9f01e434e981e5951628ca7ab7ae1a51c87e0c5e3ed6",
+      "entrypoint": "tests/native/public-lifecycle.ts",
+      "application": {
+        "file": "core-lifecycle",
+        "bytes": 71236648,
+        "sha256": "7eda832f3d3d9bb815f643edaacd60cc5d8791fce96dc139c93ac31a49e4b817"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "event-throughput-package/manifest.json",
+      "bytes": 12755,
+      "sha256": "4b3909face8fc9feacb02c62f7c2a64283682c393a30e47519ca870d920bc47d",
+      "entrypoint": "tests/native/event-throughput.ts",
+      "application": {
+        "file": "event-throughput",
+        "bytes": 71351336,
+        "sha256": "433405faeef03c227744c3d5301a53083c344f1b3faf07583390c5aad63fb2c4"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "fault-package/manifest.json",
+      "bytes": 12678,
+      "sha256": "c48dbc55844a6b9658d163650fd36d184b6c5e0064dee6905f2c4f0adc6bba58",
+      "entrypoint": "tests/native/fault.ts",
+      "application": {
+        "file": "fault",
+        "bytes": 71203880,
+        "sha256": "565c5bec8320aec8363e4a4cb9fa0ca615652ab11f29923506917a96e229cfd7"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "input-race-package/manifest.json",
+      "bytes": 12770,
+      "sha256": "ac2ea4fd946a8ad6b5d90c5165690093233007f4267669e291bb7acf36a13b85",
+      "entrypoint": "tests/native/input-race.ts",
+      "application": {
+        "file": "input-race",
+        "bytes": 71138344,
+        "sha256": "5cd4d1dca9b90313c66403612a62fa23e1b60800aba0dfd83d251ab9d43fce56"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "javascript-package/manifest.json",
+      "bytes": 12712,
+      "sha256": "c653b608f3da9e2320ac98d32493f5f1542b37b2056a0ba53be54c65beabcb91",
+      "entrypoint": "tests/native/javascript.js",
+      "application": {
+        "file": "javascript",
+        "bytes": 70876200,
+        "sha256": "17fc0d73ad05b0b3a2f312807213a5e5c06938b1dd90d6e569ca49facadb7fa9"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    },
+    {
+      "path": "package/manifest.json",
+      "bytes": 12457,
+      "sha256": "bf6b51d0fd1408d332fe67e1398ce82bb281e5aaa4710ad717ee4410817aa8d7",
+      "entrypoint": "examples/native-window/main.ts",
+      "application": {
+        "file": "native-window",
+        "bytes": 70859816,
+        "sha256": "a6a892962a4f24d28b30b68d01f669402d0eecc68b2e1233edc16dbdc18f5195"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 43
+    },
+    {
+      "path": "scheduling-package/manifest.json",
+      "bytes": 12713,
+      "sha256": "4b6acf07b6db52cbff1d0945100d9768739d226fccf569f0c958865962077d1a",
+      "entrypoint": "tests/native/scheduling.ts",
+      "application": {
+        "file": "scheduling",
+        "bytes": 71105576,
+        "sha256": "49e69fa8485937e1c11acc61df0945e74a652c39470ee868f655628c20ece174"
+      },
+      "compiledProgram": true,
+      "jit": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      },
+      "interpreter": "present",
+      "sourceFilesMatchedMergedCommit": 44
+    }
+  ],
+  "observations": {
+    "development": {
+      "bridge": {
+        "individual": {
+          "count": 1000,
+          "p50Ms": 0.13280700000007073,
+          "p95Ms": 1.1574600000000146,
+          "p99Ms": 8.311196999999993,
+          "totalMs": 427.65903400000184
+        },
+        "batchesOf100": {
+          "count": 10,
+          "p50Ms": 0.4002709999999752,
+          "p95Ms": 1.165427000000136,
+          "p99Ms": 1.165427000000136,
+          "totalMs": 4.9853760000000875
+        }
+      },
+      "eventThroughput": {
+        "checks": {
+          "expectedEvents": 1000,
+          "observedEvents": 1000,
+          "contiguousSequenceRevisionAndValues": true,
+          "nativeTreeRevision": 1,
+          "applicationInputReplacementBatches": 0,
+          "peakObservedQueuedCallbacks": 1,
+          "peakObservedActiveCallbacks": 1,
+          "listenerRevokedOnClose": true,
+          "finalOwnership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          }
+        },
+        "observations": {
+          "firstMs": 237.893957,
+          "lastMs": 1177.212676,
+          "spanMs": 939.3187190000001,
+          "intervals": 999,
+          "callbacksPerSecond": 1063.5367738263926,
+          "gapP50Ms": 0.829264999999964,
+          "gapP95Ms": 2.681551000000013,
+          "gapP99Ms": 3.221293000000003
+        },
+        "methodology": {
+          "clock": "Bun performance.now at synchronous input-listener entry",
+          "rate": "(callback count - 1) / (last callback observation - first callback observation)",
+          "instrumentation": "Prefix validation and one bounded synchronous JSONL append per callback",
+          "inputLoad": "Exactly 1000 x edits; the external XTest driver requests 1ms character delay",
+          "timingLimits": "Callback observation gaps include the injection schedule, native input processing, IPC and Bun scheduling. They are not per-event dispatch or input-to-presentation latency. The two process clocks are not correlated.",
+          "capacity": "This fixed offered load does not establish maximum sustainable throughput",
+          "externalEvidence": "The input driver verifies every logged sequence/revision/value, native final paint, observed injection interval, owned-process cleanup and artifact/source evidence. AOT qualification requires the separate build manifest."
+        }
+      },
+      "lifecycle": {
+        "checks": {
+          "completedCycles": 1000,
+          "callbackRegistrations": 3000,
+          "callbackReplacements": 1000,
+          "disposedSubtrees": 1000,
+          "launchInvocations": 1,
+          "launchAborted": true,
+          "unexpectedCallbacks": 0,
+          "finalOwnership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "peakOwnership": {
+            "windows": 1,
+            "nodes": 8,
+            "callbacks": 3,
+            "queuedTransactions": 1,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 1
+          }
+        },
+        "cycleAcknowledgement": {
+          "count": 1000,
+          "workloadMs": 623.817729,
+          "p50Ms": 0.31240200000002005,
+          "p95Ms": 1.4250450000000114,
+          "p99Ms": 4.152618000000018
+        },
+        "forcedGcCheckpoints": [
+          {
+            "phase": "before-cycles",
+            "completedCycles": 0,
+            "elapsedMs": 198.42728200000002,
+            "forcedGc": true,
+            "memory": {
+              "rss": 37576704,
+              "heapTotal": 1465344,
+              "heapUsed": 1220715,
+              "external": 684923,
+              "arrayBuffers": 65632
+            },
+            "ownership": {
+              "windows": 1,
+              "nodes": 4,
+              "callbacks": 1,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 0,
+            "observedLiveLaunchCallback": true
+          },
+          {
+            "phase": "after-cycles-after-gc",
+            "completedCycles": 1000,
+            "elapsedMs": 826.860809,
+            "forcedGc": true,
+            "memory": {
+              "rss": 59715584,
+              "heapTotal": 2190336,
+              "heapUsed": 2072790,
+              "external": 1291430,
+              "arrayBuffers": 65632
+            },
+            "ownership": {
+              "windows": 1,
+              "nodes": 4,
+              "callbacks": 1,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 1,
+            "observedLiveLaunchCallback": true
+          },
+          {
+            "phase": "after-shutdown-after-gc",
+            "completedCycles": 1000,
+            "elapsedMs": 989.033021,
+            "forcedGc": true,
+            "memory": {
+              "rss": 50253824,
+              "heapTotal": 1840128,
+              "heapUsed": 1989669,
+              "external": 1200997,
+              "arrayBuffers": 0
+            },
+            "ownership": {
+              "windows": 0,
+              "nodes": 0,
+              "callbacks": 0,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 0
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 0,
+            "observedLiveLaunchCallback": false
+          }
+        ]
+      },
+      "allocations": {
+        "allocationCalls": 555037,
+        "temporaryAllocationCalls": 56966,
+        "reportedTotals": {
+          "peak heap memory consumption": "53.02M",
+          "peak RSS (including heaptrack overhead)": "147.71M",
+          "total memory leaked": "584.24K"
+        }
+      },
+      "allocationArtifacts": {
+        "profile": {
+          "path": "allocations-development/native.heaptrack.gz",
+          "sha256": "575c8af8363d578127de7093394b313f1e0a580e4b1f50be1230a4040a5a17a9",
+          "bytes": 1614742
+        },
+        "summary": {
+          "path": "allocations-development/summary.txt",
+          "sha256": "bd9868730cb3d07221ef1560c68af8074d64bc17ccd3a0358458568fe4295445",
+          "bytes": 90837
+        },
+        "demangledStacks": {
+          "path": "allocations-development/summary-demangled.txt",
+          "sha256": "c27dd9dbcab70f563882b5b65edcf08e1b0deb4edd2e602123feee72a79e8eea",
+          "bytes": 90383
+        },
+        "allocationSizes": {
+          "path": "allocations-development/allocation-sizes.tsv",
+          "sha256": "1c4615221cf52a73217000a8df14886f35de61040d56215a139525436de60295",
+          "bytes": 7169
+        }
+      },
+      "scheduling": {
+        "scheduling": {
+          "inputObservedAfterInjectionMs": 32.85858599997482,
+          "paintDuringProducerObserved": true,
+          "sent": 7773,
+          "acknowledged": 7773,
+          "maximumOutstanding": 128
+        },
+        "scheduling-control": {
+          "inputObservedAfterInjectionMs": 17.132495000055314,
+          "paintDuringProducerObserved": true,
+          "sent": 1095,
+          "acknowledged": 1095,
+          "maximumOutstanding": 1
+        }
+      },
+      "faults": {
+        "startup-failure": {
+          "status": "passed",
+          "scenario": "startup-failure",
+          "application": {
+            "status": "passed",
+            "scenario": "startup-failure",
+            "elapsedMs": 10.916389
+          },
+          "cleanup": {
+            "forced_termination": false,
+            "remaining_observed_pids": [],
+            "unreaped_observed_pids": [],
+            "application_exit_code": 0
+          }
+        },
+        "host-crash": {
+          "status": "passed",
+          "scenario": "host-crash",
+          "application": {
+            "status": "passed",
+            "scenario": "host-crash",
+            "elapsedMs": 341.88762599999995
+          },
+          "containment": {
+            "nonce": "c64fa895bf3856d6740785c3b4938923",
+            "type": "crash-contained",
+            "atMs": 341.84926900000005,
+            "errorName": "ProtocolError",
+            "errorMessage": "Native output closed before shutdown",
+            "pendingRejected": 2,
+            "callbackAborted": true,
+            "ownership": {
+              "windows": 0,
+              "nodes": 0,
+              "callbacks": 0,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 0
+            }
+          },
+          "cleanup": {
+            "forced_termination": false,
+            "remaining_observed_pids": [],
+            "unreaped_observed_pids": [],
+            "application_exit_code": 0
+          }
+        }
+      }
+    },
+    "aot": {
+      "bridge": {
+        "individual": {
+          "count": 1000,
+          "p50Ms": 0.1254350000000386,
+          "p95Ms": 1.1481619999999566,
+          "p99Ms": 9.581087999999909,
+          "totalMs": 438.31764399999986
+        },
+        "batchesOf100": {
+          "count": 10,
+          "p50Ms": 0.36274600000001556,
+          "p95Ms": 11.495075999999926,
+          "p99Ms": 11.495075999999926,
+          "totalMs": 15.562380000000076
+        }
+      },
+      "eventThroughput": {
+        "checks": {
+          "expectedEvents": 1000,
+          "observedEvents": 1000,
+          "contiguousSequenceRevisionAndValues": true,
+          "nativeTreeRevision": 1,
+          "applicationInputReplacementBatches": 0,
+          "peakObservedQueuedCallbacks": 0,
+          "peakObservedActiveCallbacks": 1,
+          "listenerRevokedOnClose": true,
+          "finalOwnership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          }
+        },
+        "observations": {
+          "firstMs": 247.048098,
+          "lastMs": 1180.224411,
+          "spanMs": 933.1763129999999,
+          "intervals": 999,
+          "callbacksPerSecond": 1070.5372458377005,
+          "gapP50Ms": 0.8273320000000126,
+          "gapP95Ms": 2.681461000000013,
+          "gapP99Ms": 3.181789999999978
+        },
+        "methodology": {
+          "clock": "Bun performance.now at synchronous input-listener entry",
+          "rate": "(callback count - 1) / (last callback observation - first callback observation)",
+          "instrumentation": "Prefix validation and one bounded synchronous JSONL append per callback",
+          "inputLoad": "Exactly 1000 x edits; the external XTest driver requests 1ms character delay",
+          "timingLimits": "Callback observation gaps include the injection schedule, native input processing, IPC and Bun scheduling. They are not per-event dispatch or input-to-presentation latency. The two process clocks are not correlated.",
+          "capacity": "This fixed offered load does not establish maximum sustainable throughput",
+          "externalEvidence": "The input driver verifies every logged sequence/revision/value, native final paint, observed injection interval, owned-process cleanup and artifact/source evidence. AOT qualification requires the separate build manifest."
+        }
+      },
+      "lifecycle": {
+        "checks": {
+          "completedCycles": 1000,
+          "callbackRegistrations": 3000,
+          "callbackReplacements": 1000,
+          "disposedSubtrees": 1000,
+          "launchInvocations": 1,
+          "launchAborted": true,
+          "unexpectedCallbacks": 0,
+          "finalOwnership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "peakOwnership": {
+            "windows": 1,
+            "nodes": 8,
+            "callbacks": 3,
+            "queuedTransactions": 1,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 1
+          }
+        },
+        "cycleAcknowledgement": {
+          "count": 1000,
+          "workloadMs": 582.4004560000001,
+          "p50Ms": 0.28706399999998666,
+          "p95Ms": 1.3332589999999982,
+          "p99Ms": 3.596983000000023
+        },
+        "forcedGcCheckpoints": [
+          {
+            "phase": "before-cycles",
+            "completedCycles": 0,
+            "elapsedMs": 208.00791299999997,
+            "forcedGc": true,
+            "memory": {
+              "rss": 39985152,
+              "heapTotal": 917504,
+              "heapUsed": 704642,
+              "external": 435346,
+              "arrayBuffers": 65632
+            },
+            "ownership": {
+              "windows": 1,
+              "nodes": 4,
+              "callbacks": 1,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 0,
+            "observedLiveLaunchCallback": true
+          },
+          {
+            "phase": "after-cycles-after-gc",
+            "completedCycles": 1000,
+            "elapsedMs": 792.632684,
+            "forcedGc": true,
+            "memory": {
+              "rss": 47140864,
+              "heapTotal": 1507328,
+              "heapUsed": 901122,
+              "external": 438962,
+              "arrayBuffers": 65632
+            },
+            "ownership": {
+              "windows": 1,
+              "nodes": 4,
+              "callbacks": 1,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 1
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 0,
+            "observedLiveLaunchCallback": true
+          },
+          {
+            "phase": "after-shutdown-after-gc",
+            "completedCycles": 1000,
+            "elapsedMs": 992.098573,
+            "forcedGc": true,
+            "memory": {
+              "rss": 41951232,
+              "heapTotal": 1387520,
+              "heapUsed": 843138,
+              "external": 375170,
+              "arrayBuffers": 0
+            },
+            "ownership": {
+              "windows": 0,
+              "nodes": 0,
+              "callbacks": 0,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 0
+            },
+            "observedLiveCycleCallbacks": 0,
+            "observedLiveSubtreeHandles": 0,
+            "observedLiveLaunchCallback": false
+          }
+        ]
+      },
+      "allocations": {
+        "allocationCalls": 553149,
+        "temporaryAllocationCalls": 56814,
+        "reportedTotals": {
+          "peak heap memory consumption": "53.02M",
+          "peak RSS (including heaptrack overhead)": "147.81M",
+          "total memory leaked": "584.40K"
+        }
+      },
+      "allocationArtifacts": {
+        "profile": {
+          "path": "allocations-aot/native.heaptrack.gz",
+          "sha256": "c383fb1cd0420151dffb6990813461b81aa1299dfb7be1db14d04917ce61f296",
+          "bytes": 1608430
+        },
+        "summary": {
+          "path": "allocations-aot/summary.txt",
+          "sha256": "315b1a46873317a62b82569865bc957ed14c0de4c2cc32b9e5d209b53c60aadb",
+          "bytes": 88108
+        },
+        "demangledStacks": {
+          "path": "allocations-aot/summary-demangled.txt",
+          "sha256": "2231f59c03bb6eb7912ee3fd98575d92791bd73e78a271a4c04ac2f2eecb3bf5",
+          "bytes": 87364
+        },
+        "allocationSizes": {
+          "path": "allocations-aot/allocation-sizes.tsv",
+          "sha256": "52a6423a74e9c302208387b40aa3f2a351e104155d390a2bc262da0b95fbf0ef",
+          "bytes": 7174
+        }
+      },
+      "scheduling": {
+        "scheduling": {
+          "inputObservedAfterInjectionMs": 36.981372000013835,
+          "paintDuringProducerObserved": true,
+          "sent": 8737,
+          "acknowledged": 8737,
+          "maximumOutstanding": 128
+        },
+        "scheduling-control": {
+          "inputObservedAfterInjectionMs": 26.819468000098823,
+          "paintDuringProducerObserved": true,
+          "sent": 1073,
+          "acknowledged": 1073,
+          "maximumOutstanding": 1
+        }
+      },
+      "faults": {
+        "startup-failure": {
+          "status": "passed",
+          "scenario": "startup-failure",
+          "application": {
+            "status": "passed",
+            "scenario": "startup-failure",
+            "elapsedMs": 8.615186999999999
+          },
+          "cleanup": {
+            "forced_termination": false,
+            "remaining_observed_pids": [],
+            "unreaped_observed_pids": [],
+            "application_exit_code": 0
+          }
+        },
+        "host-crash": {
+          "status": "passed",
+          "scenario": "host-crash",
+          "application": {
+            "status": "passed",
+            "scenario": "host-crash",
+            "elapsedMs": 648.1757220000001
+          },
+          "containment": {
+            "nonce": "75a3f5fa8b482989c7d5211d8c0b2bfc",
+            "type": "crash-contained",
+            "atMs": 648.138738,
+            "errorName": "ProtocolError",
+            "errorMessage": "Native output closed before shutdown",
+            "pendingRejected": 2,
+            "callbackAborted": true,
+            "ownership": {
+              "windows": 0,
+              "nodes": 0,
+              "callbacks": 0,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 0
+            }
+          },
+          "cleanup": {
+            "forced_termination": false,
+            "remaining_observed_pids": [],
+            "unreaped_observed_pids": [],
+            "application_exit_code": 0
+          }
+        }
+      }
+    }
+  },
+  "baseline": {
+    "platform": {
+      "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "architecture": "x86_64",
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "logical_cpus": 4,
+      "available_cpus": 4,
+      "power_mode": "uncontrolled and unverified; no machine settings changed",
+      "github_run_id": "41224338023",
+      "runner_environment": "github-hosted"
+    },
+    "methodology": {
+      "samples_per_mode": 5,
+      "warmups_per_mode": 1,
+      "idle_seconds": 2.0,
+      "order": "development/AOT, alternating measured order each repetition",
+      "launch": "fresh application and native-host processes for every trial",
+      "cache": "OS page cache uncontrolled; no cache flushes",
+      "input": "XTest pointer click; the same native button and Bun update",
+      "fixture": "BN1 public application API; complete initial and changed native tree snapshots",
+      "renderer": "software GPU, actual adapter must match across trials",
+      "rss": "sum of process RSS; shared pages may be counted more than once",
+      "timing": "driver observations at nominal 100 ms polling; no presentation timestamps",
+      "p95": "nearest rank of observed samples; small samples do not establish a population tail",
+      "budgets": "none; correctness failures stop the run"
+    },
+    "unsupported_metrics": [
+      "controlled cold-cache startup",
+      "startup-to-interactive without the deliberate idle interval",
+      "display-presentation or physical-input latency",
+      "true peak memory between samples",
+      "CPU/GPU utilization and power",
+      "long-term leaks and development reload",
+      "installed/download size including system libraries"
+    ],
+    "trials": [
+      {
+        "mode": "development",
+        "phase": "warmup",
+        "path": "warmup-01-development",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "warmup",
+        "path": "warmup-01-aot",
+        "status": "passed"
+      },
+      {
+        "mode": "development",
+        "phase": "measured",
+        "path": "measured-01-development",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "measured",
+        "path": "measured-01-aot",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "measured",
+        "path": "measured-02-aot",
+        "status": "passed"
+      },
+      {
+        "mode": "development",
+        "phase": "measured",
+        "path": "measured-02-development",
+        "status": "passed"
+      },
+      {
+        "mode": "development",
+        "phase": "measured",
+        "path": "measured-03-development",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "measured",
+        "path": "measured-03-aot",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "measured",
+        "path": "measured-04-aot",
+        "status": "passed"
+      },
+      {
+        "mode": "development",
+        "phase": "measured",
+        "path": "measured-04-development",
+        "status": "passed"
+      },
+      {
+        "mode": "development",
+        "phase": "measured",
+        "path": "measured-05-development",
+        "status": "passed"
+      },
+      {
+        "mode": "aot",
+        "phase": "measured",
+        "path": "measured-05-aot",
+        "status": "passed"
+      }
+    ],
+    "artifact_bytes": {
+      "application": 70859816,
+      "native_host": 29000752,
+      "two_executable_payload": 99860568
+    },
+    "aot_compile_wall_ms": 2179.705749,
+    "renderer": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+    },
+    "metrics": {
+      "development": {
+        "time_to_window_observed_ms": {
+          "samples": 5,
+          "minimum": 134.98081000000184,
+          "median": 138.0752449999818,
+          "p95_observed": 140.0798650000752,
+          "maximum": 140.0798650000752
+        },
+        "time_to_first_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 122.73227799994402,
+          "median": 126.0077789999059,
+          "p95_observed": 128.6820190000526,
+          "maximum": 128.6820190000526
+        },
+        "time_to_expected_initial_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 135.14360099998157,
+          "median": 138.22706899998138,
+          "p95_observed": 140.1786200000288,
+          "maximum": 140.1786200000288
+        },
+        "sampled_peak_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 159629312,
+          "median": 160083968,
+          "p95_observed": 160681984,
+          "maximum": 160681984
+        },
+        "input_start_to_matching_app_event_observed_ms": {
+          "samples": 5,
+          "minimum": 111.65937499993106,
+          "median": 111.96915700008958,
+          "p95_observed": 112.45996900004229,
+          "maximum": 112.45996900004229
+        },
+        "input_start_to_matching_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 111.66043699995498,
+          "median": 111.97029900006328,
+          "p95_observed": 112.4610599999869,
+          "maximum": 112.4610599999869
+        },
+        "idle_median_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 158314496,
+          "median": 158572544,
+          "p95_observed": 159371264,
+          "maximum": 159371264
+        },
+        "idle_maximum_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 158326784,
+          "median": 158703616,
+          "p95_observed": 159371264,
+          "maximum": 159371264
+        },
+        "os_close_to_app_exit_observed_ms": {
+          "samples": 5,
+          "minimum": 27.205706000017926,
+          "median": 27.405230999988817,
+          "p95_observed": 29.446743999983482,
+          "maximum": 29.446743999983482
+        }
+      },
+      "aot": {
+        "time_to_window_observed_ms": {
+          "samples": 5,
+          "minimum": 136.15190300004087,
+          "median": 137.8852850000385,
+          "p95_observed": 139.00098100009473,
+          "maximum": 139.00098100009473
+        },
+        "time_to_first_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 123.79575700003898,
+          "median": 126.364126999988,
+          "p95_observed": 126.95770799996353,
+          "maximum": 126.95770799996353
+        },
+        "time_to_expected_initial_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 136.2621460000355,
+          "median": 137.98675500004265,
+          "p95_observed": 139.1164110000318,
+          "maximum": 139.1164110000318
+        },
+        "sampled_peak_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 161615872,
+          "median": 162156544,
+          "p95_observed": 163209216,
+          "maximum": 163209216
+        },
+        "input_start_to_matching_app_event_observed_ms": {
+          "samples": 5,
+          "minimum": 111.74966400005815,
+          "median": 111.9383980000066,
+          "p95_observed": 115.74403700001312,
+          "maximum": 115.74403700001312
+        },
+        "input_start_to_matching_paint_report_observed_ms": {
+          "samples": 5,
+          "minimum": 111.75079600002391,
+          "median": 111.93946900004903,
+          "p95_observed": 115.74503899998945,
+          "maximum": 115.74503899998945
+        },
+        "idle_median_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 160272384,
+          "median": 160845824,
+          "p95_observed": 161505280,
+          "maximum": 161505280
+        },
+        "idle_maximum_tree_rss_bytes": {
+          "samples": 5,
+          "minimum": 160296960,
+          "median": 160940032,
+          "p95_observed": 161505280,
+          "maximum": 161505280
+        },
+        "os_close_to_app_exit_observed_ms": {
+          "samples": 5,
+          "minimum": 27.268492999951377,
+          "median": 27.414152000005743,
+          "p95_observed": 27.44847100007064,
+          "maximum": 27.44847100007064
+        }
+      }
+    }
+  }
+}
