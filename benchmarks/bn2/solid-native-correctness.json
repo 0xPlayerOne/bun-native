@@ -1,0 +1,783 @@
+{
+  "schemaVersion": 1,
+  "scope": "Initial Linux development-host native correctness observations; not a repeated performance or release baseline. The input driver does not itself prove AOT; exact executable inspection is recorded separately below.",
+  "source": {
+    "baseCommit": "001d8040ded554f21374b7419b42177448c8f76d",
+    "dirty": true,
+    "files": {
+      "bun.lock": {
+        "bytes": 26819,
+        "sha256": "dc5eeeed9fba077e57c12af28b487579859e5e3777e448f2a4e53a7c34cca6f6"
+      },
+      "bunfig.toml": {
+        "bytes": 130,
+        "sha256": "f368aec980d8b0a3b6fc12b9a42e218fb4472565d32aaeb4c494925c180fa697"
+      },
+      "examples/native-window/content.ts": {
+        "bytes": 1766,
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+      },
+      "examples/solid-counter/main.tsx": {
+        "bytes": 4199,
+        "sha256": "62000e72e0c3887047fad7920b5116ed9f5455f8590c9a9e16508a75853dcb22"
+      },
+      "experiments/aot-gpui/inspect-runtime.ts": {
+        "bytes": 5444,
+        "sha256": "77244eec83d8fe1a1ae8ac43c7cceef2ecd6484f3f9e695a43e5aa89945e1380"
+      },
+      "experiments/aot-gpui/inspect.ts": {
+        "bytes": 2383,
+        "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+      },
+      "package.json": {
+        "bytes": 1728,
+        "sha256": "c067668fa30ed03fa010b7ebe797aa207edcb4e07c40852fa8b76d28c53bfa6e"
+      },
+      "packages/core/package.json": {
+        "bytes": 234,
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+      },
+      "packages/core/src/application.ts": {
+        "bytes": 15246,
+        "sha256": "91110f20548a8205214d682e94e133608efbc14a0d1241a44f2dcb15b3994943"
+      },
+      "packages/core/src/index.ts": {
+        "bytes": 482,
+        "sha256": "58250b6d85bb271ea9f6fdbafbfc5b10f82ab406fd0cc51e443279e7529130c7"
+      },
+      "packages/core/src/tree.ts": {
+        "bytes": 7898,
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+      },
+      "packages/core/src/types.ts": {
+        "bytes": 3425,
+        "sha256": "eac93a063ea9591134df76c07b5d5ba2adaeb4b9b041dea6fc16a8be0a3a206a"
+      },
+      "packages/protocol/package.json": {
+        "bytes": 129,
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+      },
+      "packages/protocol/src/elements.ts": {
+        "bytes": 2915,
+        "sha256": "f76169c71a390aa44b4f4dbc0a138d5c1a1d6516ca6fdb6dca628dabb9f94d70"
+      },
+      "packages/protocol/src/framing.ts": {
+        "bytes": 2806,
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+      },
+      "packages/protocol/src/index.ts": {
+        "bytes": 525,
+        "sha256": "72f7284257c046834ccd62452f1eee49f143ee4e59e61bf9413f41c43f90d4a9"
+      },
+      "packages/protocol/src/messages.ts": {
+        "bytes": 9930,
+        "sha256": "90869c9dfc92928aff05640a675b72d659869a759f045bd0861e0b3864f09fc4"
+      },
+      "packages/protocol/src/values.ts": {
+        "bytes": 1732,
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+      },
+      "packages/runtime/package.json": {
+        "bytes": 195,
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+      },
+      "packages/runtime/src/index.ts": {
+        "bytes": 13166,
+        "sha256": "2ccbca88fc25b04bf2de3201888dc97bdc5d5d13f01f6b9fc00df3d793a67bcb"
+      },
+      "packages/solid/package.json": {
+        "bytes": 267,
+        "sha256": "4b88e02c14b8f9f3469894f5357b6fececc9ca638df08b9eac48759062d9394a"
+      },
+      "packages/solid/src/index.ts": {
+        "bytes": 1010,
+        "sha256": "3a7188494db33ad4cb25c075c99a0f53a07322b48ae7ffab4a996bddd8667db5"
+      },
+      "packages/solid/src/input-intent.ts": {
+        "bytes": 1698,
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+      },
+      "packages/solid/src/jsx.ts": {
+        "bytes": 774,
+        "sha256": "ed349a74adae4bea0bea0efcce2ee3d8bbd6e2eb57e180aad47dda3df14e8f73"
+      },
+      "packages/solid/src/mount.ts": {
+        "bytes": 8634,
+        "sha256": "7729c8b1183f97d71a1c64ec26b29da9cdb1984dca99777404196087fba61b38"
+      },
+      "packages/solid/src/native-tree.ts": {
+        "bytes": 5682,
+        "sha256": "6a1f101bf1253503951d36ed5811d098bd48c339d7167c65438013210e46aa02"
+      },
+      "packages/solid/src/nodes.ts": {
+        "bytes": 8231,
+        "sha256": "334c9402cbc36184a8d19a29d05b5c83d99d860d209379a6f276470152907169"
+      },
+      "packages/solid/src/renderer.ts": {
+        "bytes": 948,
+        "sha256": "2caf806b31bbecdc2e0016a8d5813295189641ef031e08b12be8ec7b26f7c42c"
+      },
+      "packages/solid/src/window-lifetime.ts": {
+        "bytes": 1220,
+        "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+      },
+      "scripts/quality/native-input-linux.py": {
+        "bytes": 29804,
+        "sha256": "386224e55ec7f5ea000d4ef4d1ed3d03d675071e11aabc146927b4c990096cb5"
+      },
+      "scripts/quality/native-linux-session.sh": {
+        "bytes": 4426,
+        "sha256": "16faf5c64f1bb4a3d53bcf1f3ec556cedd131f10624e493ee349f594caf48ce9"
+      },
+      "scripts/solid-build.ts": {
+        "bytes": 1559,
+        "sha256": "7253e6a82a9aaf3a853b9fd0aed7305300e4907a1a30f6842b63b4442decd75d"
+      },
+      "scripts/solid/transform.ts": {
+        "bytes": 642,
+        "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+      },
+      "tests/native/solid-input-intent.tsx": {
+        "bytes": 3982,
+        "sha256": "861b0be2a8d73c587e1fe6b26161b680c7159cd1d76a905f65509d737d8e981a"
+      },
+      "tests/native/solid-window.py": {
+        "bytes": 5541,
+        "sha256": "d1acb63d1e0d2c66b7675f480249db152e1a4692c4f835b6b97892e1b3e4507b"
+      },
+      "toolchain.json": {
+        "bytes": 1725,
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+      },
+      "tsconfig.json": {
+        "bytes": 974,
+        "sha256": "6c129b3bf0a5df5812e98a1dec1b77f95956adcd1b7abcbeea84b3d46222ded2"
+      }
+    }
+  },
+  "toolchain": {
+    "manifest_sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+    "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "platform": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "display": ":100",
+    "display_protocol": "X11",
+    "physical_input_tested": false,
+    "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+    "software_gl_requested": "1",
+    "child_subreaper": true
+  },
+  "renderer": {
+    "status": "reported-by-native-window",
+    "gpu": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+    }
+  },
+  "nativeHost": {
+    "bytes": 110849576,
+    "sha256": "8a221ff318aa0a3ee0bfff95bc243dc0091d3c0a2af97347ab3bc550cc3ad40e",
+    "profile": "dev"
+  },
+  "artifacts": {
+    "counter": {
+      "development": {
+        "bytes": 103860,
+        "sha256": "8c3cf687f30fe24d8ba64f516f98fc835fb59f0bc21f1b7b5a3459767446e046"
+      },
+      "aot": {
+        "bytes": 71285800,
+        "sha256": "0646a40d1be3931d3c531ceb765f0fe5d94fae87c80c1998a11ae585a391de41",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3719403,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      }
+    },
+    "input-intent": {
+      "development": {
+        "bytes": 98729,
+        "sha256": "18913eba1d7717d6d8537e3df671ded310e8d02f170cffc13be9e2cae88583e1"
+      },
+      "aot": {
+        "bytes": 71236648,
+        "sha256": "9304ade44bb7bc363ee0b005871e2bc9d4b681dc87e5190e30996322771e00f5",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3670251,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "name": "qualified-counter-click-aot",
+      "report": {
+        "bytes": 19054,
+        "sha256": "263db4ff747f645adc17fde8524b242b5dd74c1e201e7aab4fe8c20d99bdfb12"
+      },
+      "status": "passed",
+      "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+      "mode": "aot",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+          "type": "solid-effect",
+          "clicks": 0,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+          "type": "solid-mounted",
+          "diagnostics": {
+            "nodes": 12,
+            "listeners": 2,
+            "pending": false,
+            "commits": 1,
+            "mutations": {
+              "create": 12,
+              "set": 0,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+          "type": "solid-effect",
+          "clicks": 1,
+          "effects": 2,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+          "type": "solid-keyed-update",
+          "names": ["Gamma", "Alpha"],
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa609e66be0b01b3ad6da2ce4a52cd91",
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ]
+    },
+    {
+      "name": "qualified-counter-click-development",
+      "report": {
+        "bytes": 19117,
+        "sha256": "d89e8df281b6c9918e5ea0a4034de63f967618ab263ea7d61f40608147d4deb9"
+      },
+      "status": "passed",
+      "nonce": "fa66e30064929834ba87d2774302655e",
+      "mode": "development",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "fa66e30064929834ba87d2774302655e",
+          "type": "solid-effect",
+          "clicks": 0,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa66e30064929834ba87d2774302655e",
+          "type": "solid-mounted",
+          "diagnostics": {
+            "nodes": 12,
+            "listeners": 2,
+            "pending": false,
+            "commits": 1,
+            "mutations": {
+              "create": 12,
+              "set": 0,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa66e30064929834ba87d2774302655e",
+          "type": "solid-effect",
+          "clicks": 1,
+          "effects": 2,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa66e30064929834ba87d2774302655e",
+          "type": "solid-keyed-update",
+          "names": ["Gamma", "Alpha"],
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "fa66e30064929834ba87d2774302655e",
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ]
+    },
+    {
+      "name": "qualified-counter-input-aot",
+      "report": {
+        "bytes": 160295,
+        "sha256": "975b0d1c1defc0dc743e87d9cdfbc597c6f12dfb01b8354a8a33186a2bfc63a6"
+      },
+      "status": "passed",
+      "nonce": "8db667317ec3c82661abf32dda08df8a",
+      "mode": "aot",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "8db667317ec3c82661abf32dda08df8a",
+          "type": "solid-effect",
+          "clicks": 0,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "8db667317ec3c82661abf32dda08df8a",
+          "type": "solid-mounted",
+          "diagnostics": {
+            "nodes": 12,
+            "listeners": 2,
+            "pending": false,
+            "commits": 1,
+            "mutations": {
+              "create": 12,
+              "set": 0,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "8db667317ec3c82661abf32dda08df8a",
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ]
+    },
+    {
+      "name": "qualified-counter-input-development",
+      "report": {
+        "bytes": 178154,
+        "sha256": "d8ab4d9ea96c49467c12f512a05c4d7e64da1cf2c2d80f850337dcedaefdb647"
+      },
+      "status": "passed",
+      "nonce": "c2315d43b879f808161cd32bb08baa09",
+      "mode": "development",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "c2315d43b879f808161cd32bb08baa09",
+          "type": "solid-effect",
+          "clicks": 0,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c2315d43b879f808161cd32bb08baa09",
+          "type": "solid-mounted",
+          "diagnostics": {
+            "nodes": 12,
+            "listeners": 2,
+            "pending": false,
+            "commits": 1,
+            "mutations": {
+              "create": 12,
+              "set": 0,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "effects": 1,
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "c2315d43b879f808161cd32bb08baa09",
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ]
+    },
+    {
+      "name": "qualified-input-intent-aot",
+      "report": {
+        "bytes": 104796,
+        "sha256": "6363c7677e6c76162b23a80e3d45d2fa8812278d948e74d3a7fba449a39ad662"
+      },
+      "status": "passed",
+      "nonce": "137beb7ba72fcc521580da3a85eab5c5",
+      "mode": "aot",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "137beb7ba72fcc521580da3a85eab5c5",
+          "type": "solid-stale-echo-preserved",
+          "event_revision": 1,
+          "before": {
+            "value": "So",
+            "revision": 2
+          },
+          "after": {
+            "value": "So",
+            "revision": 2
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "137beb7ba72fcc521580da3a85eab5c5",
+          "type": "solid-value-intent-applied",
+          "submitted": {
+            "value": "Explicit replacement",
+            "revision": 38
+          },
+          "after": {
+            "value": "Explicit replacement",
+            "revision": 39
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "137beb7ba72fcc521580da3a85eab5c5",
+          "type": "solid-input-complete",
+          "preserved": true,
+          "replaced": true,
+          "cleaned": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 5,
+              "set": 39,
+              "insert": 5,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        }
+      ]
+    },
+    {
+      "name": "qualified-input-intent-development",
+      "report": {
+        "bytes": 109047,
+        "sha256": "9cbfe571a8d3bd90265a258e866a31329e84240db5a7ab6986898f8fcbffb6e4"
+      },
+      "status": "passed",
+      "nonce": "dd687a73df459771b4a32c71a59c1a08",
+      "mode": "development",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "solidEvents": [
+        {
+          "nonce": "dd687a73df459771b4a32c71a59c1a08",
+          "type": "solid-stale-echo-preserved",
+          "event_revision": 1,
+          "before": {
+            "value": "So",
+            "revision": 2
+          },
+          "after": {
+            "value": "So",
+            "revision": 2
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "dd687a73df459771b4a32c71a59c1a08",
+          "type": "solid-value-intent-applied",
+          "submitted": {
+            "value": "Explicit replacement",
+            "revision": 38
+          },
+          "after": {
+            "value": "Explicit replacement",
+            "revision": 39
+          },
+          "stage": "bun-application"
+        },
+        {
+          "nonce": "dd687a73df459771b4a32c71a59c1a08",
+          "type": "solid-input-complete",
+          "preserved": true,
+          "replaced": true,
+          "cleaned": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 5,
+              "set": 39,
+              "insert": 5,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        }
+      ]
+    }
+  ],
+  "retention": {
+    "scope": "headless public-core subprocess peer; explicit pinned-Bun full GC; not a native heap or long-term leak measurement",
+    "disposedRoots": 10,
+    "reachableWhileWindowOpen": 0,
+    "remainingOwnedWindowRoots": 1
+  },
+  "unsupported": [
+    "physical input",
+    "hardware GPU performance",
+    "macOS and Windows native GUI",
+    "long-term allocation or native resource leak qualification",
+    "display presentation latency",
+    "release-profile matched direct-core benchmark"
+  ]
+}

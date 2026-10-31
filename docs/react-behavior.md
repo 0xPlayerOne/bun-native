@@ -94,7 +94,7 @@ bun experiments/aot-gpui/build-window.ts --source "$PWD" \
   --outdir "$run_dir/aot-package"
 
 for mode in development aot; do
-  command=(bun tests/native/react-behavior.tsx)
+  command=(bun "$run_dir/aot-package/development/application.js")
   if [[ "$mode" == aot ]]; then
     command=("$run_dir/aot-package/react-behavior")
   fi
@@ -109,16 +109,30 @@ done
 ```
 
 The compiler helper fingerprints the React adapter, shared renderer, core,
-protocol, runtime, fixture, native source and build configuration. It verifies
-the actual compiled-program metadata and JIT range removal. The controller's
+protocol, runtime, fixture, native source and build configuration. Both modes
+consume the same fingerprinted generated development module; the compiler takes
+that module as its input and verifies actual compiled-program metadata and JIT
+range removal. The controller's
 `--mode aot` label alone provides neither check. The existing required Linux
 native lane builds its release host once and runs these 16 cases against that
 same host, retaining each controller report, application assertion summary,
 event log, screenshots and compiler manifest.
+The generated module selects production React/reconciler for both runtime modes.
+This keeps framework behavior matched while changing development Bun execution
+to the actual machine-code AOT path.
 
 ## Evidence scope
 
-The [source-bound local record](../tests/native/evidence/react-behavior-linux-development-aot.json)
+The [integrated generated-module record](../tests/native/evidence/react-hosted-recipe-linux.json)
+adds all 16 behavior cases under the current build recipe, plus ten counter and
+event regressions. The same generated module ran through development Bun and
+supplied the corresponding AOT compilation input. All 26 runs passed with stable
+source/artifact hashes, complete expected native trees and normal process cleanup
+on the unchanged protocol4 development host. Both transition runs again observed
+ordinary flush before the explicit transition commit. This is local correctness
+evidence; the required hosted job repeats it with its release host.
+
+The [original source-bound local record](../tests/native/evidence/react-behavior-linux-development-aot.json)
 contains all 16 passing cases on the same protocol4 development-profile host:
 eight development launches and eight launches of the inspected AOT executable.
 All exited normally, with no forced termination, surviving or unreaped observed
@@ -143,7 +157,10 @@ unproven; no timeout or assertion was relaxed. All final cases were run once per
 mode after the concrete transition correction, with unchanged source hashes.
 
 Local qualification records must bind every result to the exact source and
-application/host hashes. Linux X11 uses actual GPUI with XTest input and a Mesa
+application/host hashes. The original record used direct TSX development launches
+and direct-source AOT compilation; its fingerprints are preserved as historical
+evidence rather than reassigned to the generated-module recipe above. Linux X11
+uses actual GPUI with XTest input and a Mesa
 software Vulkan adapter; it does not qualify physical input, hardware-GPU
 performance, display presentation, IME, accessibility, or macOS/Windows behavior.
 Independent hosted release-profile qualification remains a required gate.

@@ -8,7 +8,9 @@ failure oracles shared when the adapter branches are integrated.
 
 The required native Linux job runs this diagnostic with the same **release host**
 already built for the other native tests. It runs development Bun and a separately
-compiled and inspected machine-code AOT application. The committed
+compiled and inspected machine-code AOT application from the same generated
+module, with explicitly selected production React/reconciler in both modes.
+The committed
 [local evidence](evidence/react-linux-lifecycle.json) uses a **development-profile**
 protocol-2 host, Linux X11 and Mesa llvmpipe. It is not hosted release evidence.
 
@@ -61,9 +63,10 @@ allocations, the native host's RSS or GPU memory. Timing arrays and WeakRef
 instrumentation remain live at the final heap checkpoint and are disclosed in
 the report.
 
-The local evidence contains one full trial per mode. Development and AOT runs use
-different dependency build conditions because AOT is compiled with `--production`.
-They are not a controlled compiler-only comparison. No performance budget, speedup
+The historical local evidence contains one full trial per mode. Those development
+and AOT runs used different dependency build conditions; they predate the current
+matched production-framework module recipe and are not a controlled compiler-only
+comparison. Their source/artifact records are preserved unchanged. No performance budget, speedup
 claim or framework ranking is inferred from these samples. A matched, repeated
 release-host comparison with Solid and direct core remains part of #236; it must
 keep equivalent workloads and resolve any failing retention oracle before accepting
@@ -77,6 +80,7 @@ actual host profile:
 
 ```sh
 export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+export BUN_NATIVE_HOST_PROFILE=release
 mkdir -p .bun-native
 run_dir=$(mktemp -d "$PWD/.bun-native/react-workload.XXXXXX")
 bun experiments/aot-gpui/build-window.ts --source "$PWD" \
@@ -87,7 +91,7 @@ nonce=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
 timeout --kill-after=5s 150s xvfb-run --auto-servernum \
   --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-  "$run_dir/development-session" -- bun benchmarks/solid/react.tsx \
+  "$run_dir/development-session" -- bun "$run_dir/aot-package/development/application.js" \
   --host "$BUN_NATIVE_HOST" --output "$run_dir/development.json" \
   --nonce "$nonce" --mode development \
   --iterations 1000 --rotations 1000 --mounts 1000 --rows 32

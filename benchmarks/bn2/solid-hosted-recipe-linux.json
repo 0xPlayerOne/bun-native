@@ -1,0 +1,1258 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local correctness of the required hosted Solid recipe, using frozen development-profile protocol-4 GPUI on Linux Xvfb/XTest and software rendering; no hosted release or performance claim.",
+  "sourceCommit": "76a89923ec86daf8e402bafddd137a93bae449ad",
+  "sourceDirty": true,
+  "sourceFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    "Cargo.toml": {
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    "bun.lock": {
+      "bytes": 27298,
+      "sha256": "92a4725df235b6234e33603e7f60ff2171ffd23289e583951232ef30e5b521f3"
+    },
+    "bunfig.toml": {
+      "bytes": 130,
+      "sha256": "f368aec980d8b0a3b6fc12b9a42e218fb4472565d32aaeb4c494925c180fa697"
+    },
+    "examples/native-window/content.ts": {
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "examples/solid-counter/main.tsx": {
+      "bytes": 4199,
+      "sha256": "62000e72e0c3887047fad7920b5116ed9f5455f8590c9a9e16508a75853dcb22"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    "native/gpui-host/src/channel.rs": {
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "bytes": 5961,
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d"
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    "native/gpui-host/src/input.rs": {
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    "native/gpui-host/src/main.rs": {
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    "native/gpui-host/src/session.rs": {
+      "bytes": 11756,
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077"
+    },
+    "native/gpui-host/src/state.rs": {
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    "native/gpui-host/src/style.rs": {
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    "native/gpui-host/src/view.rs": {
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    "native/protocol/Cargo.toml": {
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    "native/protocol/src/event_tests.rs": {
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    "native/protocol/src/events.rs": {
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    "native/protocol/src/framing.rs": {
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    "native/protocol/src/lib.rs": {
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    "native/protocol/src/security_tests.rs": {
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    "native/protocol/src/tests.rs": {
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    "native/protocol/src/tree.rs": {
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    "native/protocol/src/wire.rs": {
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    "package.json": {
+      "bytes": 1835,
+      "sha256": "b36b002438cb16c61dfb76f34ef6c9aa75b112c7b7da92b8a51647eac6fe6f9f"
+    },
+    "packages/core/package.json": {
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    "packages/core/src/application.ts": {
+      "bytes": 14616,
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+    },
+    "packages/core/src/events.ts": {
+      "bytes": 7680,
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 646,
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+    },
+    "packages/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "packages/core/src/types.ts": {
+      "bytes": 5566,
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    "packages/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "packages/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    "packages/protocol/src/messages.ts": {
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    "packages/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    "packages/runtime/package.json": {
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    "packages/runtime/src/index.ts": {
+      "bytes": 13240,
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814"
+    },
+    "packages/solid/package.json": {
+      "bytes": 310,
+      "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+    },
+    "packages/solid/src/index.ts": {
+      "bytes": 604,
+      "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+    },
+    "packages/solid/src/jsx.ts": {
+      "bytes": 868,
+      "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+    },
+    "packages/solid/src/mount.ts": {
+      "bytes": 1216,
+      "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+    },
+    "packages/solid/src/renderer.ts": {
+      "bytes": 964,
+      "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    "scripts/solid-build.ts": {
+      "bytes": 1559,
+      "sha256": "7253e6a82a9aaf3a853b9fd0aed7305300e4907a1a30f6842b63b4442decd75d"
+    },
+    "scripts/solid/preset.d.ts": {
+      "bytes": 139,
+      "sha256": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228"
+    },
+    "scripts/solid/transform.ts": {
+      "bytes": 642,
+      "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "bytes": 1028,
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+    },
+    "tests/native/solid-input-intent.tsx": {
+      "bytes": 3982,
+      "sha256": "861b0be2a8d73c587e1fe6b26161b680c7159cd1d76a905f65509d737d8e981a"
+    },
+    "tests/native/solid-interactions.tsx": {
+      "bytes": 10532,
+      "sha256": "adc005ddce69922037a5180069197f61fe136220741c55181b6fba75d7cf4318"
+    }
+  },
+  "harnessFiles": {
+    ".github/workflows/native-linux.yml": {
+      "bytes": 18406,
+      "sha256": "d86c2fce8afb42db37d66443ba013348465a7f3f0019b2546b3d58dc0638ffb4"
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "bytes": 10597,
+      "sha256": "ebd98542d71336986932b711fea71ef9a5f5aea5fa1337417714ad45eedd99f3"
+    },
+    "tests/native/solid-window.py": {
+      "bytes": 8382,
+      "sha256": "ceec0858f5b0f6af5f4cbdd52dd9e075a9871300325257dd051da35c5a3256a1"
+    },
+    "scripts/quality/native-input-linux.py": {
+      "bytes": 37262,
+      "sha256": "0b7cc4ce9c33a32a1ba27adafe8d2bf28ff8fd9c455cbe1ddde99bb3f06ae82e"
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "bytes": 6961,
+      "sha256": "aa9442f99fbd6aa0b9491e8903abf03ee00b54761b561c9db7daeed94d3cf219"
+    }
+  },
+  "artifacts": [
+    {
+      "entry": "solid",
+      "entrypoint": "examples/solid-counter/main.tsx",
+      "application": {
+        "file": "solid",
+        "bytes": 71351336,
+        "sha256": "4b964300ea20365fd5335fbd54d36b32bd85cae9b5e11508d956ed6f76b781ea",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3784933,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 117132,
+          "sha256": "22115f74b427f444ff9fef62d8d9f0c495bc32cb8ec4b4ce3aea462182df7ba6",
+          "transformCommand": [
+            "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/scripts/solid-build.ts",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/examples/solid-counter/main.tsx",
+            "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-package/development"
+          ],
+          "buildMs": 684.3262080000001
+        }
+      },
+      "host": {
+        "file": "/workspace/scratch/5b1033c37396/task-artifacts/native-hosts/bn2-events-7e5acbd353f8",
+        "placement": "external",
+        "profile": "dev",
+        "bytes": 111772680,
+        "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+        "provenance": "Caller-supplied prebuilt host referenced in place, not bundled. Match this hash to native build and interaction evidence."
+      },
+      "manifest": {
+        "bytes": 17237,
+        "sha256": "95ff3bac8331498102869e20ad92c07fb2a22b95e51261e3f87d128c1623fda1"
+      },
+      "target": {
+        "os": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57"
+      },
+      "toolchain": {
+        "schemaVersion": 1,
+        "bun": {
+          "version": "1.4.4-canary.1",
+          "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "cliRevision": "1.4.4-canary.1+da867c60b",
+          "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "compileArguments": ["compile", "--no-script", "--production"],
+          "archives": {
+            "linux-x64": {
+              "name": "bun-linux-x64.zip",
+              "assetId": 687869747,
+              "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+            },
+            "linux-arm64": {
+              "name": "bun-linux-aarch64.zip",
+              "assetId": 687869647,
+              "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+            },
+            "darwin-x64": {
+              "name": "bun-darwin-x64.zip",
+              "assetId": 687869655,
+              "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+            },
+            "darwin-arm64": {
+              "name": "bun-darwin-aarch64.zip",
+              "assetId": 687869686,
+              "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+            },
+            "win32-x64": {
+              "name": "bun-windows-x64.zip",
+              "assetId": 687870574,
+              "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+            },
+            "win32-arm64": {
+              "name": "bun-windows-aarch64.zip",
+              "assetId": 687870891,
+              "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+            }
+          }
+        },
+        "rust": {
+          "version": "1.98.1",
+          "components": ["rustfmt", "clippy"]
+        },
+        "gpui": {
+          "repository": "https://github.com/zed-industries/zed",
+          "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+          "version": "0.2.2"
+        }
+      },
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-package/development/application.js",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-package/solid"
+      ],
+      "buildMs": 22629.007098
+    },
+    {
+      "entry": "solid-input-intent",
+      "entrypoint": "tests/native/solid-input-intent.tsx",
+      "application": {
+        "file": "solid-input-intent",
+        "bytes": 71302184,
+        "sha256": "3ae40683643278837e54f1b7ea19c16e73d5dc8bae4cf7dbbbf7b71ae6509e3f",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3735794,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 112031,
+          "sha256": "3f541d6bdc40a56fe3ee8b82c17bc566afdfc7c22d92937a61b15358655041dc",
+          "transformCommand": [
+            "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/scripts/solid-build.ts",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/tests/native/solid-input-intent.tsx",
+            "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-input-intent-package/development"
+          ],
+          "buildMs": 1272.044085
+        }
+      },
+      "host": {
+        "file": "/workspace/scratch/5b1033c37396/task-artifacts/native-hosts/bn2-events-7e5acbd353f8",
+        "placement": "external",
+        "profile": "dev",
+        "bytes": 111772680,
+        "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+        "provenance": "Caller-supplied prebuilt host referenced in place, not bundled. Match this hash to native build and interaction evidence."
+      },
+      "manifest": {
+        "bytes": 17327,
+        "sha256": "8b68e03cd9adf0b7e10fe73409a44bff94bfacba6b8212c9908a39e12fc1b301"
+      },
+      "target": {
+        "os": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57"
+      },
+      "toolchain": {
+        "schemaVersion": 1,
+        "bun": {
+          "version": "1.4.4-canary.1",
+          "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "cliRevision": "1.4.4-canary.1+da867c60b",
+          "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "compileArguments": ["compile", "--no-script", "--production"],
+          "archives": {
+            "linux-x64": {
+              "name": "bun-linux-x64.zip",
+              "assetId": 687869747,
+              "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+            },
+            "linux-arm64": {
+              "name": "bun-linux-aarch64.zip",
+              "assetId": 687869647,
+              "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+            },
+            "darwin-x64": {
+              "name": "bun-darwin-x64.zip",
+              "assetId": 687869655,
+              "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+            },
+            "darwin-arm64": {
+              "name": "bun-darwin-aarch64.zip",
+              "assetId": 687869686,
+              "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+            },
+            "win32-x64": {
+              "name": "bun-windows-x64.zip",
+              "assetId": 687870574,
+              "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+            },
+            "win32-arm64": {
+              "name": "bun-windows-aarch64.zip",
+              "assetId": 687870891,
+              "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+            }
+          }
+        },
+        "rust": {
+          "version": "1.98.1",
+          "components": ["rustfmt", "clippy"]
+        },
+        "gpui": {
+          "repository": "https://github.com/zed-industries/zed",
+          "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+          "version": "0.2.2"
+        }
+      },
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-input-intent-package/development/application.js",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-input-intent-package/solid-input-intent"
+      ],
+      "buildMs": 47304.744925000006
+    },
+    {
+      "entry": "solid-interactions",
+      "entrypoint": "tests/native/solid-interactions.tsx",
+      "application": {
+        "file": "solid-interactions",
+        "bytes": 71711784,
+        "sha256": "197bc64d2a8a850b6806d06b4abe9831a037ea785f83f23cb9ade74287ebb786",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 4145394,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 118130,
+          "sha256": "24c9ef77f7e000e69404b2add06f4c90789b87fc7db0ea979d88e12f2722f27f",
+          "transformCommand": [
+            "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/scripts/solid-build.ts",
+            "/workspace/scratch/5b1033c37396/bn2-solid-ci/tests/native/solid-interactions.tsx",
+            "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-interactions-package/development"
+          ],
+          "buildMs": 822.786597
+        }
+      },
+      "host": {
+        "file": "/workspace/scratch/5b1033c37396/task-artifacts/native-hosts/bn2-events-7e5acbd353f8",
+        "placement": "external",
+        "profile": "dev",
+        "bytes": 111772680,
+        "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb",
+        "provenance": "Caller-supplied prebuilt host referenced in place, not bundled. Match this hash to native build and interaction evidence."
+      },
+      "manifest": {
+        "bytes": 17321,
+        "sha256": "9eda61dd364e0c21b3e1e35cb5e25212c33625e580e4f6ed76e567ae5154654c"
+      },
+      "target": {
+        "os": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57"
+      },
+      "toolchain": {
+        "schemaVersion": 1,
+        "bun": {
+          "version": "1.4.4-canary.1",
+          "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "cliRevision": "1.4.4-canary.1+da867c60b",
+          "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+          "compileArguments": ["compile", "--no-script", "--production"],
+          "archives": {
+            "linux-x64": {
+              "name": "bun-linux-x64.zip",
+              "assetId": 687869747,
+              "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+            },
+            "linux-arm64": {
+              "name": "bun-linux-aarch64.zip",
+              "assetId": 687869647,
+              "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+            },
+            "darwin-x64": {
+              "name": "bun-darwin-x64.zip",
+              "assetId": 687869655,
+              "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+            },
+            "darwin-arm64": {
+              "name": "bun-darwin-aarch64.zip",
+              "assetId": 687869686,
+              "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+            },
+            "win32-x64": {
+              "name": "bun-windows-x64.zip",
+              "assetId": 687870574,
+              "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+            },
+            "win32-arm64": {
+              "name": "bun-windows-aarch64.zip",
+              "assetId": 687870891,
+              "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+            }
+          }
+        },
+        "rust": {
+          "version": "1.98.1",
+          "components": ["rustfmt", "clippy"]
+        },
+        "gpui": {
+          "repository": "https://github.com/zed-industries/zed",
+          "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+          "version": "0.2.2"
+        }
+      },
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-interactions-package/development/application.js",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/solid-ci/solid-interactions-package/solid-interactions"
+      ],
+      "buildMs": 11977.513334
+    }
+  ],
+  "results": [
+    {
+      "mode": "development",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "app-events.jsonl": {
+          "bytes": 9053,
+          "sha256": "eac95b999bf194ee6be8fa67b980b8e37b893637d635895b0d9221b0ab4a4de3"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 31579,
+          "sha256": "d7c18464917feba1c5203f20b31cfb583737c4dd3cb609c95e3f1de4938b148c"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 33546,
+          "sha256": "4b08ef80e48cb0596ad8e5f2b5f1e12851961cb18900faf8b7c610145b29c499"
+        },
+        "app-events.jsonl": {
+          "bytes": 100144,
+          "sha256": "9aa20a0e4d5d0cdbc283881f3de7978cf4115e8ffed44b8a6483eb29df6983db"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 234410,
+          "sha256": "e34ec700c741cf8410737bccd6c9d97da76cfadff04e543e8fbd2356a6a0976e"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "scenario": "input-intent",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 11780,
+          "sha256": "6d636e7e9d97e97c262a7ba2dd0651b154cbb320786c484ab6228052e6529fbb"
+        },
+        "app-events.jsonl": {
+          "bytes": 54426,
+          "sha256": "91e46fbb61603b86be603d161cf9af078e72e33b95006d4a33a855d0a230e9b7"
+        },
+        "before.png": {
+          "bytes": 7431,
+          "sha256": "6074d007db4cec8df70ca7478ef3505709aa97983edb409e4b105b79adbccf6f"
+        },
+        "result.json": {
+          "bytes": 123315,
+          "sha256": "63152adaff9fb24cd5f4f6449d4ee8183c4dc9d6023f0f26f0f763c9af8155fa"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 14136,
+          "sha256": "5e0217380aa7d901c5a41ecf74dadb17d9aa1984554dc94005ab3b14e972a988"
+        },
+        "app-events.jsonl": {
+          "bytes": 18885,
+          "sha256": "077b4220bee55a3368ec9df6afdbef9c93c74f591babed7f740c6ef3959c2721"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 42170,
+          "sha256": "b3a57bd5f288e7e4cc2de66e7dd75b1efd6b1789d570c31851b229396517e2ad"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "app-events.jsonl": {
+          "bytes": 33670,
+          "sha256": "9a895246c573a5238ae91a2c5b159f96ff4e7a3e81951fc0749abc921598fd6c"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 70298,
+          "sha256": "83336f6542ceec4dcf62bd777c8f8e7caff4fb26a265faeb0a14155b80f6f803"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 13807,
+          "sha256": "ab08f7bd7beb214ba80880c01d7d3c34cb7649db03c70654dba8842198d029f1"
+        },
+        "app-events.jsonl": {
+          "bytes": 35865,
+          "sha256": "b49db64869efe5de63bd8d4826e1457626a98665dd529bd0381504dac9730c3d"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 73035,
+          "sha256": "67b606ce3fdc0885e895c746bf1d7ea5219e26416d3fe3c08f5151be0fc7ba1f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "app-events.jsonl": {
+          "bytes": 7704,
+          "sha256": "dd21f5ce6bff25d549528fe0decd3fba7580dfd1d30f5dacc389625890e019bf"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 25497,
+          "sha256": "6f54ccc542dd22e757367856233efad0731faeb0890361b7988675c0c972607d"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 34980,
+          "sha256": "02dd613c7bb3ac3676dee8029f04dce747492725323e0a7d87340b14eaa76690"
+        },
+        "app-events.jsonl": {
+          "bytes": 94336,
+          "sha256": "cfa69526bb90f52c71a4ae9c35229d3af804975fd109c11306b113f34462e825"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 220181,
+          "sha256": "9ad59e4f1ed291836098146f33439efd2a6429d9d366436756282a18c53ffff4"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "input-intent",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 11780,
+          "sha256": "6d636e7e9d97e97c262a7ba2dd0651b154cbb320786c484ab6228052e6529fbb"
+        },
+        "app-events.jsonl": {
+          "bytes": 49158,
+          "sha256": "3e2cb450090d85cdb9d9f6613172ab25349a1a41258b4a2450e45cbdfd99a344"
+        },
+        "before.png": {
+          "bytes": 7431,
+          "sha256": "6074d007db4cec8df70ca7478ef3505709aa97983edb409e4b105b79adbccf6f"
+        },
+        "result.json": {
+          "bytes": 108767,
+          "sha256": "d6d6812be59071ffc2b269a328209ca088c233ba4916f47dd5f036e29d7bb534"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 14136,
+          "sha256": "5e0217380aa7d901c5a41ecf74dadb17d9aa1984554dc94005ab3b14e972a988"
+        },
+        "app-events.jsonl": {
+          "bytes": 18885,
+          "sha256": "7815c5b3b7c41d45dd37d5b3a77905164b88b5d418879783c1ebe6e0b7688be2"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 40971,
+          "sha256": "64fa4f7ec5187d42111b1391fa875c861d9aacaceb55aca68315b2ce0c4b8396"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "app-events.jsonl": {
+          "bytes": 33669,
+          "sha256": "a57db2cb11c80cb915a30a464fc02435bae966bf55699691f73b3f58835bd664"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 67876,
+          "sha256": "a103ae14ffb806acd4586b1a4c1e9e923e2545ad3fab8a220de935bb3796a782"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "after.png": {
+          "bytes": 13807,
+          "sha256": "ab08f7bd7beb214ba80880c01d7d3c34cb7649db03c70654dba8842198d029f1"
+        },
+        "app-events.jsonl": {
+          "bytes": 36865,
+          "sha256": "8205e56c3085622538df509ab1371727134ad461e69357715b93ca25f1d47112"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 74131,
+          "sha256": "5fac8f03322c006841c72b304e5aabb723ef76d5da83c4b39febc29aac47a31f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "retention": "Original WeakRef oracle and archived failures unchanged; issue287 remains open."
+}

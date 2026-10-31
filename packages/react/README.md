@@ -172,13 +172,13 @@ export BUN_NATIVE_HOST_PROFILE=release
 mkdir -p .bun-native
 run_dir=$(mktemp -d "$PWD/.bun-native/react.XXXXXX")
 
+bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
+  --host-profile release --entry react --outdir "$run_dir/aot-package"
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-dev" -- \
   python3 tests/native/react-window.py --scenario counter-click --mode development \
-    --output "$run_dir/development" -- bun examples/react-counter/main.tsx
+    --output "$run_dir/development" -- bun "$run_dir/aot-package/development/application.js"
 
-bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
-  --host-profile release --entry react --outdir "$run_dir/aot-package"
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/session-aot" -- \
   python3 tests/native/react-window.py --scenario counter-input --mode aot \
@@ -188,7 +188,20 @@ xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
 Use both scenarios in each mode; required native CI does so with its one release
 host build. The build helper pins compiler identity, records all React/shared
 renderer source hashes, and verifies a compiled-program record and actual JIT
-range removal. The controller's declared `--mode aot` alone is not that proof.
+range removal. It first transforms each React entry with the pinned Bun bundler;
+the exact generated module runs in development and supplies the AOT compiler
+input. Its hash, transform command and duration are recorded in the manifest.
+The generated module explicitly selects production React/reconciler in both
+runtime modes, preventing a prior development bundle from silently carrying
+debug framework code into the AOT executable.
+The controller's declared `--mode aot` alone is not that proof.
+
+The [integrated recipe evidence](../../tests/native/evidence/react-hosted-recipe-linux.json)
+records 26 actual counter, event and behavior cases after combining the Solid
+foundation with this adapter. Development ran the exact generated module used as
+AOT input, and all source, host and application fingerprints remained stable.
+The immutable protocol4 host is development profile with software Vulkan;
+required hosted release verification and matched performance remain separate.
 
 The [local evidence record](../../tests/native/evidence/react-linux-development-aot.json)
 records four passing scenarios on Linux X11 with a development-profile protocol-2
@@ -224,14 +237,13 @@ root still updates and paints in the same window. Both development and inspected
 [exact scenario matrix and commands](../../docs/react-behavior.md).
 
 ```sh
+bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
+  --host-profile release --entry react-interactions --outdir "$run_dir/events-package"
 xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   dbus-run-session -- bash scripts/quality/native-linux-session.sh "$run_dir/events-session" -- \
   python3 tests/native/renderer-interactions.py --renderer React --scenario selection \
     --mode development --output "$run_dir/events-development" -- \
-    bun tests/native/react-interactions.tsx
-
-bun experiments/aot-gpui/build-window.ts --source "$PWD" --host "$BUN_NATIVE_HOST" \
-  --host-profile release --entry react-interactions --outdir "$run_dir/events-package"
+    bun "$run_dir/events-package/development/application.js"
 ```
 
 Run `keyboard`, `caret` and `selection` in both modes; for AOT, pass the inspected

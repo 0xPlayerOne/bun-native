@@ -105,6 +105,16 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 ### React adapter
 
+Build each fixture with the common AOT helper before executing its two modes.
+Development uses `bun PACKAGE/development/application.js`, and AOT uses
+`PACKAGE/ENTRY`. The manifest fingerprints the exact generated module supplied
+to the machine-code compiler, as well as its original source and configuration.
+The counter, interactions, behavior and workload entries all use this recipe.
+The [integrated recipe record](evidence/react-hosted-recipe-linux.json) records
+26 actual local counter/event/behavior runs on the unchanged protocol4 development
+host. All four entries were compiled and inspected; the unchanged workload's
+execution and fixed retention observations remain a separate hosted gate.
+
 `tests/native/react-window.py` supplies independent complete-tree expectations for
 `examples/react-counter/main.tsx`, then executes the existing owned-process input
 driver. Its `counter-click` scenario requires one label update, one retained keyed
@@ -127,7 +137,7 @@ native Sets and a complete expected paint tree. Every observed registration sign
 must be revoked after OS close, with all public ownership counts zero. The helper
 adds no process supervisor or framework event-dispatch implementation.
 
-The [current event record](evidence/react-events-linux-development-aot.json) binds
+The [protocol4 event record](evidence/react-events-linux-development-aot.json) binds
 those six development/AOT runs and the four counter regressions to exact
 protocol4 source and binary hashes. Global native sequence numbers now include
 focus, pointer and key notifications; typed edit counts remain independently

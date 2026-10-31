@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 1,
+  "status": "Original fixed-checkpoint retention unresolved; proposed graph lifetime oracle inconclusive",
+  "trackedIssue": "https://github.com/0xPlayerOne/bun-native/issues/287",
+  "sourceCommit": "f41010568900a01aa1051766b760a1d67ed606a4",
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "experiments": {
+    "observerScope": {
+      "cases": 2,
+      "runsPerCase": 1,
+      "mode": "development",
+      "result": "The deliberately captured listener is visible, but the required active-listener positive control has no path in either snapshot. Do not adopt this graph check as a gate."
+    },
+    "minimalCollectionScope": {
+      "cases": 2,
+      "runsPerCase": 1,
+      "modes": ["development", "inspected machine-code AOT"],
+      "result": "Live object property visible in both modes; live Set membership invisible in development but visible through CompactTable in AOT."
+    }
+  },
+  "unchanged": [
+    "Production framework/runtime/native code",
+    "Existing WeakRef oracles and failure thresholds",
+    "All previous raw controls, failure reports and source archives",
+    "GC options, timers and collection entry points"
+  ],
+  "originalSnapshots": [
+    {
+      "case": "nativeAotFailure",
+      "snapshotSha256": "95f5ed2fce650591434508bb488ff3680ca609643c90924762c17fd72af89945",
+      "nodeCount": 6168,
+      "recordedRootReasons": {
+        "CodeBlocks": 659,
+        "StrongHandles": 1078,
+        "StrongReferences": 289,
+        "DOMGCOutput": 2,
+        "ProtectedValues": 3
+      },
+      "nodeClassesWithNoIncomingRecordedEdge": {
+        "string": 44,
+        "Object": 3,
+        "Array": 1,
+        "SavedFrame": 1,
+        "Function": 1,
+        "Timeout": 1
+      },
+      "interpretation": "Neither a missing root reason nor an absent incoming edge identifies the actual retaining mechanism"
+    },
+    {
+      "case": "noFrameworkDevelopmentFailure",
+      "snapshotSha256": "85f3b0fdbd023847245d3399994c2d830aa34ef56dadef0cfbb76fb1ab5263a8",
+      "nodeCount": 5310,
+      "recordedRootReasons": {
+        "Output": 34,
+        "StrongReferences": 289,
+        "StrongHandles": 137,
+        "JITWorkList": 15,
+        "ProtectedValues": 1,
+        "DOMGCOutput": 1
+      },
+      "nodeClassesWithNoIncomingRecordedEdge": {
+        "Timeout": 1,
+        "Object": 1,
+        "FunctionCodeBlock": 1,
+        "Function": 1,
+        "string": 1,
+        "SlimPromiseReaction": 1,
+        "AsyncFunction": 1
+      },
+      "interpretation": "Neither a missing root reason nor an absent incoming edge identifies the actual retaining mechanism"
+    }
+  ],
+  "archives": [
+    {
+      "path": "source/observer-path.ts.txt",
+      "bytes": 6538,
+      "sha256": "61269c1bb340c5394eb6d30804ea03b9c112a87af60c9de14d00c54f93faa37e"
+    },
+    {
+      "path": "source/run-observer.py.txt",
+      "bytes": 2022,
+      "sha256": "ad492bb812170c2305ede0097a08b3fd8afd92c29551cc8b83c6bdfb165a3099"
+    },
+    {
+      "path": "source/analyze-observer.py.txt",
+      "bytes": 6716,
+      "sha256": "30feaab4e54908506bcc49e9eebac6cbd97898e1531168cd554ea435a13cbc4a"
+    },
+    {
+      "path": "source/collection-edge.ts.txt",
+      "bytes": 1736,
+      "sha256": "d574106a2d5153bdbe8530c400e1d6f14ead6feee16854943f9aaaac9edcd29a"
+    },
+    {
+      "path": "source/analyze-collection.py.txt",
+      "bytes": 4148,
+      "sha256": "21494b481b67c976e47033df0a08551a08102621318f4ed2b102deab6fadf25c"
+    },
+    {
+      "path": "raw/observer-plan.json.txt",
+      "bytes": 3805,
+      "sha256": "8d8869600171ef6d14325fcf754efa4894bedd546ebacd32025a0c2a4952cd0f"
+    },
+    {
+      "path": "raw/observer-execution.json.txt",
+      "bytes": 825,
+      "sha256": "1659781e11687587be7e33ed01165ee106491dbf71d7ac995e07840b0a8c14bf"
+    },
+    {
+      "path": "raw/observer-actual.json.txt",
+      "bytes": 3941,
+      "sha256": "181844fb81889a9c84ecbd7333a62ea8477dfe604987fba8b115be21c9b8e701"
+    },
+    {
+      "path": "raw/observer-captured-first.json.txt",
+      "bytes": 3957,
+      "sha256": "b346bb2259d547071e3c90987507942c77ca3d8e712308953cc2b1741bff247a"
+    },
+    {
+      "path": "raw/observer-analysis.json.txt",
+      "bytes": 14218,
+      "sha256": "a0f09451c8af76a1b5ad7c93889b6d19553092dbf131299de65cc7aad7cdd598"
+    },
+    {
+      "path": "raw/collection-edge-plan.json.txt",
+      "bytes": 808,
+      "sha256": "e76bb7430357fe5bb705065166d5fdbe5671541b1653f18801fc698a72c31c69"
+    },
+    {
+      "path": "raw/collection-edge-execution.json.txt",
+      "bytes": 704,
+      "sha256": "86db5d8e98286e5debd2c98385dc12dbbb67e25173ea8be3a9b91f70d2aad999"
+    },
+    {
+      "path": "raw/collection-edge-development.json.txt",
+      "bytes": 564,
+      "sha256": "abdffde01a9d57074b4db14dde9fc88750216d51ff5644d2ace79640bbdd250e"
+    },
+    {
+      "path": "raw/collection-edge-aot.json.txt",
+      "bytes": 584,
+      "sha256": "33afe9b03084bb13c265167840cf3c2a0da78bda1d038b742662b3b73bb09aa5"
+    },
+    {
+      "path": "raw/collection-edge-analysis.json.txt",
+      "bytes": 3913,
+      "sha256": "6e8ba6107dfedd1ec96adcd44f5eb68f751a3814e9e47a6773afe5f1d126784d"
+    },
+    {
+      "path": "raw/collection-edge-compile.json.txt",
+      "bytes": 17668,
+      "sha256": "2219090707f8c8f7838c36ed0ff86e3bd6c11bb095114bb499275e96ca7a5c54"
+    },
+    {
+      "path": "raw/collection-edge-aot-inspection.json.txt",
+      "bytes": 1831,
+      "sha256": "ac3b27ef96ff9772a8109872c9bd2f2d01c4028bcf5ac92b16b7900f4190d5a2"
+    },
+    {
+      "path": "raw/binary-introspection.json.txt",
+      "bytes": 861,
+      "sha256": "820e9321640d57fdc5209ca8f489773ec51faceac2f3c125920d670c275c51b4"
+    }
+  ],
+  "primarySources": [
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/SlotVisitor.cpp",
+      "sha256": "c396ee3e537a59520382a18dea2f4422353b3454684f1a179b94ed3b4a0af79b",
+      "bytes": 36767
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/SlotVisitorInlines.h",
+      "sha256": "4d8bff93828c52d141a631f2c261a349b0c122b0aab81290262566d339ff901b",
+      "bytes": 6745
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp",
+      "sha256": "569026168abfae935ffe0ac6dfc2a430b2f33c6fc2cb58b53bd6ccad76a3c08d",
+      "bytes": 22800
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/ConservativeRoots.cpp",
+      "sha256": "22102e605c012f0134a35c1191f7f4ebb159836fcc8dd078103abcf5de26ff3f",
+      "bytes": 21535
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/Heap.cpp",
+      "sha256": "1efd4b0dd259357ee4b0750a75a45571d04858805d0e80bd18920c6e617b4c85",
+      "bytes": 148707
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/interpreter/MicrotaskCall.h",
+      "sha256": "402f928be59c167c9d5ba07b0ac569e3e7f4ceeda4dc09329bce9d0d2206914d",
+      "bytes": 5311
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/interpreter/MicrotaskCall.cpp",
+      "sha256": "d17b88c645d92cb0c0a6b856b5997be6698af742d1bcfb594ea6f487e8d0cf63",
+      "bytes": 3107
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/MicrotaskQueue.cpp",
+      "sha256": "0aa1f967da6b4d1b5b6e6292af35fbde39d92cd0df99e8c08a3d2fc8599ebf28",
+      "bytes": 10763
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/JSSet.h",
+      "sha256": "a276140a55db690d6bb8bcb6d390fddb9a26b9d816f675aa2152b7859e1e54a6",
+      "bytes": 2517
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/JSOrderedHashTable.h",
+      "sha256": "6155efbc995e394850607aa2d8948741532cb45d6ed6e71f111c4c1d15aeda9b",
+      "bytes": 11237
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/JSCellButterfly.h",
+      "sha256": "7e4c1e9134b6efa31435c1a4252a9b8ee41ad012a5ee55e81d841e22136c8928",
+      "bytes": 11368
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/JSOrderedHashTableHelper.h",
+      "sha256": "3766a1fa08a43cebe53e7fd07aa19a900c67122e512c589edc102922676ea7e2",
+      "bytes": 36308
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/aot/runtime/AOTCompactTable.h",
+      "sha256": "82ff73eb8af5bc754d3c3732db96a7798e0497ead346cc7ba7c99b98b67f9560",
+      "bytes": 26500
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/OptionsList.h",
+      "sha256": "9a393f14f6827e2f9bbf3e1efb5fa07142105ed84106b8399ba2dd943132ff99",
+      "bytes": 76417
+    },
+    {
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/runtime/JSPromise.h",
+      "sha256": "b67d8a9f7189f32a1fb6818b2d1406cc69db145c8120c4d4856a22ed30dbf955",
+      "bytes": 14563
+    }
+  ]
+}
