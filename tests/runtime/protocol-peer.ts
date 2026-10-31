@@ -1,12 +1,38 @@
 // A real subprocess that exercises channel failures. It does not render UI.
 import { encodeFrame, FrameDecoder, parseCommand } from '@bun-native/protocol'
+import { existsSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const mode = process.argv[2] ?? 'normal'
+if (mode === 'pipe-holder') {
+  const directory = process.argv[3]
+  if (!directory) throw new Error('Pipe holder requires its private control directory')
+  writeFileSync(join(directory, 'ready'), String(process.pid))
+  const deadline = performance.now() + 10_000
+  while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
+    await Bun.sleep(10)
+  writeFileSync(join(directory, 'finished'), String(process.pid))
+  process.exit(0)
+}
+if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
+  const directory = process.argv[3]
+  if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
+  Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
+    stdin: 'ignore',
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  const deadline = performance.now() + 5_000
+  while (!existsSync(join(directory, 'ready'))) {
+    if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
+    await Bun.sleep(10)
+  }
+}
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
-function emit(value: unknown): void {
+async function emit(value: unknown): Promise<void> {
   output.write(encodeFrame(value))
-  output.flush()
+  await output.flush()
 }
 
 for await (const chunk of Bun.stdin.stream()) {
@@ -17,41 +43,41 @@ for await (const chunk of Bun.stdin.stream()) {
     if (command.type === 'hello') {
       if (mode === 'bad-json') {
         output.write('{bad json}\n')
-        output.flush()
+        await output.flush()
         continue
       }
-      emit({ type: 'ready', protocol: mode === 'wrong-version' ? 2 : 1 })
+      await emit({ type: 'ready', protocol: mode === 'wrong-version' ? 2 : 1 })
       if (mode === 'duplicate-ready') {
         // A second ready is an invalid handshake transition.
-        emit({ type: 'ready', protocol: 1 })
+        await emit({ type: 'ready', protocol: 1 })
       }
-      emit({
+      await emit({
         type: mode === 'wrong-ack' ? 'opened' : 'ack',
         id: mode === 'wrong-id' ? 123 : command.id,
       })
     } else if (command.type === 'open') {
-      emit({ type: 'opened', id: command.id })
+      await emit({ type: 'opened', id: command.id })
       if (mode === 'flood') {
-        for (let n = 0; n < 129; n += 1) emit({ type: 'click' })
-      } else emit({ type: 'input', value: command.input })
+        for (let n = 0; n < 129; n += 1) await emit({ type: 'click' })
+      } else await emit({ type: 'input', value: command.input })
     } else if (command.type === 'update') {
       if (command.text === 'reject')
-        emit({
+        await emit({
           type: 'error',
           id: command.id,
           code: 'invalid_state',
           message: 'Rejected by fixture',
         })
       else {
-        emit({ type: 'ack', id: command.id })
-        if (command.text === 'emit-click') emit({ type: 'click' })
+        await emit({ type: 'ack', id: command.id })
+        if (command.text === 'emit-click') await emit({ type: 'click' })
+        if (mode === 'inherited-pipe-exit') setTimeout(() => process.exit(23), 25)
       }
     } else if (command.type === 'close') {
-      emit({ type: 'closed' })
-      emit({ type: 'ack', id: command.id })
+      await emit({ type: 'closed' })
+      await emit({ type: 'ack', id: command.id })
     } else {
-      emit({ type: 'ack', id: command.id })
-      await output.flush()
+      await emit({ type: 'ack', id: command.id })
       process.exit(0)
     }
   }

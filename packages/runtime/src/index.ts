@@ -9,6 +9,7 @@ import {
   type NativeEvent,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
+import type { ReadableStreamDefaultReader } from 'node:stream/web'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<Extract<Command, { type: 'open' | 'update' | 'close' }>>
@@ -44,6 +45,8 @@ const MAX_QUEUED_EVENTS = 128
 export class NativeHost implements AsyncIterable<WindowEvent> {
   readonly exited: Promise<number>
   private readonly process: Bun.Subprocess<'pipe', 'pipe', 'pipe'>
+  private readonly stdout: ReadableStreamDefaultReader<Uint8Array>
+  private readonly stderr: ReadableStreamDefaultReader<Uint8Array>
   private readonly timeout: number
   private readonly pending = new Map<number, Pending>()
   private readonly events: WindowEvent[] = []
@@ -65,6 +68,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       stdout: 'pipe',
       stderr: 'pipe',
     })
+    this.stdout = this.process.stdout.getReader()
+    this.stderr = this.process.stderr.getReader()
     this.exited = this.process.exited
     this.finished = this.watch()
   }
@@ -179,24 +184,54 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
 
   private async readStdout(): Promise<void> {
     const decoder = new FrameDecoder()
-    for await (const chunk of this.process.stdout) {
-      for (const raw of decoder.push(chunk)) this.receive(parseEvent(raw))
+    try {
+      for (;;) {
+        const { done, value } = await this.stdout.read()
+        if (done) break
+        for (const raw of decoder.push(value)) this.receive(parseEvent(raw))
+      }
+      decoder.finish()
+      if (this.phase !== 'stopping' && this.phase !== 'closed')
+        throw new ProtocolError('Native output closed before shutdown')
+    } finally {
+      this.stdout.releaseLock()
     }
-    decoder.finish()
-    if (this.phase !== 'stopping' && this.phase !== 'closed')
-      throw new ProtocolError('Native output closed before shutdown')
   }
 
   private async readStderr(): Promise<void> {
     const decoder = new TextDecoder()
-    for await (const chunk of this.process.stderr)
-      this.stderrTail = (this.stderrTail + decoder.decode(chunk, { stream: true })).slice(-4_096)
-    this.stderrTail = (this.stderrTail + decoder.decode()).slice(-4_096)
+    try {
+      for (;;) {
+        const { done, value } = await this.stderr.read()
+        if (done) break
+        this.stderrTail = (this.stderrTail + decoder.decode(value, { stream: true })).slice(-4_096)
+      }
+      this.stderrTail = (this.stderrTail + decoder.decode()).slice(-4_096)
+    } finally {
+      this.stderr.releaseLock()
+    }
+  }
+
+  private cancelOutput(): void {
+    // The host can exit while another process still holds inherited pipe ends.
+    // Cancel our reads directly; killing the already-exited host cannot close them.
+    void this.stdout.cancel().catch(() => {})
+    void this.stderr.cancel().catch(() => {})
   }
 
   private async watch(): Promise<void> {
+    const streams = [this.readStdout(), this.readStderr()]
+    let drainDeadline: ReturnType<typeof setTimeout> | undefined
+    const exit = this.exited.then((code) => {
+      // Allow buffered acknowledgements/diagnostics to drain, but bound EOF wait.
+      drainDeadline = setTimeout(
+        () => this.fail(new Error('Native output remained open after host exit')),
+        this.timeout
+      )
+      return code
+    })
     try {
-      const [code] = await Promise.all([this.exited, this.readStdout(), this.readStderr()])
+      const [code] = await Promise.all([exit, ...streams])
       if (code !== 0 || this.phase !== 'stopping' || this.pending.size)
         throw new Error(`Native host exited unexpectedly (${code}). ${this.stderrTail}`)
       this.phase = 'closed'
@@ -205,6 +240,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     } catch (error) {
       this.fail(error)
       await this.exited
+    } finally {
+      clearTimeout(drainDeadline)
+      this.cancelOutput()
+      await Promise.allSettled(streams)
     }
   }
 
@@ -259,6 +298,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     this.events.length = 0
     this.waiting?.reject(this.failure)
     this.waiting = undefined
+    this.cancelOutput()
     this.process.kill('SIGKILL')
   }
 }

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { NativeHost } from '@bun-native/runtime'
-import { resolve } from 'node:path'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 const fixture = resolve(import.meta.dir, 'protocol-peer.ts')
 const options = (mode = 'normal', requestTimeoutMs = 1_000) => ({
@@ -8,6 +10,55 @@ const options = (mode = 'normal', requestTimeoutMs = 1_000) => ({
   args: [fixture, mode],
   requestTimeoutMs,
 })
+
+async function deadline<T>(operation: Promise<T>, name: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Test deadline exceeded: ${name}`)), 1_500)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+async function releasePipeHolder(directory: string): Promise<void> {
+  // Only this test's holder reads its private release file. The holder also has
+  // a hard self-expiry; cleanup never signals an unrelated process.
+  writeFileSync(join(directory, 'release'), '')
+  if (!existsSync(join(directory, 'ready'))) return
+  const finished = join(directory, 'finished')
+  const until = performance.now() + 1_500
+  while (!existsSync(finished) && performance.now() < until) await Bun.sleep(10)
+  if (!existsSync(finished)) throw new Error('Test-owned pipe holder did not release')
+}
+
+async function withPipeHolder(
+  mode: 'shutdown' | 'exit',
+  run: (host: NativeHost, finished: string) => Promise<void>
+): Promise<void> {
+  const directory = mkdtempSync(join(tmpdir(), 'bun-native-pipe-holder-'))
+  const finished = join(directory, 'finished')
+  let host: NativeHost | undefined
+  try {
+    host = await NativeHost.launch({
+      ...options(`inherited-pipe-${mode}`, 300),
+      args: [fixture, `inherited-pipe-${mode}`, directory],
+    })
+    await run(host, finished)
+  } finally {
+    await releasePipeHolder(directory)
+    if (host)
+      await deadline(
+        host.shutdown().catch(() => {}),
+        'host cleanup'
+      )
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
 
 describe('native process transport (headless protocol peer)', () => {
   test('negotiates, opens, updates, receives ordered events, closes and tears down', async () => {
@@ -71,5 +122,26 @@ describe('native process transport (headless protocol peer)', () => {
     await host.send({ type: 'open', title: 'Test', text: '', input: '' })
     await host.exited
     await expect(host.shutdown()).rejects.toThrow('event limit')
+  })
+
+  test('bounds shutdown after native exit when inherited pipes stay open', async () => {
+    await withPipeHolder('shutdown', async (host, finished) => {
+      await expect(deadline(host.shutdown(), 'shutdown')).rejects.toThrow('Native')
+      expect(await host.exited).toBe(0)
+      expect(existsSync(finished)).toBe(false)
+    })
+  })
+
+  test('rejects a waiting iterator on unexpected exit despite inherited pipes', async () => {
+    await withPipeHolder('exit', async (host, finished) => {
+      const events = host[Symbol.asyncIterator]()
+      const pending = deadline(events.next(), 'event after native exit')
+      // The peer acknowledges this request before exiting. There is no pending
+      // command timeout to rescue the event iterator when the process exits.
+      await host.send({ type: 'update', text: 'exit-after-ack' })
+      await expect(pending).rejects.toThrow('Native')
+      expect(await host.exited).toBe(23)
+      expect(existsSync(finished)).toBe(false)
+    })
   })
 })
