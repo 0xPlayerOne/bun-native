@@ -104,7 +104,7 @@ fn malformed_ids_and_obsolete_commands_are_rejected() {
 #[test]
 fn integer_number_spellings_match_javascript() {
     assert_eq!(
-        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":4.0}\n").unwrap(),
+        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":5.0}\n").unwrap(),
         Some(Command::Hello {
             id: request(1),
             protocol: PROTOCOL_VERSION

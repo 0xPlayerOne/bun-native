@@ -21,6 +21,8 @@ Its output directory must be new, and the application command is explicit.
 | `aot-core-lifecycle`   | Compiled `core-lifecycle`              | The same public lifecycle and cancellation scenario through Bun AOT.                                                                                                     |
 | `event-throughput`     | `bun tests/native/event-throughput.ts` | Exactly 1,000 OS-delivered input edits, every sequence/revision/value checked, no input echo, final native paint and clean close.                                        |
 | `aot-event-throughput` | Compiled `event-throughput`            | The same fixed input stream through Bun AOT.                                                                                                                             |
+| `services`             | `bun tests/native/services.ts`         | Native default denial, allowed display read checked against the isolated X server, cancellation, stale owners, actual button input, matching paint and shutdown.         |
+| `aot-services`         | Compiled `services`                    | The same native service operation and lifecycle through Bun AOT.                                                                                                         |
 | `--`                   | An explicit benchmark command          | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
 
 The input driver verifies that the target window belongs to the launched

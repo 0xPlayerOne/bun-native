@@ -1,6 +1,7 @@
 mod channel;
 mod evidence;
 mod input;
+mod services;
 mod session;
 mod state;
 mod style;
@@ -17,6 +18,13 @@ const COMMAND_TIME_BUDGET: Duration = Duration::from_millis(4);
 const COMMAND_YIELD_DELAY: Duration = Duration::from_millis(1);
 
 fn main() {
+    let policy = match services::policy(std::env::args_os().skip(1)) {
+        Ok(policy) => policy,
+        Err(message) => {
+            eprintln!("Bun Native: {message}");
+            std::process::exit(2);
+        }
+    };
     let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
     gpui_platform::application()
@@ -24,7 +32,7 @@ fn main() {
         .run(move |cx: &mut App| {
             input::bind_keys(cx);
             view::bind_keys(cx);
-            let mut session = Session::new(events, evidence, cx);
+            let mut session = Session::new(events, evidence, policy, cx);
             cx.spawn(async move |cx| {
                 let executor = cx.background_executor().clone();
                 let mut turn_started = executor.now();

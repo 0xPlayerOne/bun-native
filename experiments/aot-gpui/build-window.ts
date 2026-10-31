@@ -41,6 +41,7 @@ const entries = {
   scheduling: 'tests/native/scheduling.ts',
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
+  services: 'tests/native/services.ts',
   'platform-smoke': 'tests/native/platform-smoke.ts',
   solid: 'examples/solid-counter/main.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
@@ -85,6 +86,7 @@ if (
     entry === 'scheduling' ||
     entry === 'layout' ||
     entry === 'interactions' ||
+    entry === 'services' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

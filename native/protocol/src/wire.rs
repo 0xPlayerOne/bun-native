@@ -1,9 +1,9 @@
-//! Version 4's private native wire contract. No DOM or renderer-specific types.
+//! Version 5's private native wire contract. No DOM or renderer-specific types.
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 4;
+pub const PROTOCOL_VERSION: u32 = 5;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -364,6 +364,10 @@ pub enum Command {
         id: RequestId,
         window_id: WindowId,
     },
+    DisplaySnapshot {
+        id: RequestId,
+        window_id: WindowId,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -379,6 +383,8 @@ pub enum ErrorCode {
     StaleRevision,
     LimitExceeded,
     NativeFailure,
+    PermissionDenied,
+    ServiceUnavailable,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -388,6 +394,7 @@ pub enum Capability {
     InputRevisions,
     LayoutV1,
     InteractionsV1,
+    WindowDisplayV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -423,6 +430,7 @@ impl Command {
             | Self::Open { id, .. }
             | Self::Batch { id, .. }
             | Self::Close { id, .. }
+            | Self::DisplaySnapshot { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -490,7 +498,10 @@ impl Command {
                     }
                 }
             }
-            Self::Hello { .. } | Self::Close { .. } | Self::Shutdown { .. } => {}
+            Self::Hello { .. }
+            | Self::Close { .. }
+            | Self::DisplaySnapshot { .. }
+            | Self::Shutdown { .. } => {}
         }
         Ok(())
     }

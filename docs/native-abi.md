@@ -1,13 +1,15 @@
-# Native host protocol 4
+# Native host protocol 5
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocols 1–3 are superseded without a compatibility fallback.
-Protocol 4 requires `tree`, `input_revisions`, `layout_v1` and `interactions_v1`; missing features or
+numeric handles. Protocols 1–4 are superseded without a compatibility fallback.
+Protocol 5 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
-defines native event observations and public propagation.
+defines native event observations and public propagation. The
+[service contract](native-services.md) defines immutable launch policy and
+owned-window display reads.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -54,11 +56,14 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `4`. The host emits `ready` with the
-  same protocol, implemented capabilities and resource limits, then acknowledges
-  the request. `tree`, `input_revisions`, `layout_v1` and `interactions_v1` are mandatory. Missing features,
+- The first request is `hello` with protocol `5`. The host emits `ready` with the
+  same protocol, implemented capabilities, resource limits and explicit
+  `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
+  `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Missing features,
   version mismatch, duplicate readiness or acknowledgement before readiness
-  fail launch and clean up the child.
+  fail launch and clean up the child. The native service policy must exactly
+  match the caller's immutable explicit launch permissions; readiness cannot
+  silently increase or reduce that authority.
 - Request, window, root and node identities are positive JavaScript-safe
   integers. Committed window and node identities increase across the session;
   deletion does not make an identity reusable. Request identities also increase.
@@ -83,19 +88,26 @@ Every command contains a request `id`. Replies must match that pending request's
 type, owner and expected revision. A mismatched, unsolicited or duplicate reply
 poisons the channel instead of satisfying another request.
 
-| Command    | Required fields beyond `id` and `type`             | Successful reply                                                  |
-| ---------- | -------------------------------------------------- | ----------------------------------------------------------------- |
-| `hello`    | `protocol`                                         | `ready`, then `ack`                                               |
-| `open`     | `window_id`, `root_id`, `title`, `width`, `height` | `opened` with matching window/root and tree revision 0            |
-| `batch`    | `window_id`, `base_revision`, `operations`         | `applied` with matching window and tree revision incremented once |
-| `close`    | `window_id`                                        | `ack` after native removal is requested                           |
-| `shutdown` | none                                               | flushed final `ack`, then process exit                            |
+| Command            | Required fields beyond `id` and `type`             | Successful reply                                                       |
+| ------------------ | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `hello`            | `protocol`                                         | `ready`, then `ack`                                                    |
+| `open`             | `window_id`, `root_id`, `title`, `width`, `height` | `opened` with matching window/root and tree revision 0                 |
+| `batch`            | `window_id`, `base_revision`, `operations`         | `applied` with matching window and tree revision incremented once      |
+| `close`            | `window_id`                                        | `ack` after native removal is requested                                |
+| `display_snapshot` | `window_id`                                        | `display_snapshot` with matching owner and validated native `snapshot` |
+| `shutdown`         | none                                               | flushed final `ack`, then process exit                                 |
 
 The root is an existing `box` created by `open`. Closing the final window does
 not automatically end the session; explicit GPUI quit mode permits later
 windows. `closed` events describe native window closure and revoke the owning
 public window. Public `close()` and `shutdown()` are idempotent even though raw
 commands targeting a disposed window are invalid.
+
+`display_snapshot` reads the live window's GPUI display bounds and window
+scale factor. It requires the immutable native `window_display` launch grant,
+which defaults to false. The response does not mutate a tree or consume a UI
+event sequence. Its small finite geometry schema, platform semantics and
+delivery cancellation are defined in the [service contract](native-services.md).
 
 Each atomic `batch` supports the following operations:
 
@@ -194,7 +206,8 @@ and releases readers. Shutdown cannot wait forever for inherited pipes.
 ## Errors, trust and compatibility
 
 Native errors are `invalid_command`, `version_mismatch`, `invalid_state`,
-`invalid_handle`, `stale_revision`, `limit_exceeded` and `native_failure`.
+`invalid_handle`, `stale_revision`, `limit_exceeded`, `native_failure`,
+`permission_denied` and `service_unavailable`.
 A correlated recoverable command error becomes public `NativeCommandError`.
 Malformed protocol, invalid sequence/reply or fatal transport failure ends the
 session. Public preflight/ownership errors use `NativeStateError`, malformed
@@ -202,9 +215,11 @@ values use `ProtocolError`, and unsupported element kinds use
 `UnsupportedFeatureError`. See the [public API ADR](decisions/0004-public-api.md)
 for consumer handling and experimental compatibility policy.
 
-The negotiated flags describe rendering features, not OS permission grants.
-Protocol 4 has no file, shell, process, network, update or browser service
-command. The [security ADR](decisions/0003-bridge-security.md) defines the trusted
+The negotiated flags describe implemented features, not OS permission grants.
+Protocol 5's display service additionally requires the immutable explicit
+launch policy; there is no wire grant or general service selector. No file,
+shell, process, network, update or browser service command exists. The
+[security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.
 

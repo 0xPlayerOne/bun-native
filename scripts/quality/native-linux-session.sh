@@ -10,7 +10,7 @@ evidence_dir=$1
 mode=$2
 shift 2
 case "$mode" in
-  development|aot|aot-input-race|javascript|aot-javascript|core-lifecycle|aot-core-lifecycle|event-throughput|aot-event-throughput|--)
+  development|aot|aot-input-race|javascript|aot-javascript|core-lifecycle|aot-core-lifecycle|event-throughput|aot-event-throughput|services|aot-services|--)
     ;;
   *)
     echo 'Choose a documented native session mode, or -- followed by an explicit command' >&2
@@ -82,6 +82,13 @@ driver = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(driver)
 if sys.argv[1] in ("javascript", "aot-javascript"):
     state = driver.javascript_fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5]))
+elif sys.argv[1] in ("services", "aot-services"):
+    if sys.argv[2] == "initial":
+        state = driver.display_service_fixture_paint(2, "Display ready")
+    else:
+        snapshot = json.loads(sys.argv[2])["snapshot"]
+        bounds = snapshot["bounds"]
+        state = driver.display_service_fixture_paint(3, f'Display: {bounds["width"]}x{bounds["height"]} @{snapshot["scaleFactor"]}')
 elif sys.argv[1] in ("core-lifecycle", "aot-core-lifecycle"):
     state = (driver.lifecycle_fixture_event() if sys.argv[2] == "launch-event"
              else driver.lifecycle_fixture_paint(int(sys.argv[2]), sys.argv[3]))
@@ -97,6 +104,37 @@ PY
 execution_mode=development
 if [[ "$mode" == aot || "$mode" == aot-* ]]; then
   execution_mode=aot
+fi
+
+if [[ "$mode" == services || "$mode" == aot-services ]]; then
+  display_event=$(python3 - "$evidence_dir" <<'PY'
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+# This session owns one Xvfb screen and forces GPUI scale 1 above. Query the
+# actual X server independently; the application must obtain the same geometry
+# through the GPUI native service and paint it after the real pointer click.
+result = subprocess.run(["xdpyinfo"], capture_output=True, text=True, check=True, timeout=5)
+dimensions = re.search(r"dimensions:\s+(\d+)x(\d+) pixels", result.stdout)
+if not dimensions:
+    raise RuntimeError("Owned X server did not report screen dimensions")
+width, height = map(int, dimensions.groups())
+if not 0 < width <= 1048576 or not 0 < height <= 1048576:
+    raise RuntimeError("Owned screen dimensions exceed the service contract")
+snapshot = {"bounds": {"x": 0, "y": 0, "width": width, "height": height}, "scaleFactor": 1}
+Path(sys.argv[1], "display-oracle.json").write_text(json.dumps({"source": "xdpyinfo", "scope": "single owned Xvfb screen, GPUI scale forced to1", "snapshot": snapshot}, indent=2) + "\n")
+print(json.dumps({"type": "service-snapshot", "target": "window-display", "stage": "bun-application", "snapshot": snapshot, "outcomes": {"deniedByNativePolicy": True, "queuedCancellation": True, "nativeStaleOwner": True, "nativeUnknownOwner": True, "shutdownBeforeDispatch": True, "publicStaleHandle": False}}))
+PY
+)
+  python3 scripts/quality/native-input-linux.py \
+    --output "$evidence_dir/services" --mode "$execution_mode" --timeout 40 \
+    --title 'Bun Native desktop services' --expect-software-renderer \
+    --expect-initial-render "$(snapshot initial)" --click 100 130 \
+    --expect-event "$display_event" --expect-render "$(snapshot "$display_event")" -- "$@"
+  exit
 fi
 
 if [[ "$mode" == event-throughput || "$mode" == aot-event-throughput ]]; then
