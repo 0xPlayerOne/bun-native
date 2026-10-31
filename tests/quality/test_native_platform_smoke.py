@@ -5,6 +5,7 @@ import ctypes
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -226,6 +227,142 @@ class PlatformInputGuardTests(unittest.TestCase):
             with self.subTest(candidate=candidate), self.assertRaises(RuntimeError):
                 SMOKE.OS_INPUT.pointer_target(candidate, 4)
 
+
+class PlatformInputFailureEvidenceTests(unittest.TestCase):
+    """Controller failures retain evidence; synthetic guards do not prove input."""
+
+    def run_failure(self, *, click_error=None, layout_missing=False):
+        observed = {
+            "status": "ready",
+            "application": {"pid": 101, "created": "1:1"},
+            "host": {"pid": 102, "created": "1:2"},
+            "window": {"id": 123, "frame": [80, 90, 560, 409]},
+        }
+        driver = mock.Mock()
+        driver.observe.return_value = observed
+        driver.click.return_value = {
+            "windowNumber": 123,
+            "windowPoint": [104, 237],
+            "injection": {"postedEvents": 3},
+        }
+        driver.click.side_effect = click_error
+        layout = {
+            "type": "layout",
+            "window_id": 1,
+            "tree_revision": 1,
+            "layout": {
+                "status": "complete",
+                "viewport": [560, 381],
+                "nodes": [
+                    {
+                        "node_id": 4,
+                        "bounds": [24, 122, 160, 44],
+                        "ancestor_clip": [0, 0, 560, 381],
+                    }
+                ],
+            },
+        }
+        report = {"osObservations": [], "paintObservations": []}
+
+        def records(name):
+            return [layout] if name == "native.jsonl" and not layout_missing else []
+
+        def wait_once(predicate, description, **_options):
+            result = predicate()
+            if not result:
+                raise RuntimeError("Bounded test wait expired: " + description)
+            return result
+
+        with self.assertRaises(RuntimeError):
+            SMOKE.exercise_input(
+                1,
+                SMOKE.expected_paint(1, False, "ab"),
+                input_driver=driver,
+                report=report,
+                records=records,
+                wait_for=wait_once,
+                nonce="ab",
+                started=0,
+            )
+        driver.tab.assert_not_called()
+        driver.type_text.assert_not_called()
+        self.assertEqual(report["osInput"], "not-yet-verified")
+        self.assertEqual(report["paintObservations"], [])
+        self.assertEqual(len(report["osObservations"]), 1)
+        self.assertNotIn(
+            "phase", observed, "Do not mutate the driver's identity snapshot"
+        )
+        observation = report["osObservations"][0]
+        self.assertEqual(observation["host"], observed["host"])
+        self.assertEqual(observation["window"], observed["window"])
+        self.assertNotIn("delivery", observation)
+        return observation, driver
+
+    def test_posted_pointer_without_native_activation_keeps_identity_and_coordinates(
+        self,
+    ):
+        observation, driver = self.run_failure()
+        driver.click.assert_called_once_with(104, 144, [560, 381])
+        self.assertEqual(observation["phase"], "pointer-posted")
+        self.assertEqual(observation["pointer"]["windowPoint"], [104, 237])
+        self.assertEqual(
+            observation["pointerTarget"],
+            {"nodeId": 4, "logicalPoint": [104, 144], "viewport": [560, 381]},
+        )
+
+    def test_rejected_pointer_post_keeps_the_target_without_claiming_post_or_delivery(
+        self,
+    ):
+        observation, _driver = self.run_failure(
+            click_error=RuntimeError("Owned identity changed")
+        )
+        self.assertEqual(observation["phase"], "pointer-targeted")
+        self.assertNotIn("pointer", observation)
+
+    def test_missing_native_geometry_keeps_observation_and_never_posts_input(self):
+        observation, driver = self.run_failure(layout_missing=True)
+        self.assertEqual(observation["phase"], "window-observed")
+        self.assertNotIn("pointerTarget", observation)
+        driver.click.assert_not_called()
+
+
+class MacInputGuardTests(unittest.TestCase):
+    def driver(self, state):
+        driver = SMOKE.OS_INPUT.MacInput.__new__(SMOKE.OS_INPUT.MacInput)
+        driver.state = state
+        driver._call = mock.Mock(return_value={"status": "ready"})
+        return driver
+
+    def test_observed_permission_denial_never_invokes_an_input_helper(self):
+        driver = self.driver({"status": "ready", "postEventAccess": False})
+        for action in (
+            lambda: driver.click(104, 144, [560, 380]),
+            driver.tab,
+            lambda: driver.type_text("ab"),
+        ):
+            with self.assertRaisesRegex(
+                SMOKE.OS_INPUT.InputUnavailable, "no input helper"
+            ):
+                action()
+        driver._call.assert_not_called()
+
+    def test_missing_or_malformed_permission_is_not_a_grant(self):
+        for state in (None, {}, {"postEventAccess": 1}, {"postEventAccess": "true"}):
+            driver = self.driver(state)
+            with self.subTest(state=state), self.assertRaises(RuntimeError):
+                driver.click(104, 144, [560, 380])
+            driver._call.assert_not_called()
+
+    def test_observed_permission_preserves_the_fresh_native_identity_check(self):
+        state = {"status": "ready", "postEventAccess": True, "window": {"id": 123}}
+        driver = self.driver(state)
+        driver.click(104, 144, [560, 380])
+        driver._call.assert_called_once_with(
+            "click", expected=state, x=104, y=144, viewport=[560, 380]
+        )
+
+
+class WindowsInputGuardTests(unittest.TestCase):
     @unittest.skipUnless(ctypes.sizeof(ctypes.c_void_p) == 8, "x64 controller ABI")
     def test_windows_structs_have_the_documented_x64_layout(self):
         windows = SMOKE.OS_INPUT.load("native-platform-windows")

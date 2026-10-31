@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "scope": "Public AppKit pointer association correction; SDK-only proof and shared Linux controller regressions. Actual corrected macOS OS input remains unverified and requires hosted execution.",
+  "sourceParents": {
+    "input": "5da88ddd6a4dfbae137f258945bcbea6c8991ed9",
+    "main": "d8bcae3130f9f95833bdfe864852d07078ab4dab"
+  },
+  "sourceWasDirty": true,
+  "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+  "historicalHostedFailure": {
+    "run": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238698609/job/124647813058",
+    "artifactId": 13056722121,
+    "archiveSha256": "cf167017433755134bef7752481df36cdaf3eceac104efb004992829a8855af9",
+    "status": "failed",
+    "error": {
+      "type": "RuntimeError",
+      "message": "Fixture exited 1 before actual OS pointer activation at the public button listener"
+    },
+    "host": {
+      "bytes": 8181840,
+      "sha256": "c209122d37fff8f976f37b8e9a9d8d6ff37588522ef21eef14f72fbc9f006a5e"
+    },
+    "completeInitialPaints": 1,
+    "applicationEvents": [
+      {
+        "type": "mounted"
+      },
+      {
+        "type": "os-route",
+        "event": "focus"
+      }
+    ],
+    "applicationError": {
+      "name": "Error",
+      "message": "Controller did not request update-1"
+    },
+    "nativeShutdownAndExitVerified": true,
+    "forcedApplicationTermination": false,
+    "ownership": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0
+    },
+    "rawEvidence": {
+      "result.json": {
+        "bytes": 14000,
+        "sha256": "08bbc2b0c9715867f0c13d59f04f223b2c9c2debf2aedaba9c36caadbe8e369a"
+      },
+      "application-result.json": {
+        "bytes": 452,
+        "sha256": "1cc6309fd52171c42aed329d5058c08da61add7d81c416152fdd634aeec6d4e5"
+      },
+      "application.jsonl": {
+        "bytes": 257,
+        "sha256": "9f07819d72084edc2769b600be5278880dd9428ad617f3efe9cb2762c03a026a"
+      },
+      "native.jsonl": {
+        "bytes": 2381,
+        "sha256": "30023324897c44dcf333255670129cebe1a358c6a0841f41a98574edccfd6d79"
+      }
+    }
+  },
+  "sdkEventObjectDiagnostic": {
+    "scope": "Actual AppKit/CoreGraphics event-object inspection; no input posted",
+    "source": {
+      "bytes": 2261,
+      "sha256": "a10d11fb8be52f178dd8d521abf4ac32c5414aa96380349f8ee25da6efe7344d"
+    },
+    "result": {
+      "raw": {
+        "nsLocation": [100, 880],
+        "nsEventCreated": 1,
+        "cgLocation": [100, 200],
+        "windowUnderPointer": 0,
+        "nsWindowNumber": 0,
+        "windowThatCanHandle": 0
+      },
+      "scope": "Synthetic event-object inspection only; no input is posted",
+      "factoryCGEvent": {
+        "nsLocation": [10, 20],
+        "nsEventCreated": 1,
+        "cgLocation": [10, 1060],
+        "windowUnderPointer": 0,
+        "nsWindowNumber": 123,
+        "windowThatCanHandle": 0
+      },
+      "factoryWindowNumber": 123,
+      "withWindowFields": {
+        "nsLocation": [100, 880],
+        "nsEventCreated": 1,
+        "cgLocation": [100, 200],
+        "windowUnderPointer": 123,
+        "nsWindowNumber": 0,
+        "windowThatCanHandle": 123
+      }
+    },
+    "rawResult": {
+      "bytes": 542,
+      "sha256": "b99d21f1a4126eb4abae40d75be954ef659cb56f47acc7d51c326a04d56273f8"
+    }
+  },
+  "connectedMacAttempt": {
+    "status": "failed",
+    "environmentInputCapability": "unavailable: observed CGPreflightPostEventAccess returned false",
+    "error": {
+      "type": "RuntimeError",
+      "message": "macOS OS helper failed: Owned native process or window identity/geometry changed before input"
+    },
+    "identityMismatchField": "unknown: the historical helper did not retain its current comparison snapshot",
+    "system": {
+      "platform": "macOS-26.7.1-arm64-arm-64bit",
+      "architecture": "arm64"
+    },
+    "sourceCommit": "7a52df69e6a6b8baa804f55e6423206f343898dd",
+    "overlay": {
+      "file": "overlay.tar.gz",
+      "sha256": "32c3d97f078c145892c098524dcddd2d94d1ed2d789d82336e50624736f2e49a",
+      "bytes": 23546
+    },
+    "host": {
+      "bytes": 8181840,
+      "sha256": "c209122d37fff8f976f37b8e9a9d8d6ff37588522ef21eef14f72fbc9f006a5e"
+    },
+    "hostProfile": "release",
+    "helper": {
+      "bytes": 74568,
+      "sha256": "97ea1c4716a5122b91150867c582af9ae5843801e84b97899ab27d53b99116ac"
+    },
+    "sdkRegression": {
+      "status": "passed",
+      "inputPosted": false,
+      "scope": "Actual AppKit/CoreGraphics conversion only; native delivery is separately required",
+      "associatedEventsChecked": 9,
+      "rawControlWindowNumber": 0
+    },
+    "sdkCompilerFlags": [
+      "-fobjc-arc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-framework",
+      "AppKit",
+      "-framework",
+      "CoreGraphics"
+    ],
+    "osWindowVisibility": "observed through target OS window APIs",
+    "postEventAccess": false,
+    "observationPhase": "pointer-targeted",
+    "observedNativeInputEvents": 0,
+    "nativeShutdownAndExitVerified": true,
+    "forcedApplicationTermination": false,
+    "ownership": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0
+    },
+    "aotBuildOrExecution": "not attempted after development input failed",
+    "diskKiB": 202140,
+    "archive": {
+      "bytes": 14603,
+      "sha256": "f949171dbc945b1eb0926f91eb78a501df64c892100cd2fb649778f203a9831d"
+    },
+    "rawEvidence": {
+      "result.json": {
+        "bytes": 15218,
+        "sha256": "cdfd96b5265ed35454ea6cba34e61772144c8f58114007d630e8efc2b1b78d4e"
+      },
+      "application-result.json": {
+        "bytes": 441,
+        "sha256": "573598dae202cdfd49a905ff4c118e5decffe468825cd939bdaab72c56fefec7"
+      },
+      "application.jsonl": {
+        "bytes": 257,
+        "sha256": "6fb6ec9488c13a134aaefed41857ae5e7c0a53e48030503ec74fcee882f1eb66"
+      },
+      "native.jsonl": {
+        "bytes": 2381,
+        "sha256": "b82e13b0198a6be77b4287b794a5b8c33e027629eaf688ec3bdb830f72755bcc"
+      }
+    },
+    "noPermissionsChanged": true,
+    "temporaryFileCleanup": {
+      "status": "blocked",
+      "reason": "Remote Desktop Commander monthly usage limit rejected the cleanup call; no retry or alternate connection was attempted.",
+      "taskScopedDirectoriesRemaining": 2,
+      "approximateCombinedMiB": 197,
+      "nativeProcessShutdown": "already joined and verified before the connector limit",
+      "taskDirectoryNames": [
+        "bun-native-input-association-20261031-a10d11fb",
+        "bun-native-mac-input-20261031-c209122d"
+      ]
+    }
+  },
+  "finalDiagnosticControls": {
+    "observedPermissionDenied": "Headless Python guard proves no click, Tab or text helper is invoked when the observed posting permission is false.",
+    "malformedPermission": "Missing or non-boolean permission metadata rejects before input.",
+    "currentIdentityRequired": "A true observed permission still forwards the exact owned snapshot to the helper, which repeats current identity/geometry/foreground/permission checks.",
+    "sdkIdentityGuardExecution": {
+      "status": "passed",
+      "result": {
+        "status": "passed",
+        "inputPosted": false,
+        "scope": "Actual AppKit/CoreGraphics conversion only; native delivery is separately required",
+        "identityGuardsChecked": 4,
+        "associatedEventsChecked": 9,
+        "rawControlWindowNumber": 0
+      },
+      "files": {
+        "scripts/quality/native-platform-macos.m": {
+          "sha256": "796115e464dcfaf7bb4010b289f0f07c54415b055d0db9bae58b42d9609df9aa",
+          "bytes": 15224
+        },
+        "tests/native/macos-input-events.m": {
+          "sha256": "88d05a2498caf33778a8bc3071ccb3e40df323df35b0d508b3a2241620628f2b",
+          "bytes": 3553
+        }
+      },
+      "record": {
+        "bytes": 1627,
+        "sha256": "66704246fc8aa511fdfb7c08f4f1d70807e4cbe3d837a3398beae001761e6f21"
+      }
+    }
+  },
+  "linuxControllerRegressions": {
+    "linux-development": {
+      "status": "passed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "host": {
+        "bytes": 111772680,
+        "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb"
+      },
+      "completePaints": 9,
+      "activations": 3,
+      "textEdits": 96,
+      "observationPhases": ["complete", "complete", "complete"],
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "ownership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "report": {
+        "bytes": 35117,
+        "sha256": "811006e5ca8e8ee60e491f438b5a508bb14050189a3d8f85fd0a7192ad3e38ba"
+      },
+      "sourceScope": "Earlier frozen controller overlay before main merge; native-platform-smoke.py remains byte-identical. Final additions only affect the macOS-specific input path/SDK guards.",
+      "qualifiedPortableController": {
+        "sha256": "7047a85f334bc170d5adc91a6917737e3f05897adf41846b97b3794e7975775f",
+        "bytes": 20454
+      }
+    },
+    "linux-aot": {
+      "status": "passed",
+      "mode": "aot",
+      "hostProfile": "dev",
+      "host": {
+        "bytes": 111772680,
+        "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb"
+      },
+      "completePaints": 9,
+      "activations": 3,
+      "textEdits": 96,
+      "observationPhases": ["complete", "complete", "complete"],
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "ownership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "report": {
+        "bytes": 35179,
+        "sha256": "f71bbad33a31c377b44f808d283e2198a3ae10cd347f0fcaa9b9b61e363e5a78"
+      },
+      "sourceScope": "Earlier frozen controller overlay before main merge; native-platform-smoke.py remains byte-identical. Final additions only affect the macOS-specific input path/SDK guards.",
+      "qualifiedPortableController": {
+        "sha256": "7047a85f334bc170d5adc91a6917737e3f05897adf41846b97b3794e7975775f",
+        "bytes": 20454
+      }
+    },
+    "aotProvenance": {
+      "application": {
+        "file": "platform-smoke",
+        "bytes": 71285800,
+        "sha256": "ee877c39d1df10935155603afa0045e9ddf8c6a3d125b6494144a673271619c7",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3719412,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "sourceFilesVerifiedBeforeExecution": 49
+    }
+  },
+  "currentControllerSources": {
+    "scripts/quality/native-platform-macos.m": {
+      "bytes": 15224,
+      "sha256": "796115e464dcfaf7bb4010b289f0f07c54415b055d0db9bae58b42d9609df9aa"
+    },
+    "scripts/quality/native-platform-input.py": {
+      "bytes": 12482,
+      "sha256": "d3e57fe019d7f0f1a7bd133c8db9aaa8528c8d4a5b4215df5a191bb27034d224"
+    },
+    "scripts/quality/native-platform-smoke.py": {
+      "bytes": 20454,
+      "sha256": "7047a85f334bc170d5adc91a6917737e3f05897adf41846b97b3794e7975775f"
+    },
+    "tests/native/macos-input-events.m": {
+      "bytes": 3553,
+      "sha256": "88d05a2498caf33778a8bc3071ccb3e40df323df35b0d508b3a2241620628f2b"
+    },
+    "tests/quality/test_native_platform_smoke.py": {
+      "bytes": 20586,
+      "sha256": "00354413429cdff94ee427370e833f86cb0f18546cad17a61fc357a983148bd2"
+    }
+  },
+  "nativeDependencyIntegration": {
+    "preservedMainVersion": "0.11.1",
+    "serde": "1.0.229",
+    "serde_json": "1.0.154",
+    "unicode-segmentation": "1.13.3",
+    "qualification": "New merged native dependency configuration is subject to hosted release validation. Retained local native artifacts and earlier runs keep their original source/dependency provenance.",
+    "compilation": "Actual staged-hook Clippy passed with the merged lockfile. A fresh native release executable and target OS input remain required in hosted CI."
+  },
+  "limits": {
+    "actualMacPosting": "unverified; no permission requested or granted",
+    "macAotInput": "unverified",
+    "screenshots": "not attempted",
+    "displayPresentation": "not measured",
+    "hardwareInput": "not verified",
+    "adapterTelemetry": "unavailable from pinned macOS window API",
+    "performanceComparison": "none"
+  },
+  "validation": {
+    "sourceTests": {
+      "passed": 332,
+      "assertions": 734
+    },
+    "pythonTests": {
+      "testsRun": 62,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "successful": true
+    },
+    "formatsAndLint": "Bun formatter, Ruff and Actionlint passed",
+    "actualStagedHook": {
+      "status": "passed",
+      "includes": "Merged current-main native Clippy, formatting and Python lint; final evidence outcome fields were recorded afterward.",
+      "log": {
+        "bytes": 428,
+        "sha256": "2b02e54067a2ad0b780c56e95ea824e82edb48b3401a54d17d25a8450ab42146"
+      }
+    },
+    "actualMacOsInput": "unverified: posting capability unavailable on connected Mac; required hosted checks remain",
+    "strictTypecheckedFiles": 55
+  }
+}

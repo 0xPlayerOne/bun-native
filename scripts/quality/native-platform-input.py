@@ -163,14 +163,28 @@ class MacInput:
         self.state = value
         return value
 
+    def _input(self, action, **extra):
+        if self.state is None:
+            raise RuntimeError("An independently observed macOS window is required")
+        available = self.state.get("postEventAccess")
+        if type(available) is not bool:
+            raise RuntimeError("macOS posting capability metadata is malformed")
+        if not available:
+            raise InputUnavailable(
+                "CoreGraphics event posting permission is unavailable; no input helper was invoked and no permission was requested"
+            )
+        # The helper still rechecks current permission, process identity,
+        # window geometry and foreground state before every permitted post.
+        return self._call(action, expected=self.state, **extra)
+
     def click(self, x, y, viewport):
-        return self._call("click", expected=self.state, x=x, y=y, viewport=viewport)
+        return self._input("click", x=x, y=y, viewport=viewport)
 
     def tab(self):
-        return self._call("tab", expected=self.state)
+        return self._input("tab")
 
     def type_text(self, text):
-        return self._call("text", expected=self.state, text=text)
+        return self._input("text", text=text)
 
     def close(self):
         # Helper commands release their own CoreFoundation objects and exit.

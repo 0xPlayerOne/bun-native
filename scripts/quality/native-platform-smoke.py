@@ -84,6 +84,7 @@ def source_snapshot():
         "scripts/quality/native-platform-input.py",
         "scripts/quality/native-platform-windows.py",
         "scripts/quality/native-platform-macos.m",
+        "tests/native/macos-input-events.m",
     ):
         sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
     return sources
@@ -102,6 +103,134 @@ def expected_paint(cycle, updated, nonce, *, os_input=False):
         (len(nonce) if os_input else 0) + 1 if updated else 0
     )
     return result
+
+
+def exercise_input(
+    cycle, initial, *, input_driver, report, records, wait_for, nonce, started
+):
+    observation = dict(
+        wait_for(
+            lambda: input_driver.observe(f"Bun Native platform smoke {cycle}"),
+            "independently owned and visible native window",
+        )
+    )
+    observation.update(cycle=cycle, phase="window-observed")
+    # Keep partial ownership, geometry and posting evidence when delivery fails.
+    # The final phase and report status still require every actual event/paint.
+    report["osObservations"].append(observation)
+    report["osWindowVisibility"] = "observed through target OS window APIs"
+    report["osInput"] = "not-yet-verified"
+    button_id = initial["nodes"][3]["node_id"]
+    input_id = initial["nodes"][-1]["node_id"]
+
+    def latest_layout():
+        layouts = [
+            row["layout"]
+            for row in records("native.jsonl")
+            if row.get("type") == "layout"
+            and row.get("window_id") == cycle
+            and row.get("tree_revision") == 1
+        ]
+        return layouts[-1] if layouts else None
+
+    layout = wait_for(latest_layout, "actual native input geometry")
+    x, y, viewport = OS_INPUT.pointer_target(layout, button_id)
+    observation["pointerTarget"] = {
+        "nodeId": button_id,
+        "logicalPoint": [x, y],
+        "viewport": viewport,
+    }
+    observation["phase"] = "pointer-targeted"
+    observation["pointer"] = input_driver.click(x, y, viewport)
+    observation["phase"] = "pointer-posted"
+    wait_for(
+        lambda: (
+            OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
+                "clicks"
+            ]
+            == 1
+        ),
+        "actual OS pointer activation at the public button listener",
+    )
+    observation["phase"] = "pointer-delivered"
+    observation["tab"] = input_driver.tab()
+    observation["phase"] = "tab-posted"
+
+    def input_focused():
+        layout = latest_layout()
+        return (
+            layout
+            and layout.get("focused_node_id") == input_id
+            and any(
+                row.get("type") == "os-route"
+                and row.get("cycle") == cycle
+                and row.get("event") == "focus"
+                and row.get("kind") == "input"
+                for row in records("application.jsonl")
+            )
+        )
+
+    wait_for(input_focused, "actual Tab traversal into the native editor")
+    observation["phase"] = "input-focused"
+    observation["typing"] = input_driver.type_text(nonce)
+    observation["phase"] = "text-posted"
+    wait_for(
+        lambda: OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
+            "complete"
+        ],
+        "every actual OS nonce edit in sequence",
+    )
+    observation["phase"] = "text-delivered"
+    rows = records("application.jsonl")
+    routes = [
+        row
+        for row in rows
+        if row.get("type") == "os-route" and row.get("cycle") == cycle
+    ]
+    for event in ("pointer_down", "pointer_up"):
+        matching = [row for row in routes if row.get("event") == event]
+        if (
+            len(matching) != 1
+            or matching[0].get("kind") != "button"
+            or matching[0].get("button") != "left"
+        ):
+            raise RuntimeError("Actual native pointer event was missing or misrouted")
+    for event in ("key_down", "key_up"):
+        if (
+            len(
+                [
+                    row
+                    for row in routes
+                    if row.get("event") == event and row.get("key") == "tab"
+                ]
+            )
+            != 1
+        ):
+            raise RuntimeError("Actual native Tab key event was missing or duplicated")
+    expected = expected_paint(cycle, False, nonce)
+    expected["nodes"][-1]["element"]["value"] = nonce
+    expected["nodes"][-1]["input_revision"] = len(nonce)
+    painted = wait_for(
+        lambda: next(
+            (
+                row
+                for row in records("native.jsonl")
+                if EVIDENCE.matches_paint(row, expected)
+            ),
+            None,
+        ),
+        "complete native paint retaining every OS edit",
+        paint=True,
+    )
+    report["paintObservations"].append(
+        {
+            "phase": "os-input",
+            "elapsedMs": (time.monotonic() - started) * 1000,
+            "paint": painted,
+        }
+    )
+    observation["delivery"] = OS_INPUT.input_delivery(rows, cycle, nonce, complete=True)
+    observation["phase"] = "complete"
 
 
 def main():
@@ -192,119 +321,6 @@ def main():
         error = NativePaintMismatch if paint else RuntimeError
         raise error("Timed out waiting for " + description)
 
-    def exercise_input(cycle, initial):
-        observation = wait_for(
-            lambda: input_driver.observe(f"Bun Native platform smoke {cycle}"),
-            "independently owned and visible native window",
-        )
-        report["osWindowVisibility"] = "observed through target OS window APIs"
-        report["osInput"] = "not-yet-verified"
-        button_id = initial["nodes"][3]["node_id"]
-        input_id = initial["nodes"][-1]["node_id"]
-
-        def latest_layout():
-            layouts = [
-                row["layout"]
-                for row in records("native.jsonl")
-                if row.get("type") == "layout"
-                and row.get("window_id") == cycle
-                and row.get("tree_revision") == 1
-            ]
-            return layouts[-1] if layouts else None
-
-        layout = wait_for(latest_layout, "actual native input geometry")
-        x, y, viewport = OS_INPUT.pointer_target(layout, button_id)
-        observation["pointer"] = input_driver.click(x, y, viewport)
-        wait_for(
-            lambda: (
-                OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
-                    "clicks"
-                ]
-                == 1
-            ),
-            "actual OS pointer activation at the public button listener",
-        )
-        observation["tab"] = input_driver.tab()
-
-        def input_focused():
-            layout = latest_layout()
-            return (
-                layout
-                and layout.get("focused_node_id") == input_id
-                and any(
-                    row.get("type") == "os-route"
-                    and row.get("cycle") == cycle
-                    and row.get("event") == "focus"
-                    and row.get("kind") == "input"
-                    for row in records("application.jsonl")
-                )
-            )
-
-        wait_for(input_focused, "actual Tab traversal into the native editor")
-        observation["typing"] = input_driver.type_text(nonce)
-        wait_for(
-            lambda: OS_INPUT.input_delivery(records("application.jsonl"), cycle, nonce)[
-                "complete"
-            ],
-            "every actual OS nonce edit in sequence",
-        )
-        rows = records("application.jsonl")
-        routes = [
-            row
-            for row in rows
-            if row.get("type") == "os-route" and row.get("cycle") == cycle
-        ]
-        for event in ("pointer_down", "pointer_up"):
-            matching = [row for row in routes if row.get("event") == event]
-            if (
-                len(matching) != 1
-                or matching[0].get("kind") != "button"
-                or matching[0].get("button") != "left"
-            ):
-                raise RuntimeError(
-                    "Actual native pointer event was missing or misrouted"
-                )
-        for event in ("key_down", "key_up"):
-            if (
-                len(
-                    [
-                        row
-                        for row in routes
-                        if row.get("event") == event and row.get("key") == "tab"
-                    ]
-                )
-                != 1
-            ):
-                raise RuntimeError(
-                    "Actual native Tab key event was missing or duplicated"
-                )
-        expected = expected_paint(cycle, False, nonce)
-        expected["nodes"][-1]["element"]["value"] = nonce
-        expected["nodes"][-1]["input_revision"] = len(nonce)
-        painted = wait_for(
-            lambda: next(
-                (
-                    row
-                    for row in records("native.jsonl")
-                    if EVIDENCE.matches_paint(row, expected)
-                ),
-                None,
-            ),
-            "complete native paint retaining every OS edit",
-            paint=True,
-        )
-        report["paintObservations"].append(
-            {
-                "phase": "os-input",
-                "elapsedMs": (time.monotonic() - started) * 1000,
-                "paint": painted,
-            }
-        )
-        observation["delivery"] = OS_INPUT.input_delivery(
-            rows, cycle, nonce, complete=True
-        )
-        report["osObservations"].append(observation)
-
     try:
         app = subprocess.Popen(
             command,
@@ -388,7 +404,16 @@ def main():
                     {"elapsedMs": (time.monotonic() - started) * 1000, "paint": painted}
                 )
                 if args.os_input and not updated:
-                    exercise_input(cycle, expected)
+                    exercise_input(
+                        cycle,
+                        expected,
+                        input_driver=input_driver,
+                        report=report,
+                        records=records,
+                        wait_for=wait_for,
+                        nonce=nonce,
+                        started=started,
+                    )
             (output / f"close-{cycle}").touch()
             wait_for(
                 lambda: any(

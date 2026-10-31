@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/proc_info.h>
@@ -109,11 +110,18 @@ static NSDictionary *snapshot(NSDictionary *request) {
 }
 
 static void verify(NSDictionary *expected, NSDictionary *actual) {
-    if (![actual[@"status"] isEqualToString:@"ready"]
-        || ![actual[@"application"] isEqual:expected[@"application"]]
-        || ![actual[@"host"] isEqual:expected[@"host"]]
-        || ![actual[@"window"] isEqual:expected[@"window"]])
-        fail(@"Owned native process or window identity/geometry changed before input");
+    if (![actual[@"status"] isEqualToString:@"ready"])
+        fail(@"Owned native window is no longer ready before input");
+    if (![actual[@"application"] isEqual:expected[@"application"]])
+        fail(@"Owned application process identity changed before input");
+    if (![actual[@"host"] isEqual:expected[@"host"]])
+        fail(@"Owned native process identity changed before input");
+    if (![actual[@"window"] isEqual:expected[@"window"]]) {
+        NSData *encoded = [NSJSONSerialization dataWithJSONObject:actual[@"window"] options:0 error:NULL];
+        NSString *details = encoded ? [[NSString alloc] initWithData:encoded encoding:NSUTF8StringEncoding] : nil;
+        fail([@"Owned native window metadata/geometry changed before input; current window: "
+            stringByAppendingString:details ?: @"unavailable"]);
+    }
 }
 
 static void foreground(NSDictionary *request, NSDictionary *state) {
@@ -155,6 +163,29 @@ static void key(pid_t pid, CGKeyCode code, UniChar character) {
     CFRelease(down);
 }
 
+static NSArray<NSEvent *> *pointer_events(NSInteger window, NSPoint point) {
+    // PID posting bypasses WindowServer targeting. The public AppKit factory
+    // carries the owned window association and window-local coordinates into
+    // CGEvent; a bare CGEventCreateMouseEvent has windowNumber zero.
+    NSEventType types[] = {NSEventTypeMouseMoved, NSEventTypeLeftMouseDown, NSEventTypeLeftMouseUp};
+    NSMutableArray<NSEvent *> *events = [NSMutableArray arrayWithCapacity:3];
+    for (int i = 0; i < 3; i++) {
+        NSEvent *event = [NSEvent mouseEventWithType:types[i] location:point
+            modifierFlags:0 timestamp:NSProcessInfo.processInfo.systemUptime
+            windowNumber:window context:nil eventNumber:i + 1 clickCount:i ? 1 : 0
+            pressure:i == 1 ? 1.0 : 0.0];
+        CGEventRef quartz = event.CGEvent;
+        NSEvent *associated = quartz ? [NSEvent eventWithCGEvent:quartz] : nil;
+        if (!associated || associated.windowNumber != window || associated.type != types[i]
+            || !NSEqualPoints(associated.locationInWindow, point)
+            || (associated.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) != 0
+            || (i && associated.clickCount != 1))
+            fail(@"CoreGraphics conversion did not retain the owned AppKit pointer target");
+        [events addObject:event];
+    }
+    return events;
+}
+
 static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     NSDictionary *expected = request[@"expected"];
     if (![expected isKindOfClass:NSDictionary.class]) fail(@"A previously observed identity is required");
@@ -187,24 +218,20 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         if (width <= 0 || height <= 0 || x < 0 || x >= width || y < 0 || y >= height
             || side < 0 || side > 16 || top < 0 || top > 96)
             fail(@"GPUI viewport cannot be bounded within the owned Quartz frame");
-        CGPoint point = CGPointMake([frame[0] doubleValue] + side + x,
-            [frame[1] doubleValue] + top + y);
-        CGEventType types[] = {kCGEventMouseMoved, kCGEventLeftMouseDown, kCGEventLeftMouseUp};
-        CGEventRef mouse[3] = {NULL, NULL, NULL};
-        for (int i = 0; i < 3; i++) mouse[i] = CGEventCreateMouseEvent(NULL, types[i], point, kCGMouseButtonLeft);
-        if (!mouse[0] || !mouse[1] || !mouse[2]) {
-            for (int i = 0; i < 3; i++) if (mouse[i]) CFRelease(mouse[i]);
-            fail(@"Cannot allocate bounded CoreGraphics pointer events");
-        }
-        for (int i = 0; i < 3; i++) {
-            CGEventSetFlags(mouse[i], 0);
-            if (i) CGEventSetIntegerValueField(mouse[i], kCGMouseEventClickState, 1);
-            CGEventPostToPid(pid, mouse[i]);
-            CFRelease(mouse[i]);
-        }
+        id window = state[@"window"][@"id"];
+        if (!number(window) || [window doubleValue] < 1 || [window doubleValue] > UINT32_MAX
+            || floor([window doubleValue]) != [window doubleValue]) fail(@"Invalid owned Quartz window number");
+        // Pinned GPUI maps native y as content_size().height - locationInWindow.y.
+        // Use its measured viewport, not an inferred titlebar height or screen point.
+        NSPoint point = NSMakePoint(x, height - y);
+        NSArray<NSEvent *> *mouse = pointer_events([window integerValue], point);
+        for (NSEvent *event in mouse) CGEventPostToPid(pid, event.CGEvent);
         events = 3;
-        result[@"screenPoint"] = @[@(point.x), @(point.y)];
-        result[@"contentGeometry"] = @"Inferred from Quartz frame and actual GPUI viewport; delivery requires native target evidence";
+        result[@"windowNumber"] = window;
+        result[@"windowPoint"] = @[@(point.x), @(point.y)];
+        result[@"inferredScreenPoint"] = @[@([frame[0] doubleValue] + side + x),
+            @([frame[1] doubleValue] + top + y)];
+        result[@"contentGeometry"] = @"AppKit window-local coordinates from actual GPUI viewport; CGEvent round-trip retained window/type/location; delivery still requires native target evidence";
     } else fail(@"Unknown bounded input action");
     verify(state, snapshot(request));
     if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != pid)

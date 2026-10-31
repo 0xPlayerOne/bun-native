@@ -194,6 +194,14 @@ native paint on every cycle. It uses target OS APIs and reuses the existing X11
 helpers on Linux. A successful injection API return cannot satisfy delivery.
 The macOS helper requires an explicit prebuilt `BUN_NATIVE_PLATFORM_HELPER`;
 neither target controller requests permission or changes security settings.
+The helper constructs pointer events with AppKit's public mouse-event factory,
+the observed window number, and the actual GPUI viewport's window-local
+coordinates. It verifies that conversion to CoreGraphics retains the target
+before posting only to the owned process. A separate SDK regression creates and
+inspects those event objects without posting input; it cannot qualify delivery.
+Each OS observation is retained as soon as ownership is established, with the
+requested logical point and a phase that distinguishes posting from actual
+delivery and complete native paint. Failed runs keep that partial evidence.
 
 Paint-only mode still leaves OS input/visibility unverified. Screenshots,
 presentation, hardware input, OS close-button behavior and complete process-tree

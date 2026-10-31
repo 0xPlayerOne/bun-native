@@ -87,10 +87,14 @@ resources before final joined native shutdown.
   verified when Quartz exposes them; absent title access does not replace the
   required PID/image/creation identity. Input requires read-only
   `CGPreflightPostEventAccess`, owned foreground activation and no external held
-  modifiers. Events use `CGEventPostToPid` for the verified native child. The
-  click location is bounded within the Quartz frame using the actual GPUI
-  viewport; the content origin is inferred, so actual native target delivery is
-  required. The helper never requests permissions or changes privacy settings.
+  modifiers. Pointer events are created with AppKit's public mouse-event
+  factory, the observed window number and the actual GPUI viewport's local
+  coordinates. Conversion to CoreGraphics must retain the same window, type
+  and local point before any event is posted. Events use `CGEventPostToPid`
+  only for the verified native child. The Quartz frame bounds the measured
+  viewport; an inferred screen point is recorded for diagnosis but does not
+  select the event target. Actual native target delivery is still required.
+  The helper never requests permissions or changes privacy settings.
 - **Linux:** The same fixture can be checked in the existing isolated Xvfb/DBus
   session. Its small adapter reuses the established process-identity and XTest
   helpers. This exercises the common assertions locally without claiming that
@@ -105,6 +109,56 @@ retains its exact reason; it is never counted as a pass. Programmatic close is
 still not an OS close-button test. Screenshots, presentation, hardware input,
 accessibility/IME and complete process-tree enumeration remain unverified by
 this extension.
+
+### macOS pointer association regression
+
+The [subsequent hosted macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41238698609/job/124647813058)
+passed complete development native paint/lifecycle and owned-window/permission
+checks, then failed OS-input qualification. The initial six-node tree painted
+and its input received focus, but no pointer event reached the application.
+The fixture reached its unchanged controller-command deadline and joined
+native shutdown with zero public resources. That failed result is retained.
+
+A bounded SDK diagnostic created event objects without posting input. The old
+`CGEventCreateMouseEvent` path yielded `NSEvent.windowNumber == 0`; setting the
+two public window-under-pointer fields did not establish an AppKit window
+association. Apple's [mouse-event factory](https://developer.apple.com/documentation/appkit/nsevent/mouseevent%28with%3Alocation%3Amodifierflags%3Atimestamp%3Awindownumber%3Acontext%3Aeventnumber%3Aclickcount%3Apressure%3A%29)
+preserved the supplied window number and window-local coordinates through
+CoreGraphics conversion. The correction uses that factory, with the pinned
+[GPUI conversion](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/events.rs)
+inverted explicitly: `nativeX = gpuiX`, `nativeY = viewportHeight - gpuiY`.
+The checked-in SDK regression inspects nine such conversions without posting;
+the separate development/AOT runs must still prove actual native delivery.
+
+OS observations are now retained immediately after ownership is established.
+Their phase distinguishes an observed window, a bounded pointer target, posted
+events, actual delivery and a complete native paint. A failed activation retains
+the window identity, geometry and posting result instead of losing them while
+waiting for later keyboard steps. Three pure controller regressions cover
+missing geometry, rejected posting and posted events without native delivery;
+none claims to exercise macOS input.
+
+The [compact correction record](../tests/native/evidence/platform-macos-pointer-association.json)
+preserves that hosted failure, the event-object diagnostic, and a subsequent
+connected-Mac attempt using the exact hosted **release** executable. Its SDK
+build and nine association checks passed. The actual development run observed
+the owned window and initial native paint, then failed the strict snapshot
+comparison before delivery. The historical helper did not retain the current
+comparison snapshot, so the changed field is unknown. Its read-only
+`CGPreflightPostEventAccess` result was also explicitly false: this machine
+cannot qualify permitted event posting. No permission was requested or granted,
+no native input was observed, all public counters returned to zero, and native
+shutdown joined without forced termination. The original failed result is not
+reclassified as a pass, and AOT input was not attempted there.
+
+The controller now rejects an observed false posting capability before invoking
+any input helper and reports that capability as unavailable. A true observation
+still requires all current native identity, geometry, foreground and permission
+checks. Snapshot failures distinguish application identity, native-process
+identity and window metadata/geometry, retaining the current window metadata
+for comparison with the original observation. These diagnostics do not relax
+ownership. Corrected macOS event delivery remains subject to the hosted
+development and AOT checks; SDK conversion and Linux runs cannot establish it.
 
 ## Pinned native requirements
 
