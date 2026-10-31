@@ -234,6 +234,25 @@ real development and AOT button/text input. This correction has no native
 macOS success claim until those results exist. The GPUI capture trace remains
 enabled to distinguish subsequent delivery from targeting failures.
 
+[Run 41247808999](https://github.com/0xPlayerOne/bun-native/actions/runs/41247808999/job/124674782271)
+passed native paint and the actual SDK controls, then rejected the development
+pointer target before posting any event: the first intersecting WindowServer
+rectangle did not match the exact owned window. The window remained visible,
+posting access was available, and the application joined native shutdown with
+all six public resource counts zero. AOT input was not attempted. The
+[verified rejection record](../tests/native/evidence/platform-macos-target-rejection.json)
+checks the 63 source files and rehashes the archived release host and SDK helper.
+The rejecting rectangle's identity and layer were absent from that artifact;
+its cause and whether it was transient remain unknown.
+
+Rejection evidence now includes only that first rectangle's numeric window ID,
+owner PID, layer, alpha and frame, along with the expected owned IDs and global
+point. It never records another window's title, application name, image path or
+contents. Three SDK cases require those exact fields and two reject malformed
+identity metadata. This diagnostic changes no posting route, target rule,
+foreground wait, retry behavior or native acceptance criterion. Its SDK build
+and subsequent real input attempt remain hosted checks, not local successes.
+
 ## Pinned native requirements
 
 Requirements come from GPUI revision

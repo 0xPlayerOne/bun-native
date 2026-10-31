@@ -150,6 +150,31 @@ static void require_foreground(pid_t pid) {
         fail(@"Native foreground changed before input");
 }
 
+static NSString *pointer_rejection(NSDictionary *state, NSDictionary *candidate,
+    CGRect bounds, CGPoint point) {
+    id identifier = candidate[(__bridge NSString *)kCGWindowNumber];
+    id owner = candidate[(__bridge NSString *)kCGWindowOwnerPID];
+    id layer = candidate[(__bridge NSString *)kCGWindowLayer];
+    if (!number(identifier) || [identifier doubleValue] < 1
+        || [identifier doubleValue] > UINT32_MAX || floor([identifier doubleValue]) != [identifier doubleValue]
+        || !number(owner) || [owner doubleValue] < 1 || [owner doubleValue] > INT_MAX
+        || floor([owner doubleValue]) != [owner doubleValue]
+        || !number(layer) || [layer doubleValue] < INT_MIN || [layer doubleValue] > INT_MAX
+        || floor([layer doubleValue]) != [layer doubleValue])
+        fail(@"WindowServer target identity metadata is invalid");
+    // Keep only the first intersecting rectangle's numeric identity/geometry.
+    // No unrelated window title, application name, image path or contents enter evidence.
+    NSDictionary *details = @{@"expectedWindow": state[@"window"][@"id"],
+        @"expectedPID": state[@"host"][@"pid"], @"screenPoint": @[@(point.x), @(point.y)],
+        @"firstWindow": identifier, @"firstPID": owner, @"layer": layer,
+        @"alpha": candidate[(__bridge NSString *)kCGWindowAlpha],
+        @"frame": @[@(bounds.origin.x), @(bounds.origin.y), @(bounds.size.width), @(bounds.size.height)]};
+    NSData *encoded = [NSJSONSerialization dataWithJSONObject:details options:0 error:NULL];
+    if (!encoded || encoded.length > 1024) fail(@"WindowServer target diagnostics exceed their bound");
+    return [@"The owned pointer target is obscured by another window; no input was posted; target details: "
+        stringByAppendingString:[[NSString alloc] initWithData:encoded encoding:NSUTF8StringEncoding]];
+}
+
 // Quartz returns onscreen windows front-to-back. Reject even a same-process
 // overlay: the measured button must belong to this exact unobscured window.
 static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint point) {
@@ -171,7 +196,7 @@ static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint
         if (!CGRectContainsPoint(bounds, point)) continue;
         if (![candidate[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]]
             || ![candidate[(__bridge NSString *)kCGWindowOwnerPID] isEqual:state[@"host"][@"pid"]])
-            unavailable(@"The owned pointer target is obscured by another window; no input was posted");
+            unavailable(pointer_rejection(state, candidate, bounds, point));
         return;
     }
     unavailable(@"The owned pointer target is absent from the onscreen window list");

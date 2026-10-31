@@ -198,6 +198,10 @@ The helper constructs global Quartz pointer events from the measured viewport
 and independently observed frame. It requires the exact owned window to be the
 first onscreen window at that point, then posts through the public session event
 stream for WindowServer routing. Keyboard pairs recheck owned foreground state.
+An obscured-target rejection retains only the first intersecting rectangle's
+numeric identity, layer, opacity and geometry; unrelated titles and application
+names are excluded. The SDK controls check the exact diagnostic fields and
+reject malformed identity metadata. A rejection means no input was posted.
 A separate SDK control inspects those objects and pure occlusion/identity guards
 without posting input; it cannot qualify delivery. The previous PID-targeted
 attempts remain failed, including the ready GPUI capture trace with no mouse
