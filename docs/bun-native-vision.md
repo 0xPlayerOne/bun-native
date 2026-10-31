@@ -10,7 +10,7 @@ Make native desktop software approachable to JavaScript and TypeScript developer
 
 Optimize for **both** developer experience and shipped application experience. The aspiration is low startup latency, low idle memory, small distribution size, responsive rendering, accessible native interaction, and reproducible packaging on macOS, Windows and Linux. We will measure rather than assume those outcomes.
 
-The **native renderer is Rust GPUI**. Application authors should not have to write Rust. The shipped AOT app may contain Bun's runtime and GC alongside GPUI; it is not a pure-Rust binary.
+The **initial native renderer is Rust GPUI**, with a documented option for the implementation agent to choose another genuine browserless native renderer if measured evidence justifies it. Application authors should not have to write Rust. The shipped AOT app may contain Bun's runtime and GC alongside GPUI; it is not a pure-Rust binary.
 
 ## Two independent technical requirements
 
@@ -64,7 +64,7 @@ Application source: TypeScript or JavaScript + SolidJS or React JSX
                 Rust GPUI native window + GPU rendering (no WebView)
 ```
 
-GPUI is the **chosen** rendering engine, not an interchangeable candidate. Implement a small, versioned, typed Bun-to-GPUI bridge with clear ownership, events and shutdown behavior. A Solid adapter (investigate `solid-js/universal`) and React adapter (investigate `react-reconciler`) both target the same GPUI-backed host elements. Native GPUI internals are compiled separately from the app's Bun AOT code; AOT does not translate JSX to Rust. Prior work such as GPUIX can inform the bridge but is not the product boundary. Do not assume arbitrary DOM-dependent Solid or React components can be automatically translated.
+GPUI is the **initial** rendering engine, not a requirement to block autonomous delivery. An assigned agent may adopt a better-supported genuine native renderer if a reproducible technical finding warrants it, document the ADR, and update dependent issues/CI without human sign-off. Implement a small, versioned, typed Bun-to-GPUI bridge with clear ownership, events and shutdown behavior. A Solid adapter (investigate `solid-js/universal`) and React adapter (investigate `react-reconciler`) both target the same GPUI-backed host elements. Native GPUI internals are compiled separately from the app's Bun AOT code; AOT does not translate JSX to Rust. Prior work such as GPUIX can inform the bridge but is not the product boundary. Do not assume arbitrary DOM-dependent Solid or React components can be automatically translated.
 
 The former Bunly CEF host and legacy build/test code are to be deleted from the active source during BN0 #251, without waiting for a feasibility proof. Git history preserves M1–M12 evidence and attribution; old tracking issues are superseded. Only tooling demonstrably useful to Bun Native should be adapted.
 
@@ -104,6 +104,12 @@ As the new native implementation matures, package signed/native artifacts across
 
 The active product roadmap is [issue #1](https://github.com/0xPlayerOne/bun-native/issues/1). Old CEF and WebView issues should be retired as superseded, and their active source removed immediately under #251; Git history remains intact. Do not migrate Adea production as an incidental side effect.
 
+## Agent autonomy and test environments
+
+The owner has authorized assigned agents to complete the full experimental repository rewrite without routine human sign-off, design checkpoints or manual test requests. Follow [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [AGENTS.md](../AGENTS.md) for exact task order and safe scope. Choose implementations, debug problems and keep the next unblocked issue moving. Ordinary GitHub branch protection, credential limitations and truthful test evidence still apply; do not bypass security gates.
+
+Prefer **GitHub Actions hosted Linux, Windows and macOS runners** for builds and automated native validation. Use the owner's connected Mac through **Remote Desktop Commander** for native GUI/keyboard/IME validation when CI cannot credibly test it; discover device status at runtime, and keep changes confined to temporary test areas. Avoid heavy persistent Docker/VM use on the Mac. Record unavailable physical coverage as unsupported without waiting for the owner. Experimental unsigned artifacts are acceptable until actual signing/notarization is configured and proven.
+
 ## Decision rule
 
-**Bun Native replaces Bunly unconditionally.** Delete old CEF/WebView code first; build TS/JS applications on Rust GPUI and integrate machine-code Bun AOT for production. Component APIs/adapters may advance in parallel as native contracts stabilize. AOT failures are defects to fix—not a project go/no-go or a reason for browser fallback. Ship only after real native input/accessibility, compiled AOT behavior, cross-platform packaging and measured performance meet explicit release criteria.
+**Bun Native replaces Bunly unconditionally.** Delete old CEF/WebView code first; build TS/JS applications with a real native UI engine (starting with Rust GPUI) and integrate machine-code Bun AOT for production. Component APIs/adapters may advance in parallel as native contracts stabilize. AOT failures are defects to fix—not a project go/no-go or a reason for browser fallback. Ship only after real native input/accessibility, compiled AOT behavior, cross-platform packaging and measured performance meet explicit release criteria.
