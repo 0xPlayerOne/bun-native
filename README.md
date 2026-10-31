@@ -1,8 +1,8 @@
 # Bun Native
 
-**Proposed direction:** A Bun-first, AOT-compiled TypeScript desktop framework with browserless native UI rendering. Read the [Bun Native vision and feasibility gates](docs/bun-native-vision.md).
+**Product direction:** Build **Bun Native**, a TypeScript-first (JavaScript-compatible) desktop framework: **Bun machine-code AOT** for application logic and **Rust GPUI** for native GPU-rendered UI. Support **SolidJS first** and **React second** with shared native primitives. See the [architecture and BN0–BN7 plan](docs/bun-native-vision.md) and [new roadmap](https://github.com/0xPlayerOne/bunly/issues/1).
 
-**Implementation status:** The code in this repository is still the experimental **Bunly** desktop host built around CEF and a managed Bun runtime. The existing M1–M7 evidence below describes that host; it does **not** yet establish Bun AOT support, native GPU rendering, or migration readiness. The product direction is being evaluated without deleting prior work or invalidating open qualification issues.
+**Current implementation:** The checked-in v0.6.9 code remains the superseded experimental **Bunly CEF host**. This is historical work, not the new foundation. The GPUI+AOT application is **not implemented or qualified** yet; follow [BN0 feasibility](https://github.com/0xPlayerOne/bunly/issues/217) before making release or performance claims. The prior M1–M7 status below is retained as historical evidence, not the active roadmap.
 
 ## Existing Bunly implementation and qualification
 
