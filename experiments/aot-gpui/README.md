@@ -49,15 +49,22 @@ Use `--host-profile dev` when qualifying a development host; omitting it records
 
 The package directory receives the AOT application, native host, compiler diagnostics, native linkage logs and a manifest with exact toolchain, source/lockfile hashes, dirty-worktree status, artifact hashes and sizes. Native rendering, OS input, teardown, installation and signing start as **not verified** in this build record; actual execution evidence is separate. The build itself cannot turn those checks into passes.
 
-The same compiler and inspection pipeline supports three explicit entries:
+The same compiler and inspection pipeline supports ten explicit entries:
 
-| `--entry`                 | Source                           | Executable      | Native host placement                              |
-| ------------------------- | -------------------------------- | --------------- | -------------------------------------------------- |
-| `native-window` (default) | `examples/native-window/main.ts` | `native-window` | Copied into the package                            |
-| `input-race`              | `tests/native/input-race.ts`     | `input-race`    | Existing prebuilt host referenced by absolute path |
-| `bridge`                  | `benchmarks/bridge.ts`           | `bridge`        | Existing prebuilt host referenced by absolute path |
+| `--entry`                 | Source                             | Executable         | Native host placement                              |
+| ------------------------- | ---------------------------------- | ------------------ | -------------------------------------------------- |
+| `native-window` (default) | `examples/native-window/main.ts`   | `native-window`    | Copied into the package                            |
+| `input-race`              | `tests/native/input-race.ts`       | `input-race`       | Existing prebuilt host referenced by absolute path |
+| `bridge`                  | `benchmarks/bridge.ts`             | `bridge`           | Existing prebuilt host referenced by absolute path |
+| `javascript`              | `tests/native/javascript.js`       | `javascript`       | Existing prebuilt host referenced by absolute path |
+| `core-lifecycle`          | `tests/native/public-lifecycle.ts` | `core-lifecycle`   | Existing prebuilt host referenced by absolute path |
+| `event-throughput`        | `tests/native/event-throughput.ts` | `event-throughput` | Existing prebuilt host referenced by absolute path |
+| `fault`                   | `tests/native/fault.ts`            | `fault`            | Existing prebuilt host referenced by absolute path |
+| `scheduling`              | `tests/native/scheduling.ts`       | `scheduling`       | Existing prebuilt host referenced by absolute path |
+| `layout`                  | `tests/native/layout.ts`           | `layout`           | Existing prebuilt host referenced by absolute path |
+| `interactions`            | `tests/native/interactions.ts`     | `interactions`     | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The two test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. `--entry bridge` requires an explicit `--host-profile dev` or `release`. Its [benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
+All executable names gain `.exe` on Windows. The nine test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Each requires an explicit `--host-profile dev` or `release`. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -80,3 +87,11 @@ On Linux, the helper additionally requires the emitted application to record JIT
 `--trim` is an explicit comparison option for measuring Bun's additional unused-runtime removal. Default AOT already removes the JIT; the separate `trimmedProgramFeatures` metadata flag can remain false for a correctly inspected AOT executable. Run the same native input and teardown suite against the trimmed executable before choosing it for distribution. Build duration and artifact bytes in the manifest are single-build diagnostics, not cold-start, RSS or input-latency claims. A development-profile native host is not a release performance baseline.
 
 The initial shared-layout fixture is selected with `--entry layout`. It emits `layout` (`layout.exe` on Windows), references the explicitly supplied host without copying it, and includes the fixture plus shared core/protocol/runtime/native sources in its artifact manifest. Execute it through the actual `layout` diagnostic described in [the layout contract](../../docs/native-layout.md). Compilation and inspection alone do not establish wheel, clipping, resize or focus behavior.
+
+`--entry interactions` uses the same compiler and external-host policy for the
+public event fixture. The actual `interactions` diagnostic verifies pointer,
+logical keys, focus, native caret/selection editing, public propagation and
+queued-event lifetime across reparent/delete/remount. Follow the
+[interaction contract](../../docs/native-events.md) for the exact development
+and AOT commands. Inspecting the executable alone does not qualify those native
+behaviors or any remaining adapter/platform acceptance.

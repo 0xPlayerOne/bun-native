@@ -245,7 +245,6 @@ try {
       try {
         launchInvocations += 1
         assert.equal(launchInvocations, 1)
-        assert.equal(event.sequence, 1)
         event.signal.addEventListener(
           'abort',
           () => {

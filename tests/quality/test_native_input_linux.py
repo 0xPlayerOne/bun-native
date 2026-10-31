@@ -105,9 +105,9 @@ class EvidenceTests(unittest.TestCase):
         stale["nodes"][1]["element"]["value"] = "stale application echo"
         self.assertFalse(DRIVER.matches_paint(stale, expected))
 
-    def test_keyboard_activation_requires_a_distinct_event_sequence(self):
-        click = {"type": "click", "target": "increment", "sequence": 1}
-        keyboard = {"type": "click", "target": "increment", "sequence": 2}
+    def test_keyboard_activation_requires_a_distinct_callback_count(self):
+        click = {"type": "click", "target": "increment", "activation": 1}
+        keyboard = {"type": "click", "target": "increment", "activation": 2}
         self.assertTrue(DRIVER.matches(click, click))
         self.assertFalse(DRIVER.matches(click, keyboard))
         self.assertTrue(DRIVER.matches(keyboard, keyboard))
@@ -163,6 +163,16 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(result["complete"])
         self.assertEqual(result["verified_callbacks"], 1000)
         self.assertEqual(result["observed_callbacks_per_second"], 2000)
+        # Keyboard/focus events share native global order but are not input
+        # callbacks. Gaps are valid; duplicate or decreasing input order is not.
+        with_other_events = [
+            {**event, "sequence": event["sequence"] * 3} for event in events
+        ]
+        self.assertTrue(
+            DRIVER.event_stress_observations(with_other_events, require_complete=True)[
+                "complete"
+            ]
+        )
         partial = DRIVER.event_stress_observations(events[:-1])
         self.assertFalse(partial["complete"])
         with self.assertRaisesRegex(RuntimeError, "all 1000"):
@@ -172,6 +182,8 @@ class EvidenceTests(unittest.TestCase):
         for changed in [
             {"sequence": 501},
             {"sequence": True},
+            {"sequence": 0},
+            {"sequence": 9_007_199_254_740_992},
             {"input_revision": 499},
             {"value": "x" * 499 + "y"},
             {"observed_at_ms": 0},

@@ -64,10 +64,14 @@ try {
       ],
     })
     await host.send({ type: 'close', window_id })
-    assert.deepEqual(await events.next(), {
-      done: false,
-      value: { type: 'closed', sequence: cycle + 1, window_id },
-    })
+    let closed = false
+    while (!closed) {
+      const event = await events.next()
+      assert(!event.done)
+      assert.equal(event.value.window_id, window_id)
+      closed = event.value.type === 'closed'
+      if (!closed) assert(['focus', 'blur'].includes(event.value.type))
+    }
     await assert.rejects(host.send({ type: 'close', window_id }), /invalid_handle/)
   }
 } finally {

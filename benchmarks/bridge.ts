@@ -242,11 +242,38 @@ function distribution(samples: number[]) {
 
 let host: NativeHost | undefined
 let failure: unknown
+let eventDrain: Promise<void> | undefined
+let orderedEventCount = 0
+const closedWindows = new Set<number>()
 const started = performance.now()
 try {
   const running = await NativeHost.launch({ executable })
   host = running
-  const events = running[Symbol.asyncIterator]()
+  // Native focus changes are real UI events even without an OS-input workload.
+  // Consume continuously so repeated editor ownership cannot fill the queue.
+  eventDrain = (async () => {
+    for await (const event of running) {
+      assert.equal(event.sequence, ++orderedEventCount, 'complete global UI sequence')
+      if (event.type === 'closed') {
+        assert([1, 2, 3].includes(event.window_id))
+        assert(!closedWindows.has(event.window_id), 'A window closes once')
+        closedWindows.add(event.window_id)
+      } else {
+        assert(event.type === 'focus' || event.type === 'blur', 'This workload injects no input')
+      }
+    }
+  })()
+  void eventDrain.catch((error: unknown) => {
+    failure ??= error
+  })
+  async function waitClosed(windowId: number): Promise<void> {
+    const deadline = performance.now() + 5_000
+    while (!closedWindows.has(windowId)) {
+      if (failure) throw failure
+      if (performance.now() > deadline) throw new Error('Missing native close notification')
+      await Bun.sleep(1)
+    }
+  }
   let revision = 0
   const text = (value: string) => ({ kind: 'text' as const, text: value })
   const input = (value: string) => ({ kind: 'input' as const, value })
@@ -364,10 +391,7 @@ try {
     'invalid_handle'
   )
   await running.send({ type: 'close', window_id: 2 })
-  assert.deepEqual(await events.next(), {
-    done: false,
-    value: { type: 'closed', window_id: 2, sequence: 1 },
-  })
+  await waitClosed(2)
   await rejected(
     { type: 'open', window_id: 2, root_id: 8, title: 'Reuse must fail', width: 320, height: 240 },
     'invalid_handle'
@@ -381,10 +405,7 @@ try {
     height: 240,
   })
   await running.send({ type: 'close', window_id: 3 })
-  assert.deepEqual(await events.next(), {
-    done: false,
-    value: { type: 'closed', window_id: 3, sequence: 2 },
-  })
+  await waitClosed(3)
   await Bun.sleep(150)
 
   const count = 1000
@@ -444,10 +465,8 @@ try {
   }
   await Bun.sleep(250)
   await running.send({ type: 'close', window_id: 1 })
-  assert.deepEqual(await events.next(), {
-    done: false,
-    value: { type: 'closed', window_id: 1, sequence: 3 },
-  })
+  await waitClosed(1)
+  assert.deepEqual([...closedWindows], [2, 3, 1])
   result['semanticChecks'] = [
     'cross-window handles',
     'cycle/orphan rejection',
@@ -466,12 +485,14 @@ try {
     try {
       await host.shutdown()
       assert.equal(await host.exited, 0)
+      await eventDrain
       result['nativeExitCode'] = 0
     } catch (error) {
       failure ??= error
     }
   }
   result['totalWorkloadMs'] = performance.now() - started
+  result['nativeEventCount'] = orderedEventCount
   result['individual'] = distribution(individual)
   result['batchesOf100'] = distribution(batched)
   if (failure) {
