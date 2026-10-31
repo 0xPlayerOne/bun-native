@@ -1,5 +1,0 @@
-export default {
-  name: 'BunlyReference', id: 'dev.bunly.benchmark.mirin', main: 'src/mirin.ts',
-  // The main module opens the loopback fixture only after core readiness.
-  windows: {}, singleInstance: false, linux: false, dmg: false, nsis: false, inno: false,
-};

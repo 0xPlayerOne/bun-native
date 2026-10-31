@@ -50,12 +50,6 @@ fi
 # the gate by depending on code-foundry; one that does not keeps the
 # whitespace guard and stays offline. Nothing is fetched at commit time.
 if [ -x node_modules/.bin/code-foundry ]; then
-  if bun scripts/native-pre-commit.ts --detect; then
-    exec bun scripts/native-pre-commit.ts
-  else
-    native_status=$?
-    [ "$native_status" -eq 3 ] || exit "$native_status"
-  fi
   exec bun --bun code-foundry pre-commit
 fi
 

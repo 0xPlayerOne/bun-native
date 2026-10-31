@@ -1,0 +1,132 @@
+name: Bun Native Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [ready_for_review, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bun-native-validation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  source:
+    name: Source quality
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Format, lint, types and architecture
+        run: |
+          bun run format:check
+          bun run lint
+          bun run typecheck
+          bun run check:boundaries
+          bun run build
+      - name: TypeScript tests and coverage
+        run: bun test tests --coverage
+      - name: Install checksum-pinned workflow linter
+        env:
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl --fail --location --retry 3 --max-time 45 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict -
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
+          echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      - name: Validate workflow syntax
+        run: actionlint
+
+  protocol:
+    name: Protocol (${{ matrix.os }})
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: native-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Record exact environment
+        run: |
+          mkdir -p .bun-native/evidence
+          {
+            git rev-parse HEAD
+            bun --version
+            rustc --version --verbose
+            cargo --version
+            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,mode:"development",coverage:"headless protocol"}))'
+          } | tee .bun-native/evidence/toolchain.txt
+      - name: Cross-platform TypeScript contracts
+        run: bun test tests
+      - name: Rust protocol checks (no GUI claim)
+        run: |
+          cargo fmt --manifest-path Cargo.toml --all -- --check
+          cargo clippy --locked --manifest-path Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
+          cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: protocol-${{ runner.os }}-${{ runner.arch }}
+          path: .bun-native/evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    name: Security
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    uses: ./.github/workflows/security.yml
+
+  gate:
+    # This exact check context is required by the existing protected-main ruleset.
+    name: Validation / Gate
+    needs: [source, protocol, security]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Require every foundation check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e 'const jobs=JSON.parse(process.env.RESULTS); const failed=Object.entries(jobs).filter(([,job])=>job.result!=="success"); if(failed.length){console.error(failed);process.exit(1)}'
+      - name: Describe coverage precisely
+        run: echo 'Passed source, headless protocol and dependency checks. Real native rendering, OS input and Bun AOT acceptance are separate BN0 gates.' >> "$GITHUB_STEP_SUMMARY"

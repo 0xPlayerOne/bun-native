@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "bun": {
+    "version": "1.4.4-canary.1",
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "cliRevision": "1.4.4-canary.1+da867c60b",
+    "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "compileArguments": ["compile", "--no-script", "--production"],
+    "archives": {
+      "linux-x64": {
+        "name": "bun-linux-x64.zip",
+        "assetId": 687869747,
+        "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+      },
+      "linux-arm64": {
+        "name": "bun-linux-aarch64.zip",
+        "assetId": 687869647,
+        "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+      },
+      "darwin-x64": {
+        "name": "bun-darwin-x64.zip",
+        "assetId": 687869655,
+        "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+      },
+      "darwin-arm64": {
+        "name": "bun-darwin-aarch64.zip",
+        "assetId": 687869686,
+        "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+      },
+      "win32-x64": {
+        "name": "bun-windows-x64.zip",
+        "assetId": 687870574,
+        "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+      },
+      "win32-arm64": {
+        "name": "bun-windows-aarch64.zip",
+        "assetId": 687870891,
+        "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+      }
+    }
+  },
+  "rust": {
+    "version": "1.98.1",
+    "components": ["rustfmt", "clippy"]
+  },
+  "gpui": {
+    "repository": "https://github.com/zed-industries/zed",
+    "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "version": "0.2.2"
+  }
+}

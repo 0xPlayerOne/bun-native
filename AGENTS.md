@@ -4,6 +4,8 @@
 
 **Owner's authorization:** This public repository is a fully experimental project. An assigned agent may autonomously perform every implementation and cleanup task in [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1), including source deletion, refactors, dependencies/toolchain changes, issues, branches, draft/ready PRs, CI, repo release tooling, and auto-merge when GitHub rules permit. **Do not ask for routine approvals, design sign-offs, milestone checkpoints, or manual testing.** Make practical decisions and document major architecture changes. Continue onto other unblocked tasks while CI runs or blockers are repaired.
 
+**Workspace state:** The active source now contains Bun Native packages and native protocol tests. See [docs/bun-native-handoff.md](docs/bun-native-handoff.md) for the deletion inventory, checks and unverified acceptance. Do not recover obsolete runtime files merely to satisfy an old command.
+
 ## Start and operating sequence
 
 1. Read this file, the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and relevant GitHub issue, and inspect the actual branch/worktree and managed contribution policy below. Do not treat the old `docs/architecture.md`, README or legacy Bun 1.4.4 configuration as Bun Native requirements when they describe CEF.

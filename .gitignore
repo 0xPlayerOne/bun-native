@@ -1,98 +1,29 @@
-# Operating system
 .DS_Store
 Thumbs.db
-.Trashes
-
-# Secrets and local environment
 .env
 .env.*
 !.env.example
 *.pem
 *.key
-
-# JavaScript and TypeScript
+*.p12
+*.pfx
 node_modules/
-.pnp/
-.pnp.js
-.turbo/
-*.tsbuildinfo
-next-env.d.ts
-
-# Python
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-
-# Rust
 target/
-
-# Build and test output
 dist/
 build/
-out/
 coverage/
-htmlcov/
-.coverage*
-.next/
 artifacts/
-performance-results.json
-performance-results/
-cache/
-!.github/actions/cache/
-!.github/actions/cache/action.yml
-typechain/
-coverage.json
+.bun-native/
 .code-foundry/
-tests/.bin/
-**/.app/
-
-# Logs and temporary files
+*.tsbuildinfo
 *.log
 *.tmp
 *.pid
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-
-# Editors, agents, and local tools
-.claude/
-.kilo/
-.codex/
-.cursor/
-.windsurf/
-.vscode/
+*.dmp
+**/.app/
 .idea/
-.zed/
-.fleet/
-.opencode/
-.kluster/
-.direnv/
-.envrc
-.vercel/
-mise.local.toml
-.mise.local.toml
-mise.local.lock
-.mise.local.lock
-*.code-workspace
-
-# Machine-local git hook delegates written by Code Foundry sync; only the
-# committed pre-commit gate is tracked.
+.vscode/
+.codex/
+.claude/
 .githooks/*
 !.githooks/pre-commit
-.fleet-wt/
-
-# Repository-specific rules
-**/dist/
-native/target/
-.bunly/
-*.p12
-*.pfx
-*.dmp
-native/cef-host/target/
-native/cef-host/resources/
-# The source package is not generated build output.
-!packages/artifacts/

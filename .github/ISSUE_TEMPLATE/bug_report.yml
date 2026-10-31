@@ -7,7 +7,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Include the commit, developer and packaged Bun versions, browser/backend version, OS/CPU, security profile, affected package, and untested platforms. Redact private page content.
+      description: Include the commit, Bun compiler version and development/AOT mode, Rust and GPUI revisions, OS/CPU/GPU, affected package, and untested platforms. Redact private application content.
       placeholder: |
         Commit:
         Branch:

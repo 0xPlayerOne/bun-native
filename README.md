@@ -2,7 +2,7 @@
 
 **Bun Native** is an experimental, TypeScript-first desktop framework for building **real native interfaces** with Bun. Applications can be authored in TypeScript or JavaScript, using first-party **SolidJS** and **React** renderers over one shared native host. Production application logic is intended to use **Bun's machine-code ahead-of-time (AOT) compiler**.
 
-> **Status — October 31, 2026:** Bun Native is a **complete rewrite in progress**, not a released or working desktop framework yet. The repository still contains legacy Bunly/CEF source until [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251) replaces it. Do not mistake the previous Bunly 0.6.x code or successful historical tests for Bun Native functionality.
+> **Status — October 31, 2026:** Bun Native is a **complete rewrite in progress**, not a released or working desktop framework yet. The active workspace now replaces the legacy Bunly/CEF runtime under [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251). Do not mistake the previous Bunly 0.6.x code or successful historical tests for Bun Native functionality.
 
 ## What we're building
 
@@ -31,16 +31,16 @@ In development, Bun runs the app code normally. For distribution, Bun's AOT comp
 
 ## Current implementation status
 
-| Capability                                       | Status                                                                             |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Repo rename and BN0–BN7 roadmap                  | Planned and tracked                                                                |
-| New native codebase (replacement for Bunly/CEF)  | Not yet implemented — [#251](https://github.com/0xPlayerOne/bun-native/issues/251) |
-| Real Bun → native renderer window                | Not yet verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230)    |
-| Production Bun AOT + native renderer integration | Not yet verified — [#227](https://github.com/0xPlayerOne/bun-native/issues/227)    |
-| SolidJS, React, components and CLI               | Planned — BN2–BN5                                                                  |
-| Cross-platform native packaging, benchmarks      | Planned — BN6–BN7                                                                  |
+| Capability                                       | Status                                                                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Repo rename and BN0–BN7 roadmap                  | Planned and tracked                                                                                     |
+| New native codebase (replacement for Bunly/CEF)  | Native workspace and protocol foundation — [#251](https://github.com/0xPlayerOne/bun-native/issues/251) |
+| Real Bun → native renderer window                | Not yet verified — [#230](https://github.com/0xPlayerOne/bun-native/issues/230)                         |
+| Production Bun AOT + native renderer integration | Not yet verified — [#227](https://github.com/0xPlayerOne/bun-native/issues/227)                         |
+| SolidJS, React, components and CLI               | Planned — BN2–BN5                                                                                       |
+| Cross-platform native packaging, benchmarks      | Planned — BN6–BN7                                                                                       |
 
-The current source code is **not** an endorsed implementation foundation. Legacy CEF, WebView, browser API and M1–M7 documentation has been removed from the active documentation; it remains available in Git history for archaeology. The code itself is removed by the first migration implementation issue.
+The active packages contain the new native protocol foundation. Obsolete CEF runtime, browser fixtures, qualification scripts and benchmark evidence have been removed; Git history preserves them. See the [implementation handoff and removal inventory](docs/bun-native-handoff.md) for current checks and remaining native acceptance.
 
 ## Start here
 

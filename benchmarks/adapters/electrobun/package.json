@@ -1,8 +1,0 @@
-{
-  "name": "bunly-electrobun-baseline",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "electrobun": "2.0.3-beta.26"
-  }
-}

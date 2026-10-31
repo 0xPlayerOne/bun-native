@@ -1,15 +1,15 @@
-# Bunly repository tooling. App builds remain Bun-only; native qualification is separate.
+# Bun Native: Code Foundry owns draft/release policy; native CI is repository-owned.
 version: 1
 profile: monorepo
-languages: typescript,rust,python
+languages: typescript,rust
 package_manager: bun
 toolchain: native
 runtime_repository: 0xPlayerOne/code-foundry
 # Code Foundry v1.49.0, pinned to the immutable release source.
 runtime_ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
-features: validation,draft-pr,dependabot,release
+features: draft-pr,dependabot,release
 draft_protection: true
-billing_paused: true
+billing_paused: false
 billing_lanes: false
 dependency_updater: dependabot
 codeql: true
@@ -38,10 +38,10 @@ release_runner: ubuntu-slim
 performance: auto
 performance_command:
 performance_profile:
-performance_budget_file: performance-package-budgets.json
+performance_budget_file:
 prune_standard: false
 cache_packages: auto
-cache_build: auto
+cache_build: false
 required_capabilities: format,lint,type_check,build,unit
 coverage_enforcement: auto
 coverage_minimum: 80

@@ -17,6 +17,25 @@ The **new** developer command contract (create/dev/build/test/doctor) is designe
 
 To learn the compiler interface, see the official [Bun compiler documentation](https://bun.com/docs/compiler) and [AOT compatibility](https://bun.com/docs/compiler/compatibility). `bun compile` differs from `bun build --compile`: the latter is an ordinary bundled JIT executable and is not accepted as a Bun Native production AOT proof.
 
+## Run the implemented foundation checks
+
+The exact compiler source, artifact checksums and Rust/GPUI versions are in
+`toolchain.json`. Install the pinned Bun without relying on a rolling canary:
+
+```sh
+node scripts/install-bun.mjs --destination "$PWD/.bun-native/toolchain"
+export PATH="$PWD/.bun-native/toolchain:$PATH"
+bun install --frozen-lockfile
+bun run check
+cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
+```
+
+The destination must be an absolute path. On Windows use an absolute Windows
+path and prepend it to that shell's PATH. The installer verifies the platform
+archive SHA-256 and the executable revision. Rust contributors use the exact
+`rust-toolchain.toml` pin. These checks cover protocol, source and architecture;
+the [implementation handoff](bun-native-handoff.md) records native GUI/AOT gaps.
+
 ## First actual app acceptance
 
 The first example, owned by #230 and #227, must:

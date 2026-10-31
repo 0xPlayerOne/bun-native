@@ -1,5 +1,4 @@
 {
-  "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": false,
   "singleQuote": true,
   "trailingComma": "es5",
@@ -8,9 +7,10 @@
     "CHANGELOG.md",
     ".github/.code-foundry",
     ".github/actions/",
-    "plugin.json",
-    "evidence/**",
-    ".bunly/**"
+    "node_modules/**",
+    "native/target/**",
+    "dist/**",
+    ".bun-native/**"
   ],
   "tabWidth": 2,
   "endOfLine": "lf",
