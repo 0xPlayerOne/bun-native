@@ -120,6 +120,9 @@ jobs:
             bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,mode:"development",coverage:"headless protocol"}))'
           } | tee .bun-native/evidence/toolchain.txt
       - name: Cross-platform TypeScript contracts
+        env:
+          # The existing protocol artifact retains this metadata only if the original assertion fails.
+          BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR: ${{ runner.os == 'Windows' && '.bun-native/evidence/retention' || '' }}
         run: bun test tests
       - name: Rust protocol checks (no GUI claim)
         run: |
