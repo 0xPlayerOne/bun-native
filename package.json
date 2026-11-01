@@ -26,7 +26,7 @@
     "solid:build": "bun scripts/solid-build.ts"
   },
   "devDependencies": {
-    "@babel/core": "7.29.7",
+    "@babel/core": "8.0.10",
     "@bun-native/core": "workspace:*",
     "@bun-native/protocol": "workspace:*",
     "@bun-native/renderer": "workspace:*",
@@ -36,7 +36,7 @@
     "@types/bun": "1.4.4",
     "@types/react": "19.3.0",
     "babel-preset-solid": "1.9.16",
-    "code-foundry": "1.48.8",
+    "code-foundry": "1.51.1",
     "oxc-parser": "0.156.0",
     "oxlint": "1.90.0",
     "react": "19.3.1",
