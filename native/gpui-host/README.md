@@ -77,6 +77,12 @@ platforms/backends report this service unavailable. No file, process or general
 service endpoint is exposed. See [native services](../../docs/native-services.md) for precise
 errors, lifecycle and pending platform qualification.
 
+The [fresh clipboard record](../../tests/native/evidence/clipboard-linux-recovered.json)
+qualifies the recovered source in a private Linux X11 session with this host's
+development profile, in both Bun development and inspected AOT modes. All 26
+transfer/lifecycle outcomes and 22 joined peers passed per run. Other host
+profiles and platforms require their own execution evidence.
+
 The X11 clipboard stream has a shared 262,144-byte inbound admission limit per
 transfer or owned-selection service burst. Idle workers wait on actual socket
 readiness or queued-work/shutdown notification. Authority parsing reads the

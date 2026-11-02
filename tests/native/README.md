@@ -160,7 +160,13 @@ The result records the host and peer executable hashes and the controller's
 source snapshot. Retain the AOT manifest separately to establish actual compiled
 application provenance. The [recovery history](evidence/clipboard-recovery-history.json)
 records prior execution whose unpublished source/raw files were lost; it is
-not fresh qualification of reconstructed files.
+not fresh qualification of reconstructed files. The separate
+[recovered-source record](evidence/clipboard-linux-recovered.json) binds two
+new successful development/AOT runs to their exact host, peer, application and
+source hashes. It also records the actual compiler's official npm acquisition;
+the older GitHub archive configuration in the source manifest is not a download
+receipt. These local runs use the development Rust host profile, while the
+hosted job builds and tests its own release host.
 
 ### Shared native desktop service
 

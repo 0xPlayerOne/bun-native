@@ -1,6 +1,6 @@
 # ADR 0006 — Bounded native clipboard text worker
 
-Status: accepted implementation direction; source and headless checks are distinct from pending native clipboard qualification.
+Status: accepted; recovered Linux X11 implementation qualified locally in development and inspected AOT with a development-profile host. Hosted release-host and additional-platform acceptance remain separate.
 
 Date: 2026-10-31.
 
@@ -60,7 +60,9 @@ Idle workers block on a notification socket and, while owning a selection, the
 actual X connection. There is no periodic idle polling after a read, during
 selection ownership, or after ownership loss. Notifications coalesce safely;
 other notification failures cancel pending work and initiate worker teardown.
-Dropping the notification sender wakes shutdown.
+The stopping state retains its join task even when teardown began on this
+exceptional path; final session shutdown takes and awaits that task. Dropping
+the notification sender wakes shutdown.
 
 The trusted local X server, regular local filesystem and process launch
 environment remain part of the existing desktop trust boundary. The input-byte
@@ -94,7 +96,9 @@ alongside a completed tree commit, pending-request limits, read cancellation,
 close/shutdown and wrong-owner responses. Socket-pair tests cover deadline, cancellation,
 notification coalescing, shutdown and the pre-parser input budget. Authority
 tests cover matching, truncation, FIFO/oversize rejection and path replacement
-after the checked descriptor has opened. These are **headless** checks.
+after the checked descriptor has opened. A held real worker thread and pending
+GPUI task check that a notification failure cannot detach the join from final
+shutdown. These are **headless** checks.
 
 Native acceptance must use only a task-owned isolated Xvfb selection and an
 independent foreground owner/reader. It must prove external reading of writes,
@@ -107,7 +111,11 @@ at three idle checkpoints, complete native paints and every joined peer.
 
 An executor recovery lost the unpublished final source snapshot and raw native
 artifacts. The [historical recovery note](../../tests/native/evidence/clipboard-recovery-history.json)
-preserves what was previously reported without treating it as qualification of
-the reconstructed source. Fresh source and native development/AOT validation is
-required before the recovered increment is marked ready. Broader platform and
-format support remains open under #300.
+preserves that loss. The reconstructed source subsequently passed a distinct
+[fresh qualification](../../tests/native/evidence/clipboard-linux-recovered.json)
+on November 2, 2026: both development and inspected AOT completed all 26
+outcomes, joined all 22 independent peers and returned seven public ownership
+counters to zero without forced cleanup. The three idle checkpoints in each
+run observed zero clipboard-worker CPU ticks and context switches. These are
+bounded correctness observations, not a sustained performance or leak claim.
+Broader platform and format support remains open under #300.

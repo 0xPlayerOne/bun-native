@@ -6,7 +6,7 @@ use async_channel::{Receiver, Sender};
 use bun_native_protocol::{
     ClipboardText, ErrorCode, Event, MAX_SERVICE_REQUESTS, RequestId, WindowId,
 };
-use gpui::{App, Task, Window};
+use gpui::{App, BackgroundExecutor, Task, Window};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -103,9 +103,46 @@ struct Worker {
     thread: JoinHandle<()>,
 }
 
+enum WorkerState {
+    NotStarted,
+    Running(Worker),
+    Stopping(Task<()>),
+    Stopped,
+}
+
+impl WorkerState {
+    fn running(&self) -> Option<&Worker> {
+        match self {
+            Self::Running(worker) => Some(worker),
+            _ => None,
+        }
+    }
+
+    fn begin_stop(&mut self, executor: &BackgroundExecutor) {
+        *self = match std::mem::replace(self, Self::Stopped) {
+            Self::Running(worker) => Self::Stopping(executor.spawn(async move {
+                drop(worker.jobs);
+                drop(worker.wake);
+                let _ = worker.thread.join();
+            })),
+            state => state,
+        };
+    }
+
+    fn take_join(&mut self) -> Option<Task<()>> {
+        match std::mem::replace(self, Self::Stopped) {
+            Self::Stopping(task) => Some(task),
+            state => {
+                *self = state;
+                None
+            }
+        }
+    }
+}
+
 struct Inner {
     pending: RefCell<BTreeMap<RequestId, Pending>>,
-    worker: RefCell<Option<Worker>>,
+    worker: RefCell<WorkerState>,
     stopping: Arc<AtomicBool>,
     events: EventSink,
     config: Option<x11::Config>,
@@ -126,7 +163,7 @@ impl Clipboard {
     pub(crate) fn new(events: EventSink, cx: &App) -> Self {
         Self(Rc::new(Inner {
             pending: RefCell::new(BTreeMap::new()),
-            worker: RefCell::new(None),
+            worker: RefCell::new(WorkerState::NotStarted),
             stopping: Arc::new(AtomicBool::new(false)),
             events,
             config: x11::Config::from_app(cx),
@@ -172,7 +209,7 @@ impl Clipboard {
                 "native clipboard worker is shutting down",
             ));
         }
-        if self.0.worker.borrow().is_none() {
+        if self.0.worker.borrow().running().is_none() {
             self.start(cx)?;
         }
         let cancelled = Arc::new(AtomicBool::new(false));
@@ -189,7 +226,7 @@ impl Clipboard {
         self.0
             .worker
             .borrow()
-            .as_ref()
+            .running()
             .ok_or((
                 ErrorCode::NativeFailure,
                 "native clipboard worker is unavailable",
@@ -210,7 +247,7 @@ impl Clipboard {
             .0
             .worker
             .borrow()
-            .as_ref()
+            .running()
             .is_some_and(|worker| worker.wake.notify().is_err());
         if wake_failed {
             self.cancel(
@@ -219,9 +256,13 @@ impl Clipboard {
                 "cannot notify native clipboard worker",
                 cx,
             );
-            if let Some(join) = self.stop(cx) {
-                join.detach();
-            }
+            self.0.stopping.store(true, Ordering::Release);
+            // Retain this join even though the failure has already revoked the
+            // requests. Session shutdown must await it before its final reply.
+            self.0
+                .worker
+                .borrow_mut()
+                .begin_stop(cx.background_executor());
         }
         Ok(())
     }
@@ -250,7 +291,9 @@ impl Clipboard {
                         "cannot start native clipboard worker",
                     )
                 })?;
-            self.0.worker.replace(Some(Worker { jobs, wake, thread }));
+            self.0
+                .worker
+                .replace(WorkerState::Running(Worker { jobs, wake, thread }));
             let clipboard = self.clone();
             cx.spawn(async move |cx| {
                 while let Ok(completion) = responses.recv().await {
@@ -325,12 +368,9 @@ impl Clipboard {
             "native clipboard request cancelled during shutdown",
             cx,
         );
-        let worker = self.0.worker.borrow_mut().take()?;
-        Some(cx.background_executor().spawn(async move {
-            drop(worker.jobs);
-            drop(worker.wake);
-            let _ = worker.thread.join();
-        }))
+        let mut worker = self.0.worker.borrow_mut();
+        worker.begin_stop(cx.background_executor());
+        worker.take_join()
     }
 }
 
@@ -399,4 +439,54 @@ fn worker(
     }
     // Dropping the connection relinquishes only this worker's selection. No
     // previous external owner is cleared or restored.
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    #[test]
+    fn failed_notification_keeps_the_pending_join_for_shutdown() {
+        let executor = gpui_platform::background_executor();
+        let (jobs, _requests) = async_channel::bounded(1);
+        let (wake, notification) = wake::pair().unwrap();
+        drop(notification);
+        let (release, wait) = mpsc::channel();
+        let exited = Arc::new(AtomicBool::new(false));
+        let worker_exited = exited.clone();
+        let thread = std::thread::spawn(move || {
+            // Even a failed assertion cannot leave this test worker blocked.
+            let _ = wait.recv_timeout(Duration::from_secs(2));
+            worker_exited.store(true, Ordering::Release);
+        });
+        let mut worker = WorkerState::Running(Worker { jobs, wake, thread });
+        assert!(worker.running().unwrap().wake.notify().is_err());
+
+        // The notification failure starts the join; later shutdown must obtain
+        // that same pending task, rather than treating the worker as absent.
+        worker.begin_stop(&executor);
+        worker.begin_stop(&executor);
+        let joined = worker.take_join().expect("shutdown lost the pending join");
+        assert!(!joined.is_ready());
+        assert!(worker.take_join().is_none());
+        let (acknowledge, acknowledged) = mpsc::channel();
+        let shutdown = executor.spawn(async move {
+            joined.await;
+            acknowledge.send(()).unwrap();
+        });
+        assert!(matches!(
+            acknowledged.recv_timeout(Duration::from_millis(30)),
+            Err(mpsc::RecvTimeoutError::Timeout)
+        ));
+        release.send(()).unwrap();
+        acknowledged.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(exited.load(Ordering::Acquire));
+        let mut shutdown = std::pin::pin!(shutdown);
+        assert!(executor.scheduler_executor().scheduler().block(
+            None,
+            shutdown.as_mut(),
+            Some(Duration::from_secs(1))
+        ));
+    }
 }

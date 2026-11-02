@@ -12,11 +12,14 @@ qualification on one isolated Xvfb screen with a development-profile host.
 Hosted release-host acceptance is configured separately; macOS and Windows
 service execution remains unverified. Parser and type checks are separate
 evidence. See the [source-bound record](../tests/native/evidence/services-linux-development-aot.json).
-The protocol-6 clipboard increment is being recovered from its published draft
-after an executor reset lost an unpublished qualified snapshot and its raw
-artifacts. The [historical recovery note](../tests/native/evidence/clipboard-recovery-history.json)
-does not qualify the reconstructed source; fresh source, isolated-X11 and AOT
-checks are pending.
+The recovered protocol-6 clipboard increment passed fresh source, isolated-X11
+development and inspected AOT checks on November 2, 2026. Each native run
+completed 26 outcomes and joined 22 independent peers with no forced cleanup.
+The [fresh record](../tests/native/evidence/clipboard-linux-recovered.json)
+binds the new source and binaries, separately from the
+[historical recovery note](../tests/native/evidence/clipboard-recovery-history.json)
+whose prior raw artifacts were lost. These local runs use a development-profile
+Rust host; hosted release-host acceptance remains pending.
 
 ## Policy and capability contract
 
@@ -200,7 +203,8 @@ Read cancellation before dispatch sends nothing. After dispatch, the bounded
 reply is drained and validated before cancellation suppresses delivery.
 Window closure revokes its pending native requests. Shutdown cancels pending
 work, joins the worker off the UI thread and only then acknowledges terminal
-completion. A malformed response still fails the channel under cancellation.
+completion, including teardown already initiated by a notification failure.
+A malformed response still fails the channel under cancellation.
 
 `writeClipboardText` has no cancellation option. The acknowledgement verifies
 that the X server made the worker's private window the selection owner. It does
@@ -225,17 +229,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                      | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending  | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | Implemented local X11 worker; native/AOT qualification pending | Unavailable                  | Unavailable                  | Independent-reader proof, bounded INCR/stalled-owner/cancellation checks, additional platforms/formats. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                   |
-| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                    | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                    | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                    | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                    | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                    | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                    | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                    | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+| Service           | Current public surface                                        | Linux X11                                                     | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified locally; release CI pending              | Unavailable                  | Unavailable                  | Release-host checks, additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                        |
+| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                   | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                   | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                   | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
+| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                   | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                   | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                   | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
 
 The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
