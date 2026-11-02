@@ -77,6 +77,15 @@ platforms/backends report this service unavailable. No file, process or general
 service endpoint is exposed. See [native services](../../docs/native-services.md) for precise
 errors, lifecycle and pending platform qualification.
 
+The X11 clipboard stream has a shared 262,144-byte inbound admission limit per
+transfer or owned-selection service burst. Idle workers wait on actual socket
+readiness or queued-work/shutdown notification. Authority parsing reads the
+same nonblocking-opened, validated regular descriptor with a 1 MiB byte bound;
+local filesystem setup and the local X server remain trusted. The attributed
+parser's MIT license is retained alongside the upstream GPUI input license.
+The independent `clipboard-peer` example is a foreground fixture restricted to
+an explicitly guarded isolated display; it is not a product helper process.
+
 Request, window and node IDs are positive JavaScript-safe integers and increase
 across the session in separate namespaces. A deleted node or closed window ID
 is never reused. Failed batches leave both the model and node allocation

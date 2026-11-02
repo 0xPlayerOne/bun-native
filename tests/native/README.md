@@ -117,6 +117,51 @@ to AOT. They share the core operation, policy and native implementation.
 
 ## Evidence and limits
 
+### Isolated clipboard diagnostic
+
+The `clipboard` diagnostic uses the existing owned-process/window controller
+and a separate foreground native X11 owner/requestor. It touches only the
+task-owned Xvfb selection; never run it against a personal or shared display.
+
+```sh
+cargo build --locked --release -p bun-native-host --bin bun-native-host --example clipboard-peer
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+export BUN_NATIVE_CLIPBOARD_PEER="$PWD/target/release/examples/clipboard-peer"
+
+xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+  "$run_dir/clipboard-development-session" -- \
+  python3 scripts/quality/native-diagnostics-linux.py \
+  --output "$run_dir/clipboard-development" --scenario clipboard \
+  --mode development --host-profile release -- bun tests/native/clipboard.ts
+
+bun experiments/aot-gpui/build-window.ts --entry clipboard --source "$PWD" \
+  --host "$BUN_NATIVE_HOST" --host-profile release --outdir "$run_dir/clipboard-package"
+
+xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+  "$run_dir/clipboard-aot-session" -- \
+  python3 scripts/quality/native-diagnostics-linux.py \
+  --output "$run_dir/clipboard-aot" --scenario clipboard \
+  --mode aot --host-profile release -- "$run_dir/clipboard-package/clipboard"
+```
+
+Each run requires all 26 outcomes, the exact 22 normally joined foreground
+peers, complete initial/intermediate/final native paints, an actual XTest edit
+while an external owner stalls, OS close and seven zero public ownership
+counters. It distinguishes empty selection from empty text, tests ordinary and
+INCR reads, oversized/invalid/flooded transfers, default denial, stale owners,
+read cancellation, pending close/shutdown, external reads of writes and
+preservation of a newer external selection after host shutdown. Idle observations
+cover post-read, retained ownership and ownership loss; they are bounded
+diagnostics, not whole-system power or long-term performance measurements.
+
+The result records the host and peer executable hashes and the controller's
+source snapshot. Retain the AOT manifest separately to establish actual compiled
+application provenance. The [recovery history](evidence/clipboard-recovery-history.json)
+records prior execution whose unpublished source/raw files were lost; it is
+not fresh qualification of reconstructed files.
+
 ### Shared native desktop service
 
 The [service qualification record](evidence/services-linux-development-aot.json)

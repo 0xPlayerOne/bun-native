@@ -42,6 +42,7 @@ const entries = {
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
   services: 'tests/native/services.ts',
+  clipboard: 'tests/native/clipboard.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -93,6 +94,7 @@ if (
     entry === 'layout' ||
     entry === 'interactions' ||
     entry === 'services' ||
+    entry === 'clipboard' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -189,6 +191,7 @@ async function sourceHashes() {
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
+  if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
   }))

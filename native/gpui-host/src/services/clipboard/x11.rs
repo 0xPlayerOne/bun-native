@@ -2,10 +2,11 @@
 //! window. The external owner and its properties are untrusted bounded input.
 
 use super::stream::BoundedStream;
-use super::{Budget, Failure, WORKER_POLL};
+use super::{Budget, Failure, WORKER_POLL, auth};
 use bun_native_protocol::{ClipboardText, ErrorCode, MAX_CLIPBOARD_BYTES, validate_clipboard_text};
 use gpui::App;
 use std::collections::VecDeque;
+use std::os::fd::{AsFd, BorrowedFd};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use x11rb::connection::Connection;
@@ -14,13 +15,12 @@ use x11rb::protocol::xproto::{
     self, Atom, AtomEnum, ConnectionExt, CreateWindowAux, EventMask, PropMode, Property,
     SelectionNotifyEvent, SelectionRequestEvent, Window, WindowClass,
 };
-use x11rb::reexports::x11rb_protocol::{parse_display::parse_display, xauth};
+use x11rb::reexports::x11rb_protocol::parse_display::parse_display;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
 type XConnection = RustConnection<BoundedStream>;
 const EVENT_BUDGET: usize = 64;
-const MAX_AUTH_FILE_BYTES: u64 = 1_048_576;
 
 #[derive(Clone)]
 pub(super) struct Config {
@@ -56,30 +56,24 @@ impl Config {
         let (stream, (family, address)) =
             BoundedStream::local(&format!("/tmp/.X11-unix/X{}", self.display), budget)?;
         // Authentication remains local session setup, never a clipboard grant.
-        // Refuse non-regular/oversized authority files rather than blocking on
-        // a pipe or scanning an unbounded file. No credentials enter evidence.
+        // The same opened regular file is validated and read, with a fixed
+        // byte cap. Local filesystem setup remains trusted, not a hard
+        // wall-clock I/O guarantee. No credentials enter evidence.
         let authority = std::env::var_os("XAUTHORITY")
             .map(PathBuf::from)
             .or_else(|| {
                 std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".Xauthority"))
             });
-        if let Some(path) = authority {
-            match std::fs::metadata(path) {
-                Ok(metadata) if !metadata.is_file() || metadata.len() > MAX_AUTH_FILE_BYTES => {
-                    return Err((
-                        ErrorCode::ServiceUnavailable,
-                        "X11 authority file is not a bounded regular file",
-                    ));
-                }
-                Ok(_) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(_) => return Err(budget.failure()),
-            }
-        }
-        let (name, data) = xauth::get_auth(family, &address, self.display)
-            .unwrap_or(None)
-            .unwrap_or_default();
+        let authentication = auth::get(authority.as_deref(), family, &address, self.display);
         budget.check()?;
+        let (name, data) = authentication
+            .map_err(|_| {
+                (
+                    ErrorCode::ServiceUnavailable,
+                    "X11 authority setup is not a valid bounded regular file",
+                )
+            })?
+            .unwrap_or_default();
         let connection =
             RustConnection::connect_to_stream_with_auth_info(stream, self.screen, name, data)
                 .map_err(|_| budget.failure())?;
@@ -251,11 +245,12 @@ pub(super) fn write(
     Ok(())
 }
 
-pub(super) fn serve(owner: &mut Option<Owner>, budget: &Budget) -> Result<(), Failure> {
-    let Some(owner) = owner else {
-        return Ok(());
+pub(super) fn serve(slot: &mut Option<Owner>, budget: &Budget) -> Result<bool, Failure> {
+    let Some(owner) = slot else {
+        return Ok(false);
     };
     owner.context.connection.stream().set_budget(budget);
+    let mut more = true;
     for _ in 0..EVENT_BUDGET {
         match owner.context.next(budget)? {
             Some(Event::SelectionRequest(request)) => {
@@ -282,17 +277,30 @@ pub(super) fn serve(owner: &mut Option<Owner>, budget: &Budget) -> Result<(), Fa
                 }
             }
             Some(_) => {}
-            None => break,
+            None => {
+                more = false;
+                break;
+            }
         }
     }
     owner
         .context
         .connection
         .flush()
-        .map_err(|_| budget.failure())
+        .map_err(|_| budget.failure())?;
+    if owner.text.is_none() {
+        // A replaced selection needs neither a connection nor an idle wakeup.
+        *slot = None;
+        more = false;
+    }
+    Ok(more)
 }
 
 impl Owner {
+    pub(super) fn fd(&self) -> BorrowedFd<'_> {
+        self.context.connection.stream().as_fd()
+    }
+
     fn convert(
         &self,
         requestor: Window,
@@ -392,6 +400,7 @@ impl Owner {
             let mut pairs: Vec<u32> = reply.value32().into_iter().flatten().collect();
             if request.property == x11rb::NONE
                 || reply.type_ != context.atoms.atom_pair
+                || reply.format != 32
                 || reply.bytes_after != 0
                 || !pairs.len().is_multiple_of(2)
             {

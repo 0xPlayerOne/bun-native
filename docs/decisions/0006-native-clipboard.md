@@ -49,9 +49,28 @@ Each request has at most two seconds from native submission, including worker
 queue time. A nonblocking stream bounds x11rb's reply waits and checks owner
 revocation/shutdown between short polls. Payloads are at most 8,192 UTF-8 bytes,
 without NUL, which also fit the 65,536-byte JSON frame under worst-case escaping.
-The trusted local X server and process launch environment remain part of the
-existing desktop trust boundary. Authority-file setup is restricted to a
-bounded regular local file; credentials never enter diagnostics.
+The stream also admits at most 262,144 inbound protocol bytes per operation or
+owned-selection service burst. That counter is shared across connections and
+all INCR chunks before x11rb can enqueue their events. A 64-event drain alone
+would not bound the library's internal input queue. Exceeding the admission
+budget produces `limit_exceeded` for a pending operation; an idle selection
+connection that exceeds it is relinquished.
+
+Idle workers block on a notification socket and, while owning a selection, the
+actual X connection. There is no periodic idle polling after a read, during
+selection ownership, or after ownership loss. Notifications coalesce safely;
+other notification failures cancel pending work and initiate worker teardown.
+Dropping the notification sender wakes shutdown.
+
+The trusted local X server, regular local filesystem and process launch
+environment remain part of the existing desktop trust boundary. The input-byte
+cap does not defend against a malformed trusted X server advertising an invalid
+packet allocation length. Authority setup opens one nonblocking descriptor,
+validates that descriptor as a regular file, and reads at most 1 MiB plus a
+one-byte oversize sentinel from the same descriptor. The attributed pinned
+xauth parser preserves family/address/display/MIT-cookie matching. Local
+filesystem setup is byte-bounded, not a hard wall-clock filesystem I/O guarantee;
+credentials and their path never enter diagnostics.
 
 ## Ownership and cancellation
 
@@ -72,13 +91,23 @@ it never restores stale data or clears a newer external owner's selection.
 Paired TypeScript/Rust cases cover grants, strict shapes, Unicode, empty text,
 byte limits and malformed responses. Real subprocess tests cover a held read
 alongside a completed tree commit, pending-request limits, read cancellation,
-close/shutdown and wrong-owner responses. A socket-pair test covers deadline
-and cancellation without calling an X server. These are **headless** checks.
+close/shutdown and wrong-owner responses. Socket-pair tests cover deadline, cancellation,
+notification coalescing, shutdown and the pre-parser input budget. Authority
+tests cover matching, truncation, FIFO/oversize rejection and path replacement
+after the checked descriptor has opened. These are **headless** checks.
 
 Native acceptance must use only a task-owned isolated Xvfb selection and an
 independent foreground owner/reader. It must prove external reading of writes,
 ordinary and incremental reads, oversized/malformed data, owner loss, a stalled
 owner while native input/paint/commits continue, cancellation and worker teardown
-in development and inspected AOT. Until those tests execute, this slice is not
-qualified as native clipboard support. Broader platform and format support
-remains open under #300.
+in development and inspected AOT. The foreground peer additionally submits an
+invalid format-8 `ATOM_PAIR` MULTIPLE request and a bounded hostile selection
+event flood. The controller checks sleeping-worker context-switch/CPU deltas
+at three idle checkpoints, complete native paints and every joined peer.
+
+An executor recovery lost the unpublished final source snapshot and raw native
+artifacts. The [historical recovery note](../../tests/native/evidence/clipboard-recovery-history.json)
+preserves what was previously reported without treating it as qualification of
+the reconstructed source. Fresh source and native development/AOT validation is
+required before the recovered increment is marked ready. Broader platform and
+format support remains open under #300.

@@ -119,7 +119,11 @@ without consuming a UI event sequence or tree revision. Replies may complete
 out of request order and still must match the exact request and window.
 There are at most eight pending clipboard operations, each with a two-second
 total deadline including its native queue time. Text is at most 8,192 UTF-8
-bytes; empty text differs from no selection owner. See
+bytes; empty text differs from no selection owner. A shared 262,144-byte inbound
+protocol budget covers the entire transfer and owned-selection service bursts,
+before x11rb queues input. The local X server and bounded regular authority-file
+setup remain trusted; the two-second transfer deadline does not promise a hard
+wall-clock filesystem setup bound. See
 [clipboard semantics](native-services.md#clipboard-text-and-lifecycle).
 
 Each atomic `batch` supports the following operations:

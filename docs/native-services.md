@@ -12,8 +12,11 @@ qualification on one isolated Xvfb screen with a development-profile host.
 Hosted release-host acceptance is configured separately; macOS and Windows
 service execution remains unverified. Parser and type checks are separate
 evidence. See the [source-bound record](../tests/native/evidence/services-linux-development-aot.json).
-The protocol-6 clipboard increment currently has source and headless contract
-checks; actual isolated-X11 and AOT clipboard qualification is pending.
+The protocol-6 clipboard increment is being recovered from its published draft
+after an executor reset lost an unpublished qualified snapshot and its raw
+artifacts. The [historical recovery note](../tests/native/evidence/clipboard-recovery-history.json)
+does not qualify the reconstructed source; fresh source, isolated-X11 and AOT
+checks are pending.
 
 ## Policy and capability contract
 
@@ -176,8 +179,22 @@ There are at most eight pending service requests, observable through
 starts at request submission, includes queue time and is never extended by
 an incremental-transfer chunk. Native owner replies and server I/O are polled
 with cancellation checks. Ordinary updates and input can progress while a
-clipboard request waits; actual validation of that scheduling property remains
-part of the pending native fixture.
+clipboard request waits; the real fixture requires both an unrelated commit and
+native input/paint before a deliberately stalled external owner times out.
+
+The stream admits at most 262,144 inbound protocol bytes across the transfer,
+including all INCR chunks, before x11rb can queue those bytes. The same bound
+applies to an owned-selection service burst. MULTIPLE request lists must have
+actual `ATOM_PAIR` type, format 32 and an even bounded atom count. When idle, the
+worker waits on its notification socket and any owned selection connection;
+it does not keep waking on a timer. The native fixture separately observes idle
+worker CPU/context-switch deltas after reads, during ownership and after loss.
+
+Authority matching uses the attributed pinned xauth parser over one opened,
+validated regular descriptor, read with a fixed 1 MiB plus oversize-sentinel
+limit. The local filesystem, X server and launch environment remain trusted.
+This is not a hard wall-clock filesystem I/O guarantee or a defense against
+malformed server packet lengths; credentials never enter diagnostics.
 
 Read cancellation before dispatch sends nothing. After dispatch, the bounded
 reply is drained and validated before cancellation suppresses delivery.

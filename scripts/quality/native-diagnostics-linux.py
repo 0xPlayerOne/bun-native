@@ -38,6 +38,11 @@ INTERACTIONS_SPEC = importlib.util.spec_from_file_location(
 )
 INTERACTIONS = importlib.util.module_from_spec(INTERACTIONS_SPEC)
 INTERACTIONS_SPEC.loader.exec_module(INTERACTIONS)
+CLIPBOARD_SPEC = importlib.util.spec_from_file_location(
+    "native_clipboard_scenario", ROOT / "scripts/quality/native-clipboard-scenario.py"
+)
+CLIPBOARD = importlib.util.module_from_spec(CLIPBOARD_SPEC)
+CLIPBOARD_SPEC.loader.exec_module(CLIPBOARD)
 SCENARIOS = (
     "startup-failure",
     "host-crash",
@@ -45,6 +50,7 @@ SCENARIOS = (
     "scheduling-control",
     "layout",
     "interactions",
+    "clipboard",
 )
 
 
@@ -62,8 +68,11 @@ def source_snapshot():
         ROOT / "tests/native/scheduling.ts",
         ROOT / "tests/native/layout.ts",
         ROOT / "tests/native/interactions.ts",
+        ROOT / "tests/native/clipboard.ts",
+        ROOT / "native/gpui-host/examples/clipboard-peer.rs",
         ROOT / "scripts/quality/native-layout-scenario.py",
         ROOT / "scripts/quality/native-interactions-scenario.py",
+        ROOT / "scripts/quality/native-clipboard-scenario.py",
         Path(__file__).resolve(),
         ROOT / "scripts/quality/native-input-linux.py",
     ]
@@ -134,6 +143,14 @@ def main():
     if not host.is_absolute() or not host.is_file():
         parser.error("BUN_NATIVE_HOST must identify an absolute prebuilt executable")
     host = host.resolve()
+    peer = None
+    if args.scenario == "clipboard":
+        peer = Path(os.environ.get("BUN_NATIVE_CLIPBOARD_PEER", ""))
+        if not peer.is_absolute() or not peer.is_file():
+            parser.error(
+                "BUN_NATIVE_CLIPBOARD_PEER must identify an absolute prebuilt executable"
+            )
+        peer = peer.resolve()
     for tool in ("xdotool", "import"):
         if not shutil.which(tool):
             raise DRIVER.Unsupported(
@@ -158,6 +175,8 @@ def main():
         "signals": [],
         "logs": {},
     }
+    if peer is not None:
+        report["clipboardPeer"] = {"path": str(peer), **fingerprint(peer)}
     environment = {
         **os.environ,
         "BUN_NATIVE_DIAGNOSTICS_DIR": str(output),
@@ -165,6 +184,9 @@ def main():
         "BUN_NATIVE_EVIDENCE_LOG": str(output / "native.jsonl"),
         "BUN_NATIVE_EVIDENCE_NONCE": nonce,
     }
+    if peer is not None:
+        environment["BUN_NATIVE_CLIPBOARD_PEER"] = str(peer)
+        environment["BUN_NATIVE_ISOLATED_CLIPBOARD"] = "1"
     if args.scenario == "startup-failure":
         environment["DISPLAY"] = "bun-native-invalid-display"
     app = None
@@ -261,6 +283,7 @@ def main():
                 "host-crash": "Bun Native native fault",
                 "layout": "Bun Native layout",
                 "interactions": "Bun Native interactions",
+                "clipboard": "Bun Native clipboard",
             }.get(args.scenario, "Bun Native scheduling audit")
             window, owner = wait_for(lambda: owned_window(title), "owned native window")
             report["window"] = {
@@ -292,7 +315,7 @@ def main():
             if DRIVER.run(["xdotool", "getwindowfocus"]) != window:
                 raise RuntimeError("The owned native window did not gain focus")
             capture_window(window, "before.png")
-            if args.scenario in ("layout", "interactions"):
+            if args.scenario in ("layout", "interactions", "clipboard"):
 
                 def require_layout_window():
                     require_owned_host(app, observed, owner, host)
@@ -301,9 +324,13 @@ def main():
                             "The owned diagnostic window changed its native owner"
                         )
 
-                scenario = LAYOUT if args.scenario == "layout" else INTERACTIONS
+                scenario = {
+                    "layout": LAYOUT,
+                    "interactions": INTERACTIONS,
+                    "clipboard": CLIPBOARD,
+                }[args.scenario]
                 scenario_arguments = [DRIVER]
-                if args.scenario == "interactions":
+                if args.scenario in ("interactions", "clipboard"):
                     scenario_arguments.append(LAYOUT)
                 report[args.scenario + "Observations"] = scenario.run(
                     *scenario_arguments,
@@ -450,6 +477,14 @@ def main():
             raise RuntimeError(
                 "Source or native artifact changed during the diagnostic"
             )
+        if peer is not None:
+            CLIPBOARD.validate_result(report["application"])
+            if fingerprint(peer) != {
+                key: report["clipboardPeer"][key] for key in ("sha256", "bytes")
+            }:
+                raise RuntimeError(
+                    "Independent clipboard peer changed during the diagnostic"
+                )
         report["status"] = "passed"
     except Exception as error:
         report["error"] = {"type": type(error).__name__, "message": str(error)}

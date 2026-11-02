@@ -11,15 +11,18 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+mod auth;
 mod stream;
+mod wake;
 mod x11;
 
 const TRANSFER_TIMEOUT: Duration = Duration::from_secs(2);
 const WORKER_POLL: Duration = Duration::from_millis(5);
+const MAX_INBOUND_BYTES: usize = 262_144;
 type Failure = (ErrorCode, &'static str);
 
 pub(crate) enum Operation {
@@ -48,6 +51,7 @@ struct Budget {
     deadline: Instant,
     cancelled: Arc<AtomicBool>,
     stopping: Arc<AtomicBool>,
+    inbound: Arc<AtomicUsize>,
 }
 
 impl Budget {
@@ -56,6 +60,11 @@ impl Budget {
             Err((
                 ErrorCode::Cancelled,
                 "native clipboard request was cancelled",
+            ))
+        } else if self.inbound.load(Ordering::Relaxed) > MAX_INBOUND_BYTES {
+            Err((
+                ErrorCode::LimitExceeded,
+                "native clipboard transfer exceeded its inbound byte budget",
             ))
         } else if Instant::now() >= self.deadline {
             Err((
@@ -73,6 +82,14 @@ impl Budget {
             "native X11 clipboard operation failed",
         ))
     }
+
+    fn input_allowance(&self) -> usize {
+        let remaining = MAX_INBOUND_BYTES.saturating_sub(self.inbound.load(Ordering::Relaxed));
+        if remaining == 0 {
+            self.inbound.store(MAX_INBOUND_BYTES + 1, Ordering::Relaxed);
+        }
+        remaining
+    }
 }
 
 struct Pending {
@@ -82,6 +99,7 @@ struct Pending {
 
 struct Worker {
     jobs: Sender<Job>,
+    wake: wake::Sender,
     thread: JoinHandle<()>,
 }
 
@@ -165,6 +183,7 @@ impl Clipboard {
                 deadline: Instant::now() + TRANSFER_TIMEOUT,
                 cancelled: cancelled.clone(),
                 stopping: self.0.stopping.clone(),
+                inbound: Arc::new(AtomicUsize::new(0)),
             },
         };
         self.0
@@ -187,6 +206,23 @@ impl Clipboard {
             .pending
             .borrow_mut()
             .insert(id, Pending { window, cancelled });
+        let wake_failed = self
+            .0
+            .worker
+            .borrow()
+            .as_ref()
+            .is_some_and(|worker| worker.wake.notify().is_err());
+        if wake_failed {
+            self.cancel(
+                None,
+                ErrorCode::NativeFailure,
+                "cannot notify native clipboard worker",
+                cx,
+            );
+            if let Some(join) = self.stop(cx) {
+                join.detach();
+            }
+        }
         Ok(())
     }
 
@@ -198,17 +234,23 @@ impl Clipboard {
             ))?;
             let (jobs, requests) = async_channel::bounded(MAX_SERVICE_REQUESTS);
             let (results, responses) = async_channel::bounded(MAX_SERVICE_REQUESTS);
+            let (wake, notification) = wake::pair().map_err(|_| {
+                (
+                    ErrorCode::NativeFailure,
+                    "cannot create native clipboard worker notification",
+                )
+            })?;
             let stopping = self.0.stopping.clone();
             let thread = std::thread::Builder::new()
                 .name("bun-native-clipboard".into())
-                .spawn(move || worker(config, requests, results, stopping))
+                .spawn(move || worker(config, requests, results, stopping, notification))
                 .map_err(|_| {
                     (
                         ErrorCode::NativeFailure,
                         "cannot start native clipboard worker",
                     )
                 })?;
-            self.0.worker.replace(Some(Worker { jobs, thread }));
+            self.0.worker.replace(Some(Worker { jobs, wake, thread }));
             let clipboard = self.clone();
             cx.spawn(async move |cx| {
                 while let Ok(completion) = responses.recv().await {
@@ -286,6 +328,7 @@ impl Clipboard {
         let worker = self.0.worker.borrow_mut().take()?;
         Some(cx.background_executor().spawn(async move {
             drop(worker.jobs);
+            drop(worker.wake);
             let _ = worker.thread.join();
         }))
     }
@@ -296,11 +339,15 @@ fn worker(
     jobs: Receiver<Job>,
     results: Sender<Completion>,
     stopping: Arc<AtomicBool>,
+    notification: wake::Receiver,
 ) {
     let mut owner = None;
+    let idle_cancelled = Arc::new(AtomicBool::new(false));
+    let mut idle_budget = None;
     while !stopping.load(Ordering::Acquire) {
         match jobs.try_recv() {
             Ok(job) => {
+                idle_budget = None;
                 let result = job.budget.check().and_then(|()| match job.operation {
                     Operation::Read => {
                         x11::read(&config, &job.budget, &mut owner).map(Response::Read)
@@ -325,15 +372,28 @@ fn worker(
             }
             Err(async_channel::TryRecvError::Closed) => break,
             Err(async_channel::TryRecvError::Empty) => {
-                let budget = Budget {
-                    deadline: Instant::now() + TRANSFER_TIMEOUT,
-                    cancelled: Arc::new(AtomicBool::new(false)),
-                    stopping: stopping.clone(),
-                };
-                if x11::serve(&mut owner, &budget).is_err() {
-                    owner = None;
+                if owner.is_some() {
+                    let budget = idle_budget.get_or_insert_with(|| Budget {
+                        deadline: Instant::now() + TRANSFER_TIMEOUT,
+                        cancelled: idle_cancelled.clone(),
+                        stopping: stopping.clone(),
+                        inbound: Arc::new(AtomicUsize::new(0)),
+                    });
+                    match x11::serve(&mut owner, budget) {
+                        // x11rb can buffer events beyond the first bounded
+                        // drain; check jobs again before draining the remainder.
+                        Ok(true) => continue,
+                        Ok(false) => {}
+                        Err(_) => owner = None,
+                    }
                 }
-                std::thread::sleep(WORKER_POLL);
+                idle_budget = None;
+                if !matches!(
+                    notification.wait(owner.as_ref().map(x11::Owner::fd)),
+                    Ok(true)
+                ) {
+                    break;
+                }
             }
         }
     }

@@ -7,7 +7,9 @@ use rustix::fd::AsFd;
 use rustix::net::{AddressFamily, SocketAddrUnix, SocketFlags, SocketType, connect, socket_with};
 use std::cell::RefCell;
 use std::io::{self, IoSlice};
+use std::os::fd::BorrowedFd;
 use std::os::unix::net::UnixStream;
+use std::sync::atomic::Ordering;
 use std::time::Instant;
 use x11rb::reexports::x11rb_protocol::xauth::Family;
 use x11rb::rust_connection::{DefaultStream, PollMode, Stream};
@@ -69,10 +71,10 @@ impl BoundedStream {
 
 fn check(budget: &Budget) -> io::Result<()> {
     budget.check().map_err(|(code, message)| {
-        let kind = if code == bun_native_protocol::ErrorCode::OperationTimedOut {
-            io::ErrorKind::TimedOut
-        } else {
-            io::ErrorKind::ConnectionAborted
+        let kind = match code {
+            bun_native_protocol::ErrorCode::OperationTimedOut => io::ErrorKind::TimedOut,
+            bun_native_protocol::ErrorCode::LimitExceeded => io::ErrorKind::InvalidData,
+            _ => io::ErrorKind::ConnectionAborted,
         };
         io::Error::new(kind, message)
     })
@@ -111,7 +113,15 @@ impl Stream for BoundedStream {
 
     fn read(&self, buffer: &mut [u8], fds: &mut Vec<RawFdContainer>) -> io::Result<usize> {
         self.checked()?;
-        self.inner.read(buffer, fds)
+        if buffer.is_empty() {
+            return Ok(0);
+        }
+        let budget = self.budget.borrow();
+        let length = buffer.len().min(budget.input_allowance());
+        check(&budget)?;
+        let count = self.inner.read(&mut buffer[..length], fds)?;
+        budget.inbound.fetch_add(count, Ordering::Relaxed);
+        Ok(count)
     }
 
     fn write(&self, buffer: &[u8], fds: &mut Vec<RawFdContainer>) -> io::Result<usize> {
@@ -129,11 +139,17 @@ impl Stream for BoundedStream {
     }
 }
 
+impl AsFd for BoundedStream {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.inner.as_fd()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::time::Duration;
 
     #[test]
@@ -143,6 +159,7 @@ mod tests {
             deadline: Instant::now() + Duration::from_millis(30),
             cancelled: Arc::new(AtomicBool::new(false)),
             stopping: Arc::new(AtomicBool::new(false)),
+            inbound: Arc::new(AtomicUsize::new(0)),
         };
         let (inner, _) = DefaultStream::from_unix_stream(left).unwrap();
         let stream = BoundedStream {
@@ -164,5 +181,46 @@ mod tests {
             stream.poll(PollMode::Readable).unwrap_err().kind(),
             io::ErrorKind::ConnectionAborted
         );
+    }
+
+    #[test]
+    fn inbound_budget_bounds_bytes_before_x11rb_can_enqueue_them() {
+        use super::super::MAX_INBOUND_BYTES;
+        use std::io::Write;
+        let (left, mut right) = UnixStream::pair().unwrap();
+        let budget = Budget {
+            deadline: Instant::now() + Duration::from_secs(2),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            stopping: Arc::new(AtomicBool::new(false)),
+            inbound: Arc::new(AtomicUsize::new(0)),
+        };
+        let (inner, _) = DefaultStream::from_unix_stream(left).unwrap();
+        let stream = BoundedStream {
+            inner,
+            budget: RefCell::new(budget.clone()),
+        };
+        let writer =
+            std::thread::spawn(move || right.write_all(&vec![0; MAX_INBOUND_BYTES + 16]).unwrap());
+        let mut read = 0;
+        let mut buffer = [0; 8192];
+        let mut fds = Vec::new();
+        loop {
+            match stream.read(&mut buffer, &mut fds) {
+                Ok(count) => read += count,
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    stream.poll(PollMode::Readable).unwrap();
+                }
+                Err(error) => {
+                    assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+                    break;
+                }
+            }
+        }
+        assert_eq!(read, MAX_INBOUND_BYTES);
+        assert_eq!(
+            budget.failure().0,
+            bun_native_protocol::ErrorCode::LimitExceeded
+        );
+        writer.join().unwrap();
     }
 }
