@@ -618,6 +618,7 @@ dependencies = [
  "bun-native-protocol",
  "gpui",
  "gpui_platform",
+ "log",
  "serde_json",
  "unicode-segmentation",
 ]

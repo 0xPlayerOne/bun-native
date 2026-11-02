@@ -14,6 +14,7 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "ba63a022
   "x11",
 ] }
 async-channel = "=2.5.0"
+log = { version = "=0.4.35", features = ["std"] }
 serde_json.workspace = true
 unicode-segmentation = "=1.13.3"
 

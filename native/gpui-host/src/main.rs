@@ -2,6 +2,7 @@ mod channel;
 mod evidence;
 mod input;
 mod session;
+mod startup_log;
 mod state;
 mod style;
 mod view;
@@ -17,6 +18,7 @@ const COMMAND_TIME_BUDGET: Duration = Duration::from_millis(4);
 const COMMAND_YIELD_DELAY: Duration = Duration::from_millis(1);
 
 fn main() {
+    startup_log::install_from_environment();
     let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
     gpui_platform::application()
