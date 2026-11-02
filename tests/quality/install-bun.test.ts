@@ -1,15 +1,19 @@
 import { afterEach, expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
-import { downloadPinnedArchive } from '../../scripts/install-bun/download.mjs'
+import { downloadPinnedArchive, MAX_ARCHIVE_BYTES } from '../../scripts/install-bun/download.mjs'
 import toolchain from '../../toolchain.json'
 
 const payload = Buffer.from('pinned archive fixture')
-const archive = { assetId: 123, sha256: createHash('sha256').update(payload).digest('hex') }
+const archive = {
+  ...toolchain.bun.packages['linux-x64'],
+  integrity: `sha512-${createHash('sha512').update(payload).digest('base64')}`,
+}
 const temporary: string[] = []
 afterEach(async () => {
   for (const directory of temporary.splice(0)) await rm(directory, { recursive: true, force: true })
@@ -33,203 +37,210 @@ function sequence(...responses: Response[]) {
   }
 }
 
-test('immutable asset authentication stops before its signed storage redirect', async () => {
-  const token = 'ghs_test_credential_never_log'
-  let cancelled = false
-  const response = new Response(
-    new ReadableStream({
-      cancel() {
-        cancelled = true
-      },
-    }),
-    {
-      status: 302,
-      headers: {
-        location: 'https://release-assets.githubusercontent.com/file.zip?signature=private',
-      },
-    }
-  )
-  const http = sequence(response, new Response(payload))
-  expect(await downloadPinnedArchive(archive, { ...http.options, token })).toEqual(payload)
-  expect(cancelled).toBe(true)
-  expect(http.requests).toHaveLength(2)
-  const first = http.requests[0]!
-  const second = http.requests[1]!
-  expect(first.url).toBe('https://api.github.com/repos/oven-sh/bun/releases/assets/123')
-  expect(new Headers(first.options.headers).get('authorization')).toBe(`Bearer ${token}`)
-  expect(new Headers(first.options.headers).get('x-github-api-version')).toBe('2022-11-28')
-  expect(new Headers(second.options.headers).has('authorization')).toBe(false)
-  expect(second.options.signal).toBe(first.options.signal)
-  expect(first.options.signal?.aborted).toBe(false)
-  expect(first.options.redirect).toBe('manual')
-  expect(second.options.redirect).toBe('manual')
-  expect(JSON.stringify(http.records)).not.toContain(token)
-  expect(JSON.stringify(http.records)).not.toContain('signature')
+test('exact official npm download has no credential or redirect and verifies SHA-512', async () => {
+  const http = sequence(new Response(payload))
+  expect(await downloadPinnedArchive(archive, http.options)).toEqual(payload)
+  expect(http.requests).toHaveLength(1)
+  const request = http.requests[0]!
+  expect(request.url).toBe(archive.url)
+  expect(new Headers(request.options.headers).has('authorization')).toBe(false)
+  expect(new Headers(request.options.headers).get('accept-encoding')).toBe('identity')
+  expect(request.options.credentials).toBe('omit')
+  expect(request.options.redirect).toBe('manual')
+  expect(request.options.signal?.aborted).toBe(false)
+  expect(http.records).toEqual([{ phase: 'npm-archive', status: 200 }])
 })
 
-test('anonymous bootstrap still verifies the exact archive digest', async () => {
+test('the production reporter contains only safe HTTP phase and status metadata', async () => {
   const http = sequence(new Response(payload))
-  // Exercise the production safe-metadata reporter, not a synthetic installer.
   expect(
     await downloadPinnedArchive(archive, { fetchImplementation: http.options.fetchImplementation })
   ).toEqual(payload)
-  expect(new Headers(http.requests[0]!.options.headers).has('authorization')).toBe(false)
 })
 
-test.each([401, 403, 404])(
-  'HTTP %s fails once without retry, fallback or response-body disclosure',
+test.each([301, 302, 307, 308, 401, 403, 404])(
+  'HTTP %s fails once without fallback or body disclosure',
   async (status) => {
-    const token = 'ghs_failure_fixture'
+    let cancelled = false
     const http = sequence(
-      new Response(`private body ${token}`, {
-        status,
-        headers: {
-          'x-ratelimit-limit': '60',
-          'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': '1793440000',
-          'x-ratelimit-used': '60',
-          'x-github-request-id': 'ABCD:1234:5678',
-          'retry-after': '12',
-        },
-      })
+      new Response(
+        new ReadableStream({
+          cancel() {
+            cancelled = true
+          },
+        }),
+        {
+          status,
+          headers: { location: 'https://private.invalid/token', 'x-request-id': 'private' },
+        }
+      )
     )
-    await expect(downloadPinnedArchive(archive, { ...http.options, token })).rejects.toThrow(
-      `HTTP ${status}`
-    )
+    await assert.rejects(downloadPinnedArchive(archive, http.options), new RegExp(`HTTP ${status}`))
     expect(http.requests).toHaveLength(1)
-    expect(http.records).toEqual([
-      {
-        phase: 'asset-api',
-        status,
-        authenticated: true,
-        rateLimit: { limit: 60, remaining: 0, used: 60, reset: 1793440000 },
-        requestId: 'ABCD:1234:5678',
-        retryAfterSeconds: 12,
-      },
-    ])
-    expect(JSON.stringify(http.records)).not.toContain(token)
-    expect(JSON.stringify(http.records)).not.toContain('private body')
+    expect(cancelled).toBe(true)
+    expect(JSON.stringify(http.records)).not.toContain('private')
   }
 )
 
-test.each([
-  'http://release-assets.githubusercontent.com/file.zip',
-  'https://release-assets.githubusercontent.com.attacker.invalid/file.zip',
-  'https://user:password@release-assets.githubusercontent.com/file.zip',
-  'https://objects.githubusercontent.com:8443/file.zip',
-  'https://api.github.com/repos/oven-sh/bun/releases/latest',
-  '/relative/location',
-])('refuses an unapproved redirect before sending any credential: %s', async (location) => {
-  const http = sequence(new Response(null, { status: 302, headers: { location } }))
-  await expect(
-    downloadPinnedArchive(archive, { ...http.options, token: 'ghs_test' })
-  ).rejects.toThrow('redirect')
-  expect(http.requests).toHaveLength(1)
-})
-
-test('approved redirects remain bounded and never regain authentication', async () => {
-  const http = sequence(
-    ...Array.from(
-      { length: 6 },
-      () =>
-        new Response(null, {
-          status: 302,
-          headers: { location: 'https://objects.githubusercontent.com/repeated' },
-        })
-    )
-  )
-  await expect(
-    downloadPinnedArchive(archive, { ...http.options, token: 'ghs_test' })
-  ).rejects.toThrow('redirect limit')
-  expect(http.requests).toHaveLength(6)
-  expect(
-    http.requests
-      .slice(1)
-      .every(({ options }) => !new Headers(options.headers).has('authorization'))
-  ).toBe(true)
-})
-
-test('changed archive bytes never cross the checksum-before-extraction boundary', async () => {
-  const http = sequence(new Response('changed archive bytes'))
-  await expect(downloadPinnedArchive(archive, http.options)).rejects.toThrow('checksum mismatch')
-  expect(http.requests).toHaveLength(1)
-})
-
-test('invalid pins and header-injection tokens fail before network activity', async () => {
+test('invalid names, versions, URLs, digests and bounds fail before network activity', async () => {
   const http = sequence()
-  await expect(downloadPinnedArchive({ ...archive, assetId: -1 }, http.options)).rejects.toThrow(
-    'asset ID'
+  for (const pin of [
+    { ...archive, name: '@other/bun-linux-x64' },
+    { ...archive, version: 'latest' },
+    { ...archive, url: archive.url.replace('https:', 'http:') },
+    {
+      ...archive,
+      url: archive.url.replace('registry.npmjs.org', 'registry.npmjs.org.attacker.invalid'),
+    },
+    { ...archive, url: archive.url.replace('https://', 'https://user:secret@') },
+    { ...archive, url: `${archive.url}?token=secret` },
+    { ...archive, integrity: 'sha512-invalid' },
+    { ...archive, unpackedSize: -1 },
+  ])
+    await assert.rejects(downloadPinnedArchive(pin, http.options))
+  await assert.rejects(
+    downloadPinnedArchive(archive, { ...http.options, timeoutMs: 120_001 }),
+    /deadline/
   )
-  await expect(downloadPinnedArchive({ ...archive, sha256: 'bad' }, http.options)).rejects.toThrow(
-    'checksum'
+  await assert.rejects(
+    downloadPinnedArchive(archive, { ...http.options, maxArchiveBytes: MAX_ARCHIVE_BYTES + 1 }),
+    /bound/
   )
-  await expect(
-    downloadPinnedArchive(archive, { ...http.options, token: 'ghs_bad\nInjected: value' })
-  ).rejects.toThrow('without whitespace')
   expect(http.requests).toHaveLength(0)
 })
 
-test('network and body errors cannot disclose signed URLs or response-body secrets', async () => {
-  const secret = 'private-signed-url-or-token'
-  await expect(
+test('changed bytes and truncated declarations fail before extraction can receive data', async () => {
+  await assert.rejects(
+    downloadPinnedArchive(archive, sequence(new Response('changed')).options),
+    /checksum/
+  )
+  await assert.rejects(
+    downloadPinnedArchive(
+      archive,
+      sequence(
+        new Response(payload, {
+          headers: { 'content-length': String(payload.length + 1) },
+        })
+      ).options
+    ),
+    /length mismatch/
+  )
+  await assert.rejects(
+    downloadPinnedArchive(
+      archive,
+      sequence(
+        new Response(payload, {
+          headers: { 'content-encoding': 'gzip' },
+        })
+      ).options
+    ),
+    /identity HTTP encoding/
+  )
+})
+
+test('both declared and streamed compressed bodies have a hard byte bound', async () => {
+  await assert.rejects(
     downloadPinnedArchive(archive, {
-      fetchImplementation: async () => {
-        throw new Error(secret)
-      },
-    })
-  ).rejects.toThrow('Pinned Bun download request failed')
+      ...sequence(new Response(payload, { headers: { 'content-length': '1024' } })).options,
+      maxArchiveBytes: 16,
+    }),
+    /compressed byte bound/
+  )
+  let cancelled = false
   const http = sequence(
     new Response(
       new ReadableStream({
         start(controller) {
-          controller.error(new Error(secret))
+          controller.enqueue(new Uint8Array(17))
+        },
+        cancel() {
+          cancelled = true
         },
       })
     )
   )
-  await expect(downloadPinnedArchive(archive, http.options)).rejects.toThrow(
-    'Pinned Bun download body failed'
+  await assert.rejects(
+    downloadPinnedArchive(archive, { ...http.options, maxArchiveBytes: 16 }),
+    /compressed byte bound/
   )
-  expect(JSON.stringify(http.records)).not.toContain(secret)
+  expect(cancelled).toBe(true)
 })
 
-test('a failed response body cancellation preserves the safe HTTP failure', async () => {
+test('one deadline bounds a hanging request or body; cancellation cannot extend it', async () => {
+  let signal: AbortSignal | null | undefined
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      timeoutMs: 20,
+      fetchImplementation: async (_url, options) => {
+        signal = options.signal
+        return new Promise<Response>(() => {})
+      },
+    }),
+    /deadline/
+  )
+  expect(signal?.aborted).toBe(true)
+  let cancelled = false
   const http = sequence(
     new Response(
       new ReadableStream({
         cancel() {
-          throw new Error('private cancellation detail')
+          cancelled = true
+          return new Promise<void>(() => {})
         },
-      }),
-      { status: 403 }
+      })
     )
   )
-  await expect(downloadPinnedArchive(archive, http.options)).rejects.toThrow('HTTP 403')
+  await assert.rejects(
+    downloadPinnedArchive(archive, { ...http.options, timeoutMs: 20 }),
+    /deadline/
+  )
+  expect(http.requests[0]!.options.signal?.aborted).toBe(true)
+  expect(cancelled).toBe(true)
 })
 
-test('redirect-body cancellation errors cannot leak details or restore authentication', async () => {
-  const http = sequence(
-    new Response(
-      new ReadableStream({
-        cancel() {
-          throw new Error('private signed redirect detail')
-        },
-      }),
-      {
-        status: 302,
-        headers: { location: 'https://objects.githubusercontent.com/file.zip' },
-      }
+test('request, body and cancellation errors never expose private exception contents', async () => {
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      fetchImplementation: async () => {
+        throw new Error('private token')
+      },
+    }),
+    { message: 'Pinned Bun download request failed' }
+  )
+  await assert.rejects(
+    downloadPinnedArchive(
+      archive,
+      sequence(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new Error('private body'))
+            },
+          })
+        )
+      ).options
     ),
-    new Response(payload)
+    { message: 'Pinned Bun download body failed' }
   )
-  expect(await downloadPinnedArchive(archive, { ...http.options, token: 'ghs_test' })).toEqual(
-    payload
+  await assert.rejects(
+    downloadPinnedArchive(
+      archive,
+      sequence(
+        new Response(
+          new ReadableStream({
+            cancel() {
+              throw new Error('private cancellation')
+            },
+          }),
+          { status: 403 }
+        )
+      ).options
+    ),
+    /HTTP 403/
   )
-  expect(new Headers(http.requests[1]!.options.headers).has('authorization')).toBe(false)
-  expect(JSON.stringify(http.records)).not.toContain('private signed redirect detail')
 })
 
-test('the installer strips its scoped credential before revision verification subprocesses', async () => {
+test('existing-install verification strips the obsolete token and makes no network request', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'bun-native-installer-env-'))
   temporary.push(directory)
   const destination = join(directory, 'installed')
@@ -271,4 +282,5 @@ syncBuiltinESMExports();
   expect(result.stderr).toBe('')
   expect(result.stdout).not.toContain('ghs_subprocess_fixture')
   expect(JSON.parse(result.stdout).revision).toBe(toolchain.bun.cliRevision)
+  expect(JSON.parse(result.stdout).downloadedIntegrity).toBeNull()
 })
