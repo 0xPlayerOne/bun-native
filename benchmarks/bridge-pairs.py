@@ -138,7 +138,9 @@ def own_snapshot(app, observed, expected_host, native):
                 }
 
 
-def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=None):
+def run_owned(
+    command, cwd, output, timeout, *, expected_host=None, environment=None, observe=None
+):
     """Bounded command capture; all PID authority/termination uses the shared driver."""
     output.mkdir()
     report = {
@@ -187,6 +189,10 @@ def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=
             own_snapshot(
                 app, observed, expected_host, report["observed_native_processes"]
             )
+            if observe is not None:
+                # Read-only diagnostic observations share the existing bounded
+                # supervisor. Rejection still executes its normal owned cleanup.
+                observe(app, report["observed_native_processes"])
             if app.poll() is not None:
                 break
             if time.monotonic() - started > timeout:
