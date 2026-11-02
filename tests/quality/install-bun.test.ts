@@ -130,6 +130,17 @@ test('changed bytes and truncated declarations fail before extraction can receiv
       archive,
       sequence(
         new Response(payload, {
+          headers: { 'content-length': String(payload.length - 1) },
+        })
+      ).options
+    ),
+    /length mismatch/
+  )
+  await assert.rejects(
+    downloadPinnedArchive(
+      archive,
+      sequence(
+        new Response(payload, {
           headers: { 'content-encoding': 'gzip' },
         })
       ).options
@@ -137,6 +148,39 @@ test('changed bytes and truncated declarations fail before extraction can receiv
     /identity HTTP encoding/
   )
 })
+
+test.each([false, true])(
+  'one-byte fragments preserve verified bytes with declared length %s',
+  async (declared) => {
+    const bytes = Uint8Array.from({ length: 8192 }, (_, index) => index % 251)
+    const pin = {
+      ...archive,
+      integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
+    }
+    let emitted = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (emitted === bytes.length) {
+          controller.close()
+          return
+        }
+        controller.enqueue(bytes.subarray(emitted, emitted + 1))
+        emitted += 1
+      },
+    })
+    const http = sequence(
+      new Response(
+        body,
+        declared ? { headers: { 'content-length': String(bytes.length) } } : undefined
+      )
+    )
+    expect(
+      await downloadPinnedArchive(pin, { ...http.options, maxArchiveBytes: bytes.length })
+    ).toEqual(Buffer.from(bytes))
+    expect(emitted).toBe(bytes.length)
+    expect(http.requests).toHaveLength(1)
+  }
+)
 
 test('both declared and streamed compressed bodies have a hard byte bound', async () => {
   await assert.rejects(
@@ -196,6 +240,53 @@ test('one deadline bounds a hanging request or body; cancellation cannot extend 
   )
   expect(http.requests[0]!.options.signal?.aborted).toBe(true)
   expect(cancelled).toBe(true)
+})
+
+function consumeSynchronousTime() {
+  const stop = performance.now() + 10
+  while (performance.now() < stop) {
+    // Deliberately keep this turn synchronous: a timeout task cannot run yet.
+  }
+}
+
+test('an immediately fulfilled fetch cannot succeed after starving the deadline timer', async () => {
+  let signal: AbortSignal | null | undefined
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      timeoutMs: 5,
+      maxArchiveBytes: payload.length,
+      fetchImplementation: async (_url, options) => {
+        signal = options.signal
+        consumeSynchronousTime()
+        return new Response(payload)
+      },
+    }),
+    /deadline/
+  )
+  expect(signal?.aborted).toBe(true)
+})
+
+test('an immediately fulfilled body read cannot succeed after starving the deadline timer', async () => {
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        consumeSynchronousTime()
+        controller.enqueue(payload)
+        controller.close()
+      },
+    },
+    { highWaterMark: 0 }
+  )
+  const http = sequence(new Response(body))
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      ...http.options,
+      timeoutMs: 5,
+      maxArchiveBytes: payload.length,
+    }),
+    /deadline/
+  )
+  expect(http.requests[0]!.options.signal?.aborted).toBe(true)
 })
 
 test('request, body and cancellation errors never expose private exception contents', async () => {
@@ -283,4 +374,116 @@ syncBuiltinESMExports();
   expect(result.stdout).not.toContain('ghs_subprocess_fixture')
   expect(JSON.parse(result.stdout).revision).toBe(toolchain.bun.cliRevision)
   expect(JSON.parse(result.stdout).downloadedIntegrity).toBeNull()
+})
+
+test('one deadline subscription covers every fragment of the complete download', () => {
+  const moduleUrl = pathToFileURL(
+    resolve(import.meta.dir, '../../scripts/install-bun/download.mjs')
+  ).href
+  const result = spawnSync(
+    'node',
+    [
+      '--input-type=module',
+      '--eval',
+      `import { createHash } from 'node:crypto';
+const { downloadPinnedArchive } = await import(${JSON.stringify(moduleUrl)});
+const bytes = Buffer.alloc(1024, 42);
+const pin = { ...${JSON.stringify(archive)}, integrity: 'sha512-' + createHash('sha512').update(bytes).digest('base64') };
+let emitted = 0;
+const response = new Response(new ReadableStream({
+  pull(controller) {
+    if (emitted === bytes.length) { controller.close(); return; }
+    controller.enqueue(bytes.subarray(emitted, emitted + 1));
+    emitted += 1;
+  }
+}, { highWaterMark: 0 }));
+const originalRace = Promise.race;
+const originalThen = Promise.prototype.then;
+let deadlinePromise;
+let deadlineSubscriptions = 0;
+Promise.race = function(values) {
+  const candidates = Array.from(values);
+  deadlinePromise ??= candidates[1];
+  return originalRace.call(this, candidates);
+};
+Promise.prototype.then = function(fulfilled, rejected) {
+  if (this === deadlinePromise) deadlineSubscriptions += 1;
+  return originalThen.call(this, fulfilled, rejected);
+};
+let output;
+try {
+  output = await downloadPinnedArchive(pin, {
+    fetchImplementation: async () => response, report() {},
+    timeoutMs: 1000, maxArchiveBytes: bytes.length
+  });
+} finally {
+  Promise.race = originalRace;
+  Promise.prototype.then = originalThen;
+}
+if (!output.equals(bytes)) throw new Error('Fragmented control bytes changed');
+console.log(JSON.stringify({ fragments: emitted, bytes: output.length, deadlineSubscriptions }));
+`,
+    ],
+    { encoding: 'utf8', timeout: 10_000, maxBuffer: 16_384 }
+  )
+  expect(result.error).toBeUndefined()
+  expect(result.status).toBe(0)
+  expect(JSON.parse(result.stdout)).toEqual({
+    fragments: 1024,
+    bytes: 1024,
+    deadlineSubscriptions: 1,
+  })
+})
+
+test('a late fetch response is cancelled once without reads or reporting after timeout', async () => {
+  let release: ((response: Response) => void) | undefined
+  const pending = new Promise<Response>((resolve) => {
+    release = resolve
+  })
+  const records: unknown[] = []
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      fetchImplementation: () => pending,
+      report: (record) => records.push(record),
+      timeoutMs: 20,
+    }),
+    /deadline/
+  )
+  let notifyCancellation: (() => void) | undefined
+  const cancelled = new Promise<void>((resolve) => {
+    notifyCancellation = resolve
+  })
+  let cancellations = 0
+  let reads = 0
+  const response = new Response(
+    new ReadableStream<Uint8Array>(
+      {
+        pull() {
+          reads += 1
+        },
+        cancel() {
+          cancellations += 1
+          notifyCancellation?.()
+        },
+      },
+      { highWaterMark: 0 }
+    )
+  )
+  if (!release) throw new Error('The controlled fetch did not start')
+  release(response)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      cancelled,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('The late response body was not cancelled')), 500)
+      }),
+    ])
+    expect(cancellations).toBe(1)
+    expect(reads).toBe(0)
+    expect(records).toEqual([])
+  } finally {
+    clearTimeout(timer)
+    if (cancellations === 0) await response.body?.cancel()
+  }
 })

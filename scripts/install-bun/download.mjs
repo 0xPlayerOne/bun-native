@@ -62,6 +62,15 @@ export async function downloadPinnedArchive(
   )
     throw new Error('Invalid Bun compressed byte bound')
   const controller = new AbortController()
+  const expiresAt = performance.now() + timeoutMs
+  const checkDeadline = () => {
+    // Fulfilled fetch/read promises can starve timer tasks. The absolute check
+    // also rejects work that completed after the deadline in that same turn.
+    if (controller.signal.aborted || performance.now() >= expiresAt) {
+      controller.abort()
+      throw new Error('Pinned Bun download exceeded its deadline')
+    }
+  }
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer
   /** @type {Promise<never>} */
@@ -75,69 +84,93 @@ export async function downloadPinnedArchive(
   let response
   /** @type {import('node:stream/web').ReadableStreamDefaultReader<Uint8Array> | undefined} */
   let reader
-  try {
+  let bodyCancelled = false
+  const cancelBody = () => {
+    const body = reader ?? response?.body
+    if (bodyCancelled || !body) return
+    bodyCancelled = true
+    // A late response still owns a body after the caller's timeout has settled.
+    // Cancellation is best effort and cannot replace or delay that outcome.
     try {
-      response = await Promise.race([
-        fetchImplementation(url, {
+      void body.cancel().catch(() => {})
+    } catch {
+      // A cancellation failure does not authorize further reads or processing.
+    }
+  }
+  const operation = (async () => {
+    try {
+      try {
+        response = await fetchImplementation(url, {
           headers: { Accept: 'application/octet-stream', 'Accept-Encoding': 'identity' },
           credentials: 'omit',
           redirect: 'manual',
           signal: controller.signal,
-        }),
-        deadline,
-      ])
-    } catch {
-      throw new Error(
-        controller.signal.aborted
-          ? 'Pinned Bun download exceeded its deadline'
-          : 'Pinned Bun download request failed'
-      )
-    }
-    report({ phase: 'npm-archive', status: response.status })
-    if (response.status !== 200)
-      throw new Error(`Pinned Bun download failed with HTTP ${response.status}`)
-    if (
-      response.headers.get('content-encoding') &&
-      response.headers.get('content-encoding') !== 'identity'
-    )
-      throw new Error('Pinned Bun archive must use identity HTTP encoding')
-    const length = response.headers.get('content-length')
-    if (length !== null && (!/^\d{1,12}$/.test(length) || Number(length) > maxArchiveBytes))
-      throw new Error('Pinned Bun archive exceeds its compressed byte bound')
-    if (!response.body) throw new Error('Pinned Bun archive has no response body')
-    const activeReader = response.body.getReader()
-    reader = activeReader
-    const digest = createHash('sha512')
-    /** @type {Uint8Array[]} */
-    const chunks = []
-    let total = 0
-    for (;;) {
-      let part
-      try {
-        part = await Promise.race([activeReader.read(), deadline])
+        })
+        checkDeadline()
       } catch {
         throw new Error(
           controller.signal.aborted
             ? 'Pinned Bun download exceeded its deadline'
-            : 'Pinned Bun download body failed'
+            : 'Pinned Bun download request failed'
         )
       }
-      if (part.done) break
-      total += part.value.byteLength
-      if (total > maxArchiveBytes)
+      report({ phase: 'npm-archive', status: response.status })
+      if (response.status !== 200)
+        throw new Error(`Pinned Bun download failed with HTTP ${response.status}`)
+      if (
+        response.headers.get('content-encoding') &&
+        response.headers.get('content-encoding') !== 'identity'
+      )
+        throw new Error('Pinned Bun archive must use identity HTTP encoding')
+      const length = response.headers.get('content-length')
+      if (length !== null && (!/^\d{1,12}$/.test(length) || Number(length) > maxArchiveBytes))
         throw new Error('Pinned Bun archive exceeds its compressed byte bound')
-      digest.update(part.value)
-      chunks.push(part.value)
+      if (!response.body) throw new Error('Pinned Bun archive has no response body')
+      const activeReader = response.body.getReader()
+      reader = activeReader
+      const digest = createHash('sha512')
+      // Retain one bounded buffer, not one object for every network fragment.
+      const capacity = length === null ? maxArchiveBytes : Number(length)
+      const bytes = Buffer.allocUnsafe(capacity)
+      let total = 0
+      for (;;) {
+        let part
+        try {
+          checkDeadline()
+          part = await activeReader.read()
+          checkDeadline()
+        } catch {
+          throw new Error(
+            controller.signal.aborted
+              ? 'Pinned Bun download exceeded its deadline'
+              : 'Pinned Bun download body failed'
+          )
+        }
+        if (part.done) break
+        const start = total
+        total += part.value.byteLength
+        if (total > maxArchiveBytes)
+          throw new Error('Pinned Bun archive exceeds its compressed byte bound')
+        if (total > capacity) throw new Error('Pinned Bun archive length mismatch')
+        digest.update(part.value)
+        bytes.set(part.value, start)
+      }
+      if (length !== null && total !== Number(length))
+        throw new Error('Pinned Bun archive length mismatch')
+      if (`sha512-${digest.digest('base64')}` !== pin.integrity)
+        throw new Error('Pinned Bun archive checksum mismatch')
+      checkDeadline()
+      return bytes.subarray(0, total)
+    } finally {
+      cancelBody()
     }
-    if (length !== null && total !== Number(length))
-      throw new Error('Pinned Bun archive length mismatch')
-    if (`sha512-${digest.digest('base64')}` !== pin.integrity)
-      throw new Error('Pinned Bun archive checksum mismatch')
-    return Buffer.concat(chunks, total)
+  })()
+  try {
+    // One deadline subscription covers the entire operation. Racing each read
+    // would retain another reaction on the same pending promise per fragment.
+    return await Promise.race([operation, deadline])
   } finally {
     clearTimeout(timer)
-    // Cancellation is best effort and cannot extend the request's deadline.
-    if (reader) void reader.cancel().catch(() => {})
-    else void response?.body?.cancel().catch(() => {})
+    cancelBody()
   }
 }
