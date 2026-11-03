@@ -18,5 +18,9 @@ log = { version = "=0.4.35", features = ["std"] }
 serde_json.workspace = true
 unicode-segmentation = "=1.13.3"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+bun-native-macos-surface = { path = "../macos-surface" }
+raw-window-handle = "=0.6.2"
+
 [lints]
 workspace = true

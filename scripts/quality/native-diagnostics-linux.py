@@ -85,9 +85,9 @@ def source_snapshot():
     for package in ("core", "protocol", "runtime"):
         paths.append(ROOT / "packages" / package / "package.json")
         paths.extend((ROOT / "packages" / package / "src").rglob("*.ts"))
-    for crate in ("protocol", "gpui-host"):
-        paths.append(ROOT / "native" / crate / "Cargo.toml")
-        paths.extend((ROOT / "native" / crate / "src").rglob("*.rs"))
+    for manifest in (ROOT / "native").glob("*/Cargo.toml"):
+        paths.append(manifest)
+        paths.extend((manifest.parent / "src").rglob("*.rs"))
     return {str(path.relative_to(ROOT)): fingerprint(path) for path in sorted(paths)}
 
 

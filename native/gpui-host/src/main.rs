@@ -1,7 +1,5 @@
 mod channel;
 mod evidence;
-#[cfg(any(test, target_os = "macos"))]
-mod frame_demand;
 mod input;
 mod services;
 mod session;

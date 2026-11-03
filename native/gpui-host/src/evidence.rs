@@ -110,6 +110,47 @@ impl Evidence {
         }
     }
 
+    /// Bounded scheduling evidence, distinct from actual native-paint records.
+    /// Shares the explicit startup-trace opt-in and its process-wide budget.
+    #[cfg(any(target_os = "macos", test))]
+    pub(crate) fn frame_schedule(
+        &self,
+        phase: &'static str,
+        window_id: WindowId,
+        requested_revision: u64,
+    ) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let mut log = log.borrow_mut();
+        let Some(started) = log.startup_started else {
+            return;
+        };
+        if log.startup_records >= MAX_STARTUP_RECORDS {
+            return;
+        }
+        log.startup_records += 1;
+        let phase = if log.startup_records == MAX_STARTUP_RECORDS {
+            "record_limit"
+        } else {
+            phase
+        };
+        let record = json!({
+            "nonce": log.nonce,
+            "type": "frame_schedule",
+            "stage": "native-frame-scheduling",
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": started.elapsed().as_nanos().to_string(),
+            "index": log.startup_records,
+            "phase": phase,
+            "window_id": window_id,
+            "requested_tree_revision": requested_revision,
+        });
+        if append(&mut log.file, &record).is_err() {
+            log.startup_started = None;
+        }
+    }
+
     pub(crate) fn layout(
         &self,
         window_id: WindowId,
@@ -211,3 +252,6 @@ impl Evidence {
         }
     }
 }
+
+#[cfg(test)]
+mod frame_schedule_tests;

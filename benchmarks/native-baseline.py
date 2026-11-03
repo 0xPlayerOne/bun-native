@@ -95,17 +95,22 @@ def expected_sources(repository):
         "Cargo.lock",
         "native/gpui-host/Cargo.toml",
         "native/protocol/Cargo.toml",
+        "experiments/aot-gpui/native-sources.ts",
     }
     for directory, extension in [
         ("packages/protocol/src", "ts"),
         ("packages/runtime/src", "ts"),
         ("packages/core/src", "ts"),
-        ("native/gpui-host/src", "rs"),
-        ("native/protocol/src", "rs"),
     ]:
         paths.update(
             path.relative_to(repository).as_posix()
             for path in (repository / directory).rglob(f"*.{extension}")
+        )
+    for manifest in (repository / "native").glob("*/Cargo.toml"):
+        paths.add(manifest.relative_to(repository).as_posix())
+        paths.update(
+            path.relative_to(repository).as_posix()
+            for path in (manifest.parent / "src").rglob("*.rs")
         )
     return paths
 

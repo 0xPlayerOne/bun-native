@@ -615,12 +615,25 @@ name = "bun-native-host"
 version = "0.0.0"
 dependencies = [
  "async-channel",
+ "bun-native-macos-surface",
  "bun-native-protocol",
  "gpui",
  "gpui_platform",
  "log",
+ "raw-window-handle",
  "serde_json",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "bun-native-macos-surface"
+version = "0.0.0"
+dependencies = [
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "objc2-quartz-core 0.3.2",
+ "raw-window-handle",
 ]
 
 [[package]]
@@ -3116,6 +3129,7 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-core-foundation",
  "objc2-foundation 0.3.2",
+ "objc2-quartz-core 0.3.2",
  "objc2-uniform-type-identifiers",
 ]
 

@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { inspectBunExecutable } from './inspect'
 import { inspectBunRuntime } from './inspect-runtime'
+import { nativeSourcePaths } from './native-sources'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -158,6 +159,7 @@ async function sourceHashes() {
     'Cargo.lock',
     'native/gpui-host/Cargo.toml',
     'native/protocol/Cargo.toml',
+    'experiments/aot-gpui/native-sources.ts',
   ])
   for await (const path of new Bun.Glob('packages/{core,protocol,runtime}/src/**/*.ts').scan({
     cwd: source,
@@ -189,10 +191,7 @@ async function sourceHashes() {
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
-  for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
-    cwd: source,
-  }))
-    sources.add(path)
+  for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
     [...sources].sort().map(async (path) => ({ path, ...(await artifact(join(source, path))) }))
   )
