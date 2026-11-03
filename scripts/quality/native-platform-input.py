@@ -8,11 +8,10 @@ import importlib.util
 import json
 import math
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
-
+from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
@@ -134,6 +133,7 @@ class MacInput:
         }
         result = subprocess.run(
             [str(self.helper), json.dumps(request, separators=(",", ":"))],
+            check=False,
             capture_output=True,
             timeout=3,
         )
@@ -244,6 +244,7 @@ class LinuxInput:
                 "--name",
                 "^" + re.escape(title) + "$",
             ],
+            check=False,
             capture_output=True,
             text=True,
             timeout=3,

@@ -161,6 +161,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The actual macOS SDK pointer and target-guard control did not compile' }
           & $eventTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-pointer-events.json')
           if ($LASTEXITCODE -ne 0) { throw 'The actual Quartz event or exact-window target controls failed' }
+          $hitTest = Join-Path $env:NATIVE_EVIDENCE 'macos-window-hit'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            tests/native/macos-window-hit.m -o $hitTest
+          if ($LASTEXITCODE -ne 0) { throw 'The actual AppKit window hit-test control did not compile' }
+          & $hitTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-window-hit.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The owned click-through/input-taking window controls failed' }
           $helper = Join-Path $env:NATIVE_EVIDENCE 'native-platform-macos'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
             scripts/quality/native-platform-macos.m -o $helper

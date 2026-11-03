@@ -11,9 +11,9 @@ https://learn.microsoft.com/windows/win32/api/tlhelp32/ns-tlhelp32-processentry3
 """
 
 import ctypes as c
-from pathlib import Path
+import logging
 import time
-
+from pathlib import Path
 
 DWORD = c.c_uint32
 LONG = c.c_int32
@@ -21,6 +21,9 @@ WORD = c.c_uint16
 HANDLE = c.c_void_p
 BOOL = c.c_int32
 ULONG_PTR = c.c_size_t
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class InputUnavailable(RuntimeError):
@@ -342,6 +345,7 @@ class WindowsInput:
                     windows.append(window)
                 return True
             except BaseException as error:
+                LOGGER.exception("Owned Windows enumeration callback failed")
                 # Exceptions must not escape a C callback and be discarded by
                 # ctypes; report them after EnumWindows returns.
                 failures.append(error)

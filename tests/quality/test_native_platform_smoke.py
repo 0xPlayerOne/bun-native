@@ -3,10 +3,9 @@
 import copy
 import ctypes
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 from unittest import mock
-
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -401,7 +400,7 @@ class WindowsInputGuardTests(unittest.TestCase):
             controller = windows.WindowsInput.__new__(windows.WindowsInput)
             controller.window = 123
             controller.user = User(inserted)
-            controller.verify = lambda: {}
+            controller.verify = dict
             with (
                 self.subTest(inserted=inserted),
                 self.assertRaises(windows.InputUnavailable),
@@ -415,7 +414,7 @@ class WindowsInputGuardTests(unittest.TestCase):
         controller.app = {"pid": 1}
         controller.host = {"pid": 2}
         controller._verify_process = lambda _process: None
-        controller._desktop = lambda: {}
+        controller._desktop = dict
         controller._children = lambda: [2]
         controller.window_callback = ctypes.CFUNCTYPE(
             windows.BOOL, windows.HANDLE, ctypes.c_ssize_t
@@ -498,7 +497,7 @@ class WindowsInputGuardTests(unittest.TestCase):
         controller.host_path = Path("/owned/bun-native-host")
         controller.handles = [20]
         controller._verify_process = lambda _process: None
-        controller._desktop = lambda: {}
+        controller._desktop = dict
         controller._children = lambda: [2]
         controller._open_process = lambda _pid: {
             "pid": 2,

@@ -60,28 +60,31 @@ int main(void) {
             NSDictionary *transparent = window_record(9, 456, bounds, 0);
             NSDictionary *outside = window_record(9, 456, CGRectMake(0, 0, 10, 10), 1);
             NSArray *lists = @[@[owned, foreign], @[foreign, owned], @[sameProcessOverlay, owned],
-                @[transparent, owned], @[outside, owned], @[foreign], @[], @[outside]];
-            NSArray<NSNumber *> *shouldReject = @[@NO, @YES, @YES, @NO, @NO, @YES, @YES, @YES];
+                @[transparent, owned], @[outside, owned], @[foreign], @[], @[outside],
+                @[foreign, owned], @[foreign], @[window_record(9, 123, bounds, 1)]];
+            NSArray<NSNumber *> *shouldReject = @[@NO, @YES, @YES, @NO, @NO, @YES, @YES, @YES, @NO, @YES, @YES];
+            // The OS-selected target, not rectangle ordering, determines authority.
+            NSArray<NSNumber *> *hits = @[@123, @456, @124, @123, @123, @456, @0, @0, @123, @123, @123];
             NSUInteger diagnosticsChecked = 0;
             for (NSUInteger i = 0; i < lists.count; i++) {
                 BOOL rejected = NO;
-                @try { verify_pointer_target(identity, lists[i], CGPointMake(336, 348)); }
+                @try { verify_pointer_target(identity, lists[i], CGPointMake(336, 348), hits[i].integerValue); }
                 @catch (NSException *error) {
                     if (![error.name isEqualToString:@"Unsupported"]) @throw error;
                     rejected = YES;
-                    if (i == 1 || i == 2 || i == 5) {
+                    if (i == 1 || i == 2 || i == 5 || i == 10) {
                         NSArray *parts = [error.reason componentsSeparatedByString:@"; target details: "];
                         if (parts.count != 2) fail(@"Pointer rejection omitted its target evidence");
                         NSDictionary *details = [NSJSONSerialization JSONObjectWithData:
                             [parts[1] dataUsingEncoding:NSUTF8StringEncoding] options:0 error:NULL];
                         NSSet *keys = [NSSet setWithArray:@[@"expectedWindow", @"expectedPID", @"screenPoint",
-                            @"firstWindow", @"firstPID", @"layer", @"alpha", @"frame"]];
+                            @"hitWindow", @"hitPID", @"layer", @"alpha", @"frame"]];
                         if (![details isKindOfClass:NSDictionary.class]
                             || ![[NSSet setWithArray:details.allKeys] isEqual:keys]
                             || ![details[@"expectedWindow"] isEqual:@123] || ![details[@"expectedPID"] isEqual:@2]
                             || ![details[@"screenPoint"] isEqual:@[@336, @348]]
-                            || ![details[@"firstWindow"] isEqual:(i == 2 ? @124 : @456)]
-                            || ![details[@"firstPID"] isEqual:(i == 2 ? @2 : @9)]
+                            || ![details[@"hitWindow"] isEqual:hits[i]]
+                            || ![details[@"hitPID"] isEqual:(i == 2 ? @2 : @9)]
                             || ![details[@"layer"] isEqual:@0] || ![details[@"alpha"] isEqual:@1]
                             || ![details[@"frame"] isEqual:@[@232, @176, @560, @409]])
                             fail(@"Pointer rejection changed or exposed extra target metadata");
@@ -97,7 +100,7 @@ int main(void) {
                 NSMutableDictionary *invalid = [foreign mutableCopy];
                 invalid[invalidFields[i]] = invalidValues[i];
                 BOOL rejected = NO;
-                @try { verify_pointer_target(identity, @[invalid, owned], CGPointMake(336, 348)); }
+                @try { verify_pointer_target(identity, @[invalid, owned], CGPointMake(336, 348), 456); }
                 @catch (NSException *error) {
                     if (![error.name isEqualToString:@"Failed"]
                         || ![error.reason isEqualToString:@"WindowServer target identity metadata is invalid"])
@@ -106,9 +109,25 @@ int main(void) {
                 }
                 if (!rejected) fail(@"Malformed target identity entered rejection evidence");
             }
+            NSArray *conversions = @[
+                @[@336.0, @348.0, @768.0, @420.0],
+                @[@(-100.25), @900.0, @768.0, @(-132.0)],
+                @[@0.25, @(-20.5), @900.0, @920.5]];
+            for (NSArray<NSNumber *> *row in conversions) {
+                NSPoint converted = appkit_pointer_point(CGPointMake(row[0].doubleValue, row[1].doubleValue),
+                    CGRectMake(0, 0, 1024, row[2].doubleValue));
+                if (!NSEqualPoints(converted, NSMakePoint(row[0].doubleValue, row[3].doubleValue)))
+                    fail(@"Quartz to AppKit global point conversion changed");
+            }
+            BOOL invalidDisplayRejected = NO;
+            @try { appkit_pointer_point(CGPointMake(1, 1), CGRectMake(0, 0, 1024, 0)); }
+            @catch (NSException *error) {
+                invalidDisplayRejected = [error.name isEqualToString:@"Failed"];
+            }
+            if (!invalidDisplayRejected) fail(@"Invalid display conversion was accepted");
             NSDictionary *result = @{@"status": @"passed", @"globalEventsChecked": @(checked),
                 @"inputPosted": @NO, @"identityGuardsChecked": @(fields.count),
-                @"windowTargetControlsChecked": @(lists.count),
+                @"windowTargetControlsChecked": @(lists.count), @"coordinateControlsChecked": @(conversions.count + 1),
                 @"targetRejectionDiagnosticsChecked": @(diagnosticsChecked),
                 @"targetIdentityGuardsChecked": @(invalidFields.count),
                 @"scope": @"Actual Quartz construction and pure target-guard controls only; WindowServer delivery is separately required"};

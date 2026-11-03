@@ -8,16 +8,17 @@ expectation helpers. Its Linux process/input functions are never called here.
 import argparse
 import importlib.util
 import json
+import logging
 import os
-from pathlib import Path
 import platform
 import secrets
 import signal
 import subprocess
 import threading
 import time
+from pathlib import Path
 
-
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "native_diagnostics", ROOT / "scripts/quality/native-diagnostics-linux.py"
@@ -85,6 +86,7 @@ def source_snapshot():
         "scripts/quality/native-platform-windows.py",
         "scripts/quality/native-platform-macos.m",
         "tests/native/macos-input-events.m",
+        "tests/native/macos-window-hit.m",
     ):
         sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
     return sources
@@ -350,14 +352,14 @@ def main():
                 }
         for cycle in range(1, 4):
             wait_for(
-                lambda: any(
+                lambda cycle=cycle: any(
                     row.get("type") == "mounted" and row.get("cycle") == cycle
                     for row in records("application.jsonl")
                 ),
                 "mounted native tree",
             )
             renderer = wait_for(
-                lambda: next(
+                lambda cycle=cycle: next(
                     (
                         row
                         for row in records("native.jsonl")
@@ -376,7 +378,7 @@ def main():
                 if updated:
                     (output / f"update-{cycle}").touch()
                     wait_for(
-                        lambda: any(
+                        lambda cycle=cycle: any(
                             row.get("type") == "updated" and row.get("cycle") == cycle
                             for row in records("application.jsonl")
                         ),
@@ -388,7 +390,7 @@ def main():
                         "Deliberate invalid paint expectation"
                     )
                 painted = wait_for(
-                    lambda: next(
+                    lambda expected=expected: next(
                         (
                             row
                             for row in records("native.jsonl")
@@ -416,7 +418,7 @@ def main():
                     )
             (output / f"close-{cycle}").touch()
             wait_for(
-                lambda: any(
+                lambda cycle=cycle: any(
                     row.get("type") == "cycle-closed" and row.get("cycle") == cycle
                     for row in records("application.jsonl")
                 ),
@@ -443,6 +445,7 @@ def main():
         report["status"] = "unsupported"
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     except Exception as error:
+        LOGGER.exception("Native platform smoke failed")
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:
         # The trusted fixture checks abort while awaiting every private command,
@@ -467,6 +470,7 @@ def main():
                 input_driver.close()
                 report["osControllerCleanup"] = "completed"
             except Exception as error:
+                LOGGER.exception("Owned OS input-controller cleanup failed")
                 report["status"] = "failed"
                 report["osControllerCleanup"] = str(error)
         for thread in threads:

@@ -150,8 +150,23 @@ static void require_foreground(pid_t pid) {
         fail(@"Native foreground changed before input");
 }
 
-static NSString *pointer_rejection(NSDictionary *state, NSDictionary *candidate,
-    CGRect bounds, CGPoint point) {
+// AppKit's documented mouse-down hit test, unlike rectangle intersection,
+// excludes click-through windows and pixels transparent to mouse events.
+// https://developer.apple.com/documentation/appkit/nswindow/windownumber(at:belowwindowwithwindownumber:)
+static NSPoint appkit_pointer_point(CGPoint point, CGRect primaryDisplay) {
+    if (!isfinite(point.x) || !isfinite(point.y)
+        || !isfinite(primaryDisplay.size.width) || !isfinite(primaryDisplay.size.height)
+        || primaryDisplay.origin.x != 0 || primaryDisplay.origin.y != 0
+        || primaryDisplay.size.width <= 0 || primaryDisplay.size.height <= 0
+        || primaryDisplay.size.width > 32768 || primaryDisplay.size.height > 32768)
+        fail(@"Invalid primary-display coordinate conversion");
+    // Both systems use global logical coordinates. Quartz's primary origin is
+    // top-left; AppKit's is bottom-left. Negative secondary-screen points remain valid.
+    return NSMakePoint(point.x, primaryDisplay.size.height - point.y);
+}
+
+static CGRect pointer_window_bounds(NSDictionary *candidate) {
+    if (![candidate isKindOfClass:NSDictionary.class]) fail(@"Invalid WindowServer target record");
     id identifier = candidate[(__bridge NSString *)kCGWindowNumber];
     id owner = candidate[(__bridge NSString *)kCGWindowOwnerPID];
     id layer = candidate[(__bridge NSString *)kCGWindowLayer];
@@ -162,51 +177,69 @@ static NSString *pointer_rejection(NSDictionary *state, NSDictionary *candidate,
         || !number(layer) || [layer doubleValue] < INT_MIN || [layer doubleValue] > INT_MAX
         || floor([layer doubleValue]) != [layer doubleValue])
         fail(@"WindowServer target identity metadata is invalid");
-    // Keep only the first intersecting rectangle's numeric identity/geometry.
-    // No unrelated window title, application name, image path or contents enter evidence.
+    id alpha = candidate[(__bridge NSString *)kCGWindowAlpha];
+    if (!number(alpha) || [alpha doubleValue] < 0 || [alpha doubleValue] > 1)
+        fail(@"WindowServer opacity is invalid");
+    id value = candidate[(__bridge NSString *)kCGWindowBounds];
+    CGRect bounds = CGRectZero;
+    if (![value isKindOfClass:NSDictionary.class]
+        || !CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)value, &bounds)
+        || !isfinite(bounds.origin.x) || !isfinite(bounds.origin.y)
+        || !isfinite(bounds.size.width) || !isfinite(bounds.size.height)
+        || bounds.size.width < 0 || bounds.size.height < 0
+        || bounds.size.width > 32768 || bounds.size.height > 32768)
+        fail(@"WindowServer target bounds are invalid");
+    return bounds;
+}
+
+static NSString *pointer_rejection(NSDictionary *state, NSDictionary *candidate,
+    CGRect bounds, CGPoint point) {
+    // Only numeric hit-target metadata is retained, never other titles or contents.
     NSDictionary *details = @{@"expectedWindow": state[@"window"][@"id"],
         @"expectedPID": state[@"host"][@"pid"], @"screenPoint": @[@(point.x), @(point.y)],
-        @"firstWindow": identifier, @"firstPID": owner, @"layer": layer,
+        @"hitWindow": candidate[(__bridge NSString *)kCGWindowNumber],
+        @"hitPID": candidate[(__bridge NSString *)kCGWindowOwnerPID],
+        @"layer": candidate[(__bridge NSString *)kCGWindowLayer],
         @"alpha": candidate[(__bridge NSString *)kCGWindowAlpha],
         @"frame": @[@(bounds.origin.x), @(bounds.origin.y), @(bounds.size.width), @(bounds.size.height)]};
     NSData *encoded = [NSJSONSerialization dataWithJSONObject:details options:0 error:NULL];
     if (!encoded || encoded.length > 1024) fail(@"WindowServer target diagnostics exceed their bound");
-    return [@"The owned pointer target is obscured by another window; no input was posted; target details: "
+    return [@"AppKit mouse-down target is not the owned window; no input was posted; target details: "
         stringByAppendingString:[[NSString alloc] initWithData:encoded encoding:NSUTF8StringEncoding]];
 }
 
-// Quartz returns onscreen windows front-to-back. Reject even a same-process
-// overlay: the measured button must belong to this exact unobscured window.
-static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint point) {
+static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint point,
+    NSInteger hitWindow) {
     if (![windows isKindOfClass:NSArray.class] || windows.count > 4096
         || !isfinite(point.x) || !isfinite(point.y)) fail(@"Invalid bounded WindowServer target list");
+    if (hitWindow <= 0 || (uint64_t)hitWindow > UINT32_MAX)
+        unavailable(@"AppKit did not resolve a mouse-down target; no input was posted");
+    NSDictionary *target = nil;
+    CGRect targetBounds = CGRectZero;
     for (NSDictionary *candidate in windows) {
-        id alpha = candidate[(__bridge NSString *)kCGWindowAlpha];
-        if (!number(alpha)) fail(@"WindowServer opacity is unavailable");
-        if ([alpha doubleValue] <= 0) continue;
-        id value = candidate[(__bridge NSString *)kCGWindowBounds];
-        CGRect bounds = CGRectZero;
-        if (![value isKindOfClass:NSDictionary.class]
-            || !CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)value, &bounds)
-            || !isfinite(bounds.origin.x) || !isfinite(bounds.origin.y)
-            || !isfinite(bounds.size.width) || !isfinite(bounds.size.height)
-            || bounds.size.width < 0 || bounds.size.height < 0
-            || bounds.size.width > 32768 || bounds.size.height > 32768)
-            fail(@"WindowServer target bounds are invalid");
-        if (!CGRectContainsPoint(bounds, point)) continue;
-        if (![candidate[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]]
-            || ![candidate[(__bridge NSString *)kCGWindowOwnerPID] isEqual:state[@"host"][@"pid"]])
-            unavailable(pointer_rejection(state, candidate, bounds, point));
-        return;
+        CGRect bounds = pointer_window_bounds(candidate);
+        if ([candidate[(__bridge NSString *)kCGWindowNumber] unsignedLongLongValue] != (uint64_t)hitWindow)
+            continue;
+        if (target) fail(@"Duplicate WindowServer hit-target metadata");
+        target = candidate;
+        targetBounds = bounds;
     }
-    unavailable(@"The owned pointer target is absent from the onscreen window list");
+    if (!target) unavailable(@"AppKit's hit target is absent from current onscreen metadata; no input was posted");
+    if ([target[(__bridge NSString *)kCGWindowAlpha] doubleValue] <= 0
+        || !CGRectContainsPoint(targetBounds, point))
+        fail(@"AppKit hit target contradicts its current WindowServer geometry");
+    if (![target[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]]
+        || ![target[(__bridge NSString *)kCGWindowOwnerPID] isEqual:state[@"host"][@"pid"]])
+        unavailable(pointer_rejection(state, target, targetBounds, point));
 }
 
 static void require_pointer_target(NSDictionary *state, CGPoint point) {
+    NSPoint appkitPoint = appkit_pointer_point(point, CGDisplayBounds(CGMainDisplayID()));
+    NSInteger hitWindow = [NSWindow windowNumberAtPoint:appkitPoint belowWindowWithWindowNumber:0];
     NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
     if (!windows) unavailable(@"The current GUI session cannot resolve the pointer target");
-    verify_pointer_target(state, windows, point);
+    verify_pointer_target(state, windows, point, hitWindow);
 }
 
 static void key(pid_t pid, CGKeyCode code, UniChar character) {
@@ -293,14 +326,16 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         CGPoint point = CGPointMake([frame[0] doubleValue] + side + x,
             [frame[1] doubleValue] + top + y);
         NSArray *mouse = pointer_events(point);
-        require_foreground(pid);
-        require_pointer_target(state, point);
-        for (id event in mouse) CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)event);
+        for (id event in mouse) {
+            require_foreground(pid);
+            require_pointer_target(state, point);
+            CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)event);
+        }
         events = 3;
         result[@"windowNumber"] = window;
         result[@"screenPoint"] = @[@(point.x), @(point.y)];
         result[@"windowServerTargetVerified"] = @YES;
-        result[@"contentGeometry"] = @"Global Quartz point from the observed frame and measured GPUI viewport; exact unobscured window checked in the front-to-back WindowServer list; delivery still requires native target evidence";
+        result[@"contentGeometry"] = @"Global Quartz point from the observed frame and measured GPUI viewport; exact mouse-down hit window checked by AppKit and independently matched to Quartz owner/bounds before each event; delivery still requires native target evidence";
     } else fail(@"Unknown bounded input action");
     verify(state, snapshot(request));
     if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != pid)
