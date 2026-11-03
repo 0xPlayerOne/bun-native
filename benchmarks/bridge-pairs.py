@@ -102,7 +102,9 @@ def source_identity(repository, name):
         small_command(["git", "status", "--porcelain"], repository) == "",
         f"{name} source checkout must be clean",
     )
-    paths = BASELINE.expected_sources(repository) | {"benchmarks/bridge.ts"}
+    paths = BASELINE.expected_sources(repository, source_commit=expected) | {
+        "benchmarks/bridge.ts"
+    }
     paths.update(
         path.relative_to(repository).as_posix()
         for path in (repository / "experiments/aot-gpui").glob("*.ts")
@@ -362,7 +364,11 @@ def prepare(args, report):
                 outcome["status"] == "passed", f"{name} {step} failed; retained its log"
             )
         manifest = BASELINE.verify_package(
-            package, repository, entry="bridge", external_host=host
+            package,
+            repository,
+            entry="bridge",
+            external_host=host,
+            source_commit=VARIANTS[name]["commit"],
         )
         require(manifest["source"]["dirty"] is False, "AOT source must be clean")
         require(
@@ -428,7 +434,11 @@ def verify_build(build, bun):
             "AOT manifest changed",
         )
         manifests[name] = BASELINE.verify_package(
-            package, repository, entry="bridge", external_host=host
+            package,
+            repository,
+            entry="bridge",
+            external_host=host,
+            source_commit=VARIANTS[name]["commit"],
         )
         require(
             manifests[name]["source"]["commit"] == VARIANTS[name]["commit"],

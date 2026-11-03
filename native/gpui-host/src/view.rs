@@ -167,6 +167,23 @@ impl NativeView {
         }
         self.reconcile_focus(window, cx);
         cx.notify();
+        #[cfg(target_os = "macos")]
+        {
+            window.refresh();
+            // GPUI's Metal surface is a layer-backed view with a custom
+            // displayLayer: delegate. Dirty the backing layer itself so its
+            // normal deferred display pass also serves external commits when
+            // the display link is idle. This never draws inside this update.
+            let handle = raw_window_handle::HasWindowHandle::window_handle(window)
+                .expect("an owned macOS GPUI window exposes its native view");
+            bun_native_macos_surface::invalidate(handle)
+                .expect("GPUI updates its backed surface on the AppKit owner thread");
+            self.evidence.frame_schedule(
+                "layer_invalidated",
+                self.window_id,
+                self.state.borrow().tree.revision(),
+            );
+        }
     }
 
     fn click(&self, node_id: NodeId, cx: &mut Context<Self>) {

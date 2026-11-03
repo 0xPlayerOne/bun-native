@@ -77,6 +77,132 @@ class ProvenanceTests(unittest.TestCase):
     def save_manifest(self):
         (self.package / "manifest.json").write_text(json.dumps(self.manifest))
 
+    def test_added_native_crate_is_bound_and_cannot_be_omitted_or_changed(self):
+        manifest = self.repository / "native/macos-surface/Cargo.toml"
+        source = manifest.parent / "src/lib.rs"
+        source.parent.mkdir(parents=True)
+        manifest.write_text("inert native-source manifest fixture\n")
+        source.write_text("inert native-source fixture; never compiled\n")
+        paths = BASELINE.expected_sources(self.repository)
+        self.assertIn("native/macos-surface/Cargo.toml", paths)
+        self.assertIn("native/macos-surface/src/lib.rs", paths)
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+        self.manifest["source"]["files"] = [
+            {"path": path, **BASELINE.fingerprint(self.repository / path)}
+            for path in sorted(paths)
+        ]
+        BASELINE.verify_sources(self.repository, self.manifest)
+        source.write_text("changed native-source fixture\n")
+        with self.assertRaises(ValueError):
+            BASELINE.verify_sources(self.repository, self.manifest)
+
+    def test_native_inventory_helper_identity_is_required_and_cannot_change(self):
+        name = "experiments/aot-gpui/native-sources.ts"
+        self.assertIn(name, BASELINE.expected_sources(self.repository))
+        BASELINE.verify_sources(self.repository, self.manifest)
+        records = self.manifest["source"]["files"]
+        self.manifest["source"]["files"] = [
+            record for record in records if record["path"] != name
+        ]
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+        self.manifest["source"]["files"] = records
+        (self.repository / name).write_text("changed inventory implementation\n")
+        with self.assertRaisesRegex(ValueError, "Source differs from the AOT build"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+
+    def test_duplicate_and_unexpected_source_records_are_rejected(self):
+        records = list(self.manifest["source"]["files"])
+        for added in (
+            records[0],
+            {"path": "unexpected.ts", "bytes": 0, "sha256": "0" * 64},
+        ):
+            with self.subTest(path=added["path"]):
+                self.manifest["source"]["files"] = [*records, added]
+                with self.assertRaisesRegex(ValueError, "every current"):
+                    BASELINE.verify_sources(self.repository, self.manifest)
+
+    def commit_fixture(self):
+        def git(*arguments):
+            return subprocess.check_output(
+                ["git", *arguments],
+                cwd=self.repository,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+
+        git("init", "--quiet")
+        git("add", ".")
+        git(
+            "-c",
+            "user.name=Source contract fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture",
+        )
+        return git("rev-parse", "HEAD")
+
+    def test_revision_bound_inventory_preserves_current_helper_requirements(self):
+        commit = self.commit_fixture()
+        self.manifest["source"].update(commit=commit, dirty=False)
+        BASELINE.verify_sources(self.repository, self.manifest, source_commit=commit)
+        records = list(self.manifest["source"]["files"])
+        self.manifest["source"]["files"] = [
+            record
+            for record in records
+            if record["path"] != "experiments/aot-gpui/native-sources.ts"
+        ]
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(
+                self.repository, self.manifest, source_commit=commit
+            )
+        self.manifest["source"]["files"] = records
+        (self.repository / "experiments/aot-gpui/native-sources.ts").unlink()
+        with self.assertRaisesRegex(ValueError, "clean checkout"):
+            BASELINE.verify_sources(
+                self.repository, self.manifest, source_commit=commit
+            )
+
+    def test_historical_contract_is_explicit_clean_and_bound_to_real_commit(self):
+        helper = "experiments/aot-gpui/native-sources.ts"
+        (self.repository / helper).unlink()
+        self.manifest["source"]["files"] = [
+            record
+            for record in self.manifest["source"]["files"]
+            if record["path"] != helper
+        ]
+        commit = self.commit_fixture()
+        self.manifest["source"].update(commit=commit, dirty=False)
+        BASELINE.verify_sources(self.repository, self.manifest, source_commit=commit)
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+        for invalid in ("main", "0" * 40):
+            with self.subTest(commit=invalid), self.assertRaises(ValueError):
+                BASELINE.verify_sources(
+                    self.repository, self.manifest, source_commit=invalid
+                )
+        for name, value in (("commit", "0" * 40), ("dirty", True)):
+            original = self.manifest["source"][name]
+            self.manifest["source"][name] = value
+            with self.assertRaisesRegex(ValueError, "clean source inventory commit"):
+                BASELINE.verify_sources(
+                    self.repository, self.manifest, source_commit=commit
+                )
+            self.manifest["source"][name] = original
+        self.manifest["source"]["files"].append(
+            {"path": helper, "bytes": 0, "sha256": "0" * 64}
+        )
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(
+                self.repository, self.manifest, source_commit=commit
+            )
+
     def test_matching_linux_architectures_validate_without_executing_artifacts(self):
         for machine, architecture in (("x86_64", "x64"), ("aarch64", "arm64")):
             with (
