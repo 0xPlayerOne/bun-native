@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual AppKit hit-target and Quartz metadata controls, not GPUI delivery",
+  "status": "passed",
+  "inputPosted": false,
+  "priorHelperCommit": "f3990dc9d1d2903469ee6a6fdfd40a9cc674df72",
+  "priorHelperSha256": "cbca09c2ab28eeb05155b8ade6d704fe332effe84293251ab03fab1093a403c5",
+  "sourceFiles": {
+    "scripts/quality/native-platform-macos.m": {
+      "sha256": "2f3276573f8ea941bd74181289f51d1700221ed9525891fcdffc73d662506b5f",
+      "bytes": 21403
+    },
+    "scripts/quality/native-platform-input.py": {
+      "sha256": "b9d964af0446551be1957579c70a1c37ce4164e2dc7c43aac0e8fd404f04887b",
+      "bytes": 12531
+    },
+    "scripts/quality/native-platform-windows.py": {
+      "sha256": "718612f1c40b828b265d4513cd707874cc506142a7f8766e6b7afccea3a433a3",
+      "bytes": 21071
+    },
+    "scripts/quality/native-platform-smoke.py": {
+      "sha256": "23a708d4dfd6bfca693844159c3057dce48123c6f77d05c2d19974747fe53944",
+      "bytes": 20748
+    },
+    "tests/native/macos-input-events.m": {
+      "sha256": "182fae8a961b6edcddb047f7593e9ad9ea24bec18a3e0925e9d0a13d9dafe36c",
+      "bytes": 9445
+    },
+    "tests/native/macos-window-hit.m": {
+      "sha256": "4fc38dbed6722b0f9e172b7b10bab5ccf52f52764312b3b4f50991050fa0333b",
+      "bytes": 7118
+    },
+    "tests/quality/test_native_platform_smoke.py": {
+      "sha256": "ede5dc26f1757e59a53239ec32dfac8a2dcb681889169e1840276d109c5b5960",
+      "bytes": 20693
+    },
+    ".github/workflows/native-platforms.yml": {
+      "sha256": "cb0f3e4b0389f7c54fea1d393d8ddff2632f7d23fff84a5f90e836f3c8cea407",
+      "bytes": 14190
+    },
+    "docs/macos-hit-testing.md": {
+      "sha256": "5d6f32486ee3b0df7761ae646823bf7ddb845074c92facea11ea0b4e9875548e",
+      "bytes": 2908
+    }
+  },
+  "environment": {
+    "os": "26.7.1",
+    "architecture": "arm64",
+    "sdk": "27.0",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+  },
+  "compileArguments": [
+    "xcrun",
+    "clang",
+    "-fobjc-arc",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-framework",
+    "AppKit",
+    "-framework",
+    "CoreGraphics"
+  ],
+  "controls": [
+    {
+      "name": "sdk",
+      "exitCode": 0,
+      "executableSha256": "540842ff2b5e76e2f6604c4ab2198afbf37ac74815715b90c796f1ac3e7edfb4",
+      "stdout": "{\"status\":\"passed\",\"coordinateControlsChecked\":4,\"targetRejectionDiagnosticsChecked\":4,\"targetIdentityGuardsChecked\":2,\"scope\":\"Actual Quartz construction and pure target-guard controls only; WindowServer delivery is separately required\",\"inputPosted\":false,\"identityGuardsChecked\":4,\"globalEventsChecked\":9,\"windowTargetControlsChecked\":11}\n",
+      "stderr": "",
+      "stdoutSha256": "d4ce064c5a7b59359c4c2420314e06e80ff5ef965a0ebf93f622397871411863",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "old-guard",
+      "exitCode": 1,
+      "executableSha256": "754d670a2a379a2e4f6b7aea8842596571b63bf67adeeff2e0b67765702354f6",
+      "stdout": "",
+      "stderr": "Guard rejected a verified owned click-through witness: The owned pointer target is obscured by another window; no input was posted; target details: {\"alpha\":1,\"expectedPID\":95588,\"screenPoint\":[918.5,555],\"frame\":[0,0,1920,1080],\"firstWindow\":66996,\"layer\":20,\"firstPID\":43698,\"expectedWindow\":71440}\n",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "9c8c51d9c7c471175f67babd549d64a2ea457550860767ba55c78d9caee7318a"
+    },
+    {
+      "name": "corrected-guard",
+      "exitCode": 0,
+      "executableSha256": "f5619de59db173be7203f51e1b390186d2c05f7fe0ff126af81ed06d12915914",
+      "stdout": "{\"clickThroughAccepted\":true,\"inputPosted\":false,\"inputTakingOverlayRejected\":true,\"ownedWindowCount\":2,\"scope\":\"Actual AppKit mouse-down hit testing and Quartz identity\\/geometry; not GPUI input delivery\",\"status\":\"passed\",\"uncoveredTargetAccepted\":true}\n",
+      "stderr": "",
+      "stdoutSha256": "ef70ac32890073a24352d0bee8cd8db5fb82642981c2759922733402a1d1845f",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "initialControlFailure": {
+    "oldExitCode": 1,
+    "correctedExitCode": 1,
+    "error": "The owned click-through window is not above its exact target",
+    "cause": "The ignored overlay retained the existing hit target before its new WindowServer rectangle became visible. The new control now separately waits for its owned visibility witness. Existing native deadlines were unchanged.",
+    "sourceSha256": "e0bb0d4eb91692edb7f4c8e131612efb4c7f652d75a17e8c9c00899824c107cc"
+  },
+  "remaining": "Required hosted GPUI development/AOT input and full aggregate gate; no physical-input, display-presentation, IME or accessibility claim."
+}

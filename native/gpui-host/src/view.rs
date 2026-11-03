@@ -211,7 +211,7 @@ impl NativeView {
             .expect("validated tree contains every child");
         let mut base = div().flex_shrink_0();
         if let Some(layout) = layout {
-            base = layout.children(base, node.children(), self.scrolls.get(&node_id));
+            base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
         let base = pointer.target(base, node_id).id(node_id.get());
         match node.element() {
@@ -316,9 +316,25 @@ impl Render for NativeView {
         let evidence = self.evidence.clone();
         let paint_state = self.state.clone();
         let window_id = self.window_id;
+        let pointer_trace = self.evidence.pointer_tracing().then(|| {
+            let evidence = self.evidence.clone();
+            canvas(
+                |_, _, _| (),
+                move |_, (), window, _| evidence.observe_pointer(window_id, window),
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size(px(1.))
+        });
         let mut base = div();
         if let Some(layout) = &layout {
-            base = layout.children(base, &[state.tree.root_id()], None);
+            base = layout.children(
+                base,
+                &[state.tree.root_id()],
+                usize::from(pointer_trace.is_some()),
+                None,
+            );
         }
         base.size_full()
             .relative()
@@ -332,6 +348,7 @@ impl Render for NativeView {
             }))
             .on_action(|_: &FocusNext, window, cx| window.focus_next(cx))
             .on_action(|_: &FocusPrevious, window, cx| window.focus_prev(cx))
+            .children(pointer_trace)
             .child(body)
             .child(
                 canvas(
