@@ -1,9 +1,7 @@
 """Metadata, trial design and real process guards; these tests do not render GPUI."""
 
-from copy import deepcopy
 import importlib.util
 import json
-from pathlib import Path
 import platform
 import signal
 import subprocess
@@ -11,7 +9,8 @@ import sys
 import tempfile
 import time
 import unittest
-
+from copy import deepcopy
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/bridge-pairs.py"
 SPEC = importlib.util.spec_from_file_location("bridge_pairs", SCRIPT)

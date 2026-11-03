@@ -7,12 +7,10 @@ process cleanup. It never disables events or retries a failed observation.
 """
 
 import argparse
-from datetime import datetime, timezone
 import importlib.util
 import json
 import math
 import os
-from pathlib import Path
 import platform
 import shutil
 import signal
@@ -20,7 +18,8 @@ import statistics
 import subprocess
 import threading
 import time
-
+from datetime import UTC, datetime
+from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -49,7 +48,7 @@ SEMANTICS = [
 
 
 def timestamp():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def require(condition, message):
@@ -82,7 +81,9 @@ def write_json(path, value):
 
 
 def small_command(command, cwd):
-    result = subprocess.run(command, cwd=cwd, capture_output=True, timeout=15)
+    result = subprocess.run(
+        command, cwd=cwd, capture_output=True, timeout=15, check=False
+    )
     require(
         result.returncode == 0 and len(result.stdout) < 65_536,
         f"Identity command failed: {command[0]}",
@@ -201,7 +202,8 @@ def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=
                 "Exactly one identity-verified native child must be observed",
             )
         report["status"] = "passed"
-    except BaseException as error:
+    except (Exception, KeyboardInterrupt) as error:  # noqa: BLE001
+        # Persist arbitrary child/driver failures before bounded process cleanup.
         report["error"] = {"type": type(error).__name__, "message": str(error)}
         if isinstance(error, (InterruptedError, KeyboardInterrupt)):
             cancellation = error
@@ -776,7 +778,8 @@ def main():
             prepare(args, report)
         else:
             collect(args, report)
-    except (Exception, KeyboardInterrupt) as error:
+    except (Exception, KeyboardInterrupt) as error:  # noqa: BLE001
+        # Preserve unexpected collection failures in the source-bound report.
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:
         report["finished_at"] = timestamp()
