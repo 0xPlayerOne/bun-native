@@ -187,7 +187,30 @@ expectations, requiring each native renderer and initial/update paint. Its
 `--negative-paint-check` proves an incorrect expected native tree fails while
 the fixture joins native shutdown. The shared AOT entry is `platform-smoke`.
 
-This first macOS/Windows lane explicitly leaves OS-visible-window, real input,
-screenshots and full process-tree observation unverified. A successful portable
-paint test is not those claims. See [native platform qualification](../../docs/native-platforms.md)
-for target requirements, artifact scope and remaining #246/#256 work.
+The separate `--os-input` mode additionally requires independent owned-process
+and visible-window identity, a native button pointer activation, Tab down/up and
+focus traversal, all 32 nonce edits in exact input-revision order, and their full
+native paint on every cycle. It uses target OS APIs and reuses the existing X11
+helpers on Linux. A successful injection API return cannot satisfy delivery.
+The macOS helper requires an explicit prebuilt `BUN_NATIVE_PLATFORM_HELPER`;
+neither target controller requests permission or changes security settings.
+The helper constructs global Quartz pointer events from the measured viewport
+and independently observed frame. It requires the exact owned window to be the
+first onscreen window at that point, then posts through the public session event
+stream for WindowServer routing. Keyboard pairs recheck owned foreground state.
+An obscured-target rejection retains only the first intersecting rectangle's
+numeric identity, layer, opacity and geometry; unrelated titles and application
+names are excluded. The SDK controls check the exact diagnostic fields and
+reject malformed identity metadata. A rejection means no input was posted.
+A separate SDK control inspects those objects and pure occlusion/identity guards
+without posting input; it cannot qualify delivery. The previous PID-targeted
+attempts remain failed, including the ready GPUI capture trace with no mouse
+event in run 41245774144. The new routing requires its own hosted delivery proof.
+Each OS observation is retained as soon as ownership is established, with the
+requested logical point and a phase that distinguishes posting from actual
+delivery and complete native paint. Failed runs keep that partial evidence.
+
+Paint-only mode still leaves OS input/visibility unverified. Screenshots,
+presentation, hardware input, OS close-button behavior and complete process-tree
+observation remain outside both modes. See [native platform qualification](../../docs/native-platforms.md)
+for exact target results, unsupported sessions and remaining #246/#256 work.

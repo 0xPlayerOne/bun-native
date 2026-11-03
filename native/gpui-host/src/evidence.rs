@@ -2,6 +2,7 @@
 //! presentation; screenshots are separate. Every JSONL record is bounded.
 
 mod layout;
+mod pointer;
 use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
 pub(crate) use layout::LayoutFrame;
 use layout::LayoutSnapshot;
@@ -24,6 +25,7 @@ struct Log {
     nonce: String,
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
+    pointer: Option<pointer::PointerTrace>,
     startup_started: Option<Instant>,
     startup_records: u16,
 }
@@ -56,6 +58,7 @@ impl Evidence {
                 nonce,
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
+                pointer: pointer::PointerTrace::from_environment(),
                 startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
                     .then(Instant::now),
                 startup_records: 0,
@@ -158,6 +161,9 @@ impl Evidence {
             let mut log = log.borrow_mut();
             log.last_state.remove(&window_id);
             log.last_layout.remove(&window_id);
+            if let Some(trace) = &mut log.pointer {
+                trace.closed(window_id);
+            }
         }
     }
 
