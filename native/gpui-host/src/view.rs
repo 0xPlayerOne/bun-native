@@ -178,8 +178,21 @@ impl NativeView {
             // An external commit also needs explicit frame demand when a
             // dirty window's platform source has gone idle. Coalesce it to
             // one callback; its weak token cannot retain this view on close.
+            let revision = self.state.borrow().tree.revision();
             if let Some(completion) = self.frame_demand.begin() {
-                window.on_next_frame(move |_, _| drop(completion));
+                let evidence = self.evidence.clone();
+                let window_id = self.window_id;
+                evidence.frame_schedule("queued", window_id, revision);
+                window.on_next_frame(move |window, _| {
+                    evidence.frame_schedule("delivered", window_id, revision);
+                    // Refresh in the frame callback as well: a refresh during
+                    // another draw phase is intentionally ignored by GPUI.
+                    window.refresh();
+                    drop(completion);
+                });
+            } else {
+                self.evidence
+                    .frame_schedule("coalesced", self.window_id, revision);
             }
         }
     }

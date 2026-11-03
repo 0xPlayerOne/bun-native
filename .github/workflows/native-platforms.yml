@@ -184,6 +184,7 @@ jobs:
         timeout-minutes: 3
         env:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+          BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
@@ -231,6 +232,7 @@ jobs:
         timeout-minutes: 3
         env:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+          BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `
