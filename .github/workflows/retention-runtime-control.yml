@@ -18,10 +18,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install the unchanged pinned runtime and dependencies
-        run: |
-          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-          bun install --frozen-lockfile
+      - name: Install the unchanged pinned runtime
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install frozen dependencies after the runner applies GITHUB_PATH
+        run: bun install --frozen-lockfile
       - name: One predeclared run per immutable runtime, preserving both outcomes
         run: |
           python - <<'PYCONTROL'
@@ -45,7 +45,7 @@ jobs:
           source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
           assert source_hash == 'e0156a12d48b4a5d4636980bdbc03ba1817ea242cc7b7ff759ed3c7b2740e7ef'
           variants = [('pinned', pinned), ('candidate', candidate)]
-          plan = {'scope': 'Research only; not Validation / Gate, no accepted runtime upgrade', 'sourceCommit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'sourceTestSha256': source_hash, 'candidateArchiveSha256': digest, 'candidateReleaseAssetId': 706470405, 'attemptsPerVariant': 1, 'order': [name for name, _ in variants], 'command': ['bun', 'test', 'tests'], 'oracle': 'Original source, assertions, two GC checkpoints and default JIT retained'}
+          plan = {'scope': 'Research only; not Validation / Gate, no accepted runtime upgrade', 'sourceCommit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'sourceTestSha256': source_hash, 'candidateArchiveSha256': digest, 'candidateReleaseAssetId': 706470405, 'attemptsPerVariant': 1, 'setupOnlyFailure': 41729451854, 'order': [name for name, _ in variants], 'command': ['bun', 'test', 'tests'], 'oracle': 'Original source, assertions, two GC checkpoints and default JIT retained'}
           (output / 'plan.json').write_text(json.dumps(plan, indent=2))
           outcomes = []
           for name, binary in variants:
