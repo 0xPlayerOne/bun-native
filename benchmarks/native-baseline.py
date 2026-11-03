@@ -77,7 +77,40 @@ def distribution(values):
     }
 
 
-def expected_sources(repository):
+def revision_build_helpers(repository, source_commit):
+    """Bind historical helper membership to an immutable, clean Git checkout."""
+    if (
+        not isinstance(source_commit, str)
+        or len(source_commit) != 40
+        or any(character not in "0123456789abcdef" for character in source_commit)
+    ):
+        raise ValueError("Source inventory requires a full immutable commit")
+
+    def git(*arguments):
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if result.returncode != 0 or len(result.stdout) > 65_536:
+            raise ValueError("Cannot verify source inventory Git identity")
+        return result.stdout.strip()
+
+    if git("rev-parse", "HEAD") != source_commit:
+        raise ValueError("Source inventory commit differs from the checkout")
+    if git("status", "--porcelain"):
+        raise ValueError("Revision-bound source inventory requires a clean checkout")
+    helper = "experiments/aot-gpui/native-sources.ts"
+    tracked = git("ls-tree", "--name-only", source_commit, "--", helper)
+    if tracked not in ("", helper):
+        raise ValueError("Unexpected build-helper inventory")
+    return {helper} if tracked else set()
+
+
+def expected_sources(repository, *, source_commit=None):
     paths = {
         "examples/native-window/main.ts",
         "examples/native-window/content.ts",
@@ -95,8 +128,15 @@ def expected_sources(repository):
         "Cargo.lock",
         "native/gpui-host/Cargo.toml",
         "native/protocol/Cargo.toml",
-        "experiments/aot-gpui/native-sources.ts",
     }
+    # Ordinary current-source verification always requires this helper, including
+    # after accidental deletion. Historical comparisons opt into a checked Git
+    # revision rather than filtering missing files or trusting the artifact list.
+    paths.update(
+        {"experiments/aot-gpui/native-sources.ts"}
+        if source_commit is None
+        else revision_build_helpers(repository, source_commit)
+    )
     for directory, extension in [
         ("packages/protocol/src", "ts"),
         ("packages/runtime/src", "ts"),
@@ -115,10 +155,21 @@ def expected_sources(repository):
     return paths
 
 
-def verify_sources(repository, manifest, entrypoint="examples/native-window/main.ts"):
+def verify_sources(
+    repository,
+    manifest,
+    entrypoint="examples/native-window/main.ts",
+    *,
+    source_commit=None,
+):
     records = manifest["source"]["files"]
     names = [record["path"] for record in records]
-    expected = expected_sources(repository) | {entrypoint}
+    expected = expected_sources(repository, source_commit=source_commit) | {entrypoint}
+    if source_commit is not None and (
+        manifest["source"].get("commit") != source_commit
+        or manifest["source"].get("dirty") is not False
+    ):
+        raise ValueError("Manifest does not identify the clean source inventory commit")
     if len(names) != len(set(names)) or set(names) != expected:
         raise ValueError(
             "AOT manifest must describe every current application/host source"
@@ -131,7 +182,14 @@ def verify_sources(repository, manifest, entrypoint="examples/native-window/main
             raise ValueError(f"Source differs from the AOT build: {record['path']}")
 
 
-def verify_package(package, repository, *, entry="native-window", external_host=None):
+def verify_package(
+    package,
+    repository,
+    *,
+    entry="native-window",
+    external_host=None,
+    source_commit=None,
+):
     entries = {
         "native-window": "examples/native-window/main.ts",
         "bridge": "benchmarks/bridge.ts",
@@ -209,7 +267,7 @@ def verify_package(package, repository, *, entry="native-window", external_host=
         or manifest["target"]["architecture"] != architecture
     ):
         raise ValueError("The AOT artifact does not target this Linux architecture")
-    verify_sources(repository, manifest, entries[entry])
+    verify_sources(repository, manifest, entries[entry], source_commit=source_commit)
     return manifest
 
 
