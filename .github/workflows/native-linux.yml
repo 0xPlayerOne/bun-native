@@ -77,6 +77,11 @@ jobs:
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
           cargo test --locked --release --manifest-path Cargo.toml -p bun-native-host
+      - name: Qualify fixed allocation regions with the actual Rust and Heaptrack ABI
+        timeout-minutes: 3
+        run: |
+          python3 benchmarks/native-allocation-control.py \
+            --output "$NATIVE_EVIDENCE/allocation-selection"
       - name: Development public API input, stale revision and window lifecycle
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -253,6 +258,7 @@ jobs:
           name: native-linux-${{ runner.arch }}
           path: |
             ${{ runner.temp }}/native-evidence/toolchain.txt
+            ${{ runner.temp }}/native-evidence/allocation-selection/
             ${{ runner.temp }}/native-evidence/build.log
             ${{ runner.temp }}/native-evidence/binary-*.txt
             ${{ runner.temp }}/native-evidence/development/

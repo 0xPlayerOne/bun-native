@@ -75,3 +75,18 @@ Use `--variant events` with the exact event revision for the other patch. Both c
 ## Interpretation limits
 
 Allocation gating, symbol resolution, debug information and the profiler itself can perturb scheduling. Instrumented elapsed times must not be compared to the optimized originals as a performance improvement. Selected allocation calls and stacks do not establish selected-interval peak/live memory or leaks: objects may cross either boundary, and unrelated native threads are included. Incidental whole-process or peak/leak labels emitted by the profiler's generic report are retained as raw output only; this diagnostic does not promote them to gated metrics. Bun allocations, physical input latency, display presentation and GPU memory are outside this control.
+
+## Required current-source control
+
+The Linux native job now executes `native-allocation-control.py` against its
+actual pinned Rust compiler and the installed, hash-verified Heaptrack ABI before
+starting GUI scenarios. All eight predeclared cases must pass: disabled,
+individual, batch, mismatch, missing ABI, exclusive-output collision, deadline
+and file cap. Source/compiler/library identities and every outcome are retained
+in the `allocation-selection` CI artifact directory even after failure.
+
+This complements the standalone crate tests and historical qualification; it
+does not profile either historical GPUI application, attribute performance, or
+turn a macOS metadata test into a Linux allocation observation. A controller
+error or interruption always restores `status=failed` before writing its final
+report. A deterministic test rejects the old successful-status failure path.
