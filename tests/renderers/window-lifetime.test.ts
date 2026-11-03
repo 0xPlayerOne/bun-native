@@ -29,6 +29,7 @@ async function assertObserverLifetime(watch: Watch) {
       },
       batch: actual.batch.bind(actual),
       close: actual.close.bind(actual),
+      displaySnapshot: actual.displaySnapshot.bind(actual),
       input: actual.input.bind(actual),
       on: actual.on.bind(actual),
       onClick: actual.onClick.bind(actual),

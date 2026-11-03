@@ -49,7 +49,13 @@ async function controls(window: NativeWindow) {
 describe('owned application API (headless subprocess)', () => {
   test('exposes immutable capabilities and rejects unsupported JavaScript elements explicitly', () =>
     withApp(async (app) => {
-      expect(app.capabilities).toEqual(['tree', 'input_revisions', 'layout_v1', 'interactions_v1'])
+      expect(app.capabilities).toEqual([
+        'tree',
+        'input_revisions',
+        'layout_v1',
+        'interactions_v1',
+        'window_display_v1',
+      ])
       expect(Object.isFrozen(app.capabilities)).toBe(true)
       expect(Object.isFrozen(app.limits)).toBe(true)
       const window = await app.openWindow({ title: 'Capability contract' })

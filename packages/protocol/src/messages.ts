@@ -1,6 +1,12 @@
 import { parseElement, type Element } from './elements.ts'
 import { MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 import {
+  parseDisplaySnapshot,
+  parseServicePolicy,
+  type DisplaySnapshot,
+  type ServicePolicy,
+} from './services.ts'
+import {
   id,
   integer,
   keys,
@@ -11,7 +17,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 4
+export const PROTOCOL_VERSION = 5
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -69,6 +75,7 @@ export type Command =
       operations: readonly Operation[]
     }
   | { id: number; type: 'close'; window_id: number }
+  | { id: number; type: 'display_snapshot'; window_id: number }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -79,6 +86,8 @@ export const ERROR_CODES = [
   'stale_revision',
   'limit_exceeded',
   'native_failure',
+  'permission_denied',
+  'service_unavailable',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 export const REQUIRED_CAPABILITIES = Object.freeze([
@@ -86,6 +95,7 @@ export const REQUIRED_CAPABILITIES = Object.freeze([
   'input_revisions',
   'layout_v1',
   'interactions_v1',
+  'window_display_v1',
 ] as const)
 export type Capability = (typeof REQUIRED_CAPABILITIES)[number]
 
@@ -121,10 +131,17 @@ type RoutedEvent = NodeEventRoute &
   )
 
 export type NativeEvent =
-  | { type: 'ready'; protocol: typeof PROTOCOL_VERSION; capabilities: Capability[]; limits: Limits }
+  | {
+      type: 'ready'
+      protocol: typeof PROTOCOL_VERSION
+      capabilities: Capability[]
+      limits: Limits
+      service_policy: ServicePolicy
+    }
   | { type: 'ack'; id: number }
   | { type: 'opened'; id: number; window_id: number; root_id: number; tree_revision: number }
   | { type: 'applied'; id: number; window_id: number; tree_revision: number }
+  | { type: 'display_snapshot'; id: number; window_id: number; snapshot: DisplaySnapshot }
   | RoutedEvent
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
@@ -214,8 +231,9 @@ export function parseCommand(value: unknown): Command {
       }
     }
     case 'close':
+    case 'display_snapshot':
       keys(message, ['id', 'type', 'window_id'])
-      return { id: request, type: 'close', window_id: id(message['window_id']) }
+      return { id: request, type: message['type'], window_id: id(message['window_id']) }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -279,7 +297,7 @@ export function parseEvent(value: unknown): NativeEvent {
   const message = object(value)
   switch (message['type']) {
     case 'ready': {
-      keys(message, ['type', 'protocol', 'capabilities', 'limits'])
+      keys(message, ['type', 'protocol', 'capabilities', 'limits', 'service_policy'])
       const capabilities = message['capabilities']
       if (!Array.isArray(capabilities) || capabilities.length > REQUIRED_CAPABILITIES.length)
         throw new ProtocolError('Invalid native capabilities')
@@ -295,6 +313,7 @@ export function parseEvent(value: unknown): NativeEvent {
         protocol: version(message['protocol']),
         capabilities: parsed,
         limits: limits(message['limits']),
+        service_policy: parseServicePolicy(message['service_policy']),
       }
     }
     case 'ack':
@@ -316,6 +335,14 @@ export function parseEvent(value: unknown): NativeEvent {
         id: id(message['id']),
         window_id: id(message['window_id']),
         tree_revision: integer(message['tree_revision'], 'tree revision'),
+      }
+    case 'display_snapshot':
+      keys(message, ['type', 'id', 'window_id', 'snapshot'])
+      return {
+        type: 'display_snapshot',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        snapshot: parseDisplaySnapshot(message['snapshot']),
       }
     case 'click':
     case 'focus':

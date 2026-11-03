@@ -60,11 +60,14 @@ for await (const chunk of Bun.stdin.stream()) {
       }
       const ready = {
         type: 'ready',
+        service_policy: {
+          window_display: process.argv.includes('--bun-native-allow-window-display'),
+        },
         protocol:
           mode === 'wrong-version'
             ? PROTOCOL_VERSION + 1
             : mode === 'obsolete-version'
-              ? 3
+              ? 4
               : PROTOCOL_VERSION,
         capabilities:
           mode === 'missing-capability'
@@ -146,7 +149,7 @@ for await (const chunk of Bun.stdin.stream()) {
                 : mode === 'wrong-sequence'
                   ? 2
                   : mode === 'out-of-order-sequence'
-                    ? 3
+                    ? 4
                     : 1
             for (let n = 0; n < count; n += 1) {
               const actual = ++sequence

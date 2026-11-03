@@ -47,6 +47,7 @@ export function observeWindow(window: NativeWindow) {
     },
     batch: window.batch.bind(window),
     close: window.close.bind(window),
+    displaySnapshot: window.displaySnapshot.bind(window),
     input: window.input.bind(window),
     on(node, type, listener, options) {
       if (type === 'input' && node.kind === 'input')

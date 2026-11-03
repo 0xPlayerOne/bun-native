@@ -1,9 +1,10 @@
-# Private native protocol 4
+# Private native protocol 5
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 4
-requires shared `layout_v1` and `interactions_v1` contracts and replaces protocol 3 outright.
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 5
+requires shared `layout_v1`, `interactions_v1` and `window_display_v1` contracts
+and replaces protocol 4 outright.
 Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors
@@ -20,16 +21,19 @@ number spellings such as `1.0` and `1e0` follow JavaScript safe-integer semantic
 Structurally valid requests that fail a lifecycle, ownership, revision or
 resource rule receive `error` with the request ID and a finite code:
 `invalid_command`, `version_mismatch`, `invalid_state`, `invalid_handle`,
-`stale_revision`, `limit_exceeded` or `native_failure`. Such errors do not
+`stale_revision`, `limit_exceeded`, `native_failure`, `permission_denied` or
+`service_unavailable`. Such errors do not
 partially mutate a window. The session may continue with a newer request ID.
 Unexpected native window creation/update failures never become successful
 responses.
 
 ## Session and identifiers
 
-The first successful request is `hello` with `protocol: 4`. It returns `ready`
-with mandatory capabilities `tree`, `input_revisions`, `layout_v1` and `interactions_v1` plus the
-limits below, then `ack`. The runtime rejects a host missing any mandatory feature.
+The first successful request is `hello` with `protocol: 5`. It returns `ready`
+with mandatory capabilities `tree`, `input_revisions`, `layout_v1`,
+`interactions_v1` and `window_display_v1`, the limits below and immutable native
+`service_policy`, then `ack`. The runtime rejects a host missing any mandatory
+feature or reporting policy that differs from its explicit launch request.
 Another hello after success is invalid. `open` requires a new `window_id`, new
 `root_id`, a nonempty title, and width/height in pixels. It returns `opened` with
 those IDs and tree revision 0. The initial root is an empty box.
@@ -46,6 +50,14 @@ stale-handle protection needs no unbounded tombstone set.
 `close` names a window and returns `ack`. `closed` comes from actual native
 window destruction. A new window can be opened with fresh IDs afterward.
 `shutdown` revokes all windows and flushes `ack` before the process exits.
+
+`display_snapshot` reads the live owned window's native display under an
+explicit launch grant, default-denied. Its reply carries the matching request
+and window identities, finite display bounds and window scale factor. It
+neither changes tree revisions nor emits a UI sequence. No wire command can
+grant a service; unsupported service selectors remain invalid. See the
+[shared service contract](../../docs/native-services.md) for ranges,
+cancellation and platform semantics.
 
 | Resource                                      |            Limit |
 | --------------------------------------------- | ---------------: |

@@ -10,15 +10,26 @@ import {
   type NativeEvent,
   type ErrorCode,
   type Limits,
+  type ServicePolicy,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
 import { StartupTrace } from './startup-trace.ts'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
-export type WindowCommand = WithoutId<Extract<Command, { type: 'open' | 'batch' | 'close' }>>
+export type WindowCommand = WithoutId<
+  Extract<Command, { type: 'open' | 'batch' | 'close' | 'display_snapshot' }>
+>
 export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
-export type HostResponse = Extract<NativeEvent, { type: 'ack' | 'opened' | 'applied' }>
+export type HostResponse = Extract<
+  NativeEvent,
+  { type: 'ack' | 'opened' | 'applied' | 'display_snapshot' }
+>
+
+export interface ServicePermissions {
+  /** Default deny. Fixed for the native process lifetime; no wire request can grant it. */
+  readonly windowDisplay?: 'allow' | 'deny'
+}
 
 export class NativeCommandError extends Error {
   override readonly name = 'NativeCommandError'
@@ -37,6 +48,21 @@ export interface HostOptions {
   /** Optional native process arguments, passed without a shell. */
   args?: readonly string[]
   requestTimeoutMs?: number
+  permissions?: ServicePermissions
+}
+
+function launchPolicy(value: unknown): Readonly<ServicePolicy> {
+  if (value === undefined) return Object.freeze({ window_display: false })
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError('Native permissions must be an object')
+  if (Object.keys(value).some((key) => key !== 'windowDisplay'))
+    throw new TypeError('Unknown native service permission')
+  const permission = Object.hasOwn(value, 'windowDisplay')
+    ? (value as Record<string, unknown>)['windowDisplay']
+    : 'deny'
+  if (permission !== 'allow' && permission !== 'deny')
+    throw new TypeError('windowDisplay permission must be allow or deny')
+  return Object.freeze({ window_display: permission === 'allow' })
 }
 
 type Pending = {
@@ -72,6 +98,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private phase: 'starting' | 'running' | 'stopping' | 'closed' = 'starting'
   private ready = false
   private negotiatedLimits: Readonly<Limits> | undefined
+  private negotiatedServicePolicy: Readonly<ServicePolicy> | undefined
   private sequence = 0
   private nextId = 1
   private writeTail: Promise<void> = Promise.resolve()
@@ -79,10 +106,17 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private iteratorTaken = false
   private readonly startupTrace = StartupTrace.fromEnvironment()
 
-  private constructor(options: HostOptions) {
+  private constructor(
+    options: HostOptions,
+    private readonly requestedPolicy: Readonly<ServicePolicy>
+  ) {
     this.timeout = options.requestTimeoutMs ?? 5_000
     this.process = Bun.spawn({
-      cmd: [options.executable, ...(options.args ?? [])],
+      cmd: [
+        options.executable,
+        ...(options.args ?? []),
+        ...(requestedPolicy.window_display ? ['--bun-native-allow-window-display'] : []),
+      ],
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',
@@ -98,7 +132,16 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     const timeout = options.requestTimeoutMs ?? 5_000
     if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 60_000)
       throw new Error('requestTimeoutMs must be an integer between 1 and 60000')
-    const host = new NativeHost(options)
+    const policy = launchPolicy(options.permissions)
+    if (
+      options.args?.some(
+        (argument) => typeof argument !== 'string' || argument.startsWith('--bun-native-')
+      )
+    )
+      throw new TypeError(
+        'Native service arguments are reserved for the explicit permissions option'
+      )
+    const host = new NativeHost(options, policy)
     try {
       await host.request({ type: 'hello', protocol: PROTOCOL_VERSION })
       if (!host.ready) throw new ProtocolError('Host acknowledged hello before protocol readiness')
@@ -116,6 +159,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     return this.negotiatedLimits
   }
 
+  get servicePolicy(): Readonly<ServicePolicy> {
+    if (!this.negotiatedServicePolicy)
+      throw new ProtocolError('Native service policy is not negotiated')
+    return this.negotiatedServicePolicy
+  }
+
   /** Resolves after the native UI thread acknowledges the operation. */
   send(
     command: Extract<WindowCommand, { type: 'open' }>
@@ -126,6 +175,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'close' }>
   ): Promise<Extract<HostResponse, { type: 'ack' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'display_snapshot' }>
+  ): Promise<Extract<HostResponse, { type: 'display_snapshot' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -306,6 +358,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           'Native host lacks required protocol capabilities: ' + REQUIRED_CAPABILITIES.join(', ')
         )
       this.negotiatedLimits = Object.freeze(event.limits)
+      if (event.service_policy.window_display !== this.requestedPolicy.window_display)
+        throw new ProtocolError(
+          'Native service policy does not match the explicit launch permissions'
+        )
+      this.negotiatedServicePolicy = Object.freeze(event.service_policy)
       this.ready = true
       return
     }
@@ -313,6 +370,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'ack' ||
       event.type === 'opened' ||
       event.type === 'applied' ||
+      event.type === 'display_snapshot' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -349,6 +407,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
 
   private matchesResponse(command: Command, response: HostResponse): boolean {
     switch (command.type) {
+      case 'display_snapshot':
+        return response.type === 'display_snapshot' && response.window_id === command.window_id
       case 'open':
         return (
           response.type === 'opened' &&
