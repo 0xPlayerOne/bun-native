@@ -1,0 +1,1071 @@
+{
+  "schemaVersion": 1,
+  "status": "unresolved",
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "executionPlatform": "Linux x86_64; local diagnostic controls, not hosted or cross-platform qualification",
+  "controlProcesses": 90,
+  "instrumentedNativeProcesses": 10,
+  "series": [
+    {
+      "name": "queue-v1",
+      "records": 20,
+      "method": "fixed 5 trials x 2 counts x 2 execution modes; no early stop on collection outcome",
+      "groups": [
+        {
+          "mode": "development",
+          "variation": "100",
+          "trials": 5,
+          "firstCheckpointPositive": 5,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "100",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "development",
+          "variation": "1000",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "1000",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        }
+      ]
+    },
+    {
+      "name": "queue-v2",
+      "records": 10,
+      "method": "fixed 5 trials per execution mode; all outcomes preserved, no early stop or adaptive retries",
+      "groups": [
+        {
+          "mode": "development",
+          "variation": "100",
+          "trials": 5,
+          "firstCheckpointPositive": 5,
+          "secondCheckpointPositive": 5
+        },
+        {
+          "mode": "aot",
+          "variation": "100",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        }
+      ]
+    },
+    {
+      "name": "queue-v3",
+      "records": 20,
+      "method": "fixed five trials per full-GC entry point and execution mode, same program/artifact; no adaptive retries or production oracle edits",
+      "groups": [
+        {
+          "mode": "development",
+          "variation": "bun",
+          "trials": 5,
+          "firstCheckpointPositive": 5,
+          "secondCheckpointPositive": 5
+        },
+        {
+          "mode": "development",
+          "variation": "jsc",
+          "trials": 5,
+          "firstCheckpointPositive": 5,
+          "secondCheckpointPositive": 5
+        },
+        {
+          "mode": "aot",
+          "variation": "bun",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "jsc",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        }
+      ]
+    },
+    {
+      "name": "sleep-boundary",
+      "records": 40,
+      "method": "fixed five trials per boundary/mode; two fixed GC checkpoints; no adaptive retries",
+      "groups": [
+        {
+          "mode": "development",
+          "variation": "sleep0",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "development",
+          "variation": "sleep1",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "development",
+          "variation": "timeout0",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "development",
+          "variation": "resolved",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "sleep0",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "sleep1",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "timeout0",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        },
+        {
+          "mode": "aot",
+          "variation": "resolved",
+          "trials": 5,
+          "firstCheckpointPositive": 0,
+          "secondCheckpointPositive": 0
+        }
+      ]
+    }
+  ],
+  "originalFailure": {
+    "sourceCommit": "657ac295077b381120ec8340d958b596da785b3b",
+    "adapter": "core",
+    "mode": "aot",
+    "retainedProbeIndexes": [183, 184],
+    "probeKinds": ["container handle", "label handle"],
+    "zeroBasedMountIndex": 61,
+    "cleanup": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0
+    }
+  },
+  "instrumentedNativeFailure": {
+    "trials": 10,
+    "positiveTrial": 4,
+    "retainedProbeIndexes": [228, 229],
+    "zeroBasedMountIndex": 76
+  },
+  "interpretation": [
+    "The no-framework controls demonstrate that fixed full-GC checkpoints can leave targets observable without a Bun Native or framework implementation.",
+    "The positive no-framework result is development-only in these matrices. It does not reproduce or explain the original native AOT mid-run failure.",
+    "All sleep(0), sleep(1), and setTimeout(0) promises were pending at synchronous inspection. Promise.resolve was fulfilled. All targets were already collected by the initial Bun.gc(true) in that control.",
+    "Changing full-GC entry point preserved the development-only positives in v3. It did not identify or remove the retaining root.",
+    "Missing incoming graph edges are not proof of a conservative root: the snapshot omits some edges and itself performs another collection.",
+    "Renderer WeakRef and benchmark oracles remain unchanged. Deterministic ownership, mutation counts and callback revocation remain mandatory. No accepted matched timing comparison is derived from failed/incomplete trials."
+  ],
+  "sourceReferences": [
+    {
+      "purpose": "Bun GC entry and conservative-stack mitigation",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "src/jsc/bindings/bindings.cpp",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/jsc/bindings/bindings.cpp#L5125-L5181",
+      "bytes": 305747,
+      "sha256": "e64c2890b85b37dc979ac7ac7923b7d319482bfba511bada6432701433417fc4"
+    },
+    {
+      "purpose": "Bun.sleep creates a timer promise",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "src/jsc/bindings/BunObject.cpp",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/jsc/bindings/BunObject.cpp#L715-L738",
+      "bytes": 68209,
+      "sha256": "0303cf7b98cfc4681e0042ee6586baa1f0071ad2984b8f686b8263754ae32eab"
+    },
+    {
+      "purpose": "Bun.sleep timer scheduling",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "src/runtime/timer/Timer.rs",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/runtime/timer/Timer.rs#L170-L197",
+      "bytes": 26740,
+      "sha256": "7621d8feea0fe4c3c88256932803ec4407b3e375b2e0f763da35e7be54b4d962"
+    },
+    {
+      "purpose": "Alternate full collection entry",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "src/jsc/modules/BunJSCModule.h",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/jsc/modules/BunJSCModule.h#L173-L181",
+      "bytes": 43607,
+      "sha256": "860fd338429ad341e179adf0f77abd435b05b3f306c06f409fdc3429fd8d61f6"
+    },
+    {
+      "purpose": "Explicit kept-object release",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "src/jsc/modules/BunJSCModule.h",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/jsc/modules/BunJSCModule.h#L611-L622",
+      "bytes": 43607,
+      "sha256": "860fd338429ad341e179adf0f77abd435b05b3f306c06f409fdc3429fd8d61f6"
+    },
+    {
+      "purpose": "Exact WebKit revision in Bun dependency definition",
+      "repository": "oven-sh/bun",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "path": "scripts/build/deps/webkit.ts",
+      "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/scripts/build/deps/webkit.ts#L1-L6",
+      "bytes": 86951,
+      "sha256": "72c3b2b02a22272be794f2e3b154a78985f1567fca0654c5425354e3a8f1a3fa"
+    },
+    {
+      "purpose": "Conservative roots do not emit regular analyzer edges",
+      "repository": "oven-sh/WebKit",
+      "revision": "8c6c963e3c49fe39942d9625d1fc924128fad26e",
+      "path": "Source/JavaScriptCore/heap/SlotVisitor.cpp",
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/SlotVisitor.cpp#L139-L247",
+      "bytes": 36767,
+      "sha256": "c396ee3e537a59520382a18dea2f4422353b3454684f1a179b94ed3b4a0af79b"
+    },
+    {
+      "purpose": "GCDebugging snapshot structure",
+      "repository": "oven-sh/WebKit",
+      "revision": "8c6c963e3c49fe39942d9625d1fc924128fad26e",
+      "path": "Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp",
+      "url": "https://github.com/oven-sh/WebKit/blob/8c6c963e3c49fe39942d9625d1fc924128fad26e/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp",
+      "bytes": 22800,
+      "sha256": "569026168abfae935ffe0ac6dfc2a430b2f33c6fc2cb58b53bd6ccad76a3c08d"
+    }
+  ],
+  "archivedFiles": [
+    {
+      "file": "source/queue-v1.ts.txt",
+      "bytes": 3339,
+      "sha256": "1097c46f2a618b368336b0e34cb9cab991f98d398f6fa1a46276e47a784b9580",
+      "purpose": "Exact experimental source bytes, retained without reformatting"
+    },
+    {
+      "file": "raw/queue-v1-summary.json.txt",
+      "bytes": 4219,
+      "sha256": "bd878d86e0d9827d2b1ae91d8d3c8d7428c9cc47b1686fda316da68da216ceab",
+      "purpose": "Every predeclared trial outcome; no selected successful subset"
+    },
+    {
+      "file": "source/queue-v2.ts.txt",
+      "bytes": 4518,
+      "sha256": "5bab19ce92fab1268ef706bb8dc0162fb5ce011aeb22eb98334275be16b86c5c",
+      "purpose": "Exact experimental source bytes, retained without reformatting"
+    },
+    {
+      "file": "raw/queue-v2-summary.json.txt",
+      "bytes": 4133,
+      "sha256": "8ccdf2fbb53b17d700a13aad3dd105e1e32f571da2a22c418104d4a5969ad55b",
+      "purpose": "Every predeclared trial outcome; no selected successful subset"
+    },
+    {
+      "file": "source/queue-v3.ts.txt",
+      "bytes": 4833,
+      "sha256": "d4efd3fabbf3021eff9ae3185d38138f64f8540b3ebdf6029d0ff979af8825b0",
+      "purpose": "Exact experimental source bytes, retained without reformatting"
+    },
+    {
+      "file": "raw/queue-v3-summary.json.txt",
+      "bytes": 7628,
+      "sha256": "958f7369b1ddeeba88829f194d24e6ced7e617b385e57d4422f308988af9a60b",
+      "purpose": "Every predeclared trial outcome; no selected successful subset"
+    },
+    {
+      "file": "source/sleep-boundary.js.txt",
+      "bytes": 1169,
+      "sha256": "70d349217518bda83aead1a8083867967fe5bee58252e998ef1f52f9e27ede48",
+      "purpose": "Exact experimental source bytes, retained without reformatting"
+    },
+    {
+      "file": "raw/sleep-boundary-summary.json.txt",
+      "bytes": 14519,
+      "sha256": "add77975bd005a3da03ed4d9a61c03200d5d0a374e1136435cb29dcf97ee77ca",
+      "purpose": "Every predeclared trial outcome; no selected successful subset"
+    },
+    {
+      "file": "source/native-instrumented.js.txt",
+      "bytes": 58677,
+      "sha256": "2cbd104d6fbf2932388230b04bcac75a7de37277c2f953fba3e0ff38cb8864ae",
+      "purpose": "Instrumented original native bundle; retains original failing assertion"
+    },
+    {
+      "file": "raw/native-instrumentation.json.txt",
+      "bytes": 660,
+      "sha256": "b08b08cffa7a8db49846947c243ca5eab846701e65fc558d6c3a70e07a8dacc6",
+      "purpose": "Exact source delta identity and instrumentation scope"
+    },
+    {
+      "file": "raw/native-instrumented-summary.json.txt",
+      "bytes": 10079,
+      "sha256": "861f71c0639b4068daf60754b97f395426424d9fa6bdff379ecd242929ab798d",
+      "purpose": "All ten fixed native AOT trials, including trial four failure"
+    },
+    {
+      "file": "raw/failed-native-comparison.json.txt",
+      "bytes": 116552,
+      "sha256": "e15e0dcf5e2f857db5ff34e7e1036dec5b560de413a0333886457b51bf29f8d3",
+      "purpose": "Original incomplete comparison; explicitly not accepted performance evidence"
+    },
+    {
+      "file": "raw/failed-native-core-aot.json.txt",
+      "bytes": 148300,
+      "sha256": "06191b206ea6ea7c3098269edb56f7e7054f108833879ec1ac47dc9053e26e8b",
+      "purpose": "Original direct-core AOT failure, including ownership/mutation counts and raw timings"
+    },
+    {
+      "file": "raw/failed-native-instrumented-aot.json.txt",
+      "bytes": 148940,
+      "sha256": "cec54fe456c72acf942615b45ef50e7c53899838bddbc0013cd7da7bcf829fe8",
+      "purpose": "Instrumented native AOT failure, including post-checkpoint snapshot identity"
+    },
+    {
+      "file": "raw/queue-v1-compile.json.txt",
+      "bytes": 11978,
+      "sha256": "6a97458f7304101e0db4e7d3a0bf4a6f6de6908f2da0fef63f06d0e9f59b36b6",
+      "purpose": "Actual Bun machine-code compiler explanation"
+    },
+    {
+      "file": "raw/queue-v2-compile.json.txt",
+      "bytes": 14533,
+      "sha256": "73386c989d71596ce75f96eef9eb88974811d9038a0913926678625f5eb36c25",
+      "purpose": "Actual Bun machine-code compiler explanation"
+    },
+    {
+      "file": "raw/queue-v3-compile.json.txt",
+      "bytes": 17513,
+      "sha256": "9a87b8610b5a515a7cc3485e3979f1f07fd3f954ffee8520d03a3a40833754cb",
+      "purpose": "Actual Bun machine-code compiler explanation"
+    },
+    {
+      "file": "raw/sleep-boundary-compile.json.txt",
+      "bytes": 5995,
+      "sha256": "20ca4736f31b83c6b730dad25b6f1a0bb2b1e20a6bcd182522bb028b19c613d3",
+      "purpose": "Actual Bun machine-code compiler explanation"
+    },
+    {
+      "file": "raw/aot-artifact-inspection.json.txt",
+      "bytes": 9551,
+      "sha256": "ed1de7d9e5d67638cefff4b455702e2f8edd333bfb025a98337813a0afe2658b",
+      "purpose": "All four controls plus instrumented native executable inspected without rerunning trials"
+    },
+    {
+      "file": "raw/shared-renderer-coverage-failure.log.txt",
+      "bytes": 25879,
+      "sha256": "28858254933ed3610dab3fd99afe21986581bef66da4ae486ce53c113211a56e",
+      "purpose": "Lossless UTF-8 line encoding of the failed coverage log; preserves trailing spaces without violating the repository whitespace gate",
+      "decodedLog": {
+        "bytes": 23224,
+        "sha256": "8ed0394a99e6dbb2cf5a3c285051fa554f4133c8a2533e749f5c969324ae945b"
+      }
+    }
+  ],
+  "rawReportIdentities": [
+    {
+      "series": "queue-v1",
+      "report": "development-100-1.json",
+      "bytes": 466,
+      "sha256": "9d6be089fd616e266548192e4c6e1f55347d5908b290bdf547c0a7b413877bf6"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-100-1.json",
+      "bytes": 468,
+      "sha256": "f54b8c30976ec4d3a8255567c4451693b19c5818afda4dfd212c456624f65b81"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-1000-1.json",
+      "bytes": 441,
+      "sha256": "359540b8e9c489db6e436554c3b3fa6fdb7902a6acb9cc7678ec2354335983c6"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-1000-1.json",
+      "bytes": 472,
+      "sha256": "681907b50e8ab498b2569b58c8a3b34a779656f864fe5d4901be0df2432940ca"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-100-2.json",
+      "bytes": 466,
+      "sha256": "0a91a4b05d5d7e2f909498146070f1b3475345300dfe94c9c6e77ed404c94575"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-100-2.json",
+      "bytes": 468,
+      "sha256": "f54b8c30976ec4d3a8255567c4451693b19c5818afda4dfd212c456624f65b81"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-1000-2.json",
+      "bytes": 441,
+      "sha256": "2ab51198628f5fad9634425dff58ae51bfeca6361803e84da52ec1af08070985"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-1000-2.json",
+      "bytes": 472,
+      "sha256": "681907b50e8ab498b2569b58c8a3b34a779656f864fe5d4901be0df2432940ca"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-100-3.json",
+      "bytes": 448,
+      "sha256": "6d0535f543c1a78fa0c0ab19229707ac65b823c2bf8e647e5c9b585df3eed8cd"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-100-3.json",
+      "bytes": 468,
+      "sha256": "f54b8c30976ec4d3a8255567c4451693b19c5818afda4dfd212c456624f65b81"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-1000-3.json",
+      "bytes": 441,
+      "sha256": "5343205e4396506e462e59fcaae94ff772d813c31e4a8ef2d0c8733cf8dc6220"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-1000-3.json",
+      "bytes": 472,
+      "sha256": "681907b50e8ab498b2569b58c8a3b34a779656f864fe5d4901be0df2432940ca"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-100-4.json",
+      "bytes": 466,
+      "sha256": "2b546c3628a4ab56fb7170b3c9a26231ea5fbf8d18a469fae952a03af0dd6939"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-100-4.json",
+      "bytes": 468,
+      "sha256": "f54b8c30976ec4d3a8255567c4451693b19c5818afda4dfd212c456624f65b81"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-1000-4.json",
+      "bytes": 441,
+      "sha256": "c18dcd26f763588ef31be29f51ab3caa266a006bcc602de85f45a535f0916c3b"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-1000-4.json",
+      "bytes": 472,
+      "sha256": "5acc6db6235cc3aa032b118f897c4401e1e2854c7c7b4432b27c20eb3bd09d14"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-100-5.json",
+      "bytes": 466,
+      "sha256": "d802f1a3585e6d5e7e47e216e0e5776b6aef54c68b5238a273610b2393e64672"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-100-5.json",
+      "bytes": 468,
+      "sha256": "0977fa60a73f309376109fbfdde4bbe1e80f1283397c79ed285f63b22c376ade"
+    },
+    {
+      "series": "queue-v1",
+      "report": "development-1000-5.json",
+      "bytes": 441,
+      "sha256": "18834ee3c60e42ea0188dc0edaecbfcb2c43410f8473577ee996009d4d4e1ac2"
+    },
+    {
+      "series": "queue-v1",
+      "report": "aot-1000-5.json",
+      "bytes": 472,
+      "sha256": "681907b50e8ab498b2569b58c8a3b34a779656f864fe5d4901be0df2432940ca"
+    },
+    {
+      "series": "queue-v2",
+      "report": "development-1.json",
+      "bytes": 3286,
+      "sha256": "37af4bf9b63afb62c5b9ccb06e49239503fbb670d132ac123e5351fe92f6f07f",
+      "snapshot": {
+        "name": "development-1.json.heap.json",
+        "bytes": 436227,
+        "sha256": "85f3b0fdbd023847245d3399994c2d830aa34ef56dadef0cfbb76fb1ab5263a8"
+      }
+    },
+    {
+      "series": "queue-v2",
+      "report": "aot-1.json",
+      "bytes": 2991,
+      "sha256": "62362c678bdc7dadf6cdad03437317459d203ff0e04b46916ccaaac7cc8dab48"
+    },
+    {
+      "series": "queue-v2",
+      "report": "development-2.json",
+      "bytes": 3277,
+      "sha256": "b7ad7abcccb6c60d9c457e2aed9cf61a94f47ce2d921638c8ec8ca4edfbba5be",
+      "snapshot": {
+        "name": "development-2.json.heap.json",
+        "bytes": 440037,
+        "sha256": "59534e9eb890b8888c6d4852d8e647af262d9701d30bb575a2f1eaa5bb3fb4b4"
+      }
+    },
+    {
+      "series": "queue-v2",
+      "report": "aot-2.json",
+      "bytes": 2984,
+      "sha256": "41fa297a6dbbba7140d9bae41e61e3183f3824a63d9971bbb11092ea49290a0f"
+    },
+    {
+      "series": "queue-v2",
+      "report": "development-3.json",
+      "bytes": 3275,
+      "sha256": "e5740631a2922f0826f937ea8b64d75c2dddd3a15cb3baf3ac036277951e1641",
+      "snapshot": {
+        "name": "development-3.json.heap.json",
+        "bytes": 440367,
+        "sha256": "2c79b5e446d40293a3fdaf99cfef6f175c602eb24857832926481a6635532ea6"
+      }
+    },
+    {
+      "series": "queue-v2",
+      "report": "aot-3.json",
+      "bytes": 2973,
+      "sha256": "8fc3d59753f03bbf87c8717e7542f83494ab3db87a882979cbc4aa19c6e1a6d9"
+    },
+    {
+      "series": "queue-v2",
+      "report": "development-4.json",
+      "bytes": 3270,
+      "sha256": "ae6ee0826e12a97414118f7ebfd48ec7d6669157dc04a688a10ecd3aa9c37c79",
+      "snapshot": {
+        "name": "development-4.json.heap.json",
+        "bytes": 444023,
+        "sha256": "ea421d7b440d44003f5780ba6cb80a883596e21ec440f3394e7747c756d20e54"
+      }
+    },
+    {
+      "series": "queue-v2",
+      "report": "aot-4.json",
+      "bytes": 2969,
+      "sha256": "b69bbb3d170b3d9a7fd3392cb8ba565f13711a110223b659123e7f0d2431e1c2"
+    },
+    {
+      "series": "queue-v2",
+      "report": "development-5.json",
+      "bytes": 3288,
+      "sha256": "c54cecfd9219dda9f579e84de41946581dfdb0998a3501533bf22a5ceee1a8b3",
+      "snapshot": {
+        "name": "development-5.json.heap.json",
+        "bytes": 441387,
+        "sha256": "3b60c739543757fdaf977c747743204e276a9821ebf4cfbc3431361610638642"
+      }
+    },
+    {
+      "series": "queue-v2",
+      "report": "aot-5.json",
+      "bytes": 3005,
+      "sha256": "d3bcbccfa06f20db6e5a1ae834392d4796b6ef97ab69ca3464d7a6c152a260d8"
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-bun-1.json",
+      "bytes": 3333,
+      "sha256": "ff49f8962c2616f7b64f1c33adbcdd64501c98eab87f210db5462926d6a87363",
+      "snapshot": {
+        "name": "development-bun-1.json.heap.json",
+        "bytes": 439135,
+        "sha256": "737d76434017c3319ab17c52a3c2d0699ec1f8ae035b3235265e0ac8020cbbf0"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-jsc-1.json",
+      "bytes": 3346,
+      "sha256": "fde4046e42f582466e63e2bed4f3d4c525c4e2ddce09c2bcf26de718a184d251",
+      "snapshot": {
+        "name": "development-jsc-1.json.heap.json",
+        "bytes": 441716,
+        "sha256": "a223e4ddd4fa635e16786a6e16b4c519dab4c9432f87d7bd26df64009a0996f6"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-bun-1.json",
+      "bytes": 3047,
+      "sha256": "2a08ca640ef638ba07f4e3a6d9fa6ccdc1b01ecd644e83827901478fd5dcbf39"
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-jsc-1.json",
+      "bytes": 3028,
+      "sha256": "11ff62ecec65a1fd0c5ea7ca1592ba0934d641af847502feece48c34519ffc88"
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-bun-2.json",
+      "bytes": 3325,
+      "sha256": "ef7de894efbd7bb7fa75ffd93c90aae4774fcb40a13f6031b571fe28eb78e0b8",
+      "snapshot": {
+        "name": "development-bun-2.json.heap.json",
+        "bytes": 437358,
+        "sha256": "907581901b4102599e5f7169e48f09d9a328c0ac116c49699bf80181d0f2b124"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-jsc-2.json",
+      "bytes": 3318,
+      "sha256": "de8e7440471750424986804ac4ddedf8b1dc617c097a6090a6fd062be2e81626",
+      "snapshot": {
+        "name": "development-jsc-2.json.heap.json",
+        "bytes": 439275,
+        "sha256": "71abf373096bc9a31ea431df9c8c9f4041d06db4c89dd9af52763624dd879ef6"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-bun-2.json",
+      "bytes": 2991,
+      "sha256": "c5864e71bd1ea59f06d60eaa9e240be08fb71b1df9134bb1de45683cf53af292"
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-jsc-2.json",
+      "bytes": 3047,
+      "sha256": "59a6cd37c5a2f143666d148bf111e78f2cea48322b210ca10186c6390bea9be6"
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-bun-3.json",
+      "bytes": 3337,
+      "sha256": "6c9dad8f1d6770f12931b7affc328029e0091252014e10a0753b8534466cb7f6",
+      "snapshot": {
+        "name": "development-bun-3.json.heap.json",
+        "bytes": 441136,
+        "sha256": "2f80a7caad9b28dc156cb879b11b10791065c82eadbebd13ac58ab1b18e734fe"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-jsc-3.json",
+      "bytes": 3336,
+      "sha256": "30f83af3869150e7f89f12097ab6a7d5f24824dd56af3e2dd03d4c7d9142d022",
+      "snapshot": {
+        "name": "development-jsc-3.json.heap.json",
+        "bytes": 443191,
+        "sha256": "9d7e54874f9021fb12b1e2c4dc34206646e879560f23849b9328351aae64c204"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-bun-3.json",
+      "bytes": 3052,
+      "sha256": "4ad1721749fa5bb0c7330305df7164137173c04fe2d137b62da076966fc0585b"
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-jsc-3.json",
+      "bytes": 3032,
+      "sha256": "1551824a19ae57c6331435ac847bafbdeb09e3c8303d2a97fa8d619d37418813"
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-bun-4.json",
+      "bytes": 3321,
+      "sha256": "d4b3ebffb162f4b0bd51198f90a1b5300b082010d324b73987cd03a420d70897",
+      "snapshot": {
+        "name": "development-bun-4.json.heap.json",
+        "bytes": 436590,
+        "sha256": "8d7f3e1e63ac9a9fa46e1ab423696b6eb66edc475892ee58315f07d407ad5895"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-jsc-4.json",
+      "bytes": 3298,
+      "sha256": "0999d4abe59b961bcc47dbcf4501e166a4dd693793ca74c01923b08d7cace423",
+      "snapshot": {
+        "name": "development-jsc-4.json.heap.json",
+        "bytes": 438805,
+        "sha256": "2a5c14e6dc8b78b6ddbd92605d52ff8695140147701d792f20c606d937f40b20"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-bun-4.json",
+      "bytes": 3003,
+      "sha256": "d1ecdf6db32757ab3a1818ca09e9e0ab7792b7496122bde2a14427790adba8b7"
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-jsc-4.json",
+      "bytes": 3056,
+      "sha256": "b79f56e388eadced4ce7a0e39e04ea5d65fe3fc181c3c70b633208a8f28f3416"
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-bun-5.json",
+      "bytes": 3307,
+      "sha256": "a1c9b9e316f9e8cc6999ccfcaca98eb9decaca46654643807402abb2b2846c8a",
+      "snapshot": {
+        "name": "development-bun-5.json.heap.json",
+        "bytes": 440171,
+        "sha256": "7adac64863599fdf427c08fe247622206dcc8d791201384e5e6eb5560e36eed1"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "development-jsc-5.json",
+      "bytes": 3293,
+      "sha256": "3baeef2b0a108499449b52032a06d65462527c636cc3a455b69059e89b5c4b1e",
+      "snapshot": {
+        "name": "development-jsc-5.json.heap.json",
+        "bytes": 439744,
+        "sha256": "bc2b0163cffff4b1b58fcc894d551f52a07834481312b714707d38f20c6aa497"
+      }
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-bun-5.json",
+      "bytes": 3035,
+      "sha256": "ce40dce7433f63d93082f134f04c2fa1f53c1f7d7a249bded76d65d0941fa8fb"
+    },
+    {
+      "series": "queue-v3",
+      "report": "aot-jsc-5.json",
+      "bytes": 3016,
+      "sha256": "a96a4e7e8780046b151dceb7d1ba05ac4d443bbf53841e03b0431d06b7af193b"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep0-1.json",
+      "bytes": 334,
+      "sha256": "ac547602b789c647bb9e563100dfdeae3febd8dc9e6a9cc4d59f739edc63dbbe"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep1-1.json",
+      "bytes": 334,
+      "sha256": "a6a0ec3e217bf29e6429cb4800eb49a3ca18169a66863c1d554099fb92bcce1a"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-timeout0-1.json",
+      "bytes": 336,
+      "sha256": "67e69c16351303d4c4534482c79e8041f64045b6c71c9dadaed0ccc7389d598e"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-resolved-1.json",
+      "bytes": 340,
+      "sha256": "f9e7bf0f57d5597dec6394a61119b1b2ea12aa93a5494205d78fe31eba4c75d5"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep0-1.json",
+      "bytes": 370,
+      "sha256": "16e6240ac400838dd7bed66d2cc5cd3a3b09c0d12efe8c4224b2a5354016caf0"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep1-1.json",
+      "bytes": 370,
+      "sha256": "f251d359535307a2d0826aa399e82d2ca2a29062d86ce38be85ec05f0b939026"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-timeout0-1.json",
+      "bytes": 372,
+      "sha256": "9dd7a44b97ccfdf2a6466ba180be1e6b258bf4531abc4ddff149ebdd1dadf1aa"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-resolved-1.json",
+      "bytes": 376,
+      "sha256": "2c69e97aa8acd1196a3f3791923fe9d75292125513461650c3df52d649e09761"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep0-2.json",
+      "bytes": 334,
+      "sha256": "ac547602b789c647bb9e563100dfdeae3febd8dc9e6a9cc4d59f739edc63dbbe"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep1-2.json",
+      "bytes": 334,
+      "sha256": "a6a0ec3e217bf29e6429cb4800eb49a3ca18169a66863c1d554099fb92bcce1a"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-timeout0-2.json",
+      "bytes": 336,
+      "sha256": "67e69c16351303d4c4534482c79e8041f64045b6c71c9dadaed0ccc7389d598e"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-resolved-2.json",
+      "bytes": 340,
+      "sha256": "f9e7bf0f57d5597dec6394a61119b1b2ea12aa93a5494205d78fe31eba4c75d5"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep0-2.json",
+      "bytes": 370,
+      "sha256": "16e6240ac400838dd7bed66d2cc5cd3a3b09c0d12efe8c4224b2a5354016caf0"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep1-2.json",
+      "bytes": 370,
+      "sha256": "f251d359535307a2d0826aa399e82d2ca2a29062d86ce38be85ec05f0b939026"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-timeout0-2.json",
+      "bytes": 372,
+      "sha256": "9dd7a44b97ccfdf2a6466ba180be1e6b258bf4531abc4ddff149ebdd1dadf1aa"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-resolved-2.json",
+      "bytes": 376,
+      "sha256": "2c69e97aa8acd1196a3f3791923fe9d75292125513461650c3df52d649e09761"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep0-3.json",
+      "bytes": 334,
+      "sha256": "ac547602b789c647bb9e563100dfdeae3febd8dc9e6a9cc4d59f739edc63dbbe"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep1-3.json",
+      "bytes": 334,
+      "sha256": "a6a0ec3e217bf29e6429cb4800eb49a3ca18169a66863c1d554099fb92bcce1a"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-timeout0-3.json",
+      "bytes": 336,
+      "sha256": "67e69c16351303d4c4534482c79e8041f64045b6c71c9dadaed0ccc7389d598e"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-resolved-3.json",
+      "bytes": 340,
+      "sha256": "f9e7bf0f57d5597dec6394a61119b1b2ea12aa93a5494205d78fe31eba4c75d5"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep0-3.json",
+      "bytes": 370,
+      "sha256": "16e6240ac400838dd7bed66d2cc5cd3a3b09c0d12efe8c4224b2a5354016caf0"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep1-3.json",
+      "bytes": 370,
+      "sha256": "f251d359535307a2d0826aa399e82d2ca2a29062d86ce38be85ec05f0b939026"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-timeout0-3.json",
+      "bytes": 372,
+      "sha256": "9dd7a44b97ccfdf2a6466ba180be1e6b258bf4531abc4ddff149ebdd1dadf1aa"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-resolved-3.json",
+      "bytes": 376,
+      "sha256": "2c69e97aa8acd1196a3f3791923fe9d75292125513461650c3df52d649e09761"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep0-4.json",
+      "bytes": 334,
+      "sha256": "ac547602b789c647bb9e563100dfdeae3febd8dc9e6a9cc4d59f739edc63dbbe"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep1-4.json",
+      "bytes": 334,
+      "sha256": "a6a0ec3e217bf29e6429cb4800eb49a3ca18169a66863c1d554099fb92bcce1a"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-timeout0-4.json",
+      "bytes": 336,
+      "sha256": "67e69c16351303d4c4534482c79e8041f64045b6c71c9dadaed0ccc7389d598e"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-resolved-4.json",
+      "bytes": 340,
+      "sha256": "f9e7bf0f57d5597dec6394a61119b1b2ea12aa93a5494205d78fe31eba4c75d5"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep0-4.json",
+      "bytes": 370,
+      "sha256": "16e6240ac400838dd7bed66d2cc5cd3a3b09c0d12efe8c4224b2a5354016caf0"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep1-4.json",
+      "bytes": 370,
+      "sha256": "f251d359535307a2d0826aa399e82d2ca2a29062d86ce38be85ec05f0b939026"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-timeout0-4.json",
+      "bytes": 372,
+      "sha256": "9dd7a44b97ccfdf2a6466ba180be1e6b258bf4531abc4ddff149ebdd1dadf1aa"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-resolved-4.json",
+      "bytes": 376,
+      "sha256": "2c69e97aa8acd1196a3f3791923fe9d75292125513461650c3df52d649e09761"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep0-5.json",
+      "bytes": 334,
+      "sha256": "ac547602b789c647bb9e563100dfdeae3febd8dc9e6a9cc4d59f739edc63dbbe"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-sleep1-5.json",
+      "bytes": 334,
+      "sha256": "a6a0ec3e217bf29e6429cb4800eb49a3ca18169a66863c1d554099fb92bcce1a"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-timeout0-5.json",
+      "bytes": 336,
+      "sha256": "67e69c16351303d4c4534482c79e8041f64045b6c71c9dadaed0ccc7389d598e"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "development-resolved-5.json",
+      "bytes": 340,
+      "sha256": "f9e7bf0f57d5597dec6394a61119b1b2ea12aa93a5494205d78fe31eba4c75d5"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep0-5.json",
+      "bytes": 370,
+      "sha256": "16e6240ac400838dd7bed66d2cc5cd3a3b09c0d12efe8c4224b2a5354016caf0"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-sleep1-5.json",
+      "bytes": 370,
+      "sha256": "f251d359535307a2d0826aa399e82d2ca2a29062d86ce38be85ec05f0b939026"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-timeout0-5.json",
+      "bytes": 372,
+      "sha256": "9dd7a44b97ccfdf2a6466ba180be1e6b258bf4531abc4ddff149ebdd1dadf1aa"
+    },
+    {
+      "series": "sleep-boundary",
+      "report": "aot-resolved-5.json",
+      "bytes": 376,
+      "sha256": "2c69e97aa8acd1196a3f3791923fe9d75292125513461650c3df52d649e09761"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-1.json",
+      "bytes": 147718,
+      "sha256": "e1e879dce0d6c22e2f115019dd8dc1e558eba9d42c41494d3dbc246e3eda311d"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-2.json",
+      "bytes": 147839,
+      "sha256": "280be801ec20e219d4b9f10d7739c9abdafbd6002119331eea6a82f16369a107"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-3.json",
+      "bytes": 147660,
+      "sha256": "77af697d6c903abc6216c68a7c3b770f60792007b2853b18cd327538d12fc972"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-4.json",
+      "bytes": 148940,
+      "sha256": "cec54fe456c72acf942615b45ef50e7c53899838bddbc0013cd7da7bcf829fe8"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-5.json",
+      "bytes": 148772,
+      "sha256": "93639bc7318faa34067ceb483c2ac926762d9b98416e967771ec806bbe8b6beb"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-6.json",
+      "bytes": 148101,
+      "sha256": "9242af40cd7142a680e5373fccdd7da0c363859787b969baf513e835ceea1d35"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-7.json",
+      "bytes": 148620,
+      "sha256": "1da57cb4c60ce8a6664767c563ae57ed640fbc182c22e3820985bd3582cac107"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-8.json",
+      "bytes": 148635,
+      "sha256": "8ad32ba5ebee6e4f31ae61da53e3b59b9201c45bbdb23613fb5d78fc8e519e12"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-9.json",
+      "bytes": 148607,
+      "sha256": "28ac2b2cac236c7fb6b705552bd6cf47ee076df99bbcddf5ab5905bebee2bcc4"
+    },
+    {
+      "series": "native-instrumented",
+      "report": "aot-10.json",
+      "bytes": 148491,
+      "sha256": "9656eafa5de1d985ee982ca9e0e84f137322e59873c08cac5868166a02bab0f1"
+    }
+  ]
+}

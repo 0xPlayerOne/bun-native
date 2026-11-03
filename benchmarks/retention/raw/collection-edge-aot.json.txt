@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "executable": "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/collection-edge-aot",
+  "declaredMode": "aot",
+  "addresses": {
+    "target": "0x2f4849aac200",
+    "objectHolder": "0x2f4849aac220",
+    "setHolder": "0x2f4849a735c8"
+  },
+  "objectMembershipAfterSnapshot": true,
+  "setMembershipAfterSnapshot": true,
+  "scope": "No framework, native host, WeakRef, explicit GC or timer; all objects remain deliberately strongly held",
+  "snapshotPerformsOwnFullCollection": true
+}

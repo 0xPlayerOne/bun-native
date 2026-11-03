@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "binarySha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+  "bytes": 138468432,
+  "commands": [
+    [
+      "readelf",
+      "--sections",
+      "--wide",
+      "PINNED_BUN"
+    ],
+    [
+      "nm",
+      "--defined-only",
+      "--demangle",
+      "PINNED_BUN"
+    ]
+  ],
+  "relevantSections": [
+    "[ 6] .dynsym           DYNSYM          0000000000201338 001338 006678 18   A 12   1  8",
+    "[40] .symtab           SYMTAB          0000000000000000 8401410 006678 18     41   1  8",
+    "[41] .strtab           STRTAB          0000000000000000 8407a88 00555b 00      0   0  1"
+  ],
+  "debugSections": [],
+  "definedSymbolCount": 701,
+  "namedInternalGcMatches": [],
+  "scope": "Presence of shipped debug metadata and named internal GC entry points, not a proof that binary instrumentation is impossible"
+}

@@ -1,0 +1,91 @@
+import { generateHeapSnapshotForDebugging, heapStats, jscDescribe } from 'bun:jsc'
+import { writeFileSync } from 'node:fs'
+import { parseArgs } from 'node:util'
+
+const { values } = parseArgs({
+  options: {
+    output: { type: 'string' },
+    mounts: { type: 'string', default: '100' },
+  },
+})
+if (!values.output) throw new Error('--output is required')
+const mounts = Number(values.mounts)
+if (!Number.isSafeInteger(mounts) || mounts < 1 || mounts > 1000)
+  throw new Error('mounts must be in 1..1000')
+
+// This control imports no Bun Native, Solid, React, DOM or native host code.
+// The queue and async view only reproduce the shape of short-lived user objects.
+let tail = Promise.resolve()
+function enqueue<T>(operation: () => T): Promise<T> {
+  const result = tail.then(operation)
+  tail = result.then(() => {}, () => {})
+  return result
+}
+const addresses: string[] = []
+function weak(target: object): WeakRef<object> {
+  const description = jscDescribe(target)
+  const address = /: (0x[0-9a-f]+) /.exec(description)?.[1]
+  if (!address) throw new Error('Cannot identify diagnostic target address')
+  addresses.push(address)
+  return new WeakRef(target)
+}
+
+async function makeView() {
+  let clicked = 0
+  const listener = () => { clicked++ }
+  const { root, label, rows } = await enqueue(() => ({
+    root: Object.freeze({ kind: 'box' }),
+    label: Object.freeze({ kind: 'text' }),
+    rows: new Map(Array.from({ length: 32 }, (_, index) => [index, { text: `Row ${index}` }])),
+  }))
+  return {
+    async dispose() {
+      await enqueue(() => {
+        if (root.kind !== 'box' || label.kind !== 'text' || clicked !== 0)
+          throw new Error('Unexpected control object state')
+        rows.clear()
+      })
+    },
+    probes: [weak(root), weak(label), weak(listener)],
+  }
+}
+
+async function cycle() {
+  const view = await makeView()
+  await view.dispose()
+  return view.probes
+}
+
+const probes: WeakRef<object>[] = []
+for (let index = 0; index < mounts; index++) probes.push(...await cycle())
+await Bun.sleep(1)
+Bun.gc(true)
+const firstReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index])
+await enqueue(() => undefined)
+await Bun.sleep(1)
+Bun.gc(true)
+const heap = heapStats()
+const stillReachable = probes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index])
+
+const report: Record<string, unknown> = {
+  schemaVersion: 1,
+  bunRevision: Bun.revision,
+  executable: process.execPath,
+  scope: 'minimal JavaScript queue/view control; no Bun Native or UI framework imports',
+  mounts,
+  probes: probes.length,
+  firstReachable,
+  stillReachable,
+  stillReachableAddresses: stillReachable.map(index => ({ index, address: addresses[index] })),
+  heap: { objectCount: heap.objectCount, heapSize: heap.heapSize },
+}
+if (stillReachable.length) {
+  // Do not hold dereferenced targets across this turn. The debugging snapshot
+  // performs its own collection and may therefore differ from the failed checkpoint.
+  await Bun.sleep(1)
+  const snapshot = generateHeapSnapshotForDebugging()
+  writeFileSync(values.output + '.heap.json', JSON.stringify(snapshot) + '\n', { flag: 'wx' })
+  report['snapshot'] = values.output + '.heap.json'
+}
+writeFileSync(values.output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' })
+console.log(JSON.stringify({ firstReachable, stillReachable }))

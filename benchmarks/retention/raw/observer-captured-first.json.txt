@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "f41010568900a01aa1051766b760a1d67ed606a4",
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "executionMode": "development",
+  "scope": "actual public-core headless peer and shared watchWindow; no native GUI",
+  "variant": "captured-first",
+  "source": "0x34fbc570f00",
+  "targets": [
+    {
+      "name": "Released observer 0",
+      "listener": "0x34fbc570bc0",
+      "target": "0x34fbac14700"
+    },
+    {
+      "name": "Released observer 1",
+      "listener": "0x34fbc570be0",
+      "target": "0x34fbac14740"
+    },
+    {
+      "name": "Released observer 2",
+      "listener": "0x34fbc570c00",
+      "target": "0x34fbac14780"
+    },
+    {
+      "name": "Released observer 3",
+      "listener": "0x34fbc570c20",
+      "target": "0x34fbac147c0"
+    },
+    {
+      "name": "Released observer 4",
+      "listener": "0x34fbc570c40",
+      "target": "0x34fbac14800"
+    },
+    {
+      "name": "Released observer 5",
+      "listener": "0x34fbc570c60",
+      "target": "0x34fbac14840"
+    },
+    {
+      "name": "Released observer 6",
+      "listener": "0x34fbc570c80",
+      "target": "0x34fbac14880"
+    },
+    {
+      "name": "Released observer 7",
+      "listener": "0x34fbc570ca0",
+      "target": "0x34fbac148c0"
+    },
+    {
+      "name": "Released observer 8",
+      "listener": "0x34fbc570cc0",
+      "target": "0x34fbac14900"
+    },
+    {
+      "name": "Released observer 9",
+      "listener": "0x34fbc570ce0",
+      "target": "0x34fbac14940"
+    },
+    {
+      "name": "Released observer 10",
+      "listener": "0x34fbc570d00",
+      "target": "0x34fbac14980"
+    },
+    {
+      "name": "Released observer 11",
+      "listener": "0x34fbc570d20",
+      "target": "0x34fbac149c0"
+    },
+    {
+      "name": "Released observer 12",
+      "listener": "0x34fbc570d40",
+      "target": "0x34fbac14a00"
+    },
+    {
+      "name": "Released observer 13",
+      "listener": "0x34fbc570d60",
+      "target": "0x34fbac14a40"
+    },
+    {
+      "name": "Released observer 14",
+      "listener": "0x34fbc570d80",
+      "target": "0x34fbac14a80"
+    },
+    {
+      "name": "Released observer 15",
+      "listener": "0x34fbc570da0",
+      "target": "0x34fbac14ac0"
+    },
+    {
+      "name": "Released observer 16",
+      "listener": "0x34fbc570dc0",
+      "target": "0x34fbac14b00"
+    },
+    {
+      "name": "Released observer 17",
+      "listener": "0x34fbc570de0",
+      "target": "0x34fbac14b40"
+    },
+    {
+      "name": "Released observer 18",
+      "listener": "0x34fbc570e00",
+      "target": "0x34fbac14b80"
+    },
+    {
+      "name": "Released observer 19",
+      "listener": "0x34fbc570e20",
+      "target": "0x34fbac14bc0"
+    },
+    {
+      "name": "Released observer 20",
+      "listener": "0x34fbc570e40",
+      "target": "0x34fbac14c00"
+    },
+    {
+      "name": "Released observer 21",
+      "listener": "0x34fbc570e60",
+      "target": "0x34fbac14c40"
+    },
+    {
+      "name": "Released observer 22",
+      "listener": "0x34fbc570e80",
+      "target": "0x34fbac14c80"
+    },
+    {
+      "name": "Released observer 23",
+      "listener": "0x34fbc570ea0",
+      "target": "0x34fbac14cc0"
+    },
+    {
+      "name": "Released observer 24",
+      "listener": "0x34fbc570ec0",
+      "target": "0x34fbac14d00"
+    }
+  ],
+  "liveControl": {
+    "listener": "0x34fbc571240",
+    "target": "0x34fbac14d60"
+  },
+  "subscriptionCount": 1,
+  "releasedCallbackCountAfterClose": 0,
+  "activeCallbackCountAfterClose": 1,
+  "oracle": "Visible strong ownership path from the single pending completion callback; every target is deliberately kept alive by the diagnostic",
+  "snapshotPerformsOwnFullCollection": true,
+  "snapshotPath": "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-captured-first.json.heap.json",
+  "finalOwnership": {
+    "windows": 0,
+    "nodes": 0,
+    "callbacks": 0,
+    "queuedTransactions": 0,
+    "queuedCallbacks": 0,
+    "activeCallbacks": 0
+  }
+}

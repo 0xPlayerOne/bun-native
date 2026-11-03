@@ -1,0 +1,107 @@
+"""Read both fixed snapshots; never execute or recollect the programs."""
+
+from collections import defaultdict, deque
+import hashlib
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+results = []
+for mode in ("development", "aot"):
+    report_path = ROOT / f"collection-edge-{mode}.json"
+    snapshot_path = ROOT / f"collection-edge-{mode}.json.heap.json"
+    report = json.loads(report_path.read_text())
+    snapshot = json.loads(snapshot_path.read_text())
+    assert snapshot["type"] == "GCDebugging" and snapshot["version"] == 3
+    assert len(snapshot["nodes"]) % 7 == len(snapshot["edges"]) % 4 == 0
+    nodes = {}
+    addresses = {}
+    edges = defaultdict(list)
+    for offset in range(0, len(snapshot["nodes"]), 7):
+        node = snapshot["nodes"][offset : offset + 7]
+        assert node[0] not in nodes
+        nodes[node[0]] = {
+            "id": node[0],
+            "class": snapshot["nodeClassNames"][node[2]],
+            "label": snapshot["labels"][node[4]],
+            "address": node[5],
+        }
+        if node[0]:
+            assert node[5] not in addresses
+            addresses[node[5]] = node[0]
+    for offset in range(0, len(snapshot["edges"]), 4):
+        source, target, kind, extra = snapshot["edges"][offset : offset + 4]
+        assert source in nodes and target in nodes
+        name = snapshot["edgeTypes"][kind]
+        edges[source].append(
+            {
+                "from": source,
+                "to": target,
+                "type": name,
+                "name": (
+                    snapshot["edgeNames"][extra]
+                    if name in ("Property", "Variable")
+                    else extra
+                    if name == "Index"
+                    else None
+                ),
+            }
+        )
+    expected_target = addresses[report["addresses"]["target"]]
+    holders = {}
+    for name in ("objectHolder", "setHolder"):
+        source = addresses[report["addresses"][name]]
+        previous = {source: None}
+        queue = deque([source])
+        while queue:
+            current = queue.popleft()
+            for edge in edges[current]:
+                target = edge["to"]
+                if target not in previous:
+                    previous[target] = edge
+                    queue.append(target)
+        path = None
+        if expected_target in previous:
+            path = []
+            current = expected_target
+            while current != source:
+                edge = previous[current]
+                path.append({"node": nodes[current], "edge": edge})
+                current = edge["from"]
+            path.append({"node": nodes[source]})
+            path.reverse()
+        holders[name] = {
+            "reachableNodeCount": len(previous),
+            "path": path,
+            "expectedReachable": name == "objectHolder" or mode == "aot",
+        }
+    results.append(
+        {
+            "mode": mode,
+            "reportSha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
+            "snapshotSha256": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+            "nodes": len(nodes),
+            "traversal": "All recorded edges without depth, type, name or root filtering",
+            "holders": holders,
+            "objectMembershipAfterSnapshot": report["objectMembershipAfterSnapshot"],
+            "setMembershipAfterSnapshot": report["setMembershipAfterSnapshot"],
+        }
+    )
+
+summary = {
+    "schemaVersion": 1,
+    "planSha256": hashlib.sha256((ROOT / "collection-edge-plan.json").read_bytes()).hexdigest(),
+    "sourceSha256": hashlib.sha256((ROOT / "collection-edge.ts").read_bytes()).hexdigest(),
+    "analyzerSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "observations": results,
+    "hypothesisSupported": all(
+        (holder["path"] is not None) == holder["expectedReachable"]
+        for result in results
+        for holder in result["holders"].values()
+    ),
+    "originalAotRetentionExplained": False,
+}
+with (ROOT / "collection-edge-analysis.json").open("x") as output:
+    json.dump(summary, output, indent=2)
+    output.write("\n")
+print(json.dumps(summary))
