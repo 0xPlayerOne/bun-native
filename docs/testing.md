@@ -151,6 +151,102 @@ resolve [the retained-object investigation](https://github.com/0xPlayerOne/bun-n
 or establish comparative performance, physical input, display presentation or
 macOS/Windows native support. The original WeakRef oracle remains unchanged.
 
+The headless listener-replacement test waits for `root.flush()` before requesting
+its next peer event, preserving the expected replacement callback and cleanup
+counts. A separate real-IPC regression holds the framework continuation after
+the native acknowledgement: an event received before replacement publication
+must not acquire the later callback's authority. This makes both orderings
+explicit without changing the shared renderer or extending the existing bounds.
+
+## React adapter, native input and lifecycle
+
+The common AOT helper transforms all four React entries with the pinned Bun
+bundler, retains `development/application.js` and its source map, and compiles
+that same module to machine code. Required native development commands execute
+the recorded generated module; AOT commands execute the corresponding inspected
+binary. Manifests record original source/configuration hashes, generated-module
+hashes and the exact commands. This recipe preserves the same shared renderer,
+native host and assertions used by the framework fixtures.
+React dependency selection is explicitly production in both runtime modes; the
+pinned bundler otherwise folds dependency branches before the AOT step. A real
+dependency control verifies the definition even when the caller uses `NODE_ENV=test`.
+The [integrated recipe record](../tests/native/evidence/react-hosted-recipe-linux.json)
+binds 26 passing local native runs to the merged foundation, all four inspected
+React entries and 84 source/harness hashes. The shared renderer is byte-identical
+to the Solid foundation. The counter, event and behavior cases ran in both modes
+with the explicitly identified development host and software GPU; the workload
+was compiled and inspected, while its execution remains a separate hosted gate.
+
+`tests/react/*.test.tsx` runs the pinned React reconciler over the public core and
+a real headless protocol subprocess. It covers state batching, keyed identity,
+native input revisions, callback-subscription stability, refs/effects, bounded
+commit barriers and disposal during a commit. Real React error boundaries must
+retain a usable fallback; a recoverable concurrent retry must retain its root.
+A throwing recovery reporter fails that root while leaving a sibling usable.
+Uncaught effect/ref-cleanup errors must reject disposal after native ownership
+has been released. These tests do not render GPUI.
+The scheduling suite also requires non-suspending transitions to commit without
+requesting native view animations, while a `ViewTransition` native ref must fail
+explicitly and release its root.
+
+`tests/react/propagation.test.tsx` adds six actual-IPC cases for the shared
+capture/target/bubble contract. They exercise a capture state update followed by
+fresh target/bubble closures on the original route, all eight native event
+families, both propagation-stop methods, independently revoked phases while a
+target callback and another event remain queued, and ancestor input observations
+that update React state without echoing text back to the native widget. The
+previous React callback mapping fails the queued-phase regression by aborting the
+still-live target callback; the negative-control log is retained with the local
+event evidence. These deterministic protocol-peer cases establish JavaScript
+dispatch and lifecycle behavior, not OS delivery.
+
+`tests/native/react-window.py` drives `examples/react-counter/main.tsx` through the
+existing owned-process X11 supervisor. Required native CI runs both counter-click
+and counter-input against development Bun and the inspected AOT `react` entry,
+using its one release host. Full native paint snapshots check keyed reuse and
+input revisions. Application assertions require a callback to remain active
+through rerender, all row/effect cleanup on OS close and zero owned children at
+exit. The [local interaction record](../tests/native/evidence/react-linux-development-aot.json)
+is separately bound to its development-host source and binary hashes.
+
+The shared `tests/native/renderer-interactions.ts` oracle and Python expectation
+wrapper run React's native keyboard, caret and selection view in development and
+inspected AOT. Every scenario checks complete native trees, actual pointer/focus/
+key/input events, the full expected route, fixed mutation counts, input revisions
+and OS-close cleanup. JavaScript propagation stops must not undo native Enter
+activation. The [earlier protocol4 React record](../tests/native/evidence/react-events-linux-development-aot.json)
+retains ten passing runs: these six scenarios plus four existing counter runs.
+All use the same explicitly identified development host and software GPU, with
+source/harness/artifact fingerprints checked before and after each run. Required
+hosted CI repeats them on its release host; local evidence does not establish
+release performance or a macOS/Windows native result.
+
+`tests/native/react-behavior.tsx` and its independent Python tree oracle exercise
+eight actual native cases in each mode: mount/update/unmount hooks and refs,
+boundary fallback and recovery, transient concurrent retry, a throwing recovery
+reporter, throwing effect/ref cleanups, and a non-suspending transition. Terminal
+errors preserve exact object identity and must leave an independently usable
+survivor root in the same window. Each run requires real OS activation, complete
+initial/final native paint, the application assertions and clean OS close.
+The [behavior matrix](react-behavior.md) documents completion boundaries and
+limitations; `flush()` is not a general transition-drain API. The required native
+lane compiles `--entry react-behavior` once and runs all 16 cases against its single
+release-profile host. The [local record](../tests/native/evidence/react-behavior-linux-development-aot.json)
+identifies 16 passing cases, the original transition-hook failure that they
+correct, and separately retained earlier execution failures.
+
+The [React native workload](../benchmarks/REACT.md) uses the same framework-neutral
+workload as the Solid/direct-core experiments. Each mode performs 1,000 individual
+state updates, 1,000 values coalesced into 100 updates, 1,000 keyed rotations and
+1,000 complete mount/update/dispose cycles. Exact mutation counts, 32,000 row-owner
+cleanups, two fixed WeakRef observations and all six public ownership counts are
+checked. Separate small calibration processes require complete expected native
+paint trees and actual GPU descriptions. The required native lane retains the
+calibration and raw timing/heap reports, while the [committed local evidence](../benchmarks/evidence/react-linux-lifecycle.json)
+uses a development-profile protocol-2 host. Single-run acknowledgement timings
+are diagnostic; they do not establish a release budget, presentation latency or
+a cross-framework speed comparison.
+
 ## Real native startup, crash and scheduling regressions
 
 The initial BN4 `layout` scenario uses the same driver with

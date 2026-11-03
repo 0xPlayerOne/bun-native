@@ -6,6 +6,11 @@ This directory preserves the exact experimental source, every fixed-trial summar
 
 The later [root-tracing investigation](root-tracing.md) preserves a failed live-listener positive control: development snapshots omit a real ownership edge through Set backing storage. A small same-source development/AOT reproduction confirms that visibility differs for compiled compact storage. This makes absence-of-path unsuitable as a complete disposal oracle and leaves [#287](https://github.com/0xPlayerOne/bun-native/issues/287) unresolved. The original fixed controls below are unchanged.
 
+The [Windows checkpoint diagnostic](windows-checkpoint.md) follows another
+one-root failure in the unchanged Solid test. It records bounded metadata only
+after the original assertion fails, then rethrows that same failure. It adds no
+GC, snapshot, sleep or retry and does not classify the retaining root.
+
 ## Observations
 
 All matrices were fixed before execution and retained every result. A positive checkpoint means at least one `WeakRef.deref()` returned an object after collection. It does not, on its own, identify an application leak.

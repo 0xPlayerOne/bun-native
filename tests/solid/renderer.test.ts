@@ -16,6 +16,7 @@ import { batch, createEffect, createSignal, onCleanup } from 'solid-js'
 import assert from 'node:assert/strict'
 
 import { observeWindow, withApp } from '../renderers/support.ts'
+import { rethrowWithRetentionDiagnostic } from './retention-diagnostic.ts'
 
 function label(text: string) {
   const node = createElement('text')
@@ -469,7 +470,11 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       Bun.gc(true)
       await Bun.sleep(0)
       Bun.gc(true)
-      expect(references.filter((reference) => reference.deref() !== undefined)).toHaveLength(0)
+      try {
+        expect(references.filter((reference) => reference.deref() !== undefined)).toHaveLength(0)
+      } catch (failure) {
+        rethrowWithRetentionDiagnostic(failure, references, { application: app, window })
+      }
       expect(app.diagnostics.windows).toBe(1)
       expect(app.diagnostics.nodes).toBe(1)
     }))

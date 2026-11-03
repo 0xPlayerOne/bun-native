@@ -148,7 +148,7 @@ function expectWindowRootOnly(application: NativeApplication): void {
 }
 
 /** The external controller binds reports to exact development/AOT artifacts. */
-export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
+export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mount) {
   const { values } = parseArgs({
     options: {
       host: { type: 'string' },
@@ -195,6 +195,7 @@ export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
         ? 'separate native paint/GPU calibration; excluded from timed comparisons'
         : 'native evidence disabled for the timed comparison',
       retainedProbeObjects: mounts * 3,
+      lifecycle: 'mount, one acknowledged label update, then dispose',
     },
   }
   let application: NativeApplication | undefined
@@ -203,7 +204,7 @@ export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
   const started = performance.now()
   const deadline = started + 120_000
   function withinDeadline() {
-    if (performance.now() > deadline) throw new Error('Solid/core workload exceeded 120 seconds')
+    if (performance.now() > deadline) throw new Error('Renderer workload exceeded 120 seconds')
   }
   try {
     const evidence = process.env['BUN_NATIVE_EVIDENCE_LOG']
@@ -293,8 +294,16 @@ export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
     const lifecycle: number[] = []
     let rowsCreated = 0
     let rowsDisposed = 0
-    async function cycle() {
+    async function cycle(index: number) {
       const view = await mount(window, initial)
+      const mounted = view.inspect().mutations
+      await view.update([`Lifecycle ${index}`])
+      assert.deepEqual(delta(view.inspect().mutations, mounted), {
+        create: 0,
+        set: 1,
+        insert: 0,
+        remove: 0,
+      })
       await view.dispose()
       const state = view.inspect()
       rowsCreated += state.rowsCreated
@@ -305,7 +314,7 @@ export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
     for (let index = 0; index < mounts; index++) {
       withinDeadline()
       const start = performance.now()
-      probes.push(...(await cycle()))
+      probes.push(...(await cycle(index)))
       lifecycle.push(performance.now() - start)
       expectWindowRootOnly(application)
     }
@@ -316,6 +325,7 @@ export async function runWorkload(adapter: 'solid' | 'core', mount: Mount) {
       ...distribution(lifecycle),
       rowsCreated,
       rowsDisposed,
+      acknowledgedUpdates: mounts,
       retainedWeakRefObjects: probes.length,
     }
     await Bun.sleep(1)
