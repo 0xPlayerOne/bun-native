@@ -145,6 +145,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native host Clippy failed' }
           cargo test --locked --release -p bun-native-host
           if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
+      - name: Verify native macOS backing-layer invalidation
+        if: runner.os == 'macOS'
+        timeout-minutes: 3
+        run: |
+          cargo clippy --locked --release -p bun-native-macos-surface --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Native surface Clippy failed' }
+          cargo test --locked --release -p bun-native-macos-surface
+          if ($LASTEXITCODE -ne 0) { throw 'Native surface ownership tests failed' }
+          cargo build --locked --release -p bun-native-macos-surface --example invalidation-control
+          if ($LASTEXITCODE -ne 0) { throw 'Actual Core Animation control did not compile' }
+          & target/release/examples/invalidation-control 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-control.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Actual layer invalidation controls failed' }
+          & target/release/examples/invalidation-control --omit-invalidation 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
+          $code = $LASTEXITCODE
+          $negative = Get-Content -Raw (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
+          if ($code -eq 0 -or $negative -notmatch 'committed surface did not become dirty') {
+            throw 'Omitting invalidation did not fail at the intended native dirty-state assertion'
+          }
+          $global:LASTEXITCODE = 0
       - name: Development actual native paint and lifecycle
         timeout-minutes: 3
         run: |
@@ -184,6 +205,7 @@ jobs:
         timeout-minutes: 3
         env:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+          BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
@@ -231,6 +253,7 @@ jobs:
         timeout-minutes: 3
         env:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
+          BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `

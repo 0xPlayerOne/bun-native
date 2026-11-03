@@ -1,0 +1,128 @@
+{
+  "protocol": 5,
+  "capability": "window_display_v1",
+  "commands": [
+    {
+      "name": "owned display read",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\",\"window_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "display read does not grant itself",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\",\"window_id\":1,\"grant\":true}",
+      "valid": false
+    },
+    {
+      "name": "immutable policy cannot be changed by a message",
+      "wire": "{\"id\":1,\"type\":\"service_policy\",\"window_display\":true}",
+      "valid": false
+    },
+    {
+      "name": "hello cannot grant a service",
+      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":5,\"service_policy\":{\"window_display\":true}}",
+      "valid": false
+    },
+    {
+      "name": "unscoped display enumeration is unavailable",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\"}",
+      "valid": false
+    },
+    {
+      "name": "zero window is not a service owner",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\",\"window_id\":0}",
+      "valid": false
+    },
+    {
+      "name": "boolean is not an owned window identity",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\",\"window_id\":true}",
+      "valid": false
+    },
+    {
+      "name": "display resource names cannot replace handles",
+      "wire": "{\"id\":1,\"type\":\"display_snapshot\",\"window_id\":\"primary\"}",
+      "valid": false
+    },
+    {
+      "name": "clipboard is not an implemented broker service",
+      "wire": "{\"id\":1,\"type\":\"clipboard_read\",\"window_id\":1}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "actual display geometry can have a negative origin and fractional scale",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":1.5}}",
+      "valid": true
+    },
+    {
+      "name": "invalid display x",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":1048577,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "invalid display y",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":true,\"width\":1920,\"height\":1080},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "invalid display width",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":0,\"height\":1080},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "invalid display height",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":-1},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "invalid scale 0",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":0}}",
+      "valid": false
+    },
+    {
+      "name": "invalid scale 0.124",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":0.124}}",
+      "valid": false
+    },
+    {
+      "name": "invalid scale 17",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":17}}",
+      "valid": false
+    },
+    {
+      "name": "invalid scale None",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":null}}",
+      "valid": false
+    },
+    {
+      "name": "invalid scale 1",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":\"1\"}}",
+      "valid": false
+    },
+    {
+      "name": "bounds cannot smuggle another service",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080,\"screen_capture\":\"requested\"},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "a snapshot cannot grant a permission",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":1.5,\"grant\":true}}",
+      "valid": false
+    },
+    {
+      "name": "a response must name its owning window",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"snapshot\":{\"bounds\":{\"x\":-1920,\"y\":0,\"width\":1920,\"height\":1080},\"scale_factor\":1.5}}",
+      "valid": false
+    },
+    {
+      "name": "native permission denial",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"permission_denied\",\"message\":\"No launch grant\"}",
+      "valid": true
+    },
+    {
+      "name": "native display can be unavailable",
+      "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"service_unavailable\",\"message\":\"No current display\"}",
+      "valid": true
+    }
+  ]
+}

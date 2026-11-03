@@ -1,5 +1,5 @@
 {
-  "protocol": 4,
+  "protocol": 5,
   "capability": "interactions_v1",
   "scope": "Shared bounded native-event wire validation; not native GUI evidence.",
   "cases": [

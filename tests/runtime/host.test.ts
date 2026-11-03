@@ -63,7 +63,8 @@ async function rejectedError(operation: Promise<unknown>): Promise<Error> {
 }
 
 function holderIsAlive(directory: string): boolean {
-  const ownedPid = Number(readFileSync(join(directory, 'ready'), 'utf8'))
+  const identity = existsSync(join(directory, 'ready')) ? 'ready' : 'started'
+  const ownedPid = Number(readFileSync(join(directory, identity), 'utf8'))
   if (!Number.isSafeInteger(ownedPid) || ownedPid <= 0)
     throw new Error('Invalid test-owned pipe holder PID')
   try {
@@ -79,7 +80,7 @@ async function releasePipeHolder(directory: string): Promise<void> {
   // Only this test's holder reads its private release file. The holder also has
   // a hard self-expiry; cleanup never signals an unrelated process.
   writeFileSync(join(directory, 'release'), '')
-  if (!existsSync(join(directory, 'ready'))) return
+  if (!existsSync(join(directory, 'ready')) && !existsSync(join(directory, 'started'))) return
   const finished = join(directory, 'finished')
   const until = performance.now() + 1_500
   while (!existsSync(finished) && performance.now() < until) {
@@ -89,18 +90,41 @@ async function releasePipeHolder(directory: string): Promise<void> {
   if (!existsSync(finished)) throw new Error('Test-owned pipe holder did not release')
 }
 
+async function armPipeHolder(directory: string, until: number): Promise<void> {
+  // No helper may declare readiness until the independent peer has negotiated.
+  // Reintroducing a pre-hello readiness wait therefore fails deterministically.
+  expect(existsSync(join(directory, 'ready'))).toBe(false)
+  writeFileSync(join(directory, 'arm'), '')
+  while (!existsSync(join(directory, 'ready'))) {
+    if (existsSync(join(directory, 'finished')))
+      throw new Error('Pipe holder exited before it was armed')
+    if (performance.now() >= until) throw new Error('Pipe holder did not start')
+    await Bun.sleep(10)
+  }
+  expect(holderIsAlive(directory)).toBe(true)
+}
+
 async function withPipeHolder(
   mode: 'shutdown' | 'exit',
-  run: (host: NativeHost, finished: string) => Promise<void>
+  run: (host: NativeHost, finished: string) => Promise<void>,
+  delayHolder = false
 ): Promise<void> {
   const directory = mkdtempSync(join(tmpdir(), 'bun-native-pipe-holder-'))
   const finished = join(directory, 'finished')
   let host: NativeHost | undefined
+  // This setup budget starts before launch; protocol negotiation cannot reset it.
+  const holderDeadline = performance.now() + 5_000
   try {
     host = await NativeHost.launch({
       ...options(`inherited-pipe-${mode}`, 300),
-      args: [fixture, `inherited-pipe-${mode}`, directory],
+      args: [
+        fixture,
+        `inherited-pipe-${mode}`,
+        directory,
+        ...(delayHolder ? ['delay-holder'] : []),
+      ],
     })
+    await armPipeHolder(directory, holderDeadline)
     await run(host, finished)
     // A terminated descendant cannot establish held-open-pipe coverage.
     expect(holderIsAlive(directory)).toBe(true)
@@ -209,15 +233,15 @@ describe('native process transport (headless protocol peer)', () => {
     ['obsolete-version', 'Native protocol version mismatch'],
     [
       'missing-layout',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     [
       'missing-capability',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     [
       'missing-interactions',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     ['bad-json', 'Invalid UTF-8 or JSON in native frame'],
     ['wrong-id', 'Unknown native response id'],
@@ -280,6 +304,22 @@ describe('native process transport (headless protocol peer)', () => {
       expect(await host.exited).toBe(23)
       expect(existsSync(finished)).toBe(false)
     })
+  })
+
+  test('negotiates before delayed pipe-holder setup while preserving the exit bound', async () => {
+    await withPipeHolder(
+      'exit',
+      async (host, finished) => {
+        const pending = deadline(host[Symbol.asyncIterator]().next(), 'delayed-holder native exit')
+        await host.send(open)
+        await host.send(batch({ kind: 'text', text: 'exit-after-ack' }))
+        const error = await rejectedError(pending)
+        expect(error.message).toBe('Native output remained open after host exit')
+        expect(await host.exited).toBe(23)
+        expect(existsSync(finished)).toBe(false)
+      },
+      true
+    )
   })
 
   test.each(['wrong-window', 'wrong-root', 'wrong-initial-revision'])(
