@@ -92,6 +92,28 @@ def expected_paint(cycle, updated, nonce):
     return result
 
 
+def wait_for_observation(predicate, app, started, description, timeout=10, paint=False):
+    """Wait for the exact observation, including a final check after child exit.
+
+    A process can exit between an initial predicate check and the poll used to
+    detect premature termination. Recheck the same predicate before rejecting
+    an otherwise completed lifecycle. Unobserved evidence still fails.
+    """
+    deadline = min(started + 40, time.monotonic() + timeout)
+    while time.monotonic() < deadline:
+        value = predicate()
+        if value:
+            return value
+        if app.poll() is not None:
+            value = predicate()
+            if value:
+                return value
+            raise RuntimeError(f"Fixture exited {app.returncode} before {description}")
+        time.sleep(0.02)
+    error = NativePaintMismatch if paint else RuntimeError
+    raise error("Timed out waiting for " + description)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -158,18 +180,9 @@ def main():
         return EVIDENCE.read_events(output / name, nonce, 0)
 
     def wait_for(predicate, description, timeout=10, paint=False):
-        deadline = min(started + 40, time.monotonic() + timeout)
-        while time.monotonic() < deadline:
-            value = predicate()
-            if value:
-                return value
-            if app.poll() is not None:
-                raise RuntimeError(
-                    f"Fixture exited {app.returncode} before {description}"
-                )
-            time.sleep(0.02)
-        error = NativePaintMismatch if paint else RuntimeError
-        raise error("Timed out waiting for " + description)
+        return wait_for_observation(
+            predicate, app, started, description, timeout=timeout, paint=paint
+        )
 
     try:
         app = subprocess.Popen(
