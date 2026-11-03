@@ -167,6 +167,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The actual AppKit window hit-test control did not compile' }
           & $hitTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-window-hit.json')
           if ($LASTEXITCODE -ne 0) { throw 'The owned click-through/input-taking window controls failed' }
+          $foreignTest = Join-Path $env:NATIVE_EVIDENCE 'macos-cross-process-hit'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            tests/native/macos-cross-process-hit.m -o $foreignTest
+          if ($LASTEXITCODE -ne 0) { throw 'The foreign-process AppKit target control did not compile' }
+          & $foreignTest | Out-File (Join-Path $env:NATIVE_EVIDENCE 'macos-cross-process-hit.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The foreign-process mouse-down target was not independently verified' }
           $helper = Join-Path $env:NATIVE_EVIDENCE 'native-platform-macos'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
             scripts/quality/native-platform-macos.m -o $helper

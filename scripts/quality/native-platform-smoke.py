@@ -87,6 +87,7 @@ def source_snapshot():
         "scripts/quality/native-platform-macos.m",
         "tests/native/macos-input-events.m",
         "tests/native/macos-window-hit.m",
+        "tests/native/macos-cross-process-hit.m",
     ):
         sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
     return sources

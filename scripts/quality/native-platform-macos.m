@@ -234,6 +234,10 @@ static void verify_pointer_target(NSDictionary *state, NSArray *windows, CGPoint
 }
 
 static void require_pointer_target(NSDictionary *state, CGPoint point) {
+    // The controller is not an AppKit application. Without initialization,
+    // NSWindow's cross-process mouse-down query returns zero even for an
+    // independently visible, input-taking window. No activation is requested.
+    [NSApplication sharedApplication];
     NSPoint appkitPoint = appkit_pointer_point(point, CGDisplayBounds(CGMainDisplayID()));
     NSInteger hitWindow = [NSWindow windowNumberAtPoint:appkitPoint belowWindowWithWindowNumber:0];
     NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(
@@ -329,6 +333,9 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         for (id event in mouse) {
             require_foreground(pid);
             require_pointer_target(state, point);
+            // Initialization of the controller's AppKit connection must not
+            // change the native process selected for actual OS input.
+            require_foreground(pid);
             CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)event);
         }
         events = 3;
