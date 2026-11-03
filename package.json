@@ -26,7 +26,7 @@
     "solid:build": "bun scripts/solid-build.ts"
   },
   "devDependencies": {
-    "@babel/core": "8.0.10",
+    "@babel/core": "7.29.7",
     "@bun-native/core": "workspace:*",
     "@bun-native/protocol": "workspace:*",
     "@bun-native/renderer": "workspace:*",
