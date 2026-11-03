@@ -1,0 +1,14 @@
+{
+  "pin": {
+    "name": "@oven/bun-windows-x64",
+    "version": "1.4.4-canary.20261102.1+271b65e",
+    "url": "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261102.1.tgz",
+    "integrity": "sha512-g+r5pp6ZzyzSSYDJZ+trKM38hucpsxQGtokx5R01rFnioKQKK7aNUnpqb3rW00t+cPdyeygYQe3n5RFGBc4fsw==",
+    "unpackedSize": 149877251
+  },
+  "revision": "271b65ec608a50eca96a894c6bbff1e65849d920",
+  "archiveSha256": "9b0836264e2155f4433841aa706ebe181cb51949d1e0fd37a4f249b46d84b02b",
+  "binarySha256": "bb0ed5cb52c66227275b7d1497e6c7be690fb23b5d6a996e6256ec042df19b4c",
+  "binaryBytes": 149876736,
+  "executed": false
+}
