@@ -10,8 +10,8 @@ import gzip
 import hashlib
 import importlib.util
 import json
+import logging
 import os
-from pathlib import Path
 import re
 import resource
 import shutil
@@ -19,8 +19,9 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "native_input_linux", ROOT / "scripts/quality/native-input-linux.py"
@@ -73,6 +74,28 @@ def limit_file_output():
     )
     resource.setrlimit(resource.RLIMIT_FSIZE, (cap, cap))
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+
+def postprocessor_command(command):
+    """Set child limits in a fresh interpreter, never in a post-fork Python hook."""
+    return [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--bounded-exec",
+        *map(str, command),
+    ]
+
+
+def exec_postprocessor(command):
+    if not command or not Path(command[0]).is_absolute():
+        raise ValueError("A bounded postprocessor requires an absolute executable")
+    limit_file_output()
+    # A fresh Python interpreter ignores signals that Popen normally restores.
+    # Preserve that exec-target behavior without executing Python after fork.
+    for name in ("SIGPIPE", "SIGXFZ", "SIGXFSZ"):
+        if signum := getattr(signal, name, None):
+            signal.signal(signum, signal.SIG_DFL)
+    os.execv(command[0], command)
 
 
 def write_host_wrapper(wrapper, host, library, identity, raw_limit):
@@ -163,11 +186,10 @@ def analyze(output, interpreter, printer, demangler):
             gzip.open(profile, "wb") as compressed,
         ):
             child = subprocess.Popen(
-                [str(interpreter)],
+                postprocessor_command([str(interpreter)]),
                 stdin=source,
                 stdout=subprocess.PIPE,
                 stderr=errors,
-                preexec_fn=limit_file_output,
             )
             interpreted_bytes = 0
             while chunk := child.stdout.read(64 * 1024):
@@ -193,24 +215,25 @@ def analyze(output, interpreter, printer, demangler):
     raw.unlink()
     with (output / "summary.txt").open("wb") as summary:
         subprocess.run(
-            [
-                str(printer),
-                "--file",
-                str(profile),
-                "--merge-backtraces",
-                "0",
-                "--print-histogram",
-                str(output / "allocation-sizes.tsv"),
-                "--peak-limit",
-                "10",
-                "--sub-peak-limit",
-                "3",
-            ],
+            postprocessor_command(
+                [
+                    str(printer),
+                    "--file",
+                    str(profile),
+                    "--merge-backtraces",
+                    "0",
+                    "--print-histogram",
+                    str(output / "allocation-sizes.tsv"),
+                    "--peak-limit",
+                    "10",
+                    "--sub-peak-limit",
+                    "3",
+                ]
+            ),
             stdout=summary,
             stderr=subprocess.STDOUT,
             check=True,
             timeout=30,
-            preexec_fn=limit_file_output,
         )
     # The distro profiler may lack its optional Rust demangler. GNU binutils
     # handles Rust v0 symbols without rebuilding or changing the native host.
@@ -219,12 +242,11 @@ def analyze(output, interpreter, printer, demangler):
         (output / "summary-demangled.txt").open("wb") as destination,
     ):
         subprocess.run(
-            [str(demangler), "--format=rust"],
+            postprocessor_command([str(demangler), "--format=rust"]),
             stdin=source,
             stdout=destination,
             check=True,
             timeout=10,
-            preexec_fn=limit_file_output,
         )
     if profile_bytes(output) > MAX_PROFILE_BYTES:
         raise RuntimeError("Allocation artifacts exceeded 64 MiB")
@@ -403,6 +425,7 @@ def main():
             )
         report["status"] = "passed"
     except Exception as error:
+        LOGGER.exception("Native allocation diagnostic failed")
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:
         signal.alarm(0)
@@ -431,4 +454,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--bounded-exec"]:
+        exec_postprocessor(sys.argv[2:])
     sys.exit(main())

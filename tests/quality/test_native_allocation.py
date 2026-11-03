@@ -3,15 +3,15 @@
 import importlib.util
 import json
 import os
-from pathlib import Path
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import warnings
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/quality/native-allocation-linux.py"
@@ -74,6 +74,7 @@ class AllocationLimitsTests(unittest.TestCase):
                 "count=1",
                 "status=none",
             ],
+            check=False,
             capture_output=True,
             timeout=5,
         )
@@ -112,9 +113,76 @@ class AllocationLimitsTests(unittest.TestCase):
             "assert resource.getrlimit(resource.RLIMIT_CORE) == (0,0)"
         )
         result = subprocess.run(
-            [sys.executable, "-c", code], capture_output=True, timeout=5
+            [sys.executable, "-c", code], check=False, capture_output=True, timeout=5
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_postprocessor_exec_preserves_arguments_while_parent_has_a_live_thread(
+        self,
+    ):
+        printer = shutil.which("printf")
+        self.assertIsNotNone(printer, "Coreutils printf is required")
+        release = threading.Event()
+        started = threading.Event()
+
+        def wait_for_release():
+            started.set()
+            release.wait(timeout=5)
+
+        worker = threading.Thread(target=wait_for_release)
+        worker.start()
+        try:
+            self.assertTrue(started.wait(timeout=1))
+            self.assertTrue(worker.is_alive())
+            payload = 'literal $HOME $(not-a-command) `also-literal` "quotes"\n'
+            result = subprocess.run(
+                ALLOCATION.postprocessor_command(
+                    [Path(printer).resolve(), "%s", payload]
+                ),
+                capture_output=True,
+                timeout=3,
+                check=True,
+            )
+            self.assertEqual(result.stdout.decode(), payload)
+            self.assertEqual(result.stderr, b"")
+        finally:
+            release.set()
+            worker.join(timeout=1)
+        self.assertFalse(worker.is_alive())
+
+    def test_postprocessor_exec_enforces_file_limit_and_default_sigxfsz(self):
+        writer = shutil.which("dd")
+        self.assertIsNotNone(writer, "Coreutils dd is required")
+        destination = self.output / "bounded-postprocessor-output"
+        result = subprocess.run(
+            ALLOCATION.postprocessor_command(
+                [
+                    Path(writer).resolve(),
+                    "if=/dev/zero",
+                    f"of={destination}",
+                    f"bs={ALLOCATION.DRIVER.MAX_LOG_BYTES + 1}",
+                    "count=1",
+                    "status=none",
+                ]
+            ),
+            capture_output=True,
+            timeout=3,
+            check=False,
+        )
+        self.assertEqual(result.returncode, -signal.SIGXFSZ, result.stderr)
+        self.assertLessEqual(
+            destination.stat().st_size, ALLOCATION.DRIVER.MAX_LOG_BYTES
+        )
+        self.assertEqual(result.stdout, b"")
+        self.assertFalse((self.output / "core").exists())
+
+    def test_postprocessor_requires_an_absolute_exec_target_before_setting_limits(self):
+        for command in ([], ["relative-printer"]):
+            with (
+                self.subTest(command=command),
+                self.assertRaisesRegex(ValueError, "absolute executable"),
+            ):
+                ALLOCATION.exec_postprocessor(command)
 
     def test_interrupted_interpretation_reaps_child_and_preserves_raw_trace(self):
         interpreter = self.output / "interpreter"

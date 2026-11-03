@@ -2,12 +2,11 @@
 
 import importlib.util
 import os
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -35,9 +34,11 @@ class NativeSignalOwnershipTests(unittest.TestCase):
             [
                 sys.executable,
                 "-c",
-                "import subprocess,sys; "
-                "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(20)']); "
-                "print(child.pid,flush=True); child.wait()",
+                (
+                    "import subprocess,sys; "
+                    "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(20)']); "
+                    "print(child.pid,flush=True); child.wait()"
+                ),
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,

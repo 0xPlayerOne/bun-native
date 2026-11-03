@@ -9,8 +9,8 @@ ownership, cancellation and cleanup instead of introducing another supervisor.
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def counter_nodes(clicks, value):

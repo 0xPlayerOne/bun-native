@@ -275,7 +275,9 @@ def run(
     for width, expected in ((420, 184), (800, 200)):
         action("windowsize", "--sync", window, str(width), "560")
         resized = wait_for(
-            lambda: layout() if layout()["viewport"] == [width, 560] else None,
+            lambda width=width: (
+                layout() if layout()["viewport"] == [width, 560] else None
+            ),
             "native OS resize",
         )
         assert_row(resized, expected)
@@ -365,12 +367,15 @@ def run(
     ):
         action("key", "--clearmodifiers", key)
         wait_for(
-            lambda: layout()["focused_node_id"] == target, "rendered native focus order"
+            lambda target=target: layout()["focused_node_id"] == target,
+            "rendered native focus order",
         )
         action("key", "--clearmodifiers", "Return")
         name = "bottom" if target == bottom else "top"
         wait_for(
-            lambda: clicks(name) == expected_count,
+            lambda name=name, expected_count=expected_count: (
+                clicks(name) == expected_count
+            ),
             "keyboard activation in reordered tree",
         )
     observations["shrunk"] = shrunk

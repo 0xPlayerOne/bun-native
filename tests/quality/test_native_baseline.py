@@ -3,7 +3,6 @@
 import importlib.util
 import json
 import os
-from pathlib import Path
 import platform
 import signal
 import subprocess
@@ -11,7 +10,8 @@ import sys
 import tempfile
 import time
 import unittest
-
+from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/native-baseline.py"
 SPEC = importlib.util.spec_from_file_location("native_baseline", SCRIPT)
@@ -21,6 +21,11 @@ SPEC.loader.exec_module(BASELINE)
 
 class ProvenanceTests(unittest.TestCase):
     def setUp(self):
+        # Inert Linux metadata fixtures must not inherit the test host's CPU
+        # spelling (macOS reports arm64 rather than Linux's aarch64).
+        self.enterContext(
+            patch.object(BASELINE.platform, "machine", return_value="x86_64")
+        )
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         root = Path(self.temporary.name)
@@ -71,6 +76,41 @@ class ProvenanceTests(unittest.TestCase):
 
     def save_manifest(self):
         (self.package / "manifest.json").write_text(json.dumps(self.manifest))
+
+    def test_matching_linux_architectures_validate_without_executing_artifacts(self):
+        for machine, architecture in (("x86_64", "x64"), ("aarch64", "arm64")):
+            with (
+                self.subTest(machine=machine),
+                patch.object(BASELINE.platform, "machine", return_value=machine),
+            ):
+                self.manifest["target"]["architecture"] = architecture
+                self.save_manifest()
+                self.assertEqual(
+                    BASELINE.verify_package(self.package, self.repository),
+                    self.manifest,
+                )
+
+    def test_wrong_target_or_unknown_architecture_is_rejected(self):
+        for operating_system, architecture, machine in (
+            ("darwin", "x64", "x86_64"),
+            ("linux", "arm64", "x86_64"),
+            ("linux", "x64", "unknown"),
+        ):
+            with (
+                self.subTest(
+                    os=operating_system, architecture=architecture, machine=machine
+                ),
+                patch.object(BASELINE.platform, "machine", return_value=machine),
+                self.assertRaisesRegex(
+                    ValueError, "does not target this Linux architecture"
+                ),
+            ):
+                self.manifest["target"] = {
+                    "os": operating_system,
+                    "architecture": architecture,
+                }
+                self.save_manifest()
+                BASELINE.verify_package(self.package, self.repository)
 
     def test_changed_binary_is_rejected_before_any_trial(self):
         (self.package / "native-window").write_text("changed after inspection\n")
@@ -157,6 +197,7 @@ class ProvenanceTests(unittest.TestCase):
                 "--bun",
                 str(self.package / "does-not-exist"),
             ],
+            check=False,
             env=environment,
             capture_output=True,
             text=True,
