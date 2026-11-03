@@ -17,6 +17,10 @@ updates:
   - package-ecosystem: bun
     directory: /
     target-branch: main
+    ignore:
+      # Solid's pinned preset requires Babel 7; qualify the next major in #316.
+      - dependency-name: '@babel/core'
+        update-types: ['version-update:semver-major']
     schedule:
       interval: weekly
       day: sunday

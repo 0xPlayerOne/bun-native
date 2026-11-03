@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import {
   appendFileSync,
   chmodSync,
+  constants,
   copyFileSync,
   existsSync,
   linkSync,
@@ -14,81 +15,65 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { downloadPinnedArchive } from './install-bun/download.mjs'
+import { downloadPinnedArchive, validatePackagePin } from './install-bun/download.mjs'
+import { extractPinnedExecutable } from './install-bun/archive.mjs'
+import { createHash } from 'node:crypto'
 
 // Node bootstraps Bun so a clean hosted runner does not need another Bun version.
 const manifest = JSON.parse(readFileSync(new URL('../toolchain.json', import.meta.url), 'utf8'))
-// The optional Actions credential belongs only to the immutable asset request.
-// Unzip/PowerShell and even a verified Bun subprocess must not inherit it.
-const downloadToken = process.env.BUN_NATIVE_GITHUB_TOKEN
+// Public npm archives need no credential. Never inherit a formerly scoped token.
 delete process.env.BUN_NATIVE_GITHUB_TOKEN
+if (manifest.schemaVersion !== 2 || manifest.bun.distribution !== 'npm')
+  throw new Error('Expected the explicit npm Bun distribution manifest')
 const args = process.argv.slice(2)
-if (args.length !== 2 || args[0] !== '--destination' || !isAbsolute(args[1])) {
+const destination = args[1]
+if (
+  args.length !== 2 ||
+  args[0] !== '--destination' ||
+  typeof destination !== 'string' ||
+  !isAbsolute(destination)
+) {
   throw new Error('Usage: node scripts/install-bun.mjs --destination <absolute directory>')
 }
-const destination = args[1]
 const target = `${process.platform}-${process.arch}`
-const archive = manifest.bun.archives[target]
-if (!archive) throw new Error(`No pinned Bun archive for ${target}`)
+const archive = manifest.bun.packages[target]
+if (!archive) throw new Error(`No pinned Bun package for ${target}`)
+validatePackagePin(archive)
+if (!archive.version.endsWith(`+${manifest.bun.revision.slice(0, 7)}`))
+  throw new Error('Pinned package version does not match the Bun source revision')
 const executableName = process.platform === 'win32' ? 'bun.exe' : 'bun'
 const executable = join(destination, executableName)
 
-function run(command, arguments_, options = {}) {
-  const result = spawnSync(command, arguments_, {
+/** @param {string} path */
+function verifyRevision(path) {
+  const result = spawnSync(path, ['--revision'], {
     encoding: 'utf8',
     timeout: 30_000,
-    ...options,
+    maxBuffer: 16_384,
   })
   if (result.error || result.status !== 0) {
-    throw new Error(`${command} failed: ${result.error?.message ?? result.stderr}`)
+    throw new Error(`Bun revision check failed: ${result.error?.message ?? result.stderr}`)
   }
-  return result.stdout.trim()
-}
-
-function verifyRevision(path) {
-  const actual = run(path, ['--revision'])
+  const actual = result.stdout.trim()
   if (actual !== manifest.bun.cliRevision) {
     throw new Error(`Bun revision mismatch: expected ${manifest.bun.cliRevision}, got ${actual}`)
   }
 }
 
-if (existsSync(executable)) {
+const reusedExisting = existsSync(executable)
+if (reusedExisting) {
   verifyRevision(executable)
 } else {
   const temporary = mkdtempSync(join(tmpdir(), 'bun-native-install-'))
   try {
-    // Asset IDs are immutable. An expired/deleted canary asset fails closed;
-    // never fall back to the mutable `canary` download URL or another version.
-    const bytes = await downloadPinnedArchive(archive, { token: downloadToken })
-    const archivePath = join(temporary, archive.name)
-    const extracted = join(temporary, 'extracted')
-    writeFileSync(archivePath, bytes)
-    mkdirSync(extracted)
-    if (process.platform === 'win32') {
-      run(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-Command',
-          'Expand-Archive -LiteralPath $env:BUN_NATIVE_ARCHIVE -DestinationPath $env:BUN_NATIVE_EXTRACT',
-        ],
-        {
-          env: {
-            ...process.env,
-            BUN_NATIVE_ARCHIVE: archivePath,
-            BUN_NATIVE_EXTRACT: extracted,
-          },
-        }
-      )
-    } else {
-      run('unzip', ['-q', archivePath, '-d', extracted])
-    }
-    const candidate = join(extracted, archive.name.replace(/\.zip$/, ''), executableName)
+    const bytes = await downloadPinnedArchive(archive)
+    const binary = extractPinnedExecutable(bytes, archive, target)
+    const candidate = join(temporary, executableName)
+    writeFileSync(candidate, binary, { flag: 'wx', mode: 0o755 })
     if (process.platform !== 'win32') chmodSync(candidate, 0o755)
     verifyRevision(candidate)
     mkdirSync(destination, { recursive: true })
-    copyFileSync(candidate, executable)
+    copyFileSync(candidate, executable, constants.COPYFILE_EXCL)
     if (process.platform !== 'win32') chmodSync(executable, 0o755)
   } finally {
     rmSync(temporary, { recursive: true, force: true })
@@ -108,5 +93,13 @@ if (existsSync(bunx)) {
 
 if (process.env.GITHUB_PATH) appendFileSync(process.env.GITHUB_PATH, `${destination}\n`)
 console.log(
-  JSON.stringify({ executable, revision: manifest.bun.cliRevision, archiveSha256: archive.sha256 })
+  JSON.stringify({
+    executable,
+    revision: manifest.bun.cliRevision,
+    reusedExisting,
+    package: archive.name,
+    packageVersion: archive.version,
+    downloadedIntegrity: reusedExisting ? null : archive.integrity,
+    executableSha256: createHash('sha256').update(readFileSync(executable)).digest('hex'),
+  })
 )

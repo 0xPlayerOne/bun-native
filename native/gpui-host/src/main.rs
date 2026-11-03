@@ -3,6 +3,7 @@ mod evidence;
 mod input;
 mod services;
 mod session;
+mod startup_log;
 mod state;
 mod style;
 mod view;
@@ -25,6 +26,7 @@ fn main() {
             std::process::exit(2);
         }
     };
+    startup_log::install_from_environment();
     let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
     gpui_platform::application()
