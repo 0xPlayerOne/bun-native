@@ -1,5 +1,6 @@
 /** Failure-only research preload: never changes collection or assertion outcomes. */
 import { mock } from 'bun:test'
+import { scanWindowsUnwind } from './retention-windows-unwind.ts'
 import { clearDeadStackAfterFailure, scanRecordedTarget } from './retention-stack-probe.ts'
 import { rethrowWithRetentionDiagnostic } from '../tests/solid/retention-diagnostic.ts'
 import * as jsc from 'bun:jsc'
@@ -38,6 +39,10 @@ mock.module(diagnosticPath, () => ({
       try {
         const targets = addresses(references)
         phase = 'native-stack'
+        const windowsUnwind =
+          process.platform === 'win32'
+            ? targets.map((target) => ({ target, trace: scanWindowsUnwind(target.address) }))
+            : null
         const nativeStack = targets.map((target) => ({
           target,
           trace: scanRecordedTarget(target.address),
@@ -72,6 +77,7 @@ mock.module(diagnosticPath, () => ({
               snapshotSha256: createHash('sha256').update(encoded).digest('hex'),
               targets,
               nativeStack,
+              windowsUnwind,
             },
             null,
             2

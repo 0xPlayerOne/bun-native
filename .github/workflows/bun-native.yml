@@ -21,39 +21,38 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Record actual Windows cell-description format
         run: bun -e 'const j=require("bun:jsc");console.log(JSON.stringify({description:j.jscDescribe({syntheticAddressControl:true}),bunRevision:Bun.revision}))'
-      - name: Install one exact independently verified official candidate
-        run: node experiments/install-retention-candidate.mjs "$RUNNER_TEMP/retention-candidate"
-      - name: Fixed current-vs-candidate source experiment with ownership negatives
+      - name: Compile bounded owned-thread observer with the actual Windows SDK
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cl /nologo /LD /O2 /W4 /WX experiments\retention-windows-unwind.c /link /OUT:"%RUNNER_TEMP%\retention-windows-unwind.dll"
+          if errorlevel 1 exit /b 1
+      - name: Fixed original and failure-only Windows unwind observation
         run: |
           python - <<'PYEXPERIMENT'
-          import hashlib,json,os,pathlib,shutil,subprocess
+          import hashlib,json,os,pathlib,subprocess
           output=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-paths';output.mkdir()
-          source=pathlib.Path('tests/solid/renderer.test.ts');original=source.read_text()
-          old="        return new WeakRef(root)";assert original.count(old)==1
-          held=original.replace(old,"        const held: object[] = Reflect.get(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS') ?? []\n        held.push(root)\n        Reflect.set(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS', held)\n"+old)
-          candidate=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-candidate'/'bun.exe'
-          current=shutil.which('bun');assert current
-          order=[['current','candidate','current-held','candidate-held'],['candidate-held','current-held','candidate','current'],['candidate','current','candidate-held','current-held']]
-          identities={}
-          for name,binary in [('current',current),('candidate',str(candidate))]:
-              r=subprocess.run([binary,'-e','console.log(JSON.stringify({version:Bun.version,revision:Bun.revision}))'],capture_output=True,text=True,check=True,timeout=30)
-              identities[name]=json.loads(r.stdout)
-          plan={'scope':'Exact official compiler comparison; no repository toolchain change or native/AOT qualification. Same producer checkpoints and assertion.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'order':order,'attemptsPerVariant':3,'testSha256':hashlib.sha256(original.encode()).hexdigest(),'heldControlSha256':hashlib.sha256(held.encode()).hexdigest(),'identities':identities,'failurePolicy':'Keep every outcome, no retries.'}
+          helper=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-windows-unwind.dll'
+          variants=['original','failure-only-windows-unwind']
+          plan={'scope':'After-failure Windows native virtual unwind; original producer and acceptance unchanged. Research only.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'variants':variants,'attemptsPerVariant':1,'testSha256':hashlib.sha256(pathlib.Path('tests/solid/renderer.test.ts').read_bytes()).hexdigest(),'helperSha256':hashlib.sha256(helper.read_bytes()).hexdigest()}
           (output/'plan.json').write_text(json.dumps(plan,indent=2));outcomes=[]
-          shutil.copyfile(candidate.parent/'receipt.json',output/'candidate-receipt.json')
-          try:
-              for block,names in enumerate(order,1):
-                  for variant in names:
-                      directory=output/f'{block:02d}-{variant}';directory.mkdir()
-                      source.write_text(held if variant.endswith('-held') else original)
-                      environment=dict(os.environ);environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
-                      binary=str(candidate) if variant.startswith('candidate') else current
-                      with (directory/'test.log').open('w') as log:r=subprocess.run([binary,'test','tests'],stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
-                      reports=[json.loads(p.read_text()) for p in directory.glob('solid-retention-*.json')]
-                      outcome={'block':block,'variant':variant,'exitCode':r.returncode,'survivors':[d['survivors'] for d in reports]};outcomes.append(outcome);print(json.dumps(outcome))
-          finally:
-              source.write_text(original);(output/'outcomes.json').write_text(json.dumps(outcomes,indent=2))
+          for variant in variants:
+              directory=output/variant;directory.mkdir();environment=dict(os.environ)
+              environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
+              command=['bun','test']
+              if variant!='original':
+                  environment['BUN_NATIVE_RETENTION_ROOT_TRACE_DIR']=str(directory)
+                  environment['BUN_NATIVE_RETENTION_UNWIND_DLL']=str(helper)
+                  command += ['--preload','./experiments/retention-failure-preload.ts']
+              command += ['tests']
+              with (directory/'test.log').open('w') as log:r=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
+              outcomes.append({'variant':variant,'exitCode':r.returncode});print(json.dumps(outcomes[-1]))
+          (output/'outcomes.json').write_text(json.dumps(outcomes,indent=2))
           PYEXPERIMENT
+      - name: Extract selected graph and observed frame identities
+        if: ${{ !cancelled() }}
+        run: python experiments/analyze-retention-path.py "$RUNNER_TEMP/retention-paths/failure-only-windows-unwind"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
         with:
