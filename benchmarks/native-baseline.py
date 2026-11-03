@@ -7,20 +7,19 @@ never flushed. Results are descriptive; no guessed performance budget applies.
 """
 
 import argparse
-from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import json
 import math
 import os
-from pathlib import Path
 import platform
 import signal
 import statistics
 import subprocess
 import sys
 import time
-
+from datetime import UTC, datetime
+from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 DRIVER = REPOSITORY / "scripts/quality/native-input-linux.py"
@@ -290,7 +289,7 @@ def main():
     summary = {
         "schema_version": 1,
         "status": "failed",
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
         "platform": machine_metadata(),
         "methodology": {
             "samples_per_mode": args.samples,
