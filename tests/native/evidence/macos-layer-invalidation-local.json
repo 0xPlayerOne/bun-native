@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-03T21:11:48.159756+00:00",
+  "status": "local-controls-passed-hosted-input-pending",
+  "scope": "Real macOS Core Animation delegate controls, GPUI development-profile host with development and inspected AOT application paint/lifecycle; not local OS input or hosted release qualification.",
+  "sourceFiles": {
+    "native/macos-surface/Cargo.toml": {
+      "sha256": "b7c8e3a6f6aa0cc6b8c3108f719cd1b843ec30978bc3f3665a44f1ef739e2edd",
+      "bytes": 886
+    },
+    "native/macos-surface/src/lib.rs": {
+      "sha256": "e538df9f08fe9495421ab35fe9e92f2d4495d5581c0724c0fc8b22683f2c1299",
+      "bytes": 2660
+    },
+    "native/macos-surface/examples/invalidation-control.rs": {
+      "sha256": "afb463b2f1aa804d3bf2a0bd65d0d71f640ec627d5a7ca33d750591db392f8c2",
+      "bytes": 5896
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "86b2bd28ea96c3fbbfeb62d13c6322aec5aa7cb10d4a1124909937d1facac5d8",
+      "bytes": 14778
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "27afd0cb0cda4c03d6fee107e463ce714eb81c372c8cd10ced319c6466003437",
+      "bytes": 9173
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "baa13df424d298b0feb6644891ab7be8c5a44122264e407cee49d64ab9876dd8",
+      "bytes": 2850
+    },
+    "Cargo.toml": {
+      "sha256": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+      "bytes": 458
+    },
+    "Cargo.lock": {
+      "sha256": "2c7ee40157db743b4cd190541339d647b95876dfa0c5ecced4f94d7763650563",
+      "bytes": 161167
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "sha256": "089906a5926c1cab761dde34d0fb463036e9cfafd20bef8660888f5894c3fdc6",
+      "bytes": 12335
+    },
+    "benchmarks/native-baseline.py": {
+      "sha256": "b90c11eefe1fa406c0636f1e9b6763a86aa51386a2d7f487c92788f7e4a3b2de",
+      "bytes": 17948
+    },
+    "scripts/quality/native-diagnostics-linux.py": {
+      "sha256": "e35f27b8c3360cdeee383dfa6c3cfc692c772e5e8e63fd9dea792cc882ef5279",
+      "bytes": 19727
+    },
+    "scripts/quality/native-platform-smoke.py": {
+      "sha256": "82420ff80e76f85a28f7d8325a1754f16134d2934efe61b09408760a1f406a80",
+      "bytes": 21403
+    },
+    "tests/quality/test_native_baseline.py": {
+      "sha256": "8b34d6faccef2e149481763025cf3826f66c975e3ca6cc9aaf40c48c79e63ee5",
+      "bytes": 12933
+    },
+    ".github/workflows/native-platforms.yml": {
+      "sha256": "e14cbf170fcb2a1a5ed9a26918d073d7281c669e832c89a36f9b4c8f496d0042",
+      "bytes": 16387
+    }
+  },
+  "localHost": {
+    "sha256": "580817160316840d6eec5d3bf967bbfc53eca6c47da593b5eca86cf1ad2c0ee8",
+    "bytes": 41170144
+  },
+  "aotManifest": {
+    "sha256": "ae3a10fca41757bb4c48e9b8606bb706014b972d1d94cf467c6dc71e5c4ffc57",
+    "bytes": 11753
+  },
+  "aotInspection": {
+    "hasCompiledProgram": true,
+    "runtimeFeatures": {
+      "format": "macho64-le",
+      "section": {
+        "name": "__TEXT,__bun_features",
+        "offset": 49313504,
+        "bytes": 536
+      },
+      "rawRecordHex": "42554e4645415400000000000e08000000073bffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "trimmedProgramFeatures": false,
+      "removedRangeCount": 2062,
+      "jit": "unused",
+      "interpreter": "present",
+      "imageCompiler": "unused",
+      "jitRemovedRanges": {
+        "count": 187,
+        "virtualBytes": 14073758
+      }
+    }
+  },
+  "nativeCases": {
+    "development-paint": {
+      "status": "passed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "error": null,
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "applicationExitCode": 0,
+      "completePaintObservations": 6,
+      "rawReport": {
+        "sha256": "4e398dc633ce12a4f508557e66c533b511e2b4068dab895db8c1d07db05172d0",
+        "bytes": 27588
+      }
+    },
+    "aot-paint": {
+      "status": "passed",
+      "mode": "aot",
+      "hostProfile": "dev",
+      "error": null,
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "applicationExitCode": 0,
+      "completePaintObservations": 6,
+      "rawReport": {
+        "sha256": "1d0cd3c9efbd77c5c9bf00f9a3e3abd5c396c299911b194547227bcc07f90e6d",
+        "bytes": 27592
+      }
+    },
+    "negative-paint": {
+      "status": "failed",
+      "mode": "development",
+      "hostProfile": "dev",
+      "error": {
+        "type": "NativePaintMismatch",
+        "message": "Timed out waiting for complete native paint"
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "applicationExitCode": 1,
+      "completePaintObservations": 0,
+      "rawReport": {
+        "sha256": "75574d6f8622f2efe9874003669b0455879469f71008fa417a0bec5e753ff6ef",
+        "bytes": 14120
+      }
+    },
+    "development-input": {
+      "status": "unsupported",
+      "mode": "development",
+      "hostProfile": "dev",
+      "error": {
+        "type": "InputUnavailable",
+        "message": "CoreGraphics event posting permission is unavailable; no input helper was invoked and no permission was requested"
+      },
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "applicationExitCode": 1,
+      "completePaintObservations": 1,
+      "rawReport": {
+        "sha256": "12633ad20add59361479755772b76d693a9efae9cb589092ab4113178a3304b3",
+        "bytes": 17525
+      }
+    }
+  },
+  "layerControls": {
+    "positive": "passed: deferred, delegate delivery, isolated, coalesced, rearmed, missing backing layer",
+    "negative": "omitted invalidation rejected at committed surface did not become dirty",
+    "ownershipTests": 2,
+    "clippy": "warnings denied; passed"
+  },
+  "sourceValidation": {
+    "bunTests": 483,
+    "assertions": 3012,
+    "fullCheck": "passed after restoring the observed missing babel-preset-solid package files with the unchanged frozen lockfile",
+    "pythonTests": 70,
+    "pythonSkipped": 15,
+    "pythonSkipScope": "existing Linux-only controls, not native GUI verification",
+    "python": "3.15.2",
+    "initialSourceFailure": "hello request timed out in the inherited-pipe-holder test during the concurrent native build; preserved separately, not relabelled",
+    "initialPythonFailure": "default Xcode Python 3.9 lacks datetime.UTC; reran under installed Python 3.15.2",
+    "initialControlFailures": "first delegate did not commit contents; initial repair required an explicit audited unsafe setContents(None) call; these compilation/setup failures are retained separately from the positive/negative controls"
+  },
+  "rawLogFingerprints": {
+    "layer-control-initial.log": {
+      "sha256": "652fad32a3145eff632b3b62a7ab64e3570417705ef17c78d0b00b1302a48690",
+      "bytes": 594
+    },
+    "layer-control-positive.log": {
+      "sha256": "87ed4abe04d185cca5e4d25915a87d12b25a4da5fd3f2eda62399671787782e2",
+      "bytes": 680
+    },
+    "layer-control-positive-v2.log": {
+      "sha256": "692056530b04271a412135180229e83d53572f3d5420bce830d9fcac081aaf8e",
+      "bytes": 358
+    },
+    "layer-control-negative-v2.log": {
+      "sha256": "a49f91ea0f1860df5a33827903c102e10f39ac7b4968d15334104b131075a1d8",
+      "bytes": 216
+    },
+    "layer-clippy.log": {
+      "sha256": "4c012b07eb9fa5c644d74d8b2fae53bcfebcbfd6a645e52f7e9f373188e62799",
+      "bytes": 327
+    },
+    "layer-tests.log": {
+      "sha256": "89631b1b95c84138ab5a0c89eeb3607c4d9c412c517b5d0fed66bbd8ba2c9af0",
+      "bytes": 699
+    },
+    "source-check.log": {
+      "sha256": "5705b88f32c85948a744dda794fc0d8af0367ab75b8c5894c422fa86fb9f6918",
+      "bytes": 48604
+    },
+    "source-check-repaired.log": {
+      "sha256": "595b0a562bcee2774d8f556d81555e5d29a8283c6699e26de3f205c74ec7f7ad",
+      "bytes": 47176
+    },
+    "python-check.log": {
+      "sha256": "69a11742e5d57d55fe6f5e148f7b110a35aac26b10684f5988d0bbd769077014",
+      "bytes": 9123
+    },
+    "python-check-qualified.log": {
+      "sha256": "54296fdead0eb682851ce5a55242bca4c5ec4526bd99b0497e3c0c372b0f2c44",
+      "bytes": 13883
+    },
+    "bun-install.log": {
+      "sha256": "d5c61c003af0887e6557b275a43868802325346e6d38e6a1702d845c6c33d64b",
+      "bytes": 467
+    },
+    "dependency-repair.log": {
+      "sha256": "f2563678501f3b5e818c3e1e18becff81bc61947460f39e9a29d784ae0c5b51f",
+      "bytes": 318
+    },
+    "aot-build.log": {
+      "sha256": "ae3a10fca41757bb4c48e9b8606bb706014b972d1d94cf467c6dc71e5c4ffc57",
+      "bytes": 11753
+    }
+  },
+  "historicalFailure": {
+    "pullRequest": 322,
+    "runId": 41708732840,
+    "jobId": 126170881574,
+    "result": "revision 2 frame callback queued but never delivered before unchanged native-paint deadline"
+  },
+  "limits": [
+    "Local event posting permission unavailable: no input was posted and no permission was requested.",
+    "Native paints are not physical display presentation or latency measurements.",
+    "Hosted release native/AOT input, Linux and Windows matrices, CodeQL and protected Gate remain mandatory.",
+    "The renderer stall inside the Metal display link is not fully attributed by these controls."
+  ]
+}

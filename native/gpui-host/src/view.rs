@@ -36,8 +36,6 @@ pub(crate) struct NativeView {
     _subscriptions: [Subscription; 2],
     events: EventSink,
     evidence: Evidence,
-    #[cfg(target_os = "macos")]
-    frame_demand: crate::frame_demand::FrameDemand,
 }
 
 impl NativeView {
@@ -68,8 +66,6 @@ impl NativeView {
             _subscriptions: [keyboard, focus_lost],
             events,
             evidence,
-            #[cfg(target_os = "macos")]
-            frame_demand: crate::frame_demand::FrameDemand::default(),
         }
     }
 
@@ -174,26 +170,19 @@ impl NativeView {
         #[cfg(target_os = "macos")]
         {
             window.refresh();
-            // GPUI's dirty invalidation wakes only on a clean-to-dirty edge.
-            // An external commit also needs explicit frame demand when a
-            // dirty window's platform source has gone idle. Coalesce it to
-            // one callback; its weak token cannot retain this view on close.
-            let revision = self.state.borrow().tree.revision();
-            if let Some(completion) = self.frame_demand.begin() {
-                let evidence = self.evidence.clone();
-                let window_id = self.window_id;
-                evidence.frame_schedule("queued", window_id, revision);
-                window.on_next_frame(move |window, _| {
-                    evidence.frame_schedule("delivered", window_id, revision);
-                    // Refresh in the frame callback as well: a refresh during
-                    // another draw phase is intentionally ignored by GPUI.
-                    window.refresh();
-                    drop(completion);
-                });
-            } else {
-                self.evidence
-                    .frame_schedule("coalesced", self.window_id, revision);
-            }
+            // GPUI's Metal surface is a layer-backed view with a custom
+            // displayLayer: delegate. Dirty the backing layer itself so its
+            // normal deferred display pass also serves external commits when
+            // the display link is idle. This never draws inside this update.
+            let handle = raw_window_handle::HasWindowHandle::window_handle(window)
+                .expect("an owned macOS GPUI window exposes its native view");
+            bun_native_macos_surface::invalidate(handle)
+                .expect("GPUI updates its backed surface on the AppKit owner thread");
+            self.evidence.frame_schedule(
+                "layer_invalidated",
+                self.window_id,
+                self.state.borrow().tree.revision(),
+            );
         }
     }
 

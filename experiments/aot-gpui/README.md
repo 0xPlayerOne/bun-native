@@ -63,6 +63,9 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `scheduling`              | `tests/native/scheduling.ts`          | `scheduling`         | Existing prebuilt host referenced by absolute path |
 | `layout`                  | `tests/native/layout.ts`              | `layout`             | Existing prebuilt host referenced by absolute path |
 | `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
+| `services`                | `tests/native/services.ts`            | `services`           | Existing prebuilt host referenced by absolute path |
+| `solid-services`          | `tests/native/solid-services.tsx`     | `solid-services`     | Existing prebuilt host referenced by absolute path |
+| `react-services`          | `tests/native/react-services.tsx`     | `react-services`     | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`      | `platform-smoke`     | Existing prebuilt host referenced by absolute path |
 | `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |

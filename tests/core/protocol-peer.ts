@@ -38,6 +38,9 @@ for await (const chunk of Bun.stdin.stream()) {
           : { ...DEFAULT_LIMITS }
       await emit({
         type: 'ready',
+        service_policy: {
+          window_display: process.argv.includes('--bun-native-allow-window-display'),
+        },
         protocol: PROTOCOL_VERSION,
         capabilities: [...REQUIRED_CAPABILITIES],
         limits,

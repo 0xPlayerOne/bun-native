@@ -3,6 +3,7 @@ import { createRenderRoot, type RenderRoot } from '@bun-native/renderer'
 import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
 import { reconciler } from './reconciler.ts'
+import { createRootErrors } from './root-errors.ts'
 
 type FiberRoot = ReturnType<typeof reconciler.createContainer>
 
@@ -21,6 +22,7 @@ class Root implements ReactRenderRoot {
   readonly closed: Promise<void>
   private readonly native: RenderRoot
   private fiber!: FiberRoot
+  private errors: ReturnType<typeof createRootErrors> | undefined
   private element: ReactNode
   private phase: 'active' | 'disposing' | 'closed' = 'active'
   private failure: Error | undefined
@@ -40,6 +42,7 @@ class Root implements ReactRenderRoot {
         // stack returns, rather than recursively entering Fiber's commit.
         queueMicrotask(() => fail(this.failure))
       }
+      this.errors = createRootErrors({ terminate, report: onRecoverableError })
       this.fiber = reconciler.createContainer(
         container,
         ConcurrentRoot,
@@ -47,16 +50,10 @@ class Root implements ReactRenderRoot {
         false,
         null,
         '',
-        terminate,
-        () => {},
-        (error, info) => {
-          try {
-            onRecoverableError(error, Object.freeze({ ...info }))
-          } catch (reporterError) {
-            terminate(reporterError)
-          }
-        },
-        () => {},
+        this.errors.uncaught,
+        this.errors.caught,
+        this.errors.recoverable,
+        this.errors.transition,
         null
       )
       onCleanup(() => {
@@ -98,6 +95,8 @@ class Root implements ReactRenderRoot {
 
   private finish(): void {
     this.phase = 'closed'
+    this.errors?.release()
+    this.errors = undefined
     const error = this.failure ?? new NativeStateError('invalid_state', 'React root is closed')
     for (const barrier of this.barriers) barrier.reject(error)
     this.barriers.clear()
