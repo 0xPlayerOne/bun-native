@@ -2,9 +2,8 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,9 +60,11 @@ class ClipboardEvidenceTests(unittest.TestCase):
             ("voluntarySwitches", 30),
             ("voluntarySwitches", 9),
         ):
-            with self.subTest(field=field, value=value):
-                with self.assertRaises(RuntimeError):
-                    CLIPBOARD.verify_idle(before, {**before, field: value})
+            with (
+                self.subTest(field=field, value=value),
+                self.assertRaises(RuntimeError),
+            ):
+                CLIPBOARD.verify_idle(before, {**before, field: value})
 
     def test_result_requires_all_outcomes_and_exact_zero_ownership(self):
         application = {
@@ -97,9 +98,8 @@ class ClipboardEvidenceTests(unittest.TestCase):
         duplicate["peers"][0]["label"] = duplicate["peers"][1]["label"]
         altered.append(duplicate)
         for value in altered:
-            with self.subTest(value=value):
-                with self.assertRaises(RuntimeError):
-                    CLIPBOARD.validate_result(value)
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                CLIPBOARD.validate_result(value)
 
 
 if __name__ == "__main__":

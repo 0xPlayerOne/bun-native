@@ -1,9 +1,8 @@
 """Geometry guard negatives. These unit tests do not claim native rendering."""
 
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(

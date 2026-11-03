@@ -9,8 +9,8 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import logging
 import os
-from pathlib import Path
 import platform
 import re
 import secrets
@@ -19,8 +19,9 @@ import signal
 import subprocess
 import threading
 import time
+from pathlib import Path
 
-
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "native_input_linux", ROOT / "scripts/quality/native-input-linux.py"
@@ -231,6 +232,7 @@ def main():
         owned = sample()
         found = subprocess.run(
             ["xdotool", "search", "--onlyvisible", "--name", f"^{re.escape(title)}$"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=2,
@@ -487,6 +489,7 @@ def main():
                 )
         report["status"] = "passed"
     except Exception as error:
+        LOGGER.exception("Native diagnostic failed")
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:
         signal.alarm(0)

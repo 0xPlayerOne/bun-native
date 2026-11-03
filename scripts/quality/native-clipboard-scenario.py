@@ -1,8 +1,7 @@
 """Clipboard assertions reused by the existing owned-process X11 diagnostic driver."""
 
-from pathlib import Path
 import time
-
+from pathlib import Path
 
 OUTCOMES = {
     "nativeDefaultDenial",

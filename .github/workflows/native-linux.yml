@@ -34,8 +34,6 @@ jobs:
           mkdir "$RUNNER_TEMP/native-evidence"
           echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -84,6 +82,7 @@ jobs:
       - name: Development public API input, stale revision and window lifecycle
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_STARTUP_LOG: '1'
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
