@@ -1,0 +1,35 @@
+name: Windows revoker scope (diagnostic only)
+on:
+  push:
+    branches: [diagnostic/linux-react-retaining-path-owner-20261103]
+    paths:
+      - .github/workflows/window-release-scope-control.yml
+      - experiments/window-release-scope-control.py
+permissions:
+  contents: read
+jobs:
+  observe:
+    name: Fixed production ownership contrast (not qualification)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install unchanged pinned runtime
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Fixed production source counterfactual matrix
+        run: python experiments/window-release-scope-control.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: windows-revoker-scope-${{ github.sha }}
+          path: ${{ runner.temp }}/window-release-scope/
+          if-no-files-found: error
+          retention-days: 7
