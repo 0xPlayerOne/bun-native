@@ -72,6 +72,7 @@ impl LayoutFrame {
         &self,
         element: Div,
         children: &[NodeId],
+        child_offset: usize,
         scroll: Option<&ScrollHandle>,
     ) -> Div {
         if self.node_count > MAX_LAYOUT_NODES || children.is_empty() {
@@ -84,6 +85,8 @@ impl LayoutFrame {
             let ancestor_clip = rectangle(window.content_mask().bounds);
             let mut nodes = nodes.borrow_mut();
             for (index, child) in children.iter().enumerate() {
+                // Optional diagnostic canvases are not model children.
+                let index = child_offset + index;
                 // A tracked Div stores bounds on its handle instead of in the
                 // callback vector. Bounds include ancestor offsets, but GPUI
                 // applies this container's own scroll translation afterward.

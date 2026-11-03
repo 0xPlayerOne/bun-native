@@ -2,7 +2,6 @@
 
 import importlib.util
 import json
-import platform
 import signal
 import subprocess
 import sys
@@ -11,6 +10,7 @@ import time
 import unittest
 from copy import deepcopy
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/bridge-pairs.py"
 SPEC = importlib.util.spec_from_file_location("bridge_pairs", SCRIPT)
@@ -114,6 +114,13 @@ class PlanTests(unittest.TestCase):
 
 class MetadataTests(unittest.TestCase):
     def setUp(self):
+        # These inert files model a Linux x64 artifact; never execute them or
+        # inherit the contributor machine's architecture as qualification.
+        machine = patch.object(
+            PAIRS.BASELINE.platform, "machine", return_value="x86_64"
+        )
+        machine.start()
+        self.addCleanup(machine.stop)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -140,9 +147,7 @@ class MetadataTests(unittest.TestCase):
             "toolchain": self.pins,
             "target": {
                 "os": "linux",
-                "architecture": {"x86_64": "x64", "aarch64": "arm64"}.get(
-                    platform.machine()
-                ),
+                "architecture": "x64",
             },
             "application": {
                 "file": "bridge",
@@ -184,6 +189,18 @@ class MetadataTests(unittest.TestCase):
 
     def test_external_bridge_metadata_has_a_valid_distinct_path(self):
         self.assertEqual(self.verify()["entrypoint"], "benchmarks/bridge.ts")
+
+    def test_foreign_os_or_architecture_cannot_qualify(self):
+        for target in [
+            {"os": "linux", "architecture": "arm64"},
+            {"os": "darwin", "architecture": "x64"},
+            {"os": "linux", "architecture": None},
+        ]:
+            with self.subTest(target=target):
+                self.manifest["target"] = target
+                self.save()
+                with self.assertRaisesRegex(ValueError, "this Linux architecture"):
+                    self.verify()
 
     def test_wrong_host_cannot_inherit_another_artifacts_inspection(self):
         other = self.root / "other-host"
