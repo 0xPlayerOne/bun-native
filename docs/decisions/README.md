@@ -39,6 +39,7 @@ The implementation agent may accept an ADR autonomously within the owner's exper
 - [0003 — Trust, authority and lifetime at the native boundary](0003-bridge-security.md)
 - [0004 — Shared public TS/JS application API](0004-public-api.md)
 - [0005 — Native service policy and owned-window display reads](0005-native-service-policy.md)
+- [0006 — Explicit macOS backing-layer invalidation](0006-macos-backing-layer-invalidation.md)
 - [Native host protocol 5](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)
