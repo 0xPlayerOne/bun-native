@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import type { NativeApplication } from '@bun-native/core'
-import { expectWindowRootOnly } from '../../benchmarks/solid/workload.ts'
+import { expectWindowRootOnly } from '../../benchmarks/solid/ownership.ts'
 
 const windowRootOnly = {
   windows: 1,
@@ -24,5 +24,17 @@ test('renderer workload accepts only complete window-root ownership', () => {
 test('renderer workload rejects reports that omit service ownership', () => {
   const diagnostics = { ...windowRootOnly }
   Reflect.deleteProperty(diagnostics, 'serviceRequests')
+  expect(() => expectWindowRootOnly({ diagnostics })).toThrow()
+})
+
+for (const name of Object.keys(windowRootOnly) as (keyof typeof windowRootOnly)[]) {
+  test(`renderer workload rejects changed ${name} ownership`, () => {
+    const diagnostics = { ...windowRootOnly, [name]: windowRootOnly[name] + 1 }
+    expect(() => expectWindowRootOnly({ diagnostics })).toThrow()
+  })
+}
+
+test('renderer workload rejects unrecognized ownership fields', () => {
+  const diagnostics = { ...windowRootOnly, futureOwnership: 0 }
   expect(() => expectWindowRootOnly({ diagnostics })).toThrow()
 })
