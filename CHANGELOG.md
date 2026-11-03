@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.12.2](https://github.com/0xPlayerOne/bun-native/compare/v0.12.1...v0.12.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **native:** accept completed smoke observation across process-exit race ([#319](https://github.com/0xPlayerOne/bun-native/issues/319)) ([c75d477](https://github.com/0xPlayerOne/bun-native/commit/c75d4777bd84176cbbce29e9520f657912c975b5))
+
+## [0.12.1](https://github.com/0xPlayerOne/bun-native/compare/v0.12.0...v0.12.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **toolchain:** restore the pinned Bun compiler through official npm packages ([#314](https://github.com/0xPlayerOne/bun-native/issues/314)) ([0743e5b](https://github.com/0xPlayerOne/bun-native/commit/0743e5b3cd6d9de36a6abe4b5cacdd0c784fb3cd))
+
+
+### Tests
+
+* **native:** expose bounded GPUI startup logs ([#309](https://github.com/0xPlayerOne/bun-native/issues/309)) ([9abccca](https://github.com/0xPlayerOne/bun-native/commit/9abccca4342a32a44b0249d10020576444a66f61))
+
 ## [0.12.0](https://github.com/0xPlayerOne/bun-native/compare/v0.11.2...v0.12.0) (2026-10-31)
 
 

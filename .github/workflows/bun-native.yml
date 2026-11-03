@@ -27,8 +27,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -96,8 +94,6 @@ jobs:
             node -e 'const os = require("node:os"); const fs = require("node:fs"); const crypto = require("node:crypto"); const bytes = fs.readFileSync("toolchain.json"); const pin = JSON.parse(bytes).bun; console.log(JSON.stringify({os:os.platform(),arch:os.arch(),release:os.release(),expectedBunRevision:pin.cliRevision,manifestSha256:crypto.createHash("sha256").update(bytes).digest("hex"),phase:"before Bun bootstrap"}))'
           } > .bun-native/evidence/bootstrap.txt
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee .bun-native/evidence/bun-bootstrap.log
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -159,8 +155,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bun-native-aot"
           node -e 'const fs=require("node:fs"),p=require("node:path");fs.writeFileSync(p.join(process.env.RUNNER_TEMP,"bun-native-aot","environment.json"),JSON.stringify({revision:process.env.GITHUB_SHA,os:process.platform,arch:process.arch,pins:require("./toolchain.json"),scope:"target-host headless AOT/native interop; no GPUI GUI claim"},null,2))'
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$RUNNER_TEMP/bun-native-aot/bootstrap.log"
