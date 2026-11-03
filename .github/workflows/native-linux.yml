@@ -354,6 +354,39 @@ jobs:
             --output "$NATIVE_EVIDENCE/baseline" --package "$NATIVE_EVIDENCE/package" \
             --bun "$(command -v bun)" --samples 5 --warmups 1 --idle-seconds 2 \
             2>&1 | tee "$NATIVE_EVIDENCE/baseline.log"
+      - name: Observe an already-failed React retention checkpoint (research only)
+        if: ${{ failure() && github.event_name == 'workflow_dispatch' }}
+        timeout-minutes: 5
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, secrets, subprocess
+          evidence = pathlib.Path(os.environ['NATIVE_EVIDENCE'])
+          original_path = evidence / 'react-workload/calibration-development.json'
+          if not original_path.exists():
+              print('Not applicable: no original React calibration report')
+              raise SystemExit(0)
+          original = json.loads(original_path.read_text())
+          if original.get('status') != 'failed' or 'Disposed view/callback targets remain observable' not in str(original.get('error')):
+              print('Not applicable: original failure is not React retention')
+              raise SystemExit(0)
+          directory = evidence / 'react-retaining-paths'
+          directory.mkdir()
+          module = evidence / 'react-workload-package/development/application.js'
+          nonce = secrets.token_hex(16)
+          plan = {'attempts': 1, 'originalReportSha256': hashlib.sha256(original_path.read_bytes()).hexdigest(), 'entrySha256': hashlib.sha256(module.read_bytes()).hexdigest(), 'scope': 'One failure-only observation; never substitutes for the original failed native result', 'parameters': {'iterations': 10, 'rotations': 10, 'mounts': 2, 'rows': 32, 'calibration': True}}
+          (directory / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
+          env = dict(os.environ)
+          env.update(BUN_NATIVE_REACT_RETENTION_TRACE_DIR=str(directory), BUN_NATIVE_EVIDENCE_LOG=str(directory / 'native.jsonl'), BUN_NATIVE_EVIDENCE_NONCE=nonce)
+          command = ['timeout', '--kill-after=5s', '150s', 'xvfb-run', '--auto-servernum', '--server-args=-screen 0 1280x800x24 -nolisten tcp', 'dbus-run-session', '--', 'bash', 'scripts/quality/native-linux-session.sh', str(directory / 'session'), '--', 'bun', '--preload', './experiments/react-retention-failure-preload.ts', str(module), '--host', str(pathlib.Path.cwd() / 'target/release/bun-native-host'), '--output', str(directory / 'result.json'), '--nonce', nonce, '--mode', 'development', '--iterations', '10', '--rotations', '10', '--mounts', '2', '--rows', '32', '--calibration']
+          with (directory / 'process.log').open('wb') as log:
+              process = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, check=False)
+          (directory / 'outcome.json').write_text(json.dumps({'exitCode': process.returncode, 'originalStatus': original['status'], 'scope': plan['scope']}) + '\n')
+          try:
+              subprocess.run(['python3', 'experiments/analyze-react-retention-path.py', str(directory)], check=True)
+          finally:
+              for raw in directory.glob('*.heap.json'):
+                  raw.unlink()
+          PY
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
@@ -361,6 +394,7 @@ jobs:
           name: native-linux-${{ runner.arch }}
           path: |
             ${{ runner.temp }}/native-evidence/toolchain.txt
+            ${{ runner.temp }}/native-evidence/react-retaining-paths/
             ${{ runner.temp }}/native-evidence/build.log
             ${{ runner.temp }}/native-evidence/binary-*.txt
             ${{ runner.temp }}/native-evidence/development/
