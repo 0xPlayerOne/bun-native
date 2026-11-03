@@ -32,6 +32,11 @@ impl InputBinding {
                         sequence,
                         window_id: self.window_id,
                         node_id: self.node_id,
+                        tree_revision: state.tree.revision(),
+                        path: state
+                            .tree
+                            .path(self.node_id)
+                            .expect("accepted edit has a committed route"),
                         value: value.to_owned(),
                         input_revision,
                     },
@@ -46,7 +51,7 @@ impl InputBinding {
 }
 
 // JSON escaping can make a 16 KiB control-character value larger than a frame.
-// Reserve more than the worst-case numeric/header overhead before committing
+// Reserve the 65-ID path plus worst-case numeric/header overhead before committing
 // an edit, so emitting the accepted edit cannot poison the output channel.
 fn event_fits(value: &str) -> bool {
     let encoded_bytes: usize = value
@@ -57,7 +62,7 @@ fn event_fits(value: &str) -> bool {
             _ => 1,
         })
         .sum();
-    encoded_bytes + 256 <= MAX_FRAME_BYTES
+    encoded_bytes + 1_536 <= MAX_FRAME_BYTES
 }
 
 #[cfg(test)]
@@ -77,8 +82,26 @@ mod tests {
             let encoded = serde_json::to_string(value).unwrap();
             assert_eq!(
                 event_fits(value),
-                encoded.len() - 2 + 256 <= MAX_FRAME_BYTES
+                encoded.len() - 2 + 1_536 <= MAX_FRAME_BYTES
             );
         }
+    }
+
+    #[test]
+    fn maximum_route_metadata_fits_the_reserved_event_budget() {
+        let max = bun_native_protocol::MAX_ID;
+        let path: Vec<_> = (max - bun_native_protocol::MAX_EVENT_PATH_NODES as u64 + 1..=max)
+            .map(|id| NodeId::try_from(id).unwrap())
+            .collect();
+        let event = Event::Input {
+            sequence: bun_native_protocol::EventSequence::try_from(max).unwrap(),
+            window_id: WindowId::try_from(max).unwrap(),
+            node_id: NodeId::try_from(max).unwrap(),
+            tree_revision: max,
+            path,
+            value: String::new(),
+            input_revision: max,
+        };
+        assert!(serde_json::to_vec(&event).unwrap().len() < 1_536);
     }
 }

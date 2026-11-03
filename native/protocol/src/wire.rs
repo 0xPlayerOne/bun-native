@@ -1,9 +1,9 @@
-//! Version 3's private native wire contract. No DOM or renderer-specific types.
+//! Version 4's private native wire contract. No DOM or renderer-specific types.
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -58,7 +58,7 @@ identifier!(EventSequence);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
-fn safe_integer<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
+pub(crate) fn safe_integer<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
     struct Integer;
     impl de::Visitor<'_> for Integer {
         type Value = u64;
@@ -387,6 +387,7 @@ pub enum Capability {
     Tree,
     InputRevisions,
     LayoutV1,
+    InteractionsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -413,52 +414,6 @@ impl Default for Limits {
             max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum Event {
-    Ready {
-        protocol: u32,
-        capabilities: Vec<Capability>,
-        limits: Limits,
-    },
-    Ack {
-        id: RequestId,
-    },
-    Opened {
-        id: RequestId,
-        window_id: WindowId,
-        root_id: NodeId,
-        tree_revision: u64,
-    },
-    Applied {
-        id: RequestId,
-        window_id: WindowId,
-        tree_revision: u64,
-    },
-    Click {
-        sequence: EventSequence,
-        window_id: WindowId,
-        node_id: NodeId,
-    },
-    Input {
-        sequence: EventSequence,
-        window_id: WindowId,
-        node_id: NodeId,
-        value: String,
-        input_revision: u64,
-    },
-    Closed {
-        sequence: EventSequence,
-        window_id: WindowId,
-    },
-    Error {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        id: Option<RequestId>,
-        code: ErrorCode,
-        message: String,
-    },
 }
 
 impl Command {

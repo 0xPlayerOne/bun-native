@@ -104,7 +104,7 @@ fn malformed_ids_and_obsolete_commands_are_rejected() {
 #[test]
 fn integer_number_spellings_match_javascript() {
     assert_eq!(
-        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":3.0}\n").unwrap(),
+        read(b"{\"id\":1e0,\"type\":\"hello\",\"protocol\":4.0}\n").unwrap(),
         Some(Command::Hello {
             id: request(1),
             protocol: PROTOCOL_VERSION
@@ -310,6 +310,8 @@ fn events_round_trip_with_single_newline_and_escaped_text() {
         sequence: EventSequence::try_from(1).unwrap(),
         window_id: window(1),
         node_id: node(2),
+        tree_revision: 1,
+        path: vec![node(1), node(2)],
         value: "line 1\nline 2 🌍".into(),
         input_revision: 1,
     };

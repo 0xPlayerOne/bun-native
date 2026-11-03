@@ -24,8 +24,8 @@ atomic mutations, independent input revisions and the public
 consumers import this same contract. Their type fixtures are compile-only;
 actual framework renderers have separate acceptance.
 
-The initial shared layout increment advances the current source to protocol 3
-and requires `layout_v1`. Its [native layout contract](native-layout.md) records
+The initial shared layout increment introduced protocol 3 and `layout_v1`.
+Current protocol 4 additionally requires `interactions_v1`; the [event contract](native-events.md) records the shared native observation and propagation scope. Its [native layout contract](native-layout.md) records
 the supported sizing, scrolling and focus behavior and its actual development/AOT
 qualification. Historical BN1 artifacts remain evidence for their original
 protocol-2 sources; old hosts fail negotiation with the current packages.
@@ -75,13 +75,14 @@ fallback remains in the active packages.
 3. Complete the React renderer in [#280](https://github.com/0xPlayerOne/bun-native/pull/280),
    using the same private renderer package and public core as Solid. Preserve
    its measured handler-lifetime and error-propagation regressions.
-4. Complete the required release checks for native layout/scroll/focus
+4. Preserve the merged native layout/scroll/focus qualification in
    [#281](https://github.com/0xPlayerOne/bun-native/pull/281) and Bun command
-   controls [#278](https://github.com/0xPlayerOne/bun-native/pull/278), then follow
-   their issue dependencies. Ordinary TS/JS edits reuse a prebuilt host and
-   must not silently invoke Cargo.
+   controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278). Continue
+   shared native interactions and platform qualification by their issue
+   dependencies. Ordinary TS/JS edits reuse a prebuilt host and must not
+   silently invoke Cargo.
 
-The native ownership and schema are described in [protocol 3](native-abi.md),
+The native ownership and schema are described in [protocol 4](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the
 [security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
 state before resuming; a draft implementation is not a completed milestone.

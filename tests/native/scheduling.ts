@@ -35,7 +35,7 @@ const incoming = (async () => {
     if (event.type === 'input') {
       assert.equal(event.window_id, 1)
       assert.equal(event.node_id, 6)
-      assert.equal(event.sequence, 1)
+      assert.equal(inputEvents.length, 0, 'The fixed workload accepts exactly one edit')
       assert.equal(event.input_revision, 1)
       assert.equal(event.value, 'x')
       inputDuringProducer ||= producing

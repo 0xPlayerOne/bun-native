@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.12.1](https://github.com/0xPlayerOne/bun-native/compare/v0.12.0...v0.12.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **toolchain:** restore the pinned Bun compiler through official npm packages ([#314](https://github.com/0xPlayerOne/bun-native/issues/314)) ([0743e5b](https://github.com/0xPlayerOne/bun-native/commit/0743e5b3cd6d9de36a6abe4b5cacdd0c784fb3cd))
+
+
+### Tests
+
+* **native:** expose bounded GPUI startup logs ([#309](https://github.com/0xPlayerOne/bun-native/issues/309)) ([9abccca](https://github.com/0xPlayerOne/bun-native/commit/9abccca4342a32a44b0249d10020576444a66f61))
+
+## [0.12.0](https://github.com/0xPlayerOne/bun-native/compare/v0.11.2...v0.12.0) (2026-10-31)
+
+
+### Features
+
+* **solid:** implement native renderer and shared protocol-4 event mapping ([#277](https://github.com/0xPlayerOne/bun-native/issues/277)) ([010db65](https://github.com/0xPlayerOne/bun-native/commit/010db65754ca9e54eca28e7701324e22b3c1f6c2))
+
+## [0.11.2](https://github.com/0xPlayerOne/bun-native/compare/v0.11.1...v0.11.2) (2026-10-31)
+
+
+### CI
+
+* **native:** build and execute GPUI paint and lifecycle on macOS and Windows ([#288](https://github.com/0xPlayerOne/bun-native/issues/288)) ([afb47e1](https://github.com/0xPlayerOne/bun-native/commit/afb47e1ae322f9e7e7b97261752e0e33e78f7eb7))
+
+## [0.11.1](https://github.com/0xPlayerOne/bun-native/compare/v0.11.0...v0.11.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **ci:** isolate draft events from ready native validation ([#293](https://github.com/0xPlayerOne/bun-native/issues/293)) ([0720276](https://github.com/0xPlayerOne/bun-native/commit/07202765b359221faae05098b2b9a2f6d014cd2f))
+
+## [0.11.0](https://github.com/0xPlayerOne/bun-native/compare/v0.10.0...v0.11.0) (2026-10-31)
+
+
+### Features
+
+* **events:** add shared native keyboard, pointer and focus routing ([#285](https://github.com/0xPlayerOne/bun-native/issues/285)) ([2112325](https://github.com/0xPlayerOne/bun-native/commit/211232585378a13aef5b5786831062ac235da845))
+
+## [0.10.0](https://github.com/0xPlayerOne/bun-native/compare/v0.9.0...v0.10.0) (2026-10-31)
+
+
+### Features
+
+* **aot:** verify native compiler controls across Linux macOS and Windows ([#286](https://github.com/0xPlayerOne/bun-native/issues/286)) ([9355549](https://github.com/0xPlayerOne/bun-native/commit/9355549666bc9ac057fcc6cfd9b97a25c1dd9157))
+
+
+### Documentation
+
+* record verified BN1 release audit and retained evidence ([#282](https://github.com/0xPlayerOne/bun-native/issues/282)) ([df9eb12](https://github.com/0xPlayerOne/bun-native/commit/df9eb12d7ec28722580db447eeb7ca89a24996bb))
+
 ## [0.9.0](https://github.com/0xPlayerOne/bun-native/compare/v0.8.0...v0.9.0) (2026-10-31)
 
 

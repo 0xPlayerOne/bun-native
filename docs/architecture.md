@@ -1,6 +1,6 @@
 # Bun Native architecture
 
-**Status:** BN0's real Bun-controlled GPUI window and inspected machine-code AOT path are merged. BN1 implements a shared native element tree, versioned atomic mutations and an opaque public TS/JS API in the current source. Actual Linux X11 development/AOT runs have exercised pointer input, typing, Enter activation, stale-input rejection, native paint and cleanup using Mesa's software GPU. Framework adapters and a supported cross-platform release matrix remain later work. See [the BN0 record](bn0-integration.md), [native protocol 3](native-abi.md) and [the public API](../packages/core/README.md) for the precise boundary.
+**Status:** BN0's real Bun-controlled GPUI window and inspected machine-code AOT path are merged. BN1 implements a shared native element tree, versioned atomic mutations and an opaque public TS/JS API in the current source. Actual Linux X11 development/AOT runs have exercised pointer input, typing, Enter activation, stale-input rejection, native paint and cleanup using Mesa's software GPU. Framework adapters and a supported cross-platform release matrix remain later work. See [the BN0 record](bn0-integration.md), [native protocol 4](native-abi.md) and [the public API](../packages/core/README.md) for the precise boundary.
 
 ## System layers
 
@@ -41,7 +41,7 @@ AOT is an execution mechanism, **not** a JSX/CSS-to-Rust compiler. The Solid/Rea
 
 `scripts/quality/boundaries.ts` checks TypeScript import direction and runtime dependency use. Both Rust crates share the root Cargo workspace and lock. The example never invokes Cargo. Its `BUN_NATIVE_HOST` setting selects an already-built executable; the AOT recipe copies that same host into the output and records its hash.
 
-Protocol 3 adds a mandatory shared layout contract to the BN1 tree and replaces protocol 2 without a compatibility decoder. Its `hello`, `open`, `batch`, `close` and `shutdown` commands operate on a bounded multi-window tree of boxes, text, buttons and editable inputs. The native input owns editing state; explicit application replacements require its current edit revision. Atomic tree batches carry a separate base revision. The [ABI contract](native-abi.md) defines ownership, identity, limits, reply validation, thread authority and failure semantics.
+Protocol 4 requires shared layout and interaction contracts on the BN1 tree and replaces protocol 3 without a compatibility decoder. Its `hello`, `open`, `batch`, `close` and `shutdown` commands operate on a bounded multi-window tree of boxes, text, buttons and editable inputs. The native input owns editing state; explicit application replacements require its current edit revision. Atomic tree batches carry a separate base revision. The [ABI contract](native-abi.md) defines ownership, identity, limits, reply validation, thread authority and failure semantics.
 
 ## Planned package boundaries
 
@@ -97,6 +97,6 @@ Follow [engineering-quality.md](engineering-quality.md). The highest-risk paths 
 
 ## Current gaps
 
-The public element API and protocol 3 are experimental and implemented; they are not a compatibility promise. Solid/React adapters, general native services, complete text accessibility, hot reload and distributable cross-platform releases do not yet exist. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland, physical GPUs, IME or assistive technology. BN1's native release-host/retention audit remains an explicit checkpoint; BN4 and BN6 own the corresponding usability and platform acceptance.
+The public element API and protocol 4 are experimental and implemented; they are not a compatibility promise. Solid/React adapters, general native services, complete text accessibility, hot reload and distributable cross-platform releases do not yet exist. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland, physical GPUs, IME or assistive technology. BN1's native release-host/retention audit remains an explicit checkpoint; BN4 and BN6 own the corresponding usability and platform acceptance.
 
 See [decision records](decisions/README.md), [toolchain](toolchain.md), [testing](testing.md) and the [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).

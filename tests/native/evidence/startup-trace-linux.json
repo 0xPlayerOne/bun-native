@@ -1,0 +1,417 @@
+{
+  "schemaVersion": 1,
+  "scope": "Source qualification for opt-in startup diagnostics, not a reproduction or explanation of the earlier hosted failure. Actual development-profile GPUI windows with software Vulkan in isolated X11; no OS input/presentation/release performance claim.",
+  "sourceBase": "60a70e62ef407bec8260747126247abcabb7e170",
+  "sourceSnapshot": "49 source/config/inspection hashes recorded before and verified unchanged after the final formatted-host development/AOT checks. All application TypeScript and configuration bytes also remain unchanged from the AOT compilation; the subsequent required formatting affected only Rust session.rs.",
+  "sourceFiles": [
+    {
+      "path": ".bun-version",
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    {
+      "path": "bun.lock",
+      "bytes": 27298,
+      "sha256": "92a4725df235b6234e33603e7f60ff2171ffd23289e583951232ef30e5b521f3"
+    },
+    {
+      "path": "bunfig.toml",
+      "bytes": 130,
+      "sha256": "f368aec980d8b0a3b6fc12b9a42e218fb4472565d32aaeb4c494925c180fa697"
+    },
+    {
+      "path": "experiments/aot-gpui/inspect-runtime.ts",
+      "bytes": 12491,
+      "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+    },
+    {
+      "path": "experiments/aot-gpui/inspect.ts",
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    {
+      "path": "native/gpui-host/Cargo.toml",
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    {
+      "path": "native/gpui-host/LICENSE-APACHE",
+      "bytes": 10768,
+      "sha256": "752daf2fb234ca4a1fa372c073fe127f44b7b90fd2529ae44273a64f9d53da7a"
+    },
+    {
+      "path": "native/gpui-host/NOTICE",
+      "bytes": 428,
+      "sha256": "b9fd2e0defe1396369b38e8efcdc36a67949d5d28d3b7481cd9dadba0caaf660"
+    },
+    {
+      "path": "native/gpui-host/README.md",
+      "bytes": 9080,
+      "sha256": "5345c43d18094fd1ccf611451a7bd2b4763bc0be6f28cdb85fdaecd7458ee8bc"
+    },
+    {
+      "path": "native/gpui-host/src/channel.rs",
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    {
+      "path": "native/gpui-host/src/evidence.rs",
+      "bytes": 7542,
+      "sha256": "89d23a859d09be0327709f921a4096da73589ff4406437ce4e9c427b2ee1a072"
+    },
+    {
+      "path": "native/gpui-host/src/evidence/layout.rs",
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    {
+      "path": "native/gpui-host/src/input.rs",
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    {
+      "path": "native/gpui-host/src/input/binding.rs",
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    {
+      "path": "native/gpui-host/src/input/paint.rs",
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    {
+      "path": "native/gpui-host/src/main.rs",
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    {
+      "path": "native/gpui-host/src/session.rs",
+      "bytes": 12370,
+      "sha256": "511ccc15edc4c3b3ed8a0f9563616998918e8f251ca95bc26c48713d37b33b67"
+    },
+    {
+      "path": "native/gpui-host/src/state.rs",
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    {
+      "path": "native/gpui-host/src/style.rs",
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    {
+      "path": "native/gpui-host/src/view.rs",
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    {
+      "path": "native/gpui-host/src/view/interactions.rs",
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    {
+      "path": "native/protocol/Cargo.toml",
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    {
+      "path": "native/protocol/README.md",
+      "bytes": 9202,
+      "sha256": "06066d9c5f99ee913cf21d44dc75198d4e3972e18efb2f858b91713681e872d2"
+    },
+    {
+      "path": "native/protocol/src/event_tests.rs",
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    {
+      "path": "native/protocol/src/events.rs",
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    {
+      "path": "native/protocol/src/framing.rs",
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    {
+      "path": "native/protocol/src/lib.rs",
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    {
+      "path": "native/protocol/src/security_tests.rs",
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    {
+      "path": "native/protocol/src/tests.rs",
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    {
+      "path": "native/protocol/src/tree.rs",
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    {
+      "path": "native/protocol/src/tree/tests.rs",
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    {
+      "path": "native/protocol/src/wire.rs",
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1835,
+      "sha256": "b36b002438cb16c61dfb76f34ef6c9aa75b112c7b7da92b8a51647eac6fe6f9f"
+    },
+    {
+      "path": "packages/protocol/package.json",
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    {
+      "path": "packages/protocol/src/elements.ts",
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    {
+      "path": "packages/protocol/src/framing.ts",
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    {
+      "path": "packages/protocol/src/messages.ts",
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    {
+      "path": "packages/protocol/src/values.ts",
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    {
+      "path": "packages/runtime/package.json",
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "bytes": 13991,
+      "sha256": "ce86a386c4299a44b259a55d181a01ab9f31b2894366a241d1896d6a17a81ca0"
+    },
+    {
+      "path": "packages/runtime/src/startup-trace.ts",
+      "bytes": 3021,
+      "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    {
+      "path": "scripts/quality/native-linux-session.sh",
+      "bytes": 7305,
+      "sha256": "87d4d187251e4483ba31f6ed673056c7dd846aa23a4de6501de6dcbcdd8e1fd3"
+    },
+    {
+      "path": "tests/native/lifecycle.ts",
+      "bytes": 4338,
+      "sha256": "fdf3f6e682cc1b93ee884f056119208c9b7f506ab4910a716f37dad44b0a4269"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 1028,
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+    }
+  ],
+  "checks": [
+    {
+      "mode": "development",
+      "result": "passed",
+      "nativeWindowCycles": 5,
+      "requestTimeoutMs": 5000,
+      "outerDeadlineSeconds": 45,
+      "exitCode": 0,
+      "nonce": "3b34cef110ef8959fd952e8a810de4f2",
+      "host": {
+        "sha256": "1a510561eb81bf158bf136e730e9a220b9b27f17a5b44d02cbd5dba78a88f4c2",
+        "bytes": 111786712,
+        "profile": "dev"
+      },
+      "rawTrace": {
+        "path": "tests/native/evidence/startup-trace-development.jsonl.txt",
+        "bytes": 78372,
+        "sha256": "51f8b38fef17eed7c87d63a10b67f845b17dde42c8919cb4b6f1d1cbb3f3f37e",
+        "records": 296
+      },
+      "phaseCounts": {
+        "request_queued": 38,
+        "stdin_write_enter": 38,
+        "stdin_write_returned": 38,
+        "stdin_flush_enter": 38,
+        "stdin_flushed": 38,
+        "response_received": 38,
+        "open_dispatched": 10,
+        "open_window_enter": 5,
+        "root_constructor_enter": 5,
+        "root_constructor_returned": 5,
+        "open_window_returned": 5,
+        "activation_returned": 5,
+        "opened_submit_returned": 5,
+        "transport_finished": 1
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "fixtureLog": "dbus-daemon[143702]: [session uid=0 pid=143702] org.freedesktop.DBus.Error.AccessDenied: Failed to set fd limit to 65536: Operation not permitted\n{\"status\":\"passed\",\"nativeWindowCycles\":5,\"nativeExitCode\":0}\n",
+      "durationScope": "Execution includes isolated X11/DBus/session startup; no comparative performance conclusion."
+    },
+    {
+      "mode": "aot",
+      "result": "passed",
+      "nativeWindowCycles": 5,
+      "requestTimeoutMs": 5000,
+      "outerDeadlineSeconds": 45,
+      "exitCode": 0,
+      "nonce": "0380318342707aa9ff53d50c1a44cea0",
+      "host": {
+        "sha256": "1a510561eb81bf158bf136e730e9a220b9b27f17a5b44d02cbd5dba78a88f4c2",
+        "bytes": 111786712,
+        "profile": "dev"
+      },
+      "rawTrace": {
+        "path": "tests/native/evidence/startup-trace-aot.jsonl.txt",
+        "bytes": 79270,
+        "sha256": "3ae959fc0f376f832f3eeaba785b06e37b36b3b53573d7f0f50bde302373e24b",
+        "records": 298
+      },
+      "phaseCounts": {
+        "request_queued": 38,
+        "stdin_write_enter": 38,
+        "stdin_write_returned": 38,
+        "stdin_flush_enter": 38,
+        "stdin_flushed": 38,
+        "response_received": 38,
+        "open_dispatched": 10,
+        "open_window_enter": 5,
+        "root_constructor_enter": 5,
+        "root_constructor_returned": 5,
+        "open_window_returned": 5,
+        "activation_returned": 5,
+        "opened_submit_returned": 5,
+        "transport_finished": 1
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "fixtureLog": "dbus-daemon[143834]: [session uid=0 pid=143834] org.freedesktop.DBus.Error.AccessDenied: Failed to set fd limit to 65536: Operation not permitted\n{\"status\":\"passed\",\"nativeWindowCycles\":5,\"nativeExitCode\":0}\n",
+      "durationScope": "Execution includes isolated X11/DBus/session startup; no comparative performance conclusion."
+    }
+  ],
+  "aot": {
+    "entrypoint": "tests/native/lifecycle.ts",
+    "bytes": 71138344,
+    "sha256": "70f9f80383e80fd399d362df002944352f2a0c519edd24f2174162fd459c06be",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3571941,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    },
+    "runtimeFeatures": {
+      "format": "elf64-le",
+      "section": {
+        "name": ".bun_features",
+        "offset": 19504728,
+        "bytes": 536
+      },
+      "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "trimmedProgramFeatures": false,
+      "removedRangeCount": 202,
+      "jit": "unused",
+      "interpreter": "present",
+      "imageCompiler": "unused",
+      "jitRemovedRanges": {
+        "count": 27,
+        "virtualBytes": 14297303
+      }
+    },
+    "compiler": "1.4.4",
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+  },
+  "compileCommand": [
+    "bun",
+    "compile",
+    "--no-script",
+    "--production",
+    "--explain=json",
+    "tests/native/lifecycle.ts",
+    "--outfile",
+    "<owned-output>/lifecycle"
+  ],
+  "compilerLogs": [
+    {
+      "name": "compile.stdout.log",
+      "bytes": 151043,
+      "sha256": "c022e112414f1a85790e0adea6311307bcd58380944f3e1a81e73cb72952d104"
+    },
+    {
+      "name": "compile.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "validationScope": {
+    "headless": "30 real subprocess runtime tests; disabled/normal/capped/error diagnostic behavior is separate from native rendering.",
+    "native": "Both five-cycle checks asserted 35 valid-open phase markers, no trace limit, no transport failure and final exit 0. Each also includes five rejected duplicate-open dispatch records.",
+    "aot": "Compiled-program metadata is present; pinned runtime feature records show JIT unused with 27 removed JIT ranges. The interpreter remains present.",
+    "originalFailure": "Preserved separately in open-timeout-linux.json. A passing diagnostic run does not resolve its cause."
+  },
+  "nativeBuild": {
+    "command": ["cargo", "build", "--locked", "-p", "bun-native-host"],
+    "profile": "dev (root profile debug=0)",
+    "environment": {
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_BUILD_PIPELINING": "false",
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log": {
+      "bytes": 171,
+      "sha256": "2c1ea96ada4542de0bed0d0c614f6fef6b5c188de155aa5c6a2eeda1b607ac24"
+    },
+    "rust": "1.98.1"
+  }
+}

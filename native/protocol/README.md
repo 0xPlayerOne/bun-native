@@ -1,9 +1,9 @@
-# Private native protocol 3
+# Private native protocol 4
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 3
-requires the shared `layout_v1` contract and replaces protocol 2 outright.
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 4
+requires shared `layout_v1` and `interactions_v1` contracts and replaces protocol 3 outright.
 Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors
@@ -27,8 +27,8 @@ responses.
 
 ## Session and identifiers
 
-The first successful request is `hello` with `protocol: 3`. It returns `ready`
-with mandatory capabilities `tree`, `input_revisions` and `layout_v1` plus the
+The first successful request is `hello` with `protocol: 4`. It returns `ready`
+with mandatory capabilities `tree`, `input_revisions`, `layout_v1` and `interactions_v1` plus the
 limits below, then `ack`. The runtime rejects a host missing any mandatory feature.
 Another hello after success is invalid. `open` requires a new `window_id`, new
 `root_id`, a nonempty title, and width/height in pixels. It returns `opened` with
@@ -124,8 +124,12 @@ it. Typing does not advance the tree revision. An explicit input `set` requires
 the current `expected_input_revision` and advances it once, even if the value
 is equal. A stale controlled value replacement rejects the whole batch.
 
-`click`, `input` and `closed` carry a monotonically increasing `sequence` shared
-by all windows. Responses (`ready`, `ack`, `opened`, `applied`, `error`) do not.
+`click`, `input`, `key_down`, `key_up`, `pointer_down`, `pointer_up`, `focus`, `blur`
+and `closed` carry a contiguous `sequence` shared by all windows. Responses
+(`ready`, `ack`, `opened`, `applied`, `error`) do not. Every node event includes its
+committed `tree_revision` and root-to-target `path`, with at most 65 unique IDs.
+`closed` has no node route. Key/pointer fields, bounds and public propagation are
+specified in the [shared interaction contract](../../docs/native-events.md).
 Consumers use IDs and sequence to discard late work after disposal. Native input
 callbacks independently verify active ownership, so retaining an old callback
 cannot recreate a node. Callbacks and executable scripts never cross this wire.
@@ -134,6 +138,7 @@ cannot recreate a node. Callbacks and executable scripts never cross this wire.
 
 `cargo test --locked -p bun-native-protocol` checks framing, strict schema,
 resource bounds, atomic rollback, stale/cross-window IDs, reparenting, disposal,
-input revision races, and the shared adversarial fixture corpus. The crate has
+input revision races, event ancestry/number/text boundaries, and shared adversarial
+command/event corpora. Outgoing events validate before any bytes are written. The crate has
 no renderer dependency. These are headless tests; actual GPUI rendering, OS input,
 native resource cleanup and Bun AOT need the separate native integration lane.

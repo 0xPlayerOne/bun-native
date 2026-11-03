@@ -10,8 +10,13 @@ try {
   const window = await app.openWindow({ title: 'Bun Native BN1', width: 560, height: 380 })
   const { label, button, input } = await mountContent(window)
   window.onClick(button, async (event) => {
-    recordEvidence({ type: event.type, sequence: event.sequence, target: 'increment' })
     clicks += 1
+    recordEvidence({
+      type: event.type,
+      sequence: event.sequence,
+      activation: clicks,
+      target: 'increment',
+    })
     await window.batch((batch) => batch.set(label, { kind: 'text', text: `Clicks: ${clicks}` }))
   })
   window.onInput(input, (event) => {

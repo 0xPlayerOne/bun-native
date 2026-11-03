@@ -350,14 +350,7 @@ def main():
         "100",
         "130",
         "--expect-event",
-        json.dumps(
-            {
-                "type": "click",
-                "stage": "bun-application",
-                "sequence": 1,
-                "target": "public-lifecycle",
-            }
-        ),
+        json.dumps(DRIVER.lifecycle_fixture_event()),
         "--expect-render",
         json.dumps(DRIVER.lifecycle_fixture_paint(3002, "Completed 1000 cycles")),
         "--",

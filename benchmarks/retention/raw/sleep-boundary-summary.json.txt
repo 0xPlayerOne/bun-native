@@ -1,0 +1,733 @@
+{
+  "method": "fixed five trials per boundary/mode; two fixed GC checkpoints; no adaptive retries",
+  "source": {
+    "bytes": 1169,
+    "sha256": "70d349217518bda83aead1a8083867967fe5bee58252e998ef1f52f9e27ede48"
+  },
+  "aot": {
+    "bytes": 68779048,
+    "sha256": "5667c701f0e7486029c1093aa578d8cdf3da3046c08b7953fc1aaf108c25b163"
+  },
+  "records": [
+    {
+      "trial": 1,
+      "mode": "development",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "development-sleep0-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "development",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "development-sleep1-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "development",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "development-timeout0-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "development",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "development-resolved-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "aot-sleep0-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "aot-sleep1-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "aot-timeout0-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "aot-resolved-1.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "development-sleep0-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "development-sleep1-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "development-timeout0-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "development-resolved-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "aot-sleep0-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "aot-sleep1-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "aot-timeout0-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "aot-resolved-2.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "development-sleep0-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "development-sleep1-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "development-timeout0-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "development-resolved-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "aot-sleep0-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "aot-sleep1-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "aot-timeout0-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "aot-resolved-3.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "development-sleep0-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "development-sleep1-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "development-timeout0-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "development-resolved-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "aot-sleep0-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "aot-sleep1-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "aot-timeout0-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "aot-resolved-4.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "development-sleep0-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "development-sleep1-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "development-timeout0-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "development-resolved-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "kind": "sleep0",
+      "exit": 0,
+      "report": "aot-sleep0-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "kind": "sleep1",
+      "exit": 0,
+      "report": "aot-sleep1-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "kind": "timeout0",
+      "exit": 0,
+      "report": "aot-timeout0-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "pending",
+          "alive": 0
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "kind": "resolved",
+      "exit": 0,
+      "report": "aot-resolved-5.json",
+      "before": 0,
+      "checkpoints": [
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        },
+        {
+          "immediateStatus": "fulfilled",
+          "alive": 0
+        }
+      ]
+    }
+  ]
+}

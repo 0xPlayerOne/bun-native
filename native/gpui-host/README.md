@@ -55,8 +55,8 @@ requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
 
-`bun-native-protocol` owns the [private v3 contract](../protocol/README.md).
-Protocol 3 adds the mandatory shared layout capability and replaces v2 outright. The
+`bun-native-protocol` owns the [private v4 contract](../protocol/README.md).
+Protocol 4 requires shared layout and interaction capabilities and replaces v3 outright. The
 session owns up to 16 windows, each with one box root and at most 4,096 nodes.
 Atomic batches create, update, reparent, reorder and delete box, text, button
 and input elements. All adapters use this same model and renderer. Neither
@@ -91,6 +91,17 @@ events share one monotonic session sequence. Text editing uses GPUI's native inp
 UTF-16/UTF-8 range conversion, grapheme navigation, selection, clipboard and
 composition state. The presence of those handlers is not a claim that every OS
 IME, assistive technology or input method has passed testing.
+
+Node events capture the committed root-to-target path and tree revision at
+emission. Keys use GPUI's pre-keymap observer so consumed Enter/Tab/editing actions
+remain observable; logical key-up uses the window's capture phase. Standalone
+modifier pseudo-keystrokes are excluded. Native hit-tested pointer capture
+selects the deepest visible model node before normal mouse defaults run. Focus
+subscriptions are retained with each native control and revoked on removal;
+duplicate transition observations are suppressed. All subscriptions filter the
+owning window and hold revocable entity/model references. No Bun callback blocks
+the native main thread or retroactively cancels editing. See the
+[interaction contract](../../docs/native-events.md) for fields and tested limits.
 
 GPUI uses explicit quit mode on every OS, so closing the final window cannot
 race Bun's shutdown command. The actual window-close observer emits `closed`.

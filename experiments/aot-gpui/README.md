@@ -49,20 +49,26 @@ Use `--host-profile dev` when qualifying a development host; omitting it records
 
 The package directory receives the AOT application, native host, compiler diagnostics, native linkage logs and a manifest with exact toolchain, source/lockfile hashes, dirty-worktree status, artifact hashes and sizes. Native rendering, OS input, teardown, installation and signing start as **not verified** in this build record; actual execution evidence is separate. The build itself cannot turn those checks into passes.
 
-The same compiler and inspection pipeline supports eight explicit entries:
+The same compiler and inspection pipeline supports these explicit entries:
 
-| `--entry`                 | Source                             | Executable         | Native host placement                              |
-| ------------------------- | ---------------------------------- | ------------------ | -------------------------------------------------- |
-| `native-window` (default) | `examples/native-window/main.ts`   | `native-window`    | Copied into the package                            |
-| `input-race`              | `tests/native/input-race.ts`       | `input-race`       | Existing prebuilt host referenced by absolute path |
-| `bridge`                  | `benchmarks/bridge.ts`             | `bridge`           | Existing prebuilt host referenced by absolute path |
-| `javascript`              | `tests/native/javascript.js`       | `javascript`       | Existing prebuilt host referenced by absolute path |
-| `core-lifecycle`          | `tests/native/public-lifecycle.ts` | `core-lifecycle`   | Existing prebuilt host referenced by absolute path |
-| `event-throughput`        | `tests/native/event-throughput.ts` | `event-throughput` | Existing prebuilt host referenced by absolute path |
-| `fault`                   | `tests/native/fault.ts`            | `fault`            | Existing prebuilt host referenced by absolute path |
-| `scheduling`              | `tests/native/scheduling.ts`       | `scheduling`       | Existing prebuilt host referenced by absolute path |
+| `--entry`                 | Source                                | Executable           | Native host placement                              |
+| ------------------------- | ------------------------------------- | -------------------- | -------------------------------------------------- |
+| `native-window` (default) | `examples/native-window/main.ts`      | `native-window`      | Copied into the package                            |
+| `input-race`              | `tests/native/input-race.ts`          | `input-race`         | Existing prebuilt host referenced by absolute path |
+| `bridge`                  | `benchmarks/bridge.ts`                | `bridge`             | Existing prebuilt host referenced by absolute path |
+| `javascript`              | `tests/native/javascript.js`          | `javascript`         | Existing prebuilt host referenced by absolute path |
+| `core-lifecycle`          | `tests/native/public-lifecycle.ts`    | `core-lifecycle`     | Existing prebuilt host referenced by absolute path |
+| `event-throughput`        | `tests/native/event-throughput.ts`    | `event-throughput`   | Existing prebuilt host referenced by absolute path |
+| `fault`                   | `tests/native/fault.ts`               | `fault`              | Existing prebuilt host referenced by absolute path |
+| `scheduling`              | `tests/native/scheduling.ts`          | `scheduling`         | Existing prebuilt host referenced by absolute path |
+| `layout`                  | `tests/native/layout.ts`              | `layout`             | Existing prebuilt host referenced by absolute path |
+| `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
+| `platform-smoke`          | `tests/native/platform-smoke.ts`      | `platform-smoke`     | Existing prebuilt host referenced by absolute path |
+| `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
+| `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |
+| `solid-interactions`      | `tests/native/solid-interactions.tsx` | `solid-interactions` | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Bridge, fault and scheduling entries require an explicit `--host-profile dev` or `release`. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
+All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification; supported invocations that omit it record an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -85,3 +91,54 @@ The helper requires the emitted application to record JIT compiler removal and i
 `--trim` is an explicit comparison option for measuring Bun's additional unused-runtime removal. Default AOT already removes the JIT; the separate `trimmedProgramFeatures` metadata flag can remain false for a correctly inspected AOT executable. Run the same native input and teardown suite against the trimmed executable before choosing it for distribution. Build duration and artifact bytes in the manifest are single-build diagnostics, not cold-start, RSS or input-latency claims. A development-profile native host is not a release performance baseline.
 
 The initial shared-layout fixture is selected with `--entry layout`. It emits `layout` (`layout.exe` on Windows), references the explicitly supplied host without copying it, and includes the fixture plus shared core/protocol/runtime/native sources in its artifact manifest. Execute it through the actual `layout` diagnostic described in [the layout contract](../../docs/native-layout.md). Compilation and inspection alone do not establish wheel, clipping, resize or focus behavior.
+
+`--entry interactions` uses the same compiler and external-host policy for the
+public event fixture. The actual `interactions` diagnostic verifies pointer,
+logical keys, focus, native caret/selection editing, public propagation and
+queued-event lifetime across reparent/delete/remount. Follow the
+[interaction contract](../../docs/native-events.md) for the exact development
+and AOT commands. Inspecting the executable alone does not qualify those native
+behaviors or any remaining adapter/platform acceptance.
+
+`--entry platform-smoke` runs the portable three-window lifecycle and paint fixture.
+The [native platform qualification](../../docs/native-platforms.md) records its
+separate build, native paint, AOT and unverified OS-input/visibility scope.
+
+## Solid development and AOT inputs
+
+The three Solid entries first run the repository's pinned universal JSX transform,
+then compile that exact generated `development/application.js` with the same Bun
+machine-code AOT path and strict executable inspection. The generated module is
+also the development entry; the helper records its size, hash, transform command
+and transform duration under `application.developmentModule`. It checks that
+module and all original Solid/shared-renderer/build sources stayed unchanged.
+The module and source map are retained with hosted evidence. No Cargo process is
+started, and `buildMs` remains AOT compiler duration, separate from transform time.
+
+The transform selects the `browser` export condition for Solid reactivity and
+explicitly defines `process.env.NODE_ENV` as `"production"`. Both execution modes
+therefore use production `solid.js` and `universal.js`, independently of the
+environment running the builder. The real bundler controls in
+`tests/solid/build.test.ts` show that a `production` condition alone still selects
+development exports on this pin under `NODE_ENV=test`. The Babel JSX preset's
+`dev: false` controls transformation and does not choose dependency distributions.
+
+The [production-module qualification](../../benchmarks/bn2/solid-production-recipe-linux.json)
+records all twelve native scenarios against the exact generated modules and their
+inspected AOT executables. Earlier source maps in the retained hosted-recipe local
+record selected Solid's development distributions; that historical correctness
+evidence keeps its original hashes and is not relabelled. These new runs still use
+the immutable development-profile software-GPU host, not a release-host baseline.
+
+```sh
+bun experiments/aot-gpui/build-window.ts \
+  --entry solid-interactions \
+  --host /absolute/path/to/bun-native-host --host-profile release \
+  --outdir /absolute/path/to/empty-solid-package
+```
+
+Run `bun /absolute/path/to/empty-solid-package/development/application.js` for
+development and `/absolute/path/to/empty-solid-package/solid-interactions` for AOT,
+with the same absolute `BUN_NATIVE_HOST`. These fixtures need the independent
+native input controller described in `tests/native/solid-window.py`; merely
+launching or compiling them does not satisfy their input, paint or cleanup gates.

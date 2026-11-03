@@ -11,7 +11,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 3
+export const PROTOCOL_VERSION = 4
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -85,23 +85,47 @@ export const REQUIRED_CAPABILITIES = Object.freeze([
   'tree',
   'input_revisions',
   'layout_v1',
+  'interactions_v1',
 ] as const)
 export type Capability = (typeof REQUIRED_CAPABILITIES)[number]
+
+export interface KeyModifiers {
+  control: boolean
+  alt: boolean
+  shift: boolean
+  platform: boolean
+  function: boolean
+}
+
+export type PointerButton = 'left' | 'right' | 'middle' | 'back' | 'forward'
+
+interface NodeEventRoute {
+  sequence: number
+  window_id: number
+  node_id: number
+  tree_revision: number
+  /** Native committed ancestry, root first and target last. MAX_DEPTH counts edges. */
+  path: readonly number[]
+}
+
+type RoutedEvent = NodeEventRoute &
+  (
+    | { type: 'click' }
+    | { type: 'focus' }
+    | { type: 'blur' }
+    | { type: 'input'; value: string; input_revision: number }
+    | { type: 'key_down'; key: string; key_char?: string; modifiers: KeyModifiers }
+    | { type: 'key_up'; key: string; key_char?: string; modifiers: KeyModifiers }
+    | { type: 'pointer_down'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
+    | { type: 'pointer_up'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
+  )
 
 export type NativeEvent =
   | { type: 'ready'; protocol: typeof PROTOCOL_VERSION; capabilities: Capability[]; limits: Limits }
   | { type: 'ack'; id: number }
   | { type: 'opened'; id: number; window_id: number; root_id: number; tree_revision: number }
   | { type: 'applied'; id: number; window_id: number; tree_revision: number }
-  | { type: 'click'; sequence: number; window_id: number; node_id: number }
-  | {
-      type: 'input'
-      sequence: number
-      window_id: number
-      node_id: number
-      value: string
-      input_revision: number
-    }
+  | RoutedEvent
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -215,6 +239,41 @@ function limits(value: unknown): Limits {
   }
 }
 
+const ROUTE_KEYS = ['type', 'sequence', 'window_id', 'node_id', 'tree_revision', 'path'] as const
+
+function route(message: Record<string, unknown>): NodeEventRoute {
+  const node_id = id(message['node_id'])
+  const value = message['path']
+  if (!Array.isArray(value) || !value.length || value.length > MAX_DEPTH + 1)
+    throw new ProtocolError('Native event path must contain between 1 and 65 node identities')
+  const path = value.map(id)
+  if (new Set(path).size !== path.length || path.at(-1) !== node_id)
+    throw new ProtocolError('Native event path must be unique and end at its target')
+  return {
+    sequence: id(message['sequence']),
+    window_id: id(message['window_id']),
+    node_id,
+    tree_revision: integer(message['tree_revision'], 'tree revision'),
+    path,
+  }
+}
+
+function modifiers(value: unknown): KeyModifiers {
+  const data = object(value)
+  keys(data, ['control', 'alt', 'shift', 'platform', 'function'])
+  const modifier = (name: keyof KeyModifiers) => {
+    if (typeof data[name] !== 'boolean') throw new ProtocolError('Invalid native key modifier')
+    return data[name]
+  }
+  return {
+    control: modifier('control'),
+    alt: modifier('alt'),
+    shift: modifier('shift'),
+    platform: modifier('platform'),
+    function: modifier('function'),
+  }
+}
+
 /** Native stdout is untrusted until its message shape and limits are checked. */
 export function parseEvent(value: unknown): NativeEvent {
   const message = object(value)
@@ -259,13 +318,44 @@ export function parseEvent(value: unknown): NativeEvent {
         tree_revision: integer(message['tree_revision'], 'tree revision'),
       }
     case 'click':
-      keys(message, ['type', 'sequence', 'window_id', 'node_id'])
+    case 'focus':
+    case 'blur':
+      keys(message, ROUTE_KEYS)
       return {
-        type: 'click',
-        sequence: id(message['sequence']),
-        window_id: id(message['window_id']),
-        node_id: id(message['node_id']),
+        type: message['type'],
+        ...route(message),
       }
+    case 'key_down':
+    case 'key_up': {
+      keys(message, [...ROUTE_KEYS, 'key', 'key_char', 'modifiers'])
+      const key = string(message['key'], 'key', 256)
+      if (!key) throw new ProtocolError('Native key must be nonempty')
+      return {
+        type: message['type'],
+        ...route(message),
+        key,
+        ...('key_char' in message
+          ? { key_char: string(message['key_char'], 'key_char', 256) }
+          : {}),
+        modifiers: modifiers(message['modifiers']),
+      }
+    }
+    case 'pointer_down':
+    case 'pointer_up': {
+      keys(message, [...ROUTE_KEYS, 'button', 'x', 'y', 'modifiers'])
+      const button = (['left', 'right', 'middle', 'back', 'forward'] as const).find(
+        (button) => button === message['button']
+      )
+      if (!button) throw new ProtocolError('Unknown native pointer button')
+      return {
+        type: message['type'],
+        ...route(message),
+        button,
+        x: number(message['x'], 'pointer x', -1_048_576, 1_048_576),
+        y: number(message['y'], 'pointer y', -1_048_576, 1_048_576),
+        modifiers: modifiers(message['modifiers']),
+      }
+    }
     case 'closed':
       keys(message, ['type', 'sequence', 'window_id'])
       return {
@@ -274,12 +364,10 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
       }
     case 'input':
-      keys(message, ['type', 'sequence', 'window_id', 'node_id', 'value', 'input_revision'])
+      keys(message, [...ROUTE_KEYS, 'value', 'input_revision'])
       return {
         type: 'input',
-        sequence: id(message['sequence']),
-        window_id: id(message['window_id']),
-        node_id: id(message['node_id']),
+        ...route(message),
         value: string(message['value'], 'value'),
         input_revision: integer(message['input_revision'], 'input revision'),
       }
