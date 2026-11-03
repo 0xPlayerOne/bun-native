@@ -296,6 +296,12 @@ class PaintObserver:
                     )
                     and self.observed is None
                 ):
+                    # Parsing and complete-tree matching may consume the time
+                    # remaining after the pre-read check. Never publish late proof.
+                    if time.monotonic() >= self.deadline:
+                        raise TimeoutError(
+                            "Native paint observation deadline expired during validation"
+                        )
                     self.observed = {
                         "observed_ns": time.monotonic_ns(),
                         "window_id": value["window_id"],

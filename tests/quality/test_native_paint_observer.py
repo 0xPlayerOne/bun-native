@@ -44,6 +44,45 @@ def encoded(value=None):
 class PaintObserverFailureTests(unittest.TestCase):
     """Portable worker-error delivery controls; these do not qualify inotify."""
 
+    def test_full_tree_validation_must_finish_before_original_deadline(self):
+        # Exercise the real file reader/parser without claiming a Linux watch.
+        # A pre-read clock check alone cannot bound later JSON/tree validation.
+        for finished in (101.5, 102.0, 102.5):
+            with (
+                self.subTest(validation_finished=finished),
+                tempfile.TemporaryDirectory() as directory,
+                patch.object(OBSERVER.time, "monotonic", return_value=100) as clock,
+            ):
+                path = Path(directory) / "events.jsonl"
+                path.write_bytes(encoded())
+                observer = OBSERVER.PaintObserver(path, "run", EXPECTED, timeout=2)
+                actual_match = OBSERVER.same_json
+
+                def validate(
+                    left, right, match=actual_match, end=finished, current_clock=clock
+                ):
+                    matched = match(left, right)
+                    current_clock.return_value = end
+                    return matched
+
+                with path.open("rb") as source:
+                    observer.file = source.fileno()
+                    info = os.fstat(observer.file)
+                    observer.identity = (info.st_dev, info.st_ino)
+                    observer.offset = 0
+                    observer.anchor = b""
+                    observer.skip_partial = False
+                    clock.return_value = 101
+                    with patch.object(OBSERVER, "same_json", side_effect=validate):
+                        if finished < observer.deadline:
+                            observer._read_records()
+                            self.assertIsNotNone(observer.observed)
+                        else:
+                            with self.assertRaisesRegex(TimeoutError, "deadline"):
+                                observer._read_records()
+                            self.assertIsNone(observer.observed)
+                    self.assertEqual(observer.deadline, 102)
+
     def test_worker_failure_is_recorded_logged_and_rethrown_unchanged(self):
         for failure in [RuntimeError("controlled reader failure"), KeyboardInterrupt()]:
             with self.subTest(kind=type(failure).__name__):
