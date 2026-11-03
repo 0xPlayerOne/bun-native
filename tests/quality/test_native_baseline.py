@@ -97,6 +97,32 @@ class ProvenanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BASELINE.verify_sources(self.repository, self.manifest)
 
+    def test_native_inventory_helper_identity_is_required_and_cannot_change(self):
+        name = "experiments/aot-gpui/native-sources.ts"
+        self.assertIn(name, BASELINE.expected_sources(self.repository))
+        BASELINE.verify_sources(self.repository, self.manifest)
+        records = self.manifest["source"]["files"]
+        self.manifest["source"]["files"] = [
+            record for record in records if record["path"] != name
+        ]
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+        self.manifest["source"]["files"] = records
+        (self.repository / name).write_text("changed inventory implementation\n")
+        with self.assertRaisesRegex(ValueError, "Source differs from the AOT build"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+
+    def test_duplicate_and_unexpected_source_records_are_rejected(self):
+        records = list(self.manifest["source"]["files"])
+        for added in (
+            records[0],
+            {"path": "unexpected.ts", "bytes": 0, "sha256": "0" * 64},
+        ):
+            with self.subTest(path=added["path"]):
+                self.manifest["source"]["files"] = [*records, added]
+                with self.assertRaisesRegex(ValueError, "every current"):
+                    BASELINE.verify_sources(self.repository, self.manifest)
+
     def test_matching_linux_architectures_validate_without_executing_artifacts(self):
         for machine, architecture in (("x86_64", "x64"), ("aarch64", "arm64")):
             with (

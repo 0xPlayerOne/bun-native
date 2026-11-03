@@ -95,6 +95,7 @@ def expected_sources(repository):
         "Cargo.lock",
         "native/gpui-host/Cargo.toml",
         "native/protocol/Cargo.toml",
+        "experiments/aot-gpui/native-sources.ts",
     }
     for directory, extension in [
         ("packages/protocol/src", "ts"),

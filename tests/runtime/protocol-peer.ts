@@ -18,6 +18,7 @@ if (mode === 'pipe-holder') {
   // Publish identity first so a failed negotiation can still release this child.
   writeFileSync(join(directory, 'started'), String(process.pid))
   const deadline = performance.now() + 10_000
+  if (process.argv[4] === 'delay-holder') await Bun.sleep(400)
   while (
     !existsSync(join(directory, 'arm')) &&
     !existsSync(join(directory, 'release')) &&
@@ -35,14 +36,23 @@ if (mode === 'pipe-holder') {
 if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
-  Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
-    // Keep this bounded helper outside the peer's Windows process job so its
-    // inherited output handles remain open after the direct peer exits.
-    detached: true,
-    stdin: 'ignore',
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
+  Bun.spawn(
+    [
+      process.execPath,
+      import.meta.path,
+      'pipe-holder',
+      directory,
+      ...(process.argv[4] === 'delay-holder' ? ['delay-holder'] : []),
+    ],
+    {
+      // Keep this bounded helper outside the peer's Windows process job so its
+      // inherited output handles remain open after the direct peer exits.
+      detached: true,
+      stdin: 'ignore',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    }
+  )
   // Do not put a nested process startup inside NativeHost's hello deadline.
   // The test arms and verifies this helper after protocol negotiation succeeds.
 }
