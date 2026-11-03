@@ -14,10 +14,21 @@ const mode = process.argv[2] ?? 'normal'
 if (mode === 'pipe-holder') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Pipe holder requires its private control directory')
-  writeFileSync(join(directory, 'ready'), String(process.pid))
+  // Readiness belongs to the test's explicit setup barrier, not to hello.
+  // Publish identity first so a failed negotiation can still release this child.
+  writeFileSync(join(directory, 'started'), String(process.pid))
   const deadline = performance.now() + 10_000
-  while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
+  while (
+    !existsSync(join(directory, 'arm')) &&
+    !existsSync(join(directory, 'release')) &&
+    performance.now() < deadline
+  )
     await Bun.sleep(10)
+  if (existsSync(join(directory, 'arm')) && !existsSync(join(directory, 'release'))) {
+    writeFileSync(join(directory, 'ready'), String(process.pid))
+    while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
+      await Bun.sleep(10)
+  }
   writeFileSync(join(directory, 'finished'), String(process.pid))
   process.exit(0)
 }
@@ -32,11 +43,8 @@ if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
     stdout: 'inherit',
     stderr: 'inherit',
   })
-  const deadline = performance.now() + 5_000
-  while (!existsSync(join(directory, 'ready'))) {
-    if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
-    await Bun.sleep(10)
-  }
+  // Do not put a nested process startup inside NativeHost's hello deadline.
+  // The test arms and verifies this helper after protocol negotiation succeeds.
 }
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
