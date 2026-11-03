@@ -91,16 +91,32 @@ async function releasePipeHolder(directory: string): Promise<void> {
 
 async function withPipeHolder(
   mode: 'shutdown' | 'exit',
-  run: (host: NativeHost, finished: string) => Promise<void>
+  run: (host: NativeHost, finished: string) => Promise<void>,
+  delayHolder = false
 ): Promise<void> {
   const directory = mkdtempSync(join(tmpdir(), 'bun-native-pipe-holder-'))
   const finished = join(directory, 'finished')
   let host: NativeHost | undefined
+  const holderDeadline = performance.now() + 5_000
   try {
     host = await NativeHost.launch({
       ...options(`inherited-pipe-${mode}`, 300),
-      args: [fixture, `inherited-pipe-${mode}`, directory],
+      args: [
+        fixture,
+        `inherited-pipe-${mode}`,
+        directory,
+        ...(delayHolder ? ['delay-holder'] : []),
+      ],
     })
+    // Helper preparation is not a native protocol request. Keep its original
+    // five-second bound without charging it to hello's 300 ms request budget.
+    // Start the bound before launch, and establish held pipes before exercising
+    // the unchanged native request, exit and drain deadlines.
+    while (!existsSync(join(directory, 'ready'))) {
+      if (performance.now() >= holderDeadline) throw new Error('Pipe holder did not start')
+      await Bun.sleep(10)
+    }
+    expect(holderIsAlive(directory)).toBe(true)
     await run(host, finished)
     // A terminated descendant cannot establish held-open-pipe coverage.
     expect(holderIsAlive(directory)).toBe(true)
@@ -280,6 +296,22 @@ describe('native process transport (headless protocol peer)', () => {
       expect(await host.exited).toBe(23)
       expect(existsSync(finished)).toBe(false)
     })
+  })
+
+  test('negotiates before delayed pipe-holder setup while preserving the exit bound', async () => {
+    await withPipeHolder(
+      'exit',
+      async (host, finished) => {
+        const pending = deadline(host[Symbol.asyncIterator]().next(), 'delayed-holder native exit')
+        await host.send(open)
+        await host.send(batch({ kind: 'text', text: 'exit-after-ack' }))
+        const error = await rejectedError(pending)
+        expect(error.message).toBe('Native output remained open after host exit')
+        expect(await host.exited).toBe(23)
+        expect(existsSync(finished)).toBe(false)
+      },
+      true
+    )
   })
 
   test.each(['wrong-window', 'wrong-root', 'wrong-initial-revision'])(

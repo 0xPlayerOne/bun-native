@@ -24,19 +24,28 @@ if (mode === 'pipe-holder') {
 if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
-  Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
-    // Keep this bounded helper outside the peer's Windows process job so its
-    // inherited output handles remain open after the direct peer exits.
-    detached: true,
-    stdin: 'ignore',
-    stdout: 'inherit',
-    stderr: 'inherit',
+  // The helper owns an independent setup deadline. Do not block the protocol
+  // hello on a second Bun process: the test waits for its ready marker before
+  // asking this peer to exit with the inherited output handles still open.
+  void (async () => {
+    if (process.argv[4] === 'delay-holder') await Bun.sleep(400)
+    Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
+      // Keep this bounded helper outside the peer's Windows process job so its
+      // inherited output handles remain open after the direct peer exits.
+      detached: true,
+      stdin: 'ignore',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+    const deadline = performance.now() + 5_000
+    while (!existsSync(join(directory, 'ready'))) {
+      if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
+      await Bun.sleep(10)
+    }
+  })().catch((error: unknown) => {
+    console.error(error)
+    process.exit(1)
   })
-  const deadline = performance.now() + 5_000
-  while (!existsSync(join(directory, 'ready'))) {
-    if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
-    await Bun.sleep(10)
-  }
 }
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
