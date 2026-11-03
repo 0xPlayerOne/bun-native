@@ -110,6 +110,42 @@ describe('native package boundaries', () => {
     )
     expect(await checkBoundaries(root)).toEqual([])
   })
+
+  test('validates exact React external entries without allowing private reconciler imports', async () => {
+    const root = await fixture('', '', {})
+    const directory = join(root, 'packages/react')
+    await mkdir(join(directory, 'src'), { recursive: true })
+    const manifest = {
+      name: '@bun-native/react',
+      exports: { '.': './src/index.ts' },
+      dependencies: { react: '19.3.1', 'react-reconciler': '0.34.0' },
+    }
+    await Bun.write(join(directory, 'package.json'), JSON.stringify(manifest))
+    const source =
+      'import { createElement } from "react"; import Reconciler from "react-reconciler"; import { ConcurrentRoot } from "react-reconciler/constants";'
+    await Bun.write(join(directory, 'src/index.ts'), source)
+    expect(await checkBoundaries(root)).toEqual([])
+    await Bun.write(
+      join(directory, 'src/index.ts'),
+      source + ' import internal from "react-reconciler/cjs/react-reconciler.production.js";'
+    )
+    expect(await checkBoundaries(root)).toContain(
+      'packages/react/src/index.ts: forbidden package dependency react-reconciler/cjs/react-reconciler.production.js'
+    )
+    await Bun.write(
+      join(directory, 'package.json'),
+      JSON.stringify({ ...manifest, dependencies: { react: '19.3.1' } })
+    )
+    await Bun.write(join(directory, 'src/index.ts'), source)
+    expect(await checkBoundaries(root)).toContain(
+      'packages/react/src/index.ts: undeclared dependency react-reconciler'
+    )
+  })
+
+  test('invalid source cannot silently remove a package edge from the audit', async () => {
+    const root = await fixture('import {', '', {})
+    expect((await checkBoundaries(root)).some((error) => error.includes('parse error'))).toBe(true)
+  })
 })
 
 async function solidFixture(source: string) {
