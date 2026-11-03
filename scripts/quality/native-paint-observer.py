@@ -8,15 +8,17 @@ here: the existing native driver retains ownership of both.
 import ctypes
 import hashlib
 import json
+import logging
 import math
 import os
-from pathlib import Path
 import selectors
 import stat
 import struct
 import threading
 import time
+from pathlib import Path
 
+LOGGER = logging.getLogger(__name__)
 
 MAX_LOG_BYTES = 4 * 1024 * 1024
 MAX_RECORD_BYTES = 65_536
@@ -340,7 +342,9 @@ class PaintObserver:
                     if self.observed is not None:
                         return
         except BaseException as error:
+            # The caller must receive the original worker failure, not a timeout.
             self.failure = error
+            LOGGER.exception("Owned native paint observer reader failed")
         finally:
             self.done.set()
 

@@ -9,9 +9,8 @@ ownership. Declaring AOT here does not inspect or prove the application artifact
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCENARIOS = (
     "lifecycle",

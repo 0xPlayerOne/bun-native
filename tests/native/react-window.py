@@ -8,8 +8,8 @@ fixture adds no second process/window supervisor or simulated input path.
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def nodes(clicks, value):

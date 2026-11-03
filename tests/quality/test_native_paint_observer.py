@@ -6,7 +6,6 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import select
 import signal
 import subprocess
@@ -14,8 +13,8 @@ import sys
 import tempfile
 import time
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 SCRIPT = (
     Path(__file__).resolve().parents[2] / "scripts/quality/native-paint-observer.py"
@@ -40,6 +39,32 @@ EXPECTED = {
 
 def encoded(value=None):
     return (json.dumps({"nonce": "run", **(value or EXPECTED)}) + "\n").encode()
+
+
+class PaintObserverFailureTests(unittest.TestCase):
+    """Portable worker-error delivery controls; these do not qualify inotify."""
+
+    def test_worker_failure_is_recorded_logged_and_rethrown_unchanged(self):
+        for failure in [RuntimeError("controlled reader failure"), KeyboardInterrupt()]:
+            with self.subTest(kind=type(failure).__name__):
+                observer = OBSERVER.PaintObserver("unused", "run", EXPECTED, timeout=2)
+                observer.notifications_fd = 10
+                observer.cancel_read = 11
+                observer.started_ns = time.monotonic_ns()
+                with (
+                    patch.object(OBSERVER.selectors, "DefaultSelector") as selector,
+                    patch.object(OBSERVER.LOGGER, "exception") as report,
+                ):
+                    selector.return_value.__enter__.return_value.register.side_effect = failure
+                    observer._observe()
+                    self.assertTrue(observer.done.is_set())
+                    self.assertIs(observer.failure, failure)
+                    report.assert_called_once_with(
+                        "Owned native paint observer reader failed"
+                    )
+                    with self.assertRaises(type(failure)) as raised:
+                        observer.result(time.monotonic_ns())
+                    self.assertIs(raised.exception, failure)
 
 
 @unittest.skipUnless(sys.platform == "linux", "inotify is a Linux diagnostic")
@@ -86,9 +111,11 @@ class PaintObservationTests(unittest.TestCase):
                     [
                         sys.executable,
                         "-c",
-                        "import pathlib,sys\n"
-                        "with pathlib.Path(sys.argv[1]).open('ab') as out: out.write(bytes.fromhex(sys.argv[2]))\n"
-                        "sys.stdin.read(1)\n",
+                        (
+                            "import pathlib,sys\n"
+                            "with pathlib.Path(sys.argv[1]).open('ab') as out: out.write(bytes.fromhex(sys.argv[2]))\n"
+                            "sys.stdin.read(1)\n"
+                        ),
                         str(self.path),
                         encoded().hex(),
                     ],
@@ -224,14 +251,12 @@ class PaintObservationTests(unittest.TestCase):
         self.path.rename(original)
         self.path.symlink_to(original)
         baseline = len(list(Path("/proc/self/fd").iterdir()))
-        with self.assertRaises(OSError):
-            with self.observer():
-                self.fail("A symlink must not be watched")
+        with self.assertRaises(OSError), self.observer():
+            self.fail("A symlink must not be watched")
         self.path.unlink()
         os.mkfifo(self.path)
-        with self.assertRaisesRegex(RuntimeError, "regular file"):
-            with self.observer():
-                self.fail("A FIFO must not be watched")
+        with self.assertRaisesRegex(RuntimeError, "regular file"), self.observer():
+            self.fail("A FIFO must not be watched")
         self.assertEqual(len(list(Path("/proc/self/fd").iterdir())), baseline)
 
     def test_log_and_complete_or_partial_record_limits_fail_closed(self):
@@ -268,12 +293,14 @@ class PaintObservationTests(unittest.TestCase):
             )
 
     def test_real_watch_notification_budget_and_overflow_record_are_errors(self):
-        with patch.object(OBSERVER, "MAX_NOTIFICATIONS", 0):
-            with self.observer() as observer:
-                observer.begin()
-                self.append(encoded())
-                with self.assertRaisesRegex(RuntimeError, "notification budget"):
-                    observer.result(time.monotonic_ns())
+        with (
+            patch.object(OBSERVER, "MAX_NOTIFICATIONS", 0),
+            self.observer() as observer,
+        ):
+            observer.begin()
+            self.append(encoded())
+            with self.assertRaisesRegex(RuntimeError, "notification budget"):
+                observer.result(time.monotonic_ns())
         cases = [
             (OBSERVER.EVENT.pack(-1, OBSERVER.IN_Q_OVERFLOW, 0, 0), "overflow"),
             (b"short", "Truncated"),
@@ -282,26 +309,26 @@ class PaintObservationTests(unittest.TestCase):
             (OBSERVER.EVENT.pack(1, OBSERVER.IN_DELETE_SELF, 0, 0), "removed"),
         ]
         for data, message in cases:
-            with self.subTest(message=message):
-                with self.assertRaisesRegex(RuntimeError, message):
-                    OBSERVER.notification_count(data, 1)
+            with (
+                self.subTest(message=message),
+                self.assertRaisesRegex(RuntimeError, message),
+            ):
+                OBSERVER.notification_count(data, 1)
 
     def test_deadline_and_cancellation_close_watched_descriptors_and_reader(self):
         observer = self.observer(timeout=0.05)
-        with self.assertRaisesRegex(TimeoutError, "deadline"):
-            with observer:
-                descriptors = list(observer.descriptors)
-                observer.begin()
-                observer.result(time.monotonic_ns())
+        with self.assertRaisesRegex(TimeoutError, "deadline"), observer:
+            descriptors = list(observer.descriptors)
+            observer.begin()
+            observer.result(time.monotonic_ns())
         self.assert_closed(observer, descriptors)
         for begun in [False, True]:
             observer = self.observer()
-            with self.assertRaisesRegex(RuntimeError, "input command failed"):
-                with observer:
-                    descriptors = list(observer.descriptors)
-                    if begun:
-                        observer.begin()
-                    raise RuntimeError("input command failed")
+            with self.assertRaisesRegex(RuntimeError, "input command failed"), observer:
+                descriptors = list(observer.descriptors)
+                if begun:
+                    observer.begin()
+                raise RuntimeError("input command failed")
             self.assert_closed(observer, descriptors)
 
     def test_preparation_and_begin_cannot_restart_the_remaining_fixture_deadline(self):

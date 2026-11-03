@@ -5,14 +5,13 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
 import select
 import signal
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/quality/native-input-linux.py"
 SPEC = importlib.util.spec_from_file_location("native_input_linux", SCRIPT)
@@ -152,9 +151,11 @@ class EvidenceTests(unittest.TestCase):
             ("x" * 180 + "{nonce}", []),
             (None, ["Return"] * 17),
         ]:
-            with self.subTest(text_length=len(text or ""), keys=len(keys)):
-                with self.assertRaisesRegex(ValueError, "Native smoke input"):
-                    DRIVER.validate_input_request(False, "ordinary", text, keys, None)
+            with (
+                self.subTest(text_length=len(text or ""), keys=len(keys)),
+                self.assertRaisesRegex(ValueError, "Native smoke input"),
+            ):
+                DRIVER.validate_input_request(False, "ordinary", text, keys, None)
         valid = {
             "event_stress": True,
             "title": DRIVER.EVENT_STRESS_TITLE,
@@ -171,9 +172,11 @@ class EvidenceTests(unittest.TestCase):
             {"keys": ["Return"]},
             {"click": [0, 0]},
         ]:
-            with self.subTest(changed=changed):
-                with self.assertRaisesRegex(ValueError, "Event stress requires"):
-                    DRIVER.validate_input_request(**{**valid, **changed})
+            with (
+                self.subTest(changed=changed),
+                self.assertRaisesRegex(ValueError, "Event stress requires"),
+            ):
+                DRIVER.validate_input_request(**{**valid, **changed})
 
     def test_event_stress_checks_every_edit_and_rejects_gaps_duplicates_and_bad_times(
         self,
@@ -266,6 +269,7 @@ class EvidenceTests(unittest.TestCase):
                     "from pathlib import Path; import sys; Path(sys.argv[1]).touch()",
                     str(marker),
                 ],
+                check=False,
                 env=environment,
                 capture_output=True,
                 text=True,
@@ -289,10 +293,12 @@ class EvidenceTests(unittest.TestCase):
             [
                 sys.executable,
                 "-c",
-                "import subprocess,sys,time\n"
-                'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\n'
-                "print(child.pid,flush=True)\n"
-                "time.sleep(30)",
+                (
+                    "import subprocess,sys,time\n"
+                    'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\n'
+                    "print(child.pid,flush=True)\n"
+                    "time.sleep(30)"
+                ),
             ],
             stdout=subprocess.PIPE,
             start_new_session=True,

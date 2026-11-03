@@ -15,7 +15,6 @@ import importlib.util
 import json
 import math
 import os
-from pathlib import Path
 import platform
 import re
 import secrets
@@ -26,7 +25,7 @@ import subprocess
 import sys
 import threading
 import time
-
+from pathlib import Path
 
 EVENT_STRESS_COUNT = 1000
 EVENT_STRESS_TEXT = "x" * EVENT_STRESS_COUNT
@@ -68,7 +67,9 @@ def enable_subreaper():
 
 
 def run(command, timeout=3):
-    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(
+        command, check=False, capture_output=True, text=True, timeout=timeout
+    )
     if result.returncode:
         raise RuntimeError(
             f"{command[0]} exited {result.returncode}: {result.stderr[-2000:]}"
@@ -695,6 +696,7 @@ def main():
                     "--name",
                     f"^{re.escape(args.title)}$",
                 ],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=3,
