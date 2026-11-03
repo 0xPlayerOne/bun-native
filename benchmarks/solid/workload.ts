@@ -136,7 +136,7 @@ function delta(after: Mutations, before: Mutations): Mutations {
   }
 }
 
-function expectWindowRootOnly(application: NativeApplication): void {
+export function expectWindowRootOnly(application: Pick<NativeApplication, 'diagnostics'>): void {
   assert.deepEqual(application.diagnostics, {
     windows: 1,
     nodes: 1,
@@ -144,7 +144,8 @@ function expectWindowRootOnly(application: NativeApplication): void {
     queuedTransactions: 0,
     queuedCallbacks: 0,
     activeCallbacks: 0,
-  })
+    serviceRequests: 0,
+  } satisfies NativeApplication['diagnostics'])
 }
 
 /** The external controller binds reports to exact development/AOT artifacts. */
@@ -387,7 +388,8 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
           queuedTransactions: 0,
           queuedCallbacks: 0,
           activeCallbacks: 0,
-        })
+          serviceRequests: 0,
+        } satisfies NativeApplication['diagnostics'])
       } catch (error) {
         failure = failure
           ? new AggregateError([failure, error], 'Workload and ownership cleanup failed')
