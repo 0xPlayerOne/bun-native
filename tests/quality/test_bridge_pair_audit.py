@@ -1,15 +1,14 @@
 """Offline evidence integrity controls; no native execution or performance claim."""
 
-from copy import deepcopy
-from datetime import datetime, timedelta, timezone
 import importlib.util
-from pathlib import Path
 import stat
 import tempfile
 import unittest
 import warnings
 import zipfile
-
+from copy import deepcopy
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/audit-bridge-pairs.py"
 SPEC = importlib.util.spec_from_file_location("bridge_pair_audit", SCRIPT)
@@ -97,7 +96,7 @@ class ArchiveTests(unittest.TestCase):
 
 class CollectionTests(unittest.TestCase):
     def setUp(self):
-        start = datetime(2026, 10, 31, tzinfo=timezone.utc)
+        start = datetime(2026, 10, 31, tzinfo=UTC)
         self.plan = {
             "plan": AUDIT.PAIRS.plan_trials(5, 1),
             "build": {"sha256": "inert"},

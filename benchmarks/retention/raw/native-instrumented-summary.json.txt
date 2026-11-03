@@ -1,0 +1,301 @@
+{
+  "method": "fixed 10 instrumented original-bundle AOT runs; continued irrespective of weak-target outcome; original failure assertion retained",
+  "records": [
+    {
+      "trial": 1,
+      "status": "passed",
+      "report": "aot-1.json",
+      "sha256": "e1e879dce0d6c22e2f115019dd8dc1e558eba9d42c41494d3dbc246e3eda311d",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 2,
+      "status": "passed",
+      "report": "aot-2.json",
+      "sha256": "280be801ec20e219d4b9f10d7739c9abdafbd6002119331eea6a82f16369a107",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 3,
+      "status": "passed",
+      "report": "aot-3.json",
+      "sha256": "77af697d6c903abc6216c68a7c3b770f60792007b2853b18cd327538d12fc972",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 4,
+      "status": "failed",
+      "report": "aot-4.json",
+      "sha256": "cec54fe456c72acf942615b45ef50e7c53899838bddbc0013cd7da7bcf829fe8",
+      "retentionObservation": {
+        "firstReachable": [
+          228,
+          229
+        ],
+        "stillReachable": [
+          228,
+          229
+        ],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": [
+          {
+            "index": 228,
+            "address": "0x52884a25d7e0"
+          },
+          {
+            "index": 229,
+            "address": "0x52884a25d8c0"
+          }
+        ],
+        "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-retention-path-v1/results/aot-4.json.heap.json"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 1
+      }
+    },
+    {
+      "trial": 5,
+      "status": "passed",
+      "report": "aot-5.json",
+      "sha256": "93639bc7318faa34067ceb483c2ac926762d9b98416e967771ec806bbe8b6beb",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 6,
+      "status": "passed",
+      "report": "aot-6.json",
+      "sha256": "9242af40cd7142a680e5373fccdd7da0c363859787b969baf513e835ceea1d35",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 7,
+      "status": "passed",
+      "report": "aot-7.json",
+      "sha256": "1da57cb4c60ce8a6664767c563ae57ed640fbc182c22e3820985bd3582cac107",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 8,
+      "status": "passed",
+      "report": "aot-8.json",
+      "sha256": "8ad32ba5ebee6e4f31ae61da53e3b59b9201c45bbdb23613fb5d78fc8e519e12",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 9,
+      "status": "passed",
+      "report": "aot-9.json",
+      "sha256": "28ac2b2cac236c7fb6b705552bd6cf47ee076df99bbcddf5ab5905bebee2bcc4",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "trial": 10,
+      "status": "passed",
+      "report": "aot-10.json",
+      "sha256": "9656eafa5de1d985ee982ca9e0e84f137322e59873c08cac5868166a02bab0f1",
+      "retentionObservation": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": [
+          "container handle",
+          "label handle",
+          "listener"
+        ],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "diagnostic": {
+        "methodology": "instrumented original bundled core fixture; diagnostic snapshot after a failed fixed checkpoint and one additional timer turn; excluded from timing comparison",
+        "targets": []
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    }
+  ]
+}

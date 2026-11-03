@@ -1,0 +1,3499 @@
+{
+  "schemaVersion": 1,
+  "issues": [231, 234],
+  "protocol": 4,
+  "scope": "Explicit production Solid dependency selection; one generated JavaScript module is executed with ordinary Bun and passed to the actual Bun AOT compiler. All twelve GPUI/XTest/full-tree paint/OS-close cases ran once with unchanged source and artifacts.",
+  "sourceBase": "60a70e62ef407bec8260747126247abcabb7e170",
+  "sourceWasDirty": true,
+  "sourceFiles": {
+    ".bun-version": {
+      "bytes": 15,
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+    },
+    "Cargo.lock": {
+      "bytes": 160678,
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873"
+    },
+    "Cargo.toml": {
+      "bytes": 434,
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d"
+    },
+    "benchmarks/native-baseline.py": {
+      "bytes": 17765,
+      "sha256": "6e6c2f4be1416c1d4de4b806e7ba81cf71ddeaf26ef34f6c1e2b3c6f54e62538"
+    },
+    "bun.lock": {
+      "bytes": 27298,
+      "sha256": "92a4725df235b6234e33603e7f60ff2171ffd23289e583951232ef30e5b521f3"
+    },
+    "bunfig.toml": {
+      "bytes": 130,
+      "sha256": "f368aec980d8b0a3b6fc12b9a42e218fb4472565d32aaeb4c494925c180fa697"
+    },
+    "examples/native-window/content.ts": {
+      "bytes": 1766,
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+    },
+    "examples/native-window/main.ts": {
+      "bytes": 1147,
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+    },
+    "examples/solid-counter/main.tsx": {
+      "bytes": 4199,
+      "sha256": "62000e72e0c3887047fad7920b5116ed9f5455f8590c9a9e16508a75853dcb22"
+    },
+    "experiments/aot-gpui/build-window.ts": {
+      "bytes": 10597,
+      "sha256": "ebd98542d71336986932b711fea71ef9a5f5aea5fa1337417714ad45eedd99f3"
+    },
+    "experiments/aot-gpui/inspect-runtime.ts": {
+      "bytes": 12491,
+      "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+    },
+    "experiments/aot-gpui/inspect.ts": {
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    "native/gpui-host/Cargo.toml": {
+      "bytes": 628,
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24"
+    },
+    "native/gpui-host/src/channel.rs": {
+      "bytes": 3201,
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "bytes": 5961,
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d"
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "bytes": 5330,
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+    },
+    "native/gpui-host/src/input.rs": {
+      "bytes": 19158,
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "bytes": 3666,
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "bytes": 5796,
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+    },
+    "native/gpui-host/src/main.rs": {
+      "bytes": 2539,
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+    },
+    "native/gpui-host/src/session.rs": {
+      "bytes": 11756,
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077"
+    },
+    "native/gpui-host/src/state.rs": {
+      "bytes": 388,
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+    },
+    "native/gpui-host/src/style.rs": {
+      "bytes": 3732,
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+    },
+    "native/gpui-host/src/view.rs": {
+      "bytes": 13370,
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "bytes": 9592,
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+    },
+    "native/protocol/Cargo.toml": {
+      "bytes": 225,
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+    },
+    "native/protocol/src/event_tests.rs": {
+      "bytes": 4925,
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+    },
+    "native/protocol/src/events.rs": {
+      "bytes": 7635,
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+    },
+    "native/protocol/src/framing.rs": {
+      "bytes": 3838,
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+    },
+    "native/protocol/src/lib.rs": {
+      "bytes": 469,
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+    },
+    "native/protocol/src/security_tests.rs": {
+      "bytes": 2133,
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+    },
+    "native/protocol/src/tests.rs": {
+      "bytes": 11716,
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+    },
+    "native/protocol/src/tree.rs": {
+      "bytes": 14549,
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "bytes": 13131,
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+    },
+    "native/protocol/src/wire.rs": {
+      "bytes": 18177,
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+    },
+    "package.json": {
+      "bytes": 1835,
+      "sha256": "b36b002438cb16c61dfb76f34ef6c9aa75b112c7b7da92b8a51647eac6fe6f9f"
+    },
+    "packages/core/package.json": {
+      "bytes": 234,
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+    },
+    "packages/core/src/application.ts": {
+      "bytes": 14616,
+      "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+    },
+    "packages/core/src/events.ts": {
+      "bytes": 7680,
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+    },
+    "packages/core/src/index.ts": {
+      "bytes": 646,
+      "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+    },
+    "packages/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "packages/core/src/types.ts": {
+      "bytes": 5566,
+      "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 129,
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+    },
+    "packages/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "packages/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 512,
+      "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+    },
+    "packages/protocol/src/messages.ts": {
+      "bytes": 13102,
+      "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+    },
+    "packages/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    },
+    "packages/runtime/package.json": {
+      "bytes": 195,
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+    },
+    "packages/runtime/src/index.ts": {
+      "bytes": 13240,
+      "sha256": "570a0ca3d60dbfd3047076533aca942a9c4641ae2410da48b0299f12a60ce814"
+    },
+    "packages/solid/package.json": {
+      "bytes": 310,
+      "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+    },
+    "packages/solid/src/index.ts": {
+      "bytes": 604,
+      "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+    },
+    "packages/solid/src/jsx.ts": {
+      "bytes": 868,
+      "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+    },
+    "packages/solid/src/mount.ts": {
+      "bytes": 1216,
+      "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+    },
+    "packages/solid/src/renderer.ts": {
+      "bytes": 964,
+      "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    },
+    "scripts/quality/native-input-linux.py": {
+      "bytes": 37751,
+      "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f"
+    },
+    "scripts/quality/native-linux-session.sh": {
+      "bytes": 6957,
+      "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf"
+    },
+    "scripts/solid-build.ts": {
+      "bytes": 1615,
+      "sha256": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908"
+    },
+    "scripts/solid/preset.d.ts": {
+      "bytes": 139,
+      "sha256": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228"
+    },
+    "scripts/solid/transform.ts": {
+      "bytes": 642,
+      "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+    },
+    "tests/native/solid-input-intent.tsx": {
+      "bytes": 3982,
+      "sha256": "861b0be2a8d73c587e1fe6b26161b680c7159cd1d76a905f65509d737d8e981a"
+    },
+    "tests/native/solid-interactions.tsx": {
+      "bytes": 10532,
+      "sha256": "adc005ddce69922037a5180069197f61fe136220741c55181b6fba75d7cf4318"
+    },
+    "tests/native/solid-window.py": {
+      "bytes": 8382,
+      "sha256": "ceec0858f5b0f6af5f4cbdd52dd9e075a9871300325257dd051da35c5a3256a1"
+    },
+    "toolchain.json": {
+      "bytes": 1725,
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+    },
+    "tsconfig.json": {
+      "bytes": 1028,
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+    }
+  },
+  "sharedRendererFilesByteIdenticalToFoundation": {
+    "packages/renderer/README.md": {
+      "bytes": 4895,
+      "sha256": "ee07c6319c358a2bb33755332e35a6503bb02cfcd38a434ba0d4592615ecea6e"
+    },
+    "packages/renderer/package.json": {
+      "bytes": 192,
+      "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+    },
+    "packages/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "packages/renderer/src/index.ts": {
+      "bytes": 910,
+      "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+    },
+    "packages/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "packages/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "packages/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "packages/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "packages/renderer/src/root.ts": {
+      "bytes": 9861,
+      "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1220,
+      "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+    }
+  },
+  "matchedNativeBuildSourceFiles": {
+    "Cargo.lock": {
+      "sha256": "fa0eb3145d8c5e4026c8ba30f5f50260938888d605d32e18ce1511674da85873",
+      "bytes": 160678
+    },
+    "Cargo.toml": {
+      "sha256": "7d08084d373b49b686b8cc1dde3f0b2452cdf2fed338fac69a55052e1e05316d",
+      "bytes": 434
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "55b3955d570c37d41c808e1a9eadd4ab2b5d3231d0c2fb74cb89884eb8ed0b24",
+      "bytes": 628
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "8325378e24258790ffe9400daab2f20704f37362da6aa3e85d78ea9f2e613a8d",
+      "bytes": 5961
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+      "bytes": 5330
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "bytes": 19158
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "bytes": 3666
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf",
+      "bytes": 2539
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "cd68fe2c3b87ffedb419290259bbc8edcdd41605674882cd9974d8a3e199a077",
+      "bytes": 11756
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "bytes": 3732
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+      "bytes": 13370
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "bytes": 9592
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/event_tests.rs": {
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "bytes": 4925
+    },
+    "native/protocol/src/events.rs": {
+      "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0",
+      "bytes": 7635
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "bytes": 3838
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b",
+      "bytes": 469
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4",
+      "bytes": 11716
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "bytes": 14549
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d",
+      "bytes": 18177
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "toolchain.json": {
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+      "bytes": 1725
+    }
+  },
+  "host": {
+    "placement": "external",
+    "profile": "dev",
+    "bytes": 111772680,
+    "sha256": "7e5acbd353f8e233364b11ad303a7ed32fb1566754663f75e85193ea2301c2cb"
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "target": {
+    "os": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.57"
+  },
+  "renderer": {
+    "is_software_emulated": true,
+    "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "driver_name": "llvmpipe",
+    "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+  },
+  "entries": {
+    "solid": {
+      "sourceEntrypoint": "examples/solid-counter/main.tsx",
+      "application": {
+        "file": "solid",
+        "bytes": 71351336,
+        "sha256": "9fed2b3ff5aa9b71b4ec9fa44f9a164a64001f7524e805bbe191597a475fd7d7",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3784933,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 115242,
+          "sha256": "dc3a40fe2b701f9253ef658a01f5923bfdb24427fd76f33ea557d87427d3e523",
+          "transformCommand": [
+            "<pinned-bun>",
+            "<repository>/scripts/solid-build.ts",
+            "<repository>/examples/solid-counter/main.tsx",
+            "<package>/development"
+          ],
+          "buildMs": 474.53690399999994,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/solid.js",
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/universal.js"
+          ],
+          "sourceMap": {
+            "bytes": 271117,
+            "sha256": "7b6d78be11bb8d92a6d83b21438f8241055cf5023ea3affb2dbc11296ad36032"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/solid"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 5645.584023,
+      "manifest": {
+        "path": "solid-package/manifest.json",
+        "bytes": 17289,
+        "sha256": "586184be497e2537cfd93191fdd8c2a6738203562cfa2929997d04d756cb06b5"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "examples/solid-counter/main.tsx",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "packages/solid/package.json",
+        "packages/solid/src/index.ts",
+        "packages/solid/src/jsx.ts",
+        "packages/solid/src/mount.ts",
+        "packages/solid/src/renderer.ts",
+        "rust-toolchain.toml",
+        "scripts/solid-build.ts",
+        "scripts/solid/preset.d.ts",
+        "scripts/solid/transform.ts",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    },
+    "solid-input-intent": {
+      "sourceEntrypoint": "tests/native/solid-input-intent.tsx",
+      "application": {
+        "file": "solid-input-intent",
+        "bytes": 71302184,
+        "sha256": "e6a2a7980b03fd564a8653f34f9c80e569a68985c036a8eefa30cffc3bc8ddf9",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3735794,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 110223,
+          "sha256": "643820d4b6f8f86d5df63a30078de20b7aaf5a780588f4b31a29c6f89742dd01",
+          "transformCommand": [
+            "<pinned-bun>",
+            "<repository>/scripts/solid-build.ts",
+            "<repository>/tests/native/solid-input-intent.tsx",
+            "<package>/development"
+          ],
+          "buildMs": 569.05191,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/solid.js",
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/universal.js"
+          ],
+          "sourceMap": {
+            "bytes": 266512,
+            "sha256": "9ffdef16cd4b53f194a32b20f82404ee7159a971f10acdc294c1d24d2e59070b"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/solid-input-intent"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 4536.770074,
+      "manifest": {
+        "path": "solid-input-intent-package/manifest.json",
+        "bytes": 17370,
+        "sha256": "76c55b16813180691089e35be430f484fc83b76d500432618fefc6e00c1e420a"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "packages/solid/package.json",
+        "packages/solid/src/index.ts",
+        "packages/solid/src/jsx.ts",
+        "packages/solid/src/mount.ts",
+        "packages/solid/src/renderer.ts",
+        "rust-toolchain.toml",
+        "scripts/solid-build.ts",
+        "scripts/solid/preset.d.ts",
+        "scripts/solid/transform.ts",
+        "tests/native/solid-input-intent.tsx",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    },
+    "solid-interactions": {
+      "sourceEntrypoint": "tests/native/solid-interactions.tsx",
+      "application": {
+        "file": "solid-interactions",
+        "bytes": 71711784,
+        "sha256": "cd873d0831ace6d405c59c76f3783ac19e34b9c57f44e5b4888b806be6e40b34",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 4145394,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 116322,
+          "sha256": "e250f38fb31a331b487351e8ceee3703cd81473e046470069e78c8e154d2ca2f",
+          "transformCommand": [
+            "<pinned-bun>",
+            "<repository>/scripts/solid-build.ts",
+            "<repository>/tests/native/solid-interactions.tsx",
+            "<package>/development"
+          ],
+          "buildMs": 391.764854,
+          "frameworkMode": "production",
+          "frameworkSourceMapEntries": [
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/solid.js",
+            "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/universal.js"
+          ],
+          "sourceMap": {
+            "bytes": 279122,
+            "sha256": "669e4d53e12fffd57b65e2eac7ab65ed8dd7a1970a8d00ee1f3bd1961361051e"
+          }
+        }
+      },
+      "compileCommand": [
+        "<pinned-bun>",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "<package>/development/application.js",
+        "--outfile",
+        "<package>/solid-interactions"
+      ],
+      "compileInputIsDevelopmentModule": true,
+      "compileWallMs": 4913.970665,
+      "manifest": {
+        "path": "solid-interactions-package/manifest.json",
+        "bytes": 17372,
+        "sha256": "1efb6465ac57d0318604af0043b18c4425b8e08e6b46bab4986596533ff586c6"
+      },
+      "sourcePaths": [
+        ".bun-version",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bun.lock",
+        "bunfig.toml",
+        "examples/native-window/content.ts",
+        "examples/native-window/main.ts",
+        "native/gpui-host/Cargo.toml",
+        "native/gpui-host/src/channel.rs",
+        "native/gpui-host/src/evidence.rs",
+        "native/gpui-host/src/evidence/layout.rs",
+        "native/gpui-host/src/input.rs",
+        "native/gpui-host/src/input/binding.rs",
+        "native/gpui-host/src/input/paint.rs",
+        "native/gpui-host/src/main.rs",
+        "native/gpui-host/src/session.rs",
+        "native/gpui-host/src/state.rs",
+        "native/gpui-host/src/style.rs",
+        "native/gpui-host/src/view.rs",
+        "native/gpui-host/src/view/interactions.rs",
+        "native/protocol/Cargo.toml",
+        "native/protocol/src/event_tests.rs",
+        "native/protocol/src/events.rs",
+        "native/protocol/src/framing.rs",
+        "native/protocol/src/lib.rs",
+        "native/protocol/src/security_tests.rs",
+        "native/protocol/src/tests.rs",
+        "native/protocol/src/tree.rs",
+        "native/protocol/src/tree/tests.rs",
+        "native/protocol/src/wire.rs",
+        "package.json",
+        "packages/core/package.json",
+        "packages/core/src/application.ts",
+        "packages/core/src/events.ts",
+        "packages/core/src/index.ts",
+        "packages/core/src/tree.ts",
+        "packages/core/src/types.ts",
+        "packages/protocol/package.json",
+        "packages/protocol/src/elements.ts",
+        "packages/protocol/src/framing.ts",
+        "packages/protocol/src/index.ts",
+        "packages/protocol/src/messages.ts",
+        "packages/protocol/src/values.ts",
+        "packages/renderer/package.json",
+        "packages/renderer/src/event-properties.ts",
+        "packages/renderer/src/index.ts",
+        "packages/renderer/src/input-intent.ts",
+        "packages/renderer/src/native-tree.ts",
+        "packages/renderer/src/nodes.ts",
+        "packages/renderer/src/order.ts",
+        "packages/renderer/src/root.ts",
+        "packages/renderer/src/window-lifetime.ts",
+        "packages/runtime/package.json",
+        "packages/runtime/src/index.ts",
+        "packages/solid/package.json",
+        "packages/solid/src/index.ts",
+        "packages/solid/src/jsx.ts",
+        "packages/solid/src/mount.ts",
+        "packages/solid/src/renderer.ts",
+        "rust-toolchain.toml",
+        "scripts/solid-build.ts",
+        "scripts/solid/preset.d.ts",
+        "scripts/solid/transform.ts",
+        "tests/native/solid-interactions.tsx",
+        "toolchain.json",
+        "tsconfig.json"
+      ],
+      "nativeExecution": "passed-both-modes"
+    }
+  },
+  "runs": [
+    {
+      "mode": "development",
+      "entry": "solid",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native Solid",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: ",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [13, 11]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-keyed-update",
+          "names": ["Gamma", "Alpha"],
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-counter-click",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "app-events.jsonl": {
+          "bytes": 9055,
+          "sha256": "5398243d55162da61f1ea911b685367bfc3e85947cc1744bec00146e04fa3ce1"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 30453,
+          "sha256": "69cf331ca14ef72ee6d281a258afcf6ea863e79909e3b734e7bdd4655c4c30a8"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "solid",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native Solid",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 0",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "Solid 7cc98e1b9fc54ae034032a808f5ffae2",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 38
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: Solid 7cc98e1b9fc54ae034032a808f5ffae2",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [11, 12, 13]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 12,
+            "element": {
+              "kind": "text",
+              "text": "Beta",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-counter-input",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 35343,
+          "sha256": "e4452ffefb30dc1fcadf44710d37eaf91afbbdf1fcf71031a367f4d29e5524a7"
+        },
+        "app-events.jsonl": {
+          "bytes": 90189,
+          "sha256": "ab6ae3e5b9f8a688e2db7f71985a6db09480001c22c4a8e969fe4873761a1287"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 206330,
+          "sha256": "7fb1c64420507f3070ca2ff6b8d93e5fcfbaf3f6dccd73d079d95b7929a777b3"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "solid-input-intent",
+      "scenario": "input-intent",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid input revision contract",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "input",
+              "value": "Explicit replacement",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 39
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "text",
+              "text": "Revision: 38",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-stale-echo-preserved",
+          "event_revision": 1,
+          "before": {
+            "value": "So",
+            "revision": 2
+          },
+          "after": {
+            "value": "Solid fd6cc7e864dff1beb",
+            "revision": 23
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-value-intent-applied",
+          "submitted": {
+            "value": "Explicit replacement",
+            "revision": 38
+          },
+          "after": {
+            "value": "Explicit replacement",
+            "revision": 39
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-input-complete",
+          "preserved": true,
+          "replaced": true,
+          "cleaned": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 5,
+              "set": 39,
+              "insert": 5,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-input-intent",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 11780,
+          "sha256": "6d636e7e9d97e97c262a7ba2dd0651b154cbb320786c484ab6228052e6529fbb"
+        },
+        "app-events.jsonl": {
+          "bytes": 51422,
+          "sha256": "afa842f015214b6a484294875d07ce9d234b1cad276d4b1c6b1fc4d0b7ef2e75"
+        },
+        "before.png": {
+          "bytes": 7431,
+          "sha256": "6074d007db4cec8df70ca7478ef3505709aa97983edb409e4b105b79adbccf6f"
+        },
+        "result.json": {
+          "bytes": 113805,
+          "sha256": "9a5d0d5f529d2efa9b828dd59612c9c66f41e9b547607a86b3d1c631e815a21c"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "solid-interactions",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "ABCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: ABCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "traces": 33,
+          "eventGroups": 9,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "traceCount": 33,
+          "observedSignalsRevoked": 27,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-keyboard",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14136,
+          "sha256": "5e0217380aa7d901c5a41ecf74dadb17d9aa1984554dc94005ab3b14e972a988"
+        },
+        "app-events.jsonl": {
+          "bytes": 18885,
+          "sha256": "5536e30003d0dec9f2d6483c4924b9ea4b411aea0ed85376633038680c95ce34"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 40470,
+          "sha256": "cfa6bbea9acb9c2f75eae39968f348614ba4402a705cd6aff0ec868532a6ca54"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "solid-interactions",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "traces": 67,
+          "eventGroups": 17,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-caret",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "app-events.jsonl": {
+          "bytes": 33669,
+          "sha256": "377a76bb9e99fc202892ce2ac55242784d08e4efbec28e414fb979ff88bfde0b"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 68576,
+          "sha256": "232bf673ddb753cd8511c66f2fd6528958945481e9ac4e2f8fcc6bf919aaeded"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "development",
+      "entry": "solid-interactions",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AYCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AYCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "traces": 75,
+          "eventGroups": 19,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 75,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/development-interactions-selection",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 13807,
+          "sha256": "ab08f7bd7beb214ba80880c01d7d3c34cb7649db03c70654dba8842198d029f1"
+        },
+        "app-events.jsonl": {
+          "bytes": 35862,
+          "sha256": "4d482e81231e5f46cedb8984aa0fcba45d31301f0d1478ada1f44fdc5c542fc9"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 71319,
+          "sha256": "fb71c61bb34503606f9300667ae8cf103ab78b9d61743d98ae93bb6ca933ad41"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid",
+      "scenario": "counter-click",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 2,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native Solid",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: ",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [13, 11]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-keyed-update",
+          "names": ["Gamma", "Alpha"],
+          "rowsCreated": 3,
+          "rowsDisposed": 1,
+          "mutationsBefore": {
+            "create": 12,
+            "set": 0,
+            "insert": 12,
+            "remove": 0
+          },
+          "mutationsAfter": {
+            "create": 12,
+            "set": 1,
+            "insert": 13,
+            "remove": 1
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 2,
+            "mutations": {
+              "create": 12,
+              "set": 1,
+              "insert": 13,
+              "remove": 1
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-counter-click",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "app-events.jsonl": {
+          "bytes": 7705,
+          "sha256": "93fe54bee7a3cd6e7346f59221b3c013962b0688d8137624ef9bf0cf09f4c80e"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 24319,
+          "sha256": "5b58d48fafc8fd1fc72acdac7bb80116b8457bd73642e7a3a6e17d51220319e9"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid",
+      "scenario": "counter-input",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0,
+                "background": 16053751
+              }
+            },
+            "children": [4, 5, 6, 7, 8, 9, 10]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Bun Native Solid",
+              "style": {
+                "font_size": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 0",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Increment",
+              "disabled": false,
+              "style": {
+                "width": 160.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "text",
+              "text": "Native editable input",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "input",
+              "value": "Solid f25ceb7925ebf7f80c51db3b2eccd92a",
+              "placeholder": "Type here\u2026",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 38
+          },
+          {
+            "node_id": 9,
+            "element": {
+              "kind": "text",
+              "text": "Input: Solid f25ceb7925ebf7f80c51db3b2eccd92a",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 10,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "row",
+                "gap": 16.0
+              }
+            },
+            "children": [11, 12, 13]
+          },
+          {
+            "node_id": 11,
+            "element": {
+              "kind": "text",
+              "text": "Alpha",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 12,
+            "element": {
+              "kind": "text",
+              "text": "Beta",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 13,
+            "element": {
+              "kind": "text",
+              "text": "Gamma",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-disposed",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 12,
+              "set": 38,
+              "insert": 12,
+              "remove": 0
+            }
+          },
+          "rowsCreated": 3,
+          "rowsDisposed": 3,
+          "ownerDisposed": true,
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-counter-input",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 32017,
+          "sha256": "db186df6d482fda4b8cf41379c472c79adf03a3190aad3fc62673935e033777e"
+        },
+        "app-events.jsonl": {
+          "bytes": 79840,
+          "sha256": "d55fd7e374d4c73f714860cb845bf19fb332bef23180355ae48cf1ec2a98cb1c"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "result.json": {
+          "bytes": 182693,
+          "sha256": "0cb26ab400e47d5ad32b3589431d4e5e35ac729f3f0bba92d0a2723c8dd0161f"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid-input-intent",
+      "scenario": "input-intent",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 39,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid input revision contract",
+              "style": {}
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "input",
+              "value": "Explicit replacement",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "font_size": 24.0
+              }
+            },
+            "children": [],
+            "input_revision": 39
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "text",
+              "text": "Revision: 38",
+              "style": {}
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-stale-echo-preserved",
+          "event_revision": 1,
+          "before": {
+            "value": "So",
+            "revision": 2
+          },
+          "after": {
+            "value": "So",
+            "revision": 2
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-value-intent-applied",
+          "submitted": {
+            "value": "Explicit replacement",
+            "revision": 38
+          },
+          "after": {
+            "value": "Explicit replacement",
+            "revision": 39
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-input-complete",
+          "preserved": true,
+          "replaced": true,
+          "cleaned": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 39,
+            "mutations": {
+              "create": 5,
+              "set": 39,
+              "insert": 5,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-input-intent",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 11780,
+          "sha256": "6d636e7e9d97e97c262a7ba2dd0651b154cbb320786c484ab6228052e6529fbb"
+        },
+        "app-events.jsonl": {
+          "bytes": 49145,
+          "sha256": "583cdbdabba130c57bec1a1d4f8ca1bcd68f1af5f73ffa6e926df67878dd8d97"
+        },
+        "before.png": {
+          "bytes": 7431,
+          "sha256": "6074d007db4cec8df70ca7478ef3505709aa97983edb409e4b105b79adbccf6f"
+        },
+        "result.json": {
+          "bytes": 108174,
+          "sha256": "3b589ea7abd9bbf1c48697759878f4dfd634d4a2575f1373b3520978d687fb87"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid-interactions",
+      "scenario": "interactions-keyboard",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 2",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "ABCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 0
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: ABCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "input": {
+            "value": "ABCD",
+            "revision": 0
+          },
+          "traces": 33,
+          "eventGroups": 9,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "keyboard",
+          "activations": 2,
+          "inputChanges": 0,
+          "traceCount": 33,
+          "observedSignalsRevoked": 27,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-keyboard",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14136,
+          "sha256": "5e0217380aa7d901c5a41ecf74dadb17d9aa1984554dc94005ab3b14e972a988"
+        },
+        "app-events.jsonl": {
+          "bytes": 18884,
+          "sha256": "c2d629f1d1144e06b5c692bef41cdb4d98c4fd1d9678b6d6a23d841f5a22fc74"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 39786,
+          "sha256": "b03b5e053c10f3dd9493e2de9da68610aa5260414630b5982cd3bef4d6b503fa"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid-interactions",
+      "scenario": "interactions-caret",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AxBCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AxBCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AxBCD",
+            "revision": 1
+          },
+          "traces": 67,
+          "eventGroups": 17,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "caret",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 67,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-caret",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 14523,
+          "sha256": "aaaf31e5c1f5e6ecea657e9cbe750fd5755286cc761024bbfcda49c3753764fe"
+        },
+        "app-events.jsonl": {
+          "bytes": 32665,
+          "sha256": "4a6f2cd0c7d66d35944576774dff01e8e1279944da835769ccbf25f87c500d2c"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 64991,
+          "sha256": "c0e8269b801acf02f6ee1151574a6fae2344a6c24b215ed1228054c6e8ce715b"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "mode": "aot",
+      "entry": "solid-interactions",
+      "scenario": "interactions-selection",
+      "status": "passed",
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "finalNativePaint": {
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [2]
+          },
+          {
+            "node_id": 2,
+            "element": {
+              "kind": "box",
+              "style": {}
+            },
+            "children": [3]
+          },
+          {
+            "node_id": 3,
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "gap": 12.0,
+                "padding": 24.0
+              }
+            },
+            "children": [4, 5, 6, 7, 8]
+          },
+          {
+            "node_id": 4,
+            "element": {
+              "kind": "text",
+              "text": "Solid native event properties",
+              "style": {
+                "height": 32.0,
+                "font_size": 24.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 5,
+            "element": {
+              "kind": "text",
+              "text": "Clicks: 1",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 6,
+            "element": {
+              "kind": "button",
+              "text": "Native action",
+              "disabled": false,
+              "style": {
+                "width": 200.0,
+                "height": 44.0
+              }
+            },
+            "children": []
+          },
+          {
+            "node_id": 7,
+            "element": {
+              "kind": "input",
+              "value": "AYCD",
+              "placeholder": "",
+              "style": {
+                "width": "fill",
+                "height": 40.0,
+                "font_size": 20.0
+              }
+            },
+            "children": [],
+            "input_revision": 1
+          },
+          {
+            "node_id": 8,
+            "element": {
+              "kind": "text",
+              "text": "Input: AYCD",
+              "style": {
+                "height": 28.0
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      "applicationAssertions": [
+        {
+          "type": "solid-interactions-ready",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "input": {
+            "value": "AYCD",
+            "revision": 1
+          },
+          "traces": 75,
+          "eventGroups": 19,
+          "diagnostics": {
+            "nodes": 7,
+            "listeners": 48,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-complete",
+          "scenario": "selection",
+          "activations": 1,
+          "inputChanges": 1,
+          "traceCount": 75,
+          "observedSignalsRevoked": 37,
+          "ownerDisposed": true,
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 3,
+            "mutations": {
+              "create": 7,
+              "set": 2,
+              "insert": 7,
+              "remove": 0
+            }
+          },
+          "stage": "bun-application"
+        },
+        {
+          "type": "solid-interactions-ownership",
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0
+          },
+          "stage": "bun-application"
+        }
+      ],
+      "rawDirectory": "qualified-native/aot-interactions-selection",
+      "rawFiles": {
+        "after.png": {
+          "bytes": 13807,
+          "sha256": "ab08f7bd7beb214ba80880c01d7d3c34cb7649db03c70654dba8842198d029f1"
+        },
+        "app-events.jsonl": {
+          "bytes": 36866,
+          "sha256": "90ae37c3417575d8ecbea2c40252e2c1c46e630700b056bde180f20e3de1be00"
+        },
+        "before.png": {
+          "bytes": 14235,
+          "sha256": "fac2d7d507b8699c4c4e74d655bb67bdbeccd44455754f17e96dc779f5aa6847"
+        },
+        "result.json": {
+          "bytes": 73538,
+          "sha256": "4154a7437a6994bacebe057163748dd859f286768f90756eb50cc4221d1b6729"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "sourceStability": "Manifest sources, actual controllers/driver/supervisor/inspectors, host, generated modules and AOT binaries were hashed before and after every run. No qualified product or controller source changed.",
+  "historicalEvidenceUnchanged": {
+    "benchmarks/bn2/solid-events-native.json": {
+      "bytes": 440109,
+      "sha256": "f35c190ed1be9e6b0b1ff86ce231234d8069bef09c198ba4a209071290eb364b"
+    },
+    "benchmarks/bn2/solid-events-regressions.json": {
+      "bytes": 784255,
+      "sha256": "eb4c0daeb5ef0affc9c5a864a00f47210e049221157a375b7d11feb4c1799425"
+    },
+    "benchmarks/bn2/solid-hosted-recipe-linux.json": {
+      "bytes": 47927,
+      "sha256": "27547f096af823a2eaee87bdc8a2bc56336b70943580600222aab13cc393d0ea"
+    },
+    "benchmarks/bn2/solid-native-correctness.json": {
+      "bytes": 26027,
+      "sha256": "6d92c14e0295de2a6c497844f2500719220979b039b7409734fa5ce6d3e2ebf1"
+    },
+    "benchmarks/bn2/solid-native-regenerated.json": {
+      "bytes": 791799,
+      "sha256": "758234d75c9a39e1d7fb67ad692d9054045d608050b811d9af0fa70eaa01ea25"
+    },
+    "benchmarks/bn2/solid-shared-native.json": {
+      "bytes": 813545,
+      "sha256": "f120746ca6f9563344ad14497c0a7789de6f0004b85bd81fdeafd8566170ef9b"
+    }
+  },
+  "historicalFrameworkInspection": {
+    "rawArtifacts": "task-artifacts/solid-ci/solid-package",
+    "manifest": {
+      "bytes": 17237,
+      "sha256": "95ff3bac8331498102869e20ad92c07fb2a22b95e51261e3f87d128c1623fda1"
+    },
+    "module": {
+      "file": "development/application.js",
+      "bytes": 117132,
+      "sha256": "22115f74b427f444ff9fef62d8d9f0c495bc32cb8ec4b4ce3aea462182df7ba6"
+    },
+    "sourceMap": {
+      "bytes": 275171,
+      "sha256": "b8277ac6204f8115f5a16e85292d87a6835f1715f7da0cc5584e82f247338cdc"
+    },
+    "frameworkMode": "development",
+    "frameworkSourceMapEntries": [
+      "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/dev.js",
+      "node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/dev.js"
+    ],
+    "meaning": "The earlier native/AOT correctness remains valid for its recorded development-framework module. The JSX preset dev:false did not select production Solid exports; prior records are not relabelled."
+  },
+  "dependencySelectionControl": {
+    "path": "selection-control.json",
+    "bytes": 1816,
+    "sha256": "c65bd6e6ba7610ed2e3fd5d819cd104f9be82c8ab2c5a25406bbc9257c794725",
+    "testSource": {
+      "path": "tests/solid/build.test.ts",
+      "bytes": 4363,
+      "sha256": "723e9c1308db5bca6284af3586c5f87cad11479ca493dfa96b2854ab8a4f3c93"
+    },
+    "results": {
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "callerNodeEnv": "test",
+      "results": [
+        {
+          "name": "browser",
+          "options": {
+            "conditions": ["browser"]
+          },
+          "exitCode": 0,
+          "signalCode": null,
+          "output": "{\"selected\":\"dev\",\"environment\":\"test\"}\n",
+          "error": "",
+          "mappedSources": ["../node_modules/framework/dev.js", "../entry.ts"]
+        },
+        {
+          "name": "browser-production",
+          "options": {
+            "conditions": ["browser", "production"]
+          },
+          "exitCode": 0,
+          "signalCode": null,
+          "output": "{\"selected\":\"dev\",\"environment\":\"test\"}\n",
+          "error": "",
+          "mappedSources": ["../node_modules/framework/dev.js", "../entry.ts"]
+        },
+        {
+          "name": "browser-defined",
+          "options": {
+            "conditions": ["browser"],
+            "define": {
+              "process.env.NODE_ENV": "\"production\""
+            }
+          },
+          "exitCode": 0,
+          "signalCode": null,
+          "output": "{\"selected\":\"production\",\"environment\":\"production\"}\n",
+          "error": "",
+          "mappedSources": ["../node_modules/framework/production.js", "../entry.ts"]
+        },
+        {
+          "name": "browser-production-defined",
+          "options": {
+            "conditions": ["browser", "production"],
+            "define": {
+              "process.env.NODE_ENV": "\"production\""
+            }
+          },
+          "exitCode": 0,
+          "signalCode": null,
+          "output": "{\"selected\":\"production\",\"environment\":\"production\"}\n",
+          "error": "",
+          "mappedSources": ["../node_modules/framework/production.js", "../entry.ts"]
+        }
+      ]
+    },
+    "meaning": "Under caller NODE_ENV=test, browser and browser+production conditions alone select development. Explicit NODE_ENV production definition selects the production dependency and constant. The checked-in test also inspects the actual native TSX bundle."
+  },
+  "rawArtifacts": "task-artifacts/bn2-solid-production",
+  "limits": [
+    "Both runtime modes select production Solid modules. Development names ordinary Bun execution, not a development Solid build; AOT additionally has the compiled-program flag and unused JIT with 27 removed ranges. The interpreter remains present.",
+    "The immutable native host is development profile with software Vulkan. This is not a hosted release-host qualification, matched performance comparison, startup/latency improvement or release footprint baseline.",
+    "XTest and native paint traversal do not qualify physical input, display presentation, hardware GPU performance, IME, accessibility or macOS/Windows Solid behavior. Screenshots are retained; automated pixel/OCR assertions remain unsupported.",
+    "Bounded owner cleanup and zero observed child survivors are not proof of complete managed/native allocation reclamation. Shared retention issue287 and its unchanged oracle remain open."
+  ]
+}

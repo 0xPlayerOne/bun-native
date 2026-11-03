@@ -5,14 +5,17 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import logging
 import os
-from pathlib import Path
 import platform
 import re
 import resource
 import shutil
 import signal
 import sys
+from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -498,7 +501,9 @@ def main():
         PAIRS.DRIVER.enable_subreaper()
         run(args, report)
     except (Exception, KeyboardInterrupt) as error:
+        report["status"] = "failed"
         report["error"] = {"type": type(error).__name__, "message": str(error)}
+        LOGGER.exception("Owned native allocation control failed")
     finally:
         report["finishedAt"] = PAIRS.timestamp()
         PAIRS.write_json(args.output / "result.json", report)

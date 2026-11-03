@@ -1,0 +1,26 @@
+[
+  {
+    "variant": "actual",
+    "command": [
+      "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-path.ts",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-actual.json",
+      "actual"
+    ],
+    "exitCode": 0,
+    "timedOut": false,
+    "reportWritten": true
+  },
+  {
+    "variant": "captured-first",
+    "command": [
+      "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-path.ts",
+      "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-captured-first.json",
+      "captured-first"
+    ],
+    "exitCode": 0,
+    "timedOut": false,
+    "reportWritten": true
+  }
+]

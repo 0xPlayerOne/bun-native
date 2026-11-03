@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "executable": "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+  "declaredMode": "development",
+  "addresses": {
+    "target": "0x4ef38f94440",
+    "objectHolder": "0x4ef38f94460",
+    "setHolder": "0x4ef38817348"
+  },
+  "objectMembershipAfterSnapshot": true,
+  "setMembershipAfterSnapshot": true,
+  "scope": "No framework, native host, WeakRef, explicit GC or timer; all objects remain deliberately strongly held",
+  "snapshotPerformsOwnFullCollection": true
+}

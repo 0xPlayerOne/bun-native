@@ -1,0 +1,313 @@
+{
+  "method": "fixed five trials per full-GC entry point and execution mode, same program/artifact; no adaptive retries or production oracle edits",
+  "source": {
+    "sha256": "d4efd3fabbf3021eff9ae3185d38138f64f8540b3ebdf6029d0ff979af8825b0",
+    "bytes": 4833
+  },
+  "aot": {
+    "sha256": "7f29bfc0226b20361de6ded386c7f1a46d86c965e276934b7820d64e39cc7abc",
+    "bytes": 68795432
+  },
+  "records": [
+    {
+      "trial": 1,
+      "mode": "development",
+      "method": "bun",
+      "report": "development-bun-1.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-bun-1.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 1,
+      "mode": "development",
+      "method": "jsc",
+      "report": "development-jsc-1.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-jsc-1.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "method": "bun",
+      "report": "aot-bun-1.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 1,
+      "mode": "aot",
+      "method": "jsc",
+      "report": "aot-jsc-1.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "method": "bun",
+      "report": "development-bun-2.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-bun-2.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 2,
+      "mode": "development",
+      "method": "jsc",
+      "report": "development-jsc-2.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-jsc-2.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "method": "bun",
+      "report": "aot-bun-2.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 2,
+      "mode": "aot",
+      "method": "jsc",
+      "report": "aot-jsc-2.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "method": "bun",
+      "report": "development-bun-3.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-bun-3.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 3,
+      "mode": "development",
+      "method": "jsc",
+      "report": "development-jsc-3.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-jsc-3.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "method": "bun",
+      "report": "aot-bun-3.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 3,
+      "mode": "aot",
+      "method": "jsc",
+      "report": "aot-jsc-3.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "method": "bun",
+      "report": "development-bun-4.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-bun-4.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 4,
+      "mode": "development",
+      "method": "jsc",
+      "report": "development-jsc-4.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-jsc-4.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "method": "bun",
+      "report": "aot-bun-4.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 4,
+      "mode": "aot",
+      "method": "jsc",
+      "report": "aot-jsc-4.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "method": "bun",
+      "report": "development-bun-5.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-bun-5.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 5,
+      "mode": "development",
+      "method": "jsc",
+      "report": "development-jsc-5.json",
+      "exit": 0,
+      "firstReachable": [
+        297,
+        298
+      ],
+      "stillReachable": [
+        297,
+        298
+      ],
+      "snapshot": "/workspace/scratch/5b1033c37396/task-artifacts/solid-metrics-research/retention-control-v3-trials/development-jsc-5.json.heap.json",
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "method": "bun",
+      "report": "aot-bun-5.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    },
+    {
+      "trial": 5,
+      "mode": "aot",
+      "method": "jsc",
+      "report": "aot-jsc-5.json",
+      "exit": 0,
+      "firstReachable": [],
+      "stillReachable": [],
+      "snapshot": null,
+      "queued": 0,
+      "totalRowsDisposed": 3200
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+"""Analyze the saved controls without running Bun or changing their snapshots."""
+
+from collections import Counter, defaultdict, deque
+import hashlib
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+
+
+def sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class Graph:
+    def __init__(self, snapshot):
+        assert snapshot["version"] == 3 and snapshot["type"] == "GCDebugging"
+        assert len(snapshot["nodes"]) % 7 == 0
+        assert len(snapshot["edges"]) % 4 == 0
+        assert len(snapshot["roots"]) % 3 == 0
+        self.nodes = {}
+        self.addresses = {}
+        self.outgoing = defaultdict(list)
+        self.incoming = defaultdict(list)
+        for offset in range(0, len(snapshot["nodes"]), 7):
+            row = snapshot["nodes"][offset : offset + 7]
+            identifier = row[0]
+            assert type(identifier) is int and identifier >= 0
+            assert identifier not in self.nodes
+            self.nodes[identifier] = {
+                "id": identifier,
+                "size": row[1],
+                "class": snapshot["nodeClassNames"][row[2]],
+                "flags": row[3],
+                "label": snapshot["labels"][row[4]],
+                "address": row[5],
+            }
+            if identifier:
+                assert row[5] not in self.addresses
+                self.addresses[row[5]] = identifier
+        for offset in range(0, len(snapshot["edges"]), 4):
+            source, target, kind, name = snapshot["edges"][offset : offset + 4]
+            assert source in self.nodes and target in self.nodes
+            edge_type = snapshot["edgeTypes"][kind]
+            assert edge_type in ("Internal", "Property", "Variable", "Index")
+            edge = {
+                "from": source,
+                "to": target,
+                "type": edge_type,
+                "name": (
+                    snapshot["edgeNames"][name]
+                    if edge_type in ("Property", "Variable")
+                    else name
+                    if edge_type == "Index"
+                    else None
+                ),
+            }
+            self.outgoing[source].append(edge)
+            self.incoming[target].append(edge)
+        self.root_reasons = Counter()
+        for offset in range(0, len(snapshot["roots"]), 3):
+            identifier, reason, _ = snapshot["roots"][offset : offset + 3]
+            assert identifier in self.nodes
+            self.root_reasons[snapshot["labels"][reason]] += 1
+
+    def from_address(self, address):
+        assert address in self.addresses, f"Missing required target {address}"
+        start = self.addresses[address]
+        previous = {start: None}
+        queue = deque([start])
+        while queue:
+            current = queue.popleft()
+            for edge in self.outgoing[current]:
+                target = edge["to"]
+                if target not in previous:
+                    previous[target] = edge
+                    queue.append(target)
+        return start, previous
+
+    def path(self, start, previous, address):
+        assert address in self.addresses, f"Missing required target {address}"
+        current = self.addresses[address]
+        if current not in previous:
+            return None
+        path = []
+        while current != start:
+            edge = previous[current]
+            path.append({"node": self.nodes[current], "edge": edge})
+            current = edge["from"]
+        path.append({"node": self.nodes[start]})
+        return list(reversed(path))
+
+
+records = []
+for variant in ("actual", "captured-first"):
+    report_path = ROOT / f"observer-{variant}.json"
+    snapshot_path = ROOT / f"observer-{variant}.json.heap.json"
+    report = json.loads(report_path.read_text())
+    graph = Graph(json.loads(snapshot_path.read_text()))
+    start, previous = graph.from_address(report["source"])
+    released = [
+        {
+            "name": target["name"],
+            "listener": graph.path(start, previous, target["listener"]),
+            "target": graph.path(start, previous, target["target"]),
+        }
+        for target in report["targets"]
+    ]
+    active = {
+        kind: graph.path(start, previous, report["liveControl"][kind])
+        for kind in ("listener", "target")
+    }
+    rootless = Counter(
+        node["class"]
+        for identifier, node in graph.nodes.items()
+        if identifier and not graph.incoming[identifier]
+    )
+    records.append(
+        {
+            "variant": variant,
+            "reportSha256": sha256(report_path),
+            "snapshotSha256": sha256(snapshot_path),
+            "nodeCount": len(graph.nodes),
+            "reachableNodeCount": len(previous),
+            "traversal": "All recorded edges, no type, name, depth or root filtering",
+            "releasedTargets": released,
+            "activePositiveControl": active,
+            "positiveControlPassed": all(path is not None for path in active.values()),
+            "subscriptionCount": report["subscriptionCount"],
+            "releasedCallbackCountAfterClose": report["releasedCallbackCountAfterClose"],
+            "activeCallbackCountAfterClose": report["activeCallbackCountAfterClose"],
+            "finalOwnership": report["finalOwnership"],
+            "rootReasonCounts": dict(graph.root_reasons),
+            "noIncomingNodeClasses": dict(rootless),
+        }
+    )
+
+assert records[0]["releasedTargets"][0]["listener"] is None
+assert records[1]["releasedTargets"][0]["listener"] is not None
+assert all(not record["positiveControlPassed"] for record in records)
+assert all(record["activeCallbackCountAfterClose"] == 1 for record in records)
+summary = {
+    "schemaVersion": 1,
+    "status": "inconclusive: mandatory live-listener positive control failed in both cases",
+    "collectionOracleChanged": False,
+    "planSha256": sha256(ROOT / "observer-plan.json"),
+    "producerSha256": sha256(ROOT / "observer-path.ts"),
+    "analyzerSha256": sha256(Path(__file__)),
+    "caseCount": 2,
+    "caseRepetitions": 1,
+    "records": records,
+    "sourceExplanation": {
+        "revision": "8c6c963e3c49fe39942d9625d1fc924128fad26e",
+        "JSSet": "JSSet inherits JSOrderedHashSet and stores values in JSCellButterfly",
+        "visitFields": "JSCellButterfly::visitFields uses appendValuesHidden",
+        "hiddenMarking": "SlotVisitor::appendHiddenSlow omits HeapAnalyzer::analyzeEdge",
+        "consequence": "A missing incoming edge can hide ordinary JS collection ownership as well as conservative/runtime roots",
+    },
+}
+with (ROOT / "observer-analysis.json").open("x") as output:
+    json.dump(summary, output, indent=2)
+    output.write("\n")
+print(json.dumps({"status": summary["status"], "caseCount": len(records)}))

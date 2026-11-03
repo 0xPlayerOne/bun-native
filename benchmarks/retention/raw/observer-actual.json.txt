@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "f41010568900a01aa1051766b760a1d67ed606a4",
+  "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "executionMode": "development",
+  "scope": "actual public-core headless peer and shared watchWindow; no native GUI",
+  "variant": "actual",
+  "source": "0x20969fecf20",
+  "targets": [
+    {
+      "name": "Released observer 0",
+      "listener": "0x20969fecbc0",
+      "target": "0x20968a14700"
+    },
+    {
+      "name": "Released observer 1",
+      "listener": "0x20969fecbe0",
+      "target": "0x20968a14740"
+    },
+    {
+      "name": "Released observer 2",
+      "listener": "0x20969fecc00",
+      "target": "0x20968a14780"
+    },
+    {
+      "name": "Released observer 3",
+      "listener": "0x20969fecc20",
+      "target": "0x20968a147c0"
+    },
+    {
+      "name": "Released observer 4",
+      "listener": "0x20969fecc40",
+      "target": "0x20968a14800"
+    },
+    {
+      "name": "Released observer 5",
+      "listener": "0x20969fecc60",
+      "target": "0x20968a14840"
+    },
+    {
+      "name": "Released observer 6",
+      "listener": "0x20969fecc80",
+      "target": "0x20968a14880"
+    },
+    {
+      "name": "Released observer 7",
+      "listener": "0x20969fecca0",
+      "target": "0x20968a148c0"
+    },
+    {
+      "name": "Released observer 8",
+      "listener": "0x20969feccc0",
+      "target": "0x20968a14900"
+    },
+    {
+      "name": "Released observer 9",
+      "listener": "0x20969fecce0",
+      "target": "0x20968a14940"
+    },
+    {
+      "name": "Released observer 10",
+      "listener": "0x20969fecd00",
+      "target": "0x20968a14980"
+    },
+    {
+      "name": "Released observer 11",
+      "listener": "0x20969fecd20",
+      "target": "0x20968a149c0"
+    },
+    {
+      "name": "Released observer 12",
+      "listener": "0x20969fecd40",
+      "target": "0x20968a14a00"
+    },
+    {
+      "name": "Released observer 13",
+      "listener": "0x20969fecd60",
+      "target": "0x20968a14a40"
+    },
+    {
+      "name": "Released observer 14",
+      "listener": "0x20969fecd80",
+      "target": "0x20968a14a80"
+    },
+    {
+      "name": "Released observer 15",
+      "listener": "0x20969fecda0",
+      "target": "0x20968a14ac0"
+    },
+    {
+      "name": "Released observer 16",
+      "listener": "0x20969fecdc0",
+      "target": "0x20968a14b00"
+    },
+    {
+      "name": "Released observer 17",
+      "listener": "0x20969fecde0",
+      "target": "0x20968a14b40"
+    },
+    {
+      "name": "Released observer 18",
+      "listener": "0x20969fece00",
+      "target": "0x20968a14b80"
+    },
+    {
+      "name": "Released observer 19",
+      "listener": "0x20969fece20",
+      "target": "0x20968a14bc0"
+    },
+    {
+      "name": "Released observer 20",
+      "listener": "0x20969fece40",
+      "target": "0x20968a14c00"
+    },
+    {
+      "name": "Released observer 21",
+      "listener": "0x20969fece60",
+      "target": "0x20968a14c40"
+    },
+    {
+      "name": "Released observer 22",
+      "listener": "0x20969fece80",
+      "target": "0x20968a14c80"
+    },
+    {
+      "name": "Released observer 23",
+      "listener": "0x20969fecea0",
+      "target": "0x20968a14cc0"
+    },
+    {
+      "name": "Released observer 24",
+      "listener": "0x20969fecec0",
+      "target": "0x20968a14d00"
+    }
+  ],
+  "liveControl": {
+    "listener": "0x20969fed260",
+    "target": "0x20968a14d60"
+  },
+  "subscriptionCount": 1,
+  "releasedCallbackCountAfterClose": 0,
+  "activeCallbackCountAfterClose": 1,
+  "oracle": "Visible strong ownership path from the single pending completion callback; every target is deliberately kept alive by the diagnostic",
+  "snapshotPerformsOwnFullCollection": true,
+  "snapshotPath": "/workspace/scratch/5b1033c37396/task-artifacts/retention-roots-v1/observer-actual.json.heap.json",
+  "finalOwnership": {
+    "windows": 0,
+    "nodes": 0,
+    "callbacks": 0,
+    "queuedTransactions": 0,
+    "queuedCallbacks": 0,
+    "activeCallbacks": 0
+  }
+}

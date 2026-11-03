@@ -1,12 +1,15 @@
 """Fixed-region patch/attestation guards and actual owned-process cleanup."""
 
-from copy import deepcopy
 import importlib.util
-from pathlib import Path
+import io
+import json
 import sys
 import tempfile
 import unittest
-
+from contextlib import redirect_stdout
+from copy import deepcopy
+from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -17,6 +20,46 @@ SPEC.loader.exec_module(PHASES)
 CONTROL = PHASES.load(
     "allocation_control", ROOT / "benchmarks/native-allocation-control.py"
 )
+
+
+class ControlFailureTests(unittest.TestCase):
+    def test_failure_or_interruption_cannot_publish_a_successful_result(self):
+        # Exercise only supervisor reporting, not a Linux/profiler execution.
+        for failure in [RuntimeError("controlled failure"), KeyboardInterrupt()]:
+            with (
+                self.subTest(kind=type(failure).__name__),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                output = Path(temporary) / "result"
+
+                def fail_after_status(_args, report, recorded_failure=failure):
+                    report["status"] = "passed"
+                    raise recorded_failure
+
+                with (
+                    patch.object(
+                        CONTROL.sys,
+                        "argv",
+                        ["allocation-control", "--output", str(output)],
+                    ),
+                    patch.object(CONTROL.platform, "system", return_value="Linux"),
+                    patch.object(
+                        CONTROL.PAIRS.DRIVER, "proc_identity_matches", return_value=True
+                    ),
+                    patch.object(CONTROL.PAIRS.DRIVER, "enable_subreaper"),
+                    patch.object(CONTROL, "run", side_effect=fail_after_status),
+                    patch.object(CONTROL.LOGGER, "exception") as log,
+                    redirect_stdout(io.StringIO()) as stdout,
+                ):
+                    self.assertEqual(CONTROL.main(), 1)
+                    log.assert_called_once_with(
+                        "Owned native allocation control failed"
+                    )
+                report = json.loads((output / "result.json").read_text())
+                self.assertEqual(report["status"], "failed")
+                self.assertEqual(report["error"]["type"], type(failure).__name__)
+                self.assertIn("finishedAt", report)
+                self.assertEqual(json.loads(stdout.getvalue())["status"], "failed")
 
 
 class PatchTests(unittest.TestCase):

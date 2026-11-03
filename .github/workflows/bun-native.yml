@@ -27,8 +27,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -102,8 +100,6 @@ jobs:
             node -e 'const os = require("node:os"); const fs = require("node:fs"); const crypto = require("node:crypto"); const bytes = fs.readFileSync("toolchain.json"); const pin = JSON.parse(bytes).bun; console.log(JSON.stringify({os:os.platform(),arch:os.arch(),release:os.release(),expectedBunRevision:pin.cliRevision,manifestSha256:crypto.createHash("sha256").update(bytes).digest("hex"),phase:"before Bun bootstrap"}))'
           } > .bun-native/evidence/bootstrap.txt
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee .bun-native/evidence/bun-bootstrap.log
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -162,8 +158,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bun-native-aot"
           node -e 'const fs=require("node:fs"),p=require("node:path");fs.writeFileSync(p.join(process.env.RUNNER_TEMP,"bun-native-aot","environment.json"),JSON.stringify({revision:process.env.GITHUB_SHA,os:process.platform,arch:process.arch,pins:require("./toolchain.json"),scope:"target-host headless AOT/native interop; no GPUI GUI claim"},null,2))'
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$RUNNER_TEMP/bun-native-aot/bootstrap.log"
@@ -220,4 +214,4 @@ jobs:
         run: |
           node -e 'const jobs=JSON.parse(process.env.RESULTS); const failed=Object.entries(jobs).filter(([,job])=>job.result!=="success"); if(failed.length){console.error(failed);process.exit(1)}'
       - name: Describe coverage precisely
-        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal and joined lifecycle cleanup, plus a deliberately invalid paint negative control. macOS/Windows OS-visible window and input checks, physical input and display presentation remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal, owned visible windows, pointer and Tab/text input, joined lifecycle cleanup, and a deliberately invalid paint negative control. Screenshots, physical input, display presentation, OS close-button behavior and IME remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"

@@ -2,17 +2,16 @@
 """Verify the retained #297 collection offline; never build or execute a workload."""
 
 import argparse
-from datetime import datetime
 import hashlib
 import importlib.util
 import io
 import json
 import math
-from pathlib import Path, PurePosixPath
 import stat
 import subprocess
 import zipfile
-
+from datetime import datetime
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
