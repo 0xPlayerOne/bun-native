@@ -1,214 +1,58 @@
-name: Bun Native Validation
-
+# Temporary research caller on a draft diagnostic branch. Restore the normal
+# workflow before this branch can become an implementation merge candidate.
+name: Windows retaining paths (diagnostic only)
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-    types: [ready_for_review, synchronize]
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  # A late draft synchronize event must not cancel ready-for-review validation.
-  group: bun-native-validation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  source:
-    name: Source quality
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Format, lint, types and architecture
-        run: |
-          bun run format:check
-          bun run lint
-          bun run typecheck
-          bun run check:boundaries
-          bun run build
-      - name: TypeScript tests and coverage
-        run: bun test tests --coverage
-      - name: Install checksum-pinned workflow linter
-        env:
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-        run: |
-          curl --fail --location --retry 3 --max-time 45 \
-            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
-            --output "$RUNNER_TEMP/actionlint.tar.gz"
-          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict -
-          mkdir -p "$RUNNER_TEMP/actionlint"
-          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
-          echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
-      - name: Validate workflow syntax
-        run: actionlint
-      - name: Install pinned Python quality tool
-        run: |
-          python3 -m venv "$RUNNER_TEMP/native-quality"
-          "$RUNNER_TEMP/native-quality/bin/pip" install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
-          echo "$RUNNER_TEMP/native-quality/bin" >> "$GITHUB_PATH"
-      - name: Native harness static and safety checks (headless)
-        env:
-          PYTHONDONTWRITEBYTECODE: 1
-        run: |
-          ruff format --check scripts/quality/*.py benchmarks/native-baseline.py tests/quality tests/native/*.py
-          ruff check scripts/quality/*.py benchmarks/native-baseline.py tests/quality tests/native/*.py
-          python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
-          bash -n scripts/quality/native-linux-session.sh
-
-  protocol:
-    name: Protocol (${{ matrix.os }})
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15, windows-2022]
-    runs-on: ${{ matrix.os }}
+  observe:
+    name: Observe failed lifetime checkpoint (not qualification)
+    runs-on: windows-2022
     timeout-minutes: 10
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Record bootstrap environment before installing toolchains
-        run: |
-          mkdir -p .bun-native/evidence
-          {
-            git rev-parse HEAD
-            node --version
-            node -e 'const os = require("node:os"); const fs = require("node:fs"); const crypto = require("node:crypto"); const bytes = fs.readFileSync("toolchain.json"); const pin = JSON.parse(bytes).bun; console.log(JSON.stringify({os:os.platform(),arch:os.arch(),release:os.release(),expectedBunRevision:pin.cliRevision,manifestSha256:crypto.createHash("sha256").update(bytes).digest("hex"),phase:"before Bun bootstrap"}))'
-          } > .bun-native/evidence/bootstrap.txt
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee .bun-native/evidence/bun-bootstrap.log
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: native-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - run: bun install --frozen-lockfile
-      - name: Record exact environment
+      - name: Fixed original and failure-only observation, no retries
         run: |
-          {
-            git rev-parse HEAD
-            bun --version
-            rustc --version --verbose
-            cargo --version
-            bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,mode:"development",coverage:"headless protocol"}))'
-          } | tee .bun-native/evidence/toolchain.txt
-      - name: Cross-platform TypeScript contracts
-        env:
-          # The existing protocol artifact retains this metadata only if the original assertion fails.
-          BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR: ${{ runner.os == 'Windows' && '.bun-native/evidence/retention' || '' }}
-        run: bun test tests
-      - name: Rust protocol checks (no GUI claim)
-        run: |
-          cargo fmt --manifest-path Cargo.toml --all -- --check
-          cargo clippy --locked --manifest-path Cargo.toml -p bun-native-protocol --all-targets -- -D warnings
-          cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          python - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'retention-paths'
+          output.mkdir()
+          plan = {'source': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(), 'variants': ['baseline', 'failure-only-preload'], 'attemptsPerVariant': 1, 'scope': 'Research only; this is not Validation / Gate or a native qualification', 'testSha256': hashlib.sha256(pathlib.Path('tests/solid/renderer.test.ts').read_bytes()).hexdigest()}
+          (output / 'plan.json').write_text(json.dumps(plan, indent=2))
+          outcomes=[]
+          for variant in plan['variants']:
+              directory=output / variant
+              directory.mkdir()
+              environment=dict(os.environ)
+              environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
+              command=['bun','test']
+              if variant=='failure-only-preload':
+                  environment['BUN_NATIVE_RETENTION_ROOT_TRACE_DIR']=str(directory)
+                  command += ['--preload','./experiments/retention-failure-preload.ts']
+              command += ['tests']
+              with (directory / 'test.log').open('w') as log:
+                  result=subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=environment, timeout=90, check=False)
+              outcomes.append({'variant':variant,'exitCode':result.returncode})
+              print(json.dumps(outcomes[-1]))
+          (output / 'outcomes.json').write_text(json.dumps(outcomes, indent=2))
+          PY
+      - name: Extract recorded ancestor paths from the failed observation
+        if: ${{ !cancelled() }}
+        run: python experiments/analyze-retention-path.py "$RUNNER_TEMP/retention-paths/failure-only-preload"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
         with:
-          name: protocol-${{ runner.os }}-${{ runner.arch }}
-          path: .bun-native/evidence/
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
-
-  aot:
-    name: AOT native interop (${{ matrix.os }})
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15, windows-2022]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 12
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Prepare compiler evidence before bootstrap
-        run: |
-          mkdir -p "$RUNNER_TEMP/bun-native-aot"
-          node -e 'const fs=require("node:fs"),p=require("node:path");fs.writeFileSync(p.join(process.env.RUNNER_TEMP,"bun-native-aot","environment.json"),JSON.stringify({revision:process.env.GITHUB_SHA,os:process.platform,arch:process.arch,pins:require("./toolchain.json"),scope:"target-host headless AOT/native interop; no GPUI GUI claim"},null,2))'
-      - name: Install checksum-pinned Bun compiler
-        run: |
-          set -o pipefail
-          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$RUNNER_TEMP/bun-native-aot/bootstrap.log"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Strict probe checks
-        run: |
-          bun check --no-script -p experiments/aot-gpui/tsconfig.json
-          bunx oxlint --deny-warnings experiments/aot-gpui
-      - name: Execute genuine AOT, JIT control and native boundary probes
-        run: bun experiments/aot-gpui/run.ts "$RUNNER_TEMP/bun-native-aot"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ !cancelled() }}
-        with:
-          name: aot-native-interop-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          name: windows-retaining-paths-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/bun-native-aot/report.json
-            ${{ runner.temp }}/bun-native-aot/environment.json
-            ${{ runner.temp }}/bun-native-aot/*.log
+            ${{ runner.temp }}/retention-paths/
+            !${{ runner.temp }}/retention-paths/**/*.heap.json
           if-no-files-found: error
-          retention-days: 14
-
-  native:
-    name: Native Linux
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    uses: ./.github/workflows/native-linux.yml
-
-  native-platforms:
-    name: Native macOS and Windows
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    uses: ./.github/workflows/native-platforms.yml
-
-  security:
-    name: Security
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    uses: ./.github/workflows/security.yml
-
-  gate:
-    # This exact check context is required by the existing protected-main ruleset.
-    name: Validation / Gate
-    needs: [source, protocol, aot, native, native-platforms, security]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-slim
-    timeout-minutes: 2
-    steps:
-      - name: Require every implementation check to pass
-        env:
-          RESULTS: ${{ toJSON(needs) }}
-        run: |
-          node -e 'const jobs=JSON.parse(process.env.RESULTS); const failed=Object.entries(jobs).filter(([,job])=>job.result!=="success"); if(failed.length){console.error(failed);process.exit(1)}'
-      - name: Describe coverage precisely
-        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal, owned visible windows, pointer and Tab/text input, joined lifecycle cleanup, and a deliberately invalid paint negative control. Screenshots, physical input, display presentation, OS close-button behavior and IME remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"
+          retention-days: 7
