@@ -80,6 +80,7 @@ def source_snapshot():
     }
     for relative in (
         "tests/native/platform-smoke.ts",
+        "native/macos-surface/examples/invalidation-control.rs",
         "examples/native-window/content.ts",
         "scripts/quality/native-platform-smoke.py",
         "scripts/quality/native-platform-input.py",

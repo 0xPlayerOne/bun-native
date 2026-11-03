@@ -1,12 +1,13 @@
 use crate::{
     channel::EventSink,
     evidence::Evidence,
+    services,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
     Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, Operation,
-    PROTOCOL_VERSION, RequestId, Tree, WindowId,
+    PROTOCOL_VERSION, RequestId, ServicePolicy, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -38,10 +39,16 @@ pub(crate) struct Session {
     finishing: Rc<Cell<bool>>,
     events: EventSink,
     evidence: Evidence,
+    policy: ServicePolicy,
 }
 
 impl Session {
-    pub(crate) fn new(events: EventSink, evidence: Evidence, cx: &mut App) -> Self {
+    pub(crate) fn new(
+        events: EventSink,
+        evidence: Evidence,
+        policy: ServicePolicy,
+        cx: &mut App,
+    ) -> Self {
         let windows = Rc::new(RefCell::new(BTreeMap::<WindowId, WindowEntry>::new()));
         let finishing = Rc::new(Cell::new(false));
         cx.on_window_closed({
@@ -81,6 +88,7 @@ impl Session {
             finishing,
             events,
             evidence,
+            policy,
         }
     }
 
@@ -136,8 +144,10 @@ impl Session {
                             Capability::InputRevisions,
                             Capability::LayoutV1,
                             Capability::InteractionsV1,
+                            Capability::WindowDisplayV1,
                         ],
                         limits: Limits::default(),
+                        service_policy: self.policy,
                     },
                     cx,
                 );
@@ -180,6 +190,7 @@ impl Session {
                 ..
             } => self.batch(id, window_id, base_revision, operations, cx),
             Command::Close { window_id, .. } => self.close(id, window_id, cx),
+            Command::DisplaySnapshot { window_id, .. } => self.display_snapshot(id, window_id, cx),
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -341,6 +352,38 @@ impl Session {
                 "native window update failed",
                 cx,
             );
+        }
+    }
+
+    fn display_snapshot(&self, id: RequestId, window_id: WindowId, cx: &mut App) {
+        if !self.policy.window_display {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "window display access was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        match handle.update(cx, |_, window, cx| services::display_snapshot(window, cx)) {
+            Ok(Ok(snapshot)) => self.events.send(
+                Event::DisplaySnapshot {
+                    id,
+                    window_id,
+                    snapshot,
+                },
+                cx,
+            ),
+            Ok(Err((code, message))) => self.error(id, code, message, cx),
+            Err(_) => self.error(
+                id,
+                ErrorCode::InvalidHandle,
+                "native window is no longer available",
+                cx,
+            ),
         }
     }
 

@@ -14,29 +14,47 @@ const mode = process.argv[2] ?? 'normal'
 if (mode === 'pipe-holder') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Pipe holder requires its private control directory')
-  writeFileSync(join(directory, 'ready'), String(process.pid))
+  // Readiness belongs to the test's explicit setup barrier, not to hello.
+  // Publish identity first so a failed negotiation can still release this child.
+  writeFileSync(join(directory, 'started'), String(process.pid))
   const deadline = performance.now() + 10_000
-  while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
+  if (process.argv[4] === 'delay-holder') await Bun.sleep(400)
+  while (
+    !existsSync(join(directory, 'arm')) &&
+    !existsSync(join(directory, 'release')) &&
+    performance.now() < deadline
+  )
     await Bun.sleep(10)
+  if (existsSync(join(directory, 'arm')) && !existsSync(join(directory, 'release'))) {
+    writeFileSync(join(directory, 'ready'), String(process.pid))
+    while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
+      await Bun.sleep(10)
+  }
   writeFileSync(join(directory, 'finished'), String(process.pid))
   process.exit(0)
 }
 if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
   const directory = process.argv[3]
   if (!directory) throw new Error('Inherited-pipe peer requires its private control directory')
-  Bun.spawn([process.execPath, import.meta.path, 'pipe-holder', directory], {
-    // Keep this bounded helper outside the peer's Windows process job so its
-    // inherited output handles remain open after the direct peer exits.
-    detached: true,
-    stdin: 'ignore',
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
-  const deadline = performance.now() + 5_000
-  while (!existsSync(join(directory, 'ready'))) {
-    if (performance.now() >= deadline) throw new Error('Pipe holder did not start')
-    await Bun.sleep(10)
-  }
+  Bun.spawn(
+    [
+      process.execPath,
+      import.meta.path,
+      'pipe-holder',
+      directory,
+      ...(process.argv[4] === 'delay-holder' ? ['delay-holder'] : []),
+    ],
+    {
+      // Keep this bounded helper outside the peer's Windows process job so its
+      // inherited output handles remain open after the direct peer exits.
+      detached: true,
+      stdin: 'ignore',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    }
+  )
+  // Do not put a nested process startup inside NativeHost's hello deadline.
+  // The test arms and verifies this helper after protocol negotiation succeeds.
 }
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
@@ -60,11 +78,14 @@ for await (const chunk of Bun.stdin.stream()) {
       }
       const ready = {
         type: 'ready',
+        service_policy: {
+          window_display: process.argv.includes('--bun-native-allow-window-display'),
+        },
         protocol:
           mode === 'wrong-version'
             ? PROTOCOL_VERSION + 1
             : mode === 'obsolete-version'
-              ? 3
+              ? 4
               : PROTOCOL_VERSION,
         capabilities:
           mode === 'missing-capability'
@@ -146,7 +167,7 @@ for await (const chunk of Bun.stdin.stream()) {
                 : mode === 'wrong-sequence'
                   ? 2
                   : mode === 'out-of-order-sequence'
-                    ? 3
+                    ? 4
                     : 1
             for (let n = 0; n < count; n += 1) {
               const actual = ++sequence

@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { inspectBunExecutable } from './inspect'
 import { inspectBunRuntime } from './inspect-runtime'
+import { nativeSourcePaths } from './native-sources'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -41,6 +42,9 @@ const entries = {
   scheduling: 'tests/native/scheduling.ts',
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
+  services: 'tests/native/services.ts',
+  'solid-services': 'tests/native/solid-services.tsx',
+  'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
   solid: 'examples/solid-counter/main.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
@@ -57,11 +61,15 @@ const entry = values.entry
 if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(entries).join(', '))
 const entryPath = entries[entry]
 const solidEntry =
-  entry === 'solid' || entry === 'solid-input-intent' || entry === 'solid-interactions'
+  entry === 'solid' ||
+  entry === 'solid-input-intent' ||
+  entry === 'solid-interactions' ||
+  entry === 'solid-services'
 const reactEntry =
   entry === 'react' ||
   entry === 'react-interactions' ||
   entry === 'react-behavior' ||
+  entry === 'react-services' ||
   entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
@@ -85,6 +93,7 @@ if (
     entry === 'scheduling' ||
     entry === 'layout' ||
     entry === 'interactions' ||
+    entry === 'services' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -150,6 +159,7 @@ async function sourceHashes() {
     'Cargo.lock',
     'native/gpui-host/Cargo.toml',
     'native/protocol/Cargo.toml',
+    'experiments/aot-gpui/native-sources.ts',
   ])
   for await (const path of new Bun.Glob('packages/{core,protocol,runtime}/src/**/*.ts').scan({
     cwd: source,
@@ -178,11 +188,10 @@ async function sourceHashes() {
       sources.add(path)
   }
   if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
+  if (entry === 'solid-services' || entry === 'react-services')
+    sources.add('tests/native/services-adapter.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
-  for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
-    cwd: source,
-  }))
-    sources.add(path)
+  for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
     [...sources].sort().map(async (path) => ({ path, ...(await artifact(join(source, path))) }))
   )
