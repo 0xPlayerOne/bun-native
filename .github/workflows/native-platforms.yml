@@ -56,8 +56,6 @@ jobs:
             phase = 'before Bun bootstrap; native build and input not yet verified'
           } | ConvertTo-Json | Out-File (Join-Path $evidence 'bootstrap-environment.json')
       - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
