@@ -21,28 +21,19 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Record actual Windows cell-description format
         run: bun -e 'const j=require("bun:jsc");console.log(JSON.stringify({description:j.jscDescribe({syntheticAddressControl:true}),bunRevision:Bun.revision}))'
-      - name: Fixed caller-local ownership experiment, no retries
+      - name: Fixed full-collector contrast, no retries
         run: |
           python - <<'PYEXPERIMENT'
           import hashlib, json, os, pathlib, subprocess
-          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'retention-paths'
+          output=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-paths'
           output.mkdir()
           source=pathlib.Path('tests/solid/renderer.test.ts')
           original=source.read_text()
-          old = """        const root = render(() => label(String(index)), window)
-                  await root.ready
-                  await root.dispose()
-                  return new WeakRef(root)"""
-          old='\n'.join(line[10:] if i else line for i,line in enumerate(old.splitlines()))
-          # Find by exact stable statements; indentation is read from committed bytes.
-          old="        const root = render(() => label(String(index)), window)\n        await root.ready\n        await root.dispose()\n        return new WeakRef(root)"
+          old="        return new WeakRef(root)"
           assert original.count(old)==1
-          neutral="        const root = render(() => label(String(index)), window)\n        await root.ready\n        await root.dispose()\n        const reference = new WeakRef(root)\n        return reference"
-          cleared="        let root: ReturnType<typeof render> | undefined = render(() => label(String(index)), window)\n        await root.ready\n        await root.dispose()\n        const reference = new WeakRef(root)\n        root = undefined\n        return reference"
-          held=cleared.replace('        root = undefined','        const held: object[] = Reflect.get(globalThis, \"__BUN_NATIVE_TEST_RETAINED_OWNERS\") ?? []\n        held.push(root)\n        Reflect.set(globalThis, \"__BUN_NATIVE_TEST_RETAINED_OWNERS\", held)\n        root = undefined').replace('\"','"')
-          variants={'original':original,'neutral':original.replace(old,neutral),'cleared-local':original.replace(old,cleared),'held-negative':original.replace(old,held)}
-          order=[['original','neutral','cleared-local','held-negative'],['held-negative','cleared-local','neutral','original'],['neutral','original','held-negative','cleared-local']]
-          plan={'scope':'Research: separate caller-owned async local from framework ownership; unchanged full source suite and original two collection checkpoints. Not qualification.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'order':order,'attemptsPerVariant':3,'sourceSha256':{n:hashlib.sha256(v.encode()).hexdigest() for n,v in variants.items()},'expected':{'original':'retained final root','neutral':'retained final root','cleared-local':'zero retained roots','held-negative':'ten retained roots'},'failurePolicy':'Keep all outcomes and do not repeat contrary results.'}
+          held=original.replace(old,"        const held: object[] = Reflect.get(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS') ?? []\n        held.push(root)\n        Reflect.set(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS', held)\n"+old)
+          order=[['bun','release-sweep','sweep','held-negative'],['held-negative','sweep','release-sweep','bun'],['sweep','bun','held-negative','release-sweep']]
+          plan={'scope':'Research: compare exactly one full synchronous collection at each unchanged checkpoint; producer timing/count/assertion unchanged. No qualification claim.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'order':order,'attemptsPerVariant':3,'testSha256':hashlib.sha256(original.encode()).hexdigest(),'heldControlSha256':hashlib.sha256(held.encode()).hexdigest(),'collectorSource':'Pinned Bun bindings.cpp JSC__VM__runGC versus BunJSCModule.h releaseWeakRefs and gcAndSweep','failurePolicy':'Keep every outcome, including contrary results, no retries.'}
           (output/'plan.json').write_text(json.dumps(plan,indent=2))
           outcomes=[]
           try:
@@ -50,14 +41,16 @@ jobs:
                   for variant in names:
                       directory=output/f'{block:02d}-{variant}'
                       directory.mkdir()
-                      source.write_text(variants[variant])
-                      (directory/'renderer.test.ts.txt').write_text(variants[variant])
+                      source.write_text(held if variant=='held-negative' else original)
                       environment=dict(os.environ)
                       environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
+                      environment['BUN_NATIVE_COLLECTOR_CONTROL']='release-sweep' if variant=='held-negative' else variant
+                      command=['bun','test','--preload','./experiments/retention-collection-preload.ts','tests']
                       with (directory/'test.log').open('w') as log:
-                          result=subprocess.run(['bun','test','tests'],stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
+                          result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
                       reports=[json.loads(p.read_text()) for p in directory.glob('solid-retention-*.json')]
-                      outcome={'block':block,'variant':variant,'exitCode':result.returncode,'survivors':[r['survivors'] for r in reports]}
+                      logs=(directory/'test.log').read_text()
+                      outcome={'block':block,'variant':variant,'exitCode':result.returncode,'checkpointCount':logs.count('Bun Native research checkpoint:'),'survivors':[r['survivors'] for r in reports]}
                       outcomes.append(outcome)
                       print(json.dumps(outcome))
           finally:
