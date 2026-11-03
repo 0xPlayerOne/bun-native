@@ -2,6 +2,7 @@
 
 import copy
 import importlib.util
+import time
 import unittest
 from pathlib import Path
 
@@ -124,6 +125,42 @@ class PlatformRendererTelemetryTests(unittest.TestCase):
                         operating_system,
                         SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
                     )
+
+
+class PlatformProcessExitRaceTests(unittest.TestCase):
+    class FakeProcess:
+        def __init__(self, observations):
+            self.observations = iter(observations)
+            self.returncode = None
+
+        def poll(self):
+            result = next(self.observations)
+            if result is not None:
+                self.returncode = result
+            return result
+
+    def test_zero_exit_between_checks_rechecks_the_shutdown_predicate(self):
+        app = self.FakeProcess([None, 0, 0])
+        result = SMOKE.wait_for_observation(
+            lambda: app.poll() is not None,
+            app,
+            time.monotonic(),
+            "application shutdown",
+        )
+        self.assertTrue(result)
+        self.assertEqual(app.returncode, 0)
+
+    def test_successful_exit_does_not_replace_missing_native_evidence(self):
+        app = self.FakeProcess([0])
+        with self.assertRaisesRegex(
+            RuntimeError, "Fixture exited 0 before complete native paint"
+        ):
+            SMOKE.wait_for_observation(
+                lambda: False,
+                app,
+                time.monotonic(),
+                "complete native paint",
+            )
 
 
 if __name__ == "__main__":
