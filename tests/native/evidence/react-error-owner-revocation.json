@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "scope": "Real GPUI development-profile host, matching original/fixed React calibration in development and inspected AOT on macOS; unchanged fixed GC checkpoints and no selected reruns. Not Linux qualification or a timing improvement.",
+  "sourceFiles": {
+    "packages/react/src/mount.ts": {
+      "sha256": "5a72ff9fa3f22f7b01ce65161e6d5a750b9c9349ae40fc07564adac5cf766e3c",
+      "bytes": 6667
+    },
+    "packages/react/src/root-errors.ts": {
+      "sha256": "2380b9bcc709010f9f09bef444fda47fdda9f64f1fd22d0a4b351069ce09826a",
+      "bytes": 963
+    },
+    "tests/react/root-errors.test.ts": {
+      "sha256": "380454fa58d91dbbc070e0ed1f59b9a52de14224cc663e5283e4ffba1d96cbbd",
+      "bytes": 2992
+    },
+    "benchmarks/solid/workload.ts": {
+      "sha256": "67693ed4f81868b7e49a267b1598314c63f280966b6e5706ec309edc0865f21c",
+      "bytes": 15179
+    },
+    "benchmarks/solid/react.tsx": {
+      "sha256": "328ebc067938da2f973e4dbd966ca7b403e1049280f1f0e83580bcf76882f554",
+      "bytes": 2086
+    }
+  },
+  "calibrationPlan": [
+    {
+      "variant": "original",
+      "mode": "development",
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "calibration": true
+    },
+    {
+      "variant": "fixed",
+      "mode": "development",
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "calibration": true
+    },
+    {
+      "variant": "original",
+      "mode": "aot",
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "calibration": true
+    },
+    {
+      "variant": "fixed",
+      "mode": "aot",
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "calibration": true
+    }
+  ],
+  "calibrationCases": [
+    {
+      "case": {
+        "variant": "original",
+        "mode": "development",
+        "iterations": 10,
+        "rotations": 10,
+        "mounts": 2,
+        "rows": 32,
+        "calibration": true
+      },
+      "exit": 1,
+      "status": "failed",
+      "retention": {
+        "firstReachable": [3, 5],
+        "stillReachable": [3, 5],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": "AssertionError: Disposed view/callback targets remain observable (2 !== 0)"
+    },
+    {
+      "case": {
+        "variant": "fixed",
+        "mode": "development",
+        "iterations": 10,
+        "rotations": 10,
+        "mounts": 2,
+        "rows": 32,
+        "calibration": true
+      },
+      "exit": 0,
+      "status": "passed",
+      "retention": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": null
+    },
+    {
+      "case": {
+        "variant": "original",
+        "mode": "aot",
+        "iterations": 10,
+        "rotations": 10,
+        "mounts": 2,
+        "rows": 32,
+        "calibration": true
+      },
+      "exit": 0,
+      "status": "passed",
+      "retention": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": null
+    },
+    {
+      "case": {
+        "variant": "fixed",
+        "mode": "aot",
+        "iterations": 10,
+        "rotations": 10,
+        "mounts": 2,
+        "rows": 32,
+        "calibration": true
+      },
+      "exit": 0,
+      "status": "passed",
+      "retention": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": null
+    }
+  ],
+  "fullWorkloadPlan": [
+    {
+      "mode": "development",
+      "iterations": 1000,
+      "rotations": 1000,
+      "mounts": 1000,
+      "rows": 32
+    },
+    {
+      "mode": "aot",
+      "iterations": 1000,
+      "rotations": 1000,
+      "mounts": 1000,
+      "rows": 32
+    }
+  ],
+  "fullWorkloadCases": [
+    {
+      "case": {
+        "mode": "development",
+        "iterations": 1000,
+        "rotations": 1000,
+        "mounts": 1000,
+        "rows": 32
+      },
+      "exit": 0,
+      "status": "passed",
+      "retention": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": null,
+      "rowsCreated": 32000,
+      "rowsDisposed": 32000
+    },
+    {
+      "case": {
+        "mode": "aot",
+        "iterations": 1000,
+        "rotations": 1000,
+        "mounts": 1000,
+        "rows": 32
+      },
+      "exit": 0,
+      "status": "passed",
+      "retention": {
+        "firstReachable": [],
+        "stillReachable": [],
+        "probesPerMount": 3,
+        "probeKinds": ["render root", "content node", "listener"],
+        "collectionCheckpoints": 2,
+        "quiescence": "empty core transaction queue fence; no additional native command"
+      },
+      "cleanup": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0
+      },
+      "error": null,
+      "rowsCreated": 32000,
+      "rowsDisposed": 32000
+    }
+  ],
+  "packages": {
+    "original": {
+      "manifest": {
+        "sha256": "5f65d9c8613a76797b3a71408e232115d629be7e434951fd9c665a8f99c6eac3",
+        "bytes": 15519
+      },
+      "runtimeFeatures": {
+        "format": "macho64-le",
+        "section": {
+          "name": "__TEXT,__bun_features",
+          "offset": 49313504,
+          "bytes": 536
+        },
+        "rawRecordHex": "42554e4645415400000000000e08000000073bffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "trimmedProgramFeatures": false,
+        "removedRangeCount": 2062,
+        "jit": "unused",
+        "interpreter": "present",
+        "imageCompiler": "unused",
+        "jitRemovedRanges": {
+          "count": 187,
+          "virtualBytes": 14073758
+        }
+      }
+    },
+    "fixed": {
+      "manifest": {
+        "sha256": "8bf838ad1e0d9fe0c6209ce2d76794f60f3041baaf6ae69bb833df75572e058b",
+        "bytes": 15681
+      },
+      "runtimeFeatures": {
+        "format": "macho64-le",
+        "section": {
+          "name": "__TEXT,__bun_features",
+          "offset": 49313504,
+          "bytes": 536
+        },
+        "rawRecordHex": "42554e4645415400000000000e08000000073bffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "trimmedProgramFeatures": false,
+        "removedRangeCount": 2062,
+        "jit": "unused",
+        "interpreter": "present",
+        "imageCompiler": "unused",
+        "jitRemovedRanges": {
+          "count": 187,
+          "virtualBytes": 14073758
+        }
+      }
+    }
+  },
+  "rawReports": {
+    "react-calibration/original-aot/report.json": {
+      "sha256": "028c3c290627197ff74b0bfc3f0b2e7dacc92154783318c9e0e3b462cb012efe",
+      "bytes": 34895
+    },
+    "react-calibration/fixed-development/report.json": {
+      "sha256": "b0e3054e3b324cffbc332e0a8f067db755788fec2ca7a6c81cfacbce04d6738e",
+      "bytes": 36170
+    },
+    "react-calibration/original-development/report.json": {
+      "sha256": "404cc0bd00b349789e67468a69d78441ed18a8fbdd90a4a8ee645ad2055f1e1e",
+      "bytes": 36429
+    },
+    "react-calibration/fixed-aot/report.json": {
+      "sha256": "fb31a984c6eaa3f43e31575c7330b65852ef0df8a052cb25a4c9a18ecf208eed",
+      "bytes": 34910
+    },
+    "react-full/development/report.json": {
+      "sha256": "0a40f6df651b24606b3599b729fa3b7c6e6acc5d057639d7b5f4eacdd0b80781",
+      "bytes": 172577
+    },
+    "react-full/aot/report.json": {
+      "sha256": "67644ae45744b2174d0aa784f5901a5f48267197aeb3429b6fb18174c493263d",
+      "bytes": 171913
+    }
+  },
+  "regression": {
+    "originalSource": "The regression captured the actual callbacks supplied to createContainer, then invoked them after root disposal. Original main called the released reporter (expected 0, received 1).",
+    "fixedSource": "Revocation keeps opaque reconciler callback closures from reaching or invoking the released owner. The same test passes.",
+    "originalLog": {
+      "sha256": "d9ac1ddf7c7958db2961ec33615e2580095b723e9395cb596bab84648e0da0c2",
+      "bytes": 976
+    },
+    "fixedLog": {
+      "sha256": "366e78e0041897925a45c35f14ad4ec4d41637ceeec10d203172e4399169c95a",
+      "bytes": 408
+    }
+  },
+  "limits": [
+    "Original AOT calibration passed; no original AOT failure is claimed by this matrix.",
+    "No additional GC, delays, tolerated retained count, retry-until-zero or changed workload assertion.",
+    "This correction establishes a concrete React callback ownership defect; it does not close the separate core/Solid AOT retention investigation #287.",
+    "Hosted full native workloads and CodeQL must pass before merge."
+  ]
+}

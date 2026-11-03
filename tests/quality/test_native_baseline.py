@@ -77,6 +77,26 @@ class ProvenanceTests(unittest.TestCase):
     def save_manifest(self):
         (self.package / "manifest.json").write_text(json.dumps(self.manifest))
 
+    def test_added_native_crate_is_bound_and_cannot_be_omitted_or_changed(self):
+        manifest = self.repository / "native/macos-surface/Cargo.toml"
+        source = manifest.parent / "src/lib.rs"
+        source.parent.mkdir(parents=True)
+        manifest.write_text("inert native-source manifest fixture\n")
+        source.write_text("inert native-source fixture; never compiled\n")
+        paths = BASELINE.expected_sources(self.repository)
+        self.assertIn("native/macos-surface/Cargo.toml", paths)
+        self.assertIn("native/macos-surface/src/lib.rs", paths)
+        with self.assertRaisesRegex(ValueError, "every current"):
+            BASELINE.verify_sources(self.repository, self.manifest)
+        self.manifest["source"]["files"] = [
+            {"path": path, **BASELINE.fingerprint(self.repository / path)}
+            for path in sorted(paths)
+        ]
+        BASELINE.verify_sources(self.repository, self.manifest)
+        source.write_text("changed native-source fixture\n")
+        with self.assertRaises(ValueError):
+            BASELINE.verify_sources(self.repository, self.manifest)
+
     def test_matching_linux_architectures_validate_without_executing_artifacts(self):
         for machine, architecture in (("x86_64", "x64"), ("aarch64", "arm64")):
             with (

@@ -1,4 +1,4 @@
-# ADR 0006 — Bounded native clipboard text worker
+# ADR 0007 — Bounded native clipboard text worker
 
 Status: accepted; recovered Linux X11 implementation qualified locally in development and inspected AOT with a development-profile host. Hosted release-host and additional-platform acceptance remain separate.
 

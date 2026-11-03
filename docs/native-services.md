@@ -257,7 +257,7 @@ service grant or a sandbox supplied by this framework.
 Display reads give a small real operation with native ownership, explicit
 denial, cancellation delivery and teardown, without changing user data. The
 clipboard worker now supplies a separate native implementation for bounded
-selection transfers; [ADR 0006](decisions/0006-native-clipboard.md) records its
+selection transfers; [ADR 0006](decisions/0007-native-clipboard.md) records its
 explicit scope and verification requirements.
 
 At the exact GPUI pin, the default

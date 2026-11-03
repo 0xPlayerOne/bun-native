@@ -194,7 +194,7 @@ async function sourceHashes() {
     sources.add('tests/native/display-service-policy.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
-  for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
+  for await (const path of new Bun.Glob('native/*/{Cargo.toml,src/**/*.rs}').scan({
     cwd: source,
   }))
     sources.add(path)
