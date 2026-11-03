@@ -1,0 +1,77 @@
+name: Windows runtime comparison (diagnostic only)
+on:
+  push:
+    branches: [diagnostic/linux-react-retaining-path-owner-20261103]
+    paths: [.github/workflows/retention-runtime-control.yml]
+permissions:
+  contents: read
+jobs:
+  observe:
+    name: Compare unchanged source tests (not qualification)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the unchanged pinned runtime and dependencies
+        run: |
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+          bun install --frozen-lockfile
+      - name: One predeclared run per immutable runtime, preserving both outcomes
+        run: |
+          python - <<'PYCONTROL'
+          import hashlib, json, os, pathlib, shutil, subprocess, urllib.request, zipfile
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'runtime-comparison'
+          output.mkdir()
+          archive = output / 'candidate.zip'
+          request = urllib.request.Request('https://github.com/oven-sh/bun/releases/download/canary/bun-windows-x64.zip', headers={'User-Agent': 'Bun-Native-Runtime-Control'})
+          with urllib.request.urlopen(request, timeout=120) as response, archive.open('wb') as target:
+              shutil.copyfileobj(response, target)
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          assert digest == 'e0000234088af1885ee701e48f9f6d72f646b5367b26e141b633f69586938566', 'Mutable download no longer matches the predeclared immutable artifact'
+          candidate = output / 'candidate-bun.exe'
+          with zipfile.ZipFile(archive) as zipped:
+              candidate.write_bytes(zipped.read('bun-windows-x64/bun.exe'))
+          pinned = pathlib.Path(shutil.which('bun'))
+          revision = lambda binary: subprocess.check_output([str(binary), '-e', 'console.log(Bun.revision)'], text=True).strip()
+          assert revision(pinned) == 'da867c60bf0bcbf9d6d36994f8ca0efa42075115'
+          assert revision(candidate) == '675ee5b97b9efa21ed84dcd49eb52cab8659bf75'
+          source = pathlib.Path('tests/solid/renderer.test.ts')
+          source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+          assert source_hash == 'e0156a12d48b4a5d4636980bdbc03ba1817ea242cc7b7ff759ed3c7b2740e7ef'
+          variants = [('pinned', pinned), ('candidate', candidate)]
+          plan = {'scope': 'Research only; not Validation / Gate, no accepted runtime upgrade', 'sourceCommit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'sourceTestSha256': source_hash, 'candidateArchiveSha256': digest, 'candidateReleaseAssetId': 706470405, 'attemptsPerVariant': 1, 'order': [name for name, _ in variants], 'command': ['bun', 'test', 'tests'], 'oracle': 'Original source, assertions, two GC checkpoints and default JIT retained'}
+          (output / 'plan.json').write_text(json.dumps(plan, indent=2))
+          outcomes = []
+          for name, binary in variants:
+              directory = output / name
+              directory.mkdir()
+              environment = dict(os.environ)
+              assert not any(key.startswith('BUN_JSC_') for key in environment)
+              environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR'] = str(directory)
+              with (directory / 'test.log').open('w') as log:
+                  result = subprocess.run([str(binary), 'test', 'tests'], stdout=log, stderr=subprocess.STDOUT, env=environment, timeout=120, check=False)
+              assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+              reports = [json.loads(path.read_text()) for path in directory.glob('solid-retention-*.json')]
+              outcome = {'variant': name, 'bunRevision': revision(binary), 'executableSha256': hashlib.sha256(binary.read_bytes()).hexdigest(), 'exitCode': result.returncode, 'survivors': [report['survivors'] for report in reports]}
+              outcomes.append(outcome)
+              (output / 'outcomes.json').write_text(json.dumps(outcomes, indent=2))
+              print(json.dumps(outcome))
+          candidate.unlink()
+          archive.unlink()
+          PYCONTROL
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: windows-runtime-control-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/runtime-comparison/*.json
+            ${{ runner.temp }}/runtime-comparison/pinned/
+            ${{ runner.temp }}/runtime-comparison/candidate/
+          if-no-files-found: error
+          retention-days: 7
