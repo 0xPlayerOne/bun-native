@@ -15,7 +15,7 @@
         "@types/bun": "1.4.4",
         "@types/react": "19.3.0",
         "babel-preset-solid": "1.9.16",
-        "code-foundry": "1.48.8",
+        "code-foundry": "1.51.1",
         "oxc-parser": "0.156.0",
         "oxlint": "1.90.0",
         "react": "19.3.1",
@@ -219,7 +219,7 @@
 
     "caniuse-lite": ["caniuse-lite@1.0.30001820", "", {}, "sha512-gfWD6MxqVCqAOwmODfZf7DchWvlrA+SRdNX7ceLfg3xRqe5ssjjpF7EgslC/0tiLiNTajdaNN/q8c/5u/7Gz8w=="],
 
-    "code-foundry": ["code-foundry@1.48.8", "", { "bin": { "code-foundry": "src/cli.mjs" } }, "sha512-Psg6A2G5UiqPSVO2Kaah99UbkVDRZ0uYk0sEq3RWeZVOrjN0W1w/WXniaRDeL75pSDWDY3ox1xCeJ4MxZbQnaA=="],
+    "code-foundry": ["code-foundry@1.51.1", "", { "bin": { "code-foundry": "src/cli.mjs" } }, "sha512-Ajj2uWQHZ7cxtlpx2/nAH5cY4MSKiWGKO/qv2BP+afSXxs95sCMczXWCq/BZZW1wsnVhalpYB8EqdTjs7doJHw=="],
 
     "convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 
