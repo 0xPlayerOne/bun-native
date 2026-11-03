@@ -167,6 +167,12 @@ impl NativeView {
         }
         self.reconcile_focus(window, cx);
         cx.notify();
+        // macOS can acknowledge an OS-input-triggered transaction without a
+        // subsequent complete GPUI paint (run 41689890715). Invalidate the
+        // actual window as well as its view; the existing native paint gate
+        // still must observe the exact committed tree.
+        #[cfg(target_os = "macos")]
+        window.refresh();
     }
 
     fn click(&self, node_id: NodeId, cx: &mut Context<Self>) {
