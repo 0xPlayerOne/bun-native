@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
 
-function fixture(command: 'check' | 'fmt' | 'test', exercise: (cwd: string) => void): void {
+function fixture(
+  command: 'check' | 'fmt' | 'test' | 'build',
+  exercise: (cwd: string) => void
+): void {
   const cwd = mkdtempSync(join(tmpdir(), 'bun-native-command-'))
   try {
     writeFileSync(
@@ -42,6 +45,54 @@ function resetScriptMarker(cwd: string): void {
 }
 
 describe('pinned Bun built-ins cannot be replaced by same-named package scripts', () => {
+  test('build --no-script selects production dependencies and rejects malformed source', () => {
+    fixture('build', (cwd) => {
+      const source = join(cwd, 'main.ts')
+      const output = join(cwd, 'application.js')
+      const dependency = join(cwd, 'node_modules', 'framework')
+      mkdirSync(dependency, { recursive: true })
+      writeFileSync(
+        join(dependency, 'package.json'),
+        JSON.stringify({ name: 'framework', main: 'index.cjs' })
+      )
+      writeFileSync(
+        join(dependency, 'index.cjs'),
+        "exports.mode = process.env.NODE_ENV === 'production' ? 'production' : 'development'\n"
+      )
+      writeFileSync(
+        source,
+        "import { mode } from 'framework'; const value: number = 42; console.log(value, mode)\n"
+      )
+      expect(run(cwd, ['run', 'build']).exitCode).toBe(0)
+      resetScriptMarker(cwd)
+      const command = [
+        'build',
+        '--no-script',
+        '--production',
+        '--define',
+        'process.env.NODE_ENV="production"',
+        '--target=bun',
+        '--format=esm',
+        '--sourcemap=external',
+        source,
+        '--outdir',
+        cwd,
+        '--entry-naming=application.js',
+      ]
+      const built = run(cwd, command)
+      expect(built.exitCode).toBe(0)
+      expect(existsSync(output)).toBe(true)
+      expect(existsSync(output + '.map')).toBe(true)
+      expect(run(cwd, [output])).toEqual({ exitCode: 0, output: '42 production\n' })
+      expect(existsSync(join(cwd, 'script-ran'))).toBe(false)
+      writeFileSync(source, 'export const malformed = <\n')
+      const rejected = run(cwd, command)
+      expect(rejected.exitCode).not.toBe(0)
+      expect(rejected.output).toContain('main.ts')
+      expect(existsSync(join(cwd, 'script-ran'))).toBe(false)
+    })
+  }, 15_000)
+
   test('check --no-script rejects wrong types and accepts a corrected source', () => {
     fixture('check', (cwd) => {
       writeFileSync(

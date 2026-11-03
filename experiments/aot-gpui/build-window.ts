@@ -45,6 +45,10 @@ const entries = {
   solid: 'examples/solid-counter/main.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
+  react: 'examples/react-counter/main.tsx',
+  'react-interactions': 'tests/native/react-interactions.tsx',
+  'react-behavior': 'tests/native/react-behavior.tsx',
+  'react-workload': 'benchmarks/solid/react.tsx',
 } as const
 function isEntry(value: string | undefined): value is keyof typeof entries {
   return typeof value === 'string' && Object.hasOwn(entries, value)
@@ -54,6 +58,11 @@ if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(en
 const entryPath = entries[entry]
 const solidEntry =
   entry === 'solid' || entry === 'solid-input-intent' || entry === 'solid-interactions'
+const reactEntry =
+  entry === 'react' ||
+  entry === 'react-interactions' ||
+  entry === 'react-behavior' ||
+  entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
     'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry ' +
@@ -77,7 +86,8 @@ if (
     entry === 'layout' ||
     entry === 'interactions' ||
     entry === 'platform-smoke' ||
-    solidEntry) &&
+    solidEntry ||
+    reactEntry) &&
   hostProfile === 'unverified'
 )
   throw new Error('Native benchmarks require --host-profile dev or release')
@@ -159,6 +169,16 @@ async function sourceHashes() {
     }))
       sources.add(path)
   }
+  if (reactEntry) {
+    sources.add('packages/react/package.json')
+    sources.add('packages/renderer/package.json')
+    for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
+      cwd: source,
+    }))
+      sources.add(path)
+  }
+  if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
+  if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({
     cwd: source,
   }))
@@ -175,16 +195,29 @@ let compileInput = entrypoint
 let developmentModule:
   | { file: string; bytes: number; sha256: string; transformCommand: string[]; buildMs: number }
   | undefined
-if (solidEntry) {
-  const transformCommand = [
-    process.execPath,
-    join(source, 'scripts/solid-build.ts'),
-    entrypoint,
-    join(outdir, 'development'),
-  ]
+if (solidEntry || reactEntry) {
+  const developmentDirectory = join(outdir, 'development')
+  mkdirSync(developmentDirectory)
+  compileInput = join(developmentDirectory, 'application.js')
+  const transformCommand = solidEntry
+    ? [process.execPath, join(source, 'scripts/solid-build.ts'), entrypoint, developmentDirectory]
+    : [
+        process.execPath,
+        'build',
+        '--no-script',
+        '--production',
+        '--define',
+        'process.env.NODE_ENV="production"',
+        '--target=bun',
+        '--format=esm',
+        '--sourcemap=external',
+        entrypoint,
+        '--outdir',
+        developmentDirectory,
+        '--entry-naming=application.js',
+      ]
   const transformStart = performance.now()
-  command('transform-solid', transformCommand)
-  compileInput = join(outdir, 'development/application.js')
+  command(solidEntry ? 'transform-solid' : 'transform-react', transformCommand)
   developmentModule = {
     file: 'development/application.js',
     ...(await artifact(compileInput)),
@@ -192,6 +225,7 @@ if (solidEntry) {
     buildMs: performance.now() - transformStart,
   }
 }
+
 const compileCommand = [
   process.execPath,
   'compile',
@@ -234,7 +268,7 @@ if (process.platform !== 'win32') {
 if (JSON.stringify(buildSources) !== JSON.stringify(await sourceHashes()))
   throw new Error('Application or native source changed during the AOT build')
 if (developmentModule && (await artifact(compileInput)).sha256 !== developmentModule.sha256)
-  throw new Error('The generated Solid development module changed during AOT compilation')
+  throw new Error('The generated development module changed during AOT compilation')
 const launchHost = bundledHost ? '<absolute-output-directory>/bun-native-host' + suffix : host
 const manifest = {
   schemaVersion: 1,
