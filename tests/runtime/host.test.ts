@@ -63,7 +63,8 @@ async function rejectedError(operation: Promise<unknown>): Promise<Error> {
 }
 
 function holderIsAlive(directory: string): boolean {
-  const ownedPid = Number(readFileSync(join(directory, 'ready'), 'utf8'))
+  const identity = existsSync(join(directory, 'ready')) ? 'ready' : 'started'
+  const ownedPid = Number(readFileSync(join(directory, identity), 'utf8'))
   if (!Number.isSafeInteger(ownedPid) || ownedPid <= 0)
     throw new Error('Invalid test-owned pipe holder PID')
   try {
@@ -79,7 +80,7 @@ async function releasePipeHolder(directory: string): Promise<void> {
   // Only this test's holder reads its private release file. The holder also has
   // a hard self-expiry; cleanup never signals an unrelated process.
   writeFileSync(join(directory, 'release'), '')
-  if (!existsSync(join(directory, 'ready'))) return
+  if (!existsSync(join(directory, 'ready')) && !existsSync(join(directory, 'started'))) return
   const finished = join(directory, 'finished')
   const until = performance.now() + 1_500
   while (!existsSync(finished) && performance.now() < until) {
@@ -87,6 +88,21 @@ async function releasePipeHolder(directory: string): Promise<void> {
     await Bun.sleep(10)
   }
   if (!existsSync(finished)) throw new Error('Test-owned pipe holder did not release')
+}
+
+async function armPipeHolder(directory: string): Promise<void> {
+  // No helper may declare readiness until the independent peer has negotiated.
+  // Reintroducing a pre-hello readiness wait therefore fails deterministically.
+  expect(existsSync(join(directory, 'ready'))).toBe(false)
+  writeFileSync(join(directory, 'arm'), '')
+  const until = performance.now() + 5_000
+  while (!existsSync(join(directory, 'ready'))) {
+    if (existsSync(join(directory, 'finished')))
+      throw new Error('Pipe holder exited before it was armed')
+    if (performance.now() >= until) throw new Error('Pipe holder did not start')
+    await Bun.sleep(10)
+  }
+  expect(holderIsAlive(directory)).toBe(true)
 }
 
 async function withPipeHolder(
@@ -101,6 +117,7 @@ async function withPipeHolder(
       ...options(`inherited-pipe-${mode}`, 300),
       args: [fixture, `inherited-pipe-${mode}`, directory],
     })
+    await armPipeHolder(directory)
     await run(host, finished)
     // A terminated descendant cannot establish held-open-pipe coverage.
     expect(holderIsAlive(directory)).toBe(true)
