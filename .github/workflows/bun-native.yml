@@ -21,38 +21,37 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Record actual Windows cell-description format
         run: bun -e 'const j=require("bun:jsc");console.log(JSON.stringify({description:j.jscDescribe({syntheticAddressControl:true}),bunRevision:Bun.revision}))'
-      - name: Compile bounded owned-thread observer with the actual Windows SDK
-        shell: cmd
-        run: |
-          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
-          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
-          cl /nologo /LD /O2 /W4 /WX experiments\retention-windows-unwind.c /link /OUT:"%RUNNER_TEMP%\retention-windows-unwind.dll"
-          if errorlevel 1 exit /b 1
-      - name: Fixed original and failure-only Windows unwind observation
+      - name: Fixed disposal ownership contrast with unchanged producer assertions
         run: |
           python - <<'PYEXPERIMENT'
           import hashlib,json,os,pathlib,subprocess
           output=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-paths';output.mkdir()
-          helper=pathlib.Path(os.environ['RUNNER_TEMP'])/'retention-windows-unwind.dll'
-          variants=['original','failure-only-windows-unwind']
-          plan={'scope':'After-failure Windows native virtual unwind; original producer and acceptance unchanged. Research only.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'variants':variants,'attemptsPerVariant':1,'testSha256':hashlib.sha256(pathlib.Path('tests/solid/renderer.test.ts').read_bytes()).hexdigest(),'helperSha256':hashlib.sha256(helper.read_bytes()).hexdigest()}
-          (output/'plan.json').write_text(json.dumps(plan,indent=2));outcomes=[]
-          for variant in variants:
-              directory=output/variant;directory.mkdir();environment=dict(os.environ)
-              environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
-              command=['bun','test']
-              if variant!='original':
-                  environment['BUN_NATIVE_RETENTION_ROOT_TRACE_DIR']=str(directory)
-                  environment['BUN_NATIVE_RETENTION_UNWIND_DLL']=str(helper)
-                  command += ['--preload','./experiments/retention-failure-preload.ts']
-              command += ['tests']
-              with (directory/'test.log').open('w') as log:r=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
-              outcomes.append({'variant':variant,'exitCode':r.returncode});print(json.dumps(outcomes[-1]))
-          (output/'outcomes.json').write_text(json.dumps(outcomes,indent=2))
+          source=pathlib.Path('packages/renderer/src/root.ts');original=source.read_text()
+          test=pathlib.Path('tests/solid/renderer.test.ts');original_test=test.read_text()
+          old='  async dispose(): Promise<void> {\n    this.stop()\n    this.start()\n    await this.flush()\n    await this.closed\n  }'
+          assert original.count(old)==1
+          replacement='  dispose(): Promise<void> {\n    try {\n      this.stop()\n      this.start()\n      return joinClosed(this.flush(), this.closed)\n    } catch (cause) {\n      return Promise.reject(cause)\n    }\n  }'
+          join='function joinClosed(work: Promise<void>, closed: Promise<void>): Promise<void> {\n  return work.then(() => closed)\n}\n\n'
+          candidate=original.replace(old,replacement).replace('class Root implements RenderRoot, Owner {',join+'class Root implements RenderRoot, Owner {')
+          needle='        return new WeakRef(root)';assert original_test.count(needle)==1
+          held=original_test.replace(needle,"        const held: object[] = Reflect.get(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS') ?? []\n        held.push(root)\n        Reflect.set(globalThis, '__BUN_NATIVE_TEST_RETAINED_OWNERS', held)\n"+needle)
+          order=[['original','joined-completion','held-negative'],['held-negative','joined-completion','original'],['joined-completion','original','held-negative']]
+          plan={'scope':'Research: remove receiver capture from redundant disposal await frame, preserve operation-before-close join. Original GC and zero-survivor assertions unchanged.','source':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'order':order,'attemptsPerVariant':3,'originalProductionSha256':hashlib.sha256(original.encode()).hexdigest(),'candidateProductionSha256':hashlib.sha256(candidate.encode()).hexdigest(),'originalTestSha256':hashlib.sha256(original_test.encode()).hexdigest(),'failurePolicy':'Every contrary outcome retained; no reruns'}
+          (output/'plan.json').write_text(json.dumps(plan,indent=2));(output/'root-original.ts.txt').write_text(original);(output/'root-joined.ts.txt').write_text(candidate)
+          outcomes=[]
+          try:
+              for block,names in enumerate(order,1):
+                  for variant in names:
+                      directory=output/f'{block:02d}-{variant}';directory.mkdir()
+                      source.write_text(original if variant=='original' else candidate)
+                      test.write_text(held if variant=='held-negative' else original_test)
+                      environment=dict(os.environ);environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR']=str(directory)
+                      with (directory/'test.log').open('w') as log:r=subprocess.run(['bun','test','tests'],stdout=log,stderr=subprocess.STDOUT,env=environment,timeout=90,check=False)
+                      reports=[json.loads(p.read_text()) for p in directory.glob('solid-retention-*.json')]
+                      outcome={'block':block,'variant':variant,'exitCode':r.returncode,'survivors':[d['survivors'] for d in reports]};outcomes.append(outcome);print(json.dumps(outcome))
+          finally:
+              source.write_text(original);test.write_text(original_test);(output/'outcomes.json').write_text(json.dumps(outcomes,indent=2))
           PYEXPERIMENT
-      - name: Extract selected graph and observed frame identities
-        if: ${{ !cancelled() }}
-        run: python experiments/analyze-retention-path.py "$RUNNER_TEMP/retention-paths/failure-only-windows-unwind"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() }}
         with:
