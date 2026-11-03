@@ -55,9 +55,9 @@ requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
 
-`bun-native-protocol` owns the [private v5 contract](../protocol/README.md).
-Protocol 5 requires shared layout, interaction and window-display service
-capabilities and replaces v4 outright. The
+`bun-native-protocol` owns the [private v6 contract](../protocol/README.md).
+Protocol 6 requires shared layout, interaction and window-display service
+capabilities and replaces v5 outright. The
 session owns up to 16 windows, each with one box root and at most 4,096 nodes.
 Atomic batches create, update, reparent, reorder and delete box, text, button
 and input elements. All adapters use this same model and renderer. Neither
@@ -68,9 +68,29 @@ The service policy is immutable and default-denied. Only
 unknown or duplicate launch arguments fail before GPUI starts. The public
 runtime supplies this reserved flag only from its typed permissions option.
 The native session checks policy and the live window before reading GPUI
-display bounds/scale. No clipboard, file, process or general service endpoint
-is exposed. See [native services](../../docs/native-services.md) for precise
+display bounds/scale. Independent `--bun-native-allow-clipboard-read` and
+`--bun-native-allow-clipboard-write` flags enable the implemented local X11
+clipboard backend. Its worker owns a separate selection connection and never
+waits for an external owner on the GPUI thread. It enforces a total two-second
+request deadline, eight pending operations and 8,192-byte text. Other native
+platforms/backends report this service unavailable. No file, process or general
+service endpoint is exposed. See [native services](../../docs/native-services.md) for precise
 errors, lifecycle and pending platform qualification.
+
+The [fresh clipboard record](../../tests/native/evidence/clipboard-linux-recovered.json)
+qualifies the recovered source in a private Linux X11 session with this host's
+development profile, in both Bun development and inspected AOT modes. All 26
+transfer/lifecycle outcomes and 22 joined peers passed per run. Other host
+profiles and platforms require their own execution evidence.
+
+The X11 clipboard stream has a shared 262,144-byte inbound admission limit per
+transfer or owned-selection service burst. Idle workers wait on actual socket
+readiness or queued-work/shutdown notification. Authority parsing reads the
+same nonblocking-opened, validated regular descriptor with a 1 MiB byte bound;
+local filesystem setup and the local X server remain trusted. The attributed
+parser's MIT license is retained alongside the upstream GPUI input license.
+The independent `clipboard-peer` example is a foreground fixture restricted to
+an explicitly guarded isolated display; it is not a product helper process.
 
 Request, window and node IDs are positive JavaScript-safe integers and increase
 across the session in separate namespaces. A deleted node or closed window ID

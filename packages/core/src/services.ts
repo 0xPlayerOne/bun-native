@@ -1,4 +1,7 @@
-import type { ServicePolicy } from '@bun-native/protocol'
+import type { Capability, ClipboardText, ServicePolicy } from '@bun-native/protocol'
+
+export type NativeClipboardText = Readonly<ClipboardText>
+type ServiceName = 'window_display' | 'clipboard_read' | 'clipboard_write'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -23,7 +26,15 @@ export interface ServiceCapabilities {
     permission: 'allow' | 'deny'
     scope: 'owned_window'
   }>
-  readonly clipboardText: UnavailableService
+  readonly clipboardText:
+    | Readonly<{
+        availability: 'available'
+        read: 'allow' | 'deny'
+        write: 'allow' | 'deny'
+        scope: 'owned_window'
+        backend: 'x11'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly globalShortcuts: UnavailableService
   readonly systemMenus: UnavailableService
   readonly dialogs: UnavailableService
@@ -35,9 +46,16 @@ export interface ServiceCapabilities {
 
 export class NativeServiceError extends Error {
   override readonly name = 'NativeServiceError'
-  readonly service = 'window_display'
   constructor(
-    readonly code: 'permission_denied' | 'service_unavailable' | 'cancelled',
+    readonly service: ServiceName,
+    readonly code:
+      | 'permission_denied'
+      | 'service_unavailable'
+      | 'cancelled'
+      | 'native_failure'
+      | 'operation_timed_out'
+      | 'payload_too_large'
+      | 'limit_exceeded',
     message: string
   ) {
     super(message)
@@ -50,7 +68,8 @@ const unavailable: UnavailableService = Object.freeze({
 })
 
 export function serviceCapabilities(
-  policy: Readonly<ServicePolicy>
+  policy: Readonly<ServicePolicy>,
+  capabilities: readonly Capability[]
 ): Readonly<ServiceCapabilities> {
   return Object.freeze({
     windowDisplay: Object.freeze({
@@ -58,7 +77,15 @@ export function serviceCapabilities(
       permission: policy.window_display ? 'allow' : 'deny',
       scope: 'owned_window',
     }),
-    clipboardText: unavailable,
+    clipboardText: capabilities.includes('clipboard_text_v1')
+      ? Object.freeze({
+          availability: 'available',
+          read: policy.clipboard_read ? 'allow' : 'deny',
+          write: policy.clipboard_write ? 'allow' : 'deny',
+          scope: 'owned_window',
+          backend: 'x11',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     globalShortcuts: unavailable,
     systemMenus: unavailable,
     dialogs: unavailable,
@@ -80,10 +107,14 @@ export function serviceSignal(options: ServiceRequestOptions): AbortSignal | und
   return signal
 }
 
-export function checkServiceCancellation(signal: AbortSignal | undefined): void {
+export function checkServiceCancellation(
+  signal: AbortSignal | undefined,
+  service: ServiceName
+): void {
   if (signal?.aborted)
     throw new NativeServiceError(
+      service,
       'cancelled',
-      'Native display read was cancelled; no result is delivered'
+      'Native service read was cancelled; no result is delivered'
     )
 }

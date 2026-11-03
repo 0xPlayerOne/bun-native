@@ -2,6 +2,7 @@ use crate::{
     channel::EventSink,
     evidence::Evidence,
     services,
+    services::clipboard::{Clipboard, Operation as ClipboardOperation},
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
@@ -40,6 +41,7 @@ pub(crate) struct Session {
     events: EventSink,
     evidence: Evidence,
     policy: ServicePolicy,
+    clipboard: Clipboard,
 }
 
 impl Session {
@@ -51,11 +53,13 @@ impl Session {
     ) -> Self {
         let windows = Rc::new(RefCell::new(BTreeMap::<WindowId, WindowEntry>::new()));
         let finishing = Rc::new(Cell::new(false));
+        let clipboard = Clipboard::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
             let events = events.clone();
             let evidence = evidence.clone();
+            let clipboard = clipboard.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -66,6 +70,12 @@ impl Session {
                         entry.state.borrow_mut().active = false;
                     }
                     evidence.closed(window_id);
+                    clipboard.cancel(
+                        Some(window_id),
+                        ErrorCode::InvalidHandle,
+                        "clipboard owner window was closed",
+                        cx,
+                    );
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -89,6 +99,7 @@ impl Session {
             events,
             evidence,
             policy,
+            clipboard,
         }
     }
 
@@ -136,16 +147,20 @@ impl Session {
                 );
             } else {
                 self.greeted = true;
+                let mut capabilities = vec![
+                    Capability::Tree,
+                    Capability::InputRevisions,
+                    Capability::LayoutV1,
+                    Capability::InteractionsV1,
+                    Capability::WindowDisplayV1,
+                ];
+                if self.clipboard.available() {
+                    capabilities.push(Capability::ClipboardTextV1);
+                }
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
-                        capabilities: vec![
-                            Capability::Tree,
-                            Capability::InputRevisions,
-                            Capability::LayoutV1,
-                            Capability::InteractionsV1,
-                            Capability::WindowDisplayV1,
-                        ],
+                        capabilities,
                         limits: Limits::default(),
                         service_policy: self.policy,
                     },
@@ -191,6 +206,12 @@ impl Session {
             } => self.batch(id, window_id, base_revision, operations, cx),
             Command::Close { window_id, .. } => self.close(id, window_id, cx),
             Command::DisplaySnapshot { window_id, .. } => self.display_snapshot(id, window_id, cx),
+            Command::ClipboardRead { window_id, .. } => {
+                self.clipboard_request(id, window_id, ClipboardOperation::Read, cx)
+            }
+            Command::ClipboardWrite {
+                window_id, text, ..
+            } => self.clipboard_request(id, window_id, ClipboardOperation::Write(text), cx),
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -396,6 +417,12 @@ impl Session {
             .update(cx, |_, window, _| window.remove_window())
             .is_ok()
         {
+            self.clipboard.cancel(
+                Some(window_id),
+                ErrorCode::InvalidHandle,
+                "clipboard owner window was closed",
+                cx,
+            );
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -408,6 +435,46 @@ impl Session {
         }
     }
 
+    fn clipboard_request(
+        &self,
+        id: RequestId,
+        window_id: WindowId,
+        operation: ClipboardOperation,
+        cx: &mut App,
+    ) {
+        let granted = match operation {
+            ClipboardOperation::Read => self.policy.clipboard_read,
+            ClipboardOperation::Write(_) => self.policy.clipboard_write,
+        };
+        if !granted {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "this clipboard operation was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        if !handle
+            .update(cx, |_, window, _| Clipboard::supports_window(window))
+            .unwrap_or(false)
+        {
+            self.error(
+                id,
+                ErrorCode::ServiceUnavailable,
+                "clipboard text is unavailable for this native window backend",
+                cx,
+            );
+            return;
+        }
+        if let Err((code, message)) = self.clipboard.submit(id, window_id, operation, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -417,19 +484,40 @@ impl Session {
 
     pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
         self.revoke();
-        match self.events.finish(final_event) {
-            Some(flushed) => cx
-                .spawn(async move |cx| {
-                    let _ = flushed.recv().await;
-                    cx.update(|cx| cx.quit());
-                })
-                .detach(),
-            None => cx.quit(),
+        let events = self.events.clone();
+        if let Some(joined) = self.clipboard.stop(cx) {
+            cx.spawn(async move |cx| {
+                joined.await;
+                cx.update(|cx| flush_and_quit(events, final_event, cx));
+            })
+            .detach();
+        } else {
+            flush_and_quit(events, final_event, cx);
         }
     }
 
     pub(crate) fn disconnect(&self, cx: &mut App) {
         self.revoke();
-        cx.quit();
+        if let Some(joined) = self.clipboard.stop(cx) {
+            cx.spawn(async move |cx| {
+                joined.await;
+                cx.update(|cx| cx.quit());
+            })
+            .detach();
+        } else {
+            cx.quit();
+        }
+    }
+}
+
+fn flush_and_quit(events: EventSink, final_event: Event, cx: &mut App) {
+    match events.finish(final_event) {
+        Some(flushed) => cx
+            .spawn(async move |cx| {
+                let _ = flushed.recv().await;
+                cx.update(|cx| cx.quit());
+            })
+            .detach(),
+        None => cx.quit(),
     }
 }
