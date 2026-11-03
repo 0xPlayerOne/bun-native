@@ -82,6 +82,11 @@ function observe(): Diagnostics {
   )
   assert.equal(current.queuedCallbacks, 0, 'Only the one injected launch click is expected')
   assert(current.activeCallbacks <= 1, 'Application callbacks must remain serialized')
+  assert.equal(
+    current.serviceRequests,
+    0,
+    'This fixture must never retain a desktop service request'
+  )
   return current
 }
 
@@ -198,6 +203,7 @@ async function exercise(window: NativeWindow): Promise<void> {
       queuedTransactions: 0,
       queuedCallbacks: 0,
       activeCallbacks: 1,
+      serviceRequests: 0,
     })
     assert.equal(unexpectedCallbacks, 0)
     durationsMs.push(performance.now() - cycleStarted)
