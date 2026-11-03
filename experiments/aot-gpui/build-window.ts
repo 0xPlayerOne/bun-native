@@ -190,6 +190,8 @@ async function sourceHashes() {
   if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
+  if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
+    sources.add('tests/native/display-service-policy.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   for await (const path of new Bun.Glob('native/{gpui-host,protocol}/src/**/*.rs').scan({

@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { mountContent, recordEvidence } from '../../examples/native-window/content.ts'
+import { assertDisplayServicePolicy } from './display-service-policy.ts'
 
 const configuredHost = process.env['BUN_NATIVE_HOST']
 if (!configuredHost) throw new Error('Set BUN_NATIVE_HOST to the explicit prebuilt native host')
@@ -91,11 +92,7 @@ let failure: Error | undefined
 let activations = 0
 let deadline: ReturnType<typeof setTimeout> | undefined
 try {
-  assert.equal(app.serviceCapabilities.windowDisplay.permission, 'allow')
-  if (app.serviceCapabilities.clipboardText.availability === 'available') {
-    assert.equal(app.serviceCapabilities.clipboardText.read, 'deny')
-    assert.equal(app.serviceCapabilities.clipboardText.write, 'deny')
-  }
+  assertDisplayServicePolicy(app.serviceCapabilities)
   const window = await app.openWindow({
     title: 'Bun Native desktop services',
     width: 560,

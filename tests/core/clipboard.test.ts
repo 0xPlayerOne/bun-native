@@ -11,6 +11,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { assertDisplayServicePolicy } from '../native/display-service-policy.ts'
 
 async function withClipboard(
   run: (app: NativeApplication, directory: string) => Promise<void>,
@@ -56,6 +57,33 @@ async function received(directory: string, count = 1) {
 }
 
 describe('clipboard lifecycle and independent scheduling (headless real subprocess)', () => {
+  test.each(['normal', 'unavailable'] as const)(
+    'a display-only grant never authorizes clipboard access with backend mode %s',
+    (mode) =>
+      withClipboard(
+        async (app, directory) => {
+          assertDisplayServicePolicy(app.serviceCapabilities)
+          const window = await app.openWindow({ title: 'Display-only service policy' })
+          // Native authorization precedes backend availability in both modes.
+          const code = 'permission_denied'
+          await assert.rejects(window.readClipboardText(), {
+            name: 'NativeServiceError',
+            service: 'clipboard_read',
+            code,
+          })
+          await assert.rejects(window.writeClipboardText('No clipboard grant'), {
+            name: 'NativeServiceError',
+            service: 'clipboard_write',
+            code,
+          })
+          expect(requests(directory, 'clipboard_read')).toHaveLength(1)
+          expect(requests(directory, 'clipboard_write')).toHaveLength(1)
+        },
+        mode,
+        { windowDisplay: 'allow' }
+      )
+  )
+
   test('read and write are separately default-denied native operations', () =>
     withClipboard(
       async (app, directory) => {
