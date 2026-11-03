@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/0xPlayerOne/bun-native/compare/v0.12.1...v0.12.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **native:** accept completed smoke observation across process-exit race ([#319](https://github.com/0xPlayerOne/bun-native/issues/319)) ([c75d477](https://github.com/0xPlayerOne/bun-native/commit/c75d4777bd84176cbbce29e9520f657912c975b5))
+
 ## [0.12.1](https://github.com/0xPlayerOne/bun-native/compare/v0.12.0...v0.12.1) (2026-11-03)
 
 
