@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("directory", type=Path)
 args = parser.parse_args()
 for report_path in args.directory.glob("root-trace-*.json"):
-    if report_path.name.endswith(".heap.json"):
+    if report_path.name.endswith((".heap.json", ".paths.json")):
         continue
     report = json.loads(report_path.read_text())
     heap_path = report_path.with_suffix(".heap.json")
@@ -37,7 +37,7 @@ for report_path in args.directory.glob("root-trace-*.json"):
             "address": row[5],
         }
         if row[0]:
-            addresses[row[5]] = row[0]
+            addresses[hex(int(row[5], 16))] = row[0]
     for i in range(0, len(snapshot["roots"]), 3):
         identifier, reason, reachability = snapshot["roots"][i : i + 3]
         roots[identifier].append(
@@ -63,7 +63,7 @@ for report_path in args.directory.glob("root-trace-*.json"):
         )
     observations = []
     for target in report["targets"]:
-        target_id = addresses[target["address"]]
+        target_id = addresses[hex(int(target["address"], 16))]
         next_edge = {target_id: None}
         queue = collections.deque([target_id])
         while queue:

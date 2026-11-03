@@ -19,6 +19,8 @@ jobs:
           persist-credentials: false
       - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - run: bun install --frozen-lockfile
+      - name: Record actual Windows cell-description format
+        run: bun -e 'const j=require("bun:jsc");console.log(JSON.stringify({description:j.jscDescribe({syntheticAddressControl:true}),bunRevision:Bun.revision}))'
       - name: Fixed original and failure-only observation, no retries
         run: |
           python - <<'PY'
