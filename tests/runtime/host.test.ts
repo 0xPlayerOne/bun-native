@@ -209,15 +209,15 @@ describe('native process transport (headless protocol peer)', () => {
     ['obsolete-version', 'Native protocol version mismatch'],
     [
       'missing-layout',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     [
       'missing-capability',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     [
       'missing-interactions',
-      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1',
+      'Native host lacks required protocol capabilities: tree, input_revisions, layout_v1, interactions_v1, window_display_v1',
     ],
     ['bad-json', 'Invalid UTF-8 or JSON in native frame'],
     ['wrong-id', 'Unknown native response id'],

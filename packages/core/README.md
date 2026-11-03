@@ -12,7 +12,7 @@ Use the exact Bun toolchain from [the repository instructions](../../docs/toolch
 BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun examples/native-window/main.ts
 ```
 
-The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions`, `layout_v1` and `interactions_v1` features. Launch fails if the host cannot negotiate all four. These are rendering features, not grants to use OS services; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
+The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1` features. Launch fails if the host cannot negotiate all five. Feature availability does not grant OS-service authority; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
 
 ```ts
 import { createApplication } from '@bun-native/core'
@@ -134,10 +134,36 @@ The public package exports the error classes needed to distinguish failures:
 
 Protocol incompatibility prevents launch. Recreating an application creates a new session; old handles never become valid in it. An unsupported field within a known element or style is a validation error, not an accepted extension point.
 
+## Owned native services
+
+`window.displaySnapshot({ signal? })` returns deeply frozen native display
+`bounds` and the owning window's `scaleFactor`. Launch with
+`permissions: { windowDisplay: 'allow' }` to allow it; the default is `deny`.
+The Rust host independently checks that immutable policy and the live window.
+No per-request option or protocol message can grant access. Both framework
+adapters use this same public window method.
+
+`app.serviceCapabilities.windowDisplay` reports implementation availability,
+the negotiated permission and `owned_window` scope. Clipboard, shortcuts,
+menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
+entries explicitly report `unavailable` / `not_implemented`; they have no
+placeholder callable methods. This policy constrains the selected native
+host, not trusted Bun code's ordinary OS APIs.
+
+An aborted queued read sends no native command. After submission, cancellation
+drains and validates the native response before suppressing delivery. It does
+not interrupt synchronous native work. Window/application close revokes result
+delivery and prevents new reads. `NativeServiceError` distinguishes
+`permission_denied`, `service_unavailable` and `cancelled`, with
+`service: 'window_display'`; ordinary ownership and protocol errors remain
+distinct. See the [service contract](../../docs/native-services.md) for exact
+geometry semantics, error scope and platform qualification. In particular,
+the pinned X11 backend reports an X screen, not a physical monitor identity.
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 4 requires the shared layout and interaction contracts and replaces protocol 3 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 5 requires shared layout, interactions and immutable service policy and replaces protocol 4 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

@@ -36,6 +36,8 @@ pub(crate) struct NativeView {
     _subscriptions: [Subscription; 2],
     events: EventSink,
     evidence: Evidence,
+    #[cfg(target_os = "macos")]
+    frame_demand: crate::frame_demand::FrameDemand,
 }
 
 impl NativeView {
@@ -66,6 +68,8 @@ impl NativeView {
             _subscriptions: [keyboard, focus_lost],
             events,
             evidence,
+            #[cfg(target_os = "macos")]
+            frame_demand: crate::frame_demand::FrameDemand::default(),
         }
     }
 
@@ -167,6 +171,17 @@ impl NativeView {
         }
         self.reconcile_focus(window, cx);
         cx.notify();
+        #[cfg(target_os = "macos")]
+        {
+            window.refresh();
+            // GPUI's dirty invalidation wakes only on a clean-to-dirty edge.
+            // An external commit also needs explicit frame demand when a
+            // dirty window's platform source has gone idle. Coalesce it to
+            // one callback; its weak token cannot retain this view on close.
+            if let Some(completion) = self.frame_demand.begin() {
+                window.on_next_frame(move |_, _| drop(completion));
+            }
+        }
     }
 
     fn click(&self, node_id: NodeId, cx: &mut Context<Self>) {
