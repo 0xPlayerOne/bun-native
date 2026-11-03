@@ -63,7 +63,17 @@ for report_path in args.directory.glob("root-trace-*.json"):
         )
     observations = []
     for target in report["targets"]:
-        target_id = addresses[hex(int(target["address"], 16))]
+        target_id = addresses.get(hex(int(target["address"], 16)))
+        if target_id is None:
+            observations.append(
+                {
+                    "target": target,
+                    "collectedBeforeSnapshot": True,
+                    "rootReasonCounts": {},
+                    "paths": [],
+                }
+            )
+            continue
         next_edge = {target_id: None}
         queue = collections.deque([target_id])
         while queue:

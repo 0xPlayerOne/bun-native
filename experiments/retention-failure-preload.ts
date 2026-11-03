@@ -1,5 +1,6 @@
 /** Failure-only research preload: never changes collection or assertion outcomes. */
 import { mock } from 'bun:test'
+import { clearDeadStackAfterFailure, scanRecordedTarget } from './retention-stack-probe.ts'
 import { rethrowWithRetentionDiagnostic } from '../tests/solid/retention-diagnostic.ts'
 import * as jsc from 'bun:jsc'
 import { createHash } from 'node:crypto'
@@ -36,6 +37,13 @@ mock.module(diagnosticPath, () => ({
       let phase = 'describe'
       try {
         const targets = addresses(references)
+        phase = 'native-stack'
+        const nativeStack = targets.map((target) => ({
+          target,
+          trace: scanRecordedTarget(target.address),
+        }))
+        clearDeadStackAfterFailure()
+        jsc.releaseWeakRefs()
         phase = 'snapshot'
         const observed = snapshot()
         phase = 'serialize'
@@ -55,7 +63,7 @@ mock.module(diagnosticPath, () => ({
               schemaVersion: 1,
               scope: 'Failure-only snapshot after the original Solid assertion already failed',
               limitations: [
-                'Snapshot performs a collection; it is not the exact preceding mark set.',
+                'After original failure only: native own-dead-stack clearing and WeakRef-job release precede the diagnostic snapshot collection.',
                 'Original assertion and observer dereferences protect targets during this job.',
                 'Missing hidden or conservative edges are not proof of collection or root absence.',
               ],
@@ -63,6 +71,7 @@ mock.module(diagnosticPath, () => ({
               sourceTestSha256: createHash('sha256').update(test).digest('hex'),
               snapshotSha256: createHash('sha256').update(encoded).digest('hex'),
               targets,
+              nativeStack,
             },
             null,
             2
