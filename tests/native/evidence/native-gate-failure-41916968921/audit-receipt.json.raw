@@ -1,0 +1,990 @@
+{
+  "scope": "One predeclared deliberate native paint mismatch reaching the unchanged production aggregate; all original failures remain failed",
+  "archiveBase": "6b4a775b139e4a40c802b54614f0ae80dfcb6142",
+  "measuredSource": {
+    "head": "09a090e42ac30641c090bef7145349dd8a6e1eca",
+    "testedMerge": "01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+    "tree": "7a00e874dcc2330b6afd7f4182983e944a70f609",
+    "localEquivalent": "f5637461a2345f30f453c85655f696847a3e0f53",
+    "base": "27405939ce1007d4142e1bb67e9ecc6ca3ce0411"
+  },
+  "run": {
+    "id": 41916968921,
+    "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921",
+    "run_attempt": 1,
+    "event": "pull_request",
+    "head_sha": "09a090e42ac30641c090bef7145349dd8a6e1eca",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-11-04T21:32:01Z",
+    "updated_at": "2026-11-04T21:49:56Z"
+  },
+  "acceptance": {
+    "designatedWindowsError": {
+      "type": "NativePaintMismatch",
+      "message": "Timed out waiting for complete native paint"
+    },
+    "correctNativePaintVerified": true,
+    "nativeShutdownAndExitVerified": true,
+    "forcedApplicationTermination": false,
+    "publicOwnershipCountersZero": true,
+    "windowsJobFailed": "failure",
+    "aggregateJob": 126888642945,
+    "aggregateJobConclusion": "failure",
+    "aggregateExitCode": 1,
+    "actualNeeds": {
+      "source": {
+        "result": "success",
+        "outputs": {}
+      },
+      "protocol": {
+        "result": "success",
+        "outputs": {}
+      },
+      "aot": {
+        "result": "success",
+        "outputs": {}
+      },
+      "native": {
+        "result": "success",
+        "outputs": {}
+      },
+      "native-platforms": {
+        "result": "failure",
+        "outputs": {}
+      },
+      "security": {
+        "result": "success",
+        "outputs": {}
+      }
+    },
+    "allRejectedDependencies": [
+      "native-platforms"
+    ],
+    "unchangedProductionGateVerified": true
+  },
+  "originalWindowsObservation": {
+    "head": "09a090e42ac30641c090bef7145349dd8a6e1eca",
+    "tree": "7a00e874dcc2330b6afd7f4182983e944a70f609",
+    "testedMerge": "01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+    "run": 41916968921,
+    "attempt": 1,
+    "job": 126879092034,
+    "artifact": {
+      "id": 13365752122,
+      "name": "native-platform-Windows-X64-01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+      "size_in_bytes": 3966429,
+      "url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122",
+      "archive_download_url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122/zip",
+      "expired": false,
+      "created_at": "2026-11-04T21:41:51Z",
+      "expires_at": "2026-11-18T21:41:50Z",
+      "updated_at": "2026-11-04T21:41:51Z",
+      "digest": "sha256:3a245c1de9710af51e25c370c337ec49193c6e1efd6a68f76166dca7d0ecd945",
+      "workflow_run": {
+        "id": 41916968921,
+        "repository_id": 1422774238,
+        "head_repository_id": 1422774238,
+        "head_branch": "test/native-gate-failure-20261104",
+        "head_sha": "09a090e42ac30641c090bef7145349dd8a6e1eca"
+      }
+    },
+    "sourceFilesVerified": 120,
+    "sourceFiles": {
+      ".bun-version": {
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "bytes": 15
+      },
+      "bun.lock": {
+        "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+        "bytes": 28357
+      },
+      "bunfig.toml": {
+        "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31",
+        "bytes": 147
+      },
+      "Cargo.lock": {
+        "sha256": "2d8d977816ba49d1c51a5dff16572552cf0c7b937e921e73a1160573f08250ee",
+        "bytes": 161210
+      },
+      "Cargo.toml": {
+        "sha256": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+        "bytes": 458
+      },
+      "examples/react-workspace/app.tsx": {
+        "sha256": "0bf3ee26fbf459052cfec27e54d14316a08d5341b7a43801a62a51065d329ad9",
+        "bytes": 9621
+      },
+      "examples/react-workspace/model.ts": {
+        "sha256": "ba983327708a782ce25e177f330b3c2bbe31fa4cc328921e38dc4a8d4e384132",
+        "bytes": 4020
+      },
+      "examples/solid-workspace/app.tsx": {
+        "sha256": "8b480428cb5cb59c360f1d8b5ee340938661e7571bd1f87c48b6f3dd6259c48e",
+        "bytes": 12716
+      },
+      "examples/solid-workspace/main.tsx": {
+        "sha256": "6a6c4ad44c71b3d4fde7a3f07d8ce299ee553a45ba49c398c89b67bcf34a7fdf",
+        "bytes": 1359
+      },
+      "examples/solid-workspace/model.ts": {
+        "sha256": "3a775dd053d6659652216a876183ba35b725d602cb689a1a810ecf10015f0570",
+        "bytes": 9837
+      },
+      "native/gpui-host/Cargo.toml": {
+        "sha256": "8ad6de9713d8ca3376b50617f7139f8d7e1992480b89797c2cafad7f152d0d88",
+        "bytes": 978
+      },
+      "native/gpui-host/examples/clipboard-peer.rs": {
+        "sha256": "cfb8d817ba37aab3289d0f2baf846a67fb5e1b094c3e83ebe7ce565d9e601824",
+        "bytes": 23705
+      },
+      "native/gpui-host/src/channel.rs": {
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+        "bytes": 3201
+      },
+      "native/gpui-host/src/evidence/frame_schedule_tests.rs": {
+        "sha256": "f5130c0371a20b601c403743bc89d523eb88ad0c4249ca12600f9b3ecb4698a2",
+        "bytes": 3151
+      },
+      "native/gpui-host/src/evidence/layout/paint_tests.rs": {
+        "sha256": "5e816474a0e6d2618461cdf4f9e12be1220fcc6b3f61b50393e3c223862e9d6c",
+        "bytes": 5837
+      },
+      "native/gpui-host/src/evidence/layout.rs": {
+        "sha256": "cf3efe481ab59a80ab12cc8f25caaf10dc98113dbd56917ef870037d8a54e8c0",
+        "bytes": 5512
+      },
+      "native/gpui-host/src/evidence/pointer.rs": {
+        "sha256": "57a9d816a38877d3fd5cfa27f7fb21ac651025a08adeb72a4b5f3e4692440d1e",
+        "bytes": 5220
+      },
+      "native/gpui-host/src/evidence.rs": {
+        "sha256": "ebaeb0fefc30af9d0b7653875d22240438ccee7d1be0cc507ab25a0d04635b48",
+        "bytes": 11058
+      },
+      "native/gpui-host/src/input/binding.rs": {
+        "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+        "bytes": 3666
+      },
+      "native/gpui-host/src/input/paint.rs": {
+        "sha256": "595167007c5fc6db8eac9728b0ec7e9df272f4c7d00f65989fcaee9586230532",
+        "bytes": 5793
+      },
+      "native/gpui-host/src/input.rs": {
+        "sha256": "62858fca3d1adc4e0d381f484a0782246c19fddae4974c7c309935e1686c55dc",
+        "bytes": 19118
+      },
+      "native/gpui-host/src/main.rs": {
+        "sha256": "baa13df424d298b0feb6644891ab7be8c5a44122264e407cee49d64ab9876dd8",
+        "bytes": 2850
+      },
+      "native/gpui-host/src/services/clipboard/auth.rs": {
+        "sha256": "501f63c8481db1aedf261c47fe5c1856fbe6b9a7cbaf5623ff95daf6e9998b52",
+        "bytes": 6701
+      },
+      "native/gpui-host/src/services/clipboard/stream.rs": {
+        "sha256": "55afb26d0fcaebd667b9d59c01961d5f6401ddc68404912c5ba551dac61959b5",
+        "bytes": 7808
+      },
+      "native/gpui-host/src/services/clipboard/wake.rs": {
+        "sha256": "33b3c14ebf0c77d0169b3b759c63181f928134f866ed395f5fd92727481b6737",
+        "bytes": 4393
+      },
+      "native/gpui-host/src/services/clipboard/x11.rs": {
+        "sha256": "507d87b395be0ec95ad7a0cf3c4f82d5fc4e94ba58a973d9fbd6a68c88523071",
+        "bytes": 21822
+      },
+      "native/gpui-host/src/services/clipboard.rs": {
+        "sha256": "1c0da241472bfe4c91858f829cf317c7dbd71259e12367e0d648d1085fbd0ad2",
+        "bytes": 16079
+      },
+      "native/gpui-host/src/services/clipboard_unavailable.rs": {
+        "sha256": "5a902bfe43afb82360a15c0607891769b46f06d47dfc91b38dd25fa8baa8ffcc",
+        "bytes": 1322
+      },
+      "native/gpui-host/src/services.rs": {
+        "sha256": "d7e4d58362a5ae8aacc8d0958d4d599879793b89026f49141f634a2db52eac6d",
+        "bytes": 3407
+      },
+      "native/gpui-host/src/session.rs": {
+        "sha256": "ca4800c271a4a9293ea8c87df3d5e2369bca37adbe938061ca31b48f031ec849",
+        "bytes": 16752
+      },
+      "native/gpui-host/src/startup_log/tests.rs": {
+        "sha256": "1534a46a52fb070b5808bda8ec99686f2aeace1ab215bfba4cd4a02bc78b2269",
+        "bytes": 6519
+      },
+      "native/gpui-host/src/startup_log.rs": {
+        "sha256": "3605129bc1b7901c0bd1c00690db713cae408ef99bc8263b7d986675e5777fbe",
+        "bytes": 7768
+      },
+      "native/gpui-host/src/state.rs": {
+        "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+        "bytes": 388
+      },
+      "native/gpui-host/src/style.rs": {
+        "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+        "bytes": 3732
+      },
+      "native/gpui-host/src/view/interactions.rs": {
+        "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+        "bytes": 9592
+      },
+      "native/gpui-host/src/view.rs": {
+        "sha256": "a4d62f107d4173ca363dce4f4781ec62a7fe73764ebe3f283cf8b0af4f93520a",
+        "bytes": 14785
+      },
+      "native/macos-surface/Cargo.toml": {
+        "sha256": "b292ec6e922ee71a69ff8884a43614442ae268b70f8d4eed9f00865cbb95fcf5",
+        "bytes": 1017
+      },
+      "native/macos-surface/src/lib.rs": {
+        "sha256": "caab1f7522c47f910cf4fa14a89efe3c983d2d7fc78f22144f71f6d1ba6dce54",
+        "bytes": 3838
+      },
+      "native/protocol/Cargo.toml": {
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+        "bytes": 225
+      },
+      "native/protocol/src/event_tests.rs": {
+        "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+        "bytes": 4925
+      },
+      "native/protocol/src/events.rs": {
+        "sha256": "87661f824ab9f730cc045000a14097bcbfa77e0237e7dab5cd8d7c81cbbd4870",
+        "bytes": 8175
+      },
+      "native/protocol/src/framing.rs": {
+        "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+        "bytes": 3838
+      },
+      "native/protocol/src/lib.rs": {
+        "sha256": "8155ec32f7f94d8c43ed2c37aef7964fa949b294e01a08cafe732bc974c190ff",
+        "bytes": 539
+      },
+      "native/protocol/src/security_tests.rs": {
+        "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+        "bytes": 2133
+      },
+      "native/protocol/src/service_tests.rs": {
+        "sha256": "1ffacfb1a9ead0fc84bfdd4fbc8b64577862dcd1a2358a2ce929db0e0df18a75",
+        "bytes": 3521
+      },
+      "native/protocol/src/services.rs": {
+        "sha256": "02331b3786a311134e50435b59b1586b69a253f53d2e086802967919e8c0d4a3",
+        "bytes": 2181
+      },
+      "native/protocol/src/tests.rs": {
+        "sha256": "17eb133c665497a206091214c8705220cc634068a174da50daeff49afffa8233",
+        "bytes": 11716
+      },
+      "native/protocol/src/tree/tests.rs": {
+        "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+        "bytes": 13131
+      },
+      "native/protocol/src/tree.rs": {
+        "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+        "bytes": 14549
+      },
+      "native/protocol/src/wire.rs": {
+        "sha256": "df3d19258ea8beaffe16299caf223d7dabb366c05507909798a6192c3e6b0abe",
+        "bytes": 19117
+      },
+      "package.json": {
+        "sha256": "5080cb668114d25194ecf604760ef8921ddb90448905f33662b770a621db9c9d",
+        "bytes": 2040
+      },
+      "packages/core/package.json": {
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+        "bytes": 234
+      },
+      "packages/core/src/application.ts": {
+        "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc",
+        "bytes": 19462
+      },
+      "packages/core/src/events.ts": {
+        "sha256": "5ad24f8e4b0606405dbbbcff2df4b0424a70cd691fe8e8f36584ef98ec5f5f9f",
+        "bytes": 8654
+      },
+      "packages/core/src/index.ts": {
+        "sha256": "8800fc237dd84627a2dcf22368f40029a3331068903d6795b889e77c4e13a2f9",
+        "bytes": 852
+      },
+      "packages/core/src/services.ts": {
+        "sha256": "e6cb7cef872eb06d5ab6c1dda35c16b770dd6fc9488505b95fc3404bf1a9856c",
+        "bytes": 3935
+      },
+      "packages/core/src/tree.ts": {
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+        "bytes": 7898
+      },
+      "packages/core/src/types.ts": {
+        "sha256": "0d63607618894fa1093eb70d60cec676b3c721f894f4a0f9ce348fc287799392",
+        "bytes": 6372
+      },
+      "packages/protocol/package.json": {
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+        "bytes": 129
+      },
+      "packages/protocol/src/elements.ts": {
+        "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+        "bytes": 5003
+      },
+      "packages/protocol/src/framing.ts": {
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+        "bytes": 2806
+      },
+      "packages/protocol/src/index.ts": {
+        "sha256": "f8adda80742568813d6d3c342695e04132b275fce54de21e09b000fe840b4af7",
+        "bytes": 604
+      },
+      "packages/protocol/src/messages.ts": {
+        "sha256": "6c9c12a5fdf37094257e73737bf5cb1c1c19ff2b2250303dc44a5f08c4e91800",
+        "bytes": 15477
+      },
+      "packages/protocol/src/services.ts": {
+        "sha256": "2f24e923d526a2f13f279bdd297d3088d6f901d54ed8c1a431e097155febf0c9",
+        "bytes": 2212
+      },
+      "packages/protocol/src/values.ts": {
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+        "bytes": 1732
+      },
+      "packages/react/package.json": {
+        "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec",
+        "bytes": 402
+      },
+      "packages/react/src/commit-barrier.ts": {
+        "sha256": "139f9f2827d3363642fee801e128dd1abf2a754d04550aca7d878493ef19bfd0",
+        "bytes": 987
+      },
+      "packages/react/src/index.ts": {
+        "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a",
+        "bytes": 262
+      },
+      "packages/react/src/jsx-dev-runtime.ts": {
+        "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85",
+        "bytes": 93
+      },
+      "packages/react/src/jsx-runtime.ts": {
+        "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d",
+        "bytes": 92
+      },
+      "packages/react/src/jsx.ts": {
+        "sha256": "a4c039fc78e76ea860000823ef215b1c0170b577bf074d3f13f4be20d0bccfef",
+        "bytes": 1322
+      },
+      "packages/react/src/mount.ts": {
+        "sha256": "db5b8b7a48d738ec6abaf99aa71fae4f05e7b6a7da78e4c12e8cd9d964960914",
+        "bytes": 7130
+      },
+      "packages/react/src/reconciler.ts": {
+        "sha256": "ff36df62bc07d2f6b226227803907fe51b6a34709c972dcb811c25bdf25fb4d3",
+        "bytes": 7440
+      },
+      "packages/renderer/package.json": {
+        "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3",
+        "bytes": 192
+      },
+      "packages/renderer/src/event-properties.ts": {
+        "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a",
+        "bytes": 2075
+      },
+      "packages/renderer/src/index.ts": {
+        "sha256": "446be4f582fe9fffa6bfd3d46b22ca9af51571031771b12a76bd68651cdae2e4",
+        "bytes": 925
+      },
+      "packages/renderer/src/input-intent.ts": {
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02",
+        "bytes": 1698
+      },
+      "packages/renderer/src/native-tree.ts": {
+        "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82",
+        "bytes": 6235
+      },
+      "packages/renderer/src/nodes.ts": {
+        "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c",
+        "bytes": 8443
+      },
+      "packages/renderer/src/order.ts": {
+        "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41",
+        "bytes": 956
+      },
+      "packages/renderer/src/root.ts": {
+        "sha256": "e1f9618d3c0cda72fd464674570e3e483873eae2d4eb3a941f9111f0754d09fd",
+        "bytes": 10523
+      },
+      "packages/renderer/src/window-lifetime.ts": {
+        "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+        "bytes": 1635
+      },
+      "packages/runtime/package.json": {
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+        "bytes": 195
+      },
+      "packages/runtime/src/index.ts": {
+        "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+        "bytes": 18518
+      },
+      "packages/runtime/src/startup-trace.ts": {
+        "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d",
+        "bytes": 3021
+      },
+      "packages/solid/package.json": {
+        "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84",
+        "bytes": 310
+      },
+      "packages/solid/src/index.ts": {
+        "sha256": "5337369926789dc092810cea3b77dc3e32c4640a253764fe28831134eb782760",
+        "bytes": 619
+      },
+      "packages/solid/src/jsx.ts": {
+        "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6",
+        "bytes": 868
+      },
+      "packages/solid/src/mount.ts": {
+        "sha256": "411fa124f9ef0a3aab4333ec6fe8aee57bc8ba4032565e2c1cb361d9d89c3ab2",
+        "bytes": 1323
+      },
+      "packages/solid/src/renderer.ts": {
+        "sha256": "a7ef3d1f2f0b0231b92193a6fa97aed6c3d435b36563021c8087337842f7b691",
+        "bytes": 1109
+      },
+      "rust-toolchain.toml": {
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+        "bytes": 86
+      },
+      "scripts/quality/native-clipboard-scenario.py": {
+        "sha256": "26a7f27bf33914b1c9a1accbc37a2196f83b887c91bce714e94880ea612bc2e3",
+        "bytes": 12221
+      },
+      "scripts/quality/native-diagnostics-linux.py": {
+        "sha256": "f14226e29fc98408cc668a5c4036a5667d2aae0d3163cce974db56e88ea06590",
+        "bytes": 23294
+      },
+      "scripts/quality/native-input-linux.py": {
+        "sha256": "d418af1488908141482e5adc83a3b3bae2c2a36a67be42bb6684d34947916756",
+        "bytes": 51481
+      },
+      "scripts/quality/native-interactions-scenario.py": {
+        "sha256": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+        "bytes": 13251
+      },
+      "scripts/quality/native-layout-scenario.py": {
+        "sha256": "3bc87c961be7ebbbaaf1cd1e58d3a6b725b54d625dbd32b752043b04b127e53f",
+        "bytes": 12999
+      },
+      "scripts/quality/native-react-workspace-scenario.py": {
+        "sha256": "93c37e8cb7a68d8bc10ca4ea61eb2fcfb7652d4aff920b6eacfca07d7ee9d281",
+        "bytes": 14680
+      },
+      "scripts/quality/native-solid-workspace-paint.py": {
+        "sha256": "12eacd5919aa4d9ac580a393eef1d75fdf60f05e437b6042bd912a20a987c163",
+        "bytes": 13633
+      },
+      "scripts/quality/native-solid-workspace-scenario.py": {
+        "sha256": "6cb8f4ddc8ca1372141df59864d1608b3f0ac42c525775c8f8bd6fe739a79ad3",
+        "bytes": 16547
+      },
+      "scripts/solid/transform.ts": {
+        "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c",
+        "bytes": 642
+      },
+      "scripts/solid-build.ts": {
+        "sha256": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908",
+        "bytes": 1615
+      },
+      "tests/native/clipboard.ts": {
+        "sha256": "c0ab7b5453f0a870e128c0fe7225dbb6a38d9fc89a97c92c2f8dabf28452d039",
+        "bytes": 17611
+      },
+      "tests/native/fault.ts": {
+        "sha256": "2c0ab72ef0ffb5803ef1e5751786327d89390b959f3d050ca2d4390976a1a594",
+        "bytes": 5222
+      },
+      "tests/native/interactions.ts": {
+        "sha256": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+        "bytes": 10546
+      },
+      "tests/native/layout.ts": {
+        "sha256": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+        "bytes": 7966
+      },
+      "tests/native/react-workspace.tsx": {
+        "sha256": "5ec562a67d8566fa5321c9aab9c70c706441c1a27939722255f84f0154637a17",
+        "bytes": 3761
+      },
+      "tests/native/scheduling.ts": {
+        "sha256": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+        "bytes": 7980
+      },
+      "tests/native/solid-workspace.tsx": {
+        "sha256": "7a9cff88a44a35238ff7be06b4343beaa2b96b0ee9b266cf20bc456943a48dd9",
+        "bytes": 5013
+      },
+      "toolchain.json": {
+        "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+        "bytes": 3012
+      },
+      "tsconfig.json": {
+        "sha256": "9a54721332913cddb331e54eefe4279c859a08860896ce3c048c88815bf3ee30",
+        "bytes": 1052
+      },
+      "tests/native/platform-smoke.ts": {
+        "sha256": "d239a2c034a4832a5e94819e80ffbb7d508e3a8f50b49d93bfb10f5ff87b7869",
+        "bytes": 5361
+      },
+      "native/macos-surface/examples/invalidation-control.rs": {
+        "sha256": "c902e750448ce508f53aacc99bcd26b08db75798904f44d77fb6525709f4a834",
+        "bytes": 7170
+      },
+      "examples/native-window/content.ts": {
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+        "bytes": 1766
+      },
+      "scripts/quality/native-platform-smoke.py": {
+        "sha256": "0831cdd02312eea0dcb785d159a1131c183c3c12fe303c2004be1d2af8952746",
+        "bytes": 24041
+      },
+      "scripts/quality/native-platform-input.py": {
+        "sha256": "b9d964af0446551be1957579c70a1c37ce4164e2dc7c43aac0e8fd404f04887b",
+        "bytes": 12531
+      },
+      "scripts/quality/native-platform-windows.py": {
+        "sha256": "718612f1c40b828b265d4513cd707874cc506142a7f8766e6b7afccea3a433a3",
+        "bytes": 21071
+      },
+      "scripts/quality/native-platform-macos.m": {
+        "sha256": "60c2ff70019d4834be4241bdc6b4aa95253891046fcc35b44b533e1ea4c6ca8f",
+        "bytes": 21856
+      },
+      "tests/native/macos-input-events.m": {
+        "sha256": "182fae8a961b6edcddb047f7593e9ad9ea24bec18a3e0925e9d0a13d9dafe36c",
+        "bytes": 9445
+      },
+      "tests/native/macos-window-hit.m": {
+        "sha256": "4fc38dbed6722b0f9e172b7b10bab5ccf52f52764312b3b4f50991050fa0333b",
+        "bytes": 7118
+      },
+      "tests/native/macos-cross-process-hit.m": {
+        "sha256": "d9355f010b166dca761549e7126f7c34d12810278e9b08c8d93e66dad1efc8c0",
+        "bytes": 7542
+      }
+    },
+    "hostBytesIndependentlyVerified": {
+      "bytes": 10055680,
+      "sha256": "e8e6dc4af89d541422dac5344373d58579b0973705423f1be8b1f0aeac2cd797"
+    },
+    "negativeObservation": {
+      "reportStatus": "failed",
+      "error": {
+        "type": "NativePaintMismatch",
+        "message": "Timed out waiting for complete native paint"
+      },
+      "nonce": "c1dcd60fca7209462f3d1b8994baad56",
+      "correctFullNativePaintPresent": true,
+      "deliberatelyWrongPaintAbsent": true,
+      "geometryPublishedBeforeCorrectPaint": true,
+      "nativeRecordCount": 6,
+      "applicationRecordCount": 1,
+      "recordedRenderer": [
+        {
+          "nonce": "c1dcd60fca7209462f3d1b8994baad56",
+          "type": "renderer",
+          "window_id": 1,
+          "gpu": {
+            "is_software_emulated": false,
+            "device_name": "Microsoft Basic Render Driver",
+            "driver_name": "Unknown Vendor (ID: 0x1414)",
+            "driver_info": "10.0.20348.5756"
+          }
+        }
+      ],
+      "controllerAndApplicationExitCode": 1,
+      "nativeShutdownAndExitVerified": true,
+      "forcedApplicationTermination": false,
+      "allSevenPublicOwnershipCountersZero": true,
+      "completedCycles": 0,
+      "abortReason": {
+        "name": "Error",
+        "message": "Controller aborted native smoke"
+      },
+      "logsDiscardedBytes": 0
+    },
+    "actualWindowsJobConclusion": "failure",
+    "soleFailedWindowsStep": {
+      "name": "Prove a wrong native paint expectation fails",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 18
+    },
+    "unexecutedWindowsAotSteps": [
+      {
+        "name": "Compile and inspect the exact native fixture through Bun AOT",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 19
+      },
+      {
+        "name": "AOT actual native paint and lifecycle",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 20
+      },
+      {
+        "name": "AOT owned native window and OS input",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 21
+      }
+    ],
+    "precedingOriginalReports": {
+      "development": {
+        "status": "passed",
+        "completedCycles": 3,
+        "applicationExitCode": 0,
+        "nativeShutdownAndExitVerified": true
+      },
+      "development-input": {
+        "status": "passed",
+        "completedCycles": 3,
+        "applicationExitCode": 0,
+        "nativeShutdownAndExitVerified": true
+      }
+    }
+  },
+  "sourcePlan": {
+    "scope": "Independent read-only source/plan parity before result audit; no native/test/GC execution",
+    "head": "09a090e42ac30641c090bef7145349dd8a6e1eca",
+    "localEquivalent": "f5637461a2345f30f453c85655f696847a3e0f53",
+    "tree": "7a00e874dcc2330b6afd7f4182983e944a70f609",
+    "base": "27405939ce1007d4142e1bb67e9ecc6ca3ce0411",
+    "testedMerge": "01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+    "run": 41916968921,
+    "runAttempt": 1,
+    "onlyChangedPaths": [
+      ".github/workflows/native-platforms.yml",
+      "experiments/native-gate-failure/README.md"
+    ],
+    "originalNativeWorkflow": {
+      "bytes": 16827,
+      "sha256": "cdb0826d81562cd7b2f00042ad5fa2d396da9231b90956071437cd951b9512f2"
+    },
+    "researchNativeWorkflow": {
+      "bytes": 16868,
+      "sha256": "514c8c5c821bde67b933458e706b670dd016a624c1ffd2b274270e4d1bfe98c2"
+    },
+    "unchangedProductionGate": {
+      "bytes": 11626,
+      "sha256": "2f83f45e5c8c33d926260cf106d3ad18f839b6796662f561581bdacb24e34388"
+    },
+    "publishedPlan": {
+      "bytes": 5923,
+      "sha256": "1eb18bfb6abb77f4dde2bc6e7cecb267a9bc6bea7138edfed21b4c23214a12eb"
+    },
+    "onlyExecutableDelta": "if ($IsWindows) { exit $code } after original negative-paint error and cleanup checks",
+    "nativeRuntimeTestSourceUnchanged": true,
+    "mutationsOrRetries": false
+  },
+  "finalJobOutcomes": [
+    {
+      "id": 126879091699,
+      "name": "AOT native interop (ubuntu-24.04)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879091699",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:32:29Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879091981,
+      "name": "Protocol (macos-15)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879091981",
+      "started_at": "2026-11-04T21:37:04Z",
+      "completed_at": "2026-11-04T21:38:50Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092034,
+      "name": "Native macOS and Windows / GPUI release and native paint (windows-2022)",
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092034",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:41:54Z",
+      "failedSteps": [
+        {
+          "name": "Prove a wrong native paint expectation fails",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 18,
+          "started_at": "2026-11-04T21:41:46Z",
+          "completed_at": "2026-11-04T21:41:49Z"
+        }
+      ],
+      "skippedSteps": [
+        {
+          "name": "Verify Xcode and precompiled Metal tools",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-04T21:32:31Z",
+          "completed_at": "2026-11-04T21:32:31Z"
+        },
+        {
+          "name": "Verify native macOS layer invalidation and assigned Metal identity",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 14,
+          "started_at": "2026-11-04T21:41:43Z",
+          "completed_at": "2026-11-04T21:41:43Z"
+        },
+        {
+          "name": "Build the bounded macOS OS controller",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 16,
+          "started_at": "2026-11-04T21:41:44Z",
+          "completed_at": "2026-11-04T21:41:44Z"
+        },
+        {
+          "name": "Compile and inspect the exact native fixture through Bun AOT",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 19,
+          "started_at": "2026-11-04T21:41:49Z",
+          "completed_at": "2026-11-04T21:41:49Z"
+        },
+        {
+          "name": "AOT actual native paint and lifecycle",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 20,
+          "started_at": "2026-11-04T21:41:49Z",
+          "completed_at": "2026-11-04T21:41:49Z"
+        },
+        {
+          "name": "AOT owned native window and OS input",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-11-04T21:41:49Z",
+          "completed_at": "2026-11-04T21:41:49Z"
+        },
+        {
+          "name": "Post Run actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 45,
+          "started_at": "2026-11-04T21:41:51Z",
+          "completed_at": "2026-11-04T21:41:51Z"
+        }
+      ]
+    },
+    {
+      "id": 126879092072,
+      "name": "Protocol (ubuntu-24.04)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092072",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:33:31Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092099,
+      "name": "Native macOS and Windows / GPUI release and native paint (macos-15)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092099",
+      "started_at": "2026-11-04T21:37:04Z",
+      "completed_at": "2026-11-04T21:43:12Z",
+      "failedSteps": [],
+      "skippedSteps": [
+        {
+          "name": "Locate the installed Windows SDK shader compiler",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-11-04T21:37:23Z",
+          "completed_at": "2026-11-04T21:37:23Z"
+        }
+      ]
+    },
+    {
+      "id": 126879092208,
+      "name": "Security / Dependency audit",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092208",
+      "started_at": "2026-11-04T21:32:05Z",
+      "completed_at": "2026-11-04T21:32:32Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092250,
+      "name": "Protocol (windows-2022)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092250",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:34:20Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092260,
+      "name": "AOT native interop (macos-15)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092260",
+      "started_at": "2026-11-04T21:37:26Z",
+      "completed_at": "2026-11-04T21:37:57Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092292,
+      "name": "Source quality",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092292",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:33:27Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092344,
+      "name": "AOT native interop (windows-2022)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092344",
+      "started_at": "2026-11-04T21:32:05Z",
+      "completed_at": "2026-11-04T21:33:47Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126879092474,
+      "name": "Native Linux / GPUI release, native contracts and baselines",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126879092474",
+      "started_at": "2026-11-04T21:32:04Z",
+      "completed_at": "2026-11-04T21:49:49Z",
+      "failedSteps": [],
+      "skippedSteps": []
+    },
+    {
+      "id": 126888642945,
+      "name": "Validation / Gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41916968921/job/126888642945",
+      "started_at": "2026-11-04T21:49:52Z",
+      "completed_at": "2026-11-04T21:49:55Z",
+      "failedSteps": [
+        {
+          "name": "Require every implementation check to pass",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 2,
+          "started_at": "2026-11-04T21:49:53Z",
+          "completed_at": "2026-11-04T21:49:54Z"
+        }
+      ],
+      "skippedSteps": [
+        {
+          "name": "Describe coverage precisely",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-11-04T21:49:54Z",
+          "completed_at": "2026-11-04T21:49:54Z"
+        }
+      ]
+    }
+  ],
+  "artifact": {
+    "id": 13365752122,
+    "name": "native-platform-Windows-X64-01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+    "size_in_bytes": 3966429,
+    "url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122",
+    "archive_download_url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122/zip",
+    "expired": false,
+    "created_at": "2026-11-04T21:41:51Z",
+    "expires_at": "2026-11-18T21:41:50Z",
+    "updated_at": "2026-11-04T21:41:51Z",
+    "digest": "sha256:3a245c1de9710af51e25c370c337ec49193c6e1efd6a68f76166dca7d0ecd945",
+    "workflow_run": {
+      "id": 41916968921,
+      "repository_id": 1422774238,
+      "head_repository_id": 1422774238,
+      "head_branch": "test/native-gate-failure-20261104",
+      "head_sha": "09a090e42ac30641c090bef7145349dd8a6e1eca"
+    }
+  },
+  "originalZip": {
+    "bytes": 3966429,
+    "sha256": "3a245c1de9710af51e25c370c337ec49193c6e1efd6a68f76166dca7d0ecd945"
+  },
+  "completeDecodedWindowsJobLog": {
+    "bytes": 90191,
+    "sha256": "a0f3bef2a031c22693ed10c2249ee40c101f779bf748b068d62a55945ae9c401"
+  },
+  "completeDecodedAggregateLog": {
+    "bytes": 2582,
+    "sha256": "e4384cf0a861989c6afd91f0bcc6d3de0195bcb73244074256d5f4c2235fdcc3"
+  },
+  "retainedArchive": {
+    "bytes": 82396,
+    "sha256": "568fad41091391238686407d163d76817a212ceb1ba8e1cf73a64a6a4c8da628",
+    "members": 58,
+    "uncompressedBytes": 445343
+  },
+  "archivePreparation": {
+    "scope": "Author-authored archive preparation receipt; separate from the measured hosted control",
+    "worktreeBase": "6b4a775b139e4a40c802b54614f0ae80dfcb6142",
+    "dependencySetup": {
+      "command": "bun install --offline --frozen-lockfile --ignore-scripts",
+      "purpose": "Prepare the existing Code Foundry normal commit hook in the fresh data-only archive worktree",
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cache": "Existing populated task-owned Bun package cache; not a cold-install or external-consumer experiment",
+      "result": "exit 0; 72 packages installed [19.00ms]",
+      "lockfileChanged": false,
+      "lifecycleScripts": "disabled",
+      "additionalInstalls": 0
+    },
+    "auditOperations": "Read original artifacts/logs and Git source, hash bytes, decode JSON, create and read back a bounded data archive",
+    "applicationOrNativeExecution": false,
+    "testSuiteOrGCExecution": false,
+    "workflowRetryOrSourceMutation": false
+  },
+  "checks": [
+    "Original ZIP length/digest, safe unique regular entries and all raw-member SHA-256 values verified.",
+    "Retained archive decompressed and each member compared byte-for-byte with its input.",
+    "All 120 original source inventory records verified against the exact measured Git tree; no lazy fetch used.",
+    "Actual archived host PE bytes hashed without execution; matched original report and host hash/size records.",
+    "Exact correct six-node native paint, nonce, revision, layout-before-paint and public mount record verified.",
+    "Original NativePaintMismatch, all seven zero public ownership counters, joined native shutdown/application exit and no forced termination verified.",
+    "Actual completed Windows and aggregate job conclusions, full needs results and original exit1 log verified."
+  ],
+  "limitations": [
+    "This satisfies only the planned native-failure-to-production-gate control; it does not pass the failed Validation run.",
+    "The negative fixture completed zero cycles and deliberately aborted; preceding positive reports separately completed three each.",
+    "The original report retains processTreeCleanup: unverified; native application shutdown and child exit do not establish complete descendant-tree cleanup.",
+    "No screenshot, physical display/GPU/input, IME, accessibility, long-soak or failure-root-cause acceptance is claimed.",
+    "Windows native AOT build/paint/input steps19\u201321 were not executed; separate AOT interoperability jobs have different scope.",
+    "No workflow retry, source mutation, application/native execution, GC or test suite occurred during this read-only archive preparation.",
+    "The earlier Windows-leg-only audit and source-plan snapshot remain byte-exact in the archive, including their then-pending aggregate wording; this final receipt records the completed outcome."
+  ]
+}

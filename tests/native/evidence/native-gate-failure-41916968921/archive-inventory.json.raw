@@ -1,0 +1,543 @@
+{
+  "originalArtifact": {
+    "id": 13365752122,
+    "name": "native-platform-Windows-X64-01cbc04abd06fe12f5f45c81f257afe5a7d7d68e",
+    "size_in_bytes": 3966429,
+    "url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122",
+    "archive_download_url": "https://api.github.com/repos/0xPlayerOne/bun-native/actions/artifacts/13365752122/zip",
+    "expired": false,
+    "created_at": "2026-11-04T21:41:51Z",
+    "expires_at": "2026-11-18T21:41:50Z",
+    "updated_at": "2026-11-04T21:41:51Z",
+    "digest": "sha256:3a245c1de9710af51e25c370c337ec49193c6e1efd6a68f76166dca7d0ecd945",
+    "workflow_run": {
+      "id": 41916968921,
+      "repository_id": 1422774238,
+      "head_repository_id": 1422774238,
+      "head_branch": "test/native-gate-failure-20261104",
+      "head_sha": "09a090e42ac30641c090bef7145349dd8a6e1eca"
+    }
+  },
+  "originalZip": {
+    "bytes": 3966429,
+    "sha256": "3a245c1de9710af51e25c370c337ec49193c6e1efd6a68f76166dca7d0ecd945"
+  },
+  "originalMembers": {
+    "bootstrap-environment.json": {
+      "bytes": 295,
+      "sha256": "78e4e5ce436a4b6d6ffb89b85c6738475f5e14549f97194423a799f7b190609a",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/application-result.json": {
+      "bytes": 377,
+      "sha256": "fce7d74ea69bc145b5a460d623d8674895417b3e000bf0829364997205a09111",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/application.jsonl": {
+      "bytes": 1491,
+      "sha256": "cf82476e612862687b527396c0b84651e8d34969f7431ed26c4be46eba15d63d",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/close-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/close-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/close-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/native.jsonl": {
+      "bytes": 11418,
+      "sha256": "29e6cb1e23ec03c176d3d9c0ba028811c9cac63a577f4c1b4ad5816c979074c5",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/result.json": {
+      "bytes": 34065,
+      "sha256": "7c8b793edc8e4c727f77f9cda92928ed205a155f9d68e76dc2c9449940751c82",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/stdout.log": {
+      "bytes": 299,
+      "sha256": "0373b0b56b5bbd7a9ddb5af50a3e0c72b96fecfab33be110560edffc74b7b67a",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/update-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/update-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development/update-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/application-result.json": {
+      "bytes": 377,
+      "sha256": "c3add566778c20d4203ab90050eb19887fbc5c36d7fe05740b13dbc649e4d737",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/application.jsonl": {
+      "bytes": 22301,
+      "sha256": "d37fdef9984aae977d75bf32e450e59b1435018c0959f3b979aa562026defc06",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/close-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/close-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/close-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/native.jsonl": {
+      "bytes": 18594,
+      "sha256": "63df85437012f9c8540ff813c95a08cca357cf469791eb59a7c29498fcdec3f6",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/result.json": {
+      "bytes": 45787,
+      "sha256": "930c7a5e1d66d1a6a09be2ecc8e0598c785eabdb3f47f77cd4eb4cbf75844dba",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/stdout.log": {
+      "bytes": 299,
+      "sha256": "7048abbaaa9eb3025f00011322a9895ee3f34cd80684ae7dda4d1ab55b47c134",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/update-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/update-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "development-input/update-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "fxc-sha256.txt": {
+      "bytes": 183,
+      "sha256": "f7173279fba6d57be2c7236eec7a522b0c4cc7ad47efc01ad51e163baade125c",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "native-build.json": {
+      "bytes": 77,
+      "sha256": "c8e3b04818be0b6705d5ccbed688c5d020f67f27d04cdfa3f5e6f7f4482b40ca",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "native-build.log": {
+      "bytes": 10530,
+      "sha256": "629952a954cf445cc47d1b4ea806357e8c79016eca2d1e9bbe76130ef84edf05",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "native-sha256.txt": {
+      "bytes": 177,
+      "sha256": "2fcf77680aac4ab613a55d0de6c1f5fca177a0d32357541c622c03cbb4ad0259",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "native-size.json": {
+      "bytes": 62,
+      "sha256": "0d28caa7d24bf846acdc5a3593bf67c45597d34477340c754beb54893a1dbf92",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/application-result.json": {
+      "bytes": 466,
+      "sha256": "b595f8374894c7554cd56294277bf1fcee3dc91d238dca7ebc8a9fa86ec6b169",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/application.jsonl": {
+      "bytes": 123,
+      "sha256": "fcb45f8e09a2eecde95dbfd85348d6cc830130c557ca3682dc6cd36ed68a74d6",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/native.jsonl": {
+      "bytes": 2530,
+      "sha256": "c6485d39e621156bbae2d6873ad7d2e06d210a839635198840d322b8905e67fc",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/result.json": {
+      "bytes": 20908,
+      "sha256": "646304a4ad3c7a1e414d051999f351f21b61d78556a9e19e8037d0cf8773da90",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/stdout.log": {
+      "bytes": 369,
+      "sha256": "2a31ac6a7f8c05530d90078b0b1813f5221b762291d00668d040a096b50c66d2",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "negative-paint/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "toolchain.txt": {
+      "bytes": 552,
+      "sha256": "3f262ca6889430bf3eddf226d82ae8959ca378640c4e435a771efbdaea891d96",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    },
+    "unsigned-native-host.tar.gz": {
+      "bytes": 3936085,
+      "sha256": "1242dce38929114567bb1b5f357a2725149ac54f51c4aec7079de92102fefb62",
+      "included": false,
+      "reason": "Executable archive omitted; original compressed and actual PE identities verified separately"
+    },
+    "windows-sdk.txt": {
+      "bytes": 787,
+      "sha256": "2edff95edbe5f96d823c2c31086d47884966be49b380bfa141bf3f14cce2a08a",
+      "included": true,
+      "reason": "Original report, observation, toolchain or host identity text"
+    }
+  },
+  "retainedArchive": {
+    "bytes": 82396,
+    "sha256": "568fad41091391238686407d163d76817a212ceb1ba8e1cf73a64a6a4c8da628",
+    "members": 58,
+    "uncompressedBytes": 445343
+  },
+  "archivePreparation": {
+    "scope": "Author-authored archive preparation receipt; separate from the measured hosted control",
+    "worktreeBase": "6b4a775b139e4a40c802b54614f0ae80dfcb6142",
+    "dependencySetup": {
+      "command": "bun install --offline --frozen-lockfile --ignore-scripts",
+      "purpose": "Prepare the existing Code Foundry normal commit hook in the fresh data-only archive worktree",
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cache": "Existing populated task-owned Bun package cache; not a cold-install or external-consumer experiment",
+      "result": "exit 0; 72 packages installed [19.00ms]",
+      "lockfileChanged": false,
+      "lifecycleScripts": "disabled",
+      "additionalInstalls": 0
+    },
+    "auditOperations": "Read original artifacts/logs and Git source, hash bytes, decode JSON, create and read back a bounded data archive",
+    "applicationOrNativeExecution": false,
+    "testSuiteOrGCExecution": false,
+    "workflowRetryOrSourceMutation": false
+  },
+  "retainedMembers": {
+    "logs/aggregate-job-126888642945.log": {
+      "bytes": 2582,
+      "sha256": "e4384cf0a861989c6afd91f0bcc6d3de0195bcb73244074256d5f4c2235fdcc3"
+    },
+    "logs/windows-job-126879092034.log": {
+      "bytes": 90191,
+      "sha256": "a0f3bef2a031c22693ed10c2249ee40c101f779bf748b068d62a55945ae9c401"
+    },
+    "metadata/aggregate-needs.json": {
+      "bytes": 386,
+      "sha256": "fc96d8d6f7f2da8712659ae1c7bde8e278279011bd5c8f3da78bcfa4bbcde3e2"
+    },
+    "metadata/archive-preparation.json": {
+      "bytes": 966,
+      "sha256": "dc57a5bd7e5f7890c6eb9406876efa2660b48b3316ce2577e52c6681164aaa29"
+    },
+    "metadata/final-artifacts.json": {
+      "bytes": 7748,
+      "sha256": "77249c8a99b56e1fb454fc2f595bf0fd12d1e877df569bd5b03d2a22f0fc6e39"
+    },
+    "metadata/final-jobs.json": {
+      "bytes": 71048,
+      "sha256": "463fcd2a508264336e44653d817450b0e82e71e8e2c2cdd52c28902b30b2cb9f"
+    },
+    "metadata/final-run.json": {
+      "bytes": 15642,
+      "sha256": "02fcab6ad2b125f4b22c527c9fa93b435bd3c88c8f7ecaf33fa2db1c52a2ae21"
+    },
+    "metadata/final-workflows.json": {
+      "bytes": 1210,
+      "sha256": "34a31e20972ce9dc45c26bb0492ede7a912390c59da13f221fa5f16ab5ee343e"
+    },
+    "metadata/source-plan-audit.json": {
+      "bytes": 1589,
+      "sha256": "0c0fbb6da1c9c1f2f86c16fe72d4c159e8a385fb71286b492cdebd277d6a0182"
+    },
+    "metadata/tested-merge.json": {
+      "bytes": 2910,
+      "sha256": "0137df994ba39443b2d17565f63085118aeb10cdb3883b2661c4bdf07ed6893c"
+    },
+    "metadata/windows-artifact.json": {
+      "bytes": 804,
+      "sha256": "d50d06a8a6ed8a48dda1d2e93ee267cb765d6c69f18fbfde0086f1b5bc00dc8d"
+    },
+    "metadata/windows-control-audit.json": {
+      "bytes": 22733,
+      "sha256": "329f4b9053a723480266c3bf5ebb3ded5bfec5fb3ad6a08c7198eec01321d3a2"
+    },
+    "metadata/windows-job.json": {
+      "bytes": 4223,
+      "sha256": "9626a9bedeea386e6779c2130612d21ff972718ac048461b354a9bc4c7edbc9c"
+    },
+    "source/original-native-platforms.yml": {
+      "bytes": 16827,
+      "sha256": "cdb0826d81562cd7b2f00042ad5fa2d396da9231b90956071437cd951b9512f2"
+    },
+    "source/published-plan.md": {
+      "bytes": 5923,
+      "sha256": "1eb18bfb6abb77f4dde2bc6e7cecb267a9bc6bea7138edfed21b4c23214a12eb"
+    },
+    "source/research-native-platforms.yml": {
+      "bytes": 16868,
+      "sha256": "514c8c5c821bde67b933458e706b670dd016a624c1ffd2b274270e4d1bfe98c2"
+    },
+    "source/unchanged-production-bun-native.yml": {
+      "bytes": 11626,
+      "sha256": "2f83f45e5c8c33d926260cf106d3ad18f839b6796662f561581bdacb24e34388"
+    },
+    "windows/bootstrap-environment.json": {
+      "bytes": 295,
+      "sha256": "78e4e5ce436a4b6d6ffb89b85c6738475f5e14549f97194423a799f7b190609a"
+    },
+    "windows/development-input/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/application-result.json": {
+      "bytes": 377,
+      "sha256": "c3add566778c20d4203ab90050eb19887fbc5c36d7fe05740b13dbc649e4d737"
+    },
+    "windows/development-input/application.jsonl": {
+      "bytes": 22301,
+      "sha256": "d37fdef9984aae977d75bf32e450e59b1435018c0959f3b979aa562026defc06"
+    },
+    "windows/development-input/close-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/close-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/close-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/native.jsonl": {
+      "bytes": 18594,
+      "sha256": "63df85437012f9c8540ff813c95a08cca357cf469791eb59a7c29498fcdec3f6"
+    },
+    "windows/development-input/result.json": {
+      "bytes": 45787,
+      "sha256": "930c7a5e1d66d1a6a09be2ecc8e0598c785eabdb3f47f77cd4eb4cbf75844dba"
+    },
+    "windows/development-input/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/stdout.log": {
+      "bytes": 299,
+      "sha256": "7048abbaaa9eb3025f00011322a9895ee3f34cd80684ae7dda4d1ab55b47c134"
+    },
+    "windows/development-input/update-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/update-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development-input/update-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/application-result.json": {
+      "bytes": 377,
+      "sha256": "fce7d74ea69bc145b5a460d623d8674895417b3e000bf0829364997205a09111"
+    },
+    "windows/development/application.jsonl": {
+      "bytes": 1491,
+      "sha256": "cf82476e612862687b527396c0b84651e8d34969f7431ed26c4be46eba15d63d"
+    },
+    "windows/development/close-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/close-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/close-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/native.jsonl": {
+      "bytes": 11418,
+      "sha256": "29e6cb1e23ec03c176d3d9c0ba028811c9cac63a577f4c1b4ad5816c979074c5"
+    },
+    "windows/development/result.json": {
+      "bytes": 34065,
+      "sha256": "7c8b793edc8e4c727f77f9cda92928ed205a155f9d68e76dc2c9449940751c82"
+    },
+    "windows/development/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/stdout.log": {
+      "bytes": 299,
+      "sha256": "0373b0b56b5bbd7a9ddb5af50a3e0c72b96fecfab33be110560edffc74b7b67a"
+    },
+    "windows/development/update-1": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/update-2": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/development/update-3": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/fxc-sha256.txt": {
+      "bytes": 183,
+      "sha256": "f7173279fba6d57be2c7236eec7a522b0c4cc7ad47efc01ad51e163baade125c"
+    },
+    "windows/native-build.json": {
+      "bytes": 77,
+      "sha256": "c8e3b04818be0b6705d5ccbed688c5d020f67f27d04cdfa3f5e6f7f4482b40ca"
+    },
+    "windows/native-build.log": {
+      "bytes": 10530,
+      "sha256": "629952a954cf445cc47d1b4ea806357e8c79016eca2d1e9bbe76130ef84edf05"
+    },
+    "windows/native-sha256.txt": {
+      "bytes": 177,
+      "sha256": "2fcf77680aac4ab613a55d0de6c1f5fca177a0d32357541c622c03cbb4ad0259"
+    },
+    "windows/native-size.json": {
+      "bytes": 62,
+      "sha256": "0d28caa7d24bf846acdc5a3593bf67c45597d34477340c754beb54893a1dbf92"
+    },
+    "windows/negative-paint/abort": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/negative-paint/application-result.json": {
+      "bytes": 466,
+      "sha256": "b595f8374894c7554cd56294277bf1fcee3dc91d238dca7ebc8a9fa86ec6b169"
+    },
+    "windows/negative-paint/application.jsonl": {
+      "bytes": 123,
+      "sha256": "fcb45f8e09a2eecde95dbfd85348d6cc830130c557ca3682dc6cd36ed68a74d6"
+    },
+    "windows/negative-paint/native.jsonl": {
+      "bytes": 2530,
+      "sha256": "c6485d39e621156bbae2d6873ad7d2e06d210a839635198840d322b8905e67fc"
+    },
+    "windows/negative-paint/result.json": {
+      "bytes": 20908,
+      "sha256": "646304a4ad3c7a1e414d051999f351f21b61d78556a9e19e8037d0cf8773da90"
+    },
+    "windows/negative-paint/stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "windows/negative-paint/stdout.log": {
+      "bytes": 369,
+      "sha256": "2a31ac6a7f8c05530d90078b0b1813f5221b762291d00668d040a096b50c66d2"
+    },
+    "windows/toolchain.txt": {
+      "bytes": 552,
+      "sha256": "3f262ca6889430bf3eddf226d82ae8959ca378640c4e435a771efbdaea891d96"
+    },
+    "windows/windows-sdk.txt": {
+      "bytes": 787,
+      "sha256": "2edff95edbe5f96d823c2c31086d47884966be49b380bfa141bf3f14cce2a08a"
+    }
+  },
+  "omissions": [
+    "The original Windows ZIP and its unsigned-native-host.tar.gz executable payload are not copied into this branch.",
+    "The actual PE executable identity was independently checked from the original compressed payload without execution.",
+    "Artifacts and payloads from successful Linux/macOS, protocol, AOT interop, source and security jobs are not re-archived or requalified here.",
+    "No Windows native AOT artifact was produced after the designated step18 failure; those steps were skipped."
+  ]
+}
