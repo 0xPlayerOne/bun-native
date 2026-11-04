@@ -41,6 +41,12 @@ try {
 Application changes use Bun or the pinned Bun AOT compiler. They do not compile
 Rust. The application supplies an existing native host with the matching protocol.
 
+For a larger consumer, the [React workspace](../../examples/react-workspace/README.md)
+combines editable tasks, keyed rows, native scrolling, search, filters, light/dark
+colors, and window-close cleanup. It runs through this public adapter in both
+development and the `react-workspace` AOT entry. Its native qualification limits
+and the remaining dialog/menu dependency are documented with the example.
+
 ## Commit, refs and effect semantics
 
 React reconciles into staged native nodes in mutation mode. Create/update/delete,

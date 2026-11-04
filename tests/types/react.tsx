@@ -7,6 +7,7 @@ export function nativeReactContract(): JSX.Element {
   const reference = createRef<NativeRef>()
   const accepted = (
     <box
+      key="workspace"
       style={{ gap: 12, overflow: 'scroll_y', align_items: 'stretch', min_height: 80 }}
       onInputCapture={(event) => {
         event.value.toUpperCase()
@@ -22,8 +23,11 @@ export function nativeReactContract(): JSX.Element {
         void event.repeat
       }}
     >
-      <text ref={reference}>Literal native text</text>
+      <text key={1} ref={reference}>
+        Literal native text
+      </text>
       <button
+        key={2n}
         onClick={(event) => {
           event.signal.throwIfAborted()
           event.currentTarget.kind.toUpperCase()
@@ -45,6 +49,7 @@ export function nativeReactContract(): JSX.Element {
         Action
       </button>
       <input
+        key="editor"
         value={{ value: '', revision: 0 }}
         onInput={(event) => {
           event.value.toUpperCase()
@@ -54,6 +59,8 @@ export function nativeReactContract(): JSX.Element {
   )
   // @ts-expect-error Browser elements are not native intrinsic elements.
   const browser = <div />
+  // @ts-expect-error React keys are strings, numbers, or bigints, never native handles.
+  const invalidKey = <box key={reference} />
   // @ts-expect-error CSS strings are not typed native dimensions.
   const css = <box style={{ width: '100%' }} />
   // @ts-expect-error Native text input uses onInput, without DOM ChangeEvent.
@@ -86,6 +93,7 @@ export function nativeReactContract(): JSX.Element {
   const invalidOptions: ReactRenderOptions = { onRecoverableError: true }
   void [
     browser,
+    invalidKey,
     css,
     change,
     children,
