@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test'
+import * as fs from 'node:fs'
 import {
   existsSync,
   mkdirSync,
@@ -366,6 +367,43 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       assertJoined(lifetimes().slice(start), 2)
     })
   }, 40_000)
+
+  test('rescans events without filenames and still joins the final application', async () => {
+    const path = await createProject(
+      repository,
+      join(directory, 'watch-missing-filename'),
+      'react',
+      'typescript'
+    )
+    const start = lifetimes().length
+    const watch = fs.watch
+    let callback: unknown
+    const observed = spyOn(fs, 'watch').mockImplementation((...args: unknown[]): fs.FSWatcher => {
+      callback = args[2]
+      return Reflect.apply(watch, fs, args)
+    })
+    try {
+      await withWatcher(path, async ({ output, errors, completion }) => {
+        const generations = () =>
+          output.filter((line) => line.startsWith('bun-native:ready ')).length
+        await until(() => generations() === 1, 'initial missing-filename test generation')
+        if (typeof callback !== 'function') throw new Error('Watch callback was not captured')
+        // The pinned Bun watcher can omit the filename at runtime, despite the
+        // node:fs declaration advertising only string, Buffer or null.
+        Reflect.apply(callback, undefined, ['rename', undefined])
+        await until(() => generations() === 2, 'undefined filename rescan')
+        Reflect.apply(callback, undefined, ['rename', null])
+        await until(() => generations() === 3, 'null filename rescan')
+        process.emit('SIGTERM')
+        await completion
+        expect(errors).toEqual([])
+        expect(output.filter((line) => line.startsWith('bun-native:stopped '))).toHaveLength(1)
+        assertJoined(lifetimes().slice(start), 3)
+      })
+    } finally {
+      observed.mockRestore()
+    }
+  }, 20_000)
 
   test('watch cancellation during initial build starts no application', async () => {
     const path = await createProject(
