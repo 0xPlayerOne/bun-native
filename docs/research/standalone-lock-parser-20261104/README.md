@@ -24,6 +24,13 @@ archival commit, not a new measured source.
 | Initial   | `c16db30583767094cabccbb5875d42ad12af40ac` | `75762af6c881bc00e61af4860c1b62eb815105d1` | Failed; three later inputs not run                           |
 | Follow-up | `39d2b878540f23863b617e42fb6c2f6a8df6ed94` | `e5402f51e1997603481f690bee63df184d7fd9f0` | Three previously unrun inputs passed their declared controls |
 
+The published equivalents are
+[`95bc53479988e91f416dce1aca0cc9e900085bf4`](https://github.com/0xPlayerOne/bun-native/commit/95bc53479988e91f416dce1aca0cc9e900085bf4)
+for the initial source and
+[`2c6f48f28b02eb83769d084b68aa77ae2d942125`](https://github.com/0xPlayerOne/bun-native/commit/2c6f48f28b02eb83769d084b68aa77ae2d942125)
+for the follow-up. Their complete Git trees equal the measured trees above.
+The raw records retain their original local commit identities unchanged.
+
 Both use Bun revision `da867c60bf0bcbf9d6d36994f8ca0efa42075115`, on the
 controller's required Linux x64 platform. The executable is 138,468,432 bytes,
 SHA-256 `fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810`.

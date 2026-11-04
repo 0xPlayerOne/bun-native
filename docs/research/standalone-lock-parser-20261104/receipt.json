@@ -31,7 +31,9 @@
       "source": {
         "commit": "c16db30583767094cabccbb5875d42ad12af40ac",
         "tree": "75762af6c881bc00e61af4860c1b62eb815105d1",
-        "trackedFiles": 533
+        "trackedFiles": 533,
+        "publishedEquivalentCommit": "95bc53479988e91f416dce1aca0cc9e900085bf4",
+        "publishedEquivalentTreeEqual": true
       },
       "reportedStatus": "failed",
       "error": "Error: Missing the expected original lock rejection",
@@ -98,7 +100,9 @@
       "source": {
         "commit": "39d2b878540f23863b617e42fb6c2f6a8df6ed94",
         "tree": "e5402f51e1997603481f690bee63df184d7fd9f0",
-        "trackedFiles": 533
+        "trackedFiles": 533,
+        "publishedEquivalentCommit": "2c6f48f28b02eb83769d084b68aa77ae2d942125",
+        "publishedEquivalentTreeEqual": true
       },
       "reportedStatus": "passed",
       "error": null,
