@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "status": "failed",
+  "scope": "Unchanged source-suite fixed-checkpoint callback collectability assertion; no native or clipboard execution claim.",
+  "run": {
+    "id": 41884801689,
+    "attempt": 1,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41884801689",
+    "head": "7f958333cb64b574c0bc55e0c4f0c44f4512ca37",
+    "jobId": 126766271521,
+    "jobUrl": "https://github.com/0xPlayerOne/bun-native/actions/runs/41884801689/job/126766271521",
+    "jobName": "Source quality",
+    "command": ["bun", "test", "tests", "--coverage"],
+    "passed": 589,
+    "failed": 1,
+    "assertions": 3312,
+    "files": 43,
+    "exitCode": 1
+  },
+  "testedSource": {
+    "merge": "d5a87f64a9a6e635a33f9f30261acd136f0d45d7",
+    "tree": "6aa9b146b8fd8de7336527748f6a587759f4b888",
+    "actualMain": "3f3d84904a106e9147ccbd5e7bfa4e52065d83ed",
+    "actualMainTree": "ee4c176e6f7eaa08cf48de1d76049a23020aa784",
+    "changedPaths": [
+      "docs/decisions/0007-native-clipboard.md",
+      "docs/native-services.md",
+      "tests/native/evidence/clipboard-linux-hosted-release.json",
+      "tests/native/evidence/services-linux-hosted-release.json"
+    ],
+    "unchangedFiles": [
+      {
+        "path": ".bun-version",
+        "bytes": 15,
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 28357,
+        "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "bunfig.toml",
+        "bytes": 147,
+        "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "package.json",
+        "bytes": 1917,
+        "sha256": "e8844213aa5f995aaa8b5f17057fd66aa05813d6442d8f3875350e6acc9cec5a",
+        "identicalToActualMain": true
+      },
+      {
+        "path": ".github/workflows/bun-native.yml",
+        "bytes": 11595,
+        "sha256": "621499f480eff5ddde8c5b0a77457d24125fb80c89cc2e13a1e5076074699d6c",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "scripts/install-bun/download.mjs",
+        "bytes": 7008,
+        "sha256": "0145244349f0838ca6e49ccf0b0e9d162d12b5b479a74767cc888e1d84ae3ade",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "scripts/solid/test-runtime.ts",
+        "bytes": 555,
+        "sha256": "61a95670293c2db96f6b4f4baa3ad073a8895facae8d957f99a19e6ae4c1e02a",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "tests/renderers/revoker-ownership.test.ts",
+        "bytes": 2080,
+        "sha256": "97743ec90c1a28435e6b4403d6c70f233231ed0462e530f280aed42d8109039b",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "tests/renderers/support.ts",
+        "bytes": 1984,
+        "sha256": "d069c1e14a4917e4aaa14de764d9159276857ff408801484d9eece720ae8e7e1",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/renderer/src/window-lifetime.ts",
+        "bytes": 1635,
+        "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/renderer/src/root.ts",
+        "bytes": 10523,
+        "sha256": "e1f9618d3c0cda72fd464674570e3e483873eae2d4eb3a941f9111f0754d09fd",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/solid/src/mount.ts",
+        "bytes": 1323,
+        "sha256": "411fa124f9ef0a3aab4333ec6fe8aee57bc8ba4032565e2c1cb361d9d89c3ab2",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/react/src/mount.ts",
+        "bytes": 7130,
+        "sha256": "db5b8b7a48d738ec6abaf99aa71fae4f05e7b6a7da78e4c12e8cd9d964960914",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/core/src/application.ts",
+        "bytes": 19462,
+        "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc",
+        "identicalToActualMain": true
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "bytes": 18518,
+        "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+        "identicalToActualMain": true
+      }
+    ]
+  },
+  "runtime": {
+    "bunReportedVersion": "1.4.4-canary.1+da867c60b",
+    "bunPackage": "@oven/bun-linux-x64",
+    "packageVersion": "1.4.4-canary.20261029.1+da867c6",
+    "executableSha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "pinnedFullRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "fullRevisionObservation": "The hosted installer reports the short revision and exact executable hash; the full pin is the previously verified compiler identity."
+  },
+  "failure": {
+    "file": "tests/renderers/revoker-ownership.test.ts",
+    "line": 22,
+    "test": "retained window unsubscribe handles release their callbacks immediately",
+    "observedWeakTargets": 1,
+    "expectedWeakTargets": 0,
+    "registeredCallbacks": 10,
+    "releaseHandlesRetained": true,
+    "collectionCheckpoints": [
+      "await Bun.sleep(0)",
+      "Bun.gc(true)",
+      "await Bun.sleep(0)",
+      "Bun.gc(true)"
+    ],
+    "adjacentWindowCompletionCase": "passed",
+    "retainedIndex": "not emitted",
+    "retainingRoot": "not established"
+  },
+  "log": {
+    "provider": "GitHub workflow-job-logs connector; saved text exactly matches the connector-returned string encoded as UTF-8",
+    "uncompressed": {
+      "file": "source-quality.log",
+      "bytes": 108346,
+      "sha256": "8bfaea70785d4a14660995a93b60ad5771f48216bcebbb349d21c330b9df4771"
+    },
+    "archive": {
+      "file": "source-quality.log.gz",
+      "encoding": "gzip, level 9, no filename, mtime 0, OS byte 255",
+      "bytes": 23207,
+      "sha256": "f503a9ab7445a0ddcd4f41108a728cb15dbd2a8fb7a4d1d5f3452f6e693fd23f"
+    },
+    "decompressionVerified": true,
+    "redaction": "None; content is the already-public masked Actions log."
+  },
+  "artifact": {
+    "sourceQualityArtifact": "No artifact upload step was emitted by this job.",
+    "nativeArtifact": "Any separately produced Native Linux artifact is not source-job failure evidence."
+  },
+  "actions": {
+    "nativeExecutionsByAuditor": 0,
+    "rerunsRequested": 0,
+    "testEdits": 0,
+    "scope": "Read-only source/log audit. Existing original #353 startup failure and #351 AOT close failure remain separate and unchanged."
+  },
+  "steps": {
+    "file": "job-steps.json.txt",
+    "encoding": "Original captured connector steps object serialized as UTF-8 JSON; bytes preserved from the first capture.",
+    "bytes": 2276,
+    "sha256": "48b2bb3d0d983c914e16195dac7df7ce595f0b452f70147b8b8740a8c82ef2ff"
+  },
+  "archive": {
+    "base": "7f958333cb64b574c0bc55e0c4f0c44f4512ca37",
+    "purpose": "Evidence-only archival branch; no product merge or CI retry. Original failed PR head remains unchanged.",
+    "publicLogReview": "Credential-pattern scan found no unmasked authorization, private key, GitHub token or AWS access key. Authorization setup is masked; remaining token contexts are permissions/configuration or test descriptions."
+  }
+}
