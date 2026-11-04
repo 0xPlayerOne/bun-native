@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "status": "original-failure-preserved",
+  "head": "af956a154fff0c0afcc5e26adbe55f5af76f9f1b",
+  "testedMerge": {
+    "sha": "44334f79d05e8cdca9bb0298871f6aea9236b2b0",
+    "tree": "1a9d22268ed5e0c86b3e6fd5dfd5efe7f61995f2",
+    "parents": [
+      "77c842faa3137e8155b24c1d123d16c1ed5b76ed",
+      "af956a154fff0c0afcc5e26adbe55f5af76f9f1b"
+    ]
+  },
+  "run": 41907537790,
+  "job": 126846102120,
+  "jobName": "Protocol (ubuntu-24.04)",
+  "step": "Cross-platform TypeScript contracts",
+  "stepNumber": 9,
+  "test": "retained window unsubscribe handles release their callbacks immediately",
+  "assertion": {
+    "file": "tests/renderers/revoker-ownership.test.ts",
+    "line": 22,
+    "expectedLiveWeakRefs": 0,
+    "observedLiveWeakRefs": 1
+  },
+  "suite": {
+    "passed": 702,
+    "failed": 1,
+    "tests": 703,
+    "files": 54,
+    "assertions": 5459,
+    "elapsedSeconds": 35.82
+  },
+  "nextCase": "window completion releases callbacks even while unsubscribe handles stay live passed",
+  "rustProtocolStep": "skipped after TypeScript failure",
+  "decodedJobLog": {
+    "bytes": 132293,
+    "sha256": "86a9675c0f73c7abc368b055989424425e471caa24b653e08be6ec71554c9d33"
+  },
+  "environmentArtifact": {
+    "id": 13360144287,
+    "bytes": 1197,
+    "sha256": "37279151f01ace2c52c3a8b262edfe27f7175ab7bcb4b6598893124fe2f23fa5",
+    "members": [
+      "bootstrap.txt",
+      "bun-bootstrap.log",
+      "toolchain.txt"
+    ]
+  },
+  "sourceFiles": [
+    {
+      "path": "tests/renderers/revoker-ownership.test.ts",
+      "bytes": 2080,
+      "sha256": "97743ec90c1a28435e6b4403d6c70f233231ed0462e530f280aed42d8109039b",
+      "unchangedFromAcceptedMain": true
+    },
+    {
+      "path": "tests/renderers/support.ts",
+      "bytes": 1984,
+      "sha256": "d069c1e14a4917e4aaa14de764d9159276857ff408801484d9eece720ae8e7e1",
+      "unchangedFromAcceptedMain": true
+    },
+    {
+      "path": "packages/renderer/src/window-lifetime.ts",
+      "bytes": 1635,
+      "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+      "unchangedFromAcceptedMain": true
+    }
+  ],
+  "productionPackageAndRendererTestDeltaFromAcceptedMain": [],
+  "limits": [
+    "The retained count does not identify which callback remains reachable.",
+    "No runtime/native/GC workload, failing gate or test was rerun by this audit.",
+    "The original failure remains failed; unchanged source alone does not establish its cause or dismiss it.",
+    "Native viewport pixel qualification is a separate still-running job."
+  ]
+}
