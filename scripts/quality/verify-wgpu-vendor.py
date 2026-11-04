@@ -1,4 +1,4 @@
-"""Verify the exact pinned HAL copy, standalone manifest and two EGL patches."""
+"""Verify the exact pinned HAL copy, standalone manifest and reviewed patches."""
 
 import argparse
 import copy
@@ -22,9 +22,15 @@ PROOF_FILES = {
     "upstream.json",
     "construction-rollback.patch",
     "pbuffer-owner-release.patch",
+    "renderdoc-null-api.patch",
     "README.md",
 }
-PATCHES = ("construction-rollback.patch", "pbuffer-owner-release.patch")
+PATCHES = (
+    "construction-rollback.patch",
+    "pbuffer-owner-release.patch",
+    "renderdoc-null-api.patch",
+)
+PATCHED_FILES = ("src/gles/egl.rs", "src/auxil/renderdoc.rs")
 
 
 def sha256(data):
@@ -163,13 +169,14 @@ def verify(package):
         )
 
     # Reverse the exact reviewed patches in a disposable copy. The unmodified
-    # source must hash to the upstream blob, so extra EGL edits cannot hide in
+    # sources must hash to the upstream blobs, so extra edits cannot hide in
     # an otherwise valid patch application. No shared checkout is ever edited.
     with tempfile.TemporaryDirectory(prefix="bun-native-wgpu-proof-") as temporary:
         root = Path(temporary)
-        egl = root / "wgpu-hal/src/gles/egl.rs"
-        egl.parent.mkdir(parents=True)
-        shutil.copyfile(package / "src/gles/egl.rs", egl)
+        for name in PATCHED_FILES:
+            destination = root / "wgpu-hal" / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(package / name, destination)
         for name, expected in reversed(list(receipt["patches"].items())):
             patch = proof / name
             if sha256(patch.read_bytes()) != expected:
@@ -184,8 +191,8 @@ def verify(package):
         for name, expected in receipt["files"].items():
             if name == "Cargo.toml":
                 data = original
-            elif name == "src/gles/egl.rs":
-                data = egl.read_bytes()
+            elif name in PATCHED_FILES:
+                data = (root / "wgpu-hal" / name).read_bytes()
             else:
                 data = (package / name).read_bytes()
             blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()

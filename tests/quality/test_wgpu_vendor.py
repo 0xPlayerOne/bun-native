@@ -22,15 +22,60 @@ class VendoredHalProvenance(unittest.TestCase):
         result = VENDOR.verify(PACKAGE)
         self.assertEqual(result["upstream_files"], 86)
         self.assertEqual(result["revision"], "cddb2f5d80dc0009b2ef6767635140cacf90a007")
+        self.assertEqual(
+            result["patches"],
+            [
+                "construction-rollback.patch",
+                "pbuffer-owner-release.patch",
+                "renderdoc-null-api.patch",
+            ],
+        )
 
     def test_rejects_extra_source_edits_inside_and_outside_patched_file(self):
-        for name in ("src/gles/egl.rs", "src/vulkan/instance.rs"):
+        for name in (
+            "src/gles/egl.rs",
+            "src/auxil/renderdoc.rs",
+            "src/vulkan/instance.rs",
+        ):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
                 package = Path(directory) / "wgpu-hal"
                 shutil.copytree(PACKAGE, package)
                 path = package / name
-                path.write_text(path.read_text() + "\n// Unreviewed source change.\n")
+                source = path.read_text()
+                if name == "src/auxil/renderdoc.rs":
+                    # Change an untouched line outside the reviewed hunks.
+                    source = source.replace(
+                        "pub type Handle = *mut ffi::c_void;",
+                        "pub type Handle = *mut ffi::c_void; // Unreviewed change.",
+                    )
+                else:
+                    source += "\n// Unreviewed source change.\n"
+                path.write_text(source)
                 with self.assertRaisesRegex(ValueError, "upstream source mismatch"):
+                    VENDOR.verify(package)
+
+    def test_rejects_changed_or_undeclared_renderdoc_patch(self):
+        for change in ("patch", "declaration"):
+            with (
+                self.subTest(change=change),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                package = Path(directory) / "wgpu-hal"
+                shutil.copytree(PACKAGE, package)
+                proof = package / "bun-native"
+                if change == "patch":
+                    patch = proof / "renderdoc-null-api.patch"
+                    patch.write_bytes(
+                        patch.read_bytes() + b"\nUnreviewed patch bytes\n"
+                    )
+                    message = "reviewed patch changed"
+                else:
+                    path = proof / "upstream.json"
+                    receipt = json.loads(path.read_text())
+                    del receipt["patches"]["renderdoc-null-api.patch"]
+                    path.write_text(json.dumps(receipt))
+                    message = "unexpected patch inventory or order"
+                with self.assertRaisesRegex(ValueError, message):
                     VENDOR.verify(package)
 
     def test_rejects_registry_substitution_of_same_version_sibling(self):

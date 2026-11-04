@@ -524,6 +524,7 @@
   },
   "patches": {
     "construction-rollback.patch": "a010866b3855f8c3f133e71b54ddcedb9c4c8bfcf247f1d579255a78f80c9b31",
-    "pbuffer-owner-release.patch": "7942be1eccd5758721ddaa8b6931c68517802f5c03f31f172a0a9c24b1ce73a4"
+    "pbuffer-owner-release.patch": "7942be1eccd5758721ddaa8b6931c68517802f5c03f31f172a0a9c24b1ce73a4",
+    "renderdoc-null-api.patch": "22c3e5fb73c0a6a95a68554f4da98d890ec82890ab5bc29f2884c6f713848206"
   }
 }

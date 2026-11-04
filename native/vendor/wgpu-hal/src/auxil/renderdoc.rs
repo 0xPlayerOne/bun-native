@@ -35,10 +35,36 @@ pub enum RenderDoc {
 #[cfg(unix)]
 const RTLD_NOLOAD: i32 = 0x4;
 
+type GetApiFn = unsafe extern "C" fn(version: u32, out: *mut *mut ffi::c_void) -> i32;
+
+#[derive(Debug, PartialEq, Eq)]
+enum ApiLoadError {
+    Status(i32),
+    NullTable,
+}
+
+/// Query the existing RenderDoc ABI without dereferencing a null success result.
+///
+/// # Safety
+///
+/// The caller must supply the real GetAPI ABI and keep its library loaded while
+/// using the copied function pointers. A non-null success result must still
+/// point to a readable, initialized table; a null check cannot establish that.
+unsafe fn query_api(get_api: GetApiFn) -> Result<renderdoc_sys::RENDERDOC_API_1_4_1, ApiLoadError> {
+    let mut obj = ptr::null_mut();
+    let status = unsafe { get_api(10401, &mut obj) };
+    if status != 1 {
+        return Err(ApiLoadError::Status(status));
+    }
+    let obj = ptr::NonNull::new(obj.cast::<renderdoc_sys::RENDERDOC_API_1_4_1>())
+        .ok_or(ApiLoadError::NullTable)?;
+    // SAFETY: The foreign API's successful non-null output supplies the table;
+    // the caller retains the library that owns its function pointers.
+    Ok(unsafe { *obj.as_ptr() })
+}
+
 impl RenderDoc {
     pub unsafe fn new() -> Self {
-        type GetApiFn = unsafe extern "C" fn(version: u32, out: *mut *mut ffi::c_void) -> i32;
-
         #[cfg(windows)]
         let renderdoc_filename = "renderdoc.dll";
         #[cfg(all(unix, not(target_os = "android")))]
@@ -82,17 +108,21 @@ impl RenderDoc {
                     }
                 }
             };
-        let mut obj = ptr::null_mut();
-        match unsafe { get_api(10401, &mut obj) } {
-            1 => RenderDoc::Available {
+        match unsafe { query_api(*get_api) } {
+            Ok(api) => RenderDoc::Available {
                 api: RenderDocApi {
-                    api: unsafe { *obj.cast::<renderdoc_sys::RENDERDOC_API_1_4_1>() },
+                    api,
                     lib: renderdoc_lib,
                 },
             },
-            return_value => RenderDoc::NotAvailable {
+            Err(ApiLoadError::Status(return_value)) => RenderDoc::NotAvailable {
                 reason: format!(
                     "Unable to get API from renderdoc library '{renderdoc_filename}': {return_value}"
+                ),
+            },
+            Err(ApiLoadError::NullTable) => RenderDoc::NotAvailable {
+                reason: format!(
+                    "Renderdoc library '{renderdoc_filename}' returned a null API table on success"
                 ),
             },
         }
@@ -137,5 +167,81 @@ impl RenderDoc {
                 log::warn!("Could not end RenderDoc frame capture: {reason}")
             }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    unsafe extern "C" fn version(major: *mut i32, minor: *mut i32, patch: *mut i32) {
+        unsafe {
+            *major = 1;
+            *minor = 4;
+            *patch = 1;
+        }
+    }
+
+    static API: renderdoc_sys::RENDERDOC_API_1_4_1 = {
+        // Every generated field is a nullable function pointer (or a union of
+        // those pointers). Zero initializes None; only the known stub is called.
+        let mut api: renderdoc_sys::RENDERDOC_API_1_4_1 = unsafe { core::mem::zeroed() };
+        api.GetAPIVersion = Some(version);
+        api
+    };
+
+    unsafe extern "C" fn failed_null(_version: u32, out: *mut *mut ffi::c_void) -> i32 {
+        unsafe { *out = ptr::null_mut() };
+        0
+    }
+
+    unsafe extern "C" fn successful_null(_version: u32, out: *mut *mut ffi::c_void) -> i32 {
+        unsafe { *out = ptr::null_mut() };
+        1
+    }
+
+    unsafe extern "C" fn successful_table(version: u32, out: *mut *mut ffi::c_void) -> i32 {
+        if version != 10401 {
+            return 0;
+        }
+        unsafe { *out = ptr::from_ref(&API).cast_mut().cast() };
+        1
+    }
+
+    unsafe extern "C" fn failed_table(version: u32, out: *mut *mut ffi::c_void) -> i32 {
+        unsafe { successful_table(version, out) };
+        -1
+    }
+
+    #[test]
+    fn status_failure_preserves_the_original_code() {
+        assert_eq!(
+            unsafe { query_api(failed_null) }.unwrap_err(),
+            ApiLoadError::Status(0)
+        );
+    }
+
+    #[test]
+    fn null_success_is_rejected_before_reading_the_table() {
+        assert_eq!(
+            unsafe { query_api(successful_null) }.unwrap_err(),
+            ApiLoadError::NullTable
+        );
+    }
+
+    #[test]
+    fn valid_success_copies_the_usable_table() {
+        let api = unsafe { query_api(successful_table) }.unwrap();
+        let (mut major, mut minor, mut patch) = (0, 0, 0);
+        unsafe { api.GetAPIVersion.unwrap()(&mut major, &mut minor, &mut patch) };
+        assert_eq!((major, minor, patch), (1, 4, 1));
+    }
+
+    #[test]
+    fn a_nonnull_output_cannot_override_failure_status() {
+        assert_eq!(
+            unsafe { query_api(failed_table) }.unwrap_err(),
+            ApiLoadError::Status(-1)
+        );
     }
 }
