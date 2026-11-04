@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.4](https://github.com/0xPlayerOne/bun-native/compare/v0.14.3...v0.14.4) (2026-11-04)
+
+
+### Bug Fixes
+
+* **react:** release rejected commit reservations and revoke settled barriers ([#337](https://github.com/0xPlayerOne/bun-native/issues/337)) ([8aeacfe](https://github.com/0xPlayerOne/bun-native/commit/8aeacfeaac632e66c8a248e020cc26c2a46d88ef))
+
 ## [0.14.3](https://github.com/0xPlayerOne/bun-native/compare/v0.14.2...v0.14.3) (2026-11-04)
 
 
