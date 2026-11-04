@@ -40,6 +40,120 @@ class PlatformPaintOwnershipTests(unittest.TestCase):
 
 
 class PlatformRendererTelemetryTests(unittest.TestCase):
+    def metal_renderer(self):
+        return {
+            "type": "renderer",
+            "window_id": 1,
+            "gpu": None,
+            "metal_device": {
+                "status": "reported",
+                "source": "CAMetalLayer.device",
+                "device_name": "Assigned fixture Metal device",
+                "registry_id": "18446744073709551615",
+                "is_software_emulated": None,
+                "driver_name": None,
+                "driver_info": None,
+            },
+        }
+
+    def test_assigned_metal_identity_preserves_unknown_fields_and_full_uint64(self):
+        renderer = self.metal_renderer()
+        result = SMOKE.renderer_telemetry(
+            renderer,
+            "Darwin",
+            SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+            require_metal_device=True,
+        )
+        self.assertEqual(result, {"window_id": 1, **renderer["metal_device"]})
+        self.assertIsNone(renderer["gpu"])
+        self.assertIsNone(result["is_software_emulated"])
+
+    def test_current_macos_qualification_requires_actual_assigned_device(self):
+        for metal in (
+            None,
+            {
+                "status": "unavailable",
+                "source": "CAMetalLayer.device",
+                "reason": "native view has no backing layer",
+            },
+        ):
+            renderer = {"type": "renderer", "window_id": 1, "gpu": None}
+            if metal is not None:
+                renderer["metal_device"] = metal
+            with self.subTest(metal=metal):
+                self.assertEqual(
+                    SMOKE.renderer_telemetry(
+                        renderer,
+                        "Darwin",
+                        SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+                    )["status"],
+                    "unavailable",
+                )
+                with self.assertRaisesRegex(RuntimeError, "assigned Metal device"):
+                    SMOKE.renderer_telemetry(
+                        renderer,
+                        "Darwin",
+                        SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+                        require_metal_device=True,
+                    )
+
+    def test_malformed_metal_identity_and_inferred_capabilities_are_rejected(self):
+        valid = self.metal_renderer()
+        malformed = [None, [], {}, False]
+        for field, value in (
+            ("status", "success"),
+            ("source", "MTLCreateSystemDefaultDevice"),
+            ("device_name", ""),
+            ("device_name", "\n"),
+            ("device_name", "x" * 257),
+            ("registry_id", 42),
+            ("registry_id", "-1"),
+            ("registry_id", "18446744073709551616"),
+            ("registry_id", "1.5"),
+            ("registry_id", ""),
+            ("registry_id", "１２"),
+            ("is_software_emulated", False),
+            ("driver_name", "Metal"),
+            ("driver_info", "inferred from OS version"),
+        ):
+            malformed.append({**valid["metal_device"], field: value})
+        missing = dict(valid["metal_device"])
+        del missing["is_software_emulated"]
+        malformed.append(missing)
+        for metal in malformed:
+            with (
+                self.subTest(metal=metal),
+                self.assertRaisesRegex(
+                    RuntimeError, "Metal device metadata is malformed"
+                ),
+            ):
+                SMOKE.renderer_telemetry(
+                    {**valid, "metal_device": metal},
+                    "Darwin",
+                    SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+                )
+
+    def test_metal_cannot_mask_other_platform_or_malformed_gpui_telemetry(self):
+        valid = self.metal_renderer()
+        for operating_system in ("Linux", "Windows"):
+            with (
+                self.subTest(operating_system=operating_system),
+                self.assertRaises(RuntimeError),
+            ):
+                SMOKE.renderer_telemetry(
+                    valid,
+                    operating_system,
+                    SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+                )
+        with self.assertRaisesRegex(RuntimeError, "adapter metadata is malformed"):
+            SMOKE.renderer_telemetry(
+                {**valid, "gpu": {}},
+                "Darwin",
+                SMOKE.MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION,
+            )
+        with self.assertRaisesRegex(RuntimeError, "did not report its adapter"):
+            SMOKE.renderer_telemetry(valid, "Darwin", "unreviewed-revision")
+
     def renderer(self):
         return {
             "type": "renderer",

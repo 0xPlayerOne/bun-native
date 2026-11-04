@@ -20,8 +20,9 @@ GPUI sources, runs host Clippy/tests, then executes the same public-core fixture
 in development and inspected machine-code AOT. The fixture opens, updates and
 closes three successive windows. The independent controller requires each
 window's actual renderer record and complete initial/update native tree paint.
-Adapter telemetry must be valid when present; the pinned macOS backend's explicit
-unavailable result is recorded separately, as described below.
+Adapter telemetry must be valid when present. Current macOS qualification also
+requires the identity of the Metal device assigned to the actual window layer;
+unavailable driver and emulation information stays explicit, as described below.
 Input value replacement is an explicit application transaction, not OS typing.
 Each close must revoke public resources; final shutdown joins the runtime's
 native child exit.
@@ -30,7 +31,7 @@ native child exit.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | Rust compilation         | Separate target tools, release command, build duration, binary bytes and SHA-256.                                         |
 | GPUI execution           | Actual host, three native window protocol lifecycles, renderer records and six complete paint traversals.                 |
-| Adapter telemetry        | Required on Linux/Windows; explicitly unavailable from the pinned macOS window API.                                       |
+| Adapter telemetry        | GPUI adapter record on Linux/Windows; actual layer-assigned Metal device on macOS, with driver/emulation unverified.      |
 | Bun AOT                  | Exact fixture compiled through pinned `bun compile`; compiled-program and JIT-removal evidence required before execution. |
 | Public lifecycle         | Native acknowledgement/closed events, joined shutdown and zero public resource counters.                                  |
 | OS-visible window        | **Unverified:** no independent native window enumeration yet.                                                             |
@@ -272,25 +273,41 @@ Requirements come from GPUI revision
 ### Renderer telemetry availability
 
 At this exact revision, the [macOS window's `gpu_specs()`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs)
-unconditionally returns `None`. The host faithfully records that as `gpu: null`.
-The controller requires this actual per-window renderer record, then writes
-`rendererTelemetry.status: "unavailable"` with the pinned source and reason. It
-does not infer the adapter name, hardware/software classification or driver.
-The allowance applies only to Darwin and this reviewed GPUI revision; a changed
-pin requires a new source review. Missing renderer records and malformed present
-metadata fail on every platform. Linux and Windows still require valid actual
-adapter telemetry, including the native software-emulation flag.
+unconditionally returns `None`. The host preserves that as `gpu: null` and adds a
+separate `metal_device` observation from the existing private macOS surface bridge.
+It borrows this window's AppKit view, checks the main thread and backing-layer
+type, then reads [`CAMetalLayer.device`](https://developer.apple.com/documentation/quartzcore/cametallayer/device).
+The [pinned renderer](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_apple/src/metal_renderer.rs)
+assigns its selected device to this layer during construction, and the
+[native view](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/window.rs)
+exposes that renderer's layer as its backing layer. No default-device selection
+occurs in the production bridge.
+
+The observation copies the device's name and unsigned 64-bit registry ID (encoded
+as a decimal string to preserve its full range). `is_software_emulated`,
+`driver_name` and `driver_info` remain `null`: Metal device identity supplies none
+of those classifications. No borrowed native object escapes the call. Invalid
+thread/handle/layer/device states produce an explicit unavailable reason.
+
+Current macOS development and AOT paint/input CI passes `--require-metal-device`;
+absence or unavailability fails qualification. The owned native control checks
+that the returned identity matches the device assigned to its test layer and
+that clearing the assignment fails without selecting a fallback. Historical
+records without this observation remain explicitly unavailable only for Darwin
+and the reviewed GPUI pin. A changed pin needs a new source review. Missing
+renderer records and malformed present metadata fail on every platform. Linux
+and Windows still require valid actual adapter telemetry, including the native
+software-emulation flag.
 That flag is the backend's report, not an independent hardware qualification.
 For example, the initial Windows run reported `Microsoft Basic Render Driver`
 alongside `is_software_emulated: false`; both raw values are retained without
 reclassifying the device.
 
-An independent Metal default-device query would not establish which device the
-window uses: the [pinned renderer's selection](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_apple/src/metal_renderer.rs)
-prefers a non-removable, low-power device when enumerated devices are available.
-Exposing its actual selected adapter remains [#292](https://github.com/0xPlayerOne/bun-native/issues/292).
-This telemetry limitation does not waive complete native paints, lifecycle,
-joined shutdown or any separately enabled OS-input checks.
+This implementation addresses [#292](https://github.com/0xPlayerOne/bun-native/issues/292);
+actual target CI evidence is still required before declaring it qualified. The
+device identity does not prove GPU utilization, display presentation or hardware
+performance. Complete native paints, lifecycle, joined shutdown and separately
+enabled OS-input checks remain required.
 
 The Bun installer receives its scoped repository token only during installation
 and verifies the pinned archive hash/revision. The test neither requests macOS

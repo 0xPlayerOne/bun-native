@@ -266,7 +266,7 @@ impl Session {
             },
             move |window, cx| {
                 evidence.startup("root_constructor_enter", id, window_id);
-                evidence.renderer(window_id, window.gpu_specs());
+                evidence.renderer(window_id, window);
                 let view = cx.new(|cx| {
                     NativeView::new(window_id, view_state, events, evidence.clone(), window, cx)
                 });
