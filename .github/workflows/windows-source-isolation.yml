@@ -1,0 +1,140 @@
+# One-use ownership research, not a required gate. Never merge.
+name: Fixed Windows source-isolation contrast
+on:
+  push:
+    branches: [test/windows-solid-source-isolation-20261104]
+permissions:
+  contents: read
+concurrency:
+  group: windows-solid-source-isolation-20261104
+  cancel-in-progress: false
+jobs:
+  compare:
+    name: Compare original full and single-file source tests (not qualification)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: c9ada928eb86ee44abeb85ba13721a68af0057d6
+          path: main-src
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          path: pr-src
+          persist-credentials: false
+      - name: Install same repository-pinned Bun runtime
+        shell: bash
+        run: node main-src/scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Prepare unchanged locked sources
+        shell: bash
+        run: |
+          (cd main-src && bun install --frozen-lockfile)
+          (cd pr-src && bun install --frozen-lockfile)
+      - name: Execute four predeclared independent source processes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+          import subprocess
+
+          workspace = Path(os.environ['GITHUB_WORKSPACE']).resolve()
+          evidence = workspace / 'windows-source-isolation'
+          evidence.mkdir()
+          executable = shutil.which('bun')
+          if not executable:
+              raise RuntimeError('Pinned Bun executable missing')
+          bun = Path(executable).resolve()
+          pinned = 'da867c60bf0bcbf9d6d36994f8ca0efa42075115'
+          actual = subprocess.check_output([str(bun), '--no-script', '--eval',
+                                            'console.log(Bun.revision)'], text=True, timeout=15).strip()
+          if actual != pinned:
+              raise RuntimeError(f'Incorrect Bun revision {actual}')
+          if any(key.startswith('BUN_JSC_') for key in os.environ):
+              raise RuntimeError('Unexpected collector/JIT options')
+          heads = {'main': 'c9ada928eb86ee44abeb85ba13721a68af0057d6',
+                   'pr': '2a9516337fe99e3585ff8f55e97c7392fad2f372'}
+          solid_hash = 'e0156a12d48b4a5d4636980bdbc03ba1817ea242cc7b7ff759ed3c7b2740e7ef'
+          for name, sha in heads.items():
+              root = workspace / (name + '-src')
+              git_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root,
+                                                text=True, timeout=10).strip()
+              digest = hashlib.sha256((root / 'tests/solid/renderer.test.ts').read_bytes()).hexdigest()
+              if git_sha != sha or digest != solid_hash:
+                  raise RuntimeError(f'Source identity mismatch {name}: {git_sha} {digest}')
+              if subprocess.check_output(['git', 'status', '--porcelain'], cwd=root,
+                                         text=True, timeout=10).strip():
+                  raise RuntimeError(f'Source tree dirty: {name}')
+          cases = [('main-full', 'main', ['tests']),
+                   ('pr-full', 'pr', ['tests']),
+                   ('pr-solid', 'pr', ['tests/solid/renderer.test.ts']),
+                   ('main-solid', 'main', ['tests/solid/renderer.test.ts'])]
+          plan = {'sourceShas': heads, 'solidProducerSha256': solid_hash, 'bunRevision': pinned,
+                  'fixedOrder': [case for case, _, _ in cases], 'attemptsPerCase': 1,
+                  'scope': 'Exploratory same-runner Windows source/test-order contrast only',
+                  'unchanged': 'original source, GC checkpoints, assertions, timeout, JIT, and required workflows'}
+          (evidence / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
+          outcomes = []
+          for case, source, args in cases:
+              root = workspace / (source + '-src')
+              target = evidence / case
+              target.mkdir()
+              env = dict(os.environ)
+              env['GITHUB_SHA'] = heads[source]
+              env['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR'] = str(target)
+              command = [str(bun), 'test', *args]
+              log_path = target / 'original-test.log'
+              timed_out = False
+              with log_path.open('w', encoding='utf-8') as log:
+                  process = subprocess.Popen(command, cwd=root, env=env, stdout=log,
+                                             stderr=subprocess.STDOUT)
+                  try:
+                      code = process.wait(timeout=120)
+                  except subprocess.TimeoutExpired:
+                      timed_out = True
+                      subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                     check=True, capture_output=True, timeout=10)
+                      code = process.wait(timeout=10)
+              lines = log_path.read_text(encoding='utf-8', errors='replace').splitlines()
+              reports = []
+              for path in sorted(target.glob('solid-retention-*.json')):
+                  data = json.loads(path.read_text())
+                  reports.append({'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                                  'indices': [item['index'] for item in data.get('survivors', [])],
+                                  'testHash': next((item['sha256'] for item in
+                                      data.get('source', {}).get('files', [])
+                                      if item['path'] == 'tests/solid/renderer.test.ts'), None)})
+              outcome = {'case': case, 'sourceSha': heads[source], 'argv': command[1:],
+                         'exitCode': code, 'timedOut': timed_out,
+                         'logSha256': hashlib.sha256(log_path.read_bytes()).hexdigest(),
+                         'failures': [line for line in lines if '(fail)' in line][-10:],
+                         'summary': [line for line in lines if re.search(
+                           r'\b\d+ (?:pass|fail|expect\(\) calls)\b', line) or
+                           line.startswith('Ran ')][-10:],
+                         'retention': reports}
+              outcomes.append(outcome)
+              (evidence / 'outcomes.json').write_text(json.dumps(outcomes, indent=2) + '\n')
+              print(json.dumps(outcome), flush=True)
+          if any(item['timedOut'] for item in outcomes):
+              raise RuntimeError('A whole-process safety deadline was exceeded')
+          for name in heads:
+              root = workspace / (name + '-src')
+              if subprocess.check_output(['git', 'status', '--porcelain'], cwd=root,
+                                         text=True, timeout=10).strip():
+                  raise RuntimeError(f'Test mutated tracked source: {name}')
+          PY
+      - name: Preserve all original observations, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-source-isolation-fixed
+          path: windows-source-isolation/
+          if-no-files-found: warn
+          retention-days: 14
