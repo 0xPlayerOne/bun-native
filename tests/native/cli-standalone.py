@@ -561,6 +561,14 @@ def prepare(args):
                 150,
                 deadline,
             )
+            receipt = output / "receipts" / name
+            receipt.mkdir()
+            case["build_diagnostics"] = {
+                "directory": f"receipts/{name}/aot-build-diagnostics",
+                "files": EVIDENCE.retain_build_diagnostics(
+                    project, receipt / "aot-build-diagnostics"
+                ),
+            }
             build = EVIDENCE.build_receipt(
                 project,
                 {key: source[key] for key in ("commit", "tree")},
@@ -586,8 +594,6 @@ def prepare(args):
                     inputs[f"node_modules/{package_name}/{file}"] = expected
             inputs.update(build["mapped_sources"])
             case["inputs"] = dict(sorted(inputs.items()))
-            receipt = output / "receipts" / name
-            receipt.mkdir()
             shutil.copyfile(project / "bun.lock", receipt / "bun.lock")
             shutil.copyfile(project / "dist/manifest.json", receipt / "manifest.json")
             shutil.copytree(project / "dist/development", receipt / "aot-development")

@@ -1,11 +1,12 @@
 """Shared file-only receipts for local and hosted installed-consumer qualification.
 
-These predicates inspect existing files and metadata. They execute no compiler,
+These helpers inspect and retain existing files and metadata. They execute no compiler,
 package installer, application, native window or runtime workload.
 """
 
 import hashlib
 import json
+import shutil
 from pathlib import Path
 
 
@@ -22,6 +23,27 @@ def digest(path):
             size += len(chunk)
             result.update(chunk)
     return {"bytes": size, "sha256": result.hexdigest()}
+
+
+def retain_build_diagnostics(project, destination):
+    """Retain the actual existing producer logs/launcher before owned cleanup."""
+    destination.mkdir()
+    files = {}
+    for name in ("compile-aot.stdout.log", "compile-aot.stderr.log", "launcher.ts"):
+        source, retained = project / "dist" / name, destination / name
+        require(
+            source.is_file() and not source.is_symlink(),
+            f"Missing regular AOT build diagnostic: {name}",
+        )
+        before = digest(source)
+        with source.open("rb") as input_file, retained.open("xb") as output_file:
+            shutil.copyfileobj(input_file, output_file, 1024 * 1024)
+        require(
+            digest(source) == before == digest(retained),
+            f"AOT build diagnostic changed while retaining it: {name}",
+        )
+        files[name] = before
+    return files
 
 
 def retained_source(project, original_directory, source_root, name):

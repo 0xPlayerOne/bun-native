@@ -125,6 +125,12 @@ identity, package-set manifest and seven archives, all package/consumer command
 logs, unchanged generated source, installed lock/import/file receipts, AOT
 manifests and emitted module/maps. Each native case retains its own raw input and
 paint records, screenshots, lifecycle receipt and process/close diagnostics.
+For each successful AOT build, the controller also copies the actual existing
+`compile-aot.stdout.log`, `compile-aot.stderr.log` and `launcher.ts` into its
+receipt directory before consumer cleanup, checking source and retained hashes.
+These files were not copied by the original `d09ed906` controller. This retention
+follow-up applies to the corrected source's future qualification; it does not
+recover or replace missing original-run bytes.
 Owned caches, node_modules, large AOT executables and duplicate staging trees are
 omitted; their applicable input/output hashes remain. The existing unsigned host
 archive remains separate and source-bound.

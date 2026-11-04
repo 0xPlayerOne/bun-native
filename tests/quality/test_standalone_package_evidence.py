@@ -206,5 +206,51 @@ class BuildEvidenceTests(unittest.TestCase):
             )
 
 
+class BuildDiagnosticRetentionTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.project = self.root / "consumer"
+        (self.project / "dist").mkdir(parents=True)
+        self.originals = {
+            "compile-aot.stdout.log": b'{"inert":true}\r\n',
+            "compile-aot.stderr.log": b"inert diagnostics\n\x00",
+            "launcher.ts": b"// inert launcher; never executed\n",
+        }
+        for name, data in self.originals.items():
+            (self.project / "dist" / name).write_bytes(data)
+
+    def test_retains_exact_bytes_and_digests_without_overwriting_prior_evidence(self):
+        destination = self.root / "retained"
+        files = EVIDENCE.retain_build_diagnostics(self.project, destination)
+        self.assertEqual(set(files), set(self.originals))
+        for name, original in self.originals.items():
+            self.assertEqual((destination / name).read_bytes(), original)
+            self.assertEqual(files[name], EVIDENCE.digest(destination / name))
+        (self.project / "dist/launcher.ts").write_bytes(b"changed later")
+        with self.assertRaises(FileExistsError):
+            EVIDENCE.retain_build_diagnostics(self.project, destination)
+        self.assertEqual(
+            (destination / "launcher.ts").read_bytes(), self.originals["launcher.ts"]
+        )
+
+    def test_missing_or_linked_diagnostic_cannot_become_a_complete_receipt(self):
+        source = self.project / "dist/compile-aot.stdout.log"
+        source.unlink()
+        with self.assertRaisesRegex(
+            RuntimeError, "Missing regular AOT build diagnostic"
+        ):
+            EVIDENCE.retain_build_diagnostics(self.project, self.root / "missing")
+        outside = self.root / "outside.log"
+        outside.write_bytes(b"not a producer output")
+        source.symlink_to(outside)
+        with self.assertRaisesRegex(
+            RuntimeError, "Missing regular AOT build diagnostic"
+        ):
+            EVIDENCE.retain_build_diagnostics(self.project, self.root / "linked")
+        self.assertEqual(outside.read_bytes(), b"not a producer output")
+
+
 if __name__ == "__main__":
     unittest.main()
