@@ -98,9 +98,9 @@ run('typecheck', [process.execPath, 'check', '--no-script', '-p', join(root, 'ts
 run('inspector-tests', [
   process.execPath,
   'test',
-  join(root, 'inspect.test.ts'),
-  join(root, 'inspect-runtime.test.ts'),
-  join(root, 'inspect-runtime-formats.test.ts'),
+  join(root, '../../tests/tooling/inspect.test.ts'),
+  join(root, '../../tests/tooling/inspect-runtime.test.ts'),
+  join(root, '../../tests/tooling/inspect-runtime-formats.test.ts'),
 ])
 const dev = run('dev', [process.execPath, join(root, 'probe.ts'), library, native, 'dev'])
 const scriptControl = join(destination, 'package-script-control')
@@ -204,10 +204,10 @@ const report = {
     'run.ts',
     'probe.ts',
     'inspect.ts',
-    'inspect.test.ts',
+    '../../tests/tooling/inspect.test.ts',
     'inspect-runtime.ts',
-    'inspect-runtime.test.ts',
-    'inspect-runtime-formats.test.ts',
+    '../../tests/tooling/inspect-runtime.test.ts',
+    '../../tests/tooling/inspect-runtime-formats.test.ts',
     'native.c',
     'tsconfig.json',
   ].map((name) => ({
