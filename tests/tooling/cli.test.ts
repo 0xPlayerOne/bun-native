@@ -54,6 +54,32 @@ function success(args: string[], cwd?: string) {
   return result.output
 }
 
+// Recognizable image headers exercise host selection only. These are deliberately
+// incomplete images, never launched or presented as qualified native hosts.
+function hostHeader(platform: 'linux' | 'darwin' | 'win32', architecture: 'x64' | 'arm64') {
+  const header = Buffer.alloc(256)
+  if (platform === 'linux') {
+    header.write('\x7fELF', 0)
+    header[4] = 2 // ELFCLASS64
+    header[5] = 1 // ELFDATA2LSB
+    header[6] = 1 // EV_CURRENT
+    header.writeUInt16LE(2, 16) // ET_EXEC
+    header.writeUInt16LE(architecture === 'x64' ? 62 : 183, 18)
+    header.writeUInt32LE(1, 20)
+    header.writeUInt16LE(64, 52)
+  } else if (platform === 'darwin') {
+    header.writeUInt32LE(0xfeedfacf, 0) // MH_MAGIC_64
+    header.writeUInt32LE(architecture === 'x64' ? 0x01000007 : 0x0100000c, 4)
+    header.writeUInt32LE(2, 12) // MH_EXECUTE
+  } else {
+    header.write('MZ', 0)
+    header.writeUInt32LE(128, 60)
+    header.write('PE\0\0', 128)
+    header.writeUInt16LE(architecture === 'x64' ? 0x8664 : 0xaa64, 132)
+  }
+  return header
+}
+
 describe('checkout application CLI (real bundler and compiler; no native rendering)', () => {
   for (const framework of ['solid', 'react'] as const) {
     for (const language of ['typescript', 'javascript'] as const) {
@@ -310,6 +336,35 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
       expect(run([cli, 'build', path, '--host', process.execPath]).output).toContain(
         'requires --host-profile'
       )
+      expect(existsSync(join(path, 'dist'))).toBe(false)
+    })
+  })
+
+  test('rejects recognized foreign-platform and wrong-CPU hosts before dev or build', async () => {
+    await fixture(async (directory) => {
+      const path = join(directory, 'app')
+      await createProject(repository, path, 'solid', 'typescript')
+      writeFileSync(join(path, 'main.tsx'), "console.log('unexpected application execution')\n")
+      const message = `Prebuilt host must be a ${process.platform}/${process.arch} executable`
+      for (const platform of ['linux', 'darwin', 'win32'] as const) {
+        for (const architecture of ['x64', 'arm64'] as const) {
+          if (platform === process.platform && architecture === process.arch) continue
+          const host = join(directory, `${platform}-${architecture}.host`)
+          writeFileSync(host, hostHeader(platform, architecture))
+          chmodSync(host, 0o755)
+          await expect(prebuiltHost(host)).rejects.toThrow(message)
+          for (const command of ['dev', 'build']) {
+            const args = [cli, command, path, '--host', host]
+            if (command === 'build') args.push('--host-profile', 'release')
+            const rejected = run(args)
+            expect(rejected.signal).toBeNull()
+            expect(rejected.code).not.toBe(0)
+            expect(rejected.output).toContain(message)
+            expect(rejected.output).not.toContain('unexpected application execution')
+          }
+        }
+      }
+      expect(existsSync(join(path, '.bun-native'))).toBe(false)
       expect(existsSync(join(path, 'dist'))).toBe(false)
     })
   })
