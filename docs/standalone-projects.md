@@ -14,6 +14,10 @@ produced its archives/templates but failed because its incomplete local-root loc
 was rejected. The complete-lock correction and its separate
 [parser-only controls](standalone-lock-parser-plan.md) do not by themselves qualify
 installation, relocation, AOT builds or native execution.
+The separate corrected-lock cohort at `7e102937` reached a successful first
+populated-cache Solid TypeScript install, then stopped before imports because
+its inventory oracle did not account for Bun's installer-owned `.bun-tag`.
+The exact marker correction remains unqualified by a new consumer cohort.
 
 ## Produce the local package set
 
@@ -43,6 +47,8 @@ expected directory entries, unique canonical names and valid header/end records.
 Links and extended/unknown member formats are rejected. Decompression is bounded
 by the declared inventory and a 64 MiB source-archive maximum; native host binaries
 are supplied separately and are not stored in these packages.
+The `.bun-tag` name is reserved at every path depth, including directory
+components. Source archives cannot supply that installer-owned metadata.
 
 ## Create and install
 
@@ -106,8 +112,8 @@ resets state; see the [CLI lifecycle reference](developer-tooling.md).
 
 The CLI validates the selected installed package closure before loading compiler
 modules or creating an application bundle. It requires contained archive paths,
-matching archive/file digests, an exact regular-file inventory in each required
-local package, contained package roots and consistent internal dependency
+matching archive/file digests, an exact source-file inventory plus one validated
+regular root `.bun-tag` in each required local package, contained package roots and consistent internal dependency
 resolution. It compares the actually reachable pinned lock records, including
 nested locators and present optional peers. Unrelated added registry roots may
 coexist; a new nested locator under a required local package is rejected. Local
@@ -115,6 +121,17 @@ archive rows and the complete override map must match the package set exactly.
 Hashes
 establish consistency with the supplied manifest, not a trusted-publisher signature.
 Verify the manifest and native-host artifact's origin separately.
+
+The marker must contain exactly the pinned Bun formatter's 52-byte SHA-256
+integrity text: unpadded base64 followed by `==`, without a newline. This installed
+format is separate from the canonical 51-byte SRI in the lock. The pinned
+[extractor](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/extract_tarball.rs#L531-L559)
+writes the
+[formatter's bytes](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/integrity.rs#L235-L255),
+and the installer verifies that same representation. Missing, changed, nonregular
+or symlinked markers and every other unlisted entry are rejected. Source archive
+membership, source digests and lock integrity remain unchanged by this metadata
+rule; marker validation does not replace any of them.
 
 Solid retains `jsx: preserve` and the official universal transform. Its
 `jsx-runtime` export supplies types and does not implement React's automatic JSX

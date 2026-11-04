@@ -1,6 +1,7 @@
 """Execute the fixed #382 local-package cohort once; no application is launched."""
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -153,8 +154,36 @@ def installed_inventory(project, package_set):
             continue  # Overrides do not install the other framework's adapter.
         location = location.resolve(strict=True)
         require(location.is_relative_to(modules), f"Installed package escapes: {name}")
+        require(
+            not any(".bun-tag" in path.split("/") for path in pkg["files"]),
+            f"Source archive contains reserved installer metadata: {name}",
+        )
+        # da867 Integrity::Display appends two '=' bytes after unpadded SHA256
+        # base64. Keep this exact installer format distinct from the lock SRI.
+        tag = (
+            b"sha256-"
+            + base64.b64encode(bytes.fromhex(pkg["archive"]["sha256"])).rstrip(b"=")
+            + b"=="
+        )
+        expected = {
+            **pkg["files"],
+            ".bun-tag": {"bytes": len(tag), "sha256": hashlib.sha256(tag).hexdigest()},
+        }
+        folders = {
+            "/".join(parts[:index])
+            for path in expected
+            for parts in [path.split("/")]
+            for index in range(1, len(parts))
+        }
+        for parent, directories, _ in os.walk(location, followlinks=False):
+            for folder in directories:
+                path = Path(parent) / folder
+                require(
+                    path.relative_to(location).as_posix() in folders,
+                    f"Installed package directory inventory differs: {name}",
+                )
         actual = inventory(location)
-        require(actual == pkg["files"], f"Installed package inventory differs: {name}")
+        require(actual == expected, f"Installed package inventory differs: {name}")
         checked.append(name)
     require("@bun-native/cli" in checked, "Installed CLI is missing")
     links = []

@@ -104,5 +104,9 @@ export async function installedFixture(
       await mkdir(dirname(target), { recursive: true })
       await writeFile(target, text)
     }
+    // Observed pinned SHA256 tag is canonical SRI plus one extra '='. This is
+    // inert metadata written directly, never a package-manager invocation.
+    const tag = `sha256-${Buffer.from(set.packages[name]!.archive.sha256, 'hex').toString('base64')}=`
+    await writeFile(join(directory, 'node_modules', name, '.bun-tag'), tag)
   }
 }

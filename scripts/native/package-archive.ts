@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 import type { FileDigest } from './artifact.ts'
-import { packagePath } from './paths.ts'
+import { packageArchivePath } from './paths.ts'
 
 const block = 512
 const maximumBytes = 64 * 1024 * 1024
@@ -30,7 +30,7 @@ export async function verifyPackageArchive(
   const directories = new Set<string>()
   let paddedContents = 0
   for (const [name, digest] of Object.entries(expected)) {
-    if (!packagePath(name) || !Number.isSafeInteger(digest.bytes) || digest.bytes < 0)
+    if (!packageArchivePath(name) || !Number.isSafeInteger(digest.bytes) || digest.bytes < 0)
       throw new Error('Invalid expected package archive inventory')
     const full = `package/${name}`
     files.set(full, digest)
@@ -71,7 +71,7 @@ export async function verifyPackageArchive(
     const prefix = text(header.subarray(345, 500))
     const raw = (prefix ? prefix + '/' : '') + text(header.subarray(0, 100))
     const name = kind === '5' ? raw.replace(/\/$/, '') : raw
-    if (!packagePath(name))
+    if (!packageArchivePath(name))
       throw new Error(`Package archive inventory contains an invalid path: ${raw}`)
     if (seen.has(name)) throw new Error(`Duplicate package tar member: ${name}`)
     seen.add(name)

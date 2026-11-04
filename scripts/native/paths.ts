@@ -13,3 +13,8 @@ export function packagePath(value: unknown): value is string {
     value.split('/').every((part) => part !== '' && part !== '.' && part !== '..')
   )
 }
+
+/** Installer-owned metadata must not originate in a source archive at any depth. */
+export function packageArchivePath(value: unknown): value is string {
+  return packagePath(value) && !value.split('/').includes('.bun-tag')
+}

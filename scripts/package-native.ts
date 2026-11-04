@@ -18,7 +18,7 @@ import {
   type PackageSet,
 } from './native/package-set.ts'
 import { fileDigest, type FileDigest } from './native/artifact.ts'
-import { inside, packagePath } from './native/paths.ts'
+import { inside, packageArchivePath, packagePath } from './native/paths.ts'
 
 const repository = resolve(import.meta.dir, '..')
 
@@ -96,6 +96,8 @@ async function main(args: string[]): Promise<void> {
         sourceFiles[`packages/${short}/package.json`] =
           source.files[`packages/${short}/package.json`]!
       for (const { original, target } of originals) {
+        if (!packageArchivePath(target))
+          throw new Error(`Reserved or invalid package source path: ${target}`)
         if (!source.files[original]) throw new Error(`Untracked package input: ${original}`)
         await mkdir(dirname(join(directory, target)), { recursive: true })
         await copyFile(join(repository, original), join(directory, target))

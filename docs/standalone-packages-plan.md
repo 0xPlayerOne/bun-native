@@ -22,8 +22,10 @@ The eventual experiment must name the clean, published implementation commit,
 tree and full tracked-source hashes before its first package/install command.
 The original fixed cohort at published `c908049` ran once and failed on the first
 populated-cache install; [#394](https://github.com/0xPlayerOne/bun-native/pull/394)
-preserves its unchanged raw records and original plan. The corrected-lock cohort
-appended below remains unexecuted.
+preserves its unchanged raw records and original plan. The separate corrected-lock
+cohort at `7e102937` reached its first populated-cache install, then failed the
+installed-file inventory check described below. The installed-metadata correction
+and its appended cohort plan remain unexecuted.
 
 Before that corrected cohort, the branch normally integrates accepted main
 `c4de68deee812cd816316b33f9276786e6eae5c8`. The incoming changes are the landed
@@ -87,6 +89,11 @@ Validate all seven archive identities, but require only the selected adapter's
 installed closure: that adapter, renderer, core, runtime, protocol and CLI.
 Overrides alone do not install an otherwise unused package.
 
+Reserve `.bun-tag` as a source-archive path component at every depth, for every
+package. The producer checks source targets and the raw archive verifier rejects
+reserved expected or actual paths. The pinned installer owns only the installed
+root marker; a nested marker is never an accepted extra source file.
+
 Preserve the committed external dependency graph as the initial lock seed,
 including the nested `babel-plugin-jsx-dom-expressions/@babel/helper-module-imports`
 resolution. The seed changes project/workspace metadata and removes workspace
@@ -105,7 +112,13 @@ declares `supports-color` optional and the source lock does not install it.
 
 Before application execution/build, validate the project's relative entry,
 package manifest/archive identities, exact inspected archive file membership and
-digests, and the exact installed local package regular-file inventory/digests.
+digests, and the exact installed local package source inventory/digests plus one
+regular root `.bun-tag`. Its bytes must equal the pinned SHA-256 formatter:
+`sha256-` followed by unpadded base64 of the recorded archive digest and `==`,
+52 bytes without a newline. This is distinct from canonical lock SRI. Require the
+marker; reject canonical-but-wrong padding, other bytes, symlinks/nonregular
+entries, and all unrelated extra files or directories. Apply the same rule before
+importing installed CLI code and inside the product's installed-package validator.
 Resolve installed packages within that consumer's own `node_modules`; reject
 checkout/cache escapes through symlinks. Normal internal package-manager links
 and the installed bin link are allowed when their real targets stay within the
@@ -254,7 +267,7 @@ imports or compilation. This local cohort does not run the 101-edit watch
 experiment, prove a memory plateau, establish physical-GPU behavior, qualify
 other OS/CPU combinations, or complete the broader release/support contract.
 
-## Corrected-lock cohort: prepared, not executed
+## Corrected-lock cohort at 7e102937: failed after the first install
 
 The first `c908049` run remains the failed outcome archived in #394. It produced
 seven source archives and four scaffolds, then the incomplete lock caused both
@@ -276,20 +289,38 @@ prior-result hashes and diagnostic boundary. These outcomes establish acceptance
 of both corrected graphs by the pinned parser without installing or extracting
 anything; they are not a four-pass cohort or an installation result.
 
-Only after the corrected implementation and parser evidence are statically
-reviewed and the exact complete source is published, a new source-bound consumer
-cohort may execute the existing fixed harness once. It uses a new owned output,
-new empty cache and new contained copy of the same existing populated cache;
-the source tool setup is reused without another framework install. Record the
-actual published HEAD/tree, source/harness hashes and unchanged pinned Bun/host
-bytes before starting.
+After source review/publication, that fixed cohort ran once at actual public
+`7e102937bb7af362db59bddd1ab92b664386cd52`, tree
+`1dea214842f25d93c8c03c61a7fce66ad7d540d5`. All seven packs and four creates passed.
+The empty-cache attempt met the tightened missing-cache contract without lock
+fallback, and the first populated-cache Solid TypeScript install exited zero.
+The pre-import inventory then failed on the extra installer-owned `.bun-tag`.
+All declared files in the six installed local packages were unchanged; each had
+one 52-byte root marker. No installed import/check, remaining install, relocation,
+AOT or invalid-input case ran. The exact failed outcome, including that stop,
+remains separate from #394 and the parser controls.
 
-Its counts and budgets remain the fixed matrix above: seven package calls, four
-creates, nine consumer installs (one empty-cache negative, four initial and four
-relocated frozen), four lock inspections, four checks/public-import inspections/
-AOT builds, and eight invalid-input cases. Command order, deadlines, sentinel and
-ownership limits remain unchanged. A first unexpected result stops this new
-cohort and leaves later operations unrun. No retry, changed dependency version,
-online cache population, additional variant or application/native/GC execution is
-part of the correction. Its real outcome must be retained separately from #394
-and from the parser-only regression.
+## Installed-metadata cohort: prepared, not executed
+
+The bounded correction retains exact source inventories and adds only the required
+pinned marker to installed inventories. Inert controls cover the recorded marker,
+canonical-but-wrong SRI, changed/padded/newline metadata, missing/nonregular/link
+markers, source changes, extra files/directories and reserved archive paths. They
+are not package-manager or consumer qualification runs.
+
+Only after the corrected implementation is statically reviewed and its exact
+complete source is published may a new source-bound cohort execute the existing
+fixed harness once. It uses a new owned output, new empty cache and new contained
+copy of the same existing populated cache; the source-tool setup is reused
+without another framework install. Record the actual published HEAD/tree,
+source/harness hashes and unchanged pinned Bun/host bytes before starting.
+
+Counts and budgets remain the fixed matrix: seven package calls, four creates,
+nine consumer installs (one empty-cache negative, four initial and four relocated
+frozen), four lock inspections, four checks, four public-import inspections, four
+AOT builds and eight invalid-input cases. Command order, deadlines, sentinels and
+ownership limits remain unchanged. A first unexpected result stops the new cohort
+and leaves later operations unrun. No retry, changed dependency version, online
+cache population, additional variant or application/native/GC execution is part
+of the correction. Its outcome must remain separate from the two prior failed
+consumer cohorts and the parser-only regression.

@@ -10,7 +10,7 @@ import {
   verifyConsumerLock,
   type DependencyLock,
 } from './package-lock.ts'
-import { inside, packagePath } from './paths.ts'
+import { inside, packageArchivePath, packagePath } from './paths.ts'
 import { fileDigest, type FileDigest } from './artifact.ts'
 import { verifyPackageArchive } from './package-archive.ts'
 
@@ -133,7 +133,7 @@ function packageManifest(
     manifest['license'] !== 'MIT' ||
     !isDeepStrictEqual(manifest['engines'], { bun: toolchain.bun.version }) ||
     !Array.isArray(manifest['files']) ||
-    manifest['files'].some((path) => !packagePath(path))
+    manifest['files'].some((path) => !packageArchivePath(path))
   )
     throw new Error(`Invalid materialized package manifest: ${name}`)
   versions({ [name]: manifest['version'] })
@@ -236,6 +236,8 @@ export function parsePackageSet(value: unknown): PackageSet {
     const pkg = object(entry)
     keys(pkg, ['manifest', 'archive', 'files'])
     const contents = files(pkg['files'])
+    if (Object.keys(contents).some((path) => !packageArchivePath(path)))
+      throw new Error(`Source archive contains reserved installer metadata: ${name}`)
     packageManifest(pkg['manifest'], name, contents)
     const archive = object(pkg['archive'])
     keys(archive, ['file', 'bytes', 'sha256'])
@@ -351,7 +353,19 @@ export async function verifyInstalledPackages(
     if (!inside(modules, root))
       throw new Error(`Installed package resolves outside this consumer: ${name}`)
     locations.set(name, root)
-    const expected = Object.keys(pkg.files).sort()
+    if (Object.keys(pkg.files).some((path) => !packageArchivePath(path)))
+      throw new Error(`Source archive contains reserved installer metadata: ${name}`)
+    // Pinned Integrity::Display uses unpadded base64 followed by "==" for
+    // SHA-256. This is its 52-byte installer tag, not the canonical lock SRI.
+    const tag = `sha256-${Buffer.from(pkg.archive.sha256, 'hex').toString('base64').replace(/=+$/, '')}==`
+    const installedFiles: Record<string, FileDigest> = {
+      ...pkg.files,
+      '.bun-tag': {
+        bytes: Buffer.byteLength(tag),
+        sha256: createHash('sha256').update(tag).digest('hex'),
+      },
+    }
+    const expected = Object.keys(installedFiles).sort()
     const folders = new Set(
       expected.flatMap((path) => {
         const parts = path.split('/')
@@ -364,14 +378,14 @@ export async function verifyInstalledPackages(
         const path = prefix + entry.name
         if (entry.isDirectory() && folders.has(path))
           await visit(join(directory, entry.name), path + '/')
-        else if (entry.isFile() && Object.hasOwn(pkg.files, path)) inventory.push(path)
+        else if (entry.isFile() && Object.hasOwn(installedFiles, path)) inventory.push(path)
         else throw new Error(`Installed package file inventory differs: ${name}/${path}`)
       }
     }
     await visit(root, '')
     if (!isDeepStrictEqual(inventory.sort(), expected))
       throw new Error(`Installed package file inventory differs: ${name}`)
-    for (const [path, expected] of Object.entries(pkg.files)) {
+    for (const [path, expected] of Object.entries(installedFiles)) {
       const file = await containedFile(root, path)
       if (!isDeepStrictEqual(await fileDigest(file), expected))
         throw new Error(`Installed package digest mismatch: ${name}/${path}`)
