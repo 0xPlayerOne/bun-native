@@ -21,12 +21,34 @@ const eventTypes: readonly string[] = [
   'blur',
 ]
 type BindingKey = `${NativeEventType}:${'capture' | 'bubble'}`
+type Subscription = { remove: (() => void) | undefined }
 type Binding = {
   node: NativeNode
   controller: AbortController
-  invoke: Listener<NativeUIEvent>
+  invoke: Listener<NativeUIEvent> | undefined
+  subscription: Subscription
 }
 type Delivery = { binding: Binding; phase: NativeUIEvent['phase'] }
+
+/** Keep the typed listener outside the registration/removal closure scope. */
+function invocation<T extends NativeEventType>(
+  listener: Listener<NativeEventMap[T]>
+): Listener<NativeUIEvent> {
+  return (event) => listener(event as NativeEventMap[T])
+}
+
+function revoke(binding: Binding): void {
+  // Abort handlers can reenter registration. Revoke both strong owner edges
+  // first, including bindings still present in a queued or active plan.
+  binding.invoke = undefined
+  binding.subscription.remove = undefined
+  binding.controller.abort()
+}
+
+/** A retained handle owns only a revocable cell, never the registry's scope. */
+function unsubscribe(subscription: Subscription): () => void {
+  return () => subscription.remove?.()
+}
 
 function payload(event: RoutedEvent, node: NativeNode, path: readonly NativeNode[]) {
   const common = {
@@ -121,30 +143,34 @@ export class EventBindings {
     const bindings = this.nodes.get(id) ?? new Map<BindingKey, Binding>()
     this.nodes.set(id, bindings)
     const previous = bindings.get(key)
+    const subscription: Subscription = { remove: undefined }
     const binding: Binding = {
       node,
       controller: new AbortController(),
-      // Capture only events of this registered type when preparing a plan.
-      invoke: (event) => listener(event as NativeEventMap[T]),
+      // prepare selects only this registered type; invocation keeps the
+      // listener outside the registry-owned removal callback's scope.
+      invoke: invocation(listener),
+      subscription,
     }
-    bindings.set(key, binding)
-    // Publish first: an abort handler may install a newer binding reentrantly.
-    previous?.controller.abort()
-    this.changed()
-    return () => {
+    subscription.remove = () => {
       if (this.nodes.get(id)?.get(key) !== binding) return
       bindings.delete(key)
       if (!bindings.size) this.nodes.delete(id)
-      binding.controller.abort()
+      revoke(binding)
       this.changed()
     }
+    bindings.set(key, binding)
+    // Publish first: an abort handler may install a newer binding reentrantly.
+    if (previous) revoke(previous)
+    this.changed()
+    return unsubscribe(subscription)
   }
 
   retain(ids: ReadonlyMap<number, unknown>): void {
     for (const [id, bindings] of this.nodes) {
       if (ids.has(id)) continue
       this.nodes.delete(id)
-      for (const binding of bindings.values()) binding.controller.abort()
+      for (const binding of bindings.values()) revoke(binding)
     }
     for (const plan of this.plans) if (!ids.has(plan.targetId)) plan.cancellation.abort()
     this.changed()
@@ -153,8 +179,7 @@ export class EventBindings {
   clear(): void {
     const removed = [...this.nodes.values()]
     this.nodes.clear()
-    for (const bindings of removed)
-      for (const binding of bindings.values()) binding.controller.abort()
+    for (const bindings of removed) for (const binding of bindings.values()) revoke(binding)
     for (const plan of this.plans) plan.cancellation.abort()
     this.plans.clear()
     this.changed()
@@ -234,7 +259,7 @@ export async function dispatchPlan(plan: DispatchPlan, targetIsLive: () => boole
       signal.addEventListener('abort', cancel, { once: true })
       plan.cancellation.signal.addEventListener('abort', cancel, { once: true })
       try {
-        await Promise.race([binding.invoke(event), cancelled])
+        await Promise.race([binding.invoke?.(event), cancelled])
       } finally {
         executing = false
         signal.removeEventListener('abort', cancel)
