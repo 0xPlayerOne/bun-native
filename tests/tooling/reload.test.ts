@@ -302,9 +302,14 @@ describe('development remounts (real Bun processes and headless protocol peer, n
         'typescript'
       )
       const project = await readProject(repository, path)
+      // Keep malformed counters as imported data, never as generated JavaScript source.
+      writeFileSync(
+        join(path, 'teardown.json'),
+        JSON.stringify({ type: 'bun-native:stopped', ...resources })
+      )
       writeFileSync(
         project.entry,
-        `process.on('message', () => { process.send?.(${JSON.stringify({ type: 'bun-native:stopped', ...resources })}); process.disconnect?.() })\nprocess.send?.({type:'bun-native:ready'})\n`
+        "import teardown from './teardown.json'\nprocess.on('message', () => { process.send?.(teardown); process.disconnect?.() })\nprocess.send?.({type:'bun-native:ready'})\n"
       )
       const session = new DevSession(repository, path, peer)
       const ready = await session.reload()
