@@ -1,0 +1,63 @@
+# Research only. Original required Validation / Gate caller remains unchanged.
+name: Linux renderer startup phases
+on:
+  push:
+    branches: [diagnostic/linux-wgpu-phases-20261104]
+permissions:
+  contents: read
+jobs:
+  observe:
+    name: Observe ${{ matrix.variant }} (not qualification)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [original-backends, vulkan-only-control]
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      BUN_NATIVE_HOST_PROFILE: release
+      PYTHONDONTWRITEBYTECODE: 1
+      STARTUP_PHASE_VARIANT: ${{ matrix.variant }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Declare private evidence destination
+        run: echo "STARTUP_PHASE_EVIDENCE=$RUNNER_TEMP/startup-phase-evidence" >> "$GITHUB_ENV"
+      - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Install native target prerequisites
+        run: |
+          rustup show active-toolchain
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
+            dbus-x11 fonts-dejavu-core heaptrack binutils
+      - name: Fetch exact dependencies and record the fixed variant before native execution
+        run: |
+          cargo fetch --locked
+          python3 experiments/startup-phases/prepare.py
+      - name: Build and test the actual instrumented release host
+        run: |
+          cargo build --locked --release -p bun-native-host 2>&1 | tee "$STARTUP_PHASE_EVIDENCE/build.log"
+          cargo clippy --locked --release -p bun-native-host --all-targets -- -D warnings
+          cargo test --locked --release -p bun-native-host
+      - name: Run the original cold lifecycle once without a warmup or retry
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$STARTUP_PHASE_EVIDENCE/session" -- python3 experiments/startup-phases/run.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: startup-phases-${{ matrix.variant }}-${{ github.sha }}
+          path: ${{ runner.temp }}/startup-phase-evidence/
+          if-no-files-found: error
+          retention-days: 7
