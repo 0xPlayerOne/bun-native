@@ -2,7 +2,11 @@ import { parseElement, type Element } from './elements.ts'
 import { MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 import {
   parseDisplaySnapshot,
+  parseClipboardText,
   parseServicePolicy,
+  MAX_CLIPBOARD_BYTES,
+  MAX_SERVICE_REQUESTS,
+  type ClipboardText,
   type DisplaySnapshot,
   type ServicePolicy,
 } from './services.ts'
@@ -17,7 +21,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 5
+export const PROTOCOL_VERSION = 6
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -32,6 +36,8 @@ export interface Limits {
   max_depth: number
   max_text_bytes: number
   max_text_bytes_per_window: number
+  max_clipboard_bytes: number
+  max_service_requests: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -42,6 +48,8 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_depth: MAX_DEPTH,
   max_text_bytes: MAX_TEXT_BYTES,
   max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
+  max_clipboard_bytes: MAX_CLIPBOARD_BYTES,
+  max_service_requests: MAX_SERVICE_REQUESTS,
 })
 
 export type Operation =
@@ -76,6 +84,8 @@ export type Command =
     }
   | { id: number; type: 'close'; window_id: number }
   | { id: number; type: 'display_snapshot'; window_id: number }
+  | { id: number; type: 'clipboard_read'; window_id: number }
+  | { id: number; type: 'clipboard_write'; window_id: number; text: string }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -88,6 +98,9 @@ export const ERROR_CODES = [
   'native_failure',
   'permission_denied',
   'service_unavailable',
+  'cancelled',
+  'operation_timed_out',
+  'payload_too_large',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 export const REQUIRED_CAPABILITIES = Object.freeze([
@@ -97,7 +110,8 @@ export const REQUIRED_CAPABILITIES = Object.freeze([
   'interactions_v1',
   'window_display_v1',
 ] as const)
-export type Capability = (typeof REQUIRED_CAPABILITIES)[number]
+const CAPABILITIES = [...REQUIRED_CAPABILITIES, 'clipboard_text_v1'] as const
+export type Capability = (typeof CAPABILITIES)[number]
 
 export interface KeyModifiers {
   control: boolean
@@ -142,6 +156,8 @@ export type NativeEvent =
   | { type: 'opened'; id: number; window_id: number; root_id: number; tree_revision: number }
   | { type: 'applied'; id: number; window_id: number; tree_revision: number }
   | { type: 'display_snapshot'; id: number; window_id: number; snapshot: DisplaySnapshot }
+  | { type: 'clipboard_text'; id: number; window_id: number; result: ClipboardText }
+  | { type: 'clipboard_written'; id: number; window_id: number }
   | RoutedEvent
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
@@ -232,8 +248,17 @@ export function parseCommand(value: unknown): Command {
     }
     case 'close':
     case 'display_snapshot':
+    case 'clipboard_read':
       keys(message, ['id', 'type', 'window_id'])
       return { id: request, type: message['type'], window_id: id(message['window_id']) }
+    case 'clipboard_write':
+      keys(message, ['id', 'type', 'window_id', 'text'])
+      return {
+        id: request,
+        type: 'clipboard_write',
+        window_id: id(message['window_id']),
+        text: string(message['text'], 'clipboard text', MAX_CLIPBOARD_BYTES),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -254,6 +279,8 @@ function limits(value: unknown): Limits {
     max_depth: parse('max_depth'),
     max_text_bytes: parse('max_text_bytes'),
     max_text_bytes_per_window: parse('max_text_bytes_per_window'),
+    max_clipboard_bytes: parse('max_clipboard_bytes'),
+    max_service_requests: parse('max_service_requests'),
   }
 }
 
@@ -299,11 +326,11 @@ export function parseEvent(value: unknown): NativeEvent {
     case 'ready': {
       keys(message, ['type', 'protocol', 'capabilities', 'limits', 'service_policy'])
       const capabilities = message['capabilities']
-      if (!Array.isArray(capabilities) || capabilities.length > REQUIRED_CAPABILITIES.length)
+      if (!Array.isArray(capabilities) || capabilities.length > CAPABILITIES.length)
         throw new ProtocolError('Invalid native capabilities')
       const parsed: Capability[] = []
       for (const value of capabilities) {
-        const capability = REQUIRED_CAPABILITIES.find((candidate) => candidate === value)
+        const capability = CAPABILITIES.find((candidate) => candidate === value)
         if (!capability || parsed.includes(capability))
           throw new ProtocolError('Unknown or duplicate native capability')
         parsed.push(capability)
@@ -343,6 +370,21 @@ export function parseEvent(value: unknown): NativeEvent {
         id: id(message['id']),
         window_id: id(message['window_id']),
         snapshot: parseDisplaySnapshot(message['snapshot']),
+      }
+    case 'clipboard_text':
+      keys(message, ['type', 'id', 'window_id', 'result'])
+      return {
+        type: 'clipboard_text',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        result: parseClipboardText(message['result']),
+      }
+    case 'clipboard_written':
+      keys(message, ['type', 'id', 'window_id'])
+      return {
+        type: 'clipboard_written',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
       }
     case 'click':
     case 'focus':

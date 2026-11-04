@@ -80,7 +80,40 @@ def distribution(values):
     }
 
 
-def expected_sources(repository):
+def revision_build_helpers(repository, source_commit):
+    """Bind historical helper membership to an immutable, clean Git checkout."""
+    if (
+        not isinstance(source_commit, str)
+        or len(source_commit) != 40
+        or any(character not in "0123456789abcdef" for character in source_commit)
+    ):
+        raise ValueError("Source inventory requires a full immutable commit")
+
+    def git(*arguments):
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if result.returncode != 0 or len(result.stdout) > 65_536:
+            raise ValueError("Cannot verify source inventory Git identity")
+        return result.stdout.strip()
+
+    if git("rev-parse", "HEAD") != source_commit:
+        raise ValueError("Source inventory commit differs from the checkout")
+    if git("status", "--porcelain"):
+        raise ValueError("Revision-bound source inventory requires a clean checkout")
+    helper = "experiments/aot-gpui/native-sources.ts"
+    tracked = git("ls-tree", "--name-only", source_commit, "--", helper)
+    if tracked not in ("", helper):
+        raise ValueError("Unexpected build-helper inventory")
+    return {helper} if tracked else set()
+
+
+def expected_sources(repository, *, source_commit=None):
     paths = {
         "examples/native-window/main.ts",
         "examples/native-window/content.ts",
@@ -98,8 +131,15 @@ def expected_sources(repository):
         "Cargo.lock",
         "native/gpui-host/Cargo.toml",
         "native/protocol/Cargo.toml",
-        "experiments/aot-gpui/native-sources.ts",
     }
+    # Ordinary current-source verification always requires this helper, including
+    # after accidental deletion. Historical comparisons opt into a checked Git
+    # revision rather than filtering missing files or trusting the artifact list.
+    paths.update(
+        {"experiments/aot-gpui/native-sources.ts"}
+        if source_commit is None
+        else revision_build_helpers(repository, source_commit)
+    )
     for directory, extension in [
         ("packages/protocol/src", "ts"),
         ("packages/runtime/src", "ts"),
@@ -118,10 +158,22 @@ def expected_sources(repository):
     return paths
 
 
-def verify_sources(repository, manifest):
+def verify_sources(
+    repository,
+    manifest,
+    entrypoint="examples/native-window/main.ts",
+    *,
+    source_commit=None,
+):
     records = manifest["source"]["files"]
     names = [record["path"] for record in records]
-    if len(names) != len(set(names)) or set(names) != expected_sources(repository):
+    expected = expected_sources(repository, source_commit=source_commit) | {entrypoint}
+    if source_commit is not None and (
+        manifest["source"].get("commit") != source_commit
+        or manifest["source"].get("dirty") is not False
+    ):
+        raise ValueError("Manifest does not identify the clean source inventory commit")
+    if len(names) != len(set(names)) or set(names) != expected:
         raise ValueError(
             "AOT manifest must describe every current application/host source"
         )
@@ -133,17 +185,37 @@ def verify_sources(repository, manifest):
             raise ValueError(f"Source differs from the AOT build: {record['path']}")
 
 
-def verify_package(package, repository):
+def verify_package(
+    package,
+    repository,
+    *,
+    entry="native-window",
+    external_host=None,
+    source_commit=None,
+):
+    entries = {
+        "native-window": "examples/native-window/main.ts",
+        "bridge": "benchmarks/bridge.ts",
+    }
+    if entry not in entries:
+        raise ValueError("Unsupported baseline entry")
     path = package / "manifest.json"
     if path.stat().st_size > 4 * 1024 * 1024:
         raise ValueError("AOT manifest exceeds 4 MiB")
     manifest = json.loads(path.read_text())
     if manifest["schemaVersion"] != 1:
         raise ValueError("Unsupported AOT manifest schema")
-    if manifest.get("entrypoint") != "examples/native-window/main.ts":
-        raise ValueError("The baseline requires the compiled native-window fixture")
-    if manifest["host"].get("placement") != "bundled":
+    if manifest.get("entrypoint") != entries[entry]:
+        raise ValueError(f"The baseline requires the compiled {entry} fixture")
+    if entry == "native-window" and manifest["host"].get("placement") != "bundled":
         raise ValueError("The baseline requires the matching bundled native host")
+    if entry == "bridge" and (
+        external_host is None
+        or not external_host.is_absolute()
+        or manifest["host"].get("placement") != "external"
+        or manifest["host"].get("file") != str(external_host)
+    ):
+        raise ValueError("The bridge requires its explicitly supplied external host")
     if manifest["host"]["profile"] != "release":
         raise ValueError(
             "A comparable production baseline requires a release-profile host"
@@ -156,12 +228,29 @@ def verify_package(package, repository):
         raise ValueError(
             "AOT compiled-program and JIT-omission inspection must have passed"
         )
-    for key, name in [("application", "native-window"), ("host", "bun-native-host")]:
+    if entry == "bridge":
+        features = manifest["application"]["runtimeFeatures"]
+        if (
+            features.get("jit") not in ("unused", "requested")
+            or type(features.get("removedRangeCount")) is not int
+            or features["removedRangeCount"] <= 0
+            or type(features.get("jitRemovedRanges", {}).get("count")) is not int
+            or features["jitRemovedRanges"]["count"] <= 0
+        ):
+            raise ValueError("Bridge AOT must record validated JIT removal ranges")
+    artifacts = [("application", entry, package / entry)]
+    artifacts.append(
+        ("host", "bun-native-host", package / "bun-native-host")
+        if entry == "native-window"
+        else ("host", str(external_host), external_host)
+    )
+    for key, name, artifact in artifacts:
         record = manifest[key]
         if record["file"] != name:
             raise ValueError(f"Unexpected Linux {key} artifact filename")
-        artifact = package / name
-        if not artifact.resolve().is_relative_to(package.resolve()):
+        if (
+            key != "host" or entry == "native-window"
+        ) and not artifact.resolve().is_relative_to(package.resolve()):
             raise ValueError(
                 "Executable artifacts must remain inside the package directory"
             )
@@ -181,7 +270,7 @@ def verify_package(package, repository):
         or manifest["target"]["architecture"] != architecture
     ):
         raise ValueError("The AOT artifact does not target this Linux architecture")
-    verify_sources(repository, manifest)
+    verify_sources(repository, manifest, entries[entry], source_commit=source_commit)
     return manifest
 
 

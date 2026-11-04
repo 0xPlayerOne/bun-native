@@ -11,6 +11,7 @@ import {
   type ErrorCode,
   type Limits,
   type ServicePolicy,
+  type Capability,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
@@ -18,17 +19,24 @@ import { StartupTrace } from './startup-trace.ts'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<
-  Extract<Command, { type: 'open' | 'batch' | 'close' | 'display_snapshot' }>
+  Extract<
+    Command,
+    { type: 'open' | 'batch' | 'close' | 'display_snapshot' | 'clipboard_read' | 'clipboard_write' }
+  >
 >
 export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
 export type HostResponse = Extract<
   NativeEvent,
-  { type: 'ack' | 'opened' | 'applied' | 'display_snapshot' }
+  {
+    type: 'ack' | 'opened' | 'applied' | 'display_snapshot' | 'clipboard_text' | 'clipboard_written'
+  }
 >
 
 export interface ServicePermissions {
   /** Default deny. Fixed for the native process lifetime; no wire request can grant it. */
   readonly windowDisplay?: 'allow' | 'deny'
+  readonly clipboardRead?: 'allow' | 'deny'
+  readonly clipboardWrite?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -51,18 +59,26 @@ export interface HostOptions {
   permissions?: ServicePermissions
 }
 
-function launchPolicy(value: unknown): Readonly<ServicePolicy> {
-  if (value === undefined) return Object.freeze({ window_display: false })
+function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new TypeError('Native permissions must be an object')
-  if (Object.keys(value).some((key) => key !== 'windowDisplay'))
+  if (
+    Object.keys(value).some(
+      (key) => !['windowDisplay', 'clipboardRead', 'clipboardWrite'].includes(key)
+    )
+  )
     throw new TypeError('Unknown native service permission')
-  const permission = Object.hasOwn(value, 'windowDisplay')
-    ? (value as Record<string, unknown>)['windowDisplay']
-    : 'deny'
-  if (permission !== 'allow' && permission !== 'deny')
-    throw new TypeError('windowDisplay permission must be allow or deny')
-  return Object.freeze({ window_display: permission === 'allow' })
+  const grant = (key: keyof ServicePermissions) => {
+    const permission = Object.hasOwn(value, key) ? (value as Record<string, unknown>)[key] : 'deny'
+    if (permission !== 'allow' && permission !== 'deny')
+      throw new TypeError(key + ' permission must be allow or deny')
+    return permission === 'allow'
+  }
+  return Object.freeze({
+    window_display: grant('windowDisplay'),
+    clipboard_read: grant('clipboardRead'),
+    clipboard_write: grant('clipboardWrite'),
+  })
 }
 
 type Pending = {
@@ -99,6 +115,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private ready = false
   private negotiatedLimits: Readonly<Limits> | undefined
   private negotiatedServicePolicy: Readonly<ServicePolicy> | undefined
+  private negotiatedCapabilities: readonly Capability[] | undefined
   private sequence = 0
   private nextId = 1
   private writeTail: Promise<void> = Promise.resolve()
@@ -116,6 +133,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         options.executable,
         ...(options.args ?? []),
         ...(requestedPolicy.window_display ? ['--bun-native-allow-window-display'] : []),
+        ...(requestedPolicy.clipboard_read ? ['--bun-native-allow-clipboard-read'] : []),
+        ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -165,6 +184,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     return this.negotiatedServicePolicy
   }
 
+  get capabilities(): readonly Capability[] {
+    if (!this.negotiatedCapabilities)
+      throw new ProtocolError('Native capabilities are not negotiated')
+    return this.negotiatedCapabilities
+  }
+
   /** Resolves after the native UI thread acknowledges the operation. */
   send(
     command: Extract<WindowCommand, { type: 'open' }>
@@ -178,6 +203,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'display_snapshot' }>
   ): Promise<Extract<HostResponse, { type: 'display_snapshot' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'clipboard_read' }>
+  ): Promise<Extract<HostResponse, { type: 'clipboard_text' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'clipboard_write' }>
+  ): Promise<Extract<HostResponse, { type: 'clipboard_written' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -250,6 +281,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           command.operations.length > this.negotiatedLimits.max_operations
         )
           throw new ProtocolError('Command exceeds the negotiated batch limit')
+        if (
+          command.type === 'clipboard_write' &&
+          Buffer.byteLength(command.text, 'utf8') > this.negotiatedLimits.max_clipboard_bytes
+        )
+          throw new ProtocolError('Clipboard write exceeds the negotiated text limit')
       }
     } catch (error) {
       return Promise.reject(error)
@@ -351,6 +387,13 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private receive(event: NativeEvent): void {
     if (this.phase === 'closed') return
     this.startupTrace?.response(event, this.process.pid)
+    if (
+      event.type === 'clipboard_text' &&
+      event.result.kind === 'text' &&
+      this.negotiatedLimits &&
+      Buffer.byteLength(event.result.text, 'utf8') > this.negotiatedLimits.max_clipboard_bytes
+    )
+      throw new ProtocolError('Clipboard response exceeds the negotiated text limit')
     if (event.type === 'ready') {
       if (this.ready || this.phase !== 'starting') throw new ProtocolError('Unexpected ready event')
       if (REQUIRED_CAPABILITIES.some((capability) => !event.capabilities.includes(capability)))
@@ -358,11 +401,16 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           'Native host lacks required protocol capabilities: ' + REQUIRED_CAPABILITIES.join(', ')
         )
       this.negotiatedLimits = Object.freeze(event.limits)
-      if (event.service_policy.window_display !== this.requestedPolicy.window_display)
+      if (
+        (Object.keys(this.requestedPolicy) as (keyof ServicePolicy)[]).some(
+          (key) => event.service_policy[key] !== this.requestedPolicy[key]
+        )
+      )
         throw new ProtocolError(
           'Native service policy does not match the explicit launch permissions'
         )
       this.negotiatedServicePolicy = Object.freeze(event.service_policy)
+      this.negotiatedCapabilities = Object.freeze(event.capabilities)
       this.ready = true
       return
     }
@@ -371,6 +419,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'opened' ||
       event.type === 'applied' ||
       event.type === 'display_snapshot' ||
+      event.type === 'clipboard_text' ||
+      event.type === 'clipboard_written' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -409,6 +459,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     switch (command.type) {
       case 'display_snapshot':
         return response.type === 'display_snapshot' && response.window_id === command.window_id
+      case 'clipboard_read':
+        return response.type === 'clipboard_text' && response.window_id === command.window_id
+      case 'clipboard_write':
+        return response.type === 'clipboard_written' && response.window_id === command.window_id
       case 'open':
         return (
           response.type === 'opened' &&

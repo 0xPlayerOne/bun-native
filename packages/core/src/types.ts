@@ -9,6 +9,7 @@ import type {
 import type { HostOptions } from '@bun-native/runtime'
 import type {
   NativeDisplaySnapshot,
+  NativeClipboardText,
   ServiceCapabilities,
   ServiceRequestOptions,
 } from './services.ts'
@@ -142,6 +143,10 @@ export interface NativeWindow {
   input(node: NativeNode<'input'>): InputState
   /** Requires an immutable launch grant; cancellation never publishes a late snapshot. */
   displaySnapshot(options?: ServiceRequestOptions): Promise<NativeDisplaySnapshot>
+  /** Fixed native deadline; cancellation after dispatch drains but withholds the result. */
+  readClipboardText(options?: ServiceRequestOptions): Promise<NativeClipboardText>
+  /** A submitted write can change the OS clipboard even if ownership is subsequently revoked. */
+  writeClipboardText(text: string): Promise<void>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }
@@ -159,6 +164,7 @@ export interface NativeApplication {
     queuedTransactions: number
     queuedCallbacks: number
     activeCallbacks: number
+    serviceRequests: number
   }>
   openWindow(options: WindowOptions): Promise<NativeWindow>
   /** May be called from a listener. Await closed outside that listener to join dispatch. */

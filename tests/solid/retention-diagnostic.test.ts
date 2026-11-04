@@ -47,6 +47,7 @@ function observations() {
         queuedTransactions: 0,
         queuedCallbacks: 0,
         activeCallbacks: 0,
+        serviceRequests: 0,
       },
     },
     window: { revision: 20, closed: new Promise<void>(() => {}) },
@@ -98,6 +99,24 @@ test('retention metadata records survivor indexes and exact identity while rethr
       !bytes.includes(Buffer.from(original.message)),
       'Do not persist arbitrary error contents'
     )
+  })
+})
+
+test('failure metadata preserves pending native service ownership', () => {
+  withDirectory((directory) => {
+    const { references, context } = observations()
+    context.application.diagnostics.serviceRequests = 3
+    const original = new Error('original retained-count assertion')
+    assert.throws(
+      () => rethrowWithRetentionDiagnostic(original, references, context),
+      (error) => error === original
+    )
+    const report = JSON.parse(
+      readFileSync(join(directory, `solid-retention-${process.pid}.json`), 'utf8')
+    )
+    assert.deepEqual(report.application, context.application.diagnostics)
+    assert.equal(report.application.serviceRequests, 3)
+    assert.equal(report.expectedRetainedCount, 0)
   })
 })
 
