@@ -2,7 +2,7 @@
 
 This is an incremental implementation of [CI #256](https://github.com/0xPlayerOne/bun-native/issues/256)
 and [target artifacts #246](https://github.com/0xPlayerOne/bun-native/issues/246).
-Both issues remain open. Linux's existing owned-window/input suite stays required;
+The wider CI acceptance in #256 remains open. Linux's existing owned-window/input suite stays required;
 this lane adds genuine target-host compilation and a portable native lifecycle
 fixture for macOS and Windows. It does not infer GUI interaction from compilation.
 The [hosted evidence below](#hosted-paint-os-input-and-assigned-device-evidence)
