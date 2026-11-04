@@ -1,0 +1,2140 @@
+{
+  "schemaVersion": 1,
+  "scope": "Current protocol-4 shared collector qualification on real Linux X11 GPUI, development-profile native host, software Vulkan; no display-presentation or comparative performance claim.",
+  "recordedAt": "2026-10-31T21:43:13.862007+00:00",
+  "sourceBase": "a5433218582321db617ee04eedecb04b0b718908",
+  "sourceIntegrity": {
+    "compiledAndHarnessFilesUnchangedBeforeAfter": true,
+    "files": [
+      {
+        "path": ".bun-version",
+        "bytes": 15,
+        "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b"
+      },
+      {
+        "path": "Cargo.lock",
+        "bytes": 160879,
+        "sha256": "f2a40ecaf8b62fd7154f9d9460f6ef64f2ef615ebc657aa9f803e68fe844abdb"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 434,
+        "sha256": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0"
+      },
+      {
+        "path": "benchmarks/native-baseline.py",
+        "bytes": 18179,
+        "sha256": "6d8e463e95c26f0c2f1a8a9d40413ae3e3ccc6115d7c51fedef750f5fcbe6505"
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 28357,
+        "sha256": "8b58f36ae2b2e036adab62883847d49f02e0bbfc9286cebbf964342091b161f9"
+      },
+      {
+        "path": "bunfig.toml",
+        "bytes": 147,
+        "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31"
+      },
+      {
+        "path": "examples/native-window/content.ts",
+        "bytes": 1766,
+        "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a"
+      },
+      {
+        "path": "examples/native-window/main.ts",
+        "bytes": 1147,
+        "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec"
+      },
+      {
+        "path": "examples/react-counter/main.tsx",
+        "bytes": 4152,
+        "sha256": "0a2fd9bab78bc2ed90d72b47b43535fef507e42644021334ba389db66ceba17c"
+      },
+      {
+        "path": "examples/solid-counter/main.tsx",
+        "bytes": 4199,
+        "sha256": "62000e72e0c3887047fad7920b5116ed9f5455f8590c9a9e16508a75853dcb22"
+      },
+      {
+        "path": "experiments/aot-gpui/build-window.ts",
+        "bytes": 11979,
+        "sha256": "78c7f15f6b9eca7ae4ec7e7897bdd82eac2c2f5ecc6120375546c59e237c639e"
+      },
+      {
+        "path": "experiments/aot-gpui/inspect-runtime.ts",
+        "bytes": 12491,
+        "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+      },
+      {
+        "path": "experiments/aot-gpui/inspect.ts",
+        "bytes": 2383,
+        "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+      },
+      {
+        "path": "native/gpui-host/Cargo.toml",
+        "bytes": 628,
+        "sha256": "38f2854c445a3d31ab668b91d8fd73a510d3ff2d515100f128b1e90e56a13a8c"
+      },
+      {
+        "path": "native/gpui-host/src/channel.rs",
+        "bytes": 3201,
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+      },
+      {
+        "path": "native/gpui-host/src/evidence.rs",
+        "bytes": 7542,
+        "sha256": "89d23a859d09be0327709f921a4096da73589ff4406437ce4e9c427b2ee1a072"
+      },
+      {
+        "path": "native/gpui-host/src/evidence/layout.rs",
+        "bytes": 5330,
+        "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+      },
+      {
+        "path": "native/gpui-host/src/input.rs",
+        "bytes": 19158,
+        "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+      },
+      {
+        "path": "native/gpui-host/src/input/binding.rs",
+        "bytes": 3666,
+        "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+      },
+      {
+        "path": "native/gpui-host/src/input/paint.rs",
+        "bytes": 5796,
+        "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+      },
+      {
+        "path": "native/gpui-host/src/main.rs",
+        "bytes": 2539,
+        "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+      },
+      {
+        "path": "native/gpui-host/src/session.rs",
+        "bytes": 12370,
+        "sha256": "511ccc15edc4c3b3ed8a0f9563616998918e8f251ca95bc26c48713d37b33b67"
+      },
+      {
+        "path": "native/gpui-host/src/state.rs",
+        "bytes": 388,
+        "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+      },
+      {
+        "path": "native/gpui-host/src/style.rs",
+        "bytes": 3732,
+        "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+      },
+      {
+        "path": "native/gpui-host/src/view.rs",
+        "bytes": 13370,
+        "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+      },
+      {
+        "path": "native/gpui-host/src/view/interactions.rs",
+        "bytes": 9592,
+        "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+      },
+      {
+        "path": "native/protocol/Cargo.toml",
+        "bytes": 225,
+        "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+      },
+      {
+        "path": "native/protocol/src/event_tests.rs",
+        "bytes": 4925,
+        "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+      },
+      {
+        "path": "native/protocol/src/events.rs",
+        "bytes": 7635,
+        "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+      },
+      {
+        "path": "native/protocol/src/framing.rs",
+        "bytes": 3838,
+        "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+      },
+      {
+        "path": "native/protocol/src/lib.rs",
+        "bytes": 469,
+        "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+      },
+      {
+        "path": "native/protocol/src/security_tests.rs",
+        "bytes": 2133,
+        "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+      },
+      {
+        "path": "native/protocol/src/tests.rs",
+        "bytes": 11716,
+        "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+      },
+      {
+        "path": "native/protocol/src/tree.rs",
+        "bytes": 14549,
+        "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+      },
+      {
+        "path": "native/protocol/src/tree/tests.rs",
+        "bytes": 13131,
+        "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+      },
+      {
+        "path": "native/protocol/src/wire.rs",
+        "bytes": 18177,
+        "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+      },
+      {
+        "path": "package.json",
+        "bytes": 1917,
+        "sha256": "afe286cec0f6c53abe8a7572b407f97a31fb0b88f6f8669958e546bfe6476f28"
+      },
+      {
+        "path": "packages/core/package.json",
+        "bytes": 234,
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+      },
+      {
+        "path": "packages/core/src/application.ts",
+        "bytes": 14616,
+        "sha256": "0bfbd50ea3406bc5ef21dfab10a06b1fb97395b1dfe4a8da47c75bd1ae259b03"
+      },
+      {
+        "path": "packages/core/src/events.ts",
+        "bytes": 7680,
+        "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb"
+      },
+      {
+        "path": "packages/core/src/index.ts",
+        "bytes": 646,
+        "sha256": "62907cab51daa9f86a104a9f192c6920a3cdb2e85190c6134cdf6fa6ff73fa98"
+      },
+      {
+        "path": "packages/core/src/tree.ts",
+        "bytes": 7898,
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+      },
+      {
+        "path": "packages/core/src/types.ts",
+        "bytes": 5566,
+        "sha256": "31e29163d738a5baed82249de75b03800a095c8988bd1e9306abad826e4b86c7"
+      },
+      {
+        "path": "packages/protocol/package.json",
+        "bytes": 129,
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+      },
+      {
+        "path": "packages/protocol/src/elements.ts",
+        "bytes": 5003,
+        "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+      },
+      {
+        "path": "packages/protocol/src/framing.ts",
+        "bytes": 2806,
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+      },
+      {
+        "path": "packages/protocol/src/index.ts",
+        "bytes": 512,
+        "sha256": "67ba0c34700dd51aaba47bd08e33cbc5bf3fc4d3eabeb938f890670118c8cabf"
+      },
+      {
+        "path": "packages/protocol/src/messages.ts",
+        "bytes": 13102,
+        "sha256": "38fbc0317f48305f69763d8facec6f241da4dcd514c18944417c19f4ac470359"
+      },
+      {
+        "path": "packages/protocol/src/values.ts",
+        "bytes": 1732,
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+      },
+      {
+        "path": "packages/react/package.json",
+        "bytes": 402,
+        "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+      },
+      {
+        "path": "packages/react/src/index.ts",
+        "bytes": 262,
+        "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+      },
+      {
+        "path": "packages/react/src/jsx-dev-runtime.ts",
+        "bytes": 93,
+        "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+      },
+      {
+        "path": "packages/react/src/jsx-runtime.ts",
+        "bytes": 92,
+        "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+      },
+      {
+        "path": "packages/react/src/jsx.ts",
+        "bytes": 1281,
+        "sha256": "0cb1d27d0e49ff376e78208e2c34077e4c901924c9a0765860c349bebd4af898"
+      },
+      {
+        "path": "packages/react/src/mount.ts",
+        "bytes": 6551,
+        "sha256": "e11f0ab0388fcfbe587d17c2a838a3f7f994b7d6ef3b889192f5153f7dd7cd00"
+      },
+      {
+        "path": "packages/react/src/reconciler.ts",
+        "bytes": 7440,
+        "sha256": "ff36df62bc07d2f6b226227803907fe51b6a34709c972dcb811c25bdf25fb4d3"
+      },
+      {
+        "path": "packages/renderer/package.json",
+        "bytes": 192,
+        "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+      },
+      {
+        "path": "packages/renderer/src/event-properties.ts",
+        "bytes": 2075,
+        "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+      },
+      {
+        "path": "packages/renderer/src/index.ts",
+        "bytes": 910,
+        "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+      },
+      {
+        "path": "packages/renderer/src/input-intent.ts",
+        "bytes": 1698,
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+      },
+      {
+        "path": "packages/renderer/src/native-tree.ts",
+        "bytes": 6235,
+        "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+      },
+      {
+        "path": "packages/renderer/src/nodes.ts",
+        "bytes": 8443,
+        "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+      },
+      {
+        "path": "packages/renderer/src/order.ts",
+        "bytes": 956,
+        "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+      },
+      {
+        "path": "packages/renderer/src/root.ts",
+        "bytes": 9861,
+        "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+      },
+      {
+        "path": "packages/renderer/src/window-lifetime.ts",
+        "bytes": 1220,
+        "sha256": "94b5664db3272e583fd746a9427e7f062ef92b3c1ae21447d769a5ff9471a242"
+      },
+      {
+        "path": "packages/runtime/package.json",
+        "bytes": 195,
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "bytes": 13991,
+        "sha256": "ce86a386c4299a44b259a55d181a01ab9f31b2894366a241d1896d6a17a81ca0"
+      },
+      {
+        "path": "packages/runtime/src/startup-trace.ts",
+        "bytes": 3021,
+        "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d"
+      },
+      {
+        "path": "packages/solid/package.json",
+        "bytes": 310,
+        "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+      },
+      {
+        "path": "packages/solid/src/index.ts",
+        "bytes": 604,
+        "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+      },
+      {
+        "path": "packages/solid/src/jsx.ts",
+        "bytes": 868,
+        "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+      },
+      {
+        "path": "packages/solid/src/mount.ts",
+        "bytes": 1216,
+        "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+      },
+      {
+        "path": "packages/solid/src/renderer.ts",
+        "bytes": 964,
+        "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 86,
+        "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+      },
+      {
+        "path": "scripts/quality/native-input-linux.py",
+        "bytes": 41215,
+        "sha256": "4c00e069495edd11f85853013b9be3e4a91e6b008126601fc9455a7e7ed63dc9"
+      },
+      {
+        "path": "scripts/quality/native-linux-session.sh",
+        "bytes": 7305,
+        "sha256": "87d4d187251e4483ba31f6ed673056c7dd846aa23a4de6501de6dcbcdd8e1fd3"
+      },
+      {
+        "path": "scripts/quality/native-paint-observer.py",
+        "bytes": 17096,
+        "sha256": "1f0b15c72d2733ff1e52908910ae220e6c512a1f7775eb27072c80451ba6b2b6"
+      },
+      {
+        "path": "scripts/solid-build.ts",
+        "bytes": 1615,
+        "sha256": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908"
+      },
+      {
+        "path": "scripts/solid/preset.d.ts",
+        "bytes": 139,
+        "sha256": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228"
+      },
+      {
+        "path": "scripts/solid/transform.ts",
+        "bytes": 642,
+        "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+      },
+      {
+        "path": "tests/native/react-window.py",
+        "bytes": 4397,
+        "sha256": "13fc1f7275a3e1f32174b98f4f019e609965b2eeb6a92748e290710098c23f34"
+      },
+      {
+        "path": "tests/native/solid-window.py",
+        "bytes": 8382,
+        "sha256": "ceec0858f5b0f6af5f4cbdd52dd9e075a9871300325257dd051da35c5a3256a1"
+      },
+      {
+        "path": "toolchain.json",
+        "bytes": 1725,
+        "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+      },
+      {
+        "path": "tsconfig.json",
+        "bytes": 1028,
+        "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29"
+      }
+    ],
+    "nativeBuildSourceMatch": {
+      "host_sha256": "72db09e99bd8956c7922498af007fe7bcd55030d8654d2ed7e2e30d1bb21bd4f",
+      "host_profile": "dev",
+      "native_source_files_verified": 27,
+      "source_files": {
+        "Cargo.lock": {
+          "bytes": 160879,
+          "sha256": "f2a40ecaf8b62fd7154f9d9460f6ef64f2ef615ebc657aa9f803e68fe844abdb"
+        },
+        "Cargo.toml": {
+          "bytes": 434,
+          "sha256": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0"
+        },
+        "native/gpui-host/Cargo.toml": {
+          "bytes": 628,
+          "sha256": "38f2854c445a3d31ab668b91d8fd73a510d3ff2d515100f128b1e90e56a13a8c"
+        },
+        "native/gpui-host/src/channel.rs": {
+          "bytes": 3201,
+          "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+        },
+        "native/gpui-host/src/evidence.rs": {
+          "bytes": 7542,
+          "sha256": "89d23a859d09be0327709f921a4096da73589ff4406437ce4e9c427b2ee1a072"
+        },
+        "native/gpui-host/src/evidence/layout.rs": {
+          "bytes": 5330,
+          "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257"
+        },
+        "native/gpui-host/src/input.rs": {
+          "bytes": 19158,
+          "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588"
+        },
+        "native/gpui-host/src/input/binding.rs": {
+          "bytes": 3666,
+          "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0"
+        },
+        "native/gpui-host/src/input/paint.rs": {
+          "bytes": 5796,
+          "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470"
+        },
+        "native/gpui-host/src/main.rs": {
+          "bytes": 2539,
+          "sha256": "d7eb0494e3aafe99a086603d42797f3290c7c1fdf261e4cfc9495d09df5ffbbf"
+        },
+        "native/gpui-host/src/session.rs": {
+          "bytes": 12370,
+          "sha256": "511ccc15edc4c3b3ed8a0f9563616998918e8f251ca95bc26c48713d37b33b67"
+        },
+        "native/gpui-host/src/state.rs": {
+          "bytes": 388,
+          "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15"
+        },
+        "native/gpui-host/src/style.rs": {
+          "bytes": 3732,
+          "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961"
+        },
+        "native/gpui-host/src/view.rs": {
+          "bytes": 13370,
+          "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416"
+        },
+        "native/gpui-host/src/view/interactions.rs": {
+          "bytes": 9592,
+          "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887"
+        },
+        "native/protocol/Cargo.toml": {
+          "bytes": 225,
+          "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415"
+        },
+        "native/protocol/src/event_tests.rs": {
+          "bytes": 4925,
+          "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388"
+        },
+        "native/protocol/src/events.rs": {
+          "bytes": 7635,
+          "sha256": "9cabd551549cfbfd22de611b3bf7c9a9f3e8aef21cabc69e2ab1d1aa35f624c0"
+        },
+        "native/protocol/src/framing.rs": {
+          "bytes": 3838,
+          "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3"
+        },
+        "native/protocol/src/lib.rs": {
+          "bytes": 469,
+          "sha256": "f6ea8fef12f09997a32f9949b982c635fadc361a754dbdff64a930b2b187820b"
+        },
+        "native/protocol/src/security_tests.rs": {
+          "bytes": 2133,
+          "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868"
+        },
+        "native/protocol/src/tests.rs": {
+          "bytes": 11716,
+          "sha256": "7f21576cd3f301cbcc80ec32c4f9db5bcd3f617f8e5508a4d2ce3f7d8caf1ce4"
+        },
+        "native/protocol/src/tree.rs": {
+          "bytes": 14549,
+          "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73"
+        },
+        "native/protocol/src/tree/tests.rs": {
+          "bytes": 13131,
+          "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f"
+        },
+        "native/protocol/src/wire.rs": {
+          "bytes": 18177,
+          "sha256": "22022347565bfc701cfca6b6a36fbcee99d81475eb26c99322c0e0a88714392d"
+        },
+        "rust-toolchain.toml": {
+          "bytes": 86,
+          "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+        },
+        "toolchain.json": {
+          "bytes": 1725,
+          "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94"
+        }
+      },
+      "build_command": ["cargo", "build", "--locked", "-p", "bun-native-host"],
+      "build_environment": {
+        "CARGO_TARGET_DIR": "/workspace/scratch/5b1033c37396/toolchains/bn1-clippy-target",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_PIPELINING": "false",
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_NET_OFFLINE": "true"
+      }
+    }
+  },
+  "toolchain": {
+    "schemaVersion": 1,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "archives": {
+        "linux-x64": {
+          "name": "bun-linux-x64.zip",
+          "assetId": 687869747,
+          "sha256": "e8f27b24f74186e87fc0f0f603bdb6b79264dc86a1680da41e2025a3cb3efee0"
+        },
+        "linux-arm64": {
+          "name": "bun-linux-aarch64.zip",
+          "assetId": 687869647,
+          "sha256": "a6e36924c8c6dc63459660e27a48cdd7189a7e888e590272d029de98d169d1e6"
+        },
+        "darwin-x64": {
+          "name": "bun-darwin-x64.zip",
+          "assetId": 687869655,
+          "sha256": "31e8e67eb5b742f7114002047d91c9455e253ad3f3a9d7a8e27d3dd73465b6a4"
+        },
+        "darwin-arm64": {
+          "name": "bun-darwin-aarch64.zip",
+          "assetId": 687869686,
+          "sha256": "67ede5394a7da4a8b1a1eb0788b72325f480bc956cb1155b6be962919c9aa581"
+        },
+        "win32-x64": {
+          "name": "bun-windows-x64.zip",
+          "assetId": 687870574,
+          "sha256": "053e8d9776759e33d372bef6a1bad38aa45be9f4533b64a98668d04328f776ce"
+        },
+        "win32-arm64": {
+          "name": "bun-windows-aarch64.zip",
+          "assetId": 687870891,
+          "sha256": "bf868100b4c4365e6f3240e7209abfb15a4c36cff8b3d8a25381b9529489d810"
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "compilerBinary": {
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "path": "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+  },
+  "target": {
+    "os": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.57"
+  },
+  "platform": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "display": ":99",
+    "display_protocol": "X11",
+    "physical_input_tested": false,
+    "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+    "software_gl_requested": "1",
+    "child_subreaper": true
+  },
+  "renderer": {
+    "status": "reported-by-native-window",
+    "gpu": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+    }
+  },
+  "tools": {
+    "python": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]",
+    "xdotool": "xdotool version 3.20160805.1",
+    "imagemagick": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org\nCopyright: (C) 1999 ImageMagick Studio LLC\nLicense: https://imagemagick.org/script/license.php\nFeatures: Cipher DPC Modules OpenMP(4.5) \nDelegates (built-in): bzlib djvu fftw fontconfig freetype heic jbig jng jp2 jpeg lcms lqr ltdl lzma openexr pangocairo png raw tiff webp wmf x xml zlib"
+  },
+  "artifacts": {
+    "native-window": {
+      "entrypoint": "examples/native-window/main.ts",
+      "manifest": {
+        "bytes": 13607,
+        "sha256": "8bee420806395bdad461308cffbd983e5110014c6df78454ab33781428b583ea"
+      },
+      "application": {
+        "file": "native-window",
+        "bytes": 70925352,
+        "sha256": "fcaa6e97150ab17ba75bb483fa8e6b108282d3bbc1a05ffd608990beafb11528",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3358943,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "hostPlacement": "bundled",
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/native-paint-observer-v4/examples/native-window/main.ts",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/native-window-package/native-window"
+      ],
+      "sourceFileCount": 49
+    },
+    "solid": {
+      "entrypoint": "examples/solid-counter/main.tsx",
+      "manifest": {
+        "bytes": 17492,
+        "sha256": "34ad03dfb0d81ffe8211a61cdd374c4d36a4bae5c8ccce24bdb051e28a77e629"
+      },
+      "application": {
+        "file": "solid",
+        "bytes": 71367720,
+        "sha256": "3558602a49292f83ecbc3fe6e8e264387633afb6e98825a812c2f398eb37355c",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3801317,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "hostPlacement": "external",
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/development/application.js",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/solid"
+      ],
+      "sourceFileCount": 67,
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 118500,
+        "sha256": "b6326a51ec572c82481c7dbd4eacb67ee93c6e5febe7c7fefce777b183222363",
+        "transformCommand": [
+          "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+          "/workspace/scratch/5b1033c37396/native-paint-observer-v4/scripts/solid-build.ts",
+          "/workspace/scratch/5b1033c37396/native-paint-observer-v4/examples/solid-counter/main.tsx",
+          "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/development"
+        ],
+        "buildMs": 713.2001359999999
+      },
+      "developmentSourceMap": {
+        "bytes": 277455,
+        "sha256": "f90e49a1f64178841c38154c2cb56106b4e233a2d6c7c1ab5ebdd0d4596b8003"
+      },
+      "frameworkModules": [
+        "../../../../native-paint-observer-v4/node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/dist/solid.js",
+        "../../../../native-paint-observer-v4/node_modules/.bun/solid-js@1.9.18/node_modules/solid-js/universal/dist/universal.js"
+      ]
+    },
+    "react": {
+      "entrypoint": "examples/react-counter/main.tsx",
+      "manifest": {
+        "bytes": 17533,
+        "sha256": "807e0dbf3443ad8d1696100b1e166a36db40d2b9b1157b213396d45f1362ecbc"
+      },
+      "application": {
+        "file": "react",
+        "bytes": 72596520,
+        "sha256": "a76668e67970fb1412d6af05bd638866efbc6320a996645f5032cb3eb4c4d2a2",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5030117,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "hostPlacement": "external",
+      "compileCommand": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/development/application.js",
+        "--outfile",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/react"
+      ],
+      "sourceFileCount": 66,
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 190966,
+        "sha256": "601162c14b3a02e183bdd74d20451fd993c04067c6103cc4d9864cc27d854333",
+        "transformCommand": [
+          "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+          "build",
+          "--no-script",
+          "--production",
+          "--define",
+          "process.env.NODE_ENV=\"production\"",
+          "--target=bun",
+          "--format=esm",
+          "--sourcemap=external",
+          "/workspace/scratch/5b1033c37396/native-paint-observer-v4/examples/react-counter/main.tsx",
+          "--outdir",
+          "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/development",
+          "--entry-naming=application.js"
+        ],
+        "buildMs": 57.58252800000001
+      },
+      "developmentSourceMap": {
+        "bytes": 870874,
+        "sha256": "8be0d4705dd18568e4388fc18620cc0c49ba67657a2f1f928019f095a5509709"
+      },
+      "frameworkModules": [
+        "../../../../native-paint-observer-v4/node_modules/.bun/react@19.3.1/node_modules/react/cjs/react.production.js",
+        "../../../../native-paint-observer-v4/node_modules/.bun/scheduler@0.28.0/node_modules/scheduler/cjs/scheduler.production.js",
+        "../../../../native-paint-observer-v4/node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler.production.js",
+        "../../../../native-paint-observer-v4/node_modules/.bun/react-reconciler@0.34.0+0441d6f8f57aca1e/node_modules/react-reconciler/cjs/react-reconciler-constants.production.js",
+        "../../../../native-paint-observer-v4/packages/react/src/reconciler.ts",
+        "../../../../native-paint-observer-v4/packages/react/src/mount.ts",
+        "../../../../native-paint-observer-v4/node_modules/.bun/react@19.3.1/node_modules/react/cjs/react-jsx-runtime.production.js"
+      ]
+    }
+  },
+  "methodology": {
+    "clock": "One Python time.monotonic_ns clock for command start, complete expected paint-record validation and command return.",
+    "deadline": "Original driver remaining deadline is captured when the collector is constructed; watch setup and begin cannot restart it.",
+    "input": "Existing owned-window XTest/xdotool path; pointer movement and geometry preparation precede click timing.",
+    "runtimeParity": "Solid and React use the same generated production-framework module in Bun development execution and machine-code AOT compilation; native host is the same exact prebuilt development-profile binary in all 12 cases.",
+    "trials": "One qualification case for each core/Solid/React, development/AOT and click/input combination. No failed native case was rerun; all 12 passed on their first execution.",
+    "text": "The interval includes the whole offered text/key schedule and subsequent native/app scheduling, not per-keystroke latency.",
+    "interpretation": "Observed before command return demonstrates removal of the old command-completion observation floor. Values are diagnostic upper bounds, not a cross-framework comparison.",
+    "aot": "Each executable has a compiled-program record; the pinned feature record identifies JIT unused with 27 removed JIT ranges. The interpreter remains present. Driver --mode alone is not AOT proof.",
+    "screenshots": "All six AOT after screenshots were inspected. Click counters and Solid/React keyed order matched; typed text appeared, with the long core nonce clipped by the input viewport. Complete values were independently checked in native records."
+  },
+  "safetyControls": {
+    "command": "python3 -W error::ResourceWarning -m unittest discover -s tests/quality -p 'test_native_*.py' -v",
+    "result": "63 tests passed, no skips, with ResourceWarning treated as an error.",
+    "log": {
+      "bytes": 11196,
+      "sha256": "1971c51af01c3cc57bf43ce0692be65070d593589f3f9d12fa5268c6495d1efa"
+    },
+    "deadlineNegative": {
+      "description": "Fixed-clock controls retained the original two-second remaining interval and expired either before begin or after begin before a complete matching record. Both incorrectly succeeded on the previous implementation and reject after the fix.",
+      "oldCollector": {
+        "bytes": 16726,
+        "sha256": "b0a3d717a71643f231d768d9722115054a6e8232f5e64ddb36f40a831bcb7c66"
+      },
+      "originalFailureLog": {
+        "bytes": 2226,
+        "sha256": "506f4706cb11618afaed4c746937878310995ed4aa5091cf4ef25d12d12270f7"
+      }
+    },
+    "nonFiniteExponentNegative": {
+      "description": "A matching record with an extra 1e999 or -1e999 field must fail; finite 1e308 remains accepted. The original collector accepted overflow to Python infinity.",
+      "originalControl": {
+        "bytes": 842,
+        "sha256": "1197befe6647f2b0ba7234370f1d493a76349f04676a24c8171df6b9e68eecb0"
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "entry": "native-window",
+      "mode": "development",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "21bd8d90eb86efc4981382a5db75ef4b",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/native-paint-observer-v4/examples/native-window/main.ts"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "stage": "bun-application",
+            "activation": 1,
+            "target": "increment"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "f5484fdf35d7bda4bfbfde910a8a04e50b7ffb1850db41834211e76c39958f42",
+        "expected_render": "d8ceb94f4f76be9560b00fb6829d52ac378e2a8ed49705b33ca28ed3fe841761"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 16.413266,
+        "command_start_to_input_commands_returned_ms": 108.088784,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1053274
+        },
+        "start_byte_offset": 2540,
+        "read_byte_offset": 4441,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 4,
+        "notifications": 4,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "dc717eb36f62bca01371543f72d40ffcbe0eca872101410b6a9a6d82804d17ec",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 132.9215280020435,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 4,
+      "matchedRawPaintRecord": "{\"nonce\":\"21bd8d90eb86efc4981382a5db75ef4b\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[2,3,4,5,6]},{\"node_id\":2,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":3,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":4,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 19848,
+          "sha256": "d3e6fcdd201766dd8d354a17ce7e9538c56e967e5b3aeb518504a1df94f1ee67"
+        },
+        "app-events.jsonl": {
+          "bytes": 4528,
+          "sha256": "837fae749f719923cbad2a10b9facfcd0ca037761b1d6ea18436c2e263db7ee5"
+        },
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 11536,
+          "sha256": "b655ed5f8639831550077b34a1e6b6de88f1b88c74465ebfcf1ead83ef7582e2"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "native-window",
+      "mode": "development",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "19a3b6e9385b46f261bac9935854445d",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/native-paint-observer-v4/examples/native-window/main.ts"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "Bun Native 19a3b6e9385b46f261bac9935854445d",
+        "expected_events": [
+          {
+            "type": "input",
+            "stage": "bun-application",
+            "input_revision": 43,
+            "value": "Bun Native 19a3b6e9385b46f261bac9935854445d"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "f5484fdf35d7bda4bfbfde910a8a04e50b7ffb1850db41834211e76c39958f42",
+        "expected_render": "41a78163e0682176c861a1801603aa4136ed2b0bc79e6f654c8c80174eaf64ec"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 364.921617,
+        "command_start_to_input_commands_returned_ms": 366.076485,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054826
+        },
+        "start_byte_offset": 2540,
+        "read_byte_offset": 46047,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 86,
+        "notifications": 129,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 1,
+          "record_sha256": "1aaf0c4a6faefc4b19598f13f32dafd57d834f57cd5fef7bcebf117f75c24714",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 431.293680001545,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 86,
+      "matchedRawPaintRecord": "{\"nonce\":\"19a3b6e9385b46f261bac9935854445d\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":1,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[2,3,4,5,6]},{\"node_id\":2,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":3,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":4,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"input\",\"value\":\"Bun Native 19a3b6e9385b46f261bac9935854445d\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":43}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 106458,
+          "sha256": "da5c5b3c05f22bbd91edddfdabdc2e6a915e0cce4d6fa34492adb33480a4b204"
+        },
+        "app-events.jsonl": {
+          "bytes": 46134,
+          "sha256": "b831cf93c5a7b13a077fd890505af00e535ba5f311470d5b1626f2bb16db934d"
+        },
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 20158,
+          "sha256": "a5af1e2d55ee5f357f32930fe5655c170a58bbd4fcad2da499031c1bd9b85dcc"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "solid",
+      "mode": "development",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "e4e578323fc4c088c8970c24629f1b04",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/development/application.js"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "target": "increment",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "a1f6d04381d39f222e8945d4e86a3924d879f1a66f39e19abeed7816fa37f318",
+        "expected_render": "517283579226e2b2867ad87bdb32cf5bb08816215fb5a4ab1b7d173f122b0f0f"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 49.549979,
+        "command_start_to_input_commands_returned_ms": 110.359598,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1053298
+        },
+        "start_byte_offset": 4065,
+        "read_byte_offset": 7429,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 6,
+        "notifications": 9,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "e06855fc1c81248ad9fa8ec98bbe0950e776370ec4ee9667178795fd84d644c5",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 146.18102600070415,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 7,
+      "matchedRawPaintRecord": "{\"nonce\":\"e4e578323fc4c088c8970c24629f1b04\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native Solid\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: \",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[13,11]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 30996,
+          "sha256": "87f6dcb4324edfc4906f01c21d21f0cd15257f0b1fdad0fcc5dc8009fc3e2a71"
+        },
+        "app-events.jsonl": {
+          "bytes": 9054,
+          "sha256": "9a12ee27d0cc0fa16e2ca1056c2087a18f834f4aed0403ce7ee61db83cb12579"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "solid",
+      "mode": "development",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "254c27eb4dc0d4f76393e4edbb558415",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/development/application.js"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "Solid 254c27eb4dc0d4f76393e4edbb558415",
+        "expected_events": [
+          {
+            "type": "input",
+            "input_revision": 38,
+            "value": "Solid 254c27eb4dc0d4f76393e4edbb558415",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "a1f6d04381d39f222e8945d4e86a3924d879f1a66f39e19abeed7816fa37f318",
+        "expected_render": "97549fb533a9ffe3167b29f208143def85871c5f97bc0b3415953a71cdf3ab3b"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 460.853542,
+        "command_start_to_input_commands_returned_ms": 360.841995,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 1053335
+        },
+        "start_byte_offset": 4066,
+        "read_byte_offset": 78253,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 119,
+        "notifications": 154,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "5cf5fdc380570208da83e57ceec539fdc250dc9d73bc48e6b81e7a9475a09128",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 516.6346459991473,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 119,
+      "matchedRawPaintRecord": "{\"nonce\":\"254c27eb4dc0d4f76393e4edbb558415\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":39,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native Solid\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"Solid 254c27eb4dc0d4f76393e4edbb558415\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":38},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: Solid 254c27eb4dc0d4f76393e4edbb558415\",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[11,12,13]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":12,\"element\":{\"kind\":\"text\",\"text\":\"Beta\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 179642,
+          "sha256": "4b86aa6f77f97aba97485f60c2947de5fd87e2fa451088c05da0015a4e27027c"
+        },
+        "app-events.jsonl": {
+          "bytes": 78616,
+          "sha256": "d896b3698c60eb8a884f533932d00b0ff2da37e9080f05b904ec12990fc40b9b"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "after.png": {
+          "bytes": 32018,
+          "sha256": "c5ff8797ac61eff40d054129c886262fa813aeccf18e9ae0ddcb88209b89faa3"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "react",
+      "mode": "development",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "21f0f1fdb8afb438d7f84e0ab28abe25",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/development/application.js"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "target": "increment",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "b088c4ee936bb4e95ea22697cd329f20362d8f71cbd044a7a71decdcde4e2f29",
+        "expected_render": "cef76f6f99215191fca50a74ac4c989b4a3368cb4951b14c5aac41d19ac7ae9d"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 47.989075,
+        "command_start_to_input_commands_returned_ms": 107.372793,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054882
+        },
+        "start_byte_offset": 4065,
+        "read_byte_offset": 7403,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 6,
+        "notifications": 9,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "9aa0b9c0b848ede3d3efc376aa921a7da9a6247981eecd8404dcf3ef2876c30e",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 122.03438999858918,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 7,
+      "matchedRawPaintRecord": "{\"nonce\":\"21f0f1fdb8afb438d7f84e0ab28abe25\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native React\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: \",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[13,11]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 30946,
+          "sha256": "0d8f0a6bf6b9d8488586e7bfb88a4fc6ebe7a48fb054cbb0fb1235347e8387f4"
+        },
+        "app-events.jsonl": {
+          "bytes": 9028,
+          "sha256": "8e38eb1deaf44592e9b6215fc7c644801d8d0406da3867277f843b34bb8fd08e"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "react",
+      "mode": "development",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "393bf3cbc1aa0a7ed2ae6e92a7e9de9b",
+      "command": [
+        "/workspace/scratch/5b1033c37396/toolchains/bun-da867c60b/bun",
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/development/application.js"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "React 393bf3cbc1aa0a7ed2ae6e92a7e9de9b",
+        "expected_events": [
+          {
+            "type": "input",
+            "input_revision": 38,
+            "value": "React 393bf3cbc1aa0a7ed2ae6e92a7e9de9b",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "b088c4ee936bb4e95ea22697cd329f20362d8f71cbd044a7a71decdcde4e2f29",
+        "expected_render": "d131d2e8be9521490eb9cc8e247108250f014de63ed552623b86e66d8e355136"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 614.92693,
+        "command_start_to_input_commands_returned_ms": 348.389365,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054893
+        },
+        "start_byte_offset": 4065,
+        "read_byte_offset": 89649,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 127,
+        "notifications": 165,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "824e1b4fbac2a847910526dd4bf566c2e0db59d68af3b86e4a301e67447c6376",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 699.3678650032962,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 127,
+      "matchedRawPaintRecord": "{\"nonce\":\"393bf3cbc1aa0a7ed2ae6e92a7e9de9b\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":39,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native React\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"React 393bf3cbc1aa0a7ed2ae6e92a7e9de9b\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":38},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: React 393bf3cbc1aa0a7ed2ae6e92a7e9de9b\",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[11,12,13]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":12,\"element\":{\"kind\":\"text\",\"text\":\"Beta\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 206698,
+          "sha256": "894a4bbfe5af5d0daad0122804676c46de372b1dca498bf039f2a91a7805c72d"
+        },
+        "app-events.jsonl": {
+          "bytes": 90012,
+          "sha256": "cccc14f70b0af31aec5ae0c30081dea731848615e5b96395dc17aa26646615b8"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 32969,
+          "sha256": "ce798583effd38f27d31d3c271773f65518e36f44f7c6358521fbe63a5331860"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "native-window",
+      "mode": "aot",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "a469382ef429d589359384c453aae165",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/native-window-package/native-window"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "stage": "bun-application",
+            "activation": 1,
+            "target": "increment"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "f5484fdf35d7bda4bfbfde910a8a04e50b7ffb1850db41834211e76c39958f42",
+        "expected_render": "d8ceb94f4f76be9560b00fb6829d52ac378e2a8ed49705b33ca28ed3fe841761"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 20.841013,
+        "command_start_to_input_commands_returned_ms": 110.031901,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054944
+        },
+        "start_byte_offset": 2540,
+        "read_byte_offset": 4441,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 4,
+        "notifications": 4,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "0d73dde8699355f1df257ebdacd51d0e1efd0be5e5dea3d5a9ed382eefc55ea9",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 126.09790899659856,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 4,
+      "matchedRawPaintRecord": "{\"nonce\":\"a469382ef429d589359384c453aae165\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[2,3,4,5,6]},{\"node_id\":2,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":3,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":4,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 20387,
+          "sha256": "8631464b4f04960d20224868eaf7d4b37e1f1a34d3f3b8829e6ca516a573f57d"
+        },
+        "app-events.jsonl": {
+          "bytes": 4528,
+          "sha256": "42253f52ba8fb7b6c17ca09766c334cb5d2b9cd5e2d19891386f1dbc43c569d6"
+        },
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 11536,
+          "sha256": "b655ed5f8639831550077b34a1e6b6de88f1b88c74465ebfcf1ead83ef7582e2"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "native-window",
+      "mode": "aot",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "c1caf2878204ea294e4f0a53d43eca70",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/native-window-package/native-window"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "Bun Native c1caf2878204ea294e4f0a53d43eca70",
+        "expected_events": [
+          {
+            "type": "input",
+            "stage": "bun-application",
+            "input_revision": 43,
+            "value": "Bun Native c1caf2878204ea294e4f0a53d43eca70"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "f5484fdf35d7bda4bfbfde910a8a04e50b7ffb1850db41834211e76c39958f42",
+        "expected_render": "578816e977fd1945a6d75ac4d508007a4ea00e6b7e9121df5c918d40a6c5873e"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 358.085454,
+        "command_start_to_input_commands_returned_ms": 344.628225,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054959
+        },
+        "start_byte_offset": 2540,
+        "read_byte_offset": 46047,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 86,
+        "notifications": 129,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 1,
+          "record_sha256": "988a97abb681eb963749f1125f28fb3e305e03f5f9cbd473df389ad522072625",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 418.88377600116655,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 86,
+      "matchedRawPaintRecord": "{\"nonce\":\"c1caf2878204ea294e4f0a53d43eca70\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":1,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[2,3,4,5,6]},{\"node_id\":2,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":3,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":4,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"input\",\"value\":\"Bun Native c1caf2878204ea294e4f0a53d43eca70\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":43}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 106413,
+          "sha256": "4f4f0ca251d7b2477c510e26b42c7dd70f9439049c2861c30b136e010b85c2d9"
+        },
+        "app-events.jsonl": {
+          "bytes": 46134,
+          "sha256": "566fa13183ff4d2a8e2313937549fff3c6f143306a177afa7b62562d4f91996e"
+        },
+        "before.png": {
+          "bytes": 11814,
+          "sha256": "95f3be0edf3504c670a4736ece2369457c9da1611a6a6c9360458c997326c98c"
+        },
+        "after.png": {
+          "bytes": 19803,
+          "sha256": "bcd525590952b3dbfe47dd04305160836ed814282debe6e0c4a51b62fd9f5828"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "solid",
+      "mode": "aot",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "c281e6598e1f44b36d3cf35a63b143ce",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/solid"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "target": "increment",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "a1f6d04381d39f222e8945d4e86a3924d879f1a66f39e19abeed7816fa37f318",
+        "expected_render": "517283579226e2b2867ad87bdb32cf5bb08816215fb5a4ab1b7d173f122b0f0f"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 31.998365,
+        "command_start_to_input_commands_returned_ms": 111.534534,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054974
+        },
+        "start_byte_offset": 4065,
+        "read_byte_offset": 6079,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 5,
+        "notifications": 7,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "315b74d5e8039cf4fa62a14b5ea8b7f274080a6d9a8f48ef943a50797d8d74aa",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 146.72021599835716,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 6,
+      "matchedRawPaintRecord": "{\"nonce\":\"c281e6598e1f44b36d3cf35a63b143ce\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native Solid\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: \",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[13,11]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 26060,
+          "sha256": "e8df1417d1817818c3e84f97423c1c64c5b1aa5f83c214b7550dcae781b8ed20"
+        },
+        "app-events.jsonl": {
+          "bytes": 7704,
+          "sha256": "4c42573d5f894ccf1d7990781dd3f4289244b33cf630a82bc397bcd456897868"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "after.png": {
+          "bytes": 16718,
+          "sha256": "16a3ec3c94c5cd895541751419bdfb21eb4b1c4046b9ea95e3bcddf8f48612bb"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "solid",
+      "mode": "aot",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "940dc5bf017a216fcbef2365db1b526e",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/solid-package/solid"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "Solid 940dc5bf017a216fcbef2365db1b526e",
+        "expected_events": [
+          {
+            "type": "input",
+            "input_revision": 38,
+            "value": "Solid 940dc5bf017a216fcbef2365db1b526e",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "a1f6d04381d39f222e8945d4e86a3924d879f1a66f39e19abeed7816fa37f318",
+        "expected_render": "a9387f5e1a8dacd919e9c77c24738ecaa217ee007b6e14284080cced25d1732f"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 425.368361,
+        "command_start_to_input_commands_returned_ms": 344.726912,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 1054991
+        },
+        "start_byte_offset": 4065,
+        "read_byte_offset": 78182,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 119,
+        "notifications": 157,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "e0233e668cfdbbb4e0debbb3922c08fef44a384a0050adb6141268a8f09b496c",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 491.7885050017503,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 119,
+      "matchedRawPaintRecord": "{\"nonce\":\"940dc5bf017a216fcbef2365db1b526e\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":39,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native Solid\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"Solid 940dc5bf017a216fcbef2365db1b526e\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":38},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: Solid 940dc5bf017a216fcbef2365db1b526e\",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[11,12,13]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":12,\"element\":{\"kind\":\"text\",\"text\":\"Beta\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 180653,
+          "sha256": "430f90780b6c9fc59f47f732a89eafb024917e07cb8dabc6be35a82d15cc2625"
+        },
+        "app-events.jsonl": {
+          "bytes": 78545,
+          "sha256": "c5ebff9dd4bfb248b0caefe06d7660cd2440d0f4c801278fd4a99edbae5f5cf9"
+        },
+        "before.png": {
+          "bytes": 17875,
+          "sha256": "9236384fa07435088083690a0bb191355bc3a9585e9b887d5be8f326e94bbf61"
+        },
+        "after.png": {
+          "bytes": 32141,
+          "sha256": "0561805c3575b0736f1f1613df123c36fcee1a469f2f9acd955a0c48f24fc387"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "react",
+      "mode": "aot",
+      "scenario": "counter-click",
+      "status": "passed",
+      "nonce": "16396f3e5e2c700a3b6f3dd86c220c7e",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/react"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": [100, 130],
+        "keys": [],
+        "text": null,
+        "expected_events": [
+          {
+            "type": "click",
+            "target": "increment",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "b088c4ee936bb4e95ea22697cd329f20362d8f71cbd044a7a71decdcde4e2f29",
+        "expected_render": "cef76f6f99215191fca50a74ac4c989b4a3368cb4951b14c5aac41d19ac7ae9d"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 27.384293,
+        "command_start_to_input_commands_returned_ms": 104.663091,
+        "observed_before_input_commands_returned": true,
+        "file_identity": {
+          "device": 27,
+          "inode": 1055006
+        },
+        "start_byte_offset": 4066,
+        "read_byte_offset": 8667,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 7,
+        "notifications": 9,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 2,
+          "record_sha256": "ee0ca952c77fd3d6abe6006c4ddee5b4faff76801b0b2f9fdd2adb8859a65fed",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 126.6778310018708,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 7,
+      "matchedRawPaintRecord": "{\"nonce\":\"16396f3e5e2c700a3b6f3dd86c220c7e\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":2,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native React\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 1\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":0},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: \",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[13,11]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 30250,
+          "sha256": "4713d5721d916b0f6943b0c59ae0404112ae4cf310046498c58886368fce72dd"
+        },
+        "app-events.jsonl": {
+          "bytes": 9028,
+          "sha256": "27d81fe188012fa273ccf0d971ee4c11502a926dbfd12628054b84786c7535bb"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 16582,
+          "sha256": "c581f403439b9fa012cecb3f192ab6f7f0211e69f06042142aacb0005f80c9e0"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "entry": "react",
+      "mode": "aot",
+      "scenario": "counter-input",
+      "status": "passed",
+      "nonce": "a18029ceef9a1cbede29830e0e55dd4b",
+      "command": [
+        "/workspace/scratch/5b1033c37396/task-artifacts/native-paint-observer-v4/react-package/react"
+      ],
+      "input": {
+        "input_mode": "smoke",
+        "click": null,
+        "keys": ["ctrl+a"],
+        "text": "React a18029ceef9a1cbede29830e0e55dd4b",
+        "expected_events": [
+          {
+            "type": "input",
+            "input_revision": 38,
+            "value": "React a18029ceef9a1cbede29830e0e55dd4b",
+            "stage": "bun-application"
+          }
+        ]
+      },
+      "expectedTreeHashes": {
+        "expected_initial_render": "b088c4ee936bb4e95ea22697cd329f20362d8f71cbd044a7a71decdcde4e2f29",
+        "expected_render": "5ee164122e9b69dce2eb1855229e2dd43388d4a9cb424c5e1d376c51af6ed0ec"
+      },
+      "observation": {
+        "method": "Linux inotify with concurrent bounded JSONL reader",
+        "clock": "Python time.monotonic_ns",
+        "start": "immediately before the first OS input command, after its focus/geometry preparation",
+        "end": "complete matching native paint record read and validated",
+        "scope": "command start to paint-record observation; includes process, scheduling and log I/O overhead; not OS delivery or display presentation",
+        "command_start_to_paint_observed_ms": 438.448881,
+        "command_start_to_input_commands_returned_ms": 312.975668,
+        "observed_before_input_commands_returned": false,
+        "file_identity": {
+          "device": 27,
+          "inode": 1055030
+        },
+        "start_byte_offset": 4066,
+        "read_byte_offset": 79407,
+        "ignored_preexisting_partial_record": false,
+        "validated_records": 120,
+        "notifications": 158,
+        "paint": {
+          "window_id": 1,
+          "tree_revision": 39,
+          "record_sha256": "2c309ed4c18d6ed5dbc8cac5e75071e87e63b8780a51c705869f3314b92213db",
+          "complete_expected_tree_matched": true
+        }
+      },
+      "coarseAfterCommandObservationMs": 496.85214199780603,
+      "checks": {
+        "window": "passed",
+        "os_input": "injected-through-XTest",
+        "app_input_event": "passed",
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed",
+        "pixel_or_text_assertion": "unsupported",
+        "os_close": "passed",
+        "renderer": "passed",
+        "event_stress": "not-required"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "paintObserverCleanup": {
+        "reader_stopped": true,
+        "open_descriptors": 0
+      },
+      "observedApplicationAndNativeRecords": 120,
+      "matchedRawPaintRecord": "{\"nonce\":\"a18029ceef9a1cbede29830e0e55dd4b\",\"type\":\"rendered\",\"stage\":\"native-paint\",\"window_id\":1,\"tree_revision\":39,\"nodes\":[{\"node_id\":1,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[2]},{\"node_id\":2,\"element\":{\"kind\":\"box\",\"style\":{}},\"children\":[3]},{\"node_id\":3,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"column\",\"gap\":12.0,\"padding\":24.0,\"background\":16053751}},\"children\":[4,5,6,7,8,9,10]},{\"node_id\":4,\"element\":{\"kind\":\"text\",\"text\":\"Bun Native React\",\"style\":{\"font_size\":28.0}},\"children\":[]},{\"node_id\":5,\"element\":{\"kind\":\"text\",\"text\":\"Clicks: 0\",\"style\":{}},\"children\":[]},{\"node_id\":6,\"element\":{\"kind\":\"button\",\"text\":\"Increment\",\"disabled\":false,\"style\":{\"width\":160.0,\"height\":44.0}},\"children\":[]},{\"node_id\":7,\"element\":{\"kind\":\"text\",\"text\":\"Native editable input\",\"style\":{}},\"children\":[]},{\"node_id\":8,\"element\":{\"kind\":\"input\",\"value\":\"React a18029ceef9a1cbede29830e0e55dd4b\",\"placeholder\":\"Type here\u2026\",\"style\":{\"width\":\"fill\",\"font_size\":24.0}},\"children\":[],\"input_revision\":38},{\"node_id\":9,\"element\":{\"kind\":\"text\",\"text\":\"Input: React a18029ceef9a1cbede29830e0e55dd4b\",\"style\":{}},\"children\":[]},{\"node_id\":10,\"element\":{\"kind\":\"box\",\"style\":{\"direction\":\"row\",\"gap\":16.0}},\"children\":[11,12,13]},{\"node_id\":11,\"element\":{\"kind\":\"text\",\"text\":\"Alpha\",\"style\":{}},\"children\":[]},{\"node_id\":12,\"element\":{\"kind\":\"text\",\"text\":\"Beta\",\"style\":{}},\"children\":[]},{\"node_id\":13,\"element\":{\"kind\":\"text\",\"text\":\"Gamma\",\"style\":{}},\"children\":[]}]}\n",
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 183768,
+          "sha256": "df985a990c0642146f84d852c8ea6aec016b8829494949541b692a043652dec4"
+        },
+        "app-events.jsonl": {
+          "bytes": 79770,
+          "sha256": "3f2d6d29758bf2442cd1baefb0ba5ba4ff5bf1099ac12d1d1e40149e9e7bba91"
+        },
+        "before.png": {
+          "bytes": 17739,
+          "sha256": "5c5b9d687c48ff82013c0b2a3baa42a4a76d10093bf550d06a4532440d4734d2"
+        },
+        "after.png": {
+          "bytes": 33277,
+          "sha256": "90ee461dc0fa8fa460ec744c7ccd9487951167fcb1dfaff0a295be6ca16db849"
+        },
+        "stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Native host is a development-profile binary, not release-performance qualification.",
+    "XTest input and Mesa llvmpipe do not establish physical input or hardware GPU behavior.",
+    "Record observation includes command startup, OS/app/native scheduling, paint instrumentation, log I/O and reader validation; it is not an OS delivery, GPU completion or display presentation timestamp.",
+    "Core and framework fixtures differ in tree size; a single trial per scenario cannot rank adapters or establish a latency budget.",
+    "The collector is Linux-only. No macOS or Windows native input capability is qualified here.",
+    "Raw reports, logs, binaries, source maps and screenshots remain in the task evidence archive. This compact record preserves their hashes, matched raw paint records and exact source/artifact identities; it does not embed executables or images."
+  ]
+}
