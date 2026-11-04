@@ -1,5 +1,5 @@
-import { NativeStateError, type NativeWindow } from '@bun-native/core'
-import { createRenderRoot, type RenderRoot } from '@bun-native/renderer'
+import { NativeStateError, type NativeWindow, type Style } from '@bun-native/core'
+import { createRenderRoot, type RenderOptions, type RenderRoot } from '@bun-native/renderer'
 import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
 import { reconciler } from './reconciler.ts'
@@ -13,7 +13,7 @@ export interface ReactRenderRoot extends RenderRoot {
   render(children: ReactNode): Promise<void>
 }
 
-export interface ReactRenderOptions {
+export interface ReactRenderOptions extends RenderOptions {
   /** Synchronously observe errors React recovered from; defaults to console.error. A thrown reporter error terminates this root. */
   onRecoverableError?: (error: unknown, info: Readonly<ErrorInfo>) => void
 }
@@ -33,45 +33,50 @@ class Root implements ReactRenderRoot {
   constructor(
     children: ReactNode,
     window: NativeWindow,
-    onRecoverableError: NonNullable<ReactRenderOptions['onRecoverableError']>
+    onRecoverableError: NonNullable<ReactRenderOptions['onRecoverableError']>,
+    style: Style | undefined
   ) {
     this.element = children
-    this.native = createRenderRoot(window, ({ container, onCleanup, fail }) => {
-      const terminate = (error: unknown) => {
-        this.failure ??= error instanceof Error ? error : new Error(String(error))
-        // React invokes this inside its commit. Teardown must start after that
-        // stack returns, rather than recursively entering Fiber's commit.
-        queueMicrotask(() => fail(this.failure))
-      }
-      this.errors = createRootErrors({ terminate, report: onRecoverableError })
-      this.fiber = reconciler.createContainer(
-        container,
-        ConcurrentRoot,
-        null,
-        false,
-        null,
-        '',
-        this.errors.uncaught,
-        this.errors.caught,
-        this.errors.recoverable,
-        this.errors.transition,
-        null
-      )
-      onCleanup(() => {
-        this.phase = 'disposing'
-        reconciler.updateContainerSync(null, this.fiber, null)
+    this.native = createRenderRoot(
+      window,
+      ({ container, onCleanup, fail }) => {
+        const terminate = (error: unknown) => {
+          this.failure ??= error instanceof Error ? error : new Error(String(error))
+          // React invokes this inside its commit. Teardown must start after that
+          // stack returns, rather than recursively entering Fiber's commit.
+          queueMicrotask(() => fail(this.failure))
+        }
+        this.errors = createRootErrors({ terminate, report: onRecoverableError })
+        this.fiber = reconciler.createContainer(
+          container,
+          ConcurrentRoot,
+          null,
+          false,
+          null,
+          '',
+          this.errors.uncaught,
+          this.errors.caught,
+          this.errors.recoverable,
+          this.errors.transition,
+          null
+        )
+        onCleanup(() => {
+          this.phase = 'disposing'
+          reconciler.updateContainerSync(null, this.fiber, null)
+          reconciler.flushSyncWork()
+          reconciler.flushPassiveEffects()
+          // React reports unmount effect/ref errors through onUncaughtError.
+          // The shared root is already disposing, so forward the synchronous
+          // result here instead of relying on a later terminal-error request.
+          if (this.failure) throw this.failure
+        })
+        reconciler.updateContainerSync(children, this.fiber, null)
         reconciler.flushSyncWork()
+        if (this.failure !== undefined) throw this.failure
         reconciler.flushPassiveEffects()
-        // React reports unmount effect/ref errors through onUncaughtError.
-        // The shared root is already disposing, so forward the synchronous
-        // result here instead of relying on a later terminal-error request.
-        if (this.failure) throw this.failure
-      })
-      reconciler.updateContainerSync(children, this.fiber, null)
-      reconciler.flushSyncWork()
-      if (this.failure !== undefined) throw this.failure
-      reconciler.flushPassiveEffects()
-    })
+      },
+      style === undefined ? {} : { style }
+    )
     this.ready = this.native.ready.then(() => {
       if (this.phase !== 'active')
         throw new NativeStateError(
@@ -176,9 +181,10 @@ export function render(
   if (!options || typeof options !== 'object' || Array.isArray(options))
     throw new TypeError('React render options must be an object')
   for (const name of Object.keys(options))
-    if (name !== 'onRecoverableError') throw new TypeError('Unknown React render option: ' + name)
+    if (name !== 'onRecoverableError' && name !== 'style')
+      throw new TypeError('Unknown React render option: ' + name)
   const reporter = options.onRecoverableError
   if (reporter !== undefined && typeof reporter !== 'function')
     throw new TypeError('onRecoverableError must be a function')
-  return new Root(children, window, reporter ?? console.error)
+  return new Root(children, window, reporter ?? console.error, options.style)
 }

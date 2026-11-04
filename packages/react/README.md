@@ -41,6 +41,12 @@ try {
 Application changes use Bun or the pinned Bun AOT compiler. They do not compile
 Rust. The application supplies an existing native host with the matching protocol.
 
+For a larger consumer, the [React workspace](../../examples/react-workspace/README.md)
+combines editable tasks, keyed rows, native scrolling, search, filters, light/dark
+colors, and window-close cleanup. It runs through this public adapter in both
+development and the `react-workspace` AOT entry. Its native qualification limits
+and the remaining dialog/menu dependency are documented with the example.
+
 ## Commit, refs and effect semantics
 
 React reconciles into staged native nodes in mutation mode. Create/update/delete,
@@ -51,6 +57,13 @@ acknowledgement.
 
 `render(children, window)` returns a root with `ready`, `closed`, `render(next)`,
 `flush()`, `dispose()` and mutation diagnostics. `render(next)` submits a new tree.
+
+For a full-window app, pass
+`render(children, window, { style: { width: 'fill', height: 'fill' } })`.
+This initial native style sizes the shared ownership container around the React
+tree. Without it, that container keeps its intrinsic content size. The option
+uses the same `Style` contract as native boxes and does not affect sibling roots.
+
 `flush()` commits already-scheduled ordinary React work and awaits staged native
 acknowledgements. It does not wait for future asynchronous application work or
 lower-priority transitions. Its commit-barrier queue is bounded at 128.

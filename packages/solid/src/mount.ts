@@ -1,10 +1,10 @@
 import { NativeStateError, type NativeWindow } from '@bun-native/core'
-import { createRenderRoot, type RenderRoot } from '@bun-native/renderer'
+import { createRenderRoot, type RenderOptions, type RenderRoot } from '@bun-native/renderer'
 import { createMemo, createRoot, createSignal } from 'solid-js'
 import type { JSX } from './jsx.ts'
 import { renderer } from './renderer.ts'
 
-export type { RenderRoot } from '@bun-native/renderer'
+export type { RenderOptions, RenderRoot } from '@bun-native/renderer'
 
 function assertReactiveRuntime(): void {
   let observed = -1
@@ -22,14 +22,22 @@ function assertReactiveRuntime(): void {
 }
 
 /** Mount one Solid owner into an independently disposable native container. */
-export function render(component: () => JSX.Element, window: NativeWindow): RenderRoot {
+export function render(
+  component: () => JSX.Element,
+  window: NativeWindow,
+  options: RenderOptions = {}
+): RenderRoot {
   if (typeof component !== 'function')
     throw new NativeStateError('invalid_state', 'Solid render requires a component function')
   assertReactiveRuntime()
-  return createRenderRoot(window, ({ container, onCleanup }) => {
-    createRoot((dispose) => {
-      onCleanup(dispose)
-      renderer.insert(container, component())
-    })
-  })
+  return createRenderRoot(
+    window,
+    ({ container, onCleanup }) => {
+      createRoot((dispose) => {
+        onCleanup(dispose)
+        renderer.insert(container, component())
+      })
+    },
+    options
+  )
 }

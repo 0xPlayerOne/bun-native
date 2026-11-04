@@ -62,6 +62,13 @@ The same generated JavaScript module drives development and AOT, with production
 
 Each render root owns a native container under the existing window root. Several independent render roots can share a window. Adapter nodes cannot move between roots or masquerade as core handles. Synchronous Solid mutations coalesce into one queued/in-flight batch; changes arriving during acknowledgement become a subsequent snapshot. There is no unbounded per-property transaction queue.
 
+An optional third argument, `RenderOptions`, supplies the initial native style of
+that ownership container. Use
+`render(component, window, { style: { width: 'fill', height: 'fill' } })` for a
+full-window app with bounded scroll regions. Omitted options preserve intrinsic
+sizing. This is the same shared `Style` contract and container behavior as React;
+the option does not restyle the window or another render root.
+
 The shared renderer retains native handles for keyed nodes, updates only changed properties, and moves retained descendants before deleting obsolete ancestors. Changed sibling orders retain a longest existing subsequence so a left rotation emits one move; unchanged lists skip ordering work and new containers append in order. Live callback registrations belong to the render root separately from immutable native snapshots, so removing and reinserting a node during acknowledgement cannot revive an already-revoked registration. Native planning, the single in-flight commit pump, listener reconciliation and window completion observation live in `@bun-native/renderer`; they are shared with React's adapter. Solid's small mount wrapper registers its owner disposer before evaluating the component. A native rejection leaves the old committed tree intact until cleanup; the shared renderer then disposes the framework owner/listeners and removes its committed subtree. Failed candidate handles are never published as committed. The failure remains observable through `ready`, `flush` and `closed`.
 
 ## JSX and native input intent
