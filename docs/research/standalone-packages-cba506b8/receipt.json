@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 1,
+  "status": "passed-fixed-local-cohort",
+  "source": {
+    "commit": "cba506b844eb6b91dbdd085389d43690539c1186",
+    "tree": "afdfcee8bc95042cddc385e55efe454e3d433b57"
+  },
+  "source_url": "https://github.com/0xPlayerOne/bun-native/commit/cba506b844eb6b91dbdd085389d43690539c1186",
+  "equivalent_local_normal_hook_commit": "70b37c5c94bd76f10ba234363d782b9ed8a76c9c",
+  "archive_branch_base": "c4de68deee812cd816316b33f9276786e6eae5c8",
+  "feature_pr": "https://github.com/0xPlayerOne/bun-native/pull/388",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/382",
+  "plan": {
+    "url": "https://github.com/0xPlayerOne/bun-native/blob/cba506b844eb6b91dbdd085389d43690539c1186/docs/standalone-packages-plan.md",
+    "bytes": 21725,
+    "sha256": "cb2fbdf26e6b8ca9050a5c16aafd63ad90129b9126a278a5a52bb4638bb3da72"
+  },
+  "system": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "started_utc": "2026-11-04T22:34:59.582456+00:00",
+  "toolchain": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bun": {
+      "bytes": 138468432,
+      "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+    },
+    "host": {
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b"
+    }
+  },
+  "raw_result": {
+    "member": "cohort/result.json",
+    "bytes": 144926,
+    "sha256": "226f72a4e3cc95fba1dd728fabbb52a33127f33d1112cc9ff574d08f8fdea9c7"
+  },
+  "raw_source_before": {
+    "member": "cohort/source-before.json",
+    "bytes": 84803,
+    "sha256": "2957bf1feec062983385057d7a20f23c18fcb7148352b1f4ebbfce57fb6545b4"
+  },
+  "raw_source_after": {
+    "member": "cohort/source-after.json",
+    "bytes": 84803,
+    "sha256": "2957bf1feec062983385057d7a20f23c18fcb7148352b1f4ebbfce57fb6545b4"
+  },
+  "tracked_source_files_unchanged": 535,
+  "counts": {
+    "supervised_commands": 38,
+    "package_calls": 7,
+    "creates": 4,
+    "installs": 9,
+    "expected_empty_cache_failures": 1,
+    "initial_offline_installs": 4,
+    "relocated_frozen_offline_installs": 4,
+    "lock_inspections": 4,
+    "strict_source_checks": 4,
+    "public_import_inspections": 4,
+    "inspected_aot_builds": 4,
+    "invalid_input_controls": 8
+  },
+  "owner": {
+    "exit_code": 0,
+    "direct_child_joined": true,
+    "forced": false,
+    "descendant_cleanup_verified": false,
+    "elapsed_seconds": 19.90108327300186
+  },
+  "observed_time_seconds": {
+    "cohort_excluding_cache_copy": 18.41918894599803,
+    "cache_copy": 0.8067551359999925
+  },
+  "invariance": {
+    "source": true,
+    "bun": true,
+    "host": true,
+    "sentinels_unused": true,
+    "all_direct_children_joined": true
+  },
+  "cache_inventory": {
+    "member": "cohort/cache-before.json",
+    "bytes": 759557,
+    "sha256": "ee743176f9917207afc8acc98b190ff3f569d8e02497ab2bc9b52a256fdcf434",
+    "matches_prior_c908_and_7e": true
+  },
+  "cases": [
+    {
+      "case": "solid-typescript",
+      "status": "passed",
+      "generated_files_unchanged": 15,
+      "installed_local_source_files": 70,
+      "installed_markers": 6,
+      "frozen_lock_unchanged": true,
+      "lock": {
+        "bytes": 19067,
+        "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e"
+      },
+      "public_import_specifiers": [
+        "@bun-native/core",
+        "@bun-native/protocol",
+        "@bun-native/renderer",
+        "@bun-native/runtime",
+        "@bun-native/solid",
+        "@bun-native/solid/jsx-runtime"
+      ],
+      "application": {
+        "bytes": 71384104,
+        "sha256": "397a57b74206bd5951c7d8288f9e1578f3b4b2d2dec3f6fc0f6b4b36e5340fd2"
+      },
+      "development_module": {
+        "bytes": 124944,
+        "sha256": "ffccbbfb94f9b440d861ae25502858febfdb9e2ab08c73369fa98ed3cc5a3a5d"
+      },
+      "source_map": {
+        "bytes": 295840,
+        "sha256": "2c9a33a0d0f89508c661cfbfdb16e7729e07a0369d2c377cb40ac59698637960"
+      },
+      "mapped_source_entries": 25,
+      "compiled_program": true,
+      "jit": "unused",
+      "native_verification": {
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run"
+      }
+    },
+    {
+      "case": "solid-javascript",
+      "status": "passed",
+      "generated_files_unchanged": 15,
+      "installed_local_source_files": 70,
+      "installed_markers": 6,
+      "frozen_lock_unchanged": true,
+      "lock": {
+        "bytes": 19067,
+        "sha256": "2c954c2d74b68767b1f3663ef0f0184f7691b7f30cac2f1865b91af906a8328a"
+      },
+      "public_import_specifiers": [
+        "@bun-native/core",
+        "@bun-native/protocol",
+        "@bun-native/renderer",
+        "@bun-native/runtime",
+        "@bun-native/solid",
+        "@bun-native/solid/jsx-runtime"
+      ],
+      "application": {
+        "bytes": 71384104,
+        "sha256": "655d0d0f398b11c37ae2d99d880bcdbdfca2ce2ffcd4d88a79832b2eefccdacd"
+      },
+      "development_module": {
+        "bytes": 124953,
+        "sha256": "0e6f2a194a53dbe930652daa7e22c7c2746bb9f85ae5155f67b300ab5cf11dca"
+      },
+      "source_map": {
+        "bytes": 295860,
+        "sha256": "8d0291bdf7c20a23f434b4dbb13a10efb0f2ac2272e63c2ce37c108a55e13765"
+      },
+      "mapped_source_entries": 25,
+      "compiled_program": true,
+      "jit": "unused",
+      "native_verification": {
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run"
+      }
+    },
+    {
+      "case": "react-typescript",
+      "status": "passed",
+      "generated_files_unchanged": 15,
+      "installed_local_source_files": 73,
+      "installed_markers": 6,
+      "frozen_lock_unchanged": true,
+      "lock": {
+        "bytes": 19726,
+        "sha256": "fd03dd6fa58f0cad82747082cbc8e60574c879dfaf109db852316252612fdba4"
+      },
+      "public_import_specifiers": [
+        "@bun-native/core",
+        "@bun-native/protocol",
+        "@bun-native/react",
+        "@bun-native/react/jsx-runtime",
+        "@bun-native/react/jsx-dev-runtime",
+        "@bun-native/renderer",
+        "@bun-native/runtime"
+      ],
+      "application": {
+        "bytes": 73071656,
+        "sha256": "56c5bca78f99d1c2bd72d115e80e4c352a90a839a817cb605cedc8932fd0bd5c"
+      },
+      "development_module": {
+        "bytes": 548499,
+        "sha256": "198918db57723b6d344b69d87a1ba7ded8640e9391cae3856ffb18c2d70ecd9e"
+      },
+      "source_map": {
+        "bytes": 967368,
+        "sha256": "d9a409256df73d90e007511df7d3d7d7bf7d8ca0c77d65de3bc4b49c1f3a51a3"
+      },
+      "mapped_source_entries": 34,
+      "compiled_program": true,
+      "jit": "unused",
+      "native_verification": {
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run"
+      }
+    },
+    {
+      "case": "react-javascript",
+      "status": "passed",
+      "generated_files_unchanged": 15,
+      "installed_local_source_files": 73,
+      "installed_markers": 6,
+      "frozen_lock_unchanged": true,
+      "lock": {
+        "bytes": 19726,
+        "sha256": "5b7885bdf370dec77689df0181848a96cf44f67fc91dac18bfd86f5025c59a44"
+      },
+      "public_import_specifiers": [
+        "@bun-native/core",
+        "@bun-native/protocol",
+        "@bun-native/react",
+        "@bun-native/react/jsx-runtime",
+        "@bun-native/react/jsx-dev-runtime",
+        "@bun-native/renderer",
+        "@bun-native/runtime"
+      ],
+      "application": {
+        "bytes": 73071656,
+        "sha256": "c4520b9a71699b77a3baf246e9eaeb02f89221710b97af9f105d373996214a1f"
+      },
+      "development_module": {
+        "bytes": 548508,
+        "sha256": "9c0542439f5697d7fa3135a57e0ab8bf4754e0d54409327ba9bdbb1af193fb24"
+      },
+      "source_map": {
+        "bytes": 967388,
+        "sha256": "30992a2538e352da33944abbf86b596dfbf2894c19e038e307400dacf224d476"
+      },
+      "mapped_source_entries": 34,
+      "compiled_program": true,
+      "jit": "unused",
+      "native_verification": {
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run"
+      }
+    }
+  ],
+  "negative_controls": {
+    "missing-archive": {
+      "status": "passed",
+      "expected_error": "ENOENT",
+      "exit_code": 1
+    },
+    "changed-archive": {
+      "status": "passed",
+      "expected_error": "archive digest mismatch",
+      "exit_code": 1
+    },
+    "escaping-archive": {
+      "status": "passed",
+      "expected_error": "unique contained relative paths",
+      "exit_code": 1
+    },
+    "escaping-entry": {
+      "status": "passed",
+      "expected_error": "Project entry must be a source file inside the project",
+      "exit_code": 1
+    },
+    "changed-installed-source": {
+      "status": "passed",
+      "expected_error": "Installed package digest mismatch",
+      "exit_code": 1
+    },
+    "omitted-host": {
+      "status": "passed",
+      "expected_error": "--host must be an absolute path",
+      "exit_code": 1
+    },
+    "foreign-os": {
+      "status": "passed",
+      "expected_error": "Prebuilt host must be a linux/x64 executable",
+      "exit_code": 1
+    },
+    "wrong-cpu": {
+      "status": "passed",
+      "expected_error": "Prebuilt host must be a linux/x64 executable",
+      "exit_code": 1
+    }
+  },
+  "read_only_audits": [
+    {
+      "member": "audits/author-readonly-audit.json",
+      "attribution": "tooling author",
+      "bytes": 12945,
+      "sha256": "38d6acdef7b807138722296497f878655791e40ec0517074dd1ced6bfd7e9086"
+    },
+    {
+      "member": "audits/root-readonly-audit.json",
+      "attribution": "independent parent reviewer",
+      "bytes": 1682,
+      "sha256": "83b079e0abb6bfde857c2eee9e846c23ab16d6c77061798247537b10c78afc65"
+    }
+  ],
+  "omitted_artifacts_with_retained_digests": [
+    {
+      "case": "solid-typescript",
+      "path": "dist/application",
+      "kind": "inspected-aot-executable",
+      "bytes": 71384104,
+      "sha256": "397a57b74206bd5951c7d8288f9e1578f3b4b2d2dec3f6fc0f6b4b36e5340fd2",
+      "payload_retained": false
+    },
+    {
+      "case": "solid-typescript",
+      "path": "dist/bun-native-host",
+      "kind": "supplied-native-host-copy",
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b",
+      "payload_retained": false
+    },
+    {
+      "case": "solid-javascript",
+      "path": "dist/application",
+      "kind": "inspected-aot-executable",
+      "bytes": 71384104,
+      "sha256": "655d0d0f398b11c37ae2d99d880bcdbdfca2ce2ffcd4d88a79832b2eefccdacd",
+      "payload_retained": false
+    },
+    {
+      "case": "solid-javascript",
+      "path": "dist/bun-native-host",
+      "kind": "supplied-native-host-copy",
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b",
+      "payload_retained": false
+    },
+    {
+      "case": "react-typescript",
+      "path": "dist/application",
+      "kind": "inspected-aot-executable",
+      "bytes": 73071656,
+      "sha256": "56c5bca78f99d1c2bd72d115e80e4c352a90a839a817cb605cedc8932fd0bd5c",
+      "payload_retained": false
+    },
+    {
+      "case": "react-typescript",
+      "path": "dist/bun-native-host",
+      "kind": "supplied-native-host-copy",
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b",
+      "payload_retained": false
+    },
+    {
+      "case": "react-javascript",
+      "path": "dist/application",
+      "kind": "inspected-aot-executable",
+      "bytes": 73071656,
+      "sha256": "c4520b9a71699b77a3baf246e9eaeb02f89221710b97af9f105d373996214a1f",
+      "payload_retained": false
+    },
+    {
+      "case": "react-javascript",
+      "path": "dist/bun-native-host",
+      "kind": "supplied-native-host-copy",
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b",
+      "payload_retained": false
+    }
+  ],
+  "other_omissions": [
+    "Full installed dependency trees and cache payloads",
+    "Duplicate vendor archives/manifests in each consumer (one identical canonical package set is retained)",
+    "Duplicate negative-control package/project trees except the exact mutated input files and command records",
+    "Full Git checkout and reused framework node_modules",
+    "Bun and supplied host executable bytes"
+  ],
+  "prior_outcomes": [
+    {
+      "source": "c90804933034ccc942467de8eb47379d8ee47e71",
+      "archive": "https://github.com/0xPlayerOne/bun-native/pull/394",
+      "status": "failed",
+      "summary": "Incomplete local lock seed; first populated-cache install failed. The old empty-cache raw label was mixed with an invalid-lock fallback and is not clean cache acceptance."
+    },
+    {
+      "source": "c16db30583767094cabccbb5875d42ad12af40ac",
+      "published_equivalent": "95bc53479988e91f416dce1aca0cc9e900085bf4",
+      "archive": "https://github.com/0xPlayerOne/bun-native/pull/397",
+      "status": "failed",
+      "summary": "The first original-Solid parser control rejected the lock but did not emit the extra diagnostic expected by its controller. No original-Solid rerun or reclassification occurred."
+    },
+    {
+      "source": "39d2b878540f23863b617e42fb6c2f6a8df6ed94",
+      "published_equivalent": "2c6f48f28b02eb83769d084b68aa77ae2d942125",
+      "archive": "https://github.com/0xPlayerOne/bun-native/pull/397",
+      "status": "passed-three-remaining-parser-controls-only",
+      "summary": "A separate fixed follow-up ran original React and corrected Solid/React once; parser acceptance did not establish installation."
+    },
+    {
+      "source": "7e102937bb7af362db59bddd1ab92b664386cd52",
+      "archive": "https://github.com/0xPlayerOne/bun-native/pull/400",
+      "status": "failed",
+      "summary": "Strict empty-cache negative and first populated-cache install completed as expected; pre-import inventory rejected the six installer-owned .bun-tag files. Later commands were not run."
+    }
+  ],
+  "archive": {
+    "bytes": 1509880,
+    "sha256": "f19b0c2427163447efdc01c84e58fca5afe03f9f8c45feb4c83d651226070e19",
+    "member_count": 219,
+    "member_bytes": 8429259,
+    "uncompressed_tar": {
+      "bytes": 8601600,
+      "sha256": "ee5eff9b05926dceb7ee8490d5bdad0ec86adf83ed0df364ee8177031d97576c"
+    },
+    "member_index": {
+      "bytes": 49132,
+      "sha256": "ce7a66fe124eae37f25f07b02ddfd678252ce5eba4d2912d4d74f2a22198f283"
+    },
+    "format": "gzip with mtime 0; sorted USTAR regular members with zeroed ownership/time"
+  },
+  "limits": [
+    "This is one fixed local Linux/x64 consumer cohort, not native GUI qualification or a repeated performance experiment.",
+    "Public package imports and compiler operations ran; no application entrypoint, compiled application, supplied host, watch loop or GC workload ran.",
+    "Direct supervised children joined without forced termination; descendant_cleanup_verified remains false, and no process-tree or native teardown claim is made.",
+    "All consumer installs used task-owned empty/copied offline caches. The populated cache inventory equals the earlier c908 and 7e cohorts; this is not a controlled cold-start test or registry publication.",
+    "Generated projects were relocated outside all checkouts to paths containing spaces. The reused framework setup belonged only to source tooling, not consumer resolution.",
+    "Original Solid TSX line/column mapping fidelity is not established. Raw source maps, development modules, mapped input identities and read-only audits are retained for inspection; map contents do not qualify runtime rendering.",
+    "Large AOT executables, the supplied host, the Bun compiler, cache contents and installed dependency trees are omitted. Their recorded identities cannot substitute for reinspecting omitted executable bytes.",
+    "The package archives are retained exactly as produced. They are source evidence, not registry-published, signed or generally released packages.",
+    "Earlier c908, c16 and 7e failures remain separate failed outcomes; this source-specific pass does not rewrite them."
+  ]
+}

@@ -1,0 +1,1322 @@
+{
+  "schemaVersion": 1,
+  "scope": "Exact retained member bytes; portable member names may differ from original paths. All members are regular files.",
+  "members": [
+    {
+      "path": "audits/author-readonly-audit.json",
+      "bytes": 12945,
+      "sha256": "38d6acdef7b807138722296497f878655791e40ec0517074dd1ced6bfd7e9086",
+      "provenance": "post-run-read-only-analysis"
+    },
+    {
+      "path": "audits/root-readonly-audit.json",
+      "bytes": 1682,
+      "sha256": "83b079e0abb6bfde857c2eee9e846c23ab16d6c77061798247537b10c78afc65",
+      "provenance": "post-run-read-only-analysis"
+    },
+    {
+      "path": "cohort/cache-before.json",
+      "bytes": 759557,
+      "sha256": "ee743176f9917207afc8acc98b190ff3f569d8e02497ab2bc9b52a256fdcf434",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/.gitignore",
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/README.md",
+      "bytes": 2292,
+      "sha256": "fac1f83d0000764fe55176ddb850058f7efe328c513db21325628d925dd7d81f",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/bun-native.json",
+      "bytes": 123,
+      "sha256": "e3ad20da92ecd59a570fb15834818cf83c9d38de9a4deee058136d8f7c1afd97",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/bun.lock",
+      "bytes": 19726,
+      "sha256": "5b7885bdf370dec77689df0181848a96cf44f67fc91dac18bfd86f5025c59a44",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/compile-aot.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/compile-aot.stdout.log",
+      "bytes": 890263,
+      "sha256": "6fd02753249e281050dda7416393f6ac9812578d372bc1fc2e4b6ae50a469ddd",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/development/application.js",
+      "bytes": 548508,
+      "sha256": "9c0542439f5697d7fa3135a57e0ab8bf4754e0d54409327ba9bdbb1af193fb24",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/development/application.js.map",
+      "bytes": 967388,
+      "sha256": "30992a2538e352da33944abbf86b596dfbf2894c19e038e307400dacf224d476",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/launcher.ts",
+      "bytes": 173,
+      "sha256": "7f3a4e668ad9640a1b09c5032ad2f36866c9e1dc7ea3a22d506d9b363d17ccab",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/dist/manifest.json",
+      "bytes": 6788,
+      "sha256": "25bac421d7b7c01ee92995391993a1bf63a89acd4a683a3a217cab29df013509",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/main.jsx",
+      "bytes": 1985,
+      "sha256": "32ee9fb11a8edcbb7afe911e1f4315a37b1cbb5756d50c0cb5211927478276e7",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/package.json",
+      "bytes": 1527,
+      "sha256": "19083eacba0d77ece55ba303f58f99cfc087634f23d7484532abb1f20b601c25",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-javascript/tsconfig.json",
+      "bytes": 802,
+      "sha256": "4b5488c1cd8617d7f939e4c287c499c7e6f8ba8449f238aa9baabef7f2baed85",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/.gitignore",
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/README.md",
+      "bytes": 2292,
+      "sha256": "2f8177d8d5addc7835e418bff88590eef240b262a88414139434a43531c567d1",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/bun-native.json",
+      "bytes": 123,
+      "sha256": "61b81de64b8eded84ba03b040d7eee195a50b3e8e04a932ab593709fb04eb968",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/bun.lock",
+      "bytes": 19726,
+      "sha256": "fd03dd6fa58f0cad82747082cbc8e60574c879dfaf109db852316252612fdba4",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/compile-aot.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/compile-aot.stdout.log",
+      "bytes": 890263,
+      "sha256": "24f331dfdb37d1fbd8e42e05b520c8cf22e0949427480855b8d3665074c6df0a",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/development/application.js",
+      "bytes": 548499,
+      "sha256": "198918db57723b6d344b69d87a1ba7ded8640e9391cae3856ffb18c2d70ecd9e",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/development/application.js.map",
+      "bytes": 967368,
+      "sha256": "d9a409256df73d90e007511df7d3d7d7bf7d8ca0c77d65de3bc4b49c1f3a51a3",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/launcher.ts",
+      "bytes": 173,
+      "sha256": "7f3a4e668ad9640a1b09c5032ad2f36866c9e1dc7ea3a22d506d9b363d17ccab",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/dist/manifest.json",
+      "bytes": 6788,
+      "sha256": "49ecb2f03fddcc284b08c8b2ea6b094045318f758ef37de9d84f6f4847d68908",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/main.tsx",
+      "bytes": 1968,
+      "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/package.json",
+      "bytes": 1527,
+      "sha256": "7ed2d881887fe5ce4dc186facb5018c9dae86aae57cb594510aee5781c37a9e4",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/react-typescript/tsconfig.json",
+      "bytes": 802,
+      "sha256": "d42cfedabbc8b112214996b9ea9dba3b8c11841f13c627774d171af9e4a9eee4",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/.gitignore",
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/README.md",
+      "bytes": 2292,
+      "sha256": "62119d53d7e1148fbc89ec6fc3037866981b5c1cc64ddde1f13385b8ae01904b",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/bun-native.json",
+      "bytes": 123,
+      "sha256": "774670032a8e5662a756410a3a045903f501d30ccb81c297e91650489b664398",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/bun.lock",
+      "bytes": 19067,
+      "sha256": "2c954c2d74b68767b1f3663ef0f0184f7691b7f30cac2f1865b91af906a8328a",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/compile-aot.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/compile-aot.stdout.log",
+      "bytes": 329971,
+      "sha256": "473c56805e7fa4ce1d4fc7a9d12b202152d6d88a25ba3bbc40d2f3f534e7aef6",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/development/application.js",
+      "bytes": 124953,
+      "sha256": "0e6f2a194a53dbe930652daa7e22c7c2746bb9f85ae5155f67b300ab5cf11dca",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/development/application.js.map",
+      "bytes": 295860,
+      "sha256": "8d0291bdf7c20a23f434b4dbb13a10efb0f2ac2272e63c2ce37c108a55e13765",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/launcher.ts",
+      "bytes": 173,
+      "sha256": "7f3a4e668ad9640a1b09c5032ad2f36866c9e1dc7ea3a22d506d9b363d17ccab",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/dist/manifest.json",
+      "bytes": 6788,
+      "sha256": "6712569702f26b52b956fc049cff6f7cdeac68beda8a888d057e4a4d03a03a2e",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/main.jsx",
+      "bytes": 1952,
+      "sha256": "efa4405db8555043cfc7c85fbc40b47baed83881be0ec5549fe978679c38902c",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/package.json",
+      "bytes": 1459,
+      "sha256": "2c5d335319d9649487d063dd2bd3b0524a057e37fa1672f4f6e4510417a71104",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-javascript/tsconfig.json",
+      "bytes": 802,
+      "sha256": "e82d6ec86e779fdc45565fc695fe614a715e6f672143f33ae6e866a36b0b1b7f",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/.gitignore",
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/README.md",
+      "bytes": 2292,
+      "sha256": "cd62b37053deb139bf5aab45f049b5738aa49e8562727bd8c2b47cc5a5a9de3c",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/bun-native.json",
+      "bytes": 123,
+      "sha256": "21643d8647c6f11850ed8dd16c59ca237f72e32e1c425d249da89616494a5d23",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/bun.lock",
+      "bytes": 19067,
+      "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/compile-aot.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/compile-aot.stdout.log",
+      "bytes": 329971,
+      "sha256": "b32d79efb99719bff94cf7b633c58af161d46620da64bb0831f62367869fdf06",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/development/application.js",
+      "bytes": 124944,
+      "sha256": "ffccbbfb94f9b440d861ae25502858febfdb9e2ab08c73369fa98ed3cc5a3a5d",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/development/application.js.map",
+      "bytes": 295840,
+      "sha256": "2c9a33a0d0f89508c661cfbfdb16e7729e07a0369d2c377cb40ac59698637960",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/launcher.ts",
+      "bytes": 173,
+      "sha256": "7f3a4e668ad9640a1b09c5032ad2f36866c9e1dc7ea3a22d506d9b363d17ccab",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/dist/manifest.json",
+      "bytes": 6788,
+      "sha256": "18d9861467ca44ec34f95185b440932fe85c98aa1d2fbc536b626d35869bd49c",
+      "provenance": "original-build"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/main.tsx",
+      "bytes": 1935,
+      "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/package.json",
+      "bytes": 1459,
+      "sha256": "59fce2e83464464bdc748fef8617294fd05fd9e252381a88d36ad0b8c3bd3143",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/consumers/solid-typescript/tsconfig.json",
+      "bytes": 802,
+      "sha256": "fd6a149d940815fdfff7389e0bb7c562208700d4f9aeeb87f6a9395281f007e2",
+      "provenance": "original-relocated-consumer"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/cli.bin",
+      "bytes": 52,
+      "sha256": "c02def369b367941a64c73470849e064ed8faa7c9643b9cb271912a5e0245b1d",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/core.bin",
+      "bytes": 52,
+      "sha256": "802d71be8a7a27bce96ee537df0f3acd6f4aff628a05fb1d2deaf63c011ff888",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/protocol.bin",
+      "bytes": 52,
+      "sha256": "257df0fc8582a00480ba8f52426a8a4d13d7961070abc1793876facedf2cf72c",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/react.bin",
+      "bytes": 52,
+      "sha256": "ca33908f1f6031635e934b1fe0fb759c0b94ad09dff6ef8b3039e0d8f9451daf",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/renderer.bin",
+      "bytes": 52,
+      "sha256": "6a409fcb8367cc982bff33ae6120d54623a593d229df97558415a77b07cba7a3",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-javascript/runtime.bin",
+      "bytes": 52,
+      "sha256": "ba02377430e857066108386d625d5b3db582b1ba0842a98d94628e4043791e53",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/cli.bin",
+      "bytes": 52,
+      "sha256": "c02def369b367941a64c73470849e064ed8faa7c9643b9cb271912a5e0245b1d",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/core.bin",
+      "bytes": 52,
+      "sha256": "802d71be8a7a27bce96ee537df0f3acd6f4aff628a05fb1d2deaf63c011ff888",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/protocol.bin",
+      "bytes": 52,
+      "sha256": "257df0fc8582a00480ba8f52426a8a4d13d7961070abc1793876facedf2cf72c",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/react.bin",
+      "bytes": 52,
+      "sha256": "ca33908f1f6031635e934b1fe0fb759c0b94ad09dff6ef8b3039e0d8f9451daf",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/renderer.bin",
+      "bytes": 52,
+      "sha256": "6a409fcb8367cc982bff33ae6120d54623a593d229df97558415a77b07cba7a3",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/react-typescript/runtime.bin",
+      "bytes": 52,
+      "sha256": "ba02377430e857066108386d625d5b3db582b1ba0842a98d94628e4043791e53",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/cli.bin",
+      "bytes": 52,
+      "sha256": "c02def369b367941a64c73470849e064ed8faa7c9643b9cb271912a5e0245b1d",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/core.bin",
+      "bytes": 52,
+      "sha256": "802d71be8a7a27bce96ee537df0f3acd6f4aff628a05fb1d2deaf63c011ff888",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/protocol.bin",
+      "bytes": 52,
+      "sha256": "257df0fc8582a00480ba8f52426a8a4d13d7961070abc1793876facedf2cf72c",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/renderer.bin",
+      "bytes": 52,
+      "sha256": "6a409fcb8367cc982bff33ae6120d54623a593d229df97558415a77b07cba7a3",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/runtime.bin",
+      "bytes": 52,
+      "sha256": "ba02377430e857066108386d625d5b3db582b1ba0842a98d94628e4043791e53",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-javascript/solid.bin",
+      "bytes": 52,
+      "sha256": "dba6eea3684d1a9a4364b8e6fd0977698d9d098127abd2da94380bbc796c84cb",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/cli.bin",
+      "bytes": 52,
+      "sha256": "c02def369b367941a64c73470849e064ed8faa7c9643b9cb271912a5e0245b1d",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/core.bin",
+      "bytes": 52,
+      "sha256": "802d71be8a7a27bce96ee537df0f3acd6f4aff628a05fb1d2deaf63c011ff888",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/protocol.bin",
+      "bytes": 52,
+      "sha256": "257df0fc8582a00480ba8f52426a8a4d13d7961070abc1793876facedf2cf72c",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/renderer.bin",
+      "bytes": 52,
+      "sha256": "6a409fcb8367cc982bff33ae6120d54623a593d229df97558415a77b07cba7a3",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/runtime.bin",
+      "bytes": 52,
+      "sha256": "ba02377430e857066108386d625d5b3db582b1ba0842a98d94628e4043791e53",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/installed-tags/solid-typescript/solid.bin",
+      "bytes": 52,
+      "sha256": "dba6eea3684d1a9a4364b8e6fd0977698d9d098127abd2da94380bbc796c84cb",
+      "provenance": "original-installer-metadata-only"
+    },
+    {
+      "path": "cohort/logs/build-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-react-javascript.stdout.log",
+      "bytes": 136,
+      "sha256": "ddb7d7948fa64478953f6dbd34408bfa7aba9bae218fb922c40114e53989d44c",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-react-typescript.stdout.log",
+      "bytes": 136,
+      "sha256": "50c50e83dbcaf41452d662082f982356bf526e03b8ef529330cc62570ccbe225",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-solid-javascript.stdout.log",
+      "bytes": 136,
+      "sha256": "cd3cc3f6b4bef8fd0edf7620aa31255184a7b739b56594cac2d9c7a610d5fc1a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/build-solid-typescript.stdout.log",
+      "bytes": 136,
+      "sha256": "0e7a17fa5a90bb0283d7e94a365d0544ca2874c8d2b80b832ea7bde0fcebaabd",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-react-javascript.stderr.log",
+      "bytes": 90,
+      "sha256": "d8e1e8ad6ddb67e0ec747ccce29fc1e2ee58fd552808183abf1dd34bf65ddc54",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-react-javascript.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-react-typescript.stderr.log",
+      "bytes": 90,
+      "sha256": "dd83b839e4a59ad80dbfd304c7159f53e32be4ab5275f2e1b99d22437db13526",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-react-typescript.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-solid-javascript.stderr.log",
+      "bytes": 90,
+      "sha256": "9929500853ae89ea6e55262b1fccc9d0c0301df8e19be787a4e041c177d1811e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-solid-javascript.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-solid-typescript.stderr.log",
+      "bytes": 90,
+      "sha256": "abf36acf9fd2db43092a3180e438ec0c909a14d66e73d820ced18a20e1f31d73",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/check-solid-typescript.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-javascript.bun.lock",
+      "bytes": 19726,
+      "sha256": "5b7885bdf370dec77689df0181848a96cf44f67fc91dac18bfd86f5025c59a44",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-javascript.stdout.log",
+      "bytes": 209,
+      "sha256": "b1ac1f81c60ac57a6a63e74feaec1986423558955667e44d6298dac70850d488",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-typescript.bun.lock",
+      "bytes": 19726,
+      "sha256": "fd03dd6fa58f0cad82747082cbc8e60574c879dfaf109db852316252612fdba4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-react-typescript.stdout.log",
+      "bytes": 209,
+      "sha256": "944bf313711cd4a73d6e85045b5087feb93c1fbe3b6c2508edac0abbf3b0f168",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-javascript.bun.lock",
+      "bytes": 19067,
+      "sha256": "2c954c2d74b68767b1f3663ef0f0184f7691b7f30cac2f1865b91af906a8328a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-javascript.stdout.log",
+      "bytes": 209,
+      "sha256": "32492fdb9936cdf5cde1995d929ee26f594a1abc263a758db742f1b89fe1e442",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-typescript.bun.lock",
+      "bytes": 19067,
+      "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/create-solid-typescript.stdout.log",
+      "bytes": 209,
+      "sha256": "ac789e200f1822de9ac9eaaa8959074c9e1bdeb9f5dc9451c9044c513ba85641",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-javascript.bun.lock",
+      "bytes": 19726,
+      "sha256": "5b7885bdf370dec77689df0181848a96cf44f67fc91dac18bfd86f5025c59a44",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-javascript.stdout.log",
+      "bytes": 1877,
+      "sha256": "647f57344d6f6a4b47ef307ecc950fd55d48b25e13e124d71463a15d5a76ef3e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-typescript.bun.lock",
+      "bytes": 19726,
+      "sha256": "fd03dd6fa58f0cad82747082cbc8e60574c879dfaf109db852316252612fdba4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-react-typescript.stdout.log",
+      "bytes": 1877,
+      "sha256": "647f57344d6f6a4b47ef307ecc950fd55d48b25e13e124d71463a15d5a76ef3e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-javascript.bun.lock",
+      "bytes": 19067,
+      "sha256": "2c954c2d74b68767b1f3663ef0f0184f7691b7f30cac2f1865b91af906a8328a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-javascript.stdout.log",
+      "bytes": 1878,
+      "sha256": "726b4af8632cf50aacd62ebb4a33a93f37cbdd28c4138872a54c65003bf8c295",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-typescript.bun.lock",
+      "bytes": 19067,
+      "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/imports-solid-typescript.stdout.log",
+      "bytes": 1878,
+      "sha256": "726b4af8632cf50aacd62ebb4a33a93f37cbdd28c4138872a54c65003bf8c295",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-empty-cache.bun.lock",
+      "bytes": 19067,
+      "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-empty-cache.stderr.log",
+      "bytes": 3191,
+      "sha256": "83b0a8ec06298e7773aebffd8a24c330f50983109fa359d1c16cb59870a3e949",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-empty-cache.stdout.log",
+      "bytes": 40,
+      "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-react-javascript.stdout.log",
+      "bytes": 419,
+      "sha256": "01f5e39eeb93f0ec3ca4e2a18705c6058de8c4f7ed5fa402661f23998dd4b7ed",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-react-typescript.stdout.log",
+      "bytes": 419,
+      "sha256": "43641a77ef429ff0e830a0731a8ec487b00a4b6eae4a52374b359798843d1b0d",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-solid-javascript.stdout.log",
+      "bytes": 367,
+      "sha256": "a1774b449199259d0a4ac674e3574e0e2da9a10bed6ecbe894376a30a40f5289",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-first-solid-typescript.stdout.log",
+      "bytes": 367,
+      "sha256": "5aaab097d706286aeac8cbc906add069734d5709d2939e882fd1c7e9172dca8b",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-react-javascript.stdout.log",
+      "bytes": 419,
+      "sha256": "a7a2c7d20ba32a88cbeb521b534e01829e5e58ec68b97aff841256bdb5191dda",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-react-typescript.stdout.log",
+      "bytes": 419,
+      "sha256": "c00aff1bd134da5a87c50862e67d48b6a54ca8a96c414060ffb013c1fb710b9b",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-solid-javascript.stdout.log",
+      "bytes": 368,
+      "sha256": "08183c97adbea009308ae08e04058695d652fb1dac9f49eeb14d479b7239f64c",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/install-frozen-solid-typescript.stdout.log",
+      "bytes": 367,
+      "sha256": "1d1244f11e828a28ad3614b9385979f7c815f2cb74205ead63342bcbd4ea49d5",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-javascript.bun.lock",
+      "bytes": 19726,
+      "sha256": "5b7885bdf370dec77689df0181848a96cf44f67fc91dac18bfd86f5025c59a44",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-javascript.stdout.log",
+      "bytes": 473,
+      "sha256": "ecc9c41865cdb66ed11b5e7b31b294c797054917c40d537ff113b2dd7425c5b5",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-typescript.bun.lock",
+      "bytes": 19726,
+      "sha256": "fd03dd6fa58f0cad82747082cbc8e60574c879dfaf109db852316252612fdba4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-react-typescript.stdout.log",
+      "bytes": 473,
+      "sha256": "ecc9c41865cdb66ed11b5e7b31b294c797054917c40d537ff113b2dd7425c5b5",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-javascript.bun.lock",
+      "bytes": 19067,
+      "sha256": "2c954c2d74b68767b1f3663ef0f0184f7691b7f30cac2f1865b91af906a8328a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-javascript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-javascript.stdout.log",
+      "bytes": 473,
+      "sha256": "d5886ca215fa65756c5c4cf79667626786c79c7b929ffe319a6ca5c52e16f2ce",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-typescript.bun.lock",
+      "bytes": 19067,
+      "sha256": "533a38360b83214ad8dd2b6d68c4c1b6510c2050b2c15740fa43cba4de44883e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-typescript.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/lock-first-solid-typescript.stdout.log",
+      "bytes": 473,
+      "sha256": "d5886ca215fa65756c5c4cf79667626786c79c7b929ffe319a6ca5c52e16f2ce",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-changed-archive.stderr.log",
+      "bytes": 50,
+      "sha256": "b5d3ccdebaae120e89a3e2fcdc9c7b492ce51ab61d4ab8a6e0b048f8dd37499a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-changed-archive.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-changed-installed-source.stderr.log",
+      "bytes": 65,
+      "sha256": "a70c9322d92327f8ab4bcc89b8f53972cd489f86cff174159c15c82612c81260",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-changed-installed-source.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-escaping-archive.stderr.log",
+      "bytes": 59,
+      "sha256": "d7c28ae4abe152aa5c0e069c33f840743cd313d24ea7ad921146cf66f774f3c0",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-escaping-archive.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-escaping-entry.stderr.log",
+      "bytes": 55,
+      "sha256": "a9297b02ec3e94d1e74ac878ecf4f056163a823b102fe2fbf307179f88587f82",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-escaping-entry.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-foreign-os.stderr.log",
+      "bytes": 45,
+      "sha256": "e7d841c1cd33362cee136bce2c04f6e7678e6c2c93054a2285899e7f701dc22a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-foreign-os.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-missing-archive.stderr.log",
+      "bytes": 164,
+      "sha256": "2442e7246e00b21fc7ec4416efb35584d81504ebb4bb20bbedb182d7e53d73e7",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-missing-archive.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-omitted-host.stderr.log",
+      "bytes": 119,
+      "sha256": "b073e1792a704a402daf5fb2a6543cf20c8b8ef3c69a9a86af83a7b70cfa34fd",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-omitted-host.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-wrong-cpu.stderr.log",
+      "bytes": 45,
+      "sha256": "e7d841c1cd33362cee136bce2c04f6e7678e6c2c93054a2285899e7f701dc22a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/negative-wrong-cpu.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/package-set.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/logs/package-set.stdout.log",
+      "bytes": 295,
+      "sha256": "dedc631537b79750ec7d90c9ce0817f45895d201b294ae55676961ea0b317b88",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/negative-inputs/changed-archive/core.tgz",
+      "bytes": 13960,
+      "sha256": "2c1dca0e6741b580efb1adb8a2dd8dbf8bc9d9247dc19f2a633eae35c7f0fc1b",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/changed-installed-source/core-index.ts",
+      "bytes": 897,
+      "sha256": "788beefc35fdf09bec5c19698044e8fb4ae00af2251fd71d2114f6e6e1759203",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/escaping-archive/manifest.json",
+      "bytes": 150722,
+      "sha256": "208353c5224295fc5757b929d5ca17a1e9e2675bfe23149dca339ad20ff08c00",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/escaping-entry/bun-native.json",
+      "bytes": 128,
+      "sha256": "d25bdc3872dca8ed003819de01b59545928bf97995b221c8c213a32afe41c3ae",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/escaping-entry/outside.ts",
+      "bytes": 42,
+      "sha256": "2614aeaca146b1bd45433d8b632e4b41b2959e00fbb02f1cda8b45438f33b9f1",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/foreign-os/guard-input.bin",
+      "bytes": 64,
+      "sha256": "92903f1dba8f0e4e9fb2a4e6cd87db561c6ce1627af9d59347f4d32501f3be1d",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/missing-archive/manifest.json",
+      "bytes": 150755,
+      "sha256": "a5b7bab349f826ed094d492a4b60faadd3a6b89f80ccbfaff8ae04f0ff49b8d3",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/negative-inputs/wrong-cpu/guard-input.bin",
+      "bytes": 64,
+      "sha256": "6c86bf9edbe9ca8986850357a936a45855a98b64425cd8f864a896fcd6bacc88",
+      "provenance": "original-negative-input"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-cli-0.16.1-cba506b844eb.tgz",
+      "bytes": 30062,
+      "sha256": "6ebc16308bc60657585823910d19fe3a6ea0de7c879b72cc359101192a63979e",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-core-0.0.0-cba506b844eb.tgz",
+      "bytes": 13939,
+      "sha256": "e07d6c9e1c779eb59954b81e5141d6335aeae599608c2d26289eccb78ae92ab7",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-protocol-0.0.0-cba506b844eb.tgz",
+      "bytes": 9207,
+      "sha256": "9643fe8bcbab5449543d3152d9148214325bf61a78d273a573bf1d9d8a2ee997",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-react-0.0.0-cba506b844eb.tgz",
+      "bytes": 7753,
+      "sha256": "bc86ceb6be7328a61af5af49d05ee39d1ed538479861d37c95a06291c08de01d",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-renderer-0.0.0-cba506b844eb.tgz",
+      "bytes": 11139,
+      "sha256": "e40b2f5af8f8f5f4339766ce6e044fc9ee185b99b09694414df00c113cb807db",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-runtime-0.0.0-cba506b844eb.tgz",
+      "bytes": 7750,
+      "sha256": "e44b4ff3a2cba3d5b48e5b9ea0662cda81f94a02ccb4b69cd674aba64f70574b",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/archives/bun-native-solid-0.0.0-cba506b844eb.tgz",
+      "bytes": 3453,
+      "sha256": "8d836e401f1893f8eb0b45a4230d74edb0ca4f14425fe0d2f7f4d6f1065a99c0",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/cli.json",
+      "bytes": 370,
+      "sha256": "f27f1d8b1bc061310c523cd4e7dea5d9cd8fa0ce187704c1005c516ccd0a63ac",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/cli.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/cli.stdout.log",
+      "bytes": 1285,
+      "sha256": "efcff3582c7a6f183edff04877688aea2b8639f20a0abb9674287a8f22968f3a",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/core.json",
+      "bytes": 379,
+      "sha256": "6049b2f5e7f163556771c936c4c17a73d7f5d8c0bd95311e8be08754193fa75b",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/core.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/core.stdout.log",
+      "bytes": 575,
+      "sha256": "206dd00dd1226000eeab20272b0bf0dac69a8ee78b433a5c3ebdcd77acb60c99",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/protocol.json",
+      "bytes": 387,
+      "sha256": "95d4560c7b2c25d331df366d7cb93dac981edbd968ed2f320baa2d57ecfb0ef4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/protocol.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/protocol.stdout.log",
+      "bytes": 580,
+      "sha256": "583e014e12ce25282a368e7778d4d0bafda26b5027ceb5e5fbd566333eff5b10",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/react.json",
+      "bytes": 381,
+      "sha256": "c39ad8077c1f177f8e644e44e2d206719d4ee859a6027b82f0f782f0b8b8e609",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/react.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/react.stdout.log",
+      "bytes": 614,
+      "sha256": "5506be86e7657fd3c73f77ad497dfd4b446d36bf1c12ddc4ebd9a310323d614d",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/renderer.json",
+      "bytes": 387,
+      "sha256": "497b6fc0addf66398ebcb376fb4bf654a43239c8137d745c24e0205f3fd43909",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/renderer.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/renderer.stdout.log",
+      "bytes": 655,
+      "sha256": "65d8479dc0bf59ad97b7af40b5fccaad20b8f69adcee49186a6928417e3078c9",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/runtime.json",
+      "bytes": 385,
+      "sha256": "2d22dad80ca3e37e2d2b9101f1041810d2d6b9f37cae740760e9922a0ee50c39",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/runtime.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/runtime.stdout.log",
+      "bytes": 466,
+      "sha256": "b003ef124a6d1bffa2f9ba71415efa18641cd68f627224ff66abd4d92059abc3",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/solid.json",
+      "bytes": 381,
+      "sha256": "2e61b41d5e9806822cdd0b6583dc9f86bc5b79f37b9e30e631f4f1f8d69712f2",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/solid.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/logs/solid.stdout.log",
+      "bytes": 510,
+      "sha256": "87c9b143d0b4ee86e86fea9bd4fd057c1d866d310ed10c84c46c7c58c33e2b7f",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/packages/manifest.json",
+      "bytes": 150755,
+      "sha256": "a5b7bab349f826ed094d492a4b60faadd3a6b89f80ccbfaff8ae04f0ff49b8d3",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/result.json",
+      "bytes": 144926,
+      "sha256": "226f72a4e3cc95fba1dd728fabbb52a33127f33d1112cc9ff574d08f8fdea9c7",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/sentinels/cargo",
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/sentinels/rustc",
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/sentinels/rustup",
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/source-after.json",
+      "bytes": 84803,
+      "sha256": "2957bf1feec062983385057d7a20f23c18fcb7148352b1f4ebbfce57fb6545b4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "cohort/source-before.json",
+      "bytes": 84803,
+      "sha256": "2957bf1feec062983385057d7a20f23c18fcb7148352b1f4ebbfce57fb6545b4",
+      "provenance": "original-cohort"
+    },
+    {
+      "path": "inputs/host.json",
+      "bytes": 694,
+      "sha256": "fd4b013e59786e47465f024bd31b0f2814453a81aea632598e5b95559874e617",
+      "provenance": "prior-host-artifact-provenance"
+    },
+    {
+      "path": "measured-source/docs/standalone-packages-plan.md",
+      "bytes": 21725,
+      "sha256": "cb2fbdf26e6b8ca9050a5c16aafd63ad90129b9126a278a5a52bb4638bb3da72",
+      "provenance": "measured-committed-source"
+    },
+    {
+      "path": "measured-source/scripts/quality/standalone-package-inspect.ts",
+      "bytes": 2816,
+      "sha256": "0a1c8e0903cbf0b62b6a8629758561fd327fd5b8de783b21270e4c42f123a7c8",
+      "provenance": "measured-committed-source"
+    },
+    {
+      "path": "measured-source/scripts/quality/standalone-packages.py",
+      "bytes": 35652,
+      "sha256": "909b9b4240e0ea506c726fa0398c007eaf0770e9e69b0d5e3051b1b53a1bfa3b",
+      "provenance": "measured-committed-source"
+    },
+    {
+      "path": "owner/cohort.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "original-owner"
+    },
+    {
+      "path": "owner/cohort.stdout.log",
+      "bytes": 90,
+      "sha256": "9f65ed11f30509131a6d0f048204d3a4c580f83f84eba2328cd1618a53a78c30",
+      "provenance": "original-owner"
+    },
+    {
+      "path": "owner/owner.json",
+      "bytes": 1412,
+      "sha256": "4f0685d1b3b41d578d53da254dea2a166fc9b8d9a0b1f308d5ed840a068bc8c7",
+      "provenance": "original-owner"
+    },
+    {
+      "path": "owner/preflight.json",
+      "bytes": 2341,
+      "sha256": "61c7c15bc0de16e81b878d54c3d2ed22d1373d15e174b91aa13bfea9b6c2bed9",
+      "provenance": "original-owner"
+    }
+  ],
+  "member_count": 219,
+  "member_bytes": 8429259
+}
