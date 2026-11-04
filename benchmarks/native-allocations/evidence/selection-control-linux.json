@@ -1,0 +1,723 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "finishedAt": "2026-11-02T16:35:43.916182+00:00",
+  "scope": "Standalone Linux GNU x64 Rust allocation selection and bounded failure cleanup. Manual root-render counter calls; no historical GPUI host build, native allocation collection, timing attribution or optimization claim.",
+  "recovery": "Fresh source and controls after an executor rollback. Prior pre-recovery raw artifacts are unavailable and are not acceptance evidence.",
+  "source": [
+    {
+      "path": "benchmarks/allocation-phases.py",
+      "bytes": 8976,
+      "sha256": "9d27e120bf3ba4a1fb770e2101bc5a44145cd28701c2e588b2cb0dddea9fae56"
+    },
+    {
+      "path": "benchmarks/bridge-pairs.py",
+      "bytes": 30860,
+      "sha256": "e43e1e4fb514e34db43465828385f5d2474e2d9c94eca2da986e1776bc4637e1"
+    },
+    {
+      "path": "benchmarks/native-allocation-control.py",
+      "bytes": 18360,
+      "sha256": "bd980ed4f7fe59a6fc8da8d8876998e0d4aa1ab55980df34720efccf9c754653"
+    },
+    {
+      "path": "benchmarks/native-allocations/host.rs",
+      "bytes": 1828,
+      "sha256": "a46ec1173ace164cdfa14553d04cdacf5635cff58bafcc839d91782d1c45dd3a"
+    },
+    {
+      "path": "benchmarks/native-baseline.py",
+      "bytes": 19193,
+      "sha256": "8627ec72132224344c88a643cdd74eee550a0fb2bf54cc8a0dd1df4c82757bba"
+    },
+    {
+      "path": "experiments/native-allocation-api/Cargo.lock",
+      "bytes": 176,
+      "sha256": "fd977467259994fa4108c04955f46916199e614b5e142b820ce3105ec8b8e043"
+    },
+    {
+      "path": "experiments/native-allocation-api/Cargo.toml",
+      "bytes": 392,
+      "sha256": "8b574f7d1fbba51b85842e693b6132d2cb3e5552c26e5385139b6f8d807f6c9d"
+    },
+    {
+      "path": "experiments/native-allocation-api/examples/selection-control.rs",
+      "bytes": 2779,
+      "sha256": "ab6024dffa9a9f9f06c51a86b30d735b9856c3e1b45cbec337ba462005a265c9"
+    },
+    {
+      "path": "experiments/native-allocation-api/src/abi.rs",
+      "bytes": 5846,
+      "sha256": "a14a7680bdc11380a812176ddb0177f8c02993240e3844c24042ac989f8ee701"
+    },
+    {
+      "path": "experiments/native-allocation-api/src/config.rs",
+      "bytes": 8001,
+      "sha256": "e5b6aef9d9c5afe798606e831613f89b7efa7fb7a0c0972e92339b374dfb13f5"
+    },
+    {
+      "path": "experiments/native-allocation-api/src/lib.rs",
+      "bytes": 5627,
+      "sha256": "9b046c70f59fc616c9abf2d7554af72af68c2a38a3b59db868f0165ba3bea515"
+    },
+    {
+      "path": "experiments/native-allocation-api/src/selection.rs",
+      "bytes": 8059,
+      "sha256": "7d878eea902d07fa0962f0e395e5249a1c51d57d737dfa462830b1fe6c07ca9c"
+    },
+    {
+      "path": "scripts/quality/native-allocation-linux.py",
+      "bytes": 17173,
+      "sha256": "398fa92b76405e0de0c1855b0fc795f510cc08e2c776696929e2b5d7ea8dedae"
+    },
+    {
+      "path": "scripts/quality/native-input-linux.py",
+      "bytes": 37751,
+      "sha256": "8dd9966503d40ae1a632d1e7d8b37098d0cd905878429242b0a89c6e462e937f"
+    },
+    {
+      "path": "scripts/quality/native-linux-session.sh",
+      "bytes": 6957,
+      "sha256": "d8936a199191d6b86d5709731bdee87e35af4f7f9ea69df9e60782a22d52f9bf"
+    }
+  ],
+  "compiler": {
+    "version": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "bytes": 645952,
+    "sha256": "859254978c0a0402c32f949f6de0d99aee73be8d15f45aac00ae1448aac51e74"
+  },
+  "profilerTools": {
+    "library": {
+      "bytes": 51608,
+      "sha256": "134760dbba8d9a2cd1b45f639c119f5c0cd779674a496fb7ed2b6baacac15ca9"
+    },
+    "interpreter": {
+      "bytes": 113056,
+      "sha256": "ad4e06cd5f43b4b4850a032a3d7abdaf557dba16eeb551668ce8122e3d7e3661"
+    },
+    "printer": {
+      "bytes": 342392,
+      "sha256": "518c7958efd5ef75781ad5eeed06fc017dbb1368699f1f3c4794321ac0ab8308"
+    },
+    "demangler": {
+      "bytes": 22800,
+      "sha256": "2c11b66c0fad24afc649517f890eaa8a6a4d4dceb1d613c5631bb96ff09352b4"
+    },
+    "environment": {
+      "bytes": 48072,
+      "sha256": "595f3912fa7d5f91b45cac22a4a772b23232ace24ff9d82ee47cc762c59be5e1"
+    },
+    "limits": {
+      "bytes": 27536,
+      "sha256": "f27cfd8c1512a4cc6541b59b80cb4cdfd6ef28c34aa21db4299b48264cd0d128"
+    }
+  },
+  "officialAbiHeader": {
+    "url": "https://invent.kde.org/sdk/heaptrack/-/raw/v1.5.0/src/track/libheaptrack.h",
+    "bytes": 1099,
+    "sha256": "fecf91761b2f785ce1f4d99a5311e5933fb1a425fabca23aed9ad66942d4d89b"
+  },
+  "buildId": "64ffcc0ec267a75baa7049b1377414433192261d71b10aa41cbe3fa16eb4e5ae",
+  "rlib": {
+    "bytes": 797920,
+    "sha256": "6165470bb8f0bfc26ef24b5547f30343f702ad6875645805fe51fcef4e57ced7"
+  },
+  "controlExecutable": {
+    "bytes": 4790960,
+    "sha256": "9dc8e9d1243c1e65dd677ee687bbeb1aed1ebfd1170f09c87bfae424e311a3d1"
+  },
+  "scenarios": [
+    {
+      "name": "disabled",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "a91b9b21f36b3670d1b9d959d80e3a8c",
+      "exitCode": 0,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "exactOwnedMappingObserved": false
+    },
+    {
+      "name": "individual",
+      "phase": "individual",
+      "status": "passed",
+      "nonce": "19e24d2848d59819ea11db76f712084d",
+      "exitCode": 0,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "exactOwnedMappingObserved": true,
+      "region": {
+        "schemaVersion": 1,
+        "nonce": "19e24d2848d59819ea11db76f712084d",
+        "source": "6ea507b58d0249b752ff62691ebc1879f3fcf6da",
+        "buildId": "64ffcc0ec267a75baa7049b1377414433192261d71b10aa41cbe3fa16eb4e5ae",
+        "phase": "individual",
+        "pid": 11438,
+        "status": "complete",
+        "firstRequest": 48,
+        "lastRequest": 1047,
+        "appliedCommands": 1000,
+        "operationsPerCommand": 1,
+        "rootRenderEntries": 1000,
+        "otherWindowRenderEntries": 0,
+        "intervalNanoseconds": 1334113,
+        "scope": "whole-native-process-allocations-during-selected-interval"
+      },
+      "stacks": {
+        "allocationStackCounts": {
+          "selected_allocation": 1000,
+          "outside_region": 0
+        },
+        "raw": {
+          "bytes": 38280,
+          "sha256": "cbc2165f67244a8253ef4d542262cc8edfd750763256bdeb61a58410209a7204"
+        },
+        "demangledStacks": {
+          "bytes": 2697,
+          "sha256": "8e7c4b7ceadc5d792d7f5122e407959545761ae9b2a9d7afdf8bdbdc6322fc34"
+        }
+      }
+    },
+    {
+      "name": "batch",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "6bb96983943bf5279458b8ed7a0aefb6",
+      "exitCode": 0,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "exactOwnedMappingObserved": true,
+      "region": {
+        "schemaVersion": 1,
+        "nonce": "6bb96983943bf5279458b8ed7a0aefb6",
+        "source": "6ea507b58d0249b752ff62691ebc1879f3fcf6da",
+        "buildId": "64ffcc0ec267a75baa7049b1377414433192261d71b10aa41cbe3fa16eb4e5ae",
+        "phase": "batch",
+        "pid": 11460,
+        "status": "complete",
+        "firstRequest": 1048,
+        "lastRequest": 1057,
+        "appliedCommands": 10,
+        "operationsPerCommand": 100,
+        "rootRenderEntries": 10,
+        "otherWindowRenderEntries": 0,
+        "intervalNanoseconds": 51476,
+        "scope": "whole-native-process-allocations-during-selected-interval"
+      },
+      "stacks": {
+        "allocationStackCounts": {
+          "selected_allocation": 10,
+          "outside_region": 0
+        },
+        "raw": {
+          "bytes": 1650,
+          "sha256": "3fc6f1d440e98173aee50c3c51ea933ccdcf1c8e75c7998273101011d89b5840"
+        },
+        "demangledStacks": {
+          "bytes": 2695,
+          "sha256": "4cb3578b03d7312aba80da167a9c9043b53ae7240efde077866c1f57da10e098"
+        }
+      }
+    },
+    {
+      "name": "mismatch",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "022ee96951c50bfff8a00d4b5ba3b61f",
+      "exitCode": 78,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 78
+      },
+      "exactOwnedMappingObserved": true,
+      "expectedProcessFailure": {
+        "type": "ValueError",
+        "message": "Command exited 78"
+      }
+    },
+    {
+      "name": "missing-abi",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "7189baeff4b052421c6d2f8a5dd72c81",
+      "exitCode": 78,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 78
+      },
+      "exactOwnedMappingObserved": false,
+      "expectedProcessFailure": {
+        "type": "ValueError",
+        "message": "Command exited 78"
+      }
+    },
+    {
+      "name": "collision",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "661aec1feb73c8578c3bfbb4bf6290e4",
+      "exitCode": 78,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 78
+      },
+      "exactOwnedMappingObserved": false,
+      "expectedProcessFailure": {
+        "type": "ValueError",
+        "message": "Command exited 78"
+      }
+    },
+    {
+      "name": "deadline",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "3c37ee6ab3734a125599b4b33b3adf26",
+      "exitCode": -15,
+      "cleanup": {
+        "forced_termination": true,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": -15
+      },
+      "exactOwnedMappingObserved": true,
+      "expectedProcessFailure": {
+        "type": "TimeoutError",
+        "message": "Command exceeded its fixed outer deadline"
+      }
+    },
+    {
+      "name": "file-cap",
+      "phase": "batch",
+      "status": "passed",
+      "nonce": "8f05693cb99e391ff1eff014759f82bd",
+      "exitCode": -25,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": -25
+      },
+      "exactOwnedMappingObserved": true,
+      "expectedProcessFailure": {
+        "type": "ValueError",
+        "message": "Command exited -25"
+      }
+    }
+  ],
+  "sourcePatchChecks": [
+    {
+      "variant": "bn1",
+      "patch": {
+        "bytes": 4220,
+        "sha256": "a8c27d9c7ae83da002725d4015e30a8fcf76dbe15113dbdb29d1bcaf3fa65000"
+      },
+      "files": [
+        {
+          "path": "native/gpui-host/src/allocation.rs",
+          "bytes": 1828,
+          "sha256": "a46ec1173ace164cdfa14553d04cdacf5635cff58bafcc839d91782d1c45dd3a"
+        },
+        {
+          "path": "native/gpui-host/src/main.rs",
+          "bytes": 2742,
+          "sha256": "b4d3d5b2747a424500a039fda03c72456ac6615ba025c5ebd69173ad516d0bb9"
+        },
+        {
+          "path": "native/gpui-host/src/session.rs",
+          "bytes": 11946,
+          "sha256": "d23e83d2f5901692088b6a40fbe8867e67e4c406cb29b5934ba29e52cc6c4011"
+        },
+        {
+          "path": "native/gpui-host/src/view.rs",
+          "bytes": 9090,
+          "sha256": "7ad2a801a7c380c2779d9527f00df39b7d5df0682d78cd19ef5c38b3c54c4e14"
+        }
+      ],
+      "status": "source_patch_prepared",
+      "originalCommit": "6ea507b58d0249b752ff62691ebc1879f3fcf6da",
+      "originalSourceFileCount": 49,
+      "manifest": {
+        "file": "patch-bn1/patch-manifest.json",
+        "bytes": 37520,
+        "sha256": "b34be392a032814c60d45ea64456acd645d3843b13468951557564e17a59b44e"
+      }
+    },
+    {
+      "variant": "events",
+      "patch": {
+        "bytes": 4182,
+        "sha256": "705a85b6d0df22f051e6bc151b775b61cabede41e9d65fb91b2b6eceb7af9539"
+      },
+      "files": [
+        {
+          "path": "native/gpui-host/src/allocation.rs",
+          "bytes": 1828,
+          "sha256": "a46ec1173ace164cdfa14553d04cdacf5635cff58bafcc839d91782d1c45dd3a"
+        },
+        {
+          "path": "native/gpui-host/src/main.rs",
+          "bytes": 2742,
+          "sha256": "b4d3d5b2747a424500a039fda03c72456ac6615ba025c5ebd69173ad516d0bb9"
+        },
+        {
+          "path": "native/gpui-host/src/session.rs",
+          "bytes": 12148,
+          "sha256": "8a0a66a24afdee16aac862af28bb6600fda13da3ee60abf72ecb409ea0142218"
+        },
+        {
+          "path": "native/gpui-host/src/view.rs",
+          "bytes": 13470,
+          "sha256": "fc17ca7d06ee5dd9d12eb5f345624a8b226e8527c4f4f8d0d52570a7d0d4032a"
+        }
+      ],
+      "status": "source_patch_prepared",
+      "originalCommit": "4549e75ca5463f136898a2f5fb49d22b58dffa11",
+      "originalSourceFileCount": 54,
+      "manifest": {
+        "file": "patch-events/patch-manifest.json",
+        "bytes": 38420,
+        "sha256": "566cba7d2016088697d49b58f197fdb91f6d616ddb0c4cd2ac91d91dde4332bb"
+      }
+    }
+  ],
+  "failedAttemptsRetained": [
+    {
+      "attempt": "01",
+      "status": "failed",
+      "error": {
+        "type": "ValueError",
+        "message": "Actual inside/outside allocation stacks disagree with the control"
+      },
+      "correction": "The exact frame reader did not accept the GNU Rust v0 crate disambiguator.",
+      "summary": {
+        "bytes": 10330,
+        "sha256": "ab87835d44a942ec0ef41451931d4bf78bfec9f7482edde57e4b5b127d5cb855"
+      }
+    },
+    {
+      "attempt": "02",
+      "status": "failed",
+      "error": {
+        "type": "ValueError",
+        "message": "Incomplete region was misreported as complete"
+      },
+      "correction": "The timeout oracle wrongly required a buffered trace to have flushed before termination; replaced with an explicit active-region witness.",
+      "summary": {
+        "bytes": 21268,
+        "sha256": "d48b4bef4bc2640904224674689451df70dcd5f601d9042f774d6f15b60170e5"
+      }
+    }
+  ],
+  "rawEvidence": {
+    "acceptedSummary": {
+      "bytes": 24903,
+      "sha256": "369940711a3510fc124755cbb23568482ac594bcbd273e29ab0c4431da09df5d"
+    },
+    "files": [
+      {
+        "path": "ffi-attempt-01/disabled/process/supervisor.json",
+        "bytes": 1060,
+        "sha256": "e57cfdeafbf479f17ce10c7bb71af86852befa9d5a58b695ba8aa92fda66cf05"
+      },
+      {
+        "path": "ffi-attempt-01/disabled/result.json",
+        "bytes": 1293,
+        "sha256": "35826f9c791ccfd431d569345d3789566cd6cfb369fe5a67f8fe12c16d20b40f"
+      },
+      {
+        "path": "ffi-attempt-01/individual/allocation.raw",
+        "bytes": 38280,
+        "sha256": "ef1a4e5b66f4e8aebfdb95980d732a9a8378e57ef94cf75acb925b60fb0e1c03"
+      },
+      {
+        "path": "ffi-attempt-01/individual/demangle/stdout.log",
+        "bytes": 2697,
+        "sha256": "8e7c4b7ceadc5d792d7f5122e407959545761ae9b2a9d7afdf8bdbdc6322fc34"
+      },
+      {
+        "path": "ffi-attempt-01/individual/process/supervisor.json",
+        "bytes": 1060,
+        "sha256": "182a4a16446cc8c24fca07eed35381037140c9dd16ec6099ec558267a62c0e33"
+      },
+      {
+        "path": "ffi-attempt-01/individual/result.json",
+        "bytes": 1518,
+        "sha256": "f873106a2c07f1cfe824fe7a742cccff1ade784a4fa40aa39284bea9adfb490d"
+      },
+      {
+        "path": "ffi-attempt-01/result.json",
+        "bytes": 10330,
+        "sha256": "ab87835d44a942ec0ef41451931d4bf78bfec9f7482edde57e4b5b127d5cb855"
+      },
+      {
+        "path": "ffi-attempt-02/batch/allocation.raw",
+        "bytes": 1649,
+        "sha256": "01cf519b990e24d882f4b17f933cd7ce046119c6b4c92a4acfc09ffa946f582c"
+      },
+      {
+        "path": "ffi-attempt-02/batch/demangle/stdout.log",
+        "bytes": 2695,
+        "sha256": "4cb3578b03d7312aba80da167a9c9043b53ae7240efde077866c1f57da10e098"
+      },
+      {
+        "path": "ffi-attempt-02/batch/process/supervisor.json",
+        "bytes": 1064,
+        "sha256": "710f453aa6db4e9fcecc5de3000a8fcdb2589f454832c3a2458c0b6f70f88ecd"
+      },
+      {
+        "path": "ffi-attempt-02/batch/result.json",
+        "bytes": 2469,
+        "sha256": "23976e93f81fc7bb5a7fe08b05791e749fe82abc9144c8fe76224fe255cde357"
+      },
+      {
+        "path": "ffi-attempt-02/collision/allocation.raw",
+        "bytes": 25,
+        "sha256": "a71d896b36da723dfef3703504d3739b3946bbb8fd376ff9f30f888aee1ecb42"
+      },
+      {
+        "path": "ffi-attempt-02/collision/process/supervisor.json",
+        "bytes": 1145,
+        "sha256": "f320e4a68ecd25d090856cc303ce6771a9cab4d1c6283760528723fcbf6b0c6c"
+      },
+      {
+        "path": "ffi-attempt-02/collision/result.json",
+        "bytes": 1387,
+        "sha256": "5a94a945577e6f0e9421f62f3dbaea180dc9bfe73b169869c5a1cfc7f8973697"
+      },
+      {
+        "path": "ffi-attempt-02/deadline/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-02/deadline/process/supervisor.json",
+        "bytes": 1183,
+        "sha256": "480c298d4d932bea452766d2dea1c973b5a2497a97e7497300bd32f068119f59"
+      },
+      {
+        "path": "ffi-attempt-02/deadline/result.json",
+        "bytes": 1645,
+        "sha256": "5dff47270be6eb196ac5e6d1c8e3d9b40e06e1c8ecdd9185fd7ec2c677f895bd"
+      },
+      {
+        "path": "ffi-attempt-02/disabled/process/supervisor.json",
+        "bytes": 1064,
+        "sha256": "7a59a4001e4b97aa62d081363999f0b8dd2a105f9920822ab5caa8d731c570aa"
+      },
+      {
+        "path": "ffi-attempt-02/disabled/result.json",
+        "bytes": 1297,
+        "sha256": "3d283289e49fffae3323820561334ca7e389b0805866a9b8490dbc9925be13ed"
+      },
+      {
+        "path": "ffi-attempt-02/individual/allocation.raw",
+        "bytes": 38280,
+        "sha256": "d0f691f3efc41b42011e1170fa83e410c00a5d66fd591ae5ece3188295fa77d1"
+      },
+      {
+        "path": "ffi-attempt-02/individual/demangle/stdout.log",
+        "bytes": 2697,
+        "sha256": "8e7c4b7ceadc5d792d7f5122e407959545761ae9b2a9d7afdf8bdbdc6322fc34"
+      },
+      {
+        "path": "ffi-attempt-02/individual/process/supervisor.json",
+        "bytes": 1063,
+        "sha256": "1475dc7cf3b091ac62ebf3437f6dde466ae047c7dec27f1dcdbb22d09e09298b"
+      },
+      {
+        "path": "ffi-attempt-02/individual/result.json",
+        "bytes": 2487,
+        "sha256": "6c2f52894b26276162bec1c6f451f5b7217f35d07ea39b26fe458067f6e7a190"
+      },
+      {
+        "path": "ffi-attempt-02/mismatch/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-02/mismatch/process/supervisor.json",
+        "bytes": 1163,
+        "sha256": "d6979d2ecd18f0cd874124fb3a1c46f09d15192165a15406f6393533563a9863"
+      },
+      {
+        "path": "ffi-attempt-02/mismatch/result.json",
+        "bytes": 1625,
+        "sha256": "2bcadf43bfadf966cd57cc170328dc9ae53b032357e19c7a45b82b4b22a981d1"
+      },
+      {
+        "path": "ffi-attempt-02/missing-abi/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-02/missing-abi/process/supervisor.json",
+        "bytes": 1145,
+        "sha256": "30144cb954dcd054536338049a4f5d1cd7594c278b94ce32b2f809a2ded9f673"
+      },
+      {
+        "path": "ffi-attempt-02/missing-abi/result.json",
+        "bytes": 1571,
+        "sha256": "cdd398ce4966845da4e925a11d4f190e43e00a6ce6655001f2325dd975b26ca0"
+      },
+      {
+        "path": "ffi-attempt-02/result.json",
+        "bytes": 21268,
+        "sha256": "d48b4bef4bc2640904224674689451df70dcd5f601d9042f774d6f15b60170e5"
+      },
+      {
+        "path": "ffi-attempt-03/batch/allocation.raw",
+        "bytes": 1650,
+        "sha256": "3fc6f1d440e98173aee50c3c51ea933ccdcf1c8e75c7998273101011d89b5840"
+      },
+      {
+        "path": "ffi-attempt-03/batch/demangle/stdout.log",
+        "bytes": 2695,
+        "sha256": "4cb3578b03d7312aba80da167a9c9043b53ae7240efde077866c1f57da10e098"
+      },
+      {
+        "path": "ffi-attempt-03/batch/process/supervisor.json",
+        "bytes": 1062,
+        "sha256": "75dad9355cb9a528978d47347161f64f31266459978c0265b8d52708e1e8607d"
+      },
+      {
+        "path": "ffi-attempt-03/batch/result.json",
+        "bytes": 2467,
+        "sha256": "1ea354a54fa1c798d424ed859c3a784f9ac86cb40fe285d5e48f3e1b19826016"
+      },
+      {
+        "path": "ffi-attempt-03/collision/allocation.raw",
+        "bytes": 25,
+        "sha256": "a71d896b36da723dfef3703504d3739b3946bbb8fd376ff9f30f888aee1ecb42"
+      },
+      {
+        "path": "ffi-attempt-03/collision/process/supervisor.json",
+        "bytes": 1143,
+        "sha256": "976000669693496a4435a8409b720ca001fe62cad8c1ad1d967d2297a60a0282"
+      },
+      {
+        "path": "ffi-attempt-03/collision/result.json",
+        "bytes": 1385,
+        "sha256": "3f98f8cdbc1c9bc2ddc4d300a2b1af9671a9324d1f5ec1ee739513f13d101b3b"
+      },
+      {
+        "path": "ffi-attempt-03/deadline/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-03/deadline/process/supervisor.json",
+        "bytes": 1185,
+        "sha256": "357e0704355971fa99e48d926d40950e99cddd9bb53d24da0a28843b8a14a639"
+      },
+      {
+        "path": "ffi-attempt-03/deadline/result.json",
+        "bytes": 1647,
+        "sha256": "ab4a487d9c5bf95b5b4fe79dcd3cb1c62d6104d0ef6f64c28b6d435f21e506b7"
+      },
+      {
+        "path": "ffi-attempt-03/disabled/process/supervisor.json",
+        "bytes": 1062,
+        "sha256": "529f3cc6fe37a7f77161953cd576631f4719dc22d596e6a11d04961690174ad3"
+      },
+      {
+        "path": "ffi-attempt-03/disabled/result.json",
+        "bytes": 1295,
+        "sha256": "d8fc857743a7932931c032af61aec38764979f04c678bdd1be19c4179d8f1120"
+      },
+      {
+        "path": "ffi-attempt-03/file-cap/allocation.raw",
+        "bytes": 32768,
+        "sha256": "7e1d8fdba0de6d751e7ba9854c4f209e09605ba6d9a72383843e1b6cb15b431a"
+      },
+      {
+        "path": "ffi-attempt-03/file-cap/process/supervisor.json",
+        "bytes": 1159,
+        "sha256": "fa9db2949e30a2c86e521f492774227568ab55288516187d173f570bcd2b75b3"
+      },
+      {
+        "path": "ffi-attempt-03/file-cap/result.json",
+        "bytes": 1621,
+        "sha256": "b70ccca096c20bfef5bcc758f9f249927009704bd6afa40df32d2bc92c083bc0"
+      },
+      {
+        "path": "ffi-attempt-03/individual/allocation.raw",
+        "bytes": 38280,
+        "sha256": "cbc2165f67244a8253ef4d542262cc8edfd750763256bdeb61a58410209a7204"
+      },
+      {
+        "path": "ffi-attempt-03/individual/demangle/stdout.log",
+        "bytes": 2697,
+        "sha256": "8e7c4b7ceadc5d792d7f5122e407959545761ae9b2a9d7afdf8bdbdc6322fc34"
+      },
+      {
+        "path": "ffi-attempt-03/individual/process/supervisor.json",
+        "bytes": 1062,
+        "sha256": "5d7e557805323256e04101ea846b8ffbc66bcd2249ffc09fad8d8c434426f694"
+      },
+      {
+        "path": "ffi-attempt-03/individual/result.json",
+        "bytes": 2487,
+        "sha256": "44a5263201038179e1eba0e07611ef79f7d6877bacd0c85de302c89ee39283cf"
+      },
+      {
+        "path": "ffi-attempt-03/mismatch/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-03/mismatch/process/supervisor.json",
+        "bytes": 1160,
+        "sha256": "aa3118c44bd89513f037f6d63e7837e51b6a87e7e09ad9613b29acdfcfcc88bc"
+      },
+      {
+        "path": "ffi-attempt-03/mismatch/result.json",
+        "bytes": 1622,
+        "sha256": "cd7a6d30b698f404cac417e48522908d22c64d6f909cb8b3baba2a36263c38d4"
+      },
+      {
+        "path": "ffi-attempt-03/missing-abi/allocation.raw",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ffi-attempt-03/missing-abi/process/supervisor.json",
+        "bytes": 1143,
+        "sha256": "2511f51a930edfbc301cdc93f27f412b7df9ee74fed7dd5b48fb2f148f3a22ac"
+      },
+      {
+        "path": "ffi-attempt-03/missing-abi/result.json",
+        "bytes": 1569,
+        "sha256": "73aba96001c7238a544b1fcfbc04344b641c0b7398ae80478644542fd9e7fb27"
+      },
+      {
+        "path": "ffi-attempt-03/result.json",
+        "bytes": 24903,
+        "sha256": "369940711a3510fc124755cbb23568482ac594bcbd273e29ab0c4431da09df5d"
+      }
+    ],
+    "inventory": {
+      "file": "raw-inventory.json",
+      "bytes": 32335,
+      "sha256": "d62cfe77228c5d6dc1b8a5a78a6241e24716483e3388b12000231afab7c259cf"
+    },
+    "fileCount": 197
+  }
+}
