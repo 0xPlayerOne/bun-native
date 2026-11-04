@@ -182,6 +182,49 @@ host, cache, manifest, archive, lock, command, cwd, exit and raw-log identities.
 No retry, extra GC or adaptive extra variant is permitted. Preserve an unexpected
 failure and diagnose it before proposing a separately source-bound correction.
 
+### Owning harness and retained inputs
+
+`scripts/quality/standalone-packages.py` implements this single fail-stop cohort.
+Run it from the actual published source commit, with a clean tree and the exact
+published commit/tree supplied as `--source-commit` and `--source-tree`. An
+equivalent unpublished local commit is not substituted: package provenance records
+the actual Git HEAD. `--repository`, `--bun`, `--host`, `--cache` and `--output`
+select existing source/tools/cache and a new output directory outside every linked
+checkout. Existing source-tool dependencies may be reused; preparing the harness
+does not add a second framework installation to this plan.
+
+The fixed host is the independently retained Linux x64 release executable from
+the accepted CLI qualification: 29,478,384 bytes, SHA-256
+`55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b`.
+Its single-member unsigned archive is 10,752,717 bytes, SHA-256
+`ab6863085c4f51baeab5d4cf85616d16dc9467e21a7d87e7f22df02b14a057ae`,
+retained in GitHub artifact `13359762942` for the source-specific `#360` qualification.
+Extraction and hashing do not launch the executable.
+
+The supervisor copies and records the populated cache before starting its whole
+cohort timer, dereferencing only contained cache links into its owned copy. It
+records four additional lock-only inspections after the first installs; the four
+later public-import inspections validate the relocated installed CLI/closure and
+every declared public subpath, including Solid's types-only JSX entry. Neither
+inspection mode invokes an application/window API. A 240-second producer deadline
+contains its seven independently bounded 30-second pack calls. The supervisor
+starts a command only when its full timeout remains in the whole-cohort budget;
+it never shortens a producer/AOT deadline to spend the last partial budget.
+Successful source/compile results retain the product's synchronous child contract,
+without an independent descendant-process audit. After interruption or forced
+termination, descendant cleanup remains explicitly unqualified. The supervisor
+joins each directly spawned command, with a bounded terminate-then-kill cleanup
+after interruption or timeout; forced cleanup fails the cohort. It does not adopt
+descendants after root exit or claim native process-tree evidence from these
+source/compile commands. All output directories and raw records remain available.
+
+An unexpected outcome stops the cohort. Later planned cases remain unrun, rather
+than becoming implicit retries or replacement cases. Preserve the first error,
+individual exit/status/log records, any subsequent finalization errors, generated
+seed/resulting locks, source/compiler/host invariance and unused Cargo/Rust
+sentinels. Native rendering, watch behavior and heap collectability remain outside
+this harness's scope.
+
 ## Native follow-up and limits
 
 A separate reviewed hosted-CI plan will qualify all four installed consumer
