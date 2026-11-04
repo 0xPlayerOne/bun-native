@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.2](https://github.com/0xPlayerOne/bun-native/compare/v0.14.1...v0.14.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* **renderer:** revoke callbacks retained by window unsubscribe handles ([#334](https://github.com/0xPlayerOne/bun-native/issues/334)) ([bf38101](https://github.com/0xPlayerOne/bun-native/commit/bf38101ddbf3fc195b1c5d89de4ec52e6653848f))
+
+
+### Tests
+
+* **perf:** qualify fixed native allocation capture regions ([#315](https://github.com/0xPlayerOne/bun-native/issues/315)) ([3631bf7](https://github.com/0xPlayerOne/bun-native/commit/3631bf7467f373d8e4531f4f611fd9b7310551cd))
+
 ## [0.14.1](https://github.com/0xPlayerOne/bun-native/compare/v0.14.0...v0.14.1) (2026-11-04)
 
 
