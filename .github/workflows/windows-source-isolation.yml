@@ -74,10 +74,20 @@ jobs:
                   raise RuntimeError(f'Source tree dirty: {name}')
           pr_root = workspace / 'pr-src'
           pr_files = sorted(path.relative_to(pr_root).as_posix() for path in pr_root.glob('tests/**/*')
-                            if path.is_file() and re.search(r'\.(test|spec)\.(ts|tsx|js|jsx)
+                            if path.is_file() and re.search(r'\.(test|spec)\.(ts|tsx|js|jsx)$', path.name))
+          if len(pr_files) != 41 or 'tests/react/root-errors.test.ts' not in pr_files:
+              raise RuntimeError(f'Expected exact original 41-file PR test discovery, found {len(pr_files)}')
+          react_files = [path for path in pr_files if path.startswith('tests/react/')]
+          if len(react_files) != 8:
+              raise RuntimeError('Expected exact 8 React test files')
+          solid = 'tests/solid/renderer.test.ts'
+          without_error_file = [path for path in pr_files if path != 'tests/react/root-errors.test.ts']
+          cases = [('pr-root-errors-plus-solid', 'pr', ['tests/react/root-errors.test.ts', solid]),
+                   ('pr-react-plus-solid', 'pr', [*react_files, solid]),
+                   ('pr-original-40-file-subset', 'pr', without_error_file)]
           plan = {'sourceShas': heads, 'solidProducerSha256': solid_hash, 'bunRevision': pinned,
                   'fixedOrder': [case for case, _, _ in cases], 'attemptsPerCase': 1,
-                  'scope': 'Second fixed diagnostic on same Windows 2022 runner; subset results never qualify required full-suite gate',
+                  'scope': 'Second fixed diagnostic; subset results never qualify required full-suite gate',
                   'unchanged': 'original source, GC checkpoints, assertions, timeout, JIT, and required workflows'}
           (evidence / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
           outcomes = []
@@ -134,79 +144,6 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: windows-source-cohorts-fixed
-          path: windows-source-isolation/
-          if-no-files-found: warn
-          retention-days: 14
-, path.name))
-          if len(pr_files) != 41 or 'tests/react/root-errors.test.ts' not in pr_files:
-              raise RuntimeError(f'Expected exact original 41-file PR test discovery, found {len(pr_files)}')
-          react_files = [path for path in pr_files if path.startswith('tests/react/')]
-          if len(react_files) != 8:
-              raise RuntimeError('Expected exact 8 React test files')
-          solid = 'tests/solid/renderer.test.ts'
-          without_error_file = [path for path in pr_files if path != 'tests/react/root-errors.test.ts']
-          cases = [('pr-root-errors-plus-solid', 'pr', ['tests/react/root-errors.test.ts', solid]),
-                   ('pr-react-plus-solid', 'pr', [*react_files, solid]),
-                   ('pr-original-40-file-subset', 'pr', without_error_file)]
-          plan = {'sourceShas': heads, 'solidProducerSha256': solid_hash, 'bunRevision': pinned,
-                  'fixedOrder': [case for case, _, _ in cases], 'attemptsPerCase': 1,
-                  'scope': 'Exploratory same-runner Windows source/test-order contrast only',
-                  'unchanged': 'original source, GC checkpoints, assertions, timeout, JIT, and required workflows'}
-          (evidence / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
-          outcomes = []
-          for case, source, args in cases:
-              root = workspace / (source + '-src')
-              target = evidence / case
-              target.mkdir()
-              env = dict(os.environ)
-              env['GITHUB_SHA'] = heads[source]
-              env['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR'] = str(target)
-              command = [str(bun), 'test', *args]
-              log_path = target / 'original-test.log'
-              timed_out = False
-              with log_path.open('w', encoding='utf-8') as log:
-                  process = subprocess.Popen(command, cwd=root, env=env, stdout=log,
-                                             stderr=subprocess.STDOUT)
-                  try:
-                      code = process.wait(timeout=120)
-                  except subprocess.TimeoutExpired:
-                      timed_out = True
-                      subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                                     check=True, capture_output=True, timeout=10)
-                      code = process.wait(timeout=10)
-              lines = log_path.read_text(encoding='utf-8', errors='replace').splitlines()
-              reports = []
-              for path in sorted(target.glob('solid-retention-*.json')):
-                  data = json.loads(path.read_text())
-                  reports.append({'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
-                                  'indices': [item['index'] for item in data.get('survivors', [])],
-                                  'testHash': next((item['sha256'] for item in
-                                      data.get('source', {}).get('files', [])
-                                      if item['path'] == 'tests/solid/renderer.test.ts'), None)})
-              outcome = {'case': case, 'sourceSha': heads[source], 'argv': command[1:],
-                         'exitCode': code, 'timedOut': timed_out,
-                         'logSha256': hashlib.sha256(log_path.read_bytes()).hexdigest(),
-                         'failures': [line for line in lines if '(fail)' in line][-10:],
-                         'summary': [line for line in lines if re.search(
-                           r'\b\d+ (?:pass|fail|expect\(\) calls)\b', line) or
-                           line.startswith('Ran ')][-10:],
-                         'retention': reports}
-              outcomes.append(outcome)
-              (evidence / 'outcomes.json').write_text(json.dumps(outcomes, indent=2) + '\n')
-              print(json.dumps(outcome), flush=True)
-          if any(item['timedOut'] for item in outcomes):
-              raise RuntimeError('A whole-process safety deadline was exceeded')
-          for name in heads:
-              root = workspace / (name + '-src')
-              if subprocess.check_output(['git', 'status', '--porcelain'], cwd=root,
-                                         text=True, timeout=10).strip():
-                  raise RuntimeError(f'Test mutated tracked source: {name}')
-          PY
-      - name: Preserve all original observations, including failures
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: windows-source-isolation-fixed
           path: windows-source-isolation/
           if-no-files-found: warn
           retention-days: 14
