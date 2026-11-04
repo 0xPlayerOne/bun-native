@@ -11,6 +11,7 @@ import {
 } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import * as inputs from '../../scripts/native/inputs.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { DevSession, type TeardownReport } from '../../scripts/native/session.ts'
 import { watchProject } from '../../scripts/native/watch.ts'
@@ -511,6 +512,109 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       expect(lifetimes().slice(start)).toEqual([])
     })
   })
+
+  test('watch cancellation joins a late scan rejection before reporting the final stopped app', async () => {
+    const path = await createProject(
+      repository,
+      join(directory, 'watch-late-scan'),
+      'react',
+      'typescript'
+    )
+    const project = await readProject(repository, path)
+    const original = readFileSync(project.entry, 'utf8')
+    const start = lifetimes().length
+    const events: string[] = []
+    const signals = process.listenerCount('SIGTERM')
+    let hold = false
+    let held = false
+    let scanSignal: AbortSignal | undefined
+    let stream: fs.ReadStream | undefined
+    const delayed = Promise.withResolvers<void>()
+    const read = fs.createReadStream
+    const reading = spyOn(fs, 'createReadStream').mockImplementation((filename, options) => {
+      const result = read(filename, options)
+      if (hold && filename === project.entry) {
+        stream = result
+        result.once('close', () => events.push('stream-closed'))
+      }
+      return result
+    })
+    const fingerprint = inputs.projectFingerprint
+    const scanning = spyOn(inputs, 'projectFingerprint').mockImplementation(
+      async (directory, signal) => {
+        const value = await fingerprint(directory, signal)
+        if (hold) {
+          scanSignal = signal
+          held = true
+          events.push('scan-held')
+          try {
+            // Hold only the result boundary after the real file scan closes its
+            // stream. Active stream cancellation is tested in watch-inputs.test.
+            await delayed.promise
+          } finally {
+            events.push('scan-settled')
+          }
+        }
+        return value
+      }
+    )
+    try {
+      await withWatcher(path, async ({ output, errors, completion }) => {
+        let finished = false
+        void completion.then(
+          () => {
+            finished = true
+            events.push('watch-finished')
+          },
+          () => {}
+        )
+        try {
+          await until(
+            () => output.some((line) => line.includes('Watching project source')),
+            'initial readiness before late scan'
+          )
+          hold = true
+          writeFileSync(
+            project.entry,
+            original.replaceAll('Bun Native React', 'Pending source scan')
+          )
+          await until(() => held, 'real source scan held before settlement')
+          expect(stream?.closed).toBe(true)
+          process.emit('SIGTERM')
+          await until(
+            () => scanSignal?.aborted === true && process.listenerCount('SIGTERM') === signals,
+            'watcher cleanup entered'
+          )
+          expect(finished).toBe(false)
+          expect(output.filter((line) => line.startsWith('bun-native:stopped '))).toHaveLength(0)
+          delayed.reject(new Error('Late cancelled source scan'))
+          await completion
+          const ready = JSON.parse(
+            output
+              .find((line) => line.startsWith('bun-native:ready '))!
+              .slice('bun-native:ready '.length)
+          ) as { pid: number; bundle: string }
+          const stopped = output.filter((line) => line.startsWith('bun-native:stopped '))
+          expect(stopped).toHaveLength(1)
+          expect(JSON.parse(stopped[0]!.slice('bun-native:stopped '.length))).toEqual({
+            pid: ready.pid,
+            clean: true,
+            ...zeroResources,
+          })
+          expect(isAlive(ready.pid)).toBe(false)
+          expect(existsSync(dirname(dirname(ready.bundle)))).toBe(false)
+          expect(errors).toEqual([])
+          expect(events).toEqual(['stream-closed', 'scan-held', 'scan-settled', 'watch-finished'])
+          assertJoined(lifetimes().slice(start), 1)
+        } finally {
+          delayed.resolve()
+        }
+      })
+    } finally {
+      reading.mockRestore()
+      scanning.mockRestore()
+    }
+  }, 20_000)
 
   test('watch startup failure is observable and does not launch an app', async () => {
     const path = await createProject(
