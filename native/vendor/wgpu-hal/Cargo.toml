@@ -1,0 +1,429 @@
+# Materialized from the exact upstream manifests; see bun-native/README.md.
+[package]
+name = "wgpu-hal"
+version = "30.0.0"
+edition = "2021"
+description = "Hardware abstraction layer for wgpu, the cross-platform, safe, pure-rust graphics API"
+homepage = "https://wgpu.rs/"
+repository = "https://github.com/gfx-rs/wgpu"
+keywords = ["graphics"]
+license = "MIT OR Apache-2.0"
+
+# Override the workspace's `rust-version` key. `wgpu-core` and its dependencies
+# have a less strict MSRV, to allow firefox more leeway in updating their Rust toolchain.
+#
+# See the repo README for more information on MSRV policy.
+rust-version = "1.87"
+
+[package.metadata.docs.rs]
+# Ideally we would enable all the features.
+#
+# However, the dx12 features fail to be documented because the docs.rs runner cross-compiling under
+# x86_64-unknown-linux-gnu cannot compile in that environment at the moment.
+features = ["metal", "vulkan", "gles", "renderdoc"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "wasm32-unknown-unknown",
+]
+
+[package.metadata.cargo-machete]
+# Cargo machete can't check build.rs dependencies. See https://github.com/bnjbvr/cargo-machete/issues/100
+ignored = ["cfg_aliases"]
+
+[lints.rust]
+missing_debug_implementations = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(feature, values("cargo-clippy"))', # objc's `msg_send` macro injects this in our code https://github.com/SSheldon/rust-objc/issues/125
+  'cfg(web_sys_unstable_apis)', # web-sys uses this
+  'cfg(windows_angle)',
+] }
+
+[lib]
+
+[features]
+########################
+### Backend Features ###
+########################
+
+# The interaction of features between wgpu-core and wgpu-hal is a bit nuanced to get
+# the desired behavior on all platforms.
+#
+# At the wgpu-hal level the features are defined to enable the backends on all platforms
+# that can compile the backend. Vulkan for example will have an effect on Windows, Mac, Linux, and Android.
+# This is done with target conditional dependencies in wgpu-hal. This allows `--all-features`
+# to compile on all platforms.
+#
+# wgpu-core's features are defined to enable the backends on their "default" platforms. For example we
+# exclude the Vulkan backend on MacOS unless a separate feature `vulkan-portability` is enabled. In response
+# to these features, it enables features of platform specific crates. For example, the `vulkan` feature in wgpu-core
+# enables the `vulkan` feature in `wgpu-core-deps-linux-android-bsd` which in turn enables the
+# `vulkan` feature in `wgpu-hal` _only_ on those platforms. If you enable the `vulkan-portability` feature, it
+# will enable the `vulkan` feature in `wgpu-core-deps-apple`. The only way to do this is unfortunately to have
+# a separate crate for each platform category that participates in the feature unification.
+#
+# This trick doesn't work at the `wgpu` level, because the `wgpu` -> `wgpu-core` dependency is conditional,
+# making the Cargo.toml signifigantly more complicated in all areas.
+#
+# See https://github.com/gfx-rs/wgpu/issues/3514, https://github.com/gfx-rs/wgpu/pull/7076,
+# and https://github.com/rust-lang/cargo/issues/1197 for more information.
+
+## Enables the Metal backend when targeting Apple platforms.
+metal = [
+  # Metal is only available on Apple platforms, therefore request MSL output also only if we target an Apple platform.
+  "naga/msl-out",
+  "wgpu-sync/std", # Required for send/sync
+  "dep:arrayvec",
+  "dep:block2",
+  "dep:bytemuck",
+  "dep:libloading",
+  "dep:objc2",
+  "dep:objc2-core-foundation",
+  "dep:objc2-core-graphics",
+  "dep:objc2-foundation",
+  "dep:objc2-metal",
+  "dep:objc2-quartz-core",
+  "dep:profiling",
+  "dep:smallvec",
+  "dep:raw-window-metal",
+]
+vulkan = [
+  "naga/spv-out",
+  "wgpu-sync/std", # Required for send/sync
+  "dep:android_system_properties",
+  "dep:arrayvec",
+  "dep:ash",
+  "dep:bytemuck",
+  "dep:libc",
+  "dep:libloading",
+  "dep:ordered-float",
+  "dep:profiling",
+  "dep:raw-window-metal",
+  "dep:smallvec",
+  "dep:windows",
+  "dep:windows-core",
+  "gpu-allocator/vulkan",
+  "windows/Win32",
+  "windows/Win32_Devices_Display",
+  "windows/Win32_Foundation",
+  "windows/Win32_Graphics_Dxgi",
+  "windows/Win32_Graphics_Dxgi_Common",
+  "windows/Win32_Graphics_Gdi",
+]
+gles = [
+  "dep:arrayvec",
+  "dep:bytemuck",
+  "dep:glow",
+  "dep:glutin_wgl_sys",
+  "dep:js-sys",
+  "dep:khronos-egl",
+  "dep:libloading",
+  "dep:ndk-sys",
+  "dep:objc2",
+  "dep:profiling",
+  "dep:wasm-bindgen",
+  "dep:wayland-sys",
+  "dep:web-sys",
+  "dep:windows-result",
+  "naga/glsl-out",
+  "wgpu-sync/std", # Required for send/sync
+  "wgpu-types/web",
+  "windows-result/std", # Need to enable this for the `Error` impl on `windows_result::Error` to work.
+  "windows/Win32_Graphics_Gdi",
+  "windows/Win32_Graphics_OpenGL",
+  "windows/Win32_System_LibraryLoader",
+  "windows/Win32_UI_WindowsAndMessaging",
+]
+## Enables the DX12 backend when targeting Windows.
+dx12 = [
+  "dep:arrayvec",
+  "dep:bit-set",
+  "dep:bytemuck",
+  "dep:gpu-allocator",
+  "dep:libloading",
+  "dep:ordered-float",
+  "dep:profiling",
+  "dep:range-alloc",
+  "dep:windows-core",
+  "gpu-allocator/d3d12",
+  "naga/hlsl-out",
+  "wgpu-sync/std", # Required for send/sync
+  "windows/Win32_Devices_DeviceAndDriverInstallation",
+  "windows/Win32_Devices_Display",
+  "windows/Win32_Graphics_Direct3D_Dxc",
+  "windows/Win32_Graphics_Direct3D_Fxc",
+  "windows/Win32_Graphics_Direct3D",
+  "windows/Win32_Graphics_Direct3D12",
+  "windows/Win32_Graphics_DirectComposition",
+  "windows/Win32_Graphics_Dxgi_Common",
+  "windows/Win32_Graphics_Gdi",
+  "windows/Win32_Security",
+  "windows/Win32_System_Diagnostics_Debug",
+  "windows/Win32_System_Kernel",
+  "windows/Win32_System_Performance",
+  "windows/Win32_System_Threading",
+  "windows/Win32_UI_WindowsAndMessaging",
+]
+
+###########################
+### Misc Other Features ###
+###########################
+
+static-dxc = ["dep:mach-dxcompiler-rs"]
+renderdoc = ["dep:libloading", "dep:renderdoc-sys"]
+fragile-send-sync-non-atomic-wasm = ["wgpu-types/fragile-send-sync-non-atomic-wasm"]
+portable-atomic = ["wgpu-sync/portable-atomic"]
+
+###################################
+### Internal Debugging Features ###
+###################################
+
+# Panic when running into a device lost error (for debugging purposes).
+# Only affects the d3d12 and vulkan backends.
+device_lost_panic = []
+# Panic on unexpected errors (does _not_ include out-of-memory errors or device
+# loss) from platform APIs, for debugging purposes. Such errors likely indicate
+# bug(s) in wgpu, platform components, or drivers. Despite the name, this is not
+# related to the spec's `GPUInternalError`. Only affects the d3d12 and vulkan
+# backends.
+internal_error_panic = []
+# Tracks validation errors in a `VALIDATION_CANARY` static.
+validation_canary = [
+  "wgpu-sync/std", # Required for send/sync
+]
+
+[[example]]
+name = "halmark"
+
+[[example]]
+name = "raw-gles"
+required-features = ["gles"]
+
+#####################
+### Platform: All ###
+#####################
+
+[dependencies]
+naga = { version = "30.0.0", git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+wgpu-naga-bridge = { version = "30.0.0", git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+naga-types = { version = "30.0.0", git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+wgpu-sync = { version = "30.0.0", default-features = false, git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+wgpu-types = { version = "30.0.0", default-features = false, git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+
+# Dependencies in the lib and empty backend
+bitflags = { version = "2.9" }
+cfg-if = { version = "1" }
+log = { version = "0.4.29" }
+raw-window-handle = { version = "0.6.2", default-features = false }
+thiserror = { version = "2.0.12", default-features = false }
+
+# Target agnostic dependencies used only in backends.
+arrayvec = { version = "0.7.1", default-features = false, optional = true }
+bytemuck = { version = "1.22", features = [
+  "extern_crate_alloc",
+  "min_const_generics",
+  "derive",
+], optional = true }
+hashbrown = { version = "0.17", default-features = false, features = [
+  "default-hasher",
+  "inline-more",
+] }
+ordered-float = { version = ">=3, <6.0", default-features = false, optional = true }
+profiling = { version = "1.0.1", default-features = false, optional = true }
+static_assertions = { version = "1.1" }
+
+# Backend: GLES
+glow = { version = "0.18", optional = true }
+
+########################
+### Platform: Native ###
+########################
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+# Backend: Vulkan and Dx12
+gpu-allocator = { version = "0.28", default-features = false, features = [
+  "hashbrown",
+], optional = true }
+# Backend: Vulkan
+ash = { version = "0.38", optional = true }
+smallvec = { version = "1.14", optional = true, features = ["union"] }
+# Backend: GLES
+khronos-egl = { version = "6", features = ["dynamic"], optional = true }
+libloading = { version = "0.8", optional = true }
+renderdoc-sys = { version = "1", optional = true }
+
+##########################
+### Platform: All Unix ###
+##########################
+
+[target.'cfg(unix)'.dependencies]
+# Backend: Vulkan
+libc = { version = "0.2.183", default-features = false, optional = true }
+# backend: GLES
+wayland-sys = { version = "0.31.3", features = ["client", "dlopen", "egl"], optional = true }
+
+## Support creating textures from DRM display/window handles.
+[target.'cfg(all(unix, not(target_vendor = "apple"), not(target_family = "wasm")))'.dependencies]
+drm = { version = "0.15", optional = true }
+
+#########################
+### Platform: Windows ###
+#########################
+
+[target.'cfg(windows)'.dependencies]
+# Backend: Dx12 and GLES
+windows = { version = "0.62", default-features = false, optional = true }
+windows-core = { version = "0.62", default-features = false, optional = true }
+windows-result = { version = "0.4", default-features = false, optional = true }
+# Backend: Dx12
+bit-set = { version = "0.11", default-features = false, optional = true }
+range-alloc = { version = "0.1", optional = true }
+# backend: GLES
+glutin_wgl_sys = { version = "0.6", optional = true }
+
+### Platform: x86/x86_64 Windows ###
+# This doesn't support aarch64. See https://github.com/gfx-rs/wgpu/issues/6860.
+# This doesn't support x86_64-pc-windows-gnu. See https://github.com/gfx-rs/wgpu/issues/8303
+#
+# ⚠️ Keep in sync with static_dxc cfg in build.rs and cfg_alias in `wgpu` crate ⚠️
+[target.'cfg(all(windows, not(target_arch = "aarch64"), target_env = "msvc"))'.dependencies]
+mach-dxcompiler-rs = { version = ">=0.1.0,<=0.1.4", default-features = false, optional = true }
+
+#######################
+### Platform: Apple ###
+#######################
+
+[target.'cfg(target_vendor = "apple")'.dependencies]
+# Backend: Metal
+block2 = { version = "0.6.2", optional = true }
+bytemuck = { version = "1.22", features = [
+  "extern_crate_alloc",
+  "min_const_generics",
+], optional = true }
+objc2 = { version = "0.6.3", optional = true }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CFCGTypes",
+], optional = true }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CGColorSpace",
+], optional = true }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSError",
+  "NSProcessInfo",
+  "NSRange",
+  "NSString",
+], optional = true }
+objc2-metal = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "MTLAllocation",
+  "MTLBlitCommandEncoder",
+  "MTLBlitPass",
+  "MTLBuffer",
+  "MTLCaptureManager",
+  "MTLCaptureScope",
+  "MTLCommandBuffer",
+  "MTLCommandEncoder",
+  "MTLCommandQueue",
+  "MTLComputeCommandEncoder",
+  "MTLComputePass",
+  "MTLComputePipeline",
+  "MTLCounters",
+  "MTLDepthStencil",
+  "MTLDevice",
+  "MTLDrawable",
+  "MTLEvent",
+  "MTLLibrary",
+  "MTLPipeline",
+  "MTLPixelFormat",
+  "MTLRenderCommandEncoder",
+  "MTLRenderPass",
+  "MTLRenderPipeline",
+  "MTLResource",
+  "MTLSampler",
+  "MTLStageInputOutputDescriptor",
+  "MTLTexture",
+  "MTLTypes",
+  "MTLVertexDescriptor",
+  "MTLAccelerationStructure",
+  "MTLAccelerationStructureTypes",
+  "MTLAccelerationStructureCommandEncoder",
+  "MTLResidencySet",
+], optional = true }
+objc2-quartz-core = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "objc2-core-foundation",
+  "objc2-core-graphics",
+  "CALayer",
+  "CAMetalLayer",
+  "objc2-metal",
+], optional = true }
+
+# backend: Metal + Vulkan
+raw-window-metal = { version = "1.0", optional = true }
+
+#########################
+### Platform: Android ###
+#########################
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_system_properties = { version = "0.1.1", optional = true }
+ndk-sys = { version = "0.6", optional = true }
+
+#############################
+### Platform: Webassembly ###
+#############################
+
+[target.'cfg(all(target_family = "wasm", not(target_os = "emscripten")))'.dependencies]
+# Backend: GLES
+wasm-bindgen = { version = "0.2.127", default-features = false, optional = true }
+web-sys = { version = "0.3.104", default-features = false, optional = true, features = [
+  "default",
+  "Window",
+  "HtmlCanvasElement",
+  "WebGl2RenderingContext",
+  "OffscreenCanvas",
+  "VideoFrame",
+] }
+js-sys = { version = "0.3.104", default-features = true, optional = true }
+
+############################
+### Platform: Emscripten ###
+############################
+
+[target.'cfg(target_os = "emscripten")'.dependencies]
+# Backend: GLES
+khronos-egl = { version = "6", optional = true, features = ["static", "no-pkg-config"] }
+# Note: it's unused by emscripten, but we keep it to have single code base in egl.rs
+libloading = { version = "0.8", optional = true }
+
+### Platform: Windows + MacOS + Linux for "raw-gles" example ###
+[target.'cfg(not(any(target_family = "wasm", target_os = "ios", target_os = "visionos", target_env = "ohos")))'.dev-dependencies]
+glutin-winit = { version = "0.5", default-features = false, features = [
+  "egl",
+  "wgl",
+  "wayland",
+  "x11",
+] }
+glutin = { version = "0.32", default-features = false, features = ["egl", "wgl", "wayland", "x11"] }
+
+[build-dependencies]
+cfg_aliases = { version = "0.2.2" }
+
+[dev-dependencies]
+env_logger = { version = "0.11", default-features = false }
+glam = { version = "0.33.7" } # for ray-traced-triangle example
+naga = { version = "30.0.0", features = [
+  "wgsl-in",
+  "termcolor",
+], git = "https://github.com/gfx-rs/wgpu", rev = "cddb2f5d80dc0009b2ef6767635140cacf90a007" }
+winit = { version = "0.30.8", features = ["android-native-activity"] } # for "halmark" example
+
+# Isolate the vendored dependency from the Bun Native workspace.
+[workspace]
+resolver = "3"
