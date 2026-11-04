@@ -1,13 +1,17 @@
 import { mkdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { inside } from './paths.ts'
+import { readPackageSet, verifyInstalledPackages } from './package-set.ts'
+import { fileDigest, type FileDigest } from './artifact.ts'
+import { copyPackageSet, standaloneFiles } from './standalone.ts'
 
 export type Framework = 'solid' | 'react'
 export type Language = 'typescript' | 'javascript'
-export type Project = { directory: string; framework: Framework; entry: string }
-
-function inside(parent: string, child: string): boolean {
-  const path = relative(parent, child)
-  return path !== '' && path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path)
+export type Project = {
+  directory: string
+  framework: Framework
+  entry: string
+  packageSet?: { source: { commit: string; tree: string }; manifest: FileDigest }
 }
 
 function template(framework: Framework, language: Language): string {
@@ -89,11 +93,13 @@ export async function createProject(
   repository: string,
   destination: string,
   framework: Framework,
-  language: Language
+  language: Language,
+  packages?: string
 ): Promise<string> {
+  const set = packages === undefined ? undefined : await readPackageSet(packages)
   const root = await realpath(repository)
   const directory = resolve(destination)
-  if (!inside(root, directory))
+  if (!set && !inside(root, directory))
     throw new Error('Create the project inside this Bun Native checkout')
   // Resolve existing parents before writing, so a symlink cannot escape the checkout.
   let ancestor = dirname(directory)
@@ -108,11 +114,11 @@ export async function createProject(
       ancestor = parent
     }
   }
-  if (resolvedAncestor !== root && !inside(root, resolvedAncestor))
+  if (!set && resolvedAncestor !== root && !inside(root, resolvedAncestor))
     throw new Error('Project parent resolves outside this Bun Native checkout')
   await mkdir(dirname(directory), { recursive: true })
   const parent = await realpath(dirname(directory))
-  if (parent !== root && !inside(root, parent))
+  if (!set && parent !== root && !inside(root, parent))
     throw new Error('Project parent resolves outside this Bun Native checkout')
   await mkdir(directory) // Existing directories, including empty ones, are never overwritten.
   try {
@@ -149,6 +155,10 @@ export async function createProject(
       'README.md': `# ${basename(directory)}\n\nThis project uses the surrounding Bun Native checkout and its pinned dependencies.\nRun \`bun install --frozen-lockfile\` in the checkout first; no Rust compiler is needed when you supply a prebuilt host.\n\n- \`bun run check\` checks TypeScript or checked JavaScript.\n- \`bun run dev --host /absolute/path/to/bun-native-host\` bundles and opens the app once.\n- Add \`--watch\` to remount after source edits with joined teardown. State resets on every successful edit; state-preserving hot reload is not implemented.\n- \`bun run build --host /absolute/path/to/bun-native-host --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.\n\nKeep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is supplied explicitly and never downloaded or rebuilt. See the checkout's \`docs/developer-tooling.md\` for requirements and limitations.\n`,
       [entry]: template(framework, language),
     }
+    if (set) {
+      Object.assign(files, standaloneFiles(set, framework, entry, basename(directory)))
+      await copyPackageSet(set, directory)
+    }
     for (const [name, content] of Object.entries(files))
       await writeFile(join(directory, name), content, { flag: 'wx' })
     return directory
@@ -161,13 +171,14 @@ export async function createProject(
 export async function readProject(repository: string, path: string): Promise<Project> {
   const root = await realpath(repository)
   const directory = await realpath(path)
-  if (!inside(root, directory)) throw new Error('Project must be inside this Bun Native checkout')
   const value: unknown = await Bun.file(join(directory, 'bun-native.json')).json()
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid bun-native.json project configuration')
   const config = value as Record<string, unknown>
   if (
-    Object.keys(config).some((key) => !['schemaVersion', 'framework', 'entry'].includes(key)) ||
+    Object.keys(config).some(
+      (key) => !['schemaVersion', 'framework', 'entry', 'packageSet'].includes(key)
+    ) ||
     config['schemaVersion'] !== 1 ||
     (config['framework'] !== 'solid' && config['framework'] !== 'react') ||
     typeof config['entry'] !== 'string' ||
@@ -180,5 +191,24 @@ export async function readProject(repository: string, path: string): Promise<Pro
   const entry = await realpath(join(directory, config['entry']))
   if (!inside(directory, entry) || !(await stat(entry)).isFile())
     throw new Error('Project entry must be a source file inside the project')
+  if (config['packageSet'] !== undefined) {
+    if (typeof config['packageSet'] !== 'string' || isAbsolute(config['packageSet']))
+      throw new Error('Project packageSet must be a relative manifest path inside the project')
+    const manifestPath = await realpath(join(directory, config['packageSet']))
+    if (!inside(directory, manifestPath))
+      throw new Error('Project packageSet resolves outside the project')
+    const set = await readPackageSet(manifestPath)
+    await verifyInstalledPackages(directory, set.manifest, config['framework'])
+    return {
+      directory,
+      framework: config['framework'],
+      entry,
+      packageSet: {
+        source: { commit: set.manifest.source.commit, tree: set.manifest.source.tree },
+        manifest: await fileDigest(manifestPath),
+      },
+    }
+  }
+  if (!inside(root, directory)) throw new Error('Project must be inside this Bun Native checkout')
   return { directory, framework: config['framework'], entry }
 }

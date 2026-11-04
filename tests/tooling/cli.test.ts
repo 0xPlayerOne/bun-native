@@ -14,7 +14,8 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { buildProject, bundleProject, prebuiltHost } from '../../scripts/native/build.ts'
+import { buildProject, bundleProject } from '../../scripts/native/build.ts'
+import { prebuiltHost } from '../../scripts/native/host.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 
