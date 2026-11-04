@@ -1,0 +1,614 @@
+{
+  "schema": 1,
+  "scope": "Completed first exact-head scheduling PR qualification; preserve the original headless retention failure and unchanged final aggregate failure.",
+  "source": {
+    "head": "b813d1bb7c33567c17bbd3ce0d0036db562b6769",
+    "tested_merge": "85a927ce871a4b51cff59a8f9637e12e8031653e",
+    "tree": "8a1cf2ae8a037946b3ef83ce81de4a960f22df01",
+    "base": "c4de68deee812cd816316b33f9276786e6eae5c8",
+    "local_equal_tree": "01d8e07c7a4f236f42d58b93c58026dfcd452075"
+  },
+  "run": {
+    "id": 41922667394,
+    "attempt": 1,
+    "event": "pull_request",
+    "job": 126898883953,
+    "job_name": "Protocol (ubuntu-24.04)",
+    "step": 9,
+    "step_name": "Cross-platform TypeScript contracts",
+    "command": "bun test tests",
+    "outcome": "failure",
+    "exit_code": 1,
+    "rust_protocol_step": "skipped",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-11-04T22:09:06Z",
+    "updated_at": "2026-11-04T22:28:31Z",
+    "implementation_jobs": {
+      "total": 11,
+      "passed": 10,
+      "failed": [
+        "Protocol (ubuntu-24.04)"
+      ]
+    }
+  },
+  "assertion": {
+    "test": "retained window unsubscribe handles release their callbacks immediately",
+    "path": "tests/renderers/revoker-ownership.test.ts",
+    "line": 22,
+    "column": 84,
+    "expected_live_weakrefs": 0,
+    "observed_live_weakrefs": 1,
+    "observations_created": 10,
+    "collection_rounds": 2,
+    "pass": 704,
+    "fail": 1,
+    "assertions": 5479,
+    "test_count": 705,
+    "files": 55,
+    "suite_seconds": 35.86,
+    "survivor_index": "not recorded",
+    "ownership_cause": "not established",
+    "hardware_scope": "headless real core IPC to protocol peer; no native GUI"
+  },
+  "environment": {
+    "bun_revision": "1.4.4-canary.1+da867c60b",
+    "bun_executable_sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "os": "linux",
+    "arch": "x64",
+    "kernel": "7.0.0-1014-aws",
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "1.98.1 (797e8a9bc 2026-08-05)"
+  },
+  "source_comparison": {
+    "delta": [
+      "M\t.github/workflows/bun-native.yml",
+      "A\t.github/workflows/native-audit.yml",
+      "M\tdocs/native-platforms.md"
+    ],
+    "parity": {
+      "packages": {
+        "base_object": "70f57090422d8122973d4c60d6291d42f01e8e44",
+        "tested_tree_object": "70f57090422d8122973d4c60d6291d42f01e8e44",
+        "identical": true
+      },
+      "tests": {
+        "base_object": "2ee207b5c423532098fb9ac30bcbe69712dc6f89",
+        "tested_tree_object": "2ee207b5c423532098fb9ac30bcbe69712dc6f89",
+        "identical": true
+      },
+      "scripts": {
+        "base_object": "3e63c3ac4554848a473981eeba92d7665dc78243",
+        "tested_tree_object": "3e63c3ac4554848a473981eeba92d7665dc78243",
+        "identical": true
+      },
+      "benchmarks": {
+        "base_object": "aa26bf59d855a547d8c162cc70841c05249ec087",
+        "tested_tree_object": "aa26bf59d855a547d8c162cc70841c05249ec087",
+        "identical": true
+      },
+      "examples": {
+        "base_object": "2e2cfbc22826aaaf306faec73c9cb609c37790c0",
+        "tested_tree_object": "2e2cfbc22826aaaf306faec73c9cb609c37790c0",
+        "identical": true
+      },
+      "native": {
+        "base_object": "36ed8f203845c2a6019856defdea469197af13f9",
+        "tested_tree_object": "36ed8f203845c2a6019856defdea469197af13f9",
+        "identical": true
+      },
+      "bun.lock": {
+        "base_object": "572867ccf9d1e4e8ac46264a83f410b828d0f8b0",
+        "tested_tree_object": "572867ccf9d1e4e8ac46264a83f410b828d0f8b0",
+        "identical": true
+      },
+      "package.json": {
+        "base_object": "19f481b11f49432051f433a07617fd23f54739a1",
+        "tested_tree_object": "19f481b11f49432051f433a07617fd23f54739a1",
+        "identical": true
+      },
+      "toolchain.json": {
+        "base_object": "ec6b8280221eb0be571277b52a0ea93b63ee8d55",
+        "tested_tree_object": "ec6b8280221eb0be571277b52a0ea93b63ee8d55",
+        "identical": true
+      },
+      "bunfig.toml": {
+        "base_object": "af8dee8849456118b9f57fc11b21d89c6de32267",
+        "tested_tree_object": "af8dee8849456118b9f57fc11b21d89c6de32267",
+        "identical": true
+      },
+      "tsconfig.json": {
+        "base_object": "bbadccc15cbe682374dee412d70088c72b6f2fd8",
+        "tested_tree_object": "bbadccc15cbe682374dee412d70088c72b6f2fd8",
+        "identical": true
+      },
+      "Cargo.lock": {
+        "base_object": "eb11efa8335d32728caa6f9e70a73f1eca17eb40",
+        "tested_tree_object": "eb11efa8335d32728caa6f9e70a73f1eca17eb40",
+        "identical": true
+      },
+      "Cargo.toml": {
+        "base_object": "ceae2ca5a7cc83e9073a36a345365b2ec2a1d30b",
+        "tested_tree_object": "ceae2ca5a7cc83e9073a36a345365b2ec2a1d30b",
+        "identical": true
+      },
+      "rust-toolchain.toml": {
+        "base_object": "c3f67b6771b777215340531caf051bc25cef066c",
+        "tested_tree_object": "c3f67b6771b777215340531caf051bc25cef066c",
+        "identical": true
+      }
+    },
+    "validation_jobs": {
+      "bytes": 11054,
+      "sha256": "ab6ee52ad7ca4f991f98b484dc3673bf563a510212c4165c3dfa67949a0da404"
+    },
+    "validation_jobs_byte_identical": true,
+    "validation_jobs_boundary": "From the LF immediately before jobs: through EOF, including the entire 7-byte LF jobs colon LF marker",
+    "validation_jobs_after_marker": {
+      "bytes": 11047,
+      "sha256": "026939a58e1e8bcefd80b4dce5d340e3187c1977954963153692ececda83de2a"
+    },
+    "validation_jobs_after_marker_boundary": "Immediately after the entire 7-byte LF jobs colon LF marker through EOF",
+    "validation_jobs_marker_offsets": {
+      "accepted_base": 572,
+      "tested_tree": 568
+    },
+    "boundary_correction": "An interim message incorrectly attributed 026939 to removing only the leading LF; direct byte computation shows it excludes the entire 7-byte marker."
+  },
+  "original_artifact": {
+    "id": 13367647897,
+    "name": "protocol-Linux-X64",
+    "path": "protocol-linux-13367647897.zip",
+    "bytes": 1197,
+    "sha256": "032e8475cdd066664f6ad6526a7220400da897d3932e117bcdeb2ca79a33cbca",
+    "members": [
+      {
+        "path": "bun-bootstrap.log",
+        "bytes": 463,
+        "sha256": "0c2ecc6cd9ad9a309a197e89a963808a5abcfea7e24d0553d778cb4668255413"
+      },
+      {
+        "path": "toolchain.txt",
+        "bytes": 359,
+        "sha256": "47863496df82d03bdeb2c4b1d6d0a6fee30faf019379cbf17f445348ac2dbfc7"
+      },
+      {
+        "path": "bootstrap.txt",
+        "bytes": 269,
+        "sha256": "301078a48f141675b98846e189db1d987beb1ae378a395ec4cc21bf4cd385d5f"
+      }
+    ],
+    "limit": "Only three bootstrap/toolchain files; no callback index or heap diagnostic."
+  },
+  "original_decoded_job_log": {
+    "path": "protocol-ubuntu-original.log",
+    "bytes": 132606,
+    "sha256": "f19f35c6d788562038f6fc63e2ada3034083c11a27e7289a3f3b91f8b46c1d00",
+    "encoding": "Connector-decoded log saved as exact UTF-8, including any leading BOM."
+  },
+  "source_files": {
+    "tests/renderers/revoker-ownership.test.ts": {
+      "bytes": 2080,
+      "sha256": "97743ec90c1a28435e6b4403d6c70f233231ed0462e530f280aed42d8109039b",
+      "blob": "f7cc9a704059e265c2cd6b58eb518241b13002f1"
+    },
+    "tests/renderers/support.ts": {
+      "bytes": 1984,
+      "sha256": "d069c1e14a4917e4aaa14de764d9159276857ff408801484d9eece720ae8e7e1",
+      "blob": "0f23bbb09ea1c793a5216e28bc4728d7c030eefa"
+    },
+    "packages/renderer/src/window-lifetime.ts": {
+      "bytes": 1635,
+      "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+      "blob": "d345e59e19a2ca0eaa7c9551850e2c6f1da7495a"
+    },
+    "toolchain.json": {
+      "bytes": 3012,
+      "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+      "blob": "ec6b8280221eb0be571277b52a0ea93b63ee8d55"
+    },
+    ".github/workflows/bun-native.yml": {
+      "bytes": 11622,
+      "sha256": "b117d64e40963f275740ebc043ff23b8b8505bc6877245da58a5c8660bb02d9f",
+      "blob": "1156388792857c73f3a4fb94ef0cd9d0643ebd2b"
+    },
+    ".github/workflows/native-audit.yml": {
+      "bytes": 534,
+      "sha256": "ed570e541fb02ad09467e374121d000051e2fcc76b811f75099543feeefe6e70",
+      "blob": "ef3059700f7e2632ccad33c8c093f0b3a660229d"
+    }
+  },
+  "limits": [
+    "No runtime, test, GC, native, or CI rerun performed during this audit.",
+    "Unchanged source parity does not establish why one callback was still live.",
+    "A later passing job cannot replace this failed original observation.",
+    "Scheduled/manual protected caller has not executed; its acceptance remains separate."
+  ],
+  "jobs": [
+    {
+      "id": 126898883511,
+      "name": "Source quality",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:10:25Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898883953,
+      "name": "Protocol (ubuntu-24.04)",
+      "conclusion": "failure",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:10:07Z",
+      "failed_steps": [
+        {
+          "name": "Cross-platform TypeScript contracts",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-11-04T22:09:29Z",
+          "completed_at": "2026-11-04T22:10:05Z"
+        }
+      ]
+    },
+    {
+      "id": 126898884120,
+      "name": "AOT native interop (macos-15)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:24Z",
+      "completed_at": "2026-11-04T22:09:55Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884131,
+      "name": "AOT native interop (windows-2022)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:10:44Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884204,
+      "name": "Protocol (windows-2022)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:11:18Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884318,
+      "name": "AOT native interop (ubuntu-24.04)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:09:33Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884389,
+      "name": "Protocol (macos-15)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:21Z",
+      "completed_at": "2026-11-04T22:10:57Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884528,
+      "name": "Native Linux / GPUI release, native contracts and baselines",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:28:21Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884646,
+      "name": "Native macOS and Windows / GPUI release and native paint (macos-15)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:23Z",
+      "completed_at": "2026-11-04T22:14:12Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884683,
+      "name": "Native macOS and Windows / GPUI release and native paint (windows-2022)",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:18:38Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126898884763,
+      "name": "Security / Dependency audit",
+      "conclusion": "success",
+      "started_at": "2026-11-04T22:09:09Z",
+      "completed_at": "2026-11-04T22:09:32Z",
+      "failed_steps": []
+    },
+    {
+      "id": 126908908862,
+      "name": "Validation / Gate",
+      "conclusion": "failure",
+      "started_at": "2026-11-04T22:28:25Z",
+      "completed_at": "2026-11-04T22:28:30Z",
+      "failed_steps": [
+        {
+          "name": "Require every implementation check to pass",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 2,
+          "started_at": "2026-11-04T22:28:27Z",
+          "completed_at": "2026-11-04T22:28:28Z"
+        }
+      ]
+    }
+  ],
+  "gate": {
+    "id": 126908908862,
+    "conclusion": "failure",
+    "exit_code": 1,
+    "needs": {
+      "source": {
+        "result": "success",
+        "outputs": {}
+      },
+      "protocol": {
+        "result": "failure",
+        "outputs": {}
+      },
+      "aot": {
+        "result": "success",
+        "outputs": {}
+      },
+      "native": {
+        "result": "success",
+        "outputs": {}
+      },
+      "native-platforms": {
+        "result": "success",
+        "outputs": {}
+      },
+      "security": {
+        "result": "success",
+        "outputs": {}
+      }
+    },
+    "needs_original_slice": {
+      "bytes": 385,
+      "sha256": "a3f90996d37a5d02002064ac0d85fe9aeedf9ecc838a22c23cd7a42d42824a62"
+    },
+    "decoded_log": {
+      "bytes": 2567,
+      "sha256": "625de92c1ca69206bf051e0d15ff4f049582aab7f8e556c1ebcb552d88c2e2f3"
+    },
+    "rejected_families": [
+      "protocol"
+    ]
+  },
+  "codeql": {
+    "run": 41922668175,
+    "attempt": 1,
+    "conclusion": "success",
+    "analysis_jobs": [
+      {
+        "id": 126898982972,
+        "name": "CodeQL / Analyze (Actions)",
+        "conclusion": "success"
+      },
+      {
+        "id": 126898982804,
+        "name": "CodeQL / Analyze (Rust)",
+        "conclusion": "success"
+      },
+      {
+        "id": 126898982717,
+        "name": "CodeQL / Analyze (TypeScript)",
+        "conclusion": "success"
+      },
+      {
+        "id": 126898982655,
+        "name": "CodeQL / Analyze (Python)",
+        "conclusion": "success"
+      }
+    ],
+    "aggregate": {
+      "id": 126899334388,
+      "conclusion": "success"
+    }
+  },
+  "optional_security": [
+    {
+      "id": 126898890922,
+      "name": "OpenCode Security / Scan",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 126898889516,
+      "name": "OpenCode Security / Detect",
+      "conclusion": "skipped"
+    }
+  ],
+  "retained_archive": {
+    "path": "original-evidence.tar.gz",
+    "bytes": 52903,
+    "sha256": "2a81a8aa1e67d0f253cb4047c869fee2ff7ba65db3621ed648676871f51e70d8",
+    "regular_members": 20,
+    "uncompressed_file_bytes": 334329,
+    "inventory": [
+      {
+        "path": "gate-needs-original.json.raw",
+        "bytes": 385,
+        "sha256": "a3f90996d37a5d02002064ac0d85fe9aeedf9ecc838a22c23cd7a42d42824a62"
+      },
+      {
+        "path": "logs/gate-original.log",
+        "bytes": 2567,
+        "sha256": "625de92c1ca69206bf051e0d15ff4f049582aab7f8e556c1ebcb552d88c2e2f3"
+      },
+      {
+        "path": "logs/protocol-ubuntu-original.log",
+        "bytes": 132606,
+        "sha256": "f19f35c6d788562038f6fc63e2ada3034083c11a27e7289a3f3b91f8b46c1d00"
+      },
+      {
+        "path": "metadata/artifacts-final.json",
+        "bytes": 7784,
+        "sha256": "eaae190baa0a8927ba6aa03a2762d8808bcff0e77e9f50fed770c2c08ecf7b64"
+      },
+      {
+        "path": "metadata/checks-final.json",
+        "bytes": 77881,
+        "sha256": "eb5b49e5ade4e71c8a2af40421f859f809607b8fa053c3081a2bb84d22521ab0"
+      },
+      {
+        "path": "metadata/codeql-jobs-final.json",
+        "bytes": 10588,
+        "sha256": "9408a704d6ec1d8568864439f70bbf9989a1ca6f3d8a0736db6f32862bc5f144"
+      },
+      {
+        "path": "metadata/codeql-run-final.json",
+        "bytes": 13191,
+        "sha256": "c01182316edba630fb74264bed0b0730fcc5003261a604b6af6538365b3e0961"
+      },
+      {
+        "path": "metadata/tested-merge-original.json",
+        "bytes": 2707,
+        "sha256": "b421c96abac08f0f4e2f66c14776ba3fea57e2a5a7e3d209774283f378b5a05b"
+      },
+      {
+        "path": "metadata/validation-jobs-attempt1-original.json",
+        "bytes": 49849,
+        "sha256": "5a440d6d77d3f5b78998f48a47232a88a642a8ee77fd5f32931d22aac3478de9"
+      },
+      {
+        "path": "metadata/validation-run-final.json",
+        "bytes": 13616,
+        "sha256": "b39570a39faefecfb62cb84d2559f4e53823f8c98ab6eae25a256520ebfd47e7"
+      },
+      {
+        "path": "protocol/decoded/bootstrap.txt",
+        "bytes": 269,
+        "sha256": "301078a48f141675b98846e189db1d987beb1ae378a395ec4cc21bf4cd385d5f"
+      },
+      {
+        "path": "protocol/decoded/bun-bootstrap.log",
+        "bytes": 463,
+        "sha256": "0c2ecc6cd9ad9a309a197e89a963808a5abcfea7e24d0553d778cb4668255413"
+      },
+      {
+        "path": "protocol/decoded/toolchain.txt",
+        "bytes": 359,
+        "sha256": "47863496df82d03bdeb2c4b1d6d0a6fee30faf019379cbf17f445348ac2dbfc7"
+      },
+      {
+        "path": "protocol/protocol-linux-13367647897.zip",
+        "bytes": 1197,
+        "sha256": "032e8475cdd066664f6ad6526a7220400da897d3932e117bcdeb2ca79a33cbca"
+      },
+      {
+        "path": "source/.github/workflows/bun-native.yml",
+        "bytes": 11622,
+        "sha256": "b117d64e40963f275740ebc043ff23b8b8505bc6877245da58a5c8660bb02d9f"
+      },
+      {
+        "path": "source/.github/workflows/native-audit.yml",
+        "bytes": 534,
+        "sha256": "ed570e541fb02ad09467e374121d000051e2fcc76b811f75099543feeefe6e70"
+      },
+      {
+        "path": "source/packages/renderer/src/window-lifetime.ts",
+        "bytes": 1635,
+        "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b"
+      },
+      {
+        "path": "source/tests/renderers/revoker-ownership.test.ts",
+        "bytes": 2080,
+        "sha256": "97743ec90c1a28435e6b4403d6c70f233231ed0462e530f280aed42d8109039b"
+      },
+      {
+        "path": "source/tests/renderers/support.ts",
+        "bytes": 1984,
+        "sha256": "d069c1e14a4917e4aaa14de764d9159276857ff408801484d9eece720ae8e7e1"
+      },
+      {
+        "path": "source/toolchain.json",
+        "bytes": 3012,
+        "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+      }
+    ],
+    "round_trip_verified": true
+  },
+  "other_artifacts": [
+    {
+      "id": 13369326984,
+      "name": "native-linux-X64",
+      "bytes": 29023032,
+      "api_declared_digest": "sha256:96685c7d45ead188b6ec9306de37dac26a11aa9720e29dc2704108b31335833c",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13368221013,
+      "name": "aot-native-interop-Linux-X64-85a927ce871a4b51cff59a8f9637e12e8031653e",
+      "bytes": 18948,
+      "api_declared_digest": "sha256:d08f799370bf167a72229336b55e702bb15adc63100f1fa4aad4a0131fcf9616",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13368187490,
+      "name": "native-platform-Windows-X64-85a927ce871a4b51cff59a8f9637e12e8031653e",
+      "bytes": 4015967,
+      "api_declared_digest": "sha256:b09140b5d4f226d26886e290f4795a9d70b2cf9d3fae182c584241b89634f41f",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13368087018,
+      "name": "native-platform-macOS-ARM64-85a927ce871a4b51cff59a8f9637e12e8031653e",
+      "bytes": 3481614,
+      "api_declared_digest": "sha256:72bb2d5012f96f64269fc98e20c44a46724cd5322ae4e1e3838a3a9022e82f91",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13367727884,
+      "name": "protocol-Windows-X64",
+      "bytes": 1195,
+      "api_declared_digest": "sha256:08b8dceecce4e986fb8314e4b2bbf8e77a4e293ea4697c295830e273de772a1d",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13367242762,
+      "name": "aot-native-interop-macOS-ARM64-85a927ce871a4b51cff59a8f9637e12e8031653e",
+      "bytes": 19689,
+      "api_declared_digest": "sha256:b5d36dbc044d8e78509a883ac1287bc205691d319f9b1efcd71a34b56d89ea7d",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13367189077,
+      "name": "protocol-macOS-ARM64",
+      "bytes": 1186,
+      "api_declared_digest": "sha256:1b177b9541057572dd306aec1188af3dc482cae9b9a4009304b2162794808e31",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    },
+    {
+      "id": 13366469774,
+      "name": "aot-native-interop-Windows-X64-85a927ce871a4b51cff59a8f9637e12e8031653e",
+      "bytes": 16702,
+      "api_declared_digest": "sha256:af02353509cf099568ec015df214f857c835a134379346958390877102829a07",
+      "retained": false,
+      "byte_download_or_predicate_audit": false
+    }
+  ],
+  "omissions": [
+    "Passing native/AOT/protocol ZIPs and their binaries, screenshots, raw case reports and job logs are not copied; only final metadata and API-declared artifact identities are retained.",
+    "The failed protocol artifact contains only three environment records; it has no survivor-index, heap graph, native rendering or ownership-cause record.",
+    "Scheduled/manual caller execution did not occur and is not qualified by this failed PR matrix."
+  ],
+  "archive_preparation": {
+    "base": "c4de68deee812cd816316b33f9276786e6eae5c8",
+    "scope": "Data/docs only; reads and hashes existing records/source; no test/native/GC/CI workload or installer invocation.",
+    "dependencies": "Existing task-owned dependency links reused for normal hooks; no install in archive worktree."
+  }
+}
