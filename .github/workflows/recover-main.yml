@@ -1,0 +1,84 @@
+# One-use operational branch only. Never merge this dispatch relay.
+name: Recover exact main qualification
+on:
+  push:
+    branches: [test/main-qualification-c9ada928-20261104]
+permissions: {}
+concurrency:
+  group: recover-main-c9ada928
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    name: Request missing main checks (not qualification)
+    if: github.repository == '0xPlayerOne/bun-native' && github.run_attempt == 1 && vars.CI_BILLING_PAUSED == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Guard the exact main SHA and dispatch only absent workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          REPOSITORY = "0xPlayerOne/bun-native"
+          EXPECTED = "c9ada928eb86ee44abeb85ba13721a68af0057d6"
+          WORKFLOWS = ("bun-native.yml", "codeql.yml")
+
+
+          def api(path, payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{REPOSITORY}/{path}",
+                  data=data,
+                  headers={
+                      "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                      "Accept": "application/vnd.github+json",
+                      "Content-Type": "application/json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      body = response.read()
+                      return json.loads(body) if body else None
+              except urllib.error.HTTPError as error:
+                  raise RuntimeError(f"GitHub API rejected {request.get_method()}: HTTP {error.code}") from None
+
+
+          def guard_main():
+              current = api("git/ref/heads/main")["object"]["sha"]
+              if current != EXPECTED:
+                  raise RuntimeError("main advanced; refusing to dispatch an unreviewed commit")
+
+
+          def main():
+              if os.environ["GITHUB_REPOSITORY"] != REPOSITORY:
+                  raise RuntimeError("Repository mismatch")
+              receipts = []
+              for workflow in WORKFLOWS:
+                  guard_main()
+                  existing = api(f"actions/workflows/{workflow}/runs?head_sha={EXPECTED}&per_page=100")
+                  if existing["total_count"]:
+                      receipts.append({"workflow": workflow, "state": "already-executed-or-pending"})
+                      continue
+                  guard_main()
+                  api(f"actions/workflows/{workflow}/dispatches", {"ref": "main"})
+                  receipts.append({"workflow": workflow, "state": "dispatch-request-accepted"})
+              guard_main()
+              report = {"expectedMain": EXPECTED, "receipts": receipts, "qualified": False}
+              print(json.dumps(report))
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                  summary.write("Requested missing exact-main workflows; their own results remain authoritative.\n\n")
+                  summary.write("```json\n" + json.dumps(report, indent=2) + "\n```\n")
+
+
+          if __name__ == "__main__":
+              main()
+          PY
