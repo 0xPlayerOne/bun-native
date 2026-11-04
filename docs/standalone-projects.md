@@ -9,6 +9,11 @@ AOT builds and later native GUI cases. Until those records are present, these
 commands describe the intended experimental contract, not a completed installation
 or native acceptance claim. The already qualified [checkout workflow](getting-started.md)
 remains available.
+The [first real local-package cohort](https://github.com/0xPlayerOne/bun-native/pull/394)
+produced its archives/templates but failed because its incomplete local-root lock
+was rejected. The complete-lock correction and its separate
+[parser-only controls](standalone-lock-parser-plan.md) do not by themselves qualify
+installation, relocation, AOT builds or native execution.
 
 ## Produce the local package set
 
@@ -57,8 +62,10 @@ directory is part of the project: commit it with the generated source/configurat
 and the resulting lockfile. Scripts and archive references are project-relative.
 The project does not extend a checkout configuration or import workspace paths.
 
-The initial lock seeds the original external dependency graph, but it has not
-yet recorded the new local tarballs. With an already populated cache:
+The initial lock contains the complete selected local archive graph, SHA-256
+integrities and the same `file:` overrides as the project manifest. It also
+preserves the original registry tuples and nested versions. A missing local
+root is rejected before installation. With an already populated cache:
 
 ```sh
 cd /absolute/new/my-app
@@ -103,7 +110,9 @@ matching archive/file digests, an exact regular-file inventory in each required
 local package, contained package roots and consistent internal dependency
 resolution. It compares the actually reachable pinned lock records, including
 nested locators and present optional peers. Unrelated added registry roots may
-coexist; a new nested locator under a required local package is rejected. Hashes
+coexist; a new nested locator under a required local package is rejected. Local
+archive rows and the complete override map must match the package set exactly.
+Hashes
 establish consistency with the supplied manifest, not a trusted-publisher signature.
 Verify the manifest and native-host artifact's origin separately.
 

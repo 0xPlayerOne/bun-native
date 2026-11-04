@@ -18,14 +18,16 @@ const { readProject } = await import(pathToFileURL(join(cli, 'scripts/native/pro
 const { verifyConsumerLock } = await import(
   pathToFileURL(join(cli, 'scripts/native/package-lock.ts')).href
 )
-const { requiredPackages } = await import(
+const { requiredPackages, consumerArchiveLock } = await import(
   pathToFileURL(join(cli, 'scripts/native/package-set.ts')).href
 )
 const validated = await readProject(cli, project)
 const set = await Bun.file(join(project, 'vendor/bun-native/manifest.json')).json()
 verifyConsumerLock(
   Bun.JSONC.parse(await Bun.file(join(project, 'bun.lock')).text()),
-  set.consumers[validated.framework].lock
+  set.consumers[validated.framework].lock,
+  false,
+  consumerArchiveLock(set, validated.framework)
 )
 const imports: { specifier: string; resolved: string; exports: string[] }[] = []
 if (mode === 'imports') {

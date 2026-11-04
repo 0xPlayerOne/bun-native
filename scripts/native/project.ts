@@ -198,7 +198,12 @@ export async function readProject(repository: string, path: string): Promise<Pro
     if (!inside(directory, manifestPath))
       throw new Error('Project packageSet resolves outside the project')
     const set = await readPackageSet(manifestPath)
-    await verifyInstalledPackages(directory, set.manifest, config['framework'])
+    await verifyInstalledPackages(
+      directory,
+      set.manifest,
+      config['framework'],
+      relative(directory, set.directory).split(sep).join('/')
+    )
     return {
       directory,
       framework: config['framework'],

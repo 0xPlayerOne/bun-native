@@ -6,6 +6,7 @@ import toolchain from '../../toolchain.json'
 import {
   dependencyClosure,
   lockedPackages,
+  localArchiveLock,
   verifyConsumerLock,
   type DependencyLock,
 } from './package-lock.ts'
@@ -185,6 +186,25 @@ export function requiredPackages(set: PackageSet, framework: 'solid' | 'react'):
   return [...required].sort()
 }
 
+export function consumerArchiveLock(
+  set: PackageSet,
+  framework: 'solid' | 'react',
+  archiveDirectory = 'vendor/bun-native'
+) {
+  return localArchiveLock(
+    requiredPackages(set, framework).map((name) => {
+      const pkg = set.packages[name]!
+      return {
+        name,
+        file: `${archiveDirectory ? archiveDirectory + '/' : ''}${pkg.archive.file}`,
+        sha256: pkg.archive.sha256,
+        ...(pkg.manifest.dependencies ? { dependencies: pkg.manifest.dependencies } : {}),
+        ...(pkg.manifest.bin ? { bin: pkg.manifest.bin } : {}),
+      }
+    })
+  )
+}
+
 /** Validates data only; archives are hashed separately before any destination is written. */
 export function parsePackageSet(value: unknown): PackageSet {
   const fields = object(value)
@@ -302,7 +322,8 @@ export async function readPackageSet(path: string): Promise<ReadPackageSet> {
 export async function verifyInstalledPackages(
   directory: string,
   set: PackageSet,
-  framework: 'solid' | 'react'
+  framework: 'solid' | 'react',
+  archiveDirectory = 'vendor/bun-native'
 ): Promise<void> {
   let modules: string
   try {
@@ -321,7 +342,7 @@ export async function verifyInstalledPackages(
     Bun.JSONC.parse(await Bun.file(join(directory, 'bun.lock')).text()),
     set.consumers[framework].lock,
     true,
-    required
+    consumerArchiveLock(set, framework, archiveDirectory)
   )
   const locations = new Map<string, string>()
   for (const name of required) {

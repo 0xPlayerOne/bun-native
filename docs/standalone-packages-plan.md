@@ -20,7 +20,10 @@ The initial implementation checkpoint and this release integration are source
 preparation, not prior consumer packaging, installation or build experiments.
 The eventual experiment must name the clean, published implementation commit,
 tree and full tracked-source hashes before its first package/install command.
-This plan does not describe an experiment that has already run.
+The original fixed cohort at published `c908049` ran once and failed on the first
+populated-cache install; [#394](https://github.com/0xPlayerOne/bun-native/pull/394)
+preserves its unchanged raw records and original plan. The corrected-lock cohort
+appended below remains unexecuted.
 
 Use the pinned Bun revision
 `da867c60bf0bcbf9d6d36994f8ca0efa42075115`. The available Linux x64 executable is
@@ -78,8 +81,11 @@ Overrides alone do not install an otherwise unused package.
 Preserve the committed external dependency graph as the initial lock seed,
 including the nested `babel-plugin-jsx-dom-expressions/@babel/helper-module-imports`
 resolution. The seed changes project/workspace metadata and removes workspace
-package locators; the first normal offline install records the local tarballs.
-It is explicitly **not** called a frozen install. Validate the resulting external
+package locators and supplies all six selected local-tarball rows immediately.
+Each raw relative tarball resolution carries its original dependency/bin INFO
+and archive SHA-256 SRI; the same six `file:` overrides appear in manifest and
+lock. Missing local roots must never be delegated to an install-time fallback.
+The first normal offline install is still explicitly **not** called a frozen install. Validate the resulting external
 package versions, integrity and dependency records against the source lock;
 reject unplanned resolution changes. A later frozen install reuses the generated
 consumer lock. Do not flatten distinct nested dependency versions with a global
@@ -98,7 +104,9 @@ consumer. Check internal package resolutions against those validated roots.
 Compare the actual reachable required registry lock graph, including nested
 locator identities and present optional peers, rather than filtering only known
 keys. Unexpected nested locators beneath required local packages are rejected;
-genuinely unrelated added registry roots can coexist with the pinned graph.
+genuinely unrelated added registry roots can coexist with the pinned graph. The
+complete local override map stays exact, including protection against selector
+and parent-scoped overrides targeting required packages.
 Retain the existing explicit absolute prebuilt-host header/OS/CPU
 guard, protocol handshake, AOT inspections and joined development teardown.
 
@@ -236,3 +244,37 @@ first-window observations. Do not infer GUI acceptance from source checks,
 imports or compilation. This local cohort does not run the 101-edit watch
 experiment, prove a memory plateau, establish physical-GPU behavior, qualify
 other OS/CPU combinations, or complete the broader release/support contract.
+
+## Corrected-lock cohort: prepared, not executed
+
+The first `c908049` run remains the failed outcome archived in #394. It produced
+seven source archives and four scaffolds, then the incomplete lock caused both
+offline attempts to report invalid-lock fallback and missing registry manifests.
+Its original empty-cache label is preserved separately from the audited mixed,
+unqualified interpretation. Nothing below replaces that result.
+
+The correction constructs the full local-tarball lock before installation,
+retains all original registry tuples, and validates exact local rows and overrides.
+The tightened empty-cache predicate requires exit 1 and only the pinned Bun's
+known missing-registry-cache forms; invalid-lock fallback, crashes and unrelated
+errors cannot satisfy it. Four separately predeclared
+[parser-only controls](standalone-lock-parser-plan.md) verify that text-lock
+contract without installing or extracting anything.
+
+Only after the corrected implementation and parser evidence are statically
+reviewed and the exact complete source is published, a new source-bound consumer
+cohort may execute the existing fixed harness once. It uses a new owned output,
+new empty cache and new contained copy of the same existing populated cache;
+the source tool setup is reused without another framework install. Record the
+actual published HEAD/tree, source/harness hashes and unchanged pinned Bun/host
+bytes before starting.
+
+Its counts and budgets remain the fixed matrix above: seven package calls, four
+creates, nine consumer installs (one empty-cache negative, four initial and four
+relocated frozen), four lock inspections, four checks/public-import inspections/
+AOT builds, and eight invalid-input cases. Command order, deadlines, sentinel and
+ownership limits remain unchanged. A first unexpected result stops this new
+cohort and leaves later operations unrun. No retry, changed dependency version,
+online cache population, additional variant or application/native/GC execution is
+part of the correction. Its real outcome must be retained separately from #394
+and from the parser-only regression.

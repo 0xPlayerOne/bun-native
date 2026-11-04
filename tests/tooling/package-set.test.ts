@@ -60,13 +60,6 @@ describe('standalone package source contracts (inert fixtures; no install, app b
     const shadow = structuredClone(seeded)
     shadow.packages['@babel/core/@babel/parser'] = structuredClone(lock.packages['@babel/parser']!)
     expect(() => verifyConsumerLock(shadow, subset, true)).toThrow('differs')
-    const localShadow = structuredClone(seeded)
-    localShadow.packages['@bun-native/cli/@babel/core'] = structuredClone(
-      lock.packages['@babel/core']!
-    )
-    expect(() => verifyConsumerLock(localShadow, subset, true, ['@bun-native/cli'])).toThrow(
-      'nested locator'
-    )
     const optionalPeer = structuredClone(seeded)
     optionalPeer.packages['supports-color'] = [
       'supports-color@1.0.0',

@@ -69,6 +69,37 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
+def missing_registry_cache_failure(exit_code, stderr, packages):
+    """A cache negative must not hide an invalid-lock fallback or another error."""
+    message = re.sub(r"\x1b\[[0-9;]*m", "", stderr)
+    if exit_code != 1 or "InvalidLockfile" in message or "Ignoring lockfile" in message:
+        return False
+    identities = {entry[0] for entry in packages.values()}
+    names = {identity.rsplit("@", 1)[0] for identity in identities}
+    missing = set()
+    resolutions = []
+    for line in message.splitlines():
+        if not line.startswith("error:"):
+            continue
+        match = re.fullmatch(
+            r'error: --offline: no cached manifest for "([^"]+)" \(run once online, or use --prefer-offline\)',
+            line,
+        )
+        if match and match[1] in names:
+            missing.add(match[1])
+            continue
+        match = re.fullmatch(r'error: --offline: "([^"]+)" is not in the cache', line)
+        if match and match[1] in names:
+            missing.add(match[1])
+            continue
+        match = re.fullmatch(r"error: (\S+) failed to resolve", line)
+        if match and match[1] in identities:
+            resolutions.append(match[1].rsplit("@", 1)[0])
+            continue
+        return False
+    return bool(missing) and all(name in missing for name in resolutions)
+
+
 def inventory(directory):
     """Record files and original links without following directory symlinks."""
     result = {}
@@ -683,19 +714,14 @@ class Cohort:
                 record, _, stderr = self.install(
                     "install-empty-cache", project, cache=self.output / "cache/empty"
                 )
-                message = re.sub(r"\x1b\[[0-9;]*m", "", stderr.read_text())
-                registry_names = self.packages["consumers"][framework]["lock"][
+                registry_packages = self.packages["consumers"][framework]["lock"][
                     "packages"
                 ]
                 require(
-                    record["exit_code"] != 0
-                    and any(name in message for name in registry_names)
-                    and re.search(
-                        r"offline|cache|not found|not resolve|failed to resolve",
-                        message,
-                        re.IGNORECASE,
+                    missing_registry_cache_failure(
+                        record["exit_code"], stderr.read_text(), registry_packages
                     ),
-                    "Empty-cache failure did not establish a missing registry dependency",
+                    "Empty-cache outcome was not exclusively missing pinned registry packages",
                 )
                 case["empty_cache_control"] = {
                     "status": "passed",
