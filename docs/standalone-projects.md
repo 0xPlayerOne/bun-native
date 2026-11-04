@@ -1,23 +1,27 @@
 # Standalone projects from local package sets
 
 The `create --packages` mode uses local archives of the existing Bun Native CLI and libraries
-for a project outside the framework checkout. It is the implementation lane for
-[#382](https://github.com/0xPlayerOne/bun-native/issues/382). Its initial source
-controls use inert package fixtures; the [fixed qualification plan](standalone-packages-plan.md)
-separately specifies real package production, offline installation, relocation,
-AOT builds and later native GUI cases. Until those records are present, these
-commands describe the intended experimental contract, not a completed installation
-or native acceptance claim. The already qualified [checkout workflow](getting-started.md)
-remains available.
-The [first real local-package cohort](https://github.com/0xPlayerOne/bun-native/pull/394)
-produced its archives/templates but failed because its incomplete local-root lock
-was rejected. The complete-lock correction and its separate
-[parser-only controls](standalone-lock-parser-plan.md) do not by themselves qualify
-installation, relocation, AOT builds or native execution.
-The separate corrected-lock cohort at `7e102937` reached a successful first
-populated-cache Solid TypeScript install, then stopped before imports because
-its inventory oracle did not account for Bun's installer-owned `.bun-tag`.
-The exact marker correction remains unqualified by a new consumer cohort.
+for a project outside the framework checkout. It advances
+[#382](https://github.com/0xPlayerOne/bun-native/issues/382). The
+[recorded local cohort](https://github.com/0xPlayerOne/bun-native/pull/403) passed
+once at published source `cba506b844eb6b91dbdd085389d43690539c1186`: all four
+Solid/React TypeScript/JavaScript consumers installed offline, moved to unrelated
+paths, reinstalled with frozen locks, passed strict checks and public import
+inspection, and produced inspected AOT builds. Its eight invalid-input controls
+also passed. No application or native host was executed. The
+[hosted native plan](standalone-native-plan.md) remains a separate, unexecuted
+qualification. The accepted [checkout workflow](getting-started.md) also remains
+available.
+
+Earlier source-specific failures remain preserved. The
+[first cohort](https://github.com/0xPlayerOne/bun-native/pull/394) failed because
+its initial lock omitted local package records. The
+[parser controls](https://github.com/0xPlayerOne/bun-native/pull/397) retain their
+failed first diagnostic expectation separately from the three later completed
+calls. The [corrected-lock cohort](https://github.com/0xPlayerOne/bun-native/pull/400)
+at `7e102937` stopped after its first successful populated-cache install because
+the file oracle did not account for Bun's exact installer-owned `.bun-tag`.
+The subsequent marker correction and full local pass do not change those outcomes.
 
 ## Produce the local package set
 
@@ -143,6 +147,6 @@ The resulting AOT directory keeps the existing compiled-program/JIT-omission
 inspections and caller-supplied host digest, plus the package-set source identity.
 It is unsigned. Its manifest continues to mark GUI/input/teardown as `not-run`:
 package creation and compilation are not native window qualification. The
-separate hosted plan must exercise the actual installed `dev` command and AOT
+separate [hosted plan](standalone-native-plan.md) must exercise the actual installed `dev` command and AOT
 application with owned OS input, complete paint and joined cleanup before those
 claims are made.

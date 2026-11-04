@@ -2,15 +2,27 @@
 
 This is the fixed hosted follow-up to the local installation and build study in
 [#388](https://github.com/0xPlayerOne/bun-native/pull/388). Preparation of this
-harness is not an executed installation or native result. The corrected local
-consumer cohort and independent source reviews must complete before the first
-hosted qualification. Its earlier failed captures remain failed and source-bound.
+harness is not an executed installation or native result. The
+[corrected local cohort](https://github.com/0xPlayerOne/bun-native/pull/403) passed
+once at `cba506b844eb6b91dbdd085389d43690539c1186`: all four relocated consumers
+passed offline installation, strict checks, public imports and inspected AOT
+builds, with all eight invalid-input controls passing. It executed no application
+or native host. This hosted plan still requires its independent source reviews
+and first source-bound qualification. Earlier failures in
+[#394](https://github.com/0xPlayerOne/bun-native/pull/394),
+[#397](https://github.com/0xPlayerOne/bun-native/pull/397) and
+[#400](https://github.com/0xPlayerOne/bun-native/pull/400) remain failed and source-bound.
 
 ## Source and environment
 
-The first prepared source starts from local integration `01d85b6deb302fb3a594bd4981cc745e043b9061`,
-tree `1dea214842f25d93c8c03c61a7fce66ad7d540d5`, containing the reviewed package
-implementation and accepted main release `c4de68deee812cd816316b33f9276786e6eae5c8`.
+The first normal-hook preparation checkpoint `05e504726f6888de00ba9b1a007e3117c5cba910`
+is preserved on its original local integration `01d85b6deb302fb3a594bd4981cc745e043b9061`.
+Its delta was normally cherry-picked onto actual published source
+`cba506b844eb6b91dbdd085389d43690539c1186`, tree
+`afdfcee8bc95042cddc385e55efe454e3d433b57`, which contains the exact installer-marker
+correction and accepted main release `c4de68deee812cd816316b33f9276786e6eae5c8`.
+The cba local result retains its original complete source identity; it is not a
+measurement of this new controller or the extracted shared receipt helper.
 The final published source commit and tree must be recorded before readiness;
 CI checks out and records its actual tested merge separately. No prepared source
 is rerun merely to replace a failed outcome.

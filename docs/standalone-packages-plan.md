@@ -25,7 +25,9 @@ populated-cache install; [#394](https://github.com/0xPlayerOne/bun-native/pull/3
 preserves its unchanged raw records and original plan. The separate corrected-lock
 cohort at `7e102937` reached its first populated-cache install, then failed the
 installed-file inventory check described below. The installed-metadata correction
-and its appended cohort plan remain unexecuted.
+then completed this fixed cohort once at `cba506b844eb6b91dbdd085389d43690539c1186`;
+the recorded outcome below is separate from both failed consumer cohorts and the
+parser-only result.
 
 Before that corrected cohort, the branch normally integrates accepted main
 `c4de68deee812cd816316b33f9276786e6eae5c8`. The incoming changes are the landed
@@ -257,7 +259,7 @@ this harness's scope.
 
 ## Native follow-up and limits
 
-A separate reviewed hosted-CI plan will qualify all four installed consumer
+A separate reviewed [hosted-CI plan](standalone-native-plan.md) will qualify all four installed consumer
 templates through the actual `dev` command and inspected AOT application,
 requiring real owned OS input, complete counter paints, native close and joined
 zero-resource teardown. Reuse the existing native driver/owner contracts and
@@ -300,7 +302,7 @@ one 52-byte root marker. No installed import/check, remaining install, relocatio
 AOT or invalid-input case ran. The exact failed outcome, including that stop,
 remains separate from #394 and the parser controls.
 
-## Installed-metadata cohort: prepared, not executed
+## Installed-metadata cohort: fixed plan and recorded outcome
 
 The bounded correction retains exact source inventories and adds only the required
 pinned marker to installed inventories. Inert controls cover the recorded marker,
@@ -324,3 +326,24 @@ and leaves later operations unrun. No retry, changed dependency version, online
 cache population, additional variant or application/native/GC execution is part
 of the correction. Its outcome must remain separate from the two prior failed
 consumer cohorts and the parser-only regression.
+
+### Recorded local outcome
+
+The fixed cohort ran once on published
+`cba506b844eb6b91dbdd085389d43690539c1186`, tree
+`afdfcee8bc95042cddc385e55efe454e3d433b57`, and passed. The
+[closed research archive #403](https://github.com/0xPlayerOne/bun-native/pull/403)
+retains the original plan, source inventories, all command logs, actual bundles,
+source maps and compiler receipts. Seven packs, four creates, nine installs
+(including the expected empty-cache rejection and four frozen relocated
+reinstalls), four lock inspections, four checks, four public-import inspections,
+four inspected AOT builds and eight invalid-input controls met their declared
+outcomes. All 38 directly supervised commands joined without forced termination.
+The original direct-child scope remains; it does not establish a general
+descendant-process or native teardown result.
+
+No generated application, compiled application or native host ran. There was no
+Cargo/Rust sentinel invocation. This source-bound local pass precedes the shared
+receipt extraction and new hosted controller, which are separate source changes.
+The hosted eight-case GUI matrix remains unexecuted; the local result does not
+qualify native input, pixels, close, watch, physical GPU or additional platforms.
