@@ -2,7 +2,7 @@ import { parseSync, Visitor, type Expression } from 'oxc-parser'
 import { readdir } from 'node:fs/promises'
 import { dirname, relative, resolve, sep } from 'node:path'
 
-type Edge = { target: string; names: readonly string[] | 'all' | 'named' }
+type Edge = { target: string; names: readonly string[] | 'all' | 'star' }
 type Source = { exports: Set<string>; values: Set<string>; edges: Edge[] }
 type Manifest = { exports?: unknown; bin?: unknown }
 
@@ -77,7 +77,7 @@ function inspectSource(
           entry.importName.kind === 'All'
             ? 'all'
             : entry.importName.kind === 'AllButDefault'
-              ? 'named'
+              ? 'star'
               : entry.importName.name
                 ? [entry.importName.name]
                 : []
@@ -105,6 +105,29 @@ function inspectSource(
   return result
 }
 
+function exportedNames(sources: ReadonlyMap<string, Source>): Map<string, Set<string>> {
+  const visible = new Map<string, Set<string>>()
+  for (const [file, source] of sources) visible.set(file, new Set(source.exports))
+  // Resolve transitive star surfaces before namespace/public roots request their members.
+  // Sets only grow, so cyclic barrels converge without recursive import-order dependence.
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [file, source] of sources) {
+      const names = visible.get(file)!
+      for (const edge of source.edges) {
+        if (edge.names !== 'star') continue
+        for (const name of visible.get(edge.target)!) {
+          if (name === 'default' || names.has(name)) continue
+          names.add(name)
+          changed = true
+        }
+      }
+    }
+  }
+  return visible
+}
+
 /** Audit production package source, without counting test-only consumers as live roots. */
 export async function checkSourceHealth(root: string): Promise<string[]> {
   const errors: string[] = []
@@ -128,28 +151,41 @@ export async function checkSourceHealth(root: string): Promise<string[]> {
     if (!entries.size)
       errors.push(`${label}/package.json: no explicit source exports or bin entries`)
 
-    const reachable = new Set<string>()
+    const visible = exportedNames(sources)
     const used = new Map<string, Set<string>>()
-    const visit = (file: string): void => {
-      if (reachable.has(file)) return
-      reachable.add(file)
-      for (const edge of sources.get(file)!.edges) {
-        const names = used.get(edge.target) ?? new Set<string>()
-        used.set(edge.target, names)
+    const pending: string[] = []
+    const request = (file: string, names: Iterable<string>): void => {
+      const previous = used.get(file)
+      const requested = previous ?? new Set<string>()
+      const size = requested.size
+      for (const name of names) requested.add(name)
+      used.set(file, requested)
+      // Even an empty request reaches side-effect modules. Revisit a barrel when
+      // a later consumer adds names; the first path through it is not exhaustive.
+      if (!previous || requested.size !== size) pending.push(file)
+    }
+    for (const entry of entries) request(entry, visible.get(entry)!)
+    for (let index = 0; index < pending.length; index += 1) {
+      const file = pending[index]!
+      const source = sources.get(file)!
+      for (const edge of source.edges) {
         const imported =
-          typeof edge.names === 'string'
-            ? [...sources.get(edge.target)!.exports].filter(
-                (name) => edge.names === 'all' || name !== 'default'
-              )
-            : edge.names
-        for (const name of imported) names.add(name)
-        visit(edge.target)
+          edge.names === 'all'
+            ? visible.get(edge.target)!
+            : edge.names === 'star'
+              ? [...used.get(file)!].filter(
+                  (name) =>
+                    name !== 'default' &&
+                    !source.exports.has(name) &&
+                    visible.get(edge.target)!.has(name)
+                )
+              : edge.names
+        request(edge.target, imported)
       }
     }
-    for (const entry of entries) visit(entry)
     for (const [file, source] of sources) {
       const path = portable(relative(root, file))
-      if (!reachable.has(file)) {
+      if (!used.has(file)) {
         errors.push(`${path}: source is unreachable from package exports/bin`)
       } else if (!entries.has(file)) {
         // Types may name an exported function/class's inferred contract even without an import.

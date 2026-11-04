@@ -88,6 +88,56 @@ describe('production package source health', () => {
     expect(await checkSourceHealth(root)).toEqual([])
   })
 
+  test('reports unrequested values behind a selectively reexported internal wildcard', async () => {
+    const root = await fixture({
+      'index.ts': 'export { live as publicValue } from "./barrel";',
+      'barrel.ts': 'export * from "./helper";',
+      'helper.ts': 'export const live = 1, obsolete = 2;',
+    })
+    expect(await checkSourceHealth(root)).toEqual([
+      'packages/example/src/helper.ts: unused internal export obsolete',
+    ])
+  })
+
+  test('propagates later consumers through cyclic wildcard barrels', async () => {
+    const root = await fixture({
+      'index.ts': 'export { first } from "./barrel"; export { second } from "./consumer";',
+      'consumer.ts': 'export { second } from "./barrel";',
+      'barrel.ts': 'export * from "./cycle";',
+      'cycle.ts': 'export * from "./barrel"; export * from "./helper";',
+      'helper.ts': 'export const first = 1, second = 2, obsolete = 3;',
+    })
+    expect(await checkSourceHealth(root)).toEqual([
+      'packages/example/src/helper.ts: unused internal export obsolete',
+    ])
+  })
+
+  test.each([
+    'export * from "./barrel";',
+    'export * as values from "./barrel";',
+    'import * as values from "./barrel"; export { values };',
+    'export const values = import("./barrel");',
+  ])('keeps transitive public wildcard and namespace members: %s', async (source) => {
+    const root = await fixture({
+      'index.ts': source,
+      'barrel.ts': 'export * from "./nested";',
+      'nested.ts': 'export * from "./helper";',
+      'helper.ts': 'export const first = 1, second = 2;',
+    })
+    expect(await checkSourceHealth(root)).toEqual([])
+  })
+
+  test('does not consume a wildcard value shadowed by an explicit barrel export', async () => {
+    const root = await fixture({
+      'index.ts': 'export { live } from "./barrel";',
+      'barrel.ts': 'export * from "./helper"; export const live = 1;',
+      'helper.ts': 'export const live = 2;',
+    })
+    expect(await checkSourceHealth(root)).toEqual([
+      'packages/example/src/helper.ts: unused internal export live',
+    ])
+  })
+
   test('accepts conditional public subpaths and explicit CLI entries', async () => {
     const root = await fixture(
       {
