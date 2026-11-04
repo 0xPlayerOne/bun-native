@@ -1,0 +1,97 @@
+# One-use research transport. Never merge or treat as qualification.
+name: Prepare exact-source ownership workbench
+on:
+  push:
+    branches: [test/ownership-workbench-20261104]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: control
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          path: source
+      - name: Check immutable source identity
+        working-directory: source
+        run: |
+          test "$(git rev-parse HEAD)" = 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          test "$(git rev-parse 'HEAD^{tree}')" = 39482669d2095b95d3d75a808a188a231937035c
+          test -z "$(git status --porcelain)"
+          mkdir -p "$RUNNER_TEMP/ownership-workbench/tools"
+      - name: Install repository-pinned tools and dependencies
+        working-directory: source
+        run: |
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/ownership-workbench/tools" > "$RUNNER_TEMP/ownership-workbench/bun-install.json"
+          "$RUNNER_TEMP/ownership-workbench/tools/bun" install --frozen-lockfile
+          curl --fail --location --max-time 45 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '%s  %s\n' 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/ownership-workbench/tools" actionlint
+          "$RUNNER_TEMP/ownership-workbench/tools/actionlint" ../control/.github/workflows/ownership-workbench.yml
+      - name: Package only public source, frozen dependencies and verified tools
+        working-directory: source
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import tarfile
+
+          source = Path.cwd().resolve()
+          output = Path(os.environ['RUNNER_TEMP']) / 'ownership-workbench'
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          if head != '2a9516337fe99e3585ff8f55e97c7392fad2f372' or tree != '39482669d2095b95d3d75a808a188a231937035c':
+              raise RuntimeError('Source identity changed')
+          if subprocess.check_output(['git', 'status', '--porcelain']).strip():
+              raise RuntimeError('Tracked or untracked source changed during installation')
+          dependencies = source / 'node_modules'
+          for path in dependencies.rglob('*'):
+              if path.is_symlink() and not path.resolve().is_relative_to(source):
+                  raise RuntimeError('Dependency symlink escapes owned checkout')
+              if path.name == '.env' or path.name.startswith('.env.') or path.name == '.npmrc':
+                  raise RuntimeError('Refuse environment or credential configuration')
+          subprocess.run(['git', 'archive', '--format=tar.gz', '--output=' + str(output / 'source.tar.gz'), 'HEAD'], check=True)
+          (output / 'source-tree.txt').write_bytes(subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD']))
+          with tarfile.open(output / 'dependencies.tar.gz', 'w:gz', dereference=False) as archive:
+              archive.add(dependencies, arcname='node_modules')
+          with tarfile.open(output / 'tools.tar.gz', 'w:gz') as archive:
+              for name in ('bun', 'actionlint'):
+                  archive.add(output / 'tools' / name, arcname='tools/' + name)
+          files = {}
+          for name in ('source.tar.gz', 'dependencies.tar.gz', 'tools.tar.gz', 'source-tree.txt', 'bun-install.json'):
+              path = output / name
+              if path.stat().st_size > 400 * 1024 * 1024:
+                  raise RuntimeError('Workbench component exceeds size limit')
+              digest = hashlib.file_digest(path.open('rb'), 'sha256').hexdigest()
+              files[name] = {'bytes': path.stat().st_size, 'sha256': digest}
+          revision = subprocess.check_output([str(output / 'tools/bun'), '--no-script', '--eval', 'console.log(Bun.revision)'], text=True).strip()
+          if revision != 'da867c60bf0bcbf9d6d36994f8ca0efa42075115':
+              raise RuntimeError('Unexpected runtime revision')
+          report = {'sourceCommit': head, 'sourceTree': tree, 'bunRevision': revision, 'files': files,
+                    'scope': 'Offline source debugging inputs only; no test or merge qualification'}
+          (output / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ownership-workbench-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ownership-workbench/*.tar.gz
+            ${{ runner.temp }}/ownership-workbench/*.txt
+            ${{ runner.temp }}/ownership-workbench/*.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
