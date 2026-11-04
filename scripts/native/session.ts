@@ -21,13 +21,28 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined
 }
 
-function cleanStop(value: Record<string, unknown>): boolean {
+type StoppedResources = {
+  application: Record<(typeof diagnosticKeys)[number], 0>
+  nodes: 0
+}
+
+export type TeardownReport = StoppedResources & { pid: number; clean: true }
+
+function cleanStop(value: Record<string, unknown>): StoppedResources | undefined {
   const application = record(value['application'])
-  return (
-    value['nodes'] === 0 &&
-    application !== undefined &&
-    diagnosticKeys.every((key) => application[key] === 0)
+  if (
+    value['nodes'] !== 0 ||
+    application === undefined ||
+    !diagnosticKeys.every((key) => application[key] === 0)
   )
+    return undefined
+  return {
+    // Copy only the counters validated above; retain no arbitrary child payload.
+    application: Object.fromEntries(
+      diagnosticKeys.map((key) => [key, application[key]])
+    ) as StoppedResources['application'],
+    nodes: 0,
+  }
 }
 
 async function bounded<T>(value: Promise<T>, milliseconds: number, message: string): Promise<T> {
@@ -53,7 +68,7 @@ type OwnedProcess = {
   terminated: boolean
   mounted: boolean
   stopping: boolean
-  clean: boolean
+  resources: StoppedResources | undefined
 }
 
 export type RemountReport = {
@@ -64,14 +79,14 @@ export type RemountReport = {
   shutdownMs: number
   mountMs: number
   editToReadyMs: number
-  previous?: { pid: number; clean: true }
+  previous?: TeardownReport
 }
 
 /** One app process at a time; its native host belongs to that app's public core. */
 export class DevSession {
   private current: OwnedProcess | undefined
   private active: Promise<RemountReport> | undefined
-  private closing: Promise<void> | undefined
+  private closing: Promise<TeardownReport | undefined> | undefined
   private stopped = false
   private generation = 0
   private readonly completion = Promise.withResolvers<number>()
@@ -98,21 +113,23 @@ export class DevSession {
     return this.active
   }
 
-  close(): Promise<void> {
+  close(): Promise<TeardownReport | undefined> {
     this.stopped = true
     return (this.closing ??= (async () => {
       try {
         await this.active?.catch(() => {})
         const previous = this.current
         this.current = undefined
+        let teardown: TeardownReport | undefined
         if (previous) {
           try {
-            await this.stop(previous)
+            teardown = await this.stop(previous)
           } finally {
             if (!previous.terminated) this.current = previous
           }
         }
         this.completion.resolve(0)
+        return teardown
       } finally {
         // A failed app can already be reaped while its teardown error must still
         // propagate. Remove only this session's root once no process owns it.
@@ -139,7 +156,7 @@ export class DevSession {
           owner.mounted = true
           ready.resolve()
         } else if (value?.['type'] === 'bun-native:stopped' && owner) {
-          owner.clean = cleanStop(value)
+          owner.resources = cleanStop(value)
         }
       },
       onDisconnect: () => {
@@ -151,7 +168,7 @@ export class DevSession {
         await disconnected.promise
         if (owner?.mounted && !owner.stopping) {
           this.stopped = true
-          this.completion.resolve(code === 0 && owner.clean ? 0 : 1)
+          this.completion.resolve(code === 0 && owner.resources ? 0 : 1)
         }
       },
     })
@@ -168,15 +185,15 @@ export class DevSession {
       terminated: false,
       mounted: false,
       stopping: false,
-      clean: false,
+      resources: undefined,
     }
     return owner
   }
 
-  private async stop(owner: OwnedProcess): Promise<void> {
+  private async stop(owner: OwnedProcess): Promise<TeardownReport> {
     owner.stopping = true
     try {
-      if (!owner.terminated && !owner.clean) {
+      if (!owner.terminated && !owner.resources) {
         // The child may be closing normally while this request is in flight.
         // Always join exit and validate its final acknowledgement below.
         try {
@@ -190,10 +207,11 @@ export class DevSession {
         this.timeoutMs,
         'Application did not acknowledge shutdown in time'
       )
-      if (code !== 0 || !owner.clean)
+      if (code !== 0 || !owner.resources)
         throw new Error(
           `Application did not report clean teardown (exit ${code}); preserve the template dev-control hooks`
         )
+      return { pid: owner.child.pid, clean: true, ...owner.resources }
     } catch (error) {
       if (!owner.terminated) {
         owner.child.kill('SIGKILL')
@@ -223,9 +241,10 @@ export class DevSession {
       if (this.stopped) throw new Error('Development session is closed')
       const previous = this.current
       this.current = undefined
+      let teardown: TeardownReport | undefined
       if (previous) {
         try {
-          await this.stop(previous)
+          teardown = await this.stop(previous)
         } catch (error) {
           if (!previous.terminated) this.current = previous
           this.stopped = true
@@ -251,7 +270,7 @@ export class DevSession {
         shutdownMs: joined - bundled,
         mountMs: ready - joined,
         editToReadyMs: ready - changedAt,
-        ...(previous ? { previous: { pid: previous.child.pid, clean: true as const } } : {}),
+        ...(teardown ? { previous: teardown } : {}),
       }
     } catch (error) {
       if (owner) {

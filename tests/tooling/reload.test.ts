@@ -11,13 +11,25 @@ import {
 import { dirname, join, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
-import { DevSession } from '../../scripts/native/session.ts'
+import { DevSession, type TeardownReport } from '../../scripts/native/session.ts'
 import { watchProject } from '../../scripts/native/watch.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 let directory: string
 let peer: string
 let peerLog: string
+const zeroResources = {
+  application: {
+    windows: 0,
+    nodes: 0,
+    callbacks: 0,
+    queuedTransactions: 0,
+    queuedCallbacks: 0,
+    activeCallbacks: 0,
+    serviceRequests: 0,
+  },
+  nodes: 0,
+} as const
 
 beforeAll(() => {
   mkdirSync(join(repository, '.bun-native'), { recursive: true })
@@ -149,7 +161,7 @@ describe('development remounts (real Bun processes and headless protocol peer, n
           expect(result.generation).toBe(index + 1)
           expect(readFileSync(mounted, 'utf8')).toBe(String(index))
           if (previous !== undefined) {
-            expect(result.previous).toEqual({ pid: previous, clean: true })
+            expect(result.previous).toEqual({ pid: previous, clean: true, ...zeroResources })
             expect(isAlive(previous)).toBe(false)
             timings.push(result.editToReadyMs)
           }
@@ -203,7 +215,7 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       expect(readdirSync(session.temporaryDirectory).length).toBe(1)
       writeFileSync(project.entry, original)
       const second = await session.reload()
-      expect(second.previous).toEqual({ pid: first.pid, clean: true })
+      expect(second.previous).toEqual({ pid: first.pid, clean: true, ...zeroResources })
       expect(isAlive(first.pid)).toBe(false)
     } finally {
       await session.close()
@@ -275,6 +287,32 @@ describe('development remounts (real Bun processes and headless protocol peer, n
     expect(existsSync(session.temporaryDirectory)).toBe(false)
   })
 
+  test('never reports a clean stop for missing, boolean or nonzero resource counters', async () => {
+    const invalid = [
+      { ...zeroResources, nodes: 1 },
+      { ...zeroResources, application: { ...zeroResources.application, callbacks: true } },
+      { ...zeroResources, application: {} },
+    ]
+    for (const [index, resources] of invalid.entries()) {
+      const path = await createProject(
+        repository,
+        join(directory, `bad-stop-${index}`),
+        'solid',
+        'typescript'
+      )
+      const project = await readProject(repository, path)
+      writeFileSync(
+        project.entry,
+        `process.on('message', () => { process.send?.(${JSON.stringify({ type: 'bun-native:stopped', ...resources })}); process.disconnect?.() })\nprocess.send?.({type:'bun-native:ready'})\n`
+      )
+      const session = new DevSession(repository, path, peer)
+      const ready = await session.reload()
+      expect((await rejected(session.close())).message).toContain('clean teardown')
+      expect(isAlive(ready.pid)).toBe(false)
+      expect(existsSync(session.temporaryDirectory)).toBe(false)
+    }
+  })
+
   test('watches imported components, retains failed edits and coalesces rapid saves', async () => {
     const path = await createProject(repository, join(directory, 'watcher'), 'solid', 'typescript')
     const project = await readProject(repository, path)
@@ -318,6 +356,11 @@ describe('development remounts (real Bun processes and headless protocol peer, n
         .filter((line) => line.startsWith('bun-native:ready '))
         .map((line) => JSON.parse(line.slice('bun-native:ready '.length)) as { bundle: string })
       expect(reports.length).toBe(2)
+      const stopped = output.filter((line) => line.startsWith('bun-native:stopped '))
+      expect(stopped).toHaveLength(1)
+      const teardown = JSON.parse(stopped[0]!.slice('bun-native:stopped '.length)) as TeardownReport
+      expect(teardown).toEqual({ pid: teardown.pid, clean: true, ...zeroResources })
+      expect(isAlive(teardown.pid)).toBe(false)
       for (const report of reports) expect(existsSync(dirname(dirname(report.bundle)))).toBe(false)
       expect(existsSync(join(path, '.bun-native'))).toBe(false)
       assertJoined(lifetimes().slice(start), 2)

@@ -92,6 +92,7 @@ export async function watchProject(
     watcher?.close()
     process.off('SIGINT', stop)
     process.off('SIGTERM', stop)
-    await session.close()
+    const teardown = await session.close()
+    if (teardown) console.log('bun-native:stopped ' + JSON.stringify(teardown))
   }
 }

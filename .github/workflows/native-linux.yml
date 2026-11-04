@@ -419,6 +419,22 @@ jobs:
             done
           done
           exit "$template_status"
+      - name: Native CLI watch with 101 source-edit remounts per framework
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 14
+        run: |
+          watch_status=0
+          for framework in solid react; do
+            evidence="$NATIVE_EVIDENCE/cli-watch-$framework"
+            if ! xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- python3 tests/native/cli-watch.py \
+              --framework "$framework" --output "$evidence" --bun "$(command -v bun)" \
+              --host "$GITHUB_WORKSPACE/target/release/bun-native-host"; then
+              watch_status=1
+            fi
+          done
+          exit "$watch_status"
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
@@ -438,6 +454,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/binary-*.txt
             ${{ runner.temp }}/native-evidence/unsigned-native-host.tar.gz*
             ${{ runner.temp }}/native-evidence/cli-templates/
+            ${{ runner.temp }}/native-evidence/cli-watch-*/
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/application
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/bun-native-host
             ${{ runner.temp }}/native-evidence/clipboard-peer-*.txt
@@ -483,6 +500,7 @@ jobs:
             echo 'Startup rollback, an ownership-checked native child crash, final native child reordering, and input delivered during a sustained bounded command stream run in development and inspected AOT. A serial control records the same input observation without the command flood.'
             echo 'The native input checks use isolated X11, XTest and verified Mesa software rendering. Exact paint trees, screenshots, source/artifact hashes and cleanup reports are retained.'
             echo 'All four unchanged CLI templates (Solid/React × TypeScript/JavaScript) are created, checked and compiled by the checkout CLI, then run from an unrelated working directory in development and inspected AOT. Each requires native pointer down/up, the complete counter paint changing from zero to one, native OS close, exactly one ready/zero-resource stopped IPC pair, and joined app/host cleanup. This is one bounded interaction per variant and mode, not native reload-cycle or independent-installation qualification.'
+            echo 'The exact CLI dev --watch command performs an initial native launch and 101 source-edit remounts for each Solid/React TypeScript template. Every generation requires a unique source label, a complete reset counter paint, real XTest click/down/up and counter-one paint, validated zero-resource previous teardown, immutable app/host process identities and no observed overlap. A rejected syntax edit preserves a responsive working app; final OS close must exit watch with zero resources and remove its owned temporary root. A PATH sentinel and unchanged host/compiler hashes guard ordinary edits against native rebuilds. Edit-to-ready/paint/input-confirmed-paint intervals are instrumented observations, not presentation or cross-framework performance claims.'
             echo 'The Linux clipboard service uses an independent owned X11 peer in development and inspected AOT. Required outcomes cover immutable grants, ordinary/delayed/INCR text, payload and metadata rejection, owner loss, bounded stalled transfers with responsive input/commits, cancellation, idle worker sleep, selection persistence and joined cleanup. This does not qualify clipboard support on Wayland, macOS or Windows.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
