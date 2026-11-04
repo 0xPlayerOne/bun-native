@@ -664,9 +664,7 @@ def main():
             and not adapter_cleanup_matches(application, args.framework)
         ):
             report["status"] = "failed"
-            report["adapterCleanupError"] = (
-                "Exact framework ownership was not revoked"
-            )
+            report["adapterCleanupError"] = "Exact framework ownership was not revoked"
         report["nativeShutdownAndExitVerified"] = application.get(
             "nativeShutdownAndExitVerified", False
         )
