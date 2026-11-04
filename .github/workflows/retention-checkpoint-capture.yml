@@ -1,0 +1,35 @@
+# Isolated research branch only. This never supplies or replaces Validation / Gate.
+name: Windows pre-collection stack observation
+on:
+  push:
+    branches: [diagnostic/pre-gc-stack-20261104]
+permissions:
+  contents: read
+jobs:
+  observe:
+    name: Record fixed observations (not qualification)
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Compile bounded observer and retain all fixed outcomes
+        run: python experiments/retention-checkpoints/run.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: pre-gc-stack-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/pre-gc-stack-evidence/*.json
+            ${{ runner.temp }}/pre-gc-stack-evidence/*.log
+            ${{ runner.temp }}/pre-gc-stack-evidence/original/
+            ${{ runner.temp }}/pre-gc-stack-evidence/dormant/
+            ${{ runner.temp }}/pre-gc-stack-evidence/pre-collection/
+          if-no-files-found: error
+          retention-days: 7
