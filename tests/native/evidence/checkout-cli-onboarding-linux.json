@@ -1,0 +1,704 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "scope": "Fresh Linux x64 checkout dependency restoration from an already populated offline package cache, default template selection, strict generated-source checks, and actual same-platform Bun AOT packaging against a verified supplied native host. No native GUI execution or cold-network installation is claimed.",
+  "source": {
+    "commit": "ef1c14a7973ddc907511ccd1a4ff62f6da990475",
+    "published_equivalent_commit": "1406bd3fcbacf4dad3b06c55a270368206e9a4bb",
+    "tree": "040abd1f0367f9f02ab7feda05060a181213a0b6",
+    "clean_before": true,
+    "clean_after_install": true,
+    "clean_after_commands": true,
+    "dependency_directory_initially_absent": true
+  },
+  "platform": {
+    "system": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "machine": "x86_64"
+  },
+  "bun": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "frozen_inputs": {
+    "bun.lock": {
+      "bytes": 28357,
+      "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684"
+    },
+    "Cargo.lock": {
+      "bytes": 161188,
+      "sha256": "e9810fb670c6c5b384fcae08825a04a5a6ac856d02ca7451acb8d138a61c1484"
+    },
+    "toolchain.json": {
+      "bytes": 3012,
+      "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    }
+  },
+  "frozen_inputs_unchanged_after_all_commands": true,
+  "dependency_installation": {
+    "offline_option_verified_from_pinned_install_help": true,
+    "help_log": {
+      "bytes": 5569,
+      "sha256": "7304d8d237f19e705b57e50fdbb1a53e8528444c34e40bfd6af5a246b504d70f"
+    },
+    "empty_cache": {
+      "name": "empty-cache-offline-install",
+      "command": [
+        "$BUN",
+        "install",
+        "--frozen-lockfile",
+        "--offline",
+        "--cache-dir",
+        "$EVIDENCE/empty-package-cache"
+      ],
+      "cwd": "$CHECKOUT",
+      "exit_code": 1,
+      "elapsed_seconds": 0.008,
+      "log": {
+        "bytes": 3973,
+        "sha256": "a6069a682dcd67bb9e3a054770dfd0b79c330356771a017b95743b5919081e3c"
+      },
+      "expected_outcome": "Missing cached packages fail explicitly, without changing the lockfile.",
+      "diagnostic": "error: --offline: \"@babel/core\" is not in the cache"
+    },
+    "populated_cache": {
+      "name": "warm-cache-offline-install",
+      "command": [
+        "$BUN",
+        "install",
+        "--frozen-lockfile",
+        "--offline",
+        "--cache-dir",
+        "$WARM_CACHE"
+      ],
+      "cwd": "$CHECKOUT",
+      "exit_code": 0,
+      "elapsed_seconds": 0.032,
+      "dependency_directory_absent_before": true,
+      "log": {
+        "bytes": 317,
+        "sha256": "881a5384421c882d0d6401da85ecfcb7634b5dcf4041330f494ad1c1b8d84eb5"
+      },
+      "installed_package_count": 72
+    },
+    "cold_network_installation": "not-run",
+    "toolchain_download": "not-run: supplied pinned Bun executable verified by full revision and hash"
+  },
+  "prebuilt_host": {
+    "artifact_id": 13346018870,
+    "run_id": 41873565470,
+    "job_id": 126726856543,
+    "artifact_bytes": 23222685,
+    "artifact_sha256": "5c9cd7d3dfd2a326acc98390695c541324c3ec83936b1a391d8b4cbfc653eb5a",
+    "archive_member": "unsigned-native-host.tar.gz",
+    "host_bytes": 29475240,
+    "host_sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743"
+  },
+  "native_source_comparison": {
+    "host_source_commit": "7f5540199b21625afb2854fda6a48c9396261a24",
+    "files_compared": 49,
+    "differences": []
+  },
+  "native_tool_sentinels": {
+    "tools": ["cargo", "rustc", "rustup"],
+    "path_prefix": "$EVIDENCE/native-tool-sentinels",
+    "environment_overrides": ["CARGO", "RUSTC", "RUSTUP"],
+    "attempt_exit_code": 86,
+    "observed_invocations": 0,
+    "log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "default_selection": [
+    {
+      "framework": "solid",
+      "language_flag_omitted": true,
+      "framework_flag_omitted": true,
+      "command": [
+        "$BUN",
+        "run",
+        "native",
+        "create",
+        "$CHECKOUT/.bun-native/onboarding-default-jgti81bp/solid"
+      ],
+      "exit_code": 0,
+      "entry": "main.tsx",
+      "matches_explicit_typescript_template": true,
+      "log": {
+        "bytes": 344,
+        "sha256": "be59db2415af614de61d947f639624302e6276dad806e874ee385a7a310680a8"
+      }
+    },
+    {
+      "framework": "react",
+      "language_flag_omitted": true,
+      "framework_flag_omitted": false,
+      "command": [
+        "$BUN",
+        "run",
+        "native",
+        "create",
+        "$CHECKOUT/.bun-native/onboarding-default-jgti81bp/react",
+        "--framework",
+        "react"
+      ],
+      "exit_code": 0,
+      "entry": "main.tsx",
+      "matches_explicit_typescript_template": true,
+      "log": {
+        "bytes": 362,
+        "sha256": "32ae32bb742b939755e5aaa5e9aeef8bf43e9cdb613d40c8ce6fcd8b5050bcc2"
+      }
+    }
+  ],
+  "four_template_preparation": {
+    "name": "four-template-create-check-aot-build",
+    "command": [
+      "python3",
+      "tests/native/cli-templates.py",
+      "prepare",
+      "--output",
+      "$EVIDENCE/templates",
+      "--host",
+      "$HOST",
+      "--bun",
+      "$BUN"
+    ],
+    "cwd": "$CHECKOUT",
+    "exit_code": 0,
+    "elapsed_seconds": 16.594,
+    "log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "preparation_provenance": {
+    "bytes": 99208,
+    "sha256": "3501a9ad25e62f02619f91edf5980cd9910932fd5514572119ac994f71b24f99"
+  },
+  "cases": [
+    {
+      "case": "solid-typescript",
+      "framework": "solid",
+      "language": "typescript",
+      "commands": [
+        {
+          "action": "create",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "create",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/solid-typescript",
+            "--framework",
+            "solid",
+            "--language",
+            "typescript"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 215,
+            "sha256": "5238e87fd9f14aef8f39c1294c874219f7f5ed7a4183792154ab0d795af2e0dc"
+          }
+        },
+        {
+          "action": "check",
+          "command": ["$BUN", "run", "check"],
+          "cwd": "$PROJECT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 77,
+            "sha256": "f09777d6671730fea02cea4881700212f9adbe57a4a31ee5921743c651d90ea1"
+          }
+        },
+        {
+          "action": "build",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "build",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/solid-typescript",
+            "--host",
+            "$HOST",
+            "--host-profile",
+            "release",
+            "--outdir",
+            "$EVIDENCE/templates/solid-typescript/package"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 145,
+            "sha256": "4d609362f34e3d6c0f78cbe3a3279c76287a6c65286ae640c3eb428229599d46"
+          }
+        }
+      ],
+      "generated_source": [
+        {
+          "path": ".gitignore",
+          "bytes": 19,
+          "sha256": "062481564f261892cbd0a630a409362cc336a266401bb7350a0e921d799b5a1a"
+        },
+        {
+          "path": "README.md",
+          "bytes": 988,
+          "sha256": "0b1371a41fd0592b51af1646ed4b7a53fac0b717c853b0ba8034e1ff299508d0"
+        },
+        {
+          "path": "bun-native.json",
+          "bytes": 72,
+          "sha256": "478b47d3cec08b2784ff61c09541e27d9cff55c1aaef35f8cfce4684ccdae02f"
+        },
+        {
+          "path": "main.tsx",
+          "bytes": 1935,
+          "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e"
+        },
+        {
+          "path": "package.json",
+          "bytes": 255,
+          "sha256": "f1f70fb67f2c044e8a9bae50190d0df3ec9aef902bec7ff14bad091ebab05c36"
+        },
+        {
+          "path": "tsconfig.json",
+          "bytes": 178,
+          "sha256": "98c3c0a83fd9ad0d38261328e1be71dc69fd3ef71e7137982f627714fa1e169f"
+        }
+      ],
+      "manifest": {
+        "bytes": 6498,
+        "sha256": "ff9656d03b48c31755c38b73f685dc9469d5c7c2a2cac4a43bf11427f6317a5f"
+      },
+      "application": {
+        "file": "application",
+        "bytes": 71384104,
+        "sha256": "dfa57e15b3a10feb0bd0a0d799e5fe057ee9fbb08544af173777039315440731",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3817701,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime_features": {
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "packaged_host": {
+        "file": "bun-native-host",
+        "bytes": 29475240,
+        "sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743",
+        "profile": "release"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "signing": "unsigned",
+        "installation": "not-tested"
+      }
+    },
+    {
+      "case": "solid-javascript",
+      "framework": "solid",
+      "language": "javascript",
+      "commands": [
+        {
+          "action": "create",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "create",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/solid-javascript",
+            "--framework",
+            "solid",
+            "--language",
+            "javascript"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 215,
+            "sha256": "d994c445c97552044823fffd284738adeed57817d3dd2bdd4722d9aef776010a"
+          }
+        },
+        {
+          "action": "check",
+          "command": ["$BUN", "run", "check"],
+          "cwd": "$PROJECT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 77,
+            "sha256": "9640315a68a0852ae271b22fecec85d8c65d5cbe7c2af4a50daeb68b3b2379af"
+          }
+        },
+        {
+          "action": "build",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "build",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/solid-javascript",
+            "--host",
+            "$HOST",
+            "--host-profile",
+            "release",
+            "--outdir",
+            "$EVIDENCE/templates/solid-javascript/package"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 145,
+            "sha256": "8c344e3a4db5ad355bfe6f4b5b4d7b5991ef3fc4bf3544c358a5d3f1a7e376f0"
+          }
+        }
+      ],
+      "generated_source": [
+        {
+          "path": ".gitignore",
+          "bytes": 19,
+          "sha256": "062481564f261892cbd0a630a409362cc336a266401bb7350a0e921d799b5a1a"
+        },
+        {
+          "path": "README.md",
+          "bytes": 988,
+          "sha256": "7d72b9ec33876aa0bf5b653a805da41ff0ed8bb533b38e43482fc6a18cacba50"
+        },
+        {
+          "path": "bun-native.json",
+          "bytes": 72,
+          "sha256": "4171d1db681ea6d97838aed0be193b4b5a63439319aa050255cc55322019e88c"
+        },
+        {
+          "path": "main.jsx",
+          "bytes": 1952,
+          "sha256": "efa4405db8555043cfc7c85fbc40b47baed83881be0ec5549fe978679c38902c"
+        },
+        {
+          "path": "package.json",
+          "bytes": 255,
+          "sha256": "fe1b8ad25a8bd26f40194bde4a5a525c4d90a82df4fd43ab37e1bf2791ed18b2"
+        },
+        {
+          "path": "tsconfig.json",
+          "bytes": 178,
+          "sha256": "d09e46b4f595079e7674c840d8b77b96c2727c1f3e24e7523a89efe74f6fb98c"
+        }
+      ],
+      "manifest": {
+        "bytes": 6498,
+        "sha256": "03f2222f807e474bae77010b6d174839597a54a3810b6a02414d652687b98cc0"
+      },
+      "application": {
+        "file": "application",
+        "bytes": 71384104,
+        "sha256": "4d13dea9491926f3bb3088ae8255ce657d0102b30e89bf50c56fe6172adfe4d0",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3817701,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime_features": {
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "packaged_host": {
+        "file": "bun-native-host",
+        "bytes": 29475240,
+        "sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743",
+        "profile": "release"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "signing": "unsigned",
+        "installation": "not-tested"
+      }
+    },
+    {
+      "case": "react-typescript",
+      "framework": "react",
+      "language": "typescript",
+      "commands": [
+        {
+          "action": "create",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "create",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/react-typescript",
+            "--framework",
+            "react",
+            "--language",
+            "typescript"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 215,
+            "sha256": "a707a12cefe20f3f7306bd7f02ae69d618a176b9be469052d46225dc325e6dda"
+          }
+        },
+        {
+          "action": "check",
+          "command": ["$BUN", "run", "check"],
+          "cwd": "$PROJECT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 77,
+            "sha256": "6b7ffd6ce617247503ad06cb310b0cbc19894fa6f5bdf5102f7f588f5ed24db3"
+          }
+        },
+        {
+          "action": "build",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "build",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/react-typescript",
+            "--host",
+            "$HOST",
+            "--host-profile",
+            "release",
+            "--outdir",
+            "$EVIDENCE/templates/react-typescript/package"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 145,
+            "sha256": "6c334dcfc5833eabb037c23232750c6137ebd9ca1eada00fa7a7fa6fc6724c64"
+          }
+        }
+      ],
+      "generated_source": [
+        {
+          "path": ".gitignore",
+          "bytes": 19,
+          "sha256": "062481564f261892cbd0a630a409362cc336a266401bb7350a0e921d799b5a1a"
+        },
+        {
+          "path": "README.md",
+          "bytes": 988,
+          "sha256": "ea1ece93a9d0e95215fab185f0db207875022dbfe43bf826abea088c7c0c9820"
+        },
+        {
+          "path": "bun-native.json",
+          "bytes": 72,
+          "sha256": "1e7895a1b3889ad0faf5b7e7aef6111c521e7aecbb155eb9f93dea1b4b02f213"
+        },
+        {
+          "path": "main.tsx",
+          "bytes": 1968,
+          "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e"
+        },
+        {
+          "path": "package.json",
+          "bytes": 255,
+          "sha256": "f614b964701a7cde92343dc5aea826a55b1ca8b423389e1de9aa09e2bd5a56dc"
+        },
+        {
+          "path": "tsconfig.json",
+          "bytes": 178,
+          "sha256": "3ae3725ab740dd93ea081069739d8a0a292b048ee90863a4c80ebf85da808bbd"
+        }
+      ],
+      "manifest": {
+        "bytes": 6491,
+        "sha256": "f097e867b4f7517d0d6ef2745610dfba2109ef1799d9e782f9f86a4ce0c5fec3"
+      },
+      "application": {
+        "file": "application",
+        "bytes": 73071656,
+        "sha256": "3a4e00032f1937015b0d0c6bc17409c824565d5e75c776775bed741f9d3c1f06",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5505253,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime_features": {
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "packaged_host": {
+        "file": "bun-native-host",
+        "bytes": 29475240,
+        "sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743",
+        "profile": "release"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "signing": "unsigned",
+        "installation": "not-tested"
+      }
+    },
+    {
+      "case": "react-javascript",
+      "framework": "react",
+      "language": "javascript",
+      "commands": [
+        {
+          "action": "create",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "create",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/react-javascript",
+            "--framework",
+            "react",
+            "--language",
+            "javascript"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 215,
+            "sha256": "b6ec34a3465fc4822c9db74a20a6167e39a908e0e1e8e17f17f004d2eff49d55"
+          }
+        },
+        {
+          "action": "check",
+          "command": ["$BUN", "run", "check"],
+          "cwd": "$PROJECT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 77,
+            "sha256": "d3194e7f4897e87f91b640f762d1feb7680263c384c47adf3be24451d7ce8f61"
+          }
+        },
+        {
+          "action": "build",
+          "command": [
+            "$BUN",
+            "$CHECKOUT/scripts/native.ts",
+            "build",
+            "$CHECKOUT/.bun-native/cli-native-5v0r96kt/react-javascript",
+            "--host",
+            "$HOST",
+            "--host-profile",
+            "release",
+            "--outdir",
+            "$EVIDENCE/templates/react-javascript/package"
+          ],
+          "cwd": "$CHECKOUT",
+          "exit_code": 0,
+          "log": {
+            "bytes": 145,
+            "sha256": "37b776170529ca9f5f3d1af5ff6191578f422f93344daedc37836435ef9a0b6f"
+          }
+        }
+      ],
+      "generated_source": [
+        {
+          "path": ".gitignore",
+          "bytes": 19,
+          "sha256": "062481564f261892cbd0a630a409362cc336a266401bb7350a0e921d799b5a1a"
+        },
+        {
+          "path": "README.md",
+          "bytes": 988,
+          "sha256": "7cb84dab585d863e765f45ef4db467b9dea6f07b7230c3b9fa2e6c3f7a0e5003"
+        },
+        {
+          "path": "bun-native.json",
+          "bytes": 72,
+          "sha256": "3371bd7787f163b48928e1bf84175244b4c0b1150afcc5a04df1679aaace9435"
+        },
+        {
+          "path": "main.jsx",
+          "bytes": 1985,
+          "sha256": "32ee9fb11a8edcbb7afe911e1f4315a37b1cbb5756d50c0cb5211927478276e7"
+        },
+        {
+          "path": "package.json",
+          "bytes": 255,
+          "sha256": "03d2164f1ebcea83bbccd5dab847c4039266e2655a7ef996cc0d7e192785ba87"
+        },
+        {
+          "path": "tsconfig.json",
+          "bytes": 178,
+          "sha256": "6436d3104f0689f2dcd3ff9e08228e5d148ebd6ff7dd768e5dcd8cf9450d4939"
+        }
+      ],
+      "manifest": {
+        "bytes": 6497,
+        "sha256": "e5f9a6a7cd60d0b1ca286561e679d3ac13594a8c0f6708587e2fee8c7c47defe"
+      },
+      "application": {
+        "file": "application",
+        "bytes": 73071656,
+        "sha256": "0e83f737e6e3f3b2e18bb02477f0e1b46c6d63e71ea2a10d970f084c1c3e461d",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5505253,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtime_features": {
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "packaged_host": {
+        "file": "bun-native-host",
+        "bytes": 29475240,
+        "sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743",
+        "profile": "release"
+      },
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "signing": "unsigned",
+        "installation": "not-tested"
+      }
+    }
+  ],
+  "native_gui": "unsupported in this environment: process IDs and /proc do not share the required PID namespace; no GUI launch attempted",
+  "macos_windows_template_qualification": "not-run",
+  "signing": "unsigned",
+  "standalone_framework_installation": "not-tested: templates consume the checkout workspace dependencies",
+  "source_projects_removed": true,
+  "path_notation": "$CHECKOUT is the fresh owned worktree, $BUN the verified compiler, $HOST the verified prebuilt executable, $WARM_CACHE the already populated cache, $EVIDENCE the retained audit directory; $PROJECT is the generated case directory."
+}
