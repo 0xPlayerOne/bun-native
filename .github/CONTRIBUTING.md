@@ -12,6 +12,7 @@ bun run format:check
 bun run lint
 bun run typecheck
 bun run check:boundaries
+bun run check:health
 bun test tests --coverage
 bun run build
 cargo fmt --manifest-path Cargo.toml --all -- --check
