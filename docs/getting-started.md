@@ -13,7 +13,7 @@
 
 You need the exact pinned Bun, a matching target OS/architecture, Rust/native prerequisites for **framework contributors**, and GitHub-hosted CI or a native desktop for verification. `toolchain.json` and `rust-toolchain.toml` are the implemented pins. Linux X11 with Mesa software Vulkan is the first verified GUI environment; other platforms must be qualified explicitly.
 
-The [checkout CLI](developer-tooling.md) implements `create`, `dev` and `build` for repository-local Solid/React projects, with TypeScript by default and checked JavaScript as an option. Supply a prebuilt host explicitly; ordinary app commands do not require Rust. Published installation, host acquisition and hot reload remain open under [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and [#243](https://github.com/0xPlayerOne/bun-native/issues/243). The public core imports are documented in [the package README](../packages/core/README.md).
+The [checkout CLI](developer-tooling.md) implements `create`, `dev` and `build` for repository-local Solid/React projects, with TypeScript by default and checked JavaScript as an option. Supply a prebuilt host explicitly; ordinary app commands do not require Rust. `dev --watch` rebuilds source with a full app/host remount and state reset. Published installation, host acquisition and native reload qualification remain open under [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and [#243](https://github.com/0xPlayerOne/bun-native/issues/243). The public core imports are documented in [the package README](../packages/core/README.md).
 
 To learn the compiler interface, see the official [Bun compiler documentation](https://bun.com/docs/compiler) and [AOT compatibility](https://bun.com/docs/compiler/compatibility). `bun compile` differs from `bun build --compile`: the latter is an ordinary bundled JIT executable and is not accepted as a Bun Native production AOT proof.
 
@@ -45,7 +45,7 @@ bun run native create apps/my-app --framework solid
 bun run native dev apps/my-app --host /absolute/path/to/bun-native-host
 ```
 
-Use `--framework react` for React or `--language javascript` for checked JSX. The host must match the current OS and CPU. Development starts once; restart after source edits. See [developer tooling](developer-tooling.md) for AOT packaging and the exact support boundary.
+Use `--framework react` for React or `--language javascript` for checked JSX. The host must match the current OS and CPU. Development starts once by default; add `--watch` for source watching with full remounts. See [developer tooling](developer-tooling.md) for AOT packaging and the exact support boundary.
 
 Install the platform prerequisites from [the native host README](../native/gpui-host/README.md). The exact Ubuntu build/display package list is in `.github/workflows/native-linux.yml`. Framework contributors build the host explicitly:
 

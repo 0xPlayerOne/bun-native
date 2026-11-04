@@ -126,12 +126,12 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
             // process.emit tests the registered signal path, not OS delivery.
             writeFileSync(
               project.entry,
-              `const initialSignals = ['SIGINT', 'SIGTERM'].map((name) => process.listenerCount(name))\n` +
+              `const initialSignals = ['SIGINT', 'SIGTERM', 'message'].map((name) => process.listenerCount(name))\n` +
                 original.replace(
                   'await view.ready',
                   `await view.ready\n  ${stop === 'window-close' ? 'await window.close()' : `process.emit('${stop}')`}`
                 ) +
-                `\nconsole.log('template-cleanup:' + JSON.stringify({ core: application.diagnostics, nodes: view?.diagnostics.nodes, signals: ['SIGINT', 'SIGTERM'].map((name, index) => process.listenerCount(name) - initialSignals[index]) }))\n`
+                `\nconsole.log('template-cleanup:' + JSON.stringify({ core: application.diagnostics, nodes: view?.diagnostics.nodes, signals: ['SIGINT', 'SIGTERM', 'message'].map((name, index) => process.listenerCount(name) - initialSignals[index]) }))\n`
             )
             const result = run([cli, 'dev', path, '--host', peer])
             if (result.code !== 0 || result.signal !== null)
@@ -152,7 +152,7 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
                 serviceRequests: 0,
               },
               nodes: 0,
-              signals: [0, 0],
+              signals: [0, 0, 0],
             })
             expect(readdirSync(join(path, '.bun-native'))).toEqual([])
           }
@@ -181,7 +181,7 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
           // The deadline releases the unfixed fixture cleanly but is never a pass.
           writeFileSync(
             project.entry,
-            `let failAfterReady = () => {}\n${deadline}\nconst initialSignals = ['SIGINT', 'SIGTERM'].map((name) => process.listenerCount(name))\n` +
+            `let failAfterReady = () => {}\n${deadline}\nconst initialSignals = ['SIGINT', 'SIGTERM', 'message'].map((name) => process.listenerCount(name))\n` +
               original
                 .replace(state, state + '\n  failAfterReady = () => setClicks(1)')
                 .replace(
@@ -204,7 +204,7 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
                 .replace(
                   'await application.closed',
                   `await application.closed
-    console.log('post-failure-cleanup:' + JSON.stringify({ core: application.diagnostics, nodes: view?.diagnostics.nodes, signals: ['SIGINT', 'SIGTERM'].map((name, index) => process.listenerCount(name) - initialSignals[index]) }))`
+    console.log('post-failure-cleanup:' + JSON.stringify({ core: application.diagnostics, nodes: view?.diagnostics.nodes, signals: ['SIGINT', 'SIGTERM', 'message'].map((name, index) => process.listenerCount(name) - initialSignals[index]) }))`
                 )
           )
           const result = run([cli, 'dev', path, '--host', peer])
@@ -233,7 +233,7 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
               serviceRequests: 0,
             },
             nodes: 0,
-            signals: [0, 0],
+            signals: [0, 0, 0],
           })
           expect(readdirSync(join(path, '.bun-native'))).toEqual([])
         }

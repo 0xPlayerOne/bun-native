@@ -4,16 +4,17 @@ import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { buildProject, bundleProject, prebuiltHost } from './native/build.ts'
 import { createProject, readProject } from './native/project.ts'
+import { watchProject } from './native/watch.ts'
 
 const repository = resolve(import.meta.dir, '..')
 const usage = `Bun Native checkout tooling
 
   bun run native create apps/my-app [--framework solid|react] [--language typescript|javascript]
-  bun run native dev apps/my-app --host /absolute/path/to/bun-native-host
+  bun run native dev apps/my-app --host /absolute/path/to/bun-native-host [--watch]
   bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory]
 
 Projects use the checkout's installed dependencies. Native hosts must be supplied explicitly.
-dev bundles and starts once; restart after edits. build produces unsigned same-platform AOT artifacts.
+dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
 No command downloads a host or runs Cargo. See docs/developer-tooling.md.`
 
 async function main(args: string[]): Promise<void> {
@@ -45,20 +46,24 @@ async function main(args: string[]): Promise<void> {
   }
   if (command !== 'dev' && command !== 'build')
     throw new Error(`Unknown command: ${command}\n${usage}`)
+  const options: Record<string, { type: 'string' | 'boolean' }> = { host: { type: 'string' } }
+  if (command === 'build') {
+    options['outdir'] = { type: 'string' }
+    options['host-profile'] = { type: 'string' }
+  } else options['watch'] = { type: 'boolean' }
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,
     strict: true,
-    options: {
-      host: { type: 'string' },
-      ...(command === 'build'
-        ? { outdir: { type: 'string' as const }, 'host-profile': { type: 'string' as const } }
-        : {}),
-    },
+    options,
   })
   if (positionals.length !== 1) throw new Error(`${command} requires exactly one project directory`)
-  const host = await prebuiltHost(values.host)
+  const host = await prebuiltHost(typeof values['host'] === 'string' ? values['host'] : undefined)
   const project = await readProject(repository, positionals[0]!)
+  if (command === 'dev' && values.watch) {
+    await watchProject(repository, project.directory, host)
+    return
+  }
   if (command === 'build') {
     const profile = values['host-profile']
     if (profile !== 'dev' && profile !== 'release')
