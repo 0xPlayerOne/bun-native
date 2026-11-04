@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/0xPlayerOne/bun-native/compare/v0.13.1...v0.14.0) (2026-11-04)
+
+
+### Features
+
+* **services:** qualify isolated bounded X11 clipboard ([#328](https://github.com/0xPlayerOne/bun-native/issues/328)) ([cfff93d](https://github.com/0xPlayerOne/bun-native/commit/cfff93db9e76ba904ecd6dbe731c036ee7ce23cd))
+
 ## [0.13.1](https://github.com/0xPlayerOne/bun-native/compare/v0.13.0...v0.13.1) (2026-11-04)
 
 
