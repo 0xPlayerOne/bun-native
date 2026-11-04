@@ -14,6 +14,7 @@ bun run format:check
 bun run lint
 bun run typecheck
 bun run check:boundaries
+bun run check:health
 bun test tests --coverage
 bun run build
 cargo fmt --manifest-path Cargo.toml --all -- --check
@@ -299,6 +300,10 @@ The current source dependency graph is deliberately small:
 | `@bun-native/core`     | Public exports of protocol and runtime   | Forbidden        |
 
 `scripts/quality/boundaries.ts` parses actual TypeScript/JavaScript syntax. It checks type-only imports, exports, dynamic imports, CommonJS loads and TypeScript import types, rather than matching code with regular expressions. Cross-package relative paths, undeclared dependencies, nonpublic subpaths, uninspectable dynamic imports and unused runtime dependencies fail. New packages need an explicit policy addition. This is a scoped dependency audit; it does not claim complete whole-program dead-code detection.
+
+`bun run check:health` adds production package source reachability and internal value-export checks. Each explicit `package.json` export condition/subpath and CLI `bin` is a root; relative imports and reexports connect source modules. Unreachable modules (including mutually importing dead modules), unused private value exports, missing source targets and uninspectable module loads fail with their exact path/name. Test consumers do not make an otherwise unreachable production module live. Public API exports are preserved even before downstream consumers exist. The same command runs in the required source-quality job.
+
+This audit supports the workspace's ESM TS/JS source contracts and conservatively keeps namespace/literal dynamic-import members. Type-only declarations can describe an inferred exported signature and remain under compiler checking. It does not prove statement-level dead code, duplicate implementation, Rust symbol usage or performance acceptance. Negative fixtures exercise stale entries, dead cycles and unnecessary private exports; [#259](https://github.com/0xPlayerOne/bun-native/issues/259) remains open for broader code-health and measured native regression automation.
 
 The headless TypeScript suites exercise protocol framing and strict schemas, a shared malicious-command corpus, real subprocess protocol failures, public candidate-tree rollback, forged/cross-window handles, input races, queue bounds, ordered callbacks and reentrant cancellation. `tests/core/lifecycle-edge.test.ts` deliberately holds callbacks unresolved while ingesting independent native events. Its peer is a real subprocess that simulates protocol events; this does not replace the actual GPUI fixtures above. `tests/types/public-api.ts` checks the public contract, and `tests/types/framework-consumers.ts` imports the same core through minimal Solid/React consumers. Those framework fixtures are compile-only evidence, not implemented native renderers.
 
