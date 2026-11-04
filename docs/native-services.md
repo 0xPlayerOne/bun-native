@@ -19,7 +19,15 @@ The [fresh record](../tests/native/evidence/clipboard-linux-recovered.json)
 binds the new source and binaries, separately from the
 [historical recovery note](../tests/native/evidence/clipboard-recovery-history.json)
 whose prior raw artifacts were lost. These local runs use a development-profile
-Rust host; hosted release-host acceptance remains pending.
+Rust host. A separate [hosted release-host qualification](../tests/native/evidence/clipboard-linux-hosted-release.json)
+on November 4, 2026 passed development and inspected AOT at main
+`c9ada928eb86ee44abeb85ba13721a68af0057d6`. Both modes completed all 26 outcomes,
+joined all 22 peers and returned all seven public ownership counts to zero.
+The downloaded artifact's checksum, all 75 scenario source fingerprints and
+all 69 compiler source fingerprints were verified against that commit. This
+qualifies the bounded local Linux X11 text implementation in #300; macOS,
+Windows, Wayland, remote X11 and richer clipboard formats remain unavailable.
+The wider service matrix remains open under #255.
 
 ## Policy and capability contract
 
@@ -257,7 +265,7 @@ service grant or a sandbox supplied by this framework.
 Display reads give a small real operation with native ownership, explicit
 denial, cancellation delivery and teardown, without changing user data. The
 clipboard worker now supplies a separate native implementation for bounded
-selection transfers; [ADR 0006](decisions/0007-native-clipboard.md) records its
+selection transfers; [ADR 0007](decisions/0007-native-clipboard.md) records its
 explicit scope and verification requirements.
 
 At the exact GPUI pin, the default
