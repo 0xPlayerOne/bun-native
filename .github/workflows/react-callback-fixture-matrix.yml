@@ -1,0 +1,91 @@
+# Fixed, one-use regression-test interception comparison; never merge.
+name: Windows React callback fixture isolation comparison
+on:
+  push:
+    branches: [test/react-callback-fixture-matrix-20261104]
+permissions:
+  contents: read
+jobs:
+  compare:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: control
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          path: source
+      - name: Compare exact full-suite original and side-effect-free callback capture
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, subprocess
+          root = pathlib.Path('source').resolve()
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'callback-fixture-matrix'
+          out.mkdir()
+          tools = pathlib.Path(os.environ['RUNNER_TEMP']) / 'callback-fixture-tools'
+          def checked(args):
+              return subprocess.check_output(args, cwd=root, text=True).strip()
+          head = checked(['git','rev-parse','HEAD'])
+          tree = checked(['git','rev-parse','HEAD^{tree}'])
+          assert head == '2a9516337fe99e3585ff8f55e97c7392fad2f372', head
+          assert tree == '39482669d2095b95d3d75a808a188a231937035c', tree
+          assert checked(['git','status','--porcelain']) == ''
+          (out/'bun-install.json').write_text(checked(['node','scripts/install-bun.mjs','--destination',str(tools)])+'\n')
+          bun = str(tools/'bun.exe')
+          revision = checked([bun,'--no-script','--eval','console.log(Bun.revision)'])
+          assert revision == 'da867c60bf0bcbf9d6d36994f8ca0efa42075115', revision
+          subprocess.run([bun,'install','--frozen-lockfile'],cwd=root,check=True,timeout=120)
+          assert checked(['git','status','--porcelain']) == ''
+          target = root/'tests/react/root-errors.test.ts'
+          old = target.read_text(encoding='utf-8')
+          def digest(source):
+              return hashlib.sha256(source.encode('utf-8')).hexdigest()
+          assert digest(old) == '380454fa58d91dbbc070e0ed1f59b9a52de14224cc663e5283e4ffba1d96cbbd'
+          new = old.replace("import { expect, spyOn, test } from 'bun:test'", "import { expect, test } from 'bun:test'")
+          old_capture = """    const capture = spyOn(reconciler, 'createContainer').mockImplementation((...args) => {
+                callbacks = args
+                return original(...args)
+              })"""
+          new_capture = """    reconciler.createContainer = (...args) => {
+                callbacks = args
+                return original(...args)
+              }"""
+          assert old.count(old_capture) == 1
+          new = new.replace(old_capture,new_capture)
+          assert new.count('      capture.mockRestore()') == 1
+          new = new.replace('      capture.mockRestore()', '      reconciler.createContainer = original')
+          assert digest(new) == 'adb668a02c74549ed50ac1d97fd61cd1a6f3af05e21b35ca250cd09bb287767f'
+          outcomes = []
+          try:
+              for lane, content in [('original',old),('manual-try-finally',new)]:
+                  target.write_text(content, encoding='utf-8')
+                  run_dir = out/lane
+                  run_dir.mkdir()
+                  environment = dict(os.environ)
+                  environment['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR'] = str(run_dir/'retention')
+                  with (run_dir/'stdout.log').open('wb') as stdout,(run_dir/'stderr.log').open('wb') as stderr:
+                      run = subprocess.run([bun,'test','tests'],cwd=root,env=environment,stdout=stdout,stderr=stderr,timeout=180)
+                  record = {'lane':lane,'exitCode':run.returncode,'testFileSHA256':digest(content),'stderrSHA256':hashlib.sha256((run_dir/'stderr.log').read_bytes()).hexdigest()}
+                  outcomes.append(record)
+                  print(json.dumps(record))
+          finally:
+              target.write_text(old,encoding='utf-8')
+              clean = checked(['git','status','--porcelain']) == ''
+              (out/'manifest.json').write_text(json.dumps({'scope':'Exact-head two-process Windows test-fixture comparison only; not qualification','sourceCommit':head,'sourceTree':tree,'bunRevision':revision,'outcomes':outcomes,'originalSourceRestoredAndClean':clean,'originalAssertionsAndCheckpointsUnchanged':True},indent=2)+'\n')
+              assert clean
+          assert len(outcomes) == 2
+          for lane in ['original','manual-try-finally']:
+              log = (out/lane/'stderr.log').read_text(encoding='utf-8')
+              assert 'Ran 581 tests across 41 files' in log, 'Incomplete test cohort: '+lane
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: react-fixture-matrix-${{ github.sha }}
+          path: ${{ runner.temp }}/callback-fixture-matrix
+          if-no-files-found: error
+          retention-days: 7
