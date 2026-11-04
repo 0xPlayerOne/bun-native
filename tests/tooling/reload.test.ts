@@ -373,6 +373,66 @@ describe('development remounts (real Bun processes and headless protocol peer, n
     })
   }, 40_000)
 
+  test('anonymous and duplicate notifications do not remount unchanged source', async () => {
+    const path = await createProject(
+      repository,
+      join(directory, 'watch-unchanged-source'),
+      'react',
+      'typescript'
+    )
+    const project = await readProject(repository, path)
+    const original = readFileSync(project.entry, 'utf8')
+    const start = lifetimes().length
+    const watch = fs.watch
+    let callback: unknown
+    const observed = spyOn(fs, 'watch').mockImplementation((...args: unknown[]): fs.FSWatcher => {
+      callback = args[2]
+      // Use a real watcher and real app/IPC owners, but deliver only the declared
+      // notifications so the control does not depend on this OS's event shapes.
+      return Reflect.apply(watch, fs, [args[0], args[1], () => {}])
+    })
+    try {
+      await withWatcher(path, async ({ output, errors, completion }) => {
+        const generations = () =>
+          output.filter((line) => line.startsWith('bun-native:ready ')).length
+        await until(
+          () => output.some((line) => line.includes('Watching project source')),
+          'unchanged-source watcher readiness'
+        )
+        if (typeof callback !== 'function') throw new Error('Watch callback was not captured')
+        mkdirSync(join(path, 'dist'))
+        writeFileSync(join(path, 'dist/ignored.ts'), 'invalid syntax <\n')
+        writeFileSync(
+          join(path, 'README.md'),
+          'An ignored edit must not reset application state.\n'
+        )
+        for (const filename of [undefined, null, 'main.tsx', Buffer.from('main.tsx')])
+          Reflect.apply(callback, undefined, ['rename', filename])
+        await Bun.sleep(150)
+        expect(generations()).toBe(1)
+        expect(
+          lifetimes()
+            .slice(start)
+            .map((event) => event.type)
+        ).toEqual(['started'])
+
+        writeFileSync(project.entry, original.replace('Bun Native React', 'Changed Native React'))
+        Reflect.apply(callback, undefined, ['change', undefined])
+        await until(() => generations() === 2, 'anonymous notification with changed source')
+        Reflect.apply(callback, undefined, ['change', null])
+        await Bun.sleep(150)
+        expect(generations()).toBe(2)
+        process.emit('SIGTERM')
+        await completion
+        expect(errors).toEqual([])
+        expect(output.filter((line) => line.startsWith('bun-native:stopped '))).toHaveLength(1)
+        assertJoined(lifetimes().slice(start), 2)
+      })
+    } finally {
+      observed.mockRestore()
+    }
+  }, 20_000)
+
   test('rescans events without filenames and still joins the final application', async () => {
     const path = await createProject(
       repository,
@@ -380,6 +440,8 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       'react',
       'typescript'
     )
+    const project = await readProject(repository, path)
+    const original = readFileSync(project.entry, 'utf8')
     const start = lifetimes().length
     const watch = fs.watch
     let callback: unknown
@@ -395,8 +457,10 @@ describe('development remounts (real Bun processes and headless protocol peer, n
         if (typeof callback !== 'function') throw new Error('Watch callback was not captured')
         // The pinned Bun watcher can omit the filename at runtime, despite the
         // node:fs declaration advertising only string, Buffer or null.
+        writeFileSync(project.entry, original.replace('Bun Native React', 'Changed Native React'))
         Reflect.apply(callback, undefined, ['rename', undefined])
         await until(() => generations() === 2, 'undefined filename rescan')
+        writeFileSync(project.entry, original.replace('Bun Native React', 'Another Native React'))
         Reflect.apply(callback, undefined, ['rename', null])
         await until(() => generations() === 3, 'null filename rescan')
         process.emit('SIGTERM')

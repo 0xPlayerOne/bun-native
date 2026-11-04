@@ -1,18 +1,43 @@
-import { watch } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { createReadStream, watch } from 'node:fs'
+import { readdir, stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { FSWatcher } from 'node:fs'
 import { DevSession, type RemountReport } from './session.ts'
+
+const ignoredDirectories = new Set(['node_modules', '.git', '.bun-native', 'dist', 'build'])
 
 function relevant(path: string | Buffer | null | undefined): boolean {
   // Bun can omit a filename at runtime; both absent forms require a rescan.
   if (path === null || path === undefined) return true
   const name = path.toString().replaceAll('\\', '/')
-  if (
-    name
-      .split('/')
-      .some((part) => ['node_modules', '.git', '.bun-native', 'dist', 'build'].includes(part))
-  )
-    return false
+  if (name.split('/').some((part) => ignoredDirectories.has(part))) return false
   return /\.[jt]sx?$|\.json$/.test(name)
+}
+
+// Notifications identify possible changes, not changed source. Anonymous events
+// and duplicate delivery must not reset a live app when its inputs are identical.
+async function sourceFingerprint(directory: string): Promise<string> {
+  const hash = createHash('sha256')
+  const visit = async (path: string, prefix: string): Promise<void> => {
+    const entries = await readdir(path, { withFileTypes: true })
+    entries.sort((a, b) => a.name.localeCompare(b.name))
+    for (const entry of entries) {
+      if (ignoredDirectories.has(entry.name)) continue
+      const filename = join(path, entry.name)
+      const relative = prefix + entry.name
+      if (entry.isDirectory()) await visit(filename, relative + '/')
+      else if (relevant(entry.name)) {
+        if (!entry.isFile() && !(entry.isSymbolicLink() && (await stat(filename)).isFile()))
+          continue
+        const content = createHash('sha256')
+        for await (const chunk of createReadStream(filename)) content.update(chunk)
+        hash.update(JSON.stringify([relative, content.digest('hex')]))
+      }
+    }
+  }
+  await visit(directory, '')
+  return hash.digest('hex')
 }
 
 function report(value: RemountReport): void {
@@ -32,6 +57,7 @@ export async function watchProject(
   let pending: number | undefined
   let running = true
   let closing = false
+  let observedSource: string | undefined
   const stop = () => {
     closing = true
     stopped.resolve()
@@ -47,6 +73,11 @@ export async function watchProject(
     pending = undefined
     running = true
     try {
+      const source = await sourceFingerprint(directory)
+      if (closing || source === observedSource) return
+      // A failed compile is still an observed edit: duplicate notifications must
+      // not retry it. A subsequent content change schedules another attempt.
+      observedSource = source
       report(await session.reload(changedAt))
     } catch (error) {
       if (!closing) {
@@ -73,6 +104,9 @@ export async function watchProject(
     // observed after it settles, without a detached rejected promise.
     watcher.on('error', failed.resolve)
     try {
+      // Capture before building. Events during either operation stay pending, so
+      // edits made while the initial app is compiling are not silently consumed.
+      observedSource = await sourceFingerprint(directory)
       report(await session.reload())
     } catch (error) {
       if (closing) return
