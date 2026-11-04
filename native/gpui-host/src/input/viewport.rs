@@ -63,9 +63,36 @@ impl TextViewport {
 pub(super) struct InputPaint {
     pub(super) line: ShapedLine,
     pub(super) viewport: TextViewport,
+    pub(super) decorations: PaintedInputDecorations,
+}
+
+#[derive(Clone, PartialEq)]
+pub(crate) struct PaintedInputDecorations {
+    pub(crate) clip: Bounds<Pixels>,
+    pub(crate) caret: Option<Bounds<Pixels>>,
+    pub(crate) selection: Option<Bounds<Pixels>>,
+    pub(crate) selected_bytes: [usize; 2],
+    pub(crate) cursor_byte: usize,
+}
+
+#[derive(Clone, PartialEq)]
+pub(crate) struct InputViewportSnapshot {
+    pub(crate) viewport: Bounds<Pixels>,
+    pub(crate) offset: Pixels,
+    pub(crate) line_width: Pixels,
+    pub(crate) decorations: PaintedInputDecorations,
 }
 
 impl InputPaint {
+    pub(super) fn snapshot(&self, content: &str) -> Option<InputViewportSnapshot> {
+        (self.line.text.as_ref() == content).then(|| InputViewportSnapshot {
+            viewport: self.viewport.bounds,
+            offset: self.viewport.offset,
+            line_width: self.line.width(),
+            decorations: self.decorations.clone(),
+        })
+    }
+
     pub(super) fn mouse_index(&self, content: &str, position: Point<Pixels>) -> Option<usize> {
         if self.line.text.as_ref() != content {
             return None;

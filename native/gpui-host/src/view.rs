@@ -319,7 +319,16 @@ impl Render for NativeView {
                         .iter()
                         .map(|(id, input)| (*id, input.focus_handle(cx))),
                 );
-            LayoutFrame::new(state.tree.nodes().count(), &self.scrolls, focus)
+            let frame = LayoutFrame::new(state.tree.nodes().count(), &self.scrolls, focus);
+            if self.evidence.input_viewport_tracing() {
+                frame.with_inputs(
+                    self.inputs
+                        .iter()
+                        .map(|(id, input)| (*id, input.downgrade())),
+                )
+            } else {
+                frame
+            }
         });
         let pointer = PointerFrame::default();
         let body = self.render_node(
@@ -370,7 +379,7 @@ impl Render for NativeView {
             .child(
                 canvas(
                     |_, _, _| (),
-                    move |_, (), window, _| {
+                    move |_, (), window, cx| {
                         // Registered after native children: capture has already
                         // selected the deepest GPUI hit before default actions.
                         pointer.observe(window, &view);
@@ -378,7 +387,7 @@ impl Render for NativeView {
                         evidence.painted(
                             window_id,
                             &state.tree,
-                            layout.as_ref().map(|layout| layout.snapshot(window)),
+                            layout.as_ref().map(|layout| layout.snapshot(window, cx)),
                         );
                     },
                 )

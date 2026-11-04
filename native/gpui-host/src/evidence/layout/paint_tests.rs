@@ -2,7 +2,9 @@
 
 use super::*;
 use crate::evidence::frame_schedule_tests::make_log;
+use crate::input::PaintedInputDecorations;
 use bun_native_protocol::{Element, Operation, Style, Tree, WindowId};
+use gpui::{point, px, size};
 use std::{fs::File, path::Path};
 
 fn id(value: u64) -> NodeId {
@@ -77,6 +79,7 @@ fn geometry(offset: f32) -> LayoutSnapshot {
             maximum: [0., 100.],
             viewport: bounds,
         }],
+        inputs: None,
     }
 }
 
@@ -142,6 +145,53 @@ fn unchanged_geometry_is_reused_and_geometry_only_frames_are_not_lost() {
     assert_eq!(rows[3]["tree_revision"], 2);
     assert_eq!(rows[3]["layout"]["focused_node_id"], 2);
     assert_eq!(rows[3]["layout"]["scrolls"][0]["offset"], json!([0., -50.]));
+}
+
+#[test]
+fn caret_only_paints_publish_new_input_geometry_without_a_tree_revision() {
+    let (file, evidence) = make_log(false);
+    let window = WindowId::try_from(1).unwrap();
+    let mut tree = input_tree();
+    tree.replace_input(id(2), "a long line".into()).unwrap();
+    let bounds = Bounds::new(point(px(0.), px(0.)), size(px(100.), px(24.)));
+    let mut frame = geometry(0.);
+    let observation = InputViewportSnapshot {
+        viewport: bounds,
+        offset: px(202.),
+        line_width: px(300.),
+        decorations: PaintedInputDecorations {
+            clip: bounds,
+            caret: Some(Bounds::new(point(px(98.), px(0.)), size(px(2.), px(24.)))),
+            selection: None,
+            selected_bytes: [11, 11],
+            cursor_byte: 11,
+        },
+    };
+    frame.inputs = Some([(id(2), observation)].into());
+    evidence.painted(window, &tree, Some(frame.clone()));
+    let input = frame.inputs.as_mut().unwrap().get_mut(&id(2)).unwrap();
+    input.offset = px(0.);
+    input.decorations.cursor_byte = 0;
+    input.decorations.selected_bytes = [0, 0];
+    input.decorations.caret.as_mut().unwrap().origin.x = px(0.);
+    evidence.painted(window, &tree, Some(frame.clone()));
+    evidence.painted(window, &tree, Some(frame));
+    let rows = records(&file.0);
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0]["type"], "layout");
+    assert_eq!(rows[1]["type"], "rendered");
+    assert_eq!(rows[2]["type"], "layout");
+    assert_eq!(rows[0]["tree_revision"], rows[2]["tree_revision"]);
+    assert_eq!(rows[2]["layout"]["inputs"][0]["offset"], 0.);
+    assert_eq!(
+        rows[2]["layout"]["inputs"][0]["caret"],
+        json!([0., 0., 2., 24.])
+    );
+    assert_eq!(
+        rows[2]["layout"]["inputs"][0]["selected_bytes"],
+        json!([0, 0])
+    );
+    assert!(geometry(0.).json().get("inputs").is_none());
 }
 
 #[test]

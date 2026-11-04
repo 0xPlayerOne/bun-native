@@ -16,6 +16,8 @@ pub(super) struct PrepaintState {
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
     viewport: TextViewport,
+    selected_bytes: [usize; 2],
+    cursor_byte: usize,
 }
 
 impl IntoElement for TextElement {
@@ -113,6 +115,7 @@ impl Element for TextElement {
             .shape_line(display_text, font_size, &runs, None);
 
         let cursor_pos = line.x_for_index(cursor);
+        let cursor_byte = cursor;
         let viewport = TextViewport::new(
             bounds,
             line.width(),
@@ -150,6 +153,8 @@ impl Element for TextElement {
             cursor,
             selection,
             viewport,
+            selected_bytes: [selected_range.start, selected_range.end],
+            cursor_byte,
         }
     }
 
@@ -170,7 +175,9 @@ impl Element for TextElement {
             cx,
         );
         let line = prepaint.line.take().unwrap();
-        window.with_content_mask(Some(ContentMask { bounds }), |window| {
+        let selection = prepaint.selection.as_ref().map(|quad| quad.bounds);
+        let mut caret = None;
+        let clip = window.with_content_mask(Some(ContentMask { bounds }), |window| {
             if let Some(selection) = prepaint.selection.take() {
                 window.paint_quad(selection)
             }
@@ -187,14 +194,23 @@ impl Element for TextElement {
             if focus_handle.is_focused(window)
                 && let Some(cursor) = prepaint.cursor.take()
             {
+                caret = Some(cursor.bounds);
                 window.paint_quad(cursor);
             }
+            window.content_mask().bounds
         });
 
         self.input.update(cx, |input, _cx| {
             input.last_paint = Some(InputPaint {
                 line,
                 viewport: prepaint.viewport,
+                decorations: PaintedInputDecorations {
+                    clip,
+                    caret,
+                    selection,
+                    selected_bytes: prepaint.selected_bytes,
+                    cursor_byte: prepaint.cursor_byte,
+                },
             });
         });
     }

@@ -78,6 +78,16 @@ fn painted_unicode() -> InputPaint {
     InputPaint {
         viewport: TextViewport::new(bounds(50.), line.width(), line.width(), px(0.)),
         line,
+        decorations: PaintedInputDecorations {
+            clip: bounds(50.),
+            caret: Some(Bounds::new(
+                point(px(88.), px(20.)),
+                size(CARET_WIDTH, px(24.)),
+            )),
+            selection: None,
+            selected_bytes: [10, 10],
+            cursor_byte: 10,
+        },
     }
 }
 
@@ -145,6 +155,7 @@ fn edited_text_cannot_reuse_old_glyph_byte_offsets_before_the_next_paint() {
             paint.bounds_for_range(replacement, 0..replacement.len()),
             None
         );
+        assert!(paint.snapshot(replacement).is_none());
     }
     // Same-content styling retains valid geometry until its next real paint.
     assert!(

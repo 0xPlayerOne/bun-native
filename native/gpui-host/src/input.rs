@@ -7,6 +7,7 @@ pub(crate) use binding::InputBinding;
 use paint::TextElement;
 use std::ops::Range;
 use viewport::InputPaint;
+pub(crate) use viewport::{InputViewportSnapshot, PaintedInputDecorations};
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, EntityInputHandler, FocusHandle, Focusable,
@@ -192,7 +193,7 @@ impl TextInput {
         }
 
         // An edit can arrive before the next paint. Never interpret old glyph
-        // byte indices against new text; retain the current selection instead.
+        // byte indices against new text; retain the current caret instead.
         self.last_paint
             .as_ref()
             .and_then(|paint| paint.mouse_index(&self.content, position))
@@ -311,6 +312,11 @@ impl TextInput {
         self.is_selecting = false;
         window.notify_text_input_changed(&self.focus_handle);
         cx.notify();
+    }
+
+    /// Opt-in diagnostics read the geometry committed by the last actual paint.
+    pub(crate) fn painted_viewport(&self) -> Option<InputViewportSnapshot> {
+        self.last_paint.as_ref()?.snapshot(&self.content)
     }
 }
 

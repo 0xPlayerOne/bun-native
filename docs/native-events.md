@@ -127,6 +127,15 @@ very narrow bounds, multibyte text, range clipping and stale geometry rejection:
 cargo test --locked -p bun-native-host input::viewport::tests
 ```
 
+With the existing native evidence log enabled, `BUN_NATIVE_INPUT_VIEWPORT_TRACE=1`
+adds input viewport, effective clip, drawn caret/selection rectangles and byte
+positions to its layout records. The observer reads weak input entities after
+their children paint; it retains no input owner. Caret-only paints can therefore
+publish new geometry without changing the tree or input revision. Normal layout
+records remain unchanged, and the existing 128-node and 65,536-byte bounds still
+apply. These are paint observations; screenshots remain independent evidence of
+displayed pixels.
+
 These controls use fixed glyph advances, so they establish coordinate behavior,
 not real shaping, pixels, composition or assistive-technology acceptance. Native
 development/AOT qualification of the viewport fix remains pending under
