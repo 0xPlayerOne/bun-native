@@ -13,7 +13,7 @@ try {
   const window = await app.openWindow({
     title: 'Bun Native Solid Workspace',
     width: 1120,
-    height: 800,
+    height: 760,
   })
   root = render(
     () => (

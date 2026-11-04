@@ -411,6 +411,29 @@ jobs:
             --output "$NATIVE_EVIDENCE/baseline" --package "$NATIVE_EVIDENCE/package" \
             --bun "$(command -v bun)" --samples 5 --warmups 1 --idle-seconds 2 \
             2>&1 | tee "$NATIVE_EVIDENCE/baseline.log"
+      - name: Solid local-stream workspace development and AOT native flow
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for entry in solid-workspace solid-workspace-flow; do
+            bun experiments/aot-gpui/build-window.ts \
+              --source "$GITHUB_WORKSPACE" \
+              --host "$BUN_NATIVE_HOST" --host-profile release \
+              --entry "$entry" --outdir "$NATIVE_EVIDENCE/$entry-package"
+          done
+          for mode in development aot; do
+            command=(bun "$NATIVE_EVIDENCE/solid-workspace-flow-package/development/application.js")
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/solid-workspace-flow-package/solid-workspace-flow")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace"
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
+              --scenario solid-workspace --mode "$mode" --host-profile release \
+              --output "$evidence" -- "${command[@]}"
+          done
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
