@@ -141,6 +141,9 @@ def records_after(path, nonce, observation):
 
 def malformed_diagnostic(path, offset, entry, framework):
     text = path.read_bytes()[offset:].decode(errors="replace")
+    # Babel colors its code frame in CI. Ignore only SGR display codes while
+    # preserving the fresh offset, error, source path and exact broken excerpt.
+    text = re.sub(r"\x1b\[[0-9;]*m", "", text)
     return (
         any(
             line in ("Bundle failed", f"{framework.title()} native build failed")

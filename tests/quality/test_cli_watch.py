@@ -1,6 +1,8 @@
 """Headless watch-oracle and ownership guards; no native GUI acceptance."""
 
+import base64
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -180,6 +182,42 @@ class WatchOracleTests(unittest.TestCase):
             ]:
                 log.write_text(changed)
                 self.assertFalse(WATCH.malformed_diagnostic(log, 0, entry, "solid"))
+
+    def test_recorded_colored_diagnostic_preserves_attribution_and_freshness(self):
+        fixture = json.loads(
+            (
+                ROOT / "tests/native/evidence/cli-watch-solid-colored-diagnostic.json"
+            ).read_text()
+        )["stderr"]
+        recorded = base64.b64decode(fixture["data"], validate=True)
+        self.assertEqual(len(recorded), fixture["bytes"])
+        self.assertEqual(hashlib.sha256(recorded).hexdigest(), fixture["sha256"])
+        self.assertIn(b"\x1b[36mconst\x1b[39m", recorded)
+        entry = Path(fixture["entry"])
+        offset = fixture["diagnostic_start_byte_offset"]
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "stderr.log"
+            log.write_bytes(recorded)
+            self.assertTrue(WATCH.malformed_diagnostic(log, offset, entry, "solid"))
+            self.assertFalse(
+                WATCH.malformed_diagnostic(
+                    log, offset, entry.with_name("other.tsx"), "solid"
+                )
+            )
+            for changed in (
+                recorded.replace(b"Bundle failed", b"Host failed"),
+                recorded.replace(b"incomplete", b"unrelated"),
+                # Cursor movement/erasure is not an SGR display code.
+                recorded.replace(b"incomplete", b"inco\x1b[2Kmplete"),
+            ):
+                log.write_bytes(changed)
+                self.assertFalse(
+                    WATCH.malformed_diagnostic(log, offset, entry, "solid")
+                )
+            log.write_bytes(recorded + b"Bundle failed\nunrelated source\n")
+            self.assertFalse(
+                WATCH.malformed_diagnostic(log, len(recorded), entry, "solid")
+            )
 
     def test_capture_bounds_records_logs_and_strict_json(self):
         with tempfile.TemporaryDirectory() as directory:

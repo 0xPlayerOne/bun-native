@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "scope": "Original hosted native outcomes retained as recorded. This receipt is a diagnostic-matcher fixture, not a new native execution or a passing replacement for the failed run.",
+  "pull_request": "https://github.com/0xPlayerOne/bun-native/pull/360",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/243",
+  "run": {
+    "id": 41885823121,
+    "attempt": 1,
+    "job_id": 126769880531,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41885823121/job/126769880531",
+    "conclusion": "failure"
+  },
+  "source": {
+    "published_head": "cfd92571b96be1b7d634978c1591f62e5ad55353",
+    "published_tree": "3a2cb671a469e514f10777c242a5bd5ac545fde2",
+    "executed_commit": "649bd46c24ef63665e19ecc9f77f758f1a143414",
+    "executed_tree": "08946be9ca99645e8936fb2f23f03b23522e4351",
+    "merge_base": "3f3d84904a106e9147ccbd5e7bfa4e52065d83ed",
+    "all_tracked_source_hashes_verified": 488,
+    "source_dirty": false,
+    "note": "CI ran the PR merge with accepted main including the macOS Metal identity change; CLI/watch sources are identical to the published head."
+  },
+  "artifact": {
+    "id": 13351528408,
+    "name": "native-linux-X64",
+    "bytes": 14517808,
+    "sha256": "4193bcc2f48224f921616fa26f84714acc293b673fb969d6d449297ee5e2806c",
+    "github_digest_verified": true
+  },
+  "host": {
+    "path": "/home/runner/work/bun-native/bun-native/target/release/bun-native-host",
+    "declared_profile": "release",
+    "bytes": 29478168,
+    "sha256": "97d34603ff43a990d15a1f684cdad86f49a8aadf1935c1bb9339e2bdff312c89"
+  },
+  "compiler": {
+    "path": "/home/runner/work/_temp/bun-native-bun/bun",
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "independent_outcomes": {
+    "historical_first_window": {
+      "status": "failed",
+      "error": "Native open request 3 timed out",
+      "step": "Development public API input, stale revision and window lifecycle",
+      "issue": "https://github.com/0xPlayerOne/bun-native/issues/296",
+      "scope": "This is separate from the later watch diagnostic oracle failure. Historical later scenarios and baseline were skipped."
+    },
+    "generated_templates": {
+      "status": "passed",
+      "cases": 8,
+      "frameworks": ["solid", "react"],
+      "languages": ["typescript", "javascript"],
+      "modes": ["development", "aot"],
+      "scope": "One bounded native click and close per variant/mode; development uses the actual native dev command and AOT uses the inspected executable."
+    },
+    "solid_watch": {
+      "status": "failed",
+      "error": "Timed out waiting for malformed-edit error",
+      "active_generation": 1,
+      "completed_generations": 1,
+      "valid_source_edits_completed": 0,
+      "malformed_edit_control_completed": false,
+      "final_os_close_reached": false,
+      "nonce": "3b425ccb6572119dfce7e56487a19746",
+      "cleanup": {
+        "forced_termination": true,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 1
+      },
+      "secondary_errors": ["Watch process tree required forced cleanup or retained owners"],
+      "resource_stopped_acknowledgements": 0,
+      "no_native_tools_invoked": true,
+      "receipt": {
+        "bytes": 102837,
+        "sha256": "b8d4d1ef8b525ba94c73dede9eaf327554ca899466f260853a0c3b4fdf9da907"
+      },
+      "native_log": {
+        "bytes": 5143,
+        "sha256": "e2273d8d9375657c5a41936bc31241ccff83569f5dff7bc538e61085c1d784ee"
+      },
+      "scope": "Initial mount and real XTest click produced complete counter-zero and counter-one paint. The matcher did not recognize the colored malformed-edit diagnostic, so no valid source-edit remount was attempted. Forced cleanup and its secondary protocol error remain part of the failed outcome."
+    },
+    "react_watch": {
+      "status": "passed",
+      "completed_generations": 102,
+      "valid_source_edits_completed": 101,
+      "malformed_edit_control_completed": true,
+      "nonce": "6ac0023425c9fea27f1f7ab4c8996252",
+      "final_close": {
+        "method": "XTest Alt+F4",
+        "requested_ns": 990904450892,
+        "exit_observed_ns": 990951455640,
+        "exit_code": 0,
+        "stopped": {
+          "kind": "stopped",
+          "value": {
+            "pid": 19230,
+            "clean": true,
+            "application": {
+              "windows": 0,
+              "nodes": 0,
+              "callbacks": 0,
+              "queuedTransactions": 0,
+              "queuedCallbacks": 0,
+              "activeCallbacks": 0,
+              "serviceRequests": 0
+            },
+            "nodes": 0
+          },
+          "observed_ns": 990940959382
+        },
+        "app_and_host_absent": true,
+        "temporary_root_removed": true
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "no_native_tools_invoked": true,
+      "receipt": {
+        "bytes": 1001375,
+        "sha256": "2a57f0eb5890bd2b82dfd7fe13b21237cb65f4f382a33a479ed34f0edee3bf1c"
+      },
+      "native_log": {
+        "bytes": 547705,
+        "sha256": "d447fd55d433c1146a3454ff8f63ebb9d760688eb79b2cdcd4f009b181678b33"
+      },
+      "scope": "One initial launch plus 101 valid source-edit remounts, an additional rejected syntax edit with responsive counter-two paint, and final real OS close. This passing outcome does not clear the other failures."
+    }
+  },
+  "stderr": {
+    "artifact_path": "cli-watch-solid/stderr.log",
+    "encoding": "base64",
+    "data": "JCBidW4gc2NyaXB0cy9uYXRpdmUudHMgZGV2ICIvaG9tZS9ydW5uZXIvd29yay9idW4tbmF0aXZlL2J1bi1uYXRpdmUvLmJ1bi1uYXRpdmUvbmF0aXZlLXdhdGNoLTZqczhxbGR4L2FwcCIgLS1ob3N0IC9ob21lL3J1bm5lci93b3JrL2J1bi1uYXRpdmUvYnVuLW5hdGl2ZS90YXJnZXQvcmVsZWFzZS9idW4tbmF0aXZlLWhvc3QgLS13YXRjaApCdW5kbGUgZmFpbGVkCmVycm9yOiAvaG9tZS9ydW5uZXIvd29yay9idW4tbmF0aXZlL2J1bi1uYXRpdmUvLmJ1bi1uYXRpdmUvbmF0aXZlLXdhdGNoLTZqczhxbGR4L2FwcC9tYWluLnRzeDogVW5leHBlY3RlZCB0b2tlbiAoMjowKQoKG1swbSAbWzkwbSAxIHwbWzM5bSAbWzM2bWNvbnN0G1szOW0gaW5jb21wbGV0ZSAbWzMzbT0bWzM5bSAbWzMzbTwbWzM5bQobWzMxbRtbMW0+G1syMm0bWzM5bRtbOTBtIDIgfBtbMzltCiAbWzkwbSAgIHwbWzM5bSAbWzMxbRtbMW1eG1syMm0bWzM5bRtbMG0KICAgIGF0IC9ob21lL3J1bm5lci93b3JrL2J1bi1uYXRpdmUvYnVuLW5hdGl2ZS8uYnVuLW5hdGl2ZS9uYXRpdmUtd2F0Y2gtNmpzOHFsZHgvYXBwL21haW4udHN4OjAKMzI2IHwgICAgICAgICBpZiAoZG9uZSkgYnJlYWsKMzI3IHwgICAgICAgICBmb3IgKGNvbnN0IHJhdyBvZiBkZWNvZGVyLnB1c2godmFsdWUpKSB0aGlzLnJlY2VpdmUocGFyc2VFdmVudChyYXcpKQozMjggfCAgICAgICB9CjMyOSB8ICAgICAgIGRlY29kZXIuZmluaXNoKCkKMzMwIHwgICAgICAgaWYgKHRoaXMucGhhc2UgIT09ICdzdG9wcGluZycgJiYgdGhpcy5waGFzZSAhPT0gJ2Nsb3NlZCcpCjMzMSB8ICAgICAgICAgdGhyb3cgbmV3IFByb3RvY29sRXJyb3IoJ05hdGl2ZSBvdXRwdXQgY2xvc2VkIGJlZm9yZSBzaHV0ZG93bicpCiAgICAgICAgICAgICAgICAgICAgXgpQcm90b2NvbEVycm9yOiBOYXRpdmUgb3V0cHV0IGNsb3NlZCBiZWZvcmUgc2h1dGRvd24KICAgICAgYXQgcmVhZFN0ZG91dCAoL2hvbWUvcnVubmVyL3dvcmsvYnVuLW5hdGl2ZS9idW4tbmF0aXZlL3BhY2thZ2VzL3J1bnRpbWUvc3JjL2luZGV4LnRzOjMzMToxNSkKICAgICAgYXQgYXN5bmMgd2F0Y2ggKC9ob21lL3J1bm5lci93b3JrL2J1bi1uYXRpdmUvYnVuLW5hdGl2ZS9wYWNrYWdlcy9ydW50aW1lL3NyYy9pbmRleC50czozNzA6MzYpCgo6OmVycm9yIGZpbGU9cGFja2FnZXMvcnVudGltZS9zcmMvaW5kZXgudHMsbGluZT0zMzEsY29sPTE1LHRpdGxlPVByb3RvY29sRXJyb3I6IE5hdGl2ZSBvdXRwdXQgY2xvc2VkIGJlZm9yZSBzaHV0ZG93bjo6JTBBICAgICAgYXQgcmVhZFN0ZG91dCAoL2hvbWUvcnVubmVyL3dvcmsvYnVuLW5hdGl2ZS9idW4tbmF0aXZlL3BhY2thZ2VzL3J1bnRpbWUvc3JjL2luZGV4LnRzOjMzMToxNSklMEEgICAgICBhdCBhc3luYyB3YXRjaCAoL2hvbWUvcnVubmVyL3dvcmsvYnVuLW5hdGl2ZS9idW4tbmF0aXZlL3BhY2thZ2VzL3J1bnRpbWUvc3JjL2luZGV4LnRzOjM3MDozNikKCkJ1biB2MS40LjQtY2FuYXJ5LjErZGE4NjdjNjBiIChMaW51eCB4NjQpCkFwcGxpY2F0aW9uIGRpZCBub3QgcmVwb3J0IGNsZWFuIHRlYXJkb3duIChleGl0IDEpOyBwcmVzZXJ2ZSB0aGUgdGVtcGxhdGUgZGV2LWNvbnRyb2wgaG9va3MKZXJyb3I6IHNjcmlwdCAibmF0aXZlIiBleGl0ZWQgd2l0aCBjb2RlIDEK",
+    "bytes": 1647,
+    "sha256": "a2bef620fac94b6269b5fb515ead24cbdb050135274948440b69c67ddc6adc2f",
+    "entry": "/home/runner/work/bun-native/bun-native/.bun-native/native-watch-6js8qldx/app/main.tsx",
+    "diagnostic_start_byte_offset": 194,
+    "scope": "Exact raw retained stderr, including ANSI SGR codes and later forced-cleanup errors. The offset marks the diagnostic in retained bytes; the live matcher offset was not serialized on this failed path."
+  },
+  "diagnosis": {
+    "existing_error_line_matches": true,
+    "existing_exact_entry_path_matches": true,
+    "existing_raw_source_excerpt_matches": false,
+    "source_excerpt_matches_after_removing_sgr_only": true,
+    "correction_scope": "Ignore ANSI SGR display codes when matching diagnostics. Keep required error, exact source path, exact broken excerpt, fresh byte-offset slicing, all deadlines, native pointer/paint requirements and lifecycle counts unchanged."
+  }
+}
