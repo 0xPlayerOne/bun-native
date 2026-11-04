@@ -1,0 +1,134 @@
+# Research-only branch. Never merge this workflow as a qualification or workaround.
+name: Fixed Windows runtime retention comparison
+on:
+  push:
+    branches: [test/retention-runtime-dbd320cc-20261104]
+permissions:
+  contents: read
+jobs:
+  observe:
+    name: Compare unchanged source suites (not qualification)
+    if: github.run_attempt == 1 && vars.CI_BILLING_PAUSED == 'false'
+    runs-on: windows-2022
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Execute the predeclared two-runtime comparison once
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import urllib.request
+          import zipfile
+
+          root = Path(os.environ["GITHUB_WORKSPACE"])
+          output = Path(os.environ["RUNNER_TEMP"]) / "runtime-retention-comparison"
+          output.mkdir()
+          expected_tree = "a9263222c4abb48d29d9f97cb82aad583ec4e71e"
+          base = "2e0ce87e013c17c5048f022a91307124df013805"
+          old_revision = "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+          new_revision = "dbd320ccfa909053f95be9e1643d80d73286751f"
+          digest = "a927b36553de66a3d555ada50af7c0682a5f780c69c86eb614b81058cd152fd2"
+          original_test = root / "tests/solid/renderer.test.ts"
+          original_hash = hashlib.sha256(original_test.read_bytes()).hexdigest()
+          if any(key.startswith("BUN_JSC_") for key in os.environ):
+              raise RuntimeError("Refuse inherited collector/JIT overrides")
+          changed = subprocess.check_output(["git", "diff", "--name-only", base, "HEAD"], text=True).splitlines()
+          assert changed == [".github/workflows/retention-runtime-comparison.yml"], changed
+          assert subprocess.check_output(["git", "rev-parse", base + "^{tree}"], text=True).strip() == expected_tree
+          baseline_path = shutil.which("bun")
+          assert baseline_path is not None
+          baseline = Path(baseline_path).resolve()
+          plan = {
+              "sourceCommit": base,
+              "sourceTree": expected_tree,
+              "testSha256": original_hash,
+              "order": ["pinned", "candidate"],
+              "attemptsPerVariant": 1,
+              "runtimeRevisions": [old_revision, new_revision],
+              "candidateArchiveSha256": digest,
+              "candidateAssetId": 708827603,
+              "scope": "Unmodified complete source suite on actual Windows; no GUI or merge qualification",
+              "controls": "No source, GC, JIT, sleep, assertion, timeout or required workflow changes",
+          }
+          (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
+          archive = output / "candidate.zip"
+          request = urllib.request.Request(
+              "https://github.com/oven-sh/bun/releases/download/canary/bun-windows-x64.zip",
+              headers={"User-Agent": "bun-native-fixed-runtime-observation"},
+          )
+          with urllib.request.urlopen(request, timeout=120) as response, archive.open("xb") as destination:
+              count = 0
+              while block := response.read(1024 * 1024):
+                  count += len(block)
+                  if count > 100 * 1024 * 1024:
+                      raise RuntimeError("Candidate archive exceeded bound")
+                  destination.write(block)
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == digest, "Candidate asset changed; do not test an unreviewed runtime"
+          candidate_dir = output / "candidate-bin"
+          candidate_dir.mkdir()
+          candidate = candidate_dir / "bun.exe"
+          with zipfile.ZipFile(archive) as package:
+              entry = package.getinfo("bun-windows-x64/bun.exe")
+              assert 0 < entry.file_size <= 512 * 1024 * 1024
+              with package.open(entry) as source, candidate.open("xb") as destination:
+                  shutil.copyfileobj(source, destination)
+          archive.unlink()
+          results = []
+          for variant, binary, expected in [("pinned", baseline, old_revision), ("candidate", candidate, new_revision)]:
+              revision = subprocess.check_output([str(binary), "--no-script", "--eval", "console.log(Bun.revision)"], text=True, timeout=15).strip()
+              assert revision == expected, (variant, revision)
+              directory = output / variant
+              directory.mkdir()
+              environment = dict(os.environ)
+              environment["PATH"] = str(binary.parent) + os.pathsep + environment["PATH"]
+              environment["BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR"] = str(directory)
+              forced = False
+              with (directory / "test.log").open("w", encoding="utf-8") as log:
+                  process = subprocess.Popen([str(binary), "test", "tests"], cwd=root, env=environment, stdout=log, stderr=subprocess.STDOUT)
+                  try:
+                      exit_code = process.wait(timeout=90)
+                  except subprocess.TimeoutExpired:
+                      forced = True
+                      subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, timeout=10, check=True)
+                      exit_code = process.wait(timeout=10)
+              text = (directory / "test.log").read_text(encoding="utf-8", errors="replace")
+              record = {
+                  "variant": variant,
+                  "revision": revision,
+                  "binarySha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+                  "exitCode": exit_code,
+                  "forced": forced,
+                  "summary": [line for line in text.splitlines() if "(fail)" in line or " pass" in line or " fail" in line or "expect() calls" in line or line.startswith("Ran ")][-30:],
+                  "retentionDiagnostics": [json.loads(path.read_text()) for path in directory.glob("solid-retention-*.json")],
+              }
+              results.append(record)
+              (output / "outcomes.json").write_text(json.dumps(results, indent=2) + "\n")
+              print(json.dumps(record), flush=True)
+          assert hashlib.sha256(original_test.read_bytes()).hexdigest() == original_hash
+          assert not subprocess.check_output(["git", "status", "--porcelain"], text=True).strip()
+          # A successful observation job only means both fixed outcomes were retained.
+          # Nonzero source-suite outcomes above remain failures and cannot qualify a PR.
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: runtime-retention-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/runtime-retention-comparison/*.json
+            ${{ runner.temp }}/runtime-retention-comparison/pinned/
+            ${{ runner.temp }}/runtime-retention-comparison/candidate/
+          if-no-files-found: error
+          retention-days: 14
