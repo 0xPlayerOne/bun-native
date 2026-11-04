@@ -39,6 +39,7 @@ jobs:
           bun run lint
           bun run typecheck
           bun run check:boundaries
+          bun run check:health
           bun run build
       - name: TypeScript tests and coverage
         run: bun test tests --coverage
