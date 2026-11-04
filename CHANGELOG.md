@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/0xPlayerOne/bun-native/compare/v0.14.0...v0.14.1) (2026-11-04)
+
+
+### Tests
+
+* **native:** observe full GPUI paints while OS input commands run ([#289](https://github.com/0xPlayerOne/bun-native/issues/289)) ([634e7c0](https://github.com/0xPlayerOne/bun-native/commit/634e7c0a34dd55a38a85751cc2898c37bcfe3e65))
+
 ## [0.14.0](https://github.com/0xPlayerOne/bun-native/compare/v0.13.1...v0.14.0) (2026-11-04)
 
 
