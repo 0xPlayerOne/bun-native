@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 3
       - run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - run: bun install --frozen-lockfile
       - name: Execute the predeclared two-runtime comparison once
@@ -39,7 +39,7 @@ jobs:
           expected_tree = "a9263222c4abb48d29d9f97cb82aad583ec4e71e"
           base = "2e0ce87e013c17c5048f022a91307124df013805"
           old_revision = "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
-          new_revision = "dbd320ccfa909053f95be9e1643d80d73286751f"
+          new_revision = "b9f2ec36352060f6b976508fa93d54bf8d5d978f"
           digest = "a927b36553de66a3d555ada50af7c0682a5f780c69c86eb614b81058cd152fd2"
           original_test = root / "tests/solid/renderer.test.ts"
           original_hash = hashlib.sha256(original_test.read_bytes()).hexdigest()
@@ -57,6 +57,8 @@ jobs:
               "testSha256": original_hash,
               "order": ["pinned", "candidate"],
               "attemptsPerVariant": 1,
+              "priorIdentityFailureRun": 41834873439,
+              "releaseTagTargetIsNotBinaryRevision": True,
               "runtimeRevisions": [old_revision, new_revision],
               "candidateArchiveSha256": digest,
               "candidateAssetId": 708827603,
