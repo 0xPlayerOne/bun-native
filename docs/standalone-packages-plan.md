@@ -25,6 +25,15 @@ populated-cache install; [#394](https://github.com/0xPlayerOne/bun-native/pull/3
 preserves its unchanged raw records and original plan. The corrected-lock cohort
 appended below remains unexecuted.
 
+Before that corrected cohort, the branch normally integrates accepted main
+`c4de68deee812cd816316b33f9276786e6eae5c8`. The incoming changes are the landed
+native-platform documentation and the three release files for `0.16.1`; newly
+produced CLI archives therefore use `0.16.1`. Library, compiler, template,
+controller and corrected-lock source bytes are unchanged by this integration.
+The original `c908049` package set and the parser inputs/results retain their
+measured `0.16.0` CLI identity. No extra framework setup or consumer operation is
+part of this release integration.
+
 Use the pinned Bun revision
 `da867c60bf0bcbf9d6d36994f8ca0efa42075115`. The available Linux x64 executable is
 138,468,432 bytes, SHA-256
@@ -257,9 +266,15 @@ The correction constructs the full local-tarball lock before installation,
 retains all original registry tuples, and validates exact local rows and overrides.
 The tightened empty-cache predicate requires exit 1 and only the pinned Bun's
 known missing-registry-cache forms; invalid-lock fallback, crashes and unrelated
-errors cannot satisfy it. Four separately predeclared
-[parser-only controls](standalone-lock-parser-plan.md) verify that text-lock
-contract without installing or extracting anything.
+errors cannot satisfy it. The initial parser run at `c16db305` stopped after its
+original-Solid rejection because an additional expected detailed diagnostic was
+not printed. That control remains failed. The separate three-call follow-up at
+`39d2b878` ran only the previously unrun original-React, corrected-Solid and
+corrected-React inputs; all three met their declared outcomes. The
+[parser-only plan](standalone-lock-parser-plan.md) preserves the exact source,
+prior-result hashes and diagnostic boundary. These outcomes establish acceptance
+of both corrected graphs by the pinned parser without installing or extracting
+anything; they are not a four-pass cohort or an installation result.
 
 Only after the corrected implementation and parser evidence are statically
 reviewed and the exact complete source is published, a new source-bound consumer
