@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "purpose": "Closed-unmerged data-only research preservation of the first failed hosted installed-consumer run; no source or workflow change.",
+  "archive_base": {
+    "commit": "e7605a62c641b360ee59394d693f1d2d5d5979fa",
+    "tree": "d6e73a00bffd8d34ca396f810a90806217f972bd"
+  },
+  "measured_source": {
+    "published_head": "d09ed9068b472337337e07accbf0e465f2e8c1d1",
+    "tested_merge": "d04361e69fb2b71b51a995287ac5d328f0812633",
+    "tree": "a906a768ceec7efaf5f47ff9ae41c8fe05876aa4",
+    "tracked_regular_files": 544
+  },
+  "execution": {
+    "validation_run": 41929577560,
+    "attempt": 1,
+    "native_job": 126922751144,
+    "gate_job": 126931918606,
+    "validation_result": "failure",
+    "validation_jobs": {
+      "total": 12,
+      "success": 7,
+      "failure": 5
+    },
+    "codeql_run": 41929578336,
+    "codeql_analyses_passed": 4,
+    "codeql_detect_and_aggregate": "success"
+  },
+  "native_outcomes": {
+    "passed": 6,
+    "failed": 1,
+    "not_run": 1,
+    "failed_case": "react-javascript/development",
+    "failed_requirement": "Original five-second OS close and subsequent unforced lifecycle completion",
+    "not_run_case": "react-javascript/aot",
+    "cause": "not established"
+  },
+  "archive": {
+    "file": "original-evidence.tar.gz",
+    "bytes": 3356041,
+    "sha256": "75166f5d52368c07d4b2ab513992b4ffa7c6f781d38fbcfcca9085e876ad0172",
+    "regular_members": 284,
+    "uncompressed_payload_bytes": 14499045,
+    "original_tar_changed": false
+  },
+  "native_zip_scope": {
+    "original_members": 2085,
+    "retained_members": 235,
+    "omitted_members": 1850,
+    "full_original_native_zip_embedded": false
+  },
+  "outside_files": {
+    "README.md": {
+      "bytes": 13085,
+      "sha256": "7f14bb517178f4dad7fd9ffe1c5a0e60559e87395d9adfd22f3c7fd58941a89d"
+    },
+    "audits/native-cases.json.raw": {
+      "bytes": 23413,
+      "sha256": "ae892fa0c6ecae666f659004dd29add2634dadbf0c6bd34dc4c03aee6d51df51"
+    },
+    "audits/root-bytes.json.raw": {
+      "bytes": 4115,
+      "sha256": "23b208cae585ddf636a253b8c1f2f690bfa47a74de5752c1f90e05895ff9ed8a"
+    },
+    "audits/tooling-preparation.json.raw": {
+      "bytes": 16413,
+      "sha256": "1c8cc9d6aa11eacf1141e81fef51f2c176cc2b7b8b30eaeefd6f2fca421e93a0"
+    },
+    "collection-receipt.json.raw": {
+      "bytes": 191675,
+      "sha256": "c0ba1098c2bfbecdfbda9e05e7cc84932d8b5b6cfca3b6d9b7d53735b87f5187"
+    },
+    "full-zip-inventory.json.raw": {
+      "bytes": 747861,
+      "sha256": "cf1d663165088cdf488892ec2b41fc383fd5b35f42adbfba12ab90b091115058"
+    },
+    "original-evidence.tar.gz": {
+      "bytes": 3356041,
+      "sha256": "75166f5d52368c07d4b2ab513992b4ffa7c6f781d38fbcfcca9085e876ad0172"
+    },
+    "retained-members.json.raw": {
+      "bytes": 67593,
+      "sha256": "d94c88de5a64857a9e724a98b149954ee4331a75092e7ca6ba83959e62f80cb5"
+    }
+  },
+  "byte_preservation": "The seven raw archive/index/receipt/audit files are copied exactly; original TAR contents and collection-time pending-audit field are unchanged. Later independent audits are outside files with attributed findings.",
+  "archive_preparation": "Local file copying/hashing, read-only Git/source inspection and normal source hooks only. Existing task-owned dependency link reused; no install, test, compiler, consumer, native program, GC, CI retry or dispatch was performed for this archive.",
+  "original_unrecoverable_omissions": [
+    "Four AOT executable payloads",
+    "Four launcher.ts files",
+    "Inner compile-aot.stdout.log and compile-aot.stderr.log files"
+  ],
+  "separate_prepared_correction": {
+    "head": "f8bfb869b45df7140537d50fa348efd40c2cea83",
+    "tree": "b8c5a7e16dac5a6160b876da4f11a0017abfda10",
+    "status": "draft; no qualification in this original d09 archive"
+  },
+  "limits": [
+    "No original failed result is retried, waived or relabeled.",
+    "The failed zero_resources value records absent stopped acknowledgement, not measured retained roots.",
+    "Outer unforced cleanup does not erase forced cleanup by the failed inner native driver and owner.",
+    "No causal close fix, full successful installed-native matrix, physical hardware, additional-platform, watch, long-soak, heap/GC, signing or performance acceptance."
+  ],
+  "preparation_notes": [
+    "An initial direct node_modules/.bin/oxfmt invocation exited 127 because this checkout uses the pinned Bun built-in formatter. No formatter or workload ran in that attempt. The configured bun fmt --no-script command then formatted the README successfully."
+  ]
+}

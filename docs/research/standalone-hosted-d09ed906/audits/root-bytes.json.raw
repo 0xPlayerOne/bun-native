@@ -1,0 +1,100 @@
+{
+  "auditor": "/root",
+  "method": "Independent stdlib byte comparisons against original downloaded ZIPs, raw logs, saved final REST responses and actual tested Git blobs; no collector, retained source or application code executed.",
+  "source": {
+    "head": "d09ed9068b472337337e07accbf0e465f2e8c1d1",
+    "tested_merge": "d04361e69fb2b71b51a995287ac5d328f0812633",
+    "tree": "a906a768ceec7efaf5f47ff9ae41c8fe05876aa4",
+    "tracked_regular_files_verified": 544
+  },
+  "archive": {
+    "bytes": 3356041,
+    "sha256": "75166f5d52368c07d4b2ab513992b4ffa7c6f781d38fbcfcca9085e876ad0172",
+    "regular_unique_members": 284,
+    "all_members_equal_independent_original_inputs": true,
+    "origins": {
+      "byte-exact original ZIP member": 235,
+      "collector source, not executed artifact code": 1,
+      "predeclared collection plan": 1,
+      "original complete final Gate log": 1,
+      "original completed portable failure log, including original CRLF": 3,
+      "original complete decoded native-job log, no newline normalization": 1,
+      "original saved GitHub metadata": 7,
+      "byte-exact original protocol environment artifact ZIP": 2,
+      "byte-exact original protocol ZIP member": 6,
+      "exact tested-merge Git blob": 27
+    }
+  },
+  "original_native_zip": {
+    "bytes": 32007383,
+    "sha256": "5d5db7e9fbeb84393b8fba1996925f4313ef8d77a457f5385400518aff4c1cd6",
+    "all_members_independently_hashed": 2085,
+    "retained_members": 235,
+    "omitted_members": 1850
+  },
+  "original_result": {
+    "bytes": 993305,
+    "sha256": "1dd9e8eaacfeded8950a8ec9dab251183162686927dd3f3b708832b2f5e29706"
+  },
+  "sidecars": {
+    "collection-receipt.json": {
+      "bytes": 191675,
+      "sha256": "c0ba1098c2bfbecdfbda9e05e7cc84932d8b5b6cfca3b6d9b7d53735b87f5187"
+    },
+    "retained-members.json": {
+      "bytes": 67593,
+      "sha256": "d94c88de5a64857a9e724a98b149954ee4331a75092e7ca6ba83959e62f80cb5"
+    },
+    "full-zip-inventory.json": {
+      "bytes": 747861,
+      "sha256": "cf1d663165088cdf488892ec2b41fc383fd5b35f42adbfba12ab90b091115058"
+    }
+  },
+  "validation": {
+    "run": 41929577560,
+    "attempt": 1,
+    "complete_jobs": 12,
+    "passed": 7,
+    "failed": 5,
+    "failed_job_ids": [
+      126922750409,
+      126922750741,
+      126922750937,
+      126922751144,
+      126931918606
+    ]
+  },
+  "codeql": {
+    "run": 41929578336,
+    "attempt": 1,
+    "actual_analyses_passed": 4,
+    "aggregate_id": 126923131991,
+    "aggregate": "success"
+  },
+  "outer_commands": {
+    "executed": 28,
+    "passed_exit_0": 27,
+    "failed_exit_1": 1,
+    "all_observed_processes_and_readers_joined": true,
+    "outer_forced_termination": false,
+    "failed_inner_native_driver_forced_cleanup_is_separate": true
+  },
+  "native_recorded_outcomes": {
+    "passed": 6,
+    "failed": 1,
+    "not_run": 1,
+    "original_aggregate": "failed",
+    "owned_directory_removed": true
+  },
+  "audit_preparation_findings": [
+    "The first data-only audit invocation stopped at an incorrect assertion that the complete CodeQL jobs list contained four records. The saved list contains the four actual analyses plus the separate successful Detect job. The assertion was corrected to require the exact five job IDs and names; no source/artifact/workflow was changed or re-executed."
+  ],
+  "limits": [
+    "This byte/source audit does not independently certify native acceptance; the separate attributed native-case audit checks raw predicates.",
+    "The collected native ZIP subset omits binaries and other original artifact areas. Its full 2085-member inventory is not a claim that all payloads are embedded.",
+    "Four actual AOT binaries, their launchers and inner compiler stdout/stderr are absent from the original hosted artifact and cannot be recovered by collection.",
+    "The collector receipt is preserved unchanged, including its then-pending independent-audit field; later attributed audits supplement rather than rewrite it.",
+    "No original failure is retried, waived or relabeled. No causal OS-close or retention finding follows from archive integrity."
+  ],
+  "result": "clear"
+}

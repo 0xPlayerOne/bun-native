@@ -1,0 +1,497 @@
+{
+  "reviewer": "/root/tooling",
+  "audit_status": "clear_with_explicit_retention_limits",
+  "original_overall_status": "failed",
+  "original_error": "RuntimeError: RuntimeError: Command exited 1: native-react-javascript-development",
+  "method": "Data-only reads of original ZIP/JSON, immutable Git blobs and source text; no archive extraction to executable paths, code import, tests, installers, builds, native programs, GC or retries.",
+  "identities": {
+    "zip": {
+      "bytes": 32007383,
+      "sha256": "5d5db7e9fbeb84393b8fba1996925f4313ef8d77a457f5385400518aff4c1cd6"
+    },
+    "result": {
+      "bytes": 993305,
+      "sha256": "1dd9e8eaacfeded8950a8ec9dab251183162686927dd3f3b708832b2f5e29706"
+    },
+    "tested_commit": "d04361e69fb2b71b51a995287ac5d328f0812633",
+    "tested_tree": "a906a768ceec7efaf5f47ff9ae41c8fe05876aa4",
+    "pr_head": "d09ed9068b472337337e07accbf0e465f2e8c1d1",
+    "validation_run": 41929577560,
+    "attempt": 1
+  },
+  "source": {
+    "verified_git_blobs": 544,
+    "package_source_payloads": 53,
+    "cli_closure_files": 20,
+    "compiler": {
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "os": "linux",
+      "architecture": "x64",
+      "executable": {
+        "bytes": 138468432,
+        "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+      }
+    },
+    "recorded_toolchain_cli_revision": "1.4.4-canary.1+da867c60b"
+  },
+  "actual_host": {
+    "bytes": 29478432,
+    "sha256": "81f06bcc2025fb5c6e2b674106c2d1441b5063c6a4613dd78580fb1c631bad4a",
+    "format": "ELF64 little-endian x86_64",
+    "archive": {
+      "bytes": 10752584,
+      "sha256": "ea813ac8dcb85a870d75574ce8025de521bcc16fff4ac62836ccc57de1d84b79"
+    },
+    "release_build_log": "Finished release profile [optimized]"
+  },
+  "packages": {
+    "@bun-native/cli": {
+      "archive": {
+        "file": "archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+        "bytes": 30065,
+        "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283"
+      },
+      "regular_members": 24,
+      "source_payloads": 20
+    },
+    "@bun-native/core": {
+      "archive": {
+        "file": "archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+        "bytes": 13941,
+        "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74"
+      },
+      "regular_members": 10,
+      "source_payloads": 6
+    },
+    "@bun-native/protocol": {
+      "archive": {
+        "file": "archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+        "bytes": 9211,
+        "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f"
+      },
+      "regular_members": 10,
+      "source_payloads": 6
+    },
+    "@bun-native/react": {
+      "archive": {
+        "file": "archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+        "bytes": 7754,
+        "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60"
+      },
+      "regular_members": 11,
+      "source_payloads": 7
+    },
+    "@bun-native/renderer": {
+      "archive": {
+        "file": "archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+        "bytes": 11142,
+        "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774"
+      },
+      "regular_members": 12,
+      "source_payloads": 8
+    },
+    "@bun-native/runtime": {
+      "archive": {
+        "file": "archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+        "bytes": 7754,
+        "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e"
+      },
+      "regular_members": 6,
+      "source_payloads": 2
+    },
+    "@bun-native/solid": {
+      "archive": {
+        "file": "archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+        "bytes": 3458,
+        "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e"
+      },
+      "regular_members": 8,
+      "source_payloads": 4
+    }
+  },
+  "pack_log_hashes": [
+    {
+      "@bun-native/cli": {
+        "stdout": {
+          "bytes": 1300,
+          "sha256": "d78e3cac122bfec135a77bd71e07a3f2236b3da3da05cf33343a883b543135bf"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/core": {
+        "stdout": {
+          "bytes": 590,
+          "sha256": "a8c8da47467c2da547fdeeea38a498da1563e0ee74acd7fdbc2118b9cbf942ad"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/protocol": {
+        "stdout": {
+          "bytes": 595,
+          "sha256": "af7ba0d76ced95a820554f2c54bbf8a8d50fd8d06883c1ecf83b7713de80c67c"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/react": {
+        "stdout": {
+          "bytes": 629,
+          "sha256": "82c7916fdc3562025ba064498aa335337d8c615f2048659fc79b8c27b40a3005"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/renderer": {
+        "stdout": {
+          "bytes": 670,
+          "sha256": "a6cfafa92a06fde938f8a781bb65cb81908616f9d4799a3639c5577fab08b9d3"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/runtime": {
+        "stdout": {
+          "bytes": 481,
+          "sha256": "280c0cbd233f9cbce1257dedb6444a112098b14729f3efe6241cc3b9076b936c"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "@bun-native/solid": {
+        "stdout": {
+          "bytes": 525,
+          "sha256": "5ff741e30e60f02f8a72800edea4a6c53c583ccf08eda59b516dfcd039df4caf"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "preparation_commands": [
+    {
+      "name": "package-set",
+      "exit": 0,
+      "seconds": 0.9000567339999179,
+      "forced": false
+    },
+    {
+      "name": "create-solid-typescript",
+      "exit": 0,
+      "seconds": 0.14790674200003195,
+      "forced": false
+    },
+    {
+      "name": "install-solid-typescript",
+      "exit": 0,
+      "seconds": 0.14809390799996436,
+      "forced": false
+    },
+    {
+      "name": "check-solid-typescript",
+      "exit": 0,
+      "seconds": 0.14909593699985635,
+      "forced": false
+    },
+    {
+      "name": "imports-solid-typescript",
+      "exit": 0,
+      "seconds": 0.19706449199998133,
+      "forced": false
+    },
+    {
+      "name": "build-solid-typescript",
+      "exit": 0,
+      "seconds": 4.476878230000011,
+      "forced": false
+    },
+    {
+      "name": "create-solid-javascript",
+      "exit": 0,
+      "seconds": 0.14882434500009367,
+      "forced": false
+    },
+    {
+      "name": "install-solid-javascript",
+      "exit": 0,
+      "seconds": 0.15279215999998996,
+      "forced": false
+    },
+    {
+      "name": "check-solid-javascript",
+      "exit": 0,
+      "seconds": 0.15439676899995902,
+      "forced": false
+    },
+    {
+      "name": "imports-solid-javascript",
+      "exit": 0,
+      "seconds": 0.14769839799987494,
+      "forced": false
+    },
+    {
+      "name": "build-solid-javascript",
+      "exit": 0,
+      "seconds": 4.471847879000052,
+      "forced": false
+    },
+    {
+      "name": "create-react-typescript",
+      "exit": 0,
+      "seconds": 0.15142317599998023,
+      "forced": false
+    },
+    {
+      "name": "install-react-typescript",
+      "exit": 0,
+      "seconds": 0.15457027699994796,
+      "forced": false
+    },
+    {
+      "name": "check-react-typescript",
+      "exit": 0,
+      "seconds": 0.14970776400014074,
+      "forced": false
+    },
+    {
+      "name": "imports-react-typescript",
+      "exit": 0,
+      "seconds": 0.2010007129999849,
+      "forced": false
+    },
+    {
+      "name": "build-react-typescript",
+      "exit": 0,
+      "seconds": 6.223593281000149,
+      "forced": false
+    },
+    {
+      "name": "create-react-javascript",
+      "exit": 0,
+      "seconds": 0.14850519400010853,
+      "forced": false
+    },
+    {
+      "name": "install-react-javascript",
+      "exit": 0,
+      "seconds": 0.1488769879999836,
+      "forced": false
+    },
+    {
+      "name": "check-react-javascript",
+      "exit": 0,
+      "seconds": 0.15999070399993798,
+      "forced": false
+    },
+    {
+      "name": "imports-react-javascript",
+      "exit": 0,
+      "seconds": 0.20271764300014183,
+      "forced": false
+    },
+    {
+      "name": "build-react-javascript",
+      "exit": 0,
+      "seconds": 6.323575882000114,
+      "forced": false
+    }
+  ],
+  "consumers": {
+    "solid-typescript": {
+      "preparation": "passed",
+      "final_case_status": "passed",
+      "generated_files": 15,
+      "local_packages": 6,
+      "external_lock_tuples": 55,
+      "installed_lock_byte_equal_seed": true,
+      "public_imports": 6,
+      "contained_link_receipts": 8,
+      "aot_module": {
+        "bytes": 124606,
+        "sha256": "4365522770b248fbf6a9164e20a10aaa122c0345fbb11099980e2b1392502a8f"
+      },
+      "aot_source_map": {
+        "bytes": 295840,
+        "sha256": "24ef67ce0501c380bd2bea4fbf357db74d1cf0341a1f8d1f7c720c54beaf3cd6"
+      },
+      "mapped_inputs": 25,
+      "transformed_embedded_solid_sources": [
+        "main.tsx"
+      ],
+      "application_receipt": {
+        "bytes": 71384104,
+        "sha256": "397a57b74206bd5951c7d8288f9e1578f3b4b2d2dec3f6fc0f6b4b36e5340fd2",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3817701,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "native_modes": {
+        "development": "passed",
+        "aot": "passed"
+      }
+    },
+    "solid-javascript": {
+      "preparation": "passed",
+      "final_case_status": "passed",
+      "generated_files": 15,
+      "local_packages": 6,
+      "external_lock_tuples": 55,
+      "installed_lock_byte_equal_seed": true,
+      "public_imports": 6,
+      "contained_link_receipts": 8,
+      "aot_module": {
+        "bytes": 124615,
+        "sha256": "59342f0baca6c7437fcaeb6b8ca601c6dbc7d2180436d860c32046ac376cf8d2"
+      },
+      "aot_source_map": {
+        "bytes": 295860,
+        "sha256": "95491d42597c712f5c7758e0845d9d62faea8f7c08866c574a0d95b98e81505c"
+      },
+      "mapped_inputs": 25,
+      "transformed_embedded_solid_sources": [
+        "main.jsx"
+      ],
+      "application_receipt": {
+        "bytes": 71384104,
+        "sha256": "655d0d0f398b11c37ae2d99d880bcdbdfca2ce2ffcd4d88a79832b2eefccdacd",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 3817701,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "native_modes": {
+        "development": "passed",
+        "aot": "passed"
+      }
+    },
+    "react-typescript": {
+      "preparation": "passed",
+      "final_case_status": "passed",
+      "generated_files": 15,
+      "local_packages": 6,
+      "external_lock_tuples": 57,
+      "installed_lock_byte_equal_seed": true,
+      "public_imports": 7,
+      "contained_link_receipts": 8,
+      "aot_module": {
+        "bytes": 548018,
+        "sha256": "802681df013ccd2a987448bdebe89cab3ca17f0080fca15862865be53d23530a"
+      },
+      "aot_source_map": {
+        "bytes": 967368,
+        "sha256": "bbd3c008b836dcec56652cfa6a6978c97ec400cb15f315df8f28f3d05f70b12a"
+      },
+      "mapped_inputs": 34,
+      "transformed_embedded_solid_sources": [],
+      "application_receipt": {
+        "bytes": 73071656,
+        "sha256": "56c5bca78f99d1c2bd72d115e80e4c352a90a839a817cb605cedc8932fd0bd5c",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5505253,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "native_modes": {
+        "development": "passed",
+        "aot": "passed"
+      }
+    },
+    "react-javascript": {
+      "preparation": "passed",
+      "final_case_status": "prepared",
+      "generated_files": 15,
+      "local_packages": 6,
+      "external_lock_tuples": 57,
+      "installed_lock_byte_equal_seed": true,
+      "public_imports": 7,
+      "contained_link_receipts": 8,
+      "aot_module": {
+        "bytes": 548027,
+        "sha256": "fc8089967449b1018c0e788aba1f4156444c70913040be78810c2d1aee959b28"
+      },
+      "aot_source_map": {
+        "bytes": 967388,
+        "sha256": "69bde5ae82c55460d3feb3b3ac8835cd9fd2ca606fa9b81e0fbe5712c14daa8c"
+      },
+      "mapped_inputs": 34,
+      "transformed_embedded_solid_sources": [],
+      "application_receipt": {
+        "bytes": 73071656,
+        "sha256": "c4520b9a71699b77a3baf246e9eaeb02f89221710b97af9f105d373996214a1f",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5505253,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "native_modes": {
+        "development": "failed",
+        "aot": "not-run"
+      }
+    }
+  },
+  "invariants": {
+    "actual_commands": 28,
+    "preparation_commands": 21,
+    "nested_pack_calls": 7,
+    "preparation_unforced_exit_zero": true,
+    "preparation_observed_native_hosts": 0,
+    "sentinel_files_match": true,
+    "sentinel_invocation_log_absent": true,
+    "reported_owned_root_removed": true
+  },
+  "limits": [
+    "Original overall run remains failed; six native cases passed, React JavaScript development failed at native close, React JavaScript AOT remains not-run. Native raw-event/lifecycle review belongs to the separate native_services audit.",
+    "Bun executable bytes, bootstrap/staging directories, installed node_modules and cache payloads are omitted. Compiler identity matches the pinned digest and source-bound receipts; installed inventories, exact pinned markers and contained links are original controller observations, not a post-cleanup byte reinspection.",
+    "Four AOT executable bytes, launcher.ts and inner compile-aot stdout/stderr were not retained by original d09. Their actual compile/inspection/fingerprint receipts are present, but this audit cannot independently reinspect omitted executable sections or recover missing compiler logs. Later retention fixes do not replace these original omissions.",
+    "All four AOT development modules/maps are retained. Their 118 mapped inputs are bound to consumer/package records; 116 embedded sources match raw input bytes. The two Solid entry sources contain the existing universal transform and are independently bound through retained original main files; original-TSX line/column fidelity is not claimed.",
+    "Expected consumer inputs are checked before native attempts and after successful cases. The failed React JavaScript development command exits before its post-case expected_inputs call; no post-failure consumer-byte revalidation is inferred. Repository/package/compiler/host invariance is checked in the retained controller finalization path.",
+    "Per-native wrapper reports do not independently capture repository source or native_host.path; provenance is supplied by verified outer source/package records, owner artifact fingerprints and monitored expected host identity.",
+    "Observed process ownership and joined cleanup are bounded to the recorded controller contract; they are not a general heap, long-soak, hardware-GPU, display-presentation or cross-platform claim."
+  ],
+  "reviewer_schema_adjustment": "The first data-auditor assertion assumed bun-native-source.json repeated the whole source inventory. Inspection of the retained producer established its per-package projection plus separate toolchain/lock digests and generated README contract; the auditor was corrected to validate that actual contract. No original evidence was changed or workload rerun.",
+  "audit_script": {
+    "path": "tooling-preparation-audit.py",
+    "bytes": 22734,
+    "sha256": "909a090cc2a2328c822631e74e81d7e01ade6f283b76a83e4ecf7dfcc41b062b"
+  }
+}

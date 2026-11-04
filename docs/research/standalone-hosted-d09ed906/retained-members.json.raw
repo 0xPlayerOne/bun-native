@@ -1,0 +1,1706 @@
+[
+  {
+    "path": "artifact/binary-sha256.txt",
+    "bytes": 97,
+    "sha256": "e126dbee2b599ed840456b18a45d55608e3ce114227d4e4058fa463f4237f028",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/binary-size.txt",
+    "bytes": 15,
+    "sha256": "2d038520ad9d5b3819ff0723659448023e628a27408e12256fe7513084932956",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/build.log",
+    "bytes": 16891,
+    "sha256": "56a946b17fff280b98ea05dc3cf9a786e71198de50b708079620416a1f43e14a",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-react-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-react-javascript.stdout.log",
+    "bytes": 144,
+    "sha256": "e4593abec49796356b5a6fc9084bb0212067e84d1cc2c0aa3cf94ac7966b51df",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-react-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-react-typescript.stdout.log",
+    "bytes": 144,
+    "sha256": "970babb7d8b5daf87ad018db5fd6f9437149b6d213f8a1a95cbc8149d2c6e592",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-solid-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-solid-javascript.stdout.log",
+    "bytes": 144,
+    "sha256": "4a80cb083cdda16881b9114bc9f8af4cf479e59a2cca51a1f16b5a391dafd185",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-solid-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/build-solid-typescript.stdout.log",
+    "bytes": 144,
+    "sha256": "14144cc4fe760a4b4ce1cbe65c22fd8158528eda292bd5b465d88f962006ea01",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-react-javascript.stderr.log",
+    "bytes": 90,
+    "sha256": "1a07c39a9bef95d7a9bb96559ebc287559243bf8dcc6de882257deade995e589",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-react-javascript.stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-react-typescript.stderr.log",
+    "bytes": 90,
+    "sha256": "3de56fe8014cba60975536322594c11f55866e2a0f25447ad274ba20285c391c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-react-typescript.stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-solid-javascript.stderr.log",
+    "bytes": 90,
+    "sha256": "59aee66dff9505acdc8cfd4a74d75f3b20a75da12c41df3e0b759df6dd668206",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-solid-javascript.stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-solid-typescript.stderr.log",
+    "bytes": 90,
+    "sha256": "4060a9934f8dbf0cedb834b7babf38b4879acd185c6f77b50991d5515c6a8e41",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/check-solid-typescript.stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-react-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-react-javascript.stdout.log",
+    "bytes": 230,
+    "sha256": "73beac5d96dc0c0ab1f3fab69888d7d3b6d04e1578becf52aaa15d9967188615",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-react-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-react-typescript.stdout.log",
+    "bytes": 230,
+    "sha256": "97ee60f287b9e60e95bcc133a5b29bf497275098c1c271ae851da32d32576e17",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-solid-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-solid-javascript.stdout.log",
+    "bytes": 230,
+    "sha256": "92257176383e78d1db11573b13ec036b016e19c453d52a052997e413825b1e9e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-solid-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/create-solid-typescript.stdout.log",
+    "bytes": 230,
+    "sha256": "f4e9e5083f1530e0da68c70f0e0d0852e5bbc5e3227c8dc1060cbe356a126593",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-react-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-react-javascript.stdout.log",
+    "bytes": 1877,
+    "sha256": "4c06da2114548e4b52d41dd09d5e4a5218ece001e2beb53ca13f79dcbabed63d",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-react-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-react-typescript.stdout.log",
+    "bytes": 1877,
+    "sha256": "4c06da2114548e4b52d41dd09d5e4a5218ece001e2beb53ca13f79dcbabed63d",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-solid-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-solid-javascript.stdout.log",
+    "bytes": 1878,
+    "sha256": "01e216aa09bb515af4c80d9a76d227e94be23cf22f3b055352987ed74507d955",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-solid-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/imports-solid-typescript.stdout.log",
+    "bytes": 1878,
+    "sha256": "01e216aa09bb515af4c80d9a76d227e94be23cf22f3b055352987ed74507d955",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-react-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-react-javascript.stdout.log",
+    "bytes": 419,
+    "sha256": "075250181c8895df1538ea0f05c49c2f9e3e69ddd809669deff448b5b45378c7",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-react-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-react-typescript.stdout.log",
+    "bytes": 419,
+    "sha256": "4eb7551cacfa233db906d509a012c1224a9ffa53b8943265c61f39ee37f8eb25",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-solid-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-solid-javascript.stdout.log",
+    "bytes": 367,
+    "sha256": "38c3217faf9060ce9b6fd59484c23376e7f07c6ac5bac3056297bf7231342eb3",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-solid-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/install-solid-typescript.stdout.log",
+    "bytes": 367,
+    "sha256": "f0eac14aa0fa736606a3a7aca91785596a838b216ea976bc8bf84ea11e2f0438",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-javascript-development.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-javascript-development.stdout.log",
+    "bytes": 139,
+    "sha256": "605298ba0674a1052e2b371117d2a2aa3af3948b399d66266cd97705488af490",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-typescript-aot.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-typescript-aot.stdout.log",
+    "bytes": 131,
+    "sha256": "8a2967c87a992dade3fb75af650ea0173eb5fb11adefae2db0f36f84da98e00f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-typescript-development.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-react-typescript-development.stdout.log",
+    "bytes": 139,
+    "sha256": "2ae0cd624a56096291afdcef4f6e1864c9ff9948cfe43ea23de02021ea6854b1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-javascript-aot.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-javascript-aot.stdout.log",
+    "bytes": 131,
+    "sha256": "9e15850a489a26d1cae1185e9e76d75d712690b3b2ca1d15345fe48131b2b81f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-javascript-development.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-javascript-development.stdout.log",
+    "bytes": 139,
+    "sha256": "6e482ff32c8aa96200bcaa8f78f2a9091dbe968328f40722c22f1b3facb9d733",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-typescript-aot.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-typescript-aot.stdout.log",
+    "bytes": 131,
+    "sha256": "64d39aad1ee6766b85dfe821fdc3dfbd85a9da24b206a6c7918ac903f42c37b9",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-typescript-development.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/native-solid-typescript-development.stdout.log",
+    "bytes": 139,
+    "sha256": "07a069651e1f56c165691d499f9e061785b2414f329f876a35e7ebc411490f96",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/package-set.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/logs/package-set.stdout.log",
+    "bytes": 340,
+    "sha256": "4432769a1c4ceb935b4c2aaf62bc8757ce44bc9a2d8cd99301de6308bcc34e1e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/after.png",
+    "bytes": 9232,
+    "sha256": "c65469d9f3f75ded56b9c92f1a4f8fb42924ea9c4824b03c6c72b99dea37dd1b",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/app-events.jsonl",
+    "bytes": 5139,
+    "sha256": "9904b521b45e4fda1f3a699ef10e0ad16a8b8283a8fb1e581d774b66a13e7a3a",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/before.png",
+    "bytes": 9480,
+    "sha256": "7b84cfea89a541a9bd28cfa2224ec6f3c132ed244a617f0ea6afd86fdf5c10ee",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/lifecycle.json",
+    "bytes": 29745,
+    "sha256": "a0b41300de379af54499f7b43758d7a40c889515b922e4fdcf5bef1532b6758e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/native-dev-module/application.js",
+    "bytes": 550247,
+    "sha256": "9077abe4a58a23a8f3f430f04e50c28d20fa3f8230b386df1caf77a54051090e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/native-dev-module/application.js.map",
+    "bytes": 967388,
+    "sha256": "1dc57cb4389cd8bc583478fd65d84bc0d6479dee4f917108a039fe364adfe58c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/result.json",
+    "bytes": 39445,
+    "sha256": "b60acba63aabc756fc9c690e99d47161426b6d1b2aca1af770241b20f8d8dd09",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/stderr.log",
+    "bytes": 37,
+    "sha256": "53139011e4a1feb4c14dd5e1b3e40352a0ec3a6cd8cc4483228b5d1cb6884f5d",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-javascript/development/stdout.log",
+    "bytes": 117,
+    "sha256": "f4ca2cdb3e9f6b50327ba709944a723b7aa22793e4e99ba6a8ce721f6230e805",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/after.png",
+    "bytes": 9232,
+    "sha256": "c65469d9f3f75ded56b9c92f1a4f8fb42924ea9c4824b03c6c72b99dea37dd1b",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/app-events.jsonl",
+    "bytes": 5341,
+    "sha256": "a2e9bf898a24a8e66bfaeb898f3de8f9c8de96030669b5b740a20b6e3a41ade0",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/before.png",
+    "bytes": 9480,
+    "sha256": "7b84cfea89a541a9bd28cfa2224ec6f3c132ed244a617f0ea6afd86fdf5c10ee",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/lifecycle.json",
+    "bytes": 28652,
+    "sha256": "56910097a8b56f2955ee7b85070a2a57f15b6dad8077bf26f9be95330e09bdb0",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/result.json",
+    "bytes": 38382,
+    "sha256": "1145172b3b71676682515071e732106900f6ca5a2287974a2f5574628f6808ac",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/aot/stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/after.png",
+    "bytes": 9232,
+    "sha256": "c65469d9f3f75ded56b9c92f1a4f8fb42924ea9c4824b03c6c72b99dea37dd1b",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/app-events.jsonl",
+    "bytes": 5342,
+    "sha256": "3e52d796b17471056487643f5be1278c92895b461736855315b4e572da0c4188",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/before.png",
+    "bytes": 9480,
+    "sha256": "7b84cfea89a541a9bd28cfa2224ec6f3c132ed244a617f0ea6afd86fdf5c10ee",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/lifecycle.json",
+    "bytes": 30014,
+    "sha256": "13c50e294de4b2ed19b09c72c2b5780dece1fec9a487390e8058be71d854269a",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/native-dev-module/application.js",
+    "bytes": 550238,
+    "sha256": "4f99fea05034f771c272127db663d3ea4ffc6b8bd022b76a71b30d09974ea1d0",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/native-dev-module/application.js.map",
+    "bytes": 967368,
+    "sha256": "bbe17928b02423e89fc61532eb1195214ca0956c2823ffd5fc91e0f5aa55f411",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/result.json",
+    "bytes": 39375,
+    "sha256": "30a92ed85597f309db397d87802da39a534aa2bfaa8200eac7bdf9a267fac2da",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/react-typescript/development/stdout.log",
+    "bytes": 117,
+    "sha256": "f4ca2cdb3e9f6b50327ba709944a723b7aa22793e4e99ba6a8ce721f6230e805",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/after.png",
+    "bytes": 9320,
+    "sha256": "74fbe29b9f5ed3259c3f993510ff567e83da661b0d95d800bc5d8375af8c4c9c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/app-events.jsonl",
+    "bytes": 5341,
+    "sha256": "1d9009d0666100563089ca3ddb717e49483f32f15f25d7f209d70521c7905506",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/before.png",
+    "bytes": 9566,
+    "sha256": "476bfc243d6f194be79580c5d4c94935af87f270f99546dd6b97f110db57b46c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/lifecycle.json",
+    "bytes": 25691,
+    "sha256": "943b46c6af4bedbfafa3a93860d90c1c9ec7abcb2dc54bd6a32bd864e788bc99",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/result.json",
+    "bytes": 36617,
+    "sha256": "4e3dabc8ac5b77f1aa6db63328c72191ab886fab89897f1ae8d3a078f1b14d33",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/aot/stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/after.png",
+    "bytes": 9320,
+    "sha256": "74fbe29b9f5ed3259c3f993510ff567e83da661b0d95d800bc5d8375af8c4c9c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/app-events.jsonl",
+    "bytes": 5342,
+    "sha256": "822adb28dcce1ace401c5f2242fbcf858f7488ef1acf6c95673b1545ce38c541",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/before.png",
+    "bytes": 9566,
+    "sha256": "476bfc243d6f194be79580c5d4c94935af87f270f99546dd6b97f110db57b46c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/lifecycle.json",
+    "bytes": 27060,
+    "sha256": "7556d2e55b47473dfe1672f1570705ae4c6f46f9065b4383fe3129311c158286",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/native-dev-module/application.js",
+    "bytes": 126175,
+    "sha256": "3118f1e7fb430dddf509d793cbb7a9a9f03b93013f6132377f28c56922c03bf9",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/native-dev-module/application.js.map",
+    "bytes": 295860,
+    "sha256": "471564ae2d00091db4b2182a5a9f8a285190b954edc8e8d42c940a32365924c1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/result.json",
+    "bytes": 37610,
+    "sha256": "b5cf8840c31be3b4a675abd72794bf61388061187aaa3627fa724c4c2647f6b0",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-javascript/development/stdout.log",
+    "bytes": 117,
+    "sha256": "77f67015dad9abba9549caf5c4bc95161906a9d3ca2c5176a49b70a251b4ce7f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/after.png",
+    "bytes": 9320,
+    "sha256": "74fbe29b9f5ed3259c3f993510ff567e83da661b0d95d800bc5d8375af8c4c9c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/app-events.jsonl",
+    "bytes": 5341,
+    "sha256": "7f7994a7d4063065e7434b665af8f97a35847bc45b6f26dea384decf48d8414b",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/before.png",
+    "bytes": 9566,
+    "sha256": "476bfc243d6f194be79580c5d4c94935af87f270f99546dd6b97f110db57b46c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/lifecycle.json",
+    "bytes": 25690,
+    "sha256": "df3ce428421662ff0d6a3b3a71849696f784a80c07e2ed600fb4bb9cc1b20026",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/result.json",
+    "bytes": 36617,
+    "sha256": "6f2e2d59c56d01f7ca7d9faceb41a7a986126c17e3398f2ba8a282fbeccf1b88",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/aot/stdout.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development-session/window-manager.log",
+    "bytes": 85,
+    "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/after.png",
+    "bytes": 9320,
+    "sha256": "74fbe29b9f5ed3259c3f993510ff567e83da661b0d95d800bc5d8375af8c4c9c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/app-events.jsonl",
+    "bytes": 5342,
+    "sha256": "0ea886b6ca64ca1399824b3c43993a345c967302531c568e665f9b083d6d2179",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/before.png",
+    "bytes": 9566,
+    "sha256": "476bfc243d6f194be79580c5d4c94935af87f270f99546dd6b97f110db57b46c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/lifecycle.json",
+    "bytes": 27061,
+    "sha256": "54116ae6ffc2a6e683abf5aa7ad55fd57277799e6b0d7f7d7cb08c2d4d0bab76",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/native-dev-module/application.js",
+    "bytes": 126166,
+    "sha256": "8b00aacd2fea1c7ee74d5f11fbecdafc5cd6636885d01ee329960bbb0179b623",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/native-dev-module/application.js.map",
+    "bytes": 295840,
+    "sha256": "0bf1d446b0e4e11ca7df0fdbd94b20f0231164bf515b3aea3e1cea3cdd756cd5",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/result.json",
+    "bytes": 37393,
+    "sha256": "88be65de5df4aa919cdbf7211763f660b10ebc81e11f1cc12448c498102d997c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/native/solid-typescript/development/stdout.log",
+    "bytes": 117,
+    "sha256": "77f67015dad9abba9549caf5c4bc95161906a9d3ca2c5176a49b70a251b4ce7f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+    "bytes": 30065,
+    "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+    "bytes": 13941,
+    "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+    "bytes": 9211,
+    "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+    "bytes": 11142,
+    "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+    "bytes": 3458,
+    "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/cli.json",
+    "bytes": 390,
+    "sha256": "0b62afcc1f8f7a2faafbdbeade3c43e84406196b02354ed2ffb2708eeaab446b",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/cli.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/cli.stdout.log",
+    "bytes": 1300,
+    "sha256": "d78e3cac122bfec135a77bd71e07a3f2236b3da3da05cf33343a883b543135bf",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/core.json",
+    "bytes": 399,
+    "sha256": "c6d59df954b9fe6bbb96b00ab94de35be0884b7fa77eb63b0fd3388a8993adea",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/core.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/core.stdout.log",
+    "bytes": 590,
+    "sha256": "a8c8da47467c2da547fdeeea38a498da1563e0ee74acd7fdbc2118b9cbf942ad",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/protocol.json",
+    "bytes": 407,
+    "sha256": "8d2b6b8462af8d2447bc284ae1a5ac34e3f5a354e1a3eb4cb8813188c4440581",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/protocol.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/protocol.stdout.log",
+    "bytes": 595,
+    "sha256": "af7ba0d76ced95a820554f2c54bbf8a8d50fd8d06883c1ecf83b7713de80c67c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/react.json",
+    "bytes": 401,
+    "sha256": "993ad9e0759a569ffcb9cfd200874fd9445fa9832ed86a0f636b7af48640fc00",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/react.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/react.stdout.log",
+    "bytes": 629,
+    "sha256": "82c7916fdc3562025ba064498aa335337d8c615f2048659fc79b8c27b40a3005",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/renderer.json",
+    "bytes": 407,
+    "sha256": "4b12d184296a605e3e83c1a582d7b5f53fa7bee8517018687aad6d42e9fafb6e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/renderer.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/renderer.stdout.log",
+    "bytes": 670,
+    "sha256": "a6cfafa92a06fde938f8a781bb65cb81908616f9d4799a3639c5577fab08b9d3",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/runtime.json",
+    "bytes": 405,
+    "sha256": "a01fabff067ae2777861008a84dfb63dc011e7ff312f4e32beff6e329aae37bb",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/runtime.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/runtime.stdout.log",
+    "bytes": 481,
+    "sha256": "280c0cbd233f9cbce1257dedb6444a112098b14729f3efe6241cc3b9076b936c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/solid.json",
+    "bytes": 401,
+    "sha256": "777ab05bc84e8dd5e38a9ea7709c0d7568dc509573abb0a5440542f27c4ce76f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/solid.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/logs/solid.stdout.log",
+    "bytes": 525,
+    "sha256": "5ff741e30e60f02f8a72800edea4a6c53c583ccf08eda59b516dfcd039df4caf",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/packages/manifest.json",
+    "bytes": 152245,
+    "sha256": "b118248798bd0213cbaa93d013e31a9a161bacb396ccbb3accce14b218966fa1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/cache-before.json",
+    "bytes": 1390346,
+    "sha256": "62dd517eff52b2c9cd20399dbc7ea486fa4e95a157463f607c4f937b947cb0ac",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-javascript/aot-development/application.js",
+    "bytes": 548027,
+    "sha256": "fc8089967449b1018c0e788aba1f4156444c70913040be78810c2d1aee959b28",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-javascript/aot-development/application.js.map",
+    "bytes": 967388,
+    "sha256": "69bde5ae82c55460d3feb3b3ac8835cd9fd2ca606fa9b81e0fbe5712c14daa8c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-javascript/bun.lock",
+    "bytes": 19726,
+    "sha256": "09a13a8d82b67dba33338ef992cc0384788a79dd346130d5ee497251a03615bf",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-javascript/manifest.json",
+    "bytes": 6794,
+    "sha256": "02d70592c7b9f4299fd08b7448f7dc4676829d94eb13ca36f98034909c8d653c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-typescript/aot-development/application.js",
+    "bytes": 548018,
+    "sha256": "802681df013ccd2a987448bdebe89cab3ca17f0080fca15862865be53d23530a",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-typescript/aot-development/application.js.map",
+    "bytes": 967368,
+    "sha256": "bbd3c008b836dcec56652cfa6a6978c97ec400cb15f315df8f28f3d05f70b12a",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-typescript/bun.lock",
+    "bytes": 19726,
+    "sha256": "2d78c0b1f699919cb665cd99fd06066dec21d698a01dbfacceae9afa2687e9db",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/react-typescript/manifest.json",
+    "bytes": 6794,
+    "sha256": "125d92e879bde4a361520a8629c3a126d256f21837b226c9eee264f25dd92f9c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-javascript/aot-development/application.js",
+    "bytes": 124615,
+    "sha256": "59342f0baca6c7437fcaeb6b8ca601c6dbc7d2180436d860c32046ac376cf8d2",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-javascript/aot-development/application.js.map",
+    "bytes": 295860,
+    "sha256": "95491d42597c712f5c7758e0845d9d62faea8f7c08866c574a0d95b98e81505c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-javascript/bun.lock",
+    "bytes": 19067,
+    "sha256": "823fb6174cfefaf4d6d6ad40459e6feb3fb52fd8b5a2002d71326636f0557a73",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-javascript/manifest.json",
+    "bytes": 6794,
+    "sha256": "1b4a8d827faccc2b495e3a34d96497e2ed237e81b5919a718b6433c75f844827",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-typescript/aot-development/application.js",
+    "bytes": 124606,
+    "sha256": "4365522770b248fbf6a9164e20a10aaa122c0345fbb11099980e2b1392502a8f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-typescript/aot-development/application.js.map",
+    "bytes": 295840,
+    "sha256": "24ef67ce0501c380bd2bea4fbf357db74d1cf0341a1f8d1f7c720c54beaf3cd6",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-typescript/bun.lock",
+    "bytes": 19067,
+    "sha256": "d820c862f7ffac3842faf7cbf5b337bb96a0ad7e12d639e8e85b35038461d4f7",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/receipts/solid-typescript/manifest.json",
+    "bytes": 6794,
+    "sha256": "8f1dfc6b024eb735f56a9962813064b7d7c5e6f8ff9d77486cecf6a7ea28f845",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/result.json",
+    "bytes": 993305,
+    "sha256": "1dd9e8eaacfeded8950a8ec9dab251183162686927dd3f3b708832b2f5e29706",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sentinels/cargo",
+    "bytes": 70,
+    "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sentinels/rustc",
+    "bytes": 70,
+    "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sentinels/rustup",
+    "bytes": 70,
+    "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/README.md",
+    "bytes": 2292,
+    "sha256": "995189772e9be64c6bdf9e5a3ae01b005ca510cd549d5946abc277bce06c0cf5",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/bun-native.json",
+    "bytes": 123,
+    "sha256": "e3ad20da92ecd59a570fb15834818cf83c9d38de9a4deee058136d8f7c1afd97",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/bun.lock",
+    "bytes": 19726,
+    "sha256": "09a13a8d82b67dba33338ef992cc0384788a79dd346130d5ee497251a03615bf",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/main.jsx",
+    "bytes": 1985,
+    "sha256": "32ee9fb11a8edcbb7afe911e1f4315a37b1cbb5756d50c0cb5211927478276e7",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/package.json",
+    "bytes": 1527,
+    "sha256": "1260722a886a34f744610bbbbbaa5ede9828e2687ed7e2912c0347a3a6c970b0",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "4b5488c1cd8617d7f939e4c287c499c7e6f8ba8449f238aa9baabef7f2baed85",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+    "bytes": 30065,
+    "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+    "bytes": 13941,
+    "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+    "bytes": 9211,
+    "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+    "bytes": 11142,
+    "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+    "bytes": 3458,
+    "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-javascript/vendor/bun-native/manifest.json",
+    "bytes": 152245,
+    "sha256": "b118248798bd0213cbaa93d013e31a9a161bacb396ccbb3accce14b218966fa1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/README.md",
+    "bytes": 2292,
+    "sha256": "f85505e397d5a6db25071e790a136c4360313fc81517ae24a1adcfa5022016b1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/bun-native.json",
+    "bytes": 123,
+    "sha256": "61b81de64b8eded84ba03b040d7eee195a50b3e8e04a932ab593709fb04eb968",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/bun.lock",
+    "bytes": 19726,
+    "sha256": "2d78c0b1f699919cb665cd99fd06066dec21d698a01dbfacceae9afa2687e9db",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/main.tsx",
+    "bytes": 1968,
+    "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/package.json",
+    "bytes": 1527,
+    "sha256": "7d66b00c3855186b8bfb81740ba53c6c4f9855a41ac290e02f4cc97c0f0d30fa",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "d42cfedabbc8b112214996b9ea9dba3b8c11841f13c627774d171af9e4a9eee4",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+    "bytes": 30065,
+    "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+    "bytes": 13941,
+    "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+    "bytes": 9211,
+    "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+    "bytes": 11142,
+    "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+    "bytes": 3458,
+    "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/react-typescript/vendor/bun-native/manifest.json",
+    "bytes": 152245,
+    "sha256": "b118248798bd0213cbaa93d013e31a9a161bacb396ccbb3accce14b218966fa1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/README.md",
+    "bytes": 2292,
+    "sha256": "d037ff157477a45661c148c817c4779903d97eb952d3f84104609009f3e424a8",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/bun-native.json",
+    "bytes": 123,
+    "sha256": "774670032a8e5662a756410a3a045903f501d30ccb81c297e91650489b664398",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/bun.lock",
+    "bytes": 19067,
+    "sha256": "823fb6174cfefaf4d6d6ad40459e6feb3fb52fd8b5a2002d71326636f0557a73",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/main.jsx",
+    "bytes": 1952,
+    "sha256": "efa4405db8555043cfc7c85fbc40b47baed83881be0ec5549fe978679c38902c",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/package.json",
+    "bytes": 1459,
+    "sha256": "09b0101411ddb0cb3e7c07effd0fe3f109bbba4d83be774a1df322c406084606",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "e82d6ec86e779fdc45565fc695fe614a715e6f672143f33ae6e866a36b0b1b7f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+    "bytes": 30065,
+    "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+    "bytes": 13941,
+    "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+    "bytes": 9211,
+    "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+    "bytes": 11142,
+    "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+    "bytes": 3458,
+    "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-javascript/vendor/bun-native/manifest.json",
+    "bytes": 152245,
+    "sha256": "b118248798bd0213cbaa93d013e31a9a161bacb396ccbb3accce14b218966fa1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/README.md",
+    "bytes": 2292,
+    "sha256": "164d03dd472a2cef78aa351427bba4243e63d2ec3fd5a299274826fd3c51ca49",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/bun-native.json",
+    "bytes": 123,
+    "sha256": "21643d8647c6f11850ed8dd16c59ca237f72e32e1c425d249da89616494a5d23",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/bun.lock",
+    "bytes": 19067,
+    "sha256": "d820c862f7ffac3842faf7cbf5b337bb96a0ad7e12d639e8e85b35038461d4f7",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/main.tsx",
+    "bytes": 1935,
+    "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/package.json",
+    "bytes": 1459,
+    "sha256": "365cf360e7bcf17db3a5df1664494f9050a0443700d48feb46cc86578c6f3675",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "fd6a149d940815fdfff7389e0bb7c562208700d4f9aeeb87f6a9395281f007e2",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-cli-0.16.1-d04361e69fb2.tgz",
+    "bytes": 30065,
+    "sha256": "490609ac8b26fc282e99b3a89e600769a43c5d61d71a01222f649e480532f283",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-core-0.0.0-d04361e69fb2.tgz",
+    "bytes": 13941,
+    "sha256": "192e36cfc0982c7950ef6303cf9ec1ff6f0948ddc723016a77ead6cd26749b74",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-protocol-0.0.0-d04361e69fb2.tgz",
+    "bytes": 9211,
+    "sha256": "6b568b271c99c3b23865652bcc2fdc41281a91396ff067054ce148dac80bd18f",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-react-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "3683838e8ce196a4b79ca03de0c5baa4e926a62f0072ed01c4a05112cd68fc60",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-renderer-0.0.0-d04361e69fb2.tgz",
+    "bytes": 11142,
+    "sha256": "d5e95b9760271d0907be63123b4d1aae0d37aa4b973b8ff97cf2a2b789756774",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-runtime-0.0.0-d04361e69fb2.tgz",
+    "bytes": 7754,
+    "sha256": "15af23ae7ab013c95a35958f7d6e2a5ba690896078a5fd2a08a9b5311ce1457e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/archives/bun-native-solid-0.0.0-d04361e69fb2.tgz",
+    "bytes": 3458,
+    "sha256": "96fefa01caad071b792f26f763dc7e8368ee933b0b109fd6a0065cf544eb2b8e",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/cli-standalone/sources/solid-typescript/vendor/bun-native/manifest.json",
+    "bytes": 152245,
+    "sha256": "b118248798bd0213cbaa93d013e31a9a161bacb396ccbb3accce14b218966fa1",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/toolchain.txt",
+    "bytes": 1402,
+    "sha256": "0a7b6ef936677a713c22cd8a897528d09d27406857a16e0fc66b836d2e273cac",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "artifact/unsigned-native-host.tar.gz.sha256",
+    "bytes": 134,
+    "sha256": "556c483baeda204651cafb955c6a0b2b517bb10ecfe3d6b6670fc64e78abab88",
+    "origin": "byte-exact original ZIP member"
+  },
+  {
+    "path": "collection/collector.py",
+    "bytes": 29117,
+    "sha256": "ba644337d73728d573155b9b182ccf51ff4767831438b6ab36440c5b984a4d57",
+    "origin": "collector source, not executed artifact code"
+  },
+  {
+    "path": "collection/plan.md",
+    "bytes": 11143,
+    "sha256": "b1e4f1fc40f71f1be508e0234f6e54bd58326f9b0bc275e2c1eeae1f5fd0836f",
+    "origin": "predeclared collection plan"
+  },
+  {
+    "path": "logs/gate.log",
+    "bytes": 2789,
+    "sha256": "b62f0a1c641332445fb1b610751b8b7edcb6b4671c3edb786f964899c2f26ba1",
+    "origin": "original complete final Gate log"
+  },
+  {
+    "path": "logs/job-126922750409.log",
+    "bytes": 140238,
+    "sha256": "f8a845aa880d17f74f9a32fb59dccddfb1a1d78657b1117eb37841a00a4db6dc",
+    "origin": "original completed portable failure log, including original CRLF"
+  },
+  {
+    "path": "logs/job-126922750741.log",
+    "bytes": 146032,
+    "sha256": "0a930533e2ea3e0614fdcf8fd990de0ddc8cb0cff70e7fef34a5bca6601d67a7",
+    "origin": "original completed portable failure log, including original CRLF"
+  },
+  {
+    "path": "logs/job-126922750937.log",
+    "bytes": 149542,
+    "sha256": "4645240968e62e175d7c02ab1df0a83b802c8b0e477d4a22a1bed169679b74fb",
+    "origin": "original completed portable failure log, including original CRLF"
+  },
+  {
+    "path": "logs/native-job.log",
+    "bytes": 1129735,
+    "sha256": "a43d5b7e99c083d9bbd874e0699f5cbc72455e5a73aedd24cbbc9cd9d3a25d11",
+    "origin": "original complete decoded native-job log, no newline normalization"
+  },
+  {
+    "path": "metadata/artifacts.json",
+    "bytes": 6783,
+    "sha256": "c2015ce6871db2914a4f409a86d065e411b0696b634cd5fcdb7c79afbc0cba6b",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/checks.json",
+    "bytes": 109889,
+    "sha256": "dc5d04fce7bbfb7937325c97cf2f9db034c74290976ea208ce72da2c2d67005c",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/codeql-jobs.json",
+    "bytes": 14720,
+    "sha256": "a694f1c74697454f61542d236a98604e8771459dbdcac6bfe902db4bc8ad39fe",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/codeql-run.json",
+    "bytes": 13234,
+    "sha256": "18ca94d607af7c9e91257a9965c6df08cc36d7bc258c550b90ce058be1fdaea4",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/tested-merge.json",
+    "bytes": 2707,
+    "sha256": "1271c6512f1ea2b07fc9dd019e95171d8492974984ed3ad14d1d18090ed2abea",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/validation-jobs.json",
+    "bytes": 50411,
+    "sha256": "cdcd94014a2327159b0cac914bd7f7e97e94b8b6061ca5194392bedcffd7b5f6",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "metadata/validation-run.json",
+    "bytes": 13659,
+    "sha256": "76e93c297d8eb8e049a692da3f17115c704bf8c81048b0e5e6e6c147c308960c",
+    "origin": "original saved GitHub metadata"
+  },
+  {
+    "path": "original-artifacts/artifact-13370124944.zip",
+    "bytes": 1188,
+    "sha256": "12fe66199118d3f8284f4809cd47855f46ab7dd0df271a02f43f22527115660e",
+    "origin": "byte-exact original protocol environment artifact ZIP"
+  },
+  {
+    "path": "original-artifacts/artifact-13370468930.zip",
+    "bytes": 1195,
+    "sha256": "181c6f9c6d1ff1920760d95e0671c3d76334ab5cc00aff729d1c678618298a51",
+    "origin": "byte-exact original protocol environment artifact ZIP"
+  },
+  {
+    "path": "protocol-environments/13370124944/bootstrap.txt",
+    "bytes": 264,
+    "sha256": "364a1bd34e3d68da7a21cebc5470bd46b8af9920148c25a58e50a3abbf479591",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "protocol-environments/13370124944/bun-bootstrap.log",
+    "bytes": 469,
+    "sha256": "26d7839b5b442c2fa3c8a4fc2523e29834a30001292874654a8792f82456f175",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "protocol-environments/13370124944/toolchain.txt",
+    "bytes": 358,
+    "sha256": "3f444b9634adcc7f4b95221ee24f9e30d7628c95470523fecd75415c19214f7e",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "protocol-environments/13370468930/bootstrap.txt",
+    "bytes": 266,
+    "sha256": "aa5943a8207de480cba35175c6e434d58af03115305bf3b0ac60e216feef1f62",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "protocol-environments/13370468930/bun-bootstrap.log",
+    "bytes": 460,
+    "sha256": "8ae3949dbaf43edeaa96322bd6bddbe3a6cdc3eda9915a216a8c511843ea310a",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "protocol-environments/13370468930/toolchain.txt",
+    "bytes": 357,
+    "sha256": "ced64ba74f034f0b88da75591679316e1e2c3c16b20c87660e1c9bc8f11a18a9",
+    "origin": "byte-exact original protocol ZIP member"
+  },
+  {
+    "path": "source/.github/workflows/bun-native.yml",
+    "bytes": 11626,
+    "sha256": "2f83f45e5c8c33d926260cf106d3ad18f839b6796662f561581bdacb24e34388",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/.github/workflows/native-linux.yml",
+    "bytes": 37582,
+    "sha256": "6c9e6cd77b3f100d01c14274f0c08ec018b8315ed5d799699afa6130992da984",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/Cargo.lock",
+    "bytes": 161210,
+    "sha256": "2d8d977816ba49d1c51a5dff16572552cf0c7b937e921e73a1160573f08250ee",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/Cargo.toml",
+    "bytes": 458,
+    "sha256": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/bun.lock",
+    "bytes": 28357,
+    "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/docs/standalone-native-plan.md",
+    "bytes": 8999,
+    "sha256": "2400054accb04167b7911ed8bb1c78314db241527157e41249fb92dcd27aeabd",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/docs/standalone-packages-plan.md",
+    "bytes": 23153,
+    "sha256": "949207ff1b3192d1ceb9f1129f1ddf11cf2c7a4c0f69bd112f0fc145bcc3784e",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/docs/standalone-projects.md",
+    "bytes": 8456,
+    "sha256": "43b1c8b4670c543b83802a75a53d3d3cfd9020558ca5c796a560afa1bfdc4c75",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/experiments/aot-gpui/compile.ts",
+    "bytes": 1661,
+    "sha256": "832cec3a32205995551dd270fdda0fd4bd26f0dfdf5b11d65457c73b88ec2b8f",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/package.json",
+    "bytes": 2040,
+    "sha256": "82fb42ee34ed5e186e4e339e16d812eda973e98fa5cf7cc0ca5f75f66ea4958f",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/rust-toolchain.toml",
+    "bytes": 86,
+    "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/native/build.ts",
+    "bytes": 4103,
+    "sha256": "41612351a60e4ad275134ca1f481a44c3c9504717ea1869a6898426685152f41",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/native-input-linux.py",
+    "bytes": 51481,
+    "sha256": "d418af1488908141482e5adc83a3b3bae2c2a36a67be42bb6684d34947916756",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/native-linux-session.sh",
+    "bytes": 10120,
+    "sha256": "8a764a05433d40e4d4e2e09d821fac2adbdffd90dcdbb53dd1050e5df1c7f4a5",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/native-paint-observer.py",
+    "bytes": 17684,
+    "sha256": "fc365fbbe4127d2cdafecf18d71897173d4a16654606a8e4cca3847b3c6ed959",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/native-watch-processes.py",
+    "bytes": 13352,
+    "sha256": "9664fc1fe9d33c49540d6578120379551c6e8b55672a10c519fd51d078190535",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/standalone-package-evidence.py",
+    "bytes": 4213,
+    "sha256": "31611254cd9283bc93b9afdd193e783ba882a47f527f23307d3031875f542c9d",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/standalone-package-inspect.ts",
+    "bytes": 2816,
+    "sha256": "0a1c8e0903cbf0b62b6a8629758561fd327fd5b8de783b21270e4c42f123a7c8",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/scripts/quality/standalone-packages.py",
+    "bytes": 33026,
+    "sha256": "219dbe4bde75405b5747e6e3d1074fc8abaa823e7883d28b110c3a4d3bd15158",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-dev-owner.ts",
+    "bytes": 5766,
+    "sha256": "05c5b3eab313a8f65dcb195af824c56bfc641d6c14be3068cdf609176190e1d4",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-module-evidence.ts",
+    "bytes": 2207,
+    "sha256": "c296071e9000041c4c96a8e763a5650f6d9010c02f534a77862ec63a9dc58128",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-owned-exec.py",
+    "bytes": 836,
+    "sha256": "d56fc1ec01c6ce4520ae5be80c2c3ac4a9b0e322cd7a987e8ae8c9142486f2cf",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-standalone-owner.ts",
+    "bytes": 3666,
+    "sha256": "d77ac2024603785be236d5e02267fc1f68a98ad6cdd8f9d0bb3e48ebc19ae6a7",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-standalone.py",
+    "bytes": 31496,
+    "sha256": "657db133bee1478c4032f7e9a2733d548eca14ff1556621bd253fa7f0c5da759",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-template-owner.ts",
+    "bytes": 6295,
+    "sha256": "fcbcea42a23faeb8dae3fce6d155028d688fe4312d7fbc259f73124d40155475",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/tests/native/cli-templates.py",
+    "bytes": 11227,
+    "sha256": "1d4087eeef3d2718eb94e492c4c31d4a27af384fdc7bef88969e5a9d4b8ff138",
+    "origin": "exact tested-merge Git blob"
+  },
+  {
+    "path": "source/toolchain.json",
+    "bytes": 3012,
+    "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+    "origin": "exact tested-merge Git blob"
+  }
+]
