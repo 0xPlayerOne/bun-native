@@ -1,0 +1,48 @@
+# Temporary read-only source transport; never merge or treat as validation.
+name: Merge queue immutable workbench
+on:
+  push:
+    branches: [test/merge-queue-workbench-20261104-2128]
+permissions:
+  contents: read
+jobs:
+  export:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 27405939ce1007d4142e1bb67e9ecc6ca3ce0411
+          path: accepted
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: c434f2d005ca941b8d079a62ebaae73197bec50e
+          path: react
+          persist-credentials: false
+      - name: Archive only immutable tracked source
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, subprocess
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'queue-workbench'
+          output.mkdir()
+          records = []
+          for label, expected in [('accepted', '27405939ce1007d4142e1bb67e9ecc6ca3ce0411'), ('react', 'c434f2d005ca941b8d079a62ebaae73197bec50e')]:
+              root = pathlib.Path(label).resolve()
+              def git(*args):
+                  return subprocess.check_output(['git', *args], cwd=root)
+              assert git('rev-parse', 'HEAD').decode().strip() == expected
+              assert not git('status', '--porcelain')
+              archive = output / (label + '.tar.gz')
+              subprocess.run(['git', 'archive', '--format=tar.gz', '-o', str(archive), 'HEAD'], cwd=root, check=True)
+              tree = output / (label + '.tree.txt')
+              tree.write_bytes(git('ls-tree', '-r', 'HEAD'))
+              records.append({'label': label, 'commit': expected, 'tree': git('rev-parse', 'HEAD^{tree}').decode().strip(), 'files': {path.name: {'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()} for path in [archive, tree]}})
+          (output / 'manifest.json').write_text(json.dumps({'scope': 'Immutable source transport only; no test/merge qualification', 'sources': records}, indent=2) + '\n')
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: merge-queue-immutable-workbench
+          path: ${{ runner.temp }}/queue-workbench
+          if-no-files-found: error
+          retention-days: 7
