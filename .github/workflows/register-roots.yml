@@ -50,7 +50,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native matcher controls failed' }
           & ml64.exe /nologo /c /Foregister-control.obj (Join-Path $producer 'register-control.asm') 2>&1 | Tee-Object -FilePath assembly.log
           if ($LASTEXITCODE -ne 0) { throw 'Register control assembly failed' }
-          & cl.exe /nologo /W4 /WX /O2 /LD /TC (Join-Path $producer 'capture.c') register-control.obj /link /EXPORT:register_control /OUT:capture.dll 2>&1 | Tee-Object -FilePath native-build.log
+          & cl.exe /nologo /W4 /WX /O2 /LD /TC (Join-Path $producer 'capture.c') /link register-control.obj /EXPORT:register_control /OUT:capture.dll 2>&1 | Tee-Object -FilePath native-build.log
           if ($LASTEXITCODE -ne 0) { throw 'Windows observer build failed' }
           & dumpbin.exe /disasm register-control.obj > register-control.disassembly.txt
           if ($LASTEXITCODE -ne 0) { throw 'Control disassembly failed' }
