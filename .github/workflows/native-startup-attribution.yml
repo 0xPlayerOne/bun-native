@@ -33,11 +33,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/0xPlayerOne/bun-native/actions/artifacts/13296159799/zip > "$RUNNER_TEMP/startup-failure.zip"
+          gh api repos/0xPlayerOne/bun-native/actions/artifacts/13286293028/zip > "$RUNNER_TEMP/startup-failure.zip"
           python3 - <<'PYARTIFACT'
           import hashlib, json, os, pathlib, zipfile
           path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'startup-failure.zip'
-          expected = '0002bf45187f5b772f6e1e6ce99c506c7676db3fd84dce91ca30d5bc667173e9'
+          expected = '11977e7404e8e6fcf80ac194f165e8ff6802ac1ffb9e72c9a88d5be71b296329'
           digest = hashlib.sha256(path.read_bytes()).hexdigest()
           assert digest == expected, 'Original artifact digest mismatch'
           selected = {}
@@ -49,7 +49,7 @@ jobs:
                   selected[name] = text
                   print(name, text[-20000:])
           output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'startup-attribution' / 'original-failure.json'
-          output.write_text(json.dumps({'artifact':13296159799,'sha256':digest,'files':selected}, indent=2))
+          output.write_text(json.dumps({'artifact':13286293028,'sha256':digest,'files':selected}, indent=2))
           PYARTIFACT
       - name: Install checksum-pinned runtime
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
