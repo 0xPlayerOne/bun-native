@@ -1,0 +1,61 @@
+# One-use source transport only; never merge or treat as qualification.
+name: Prepare immutable merge-review sources
+on:
+  push:
+    branches: [test/source-integration-356-20261104]
+permissions:
+  contents: read
+jobs:
+  archive:
+    if: github.repository == '0xPlayerOne/bun-native' && vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 8b9e3793fac93edc422d72be8d44914444630d99
+          path: accepted-main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: be303d7ddf4710ad1397234f9f66b03e549e6fe5
+          path: macos-device
+      - name: Archive only exact tracked public source
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, subprocess
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'integration-source'
+          output.mkdir()
+          rows = []
+          sources = [
+              ('accepted-main', '8b9e3793fac93edc422d72be8d44914444630d99', 'c1b7a28be88f758c0fc751652fa47216d21cdd4e'),
+              ('macos-device', 'be303d7ddf4710ad1397234f9f66b03e549e6fe5', 'e14388b1db1aab38a9dd37a9976f250d70159968'),
+          ]
+          for name, head, tree in sources:
+              root = pathlib.Path(name).resolve()
+              def git(*args):
+                  return subprocess.check_output(['git', *args], cwd=root)
+              if git('rev-parse', 'HEAD').decode().strip() != head or git('rev-parse', 'HEAD^{tree}').decode().strip() != tree:
+                  raise RuntimeError('Immutable source identity mismatch')
+              if git('status', '--porcelain').strip():
+                  raise RuntimeError('Checkout is not clean')
+              archive = output / (name + '.tar.gz')
+              subprocess.run(['git', 'archive', '--format=tar.gz', '--output=' + str(archive), 'HEAD'], cwd=root, check=True)
+              listing = output / (name + '.tree.txt')
+              listing.write_bytes(git('ls-tree', '-r', 'HEAD'))
+              files = {}
+              for path in (archive, listing):
+                  if path.stat().st_size > 25000000:
+                      raise RuntimeError('Source bundle exceeds fixed bound')
+                  files[path.name] = {'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+              rows.append({'name': name, 'commit': head, 'tree': tree, 'files': files})
+          report = {'scope': 'Tracked source transport only; no qualification, credentials, dependency caches or worktrees', 'sources': rows}
+          (output / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report))
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: immutable-integration-source-${{ github.sha }}
+          path: ${{ runner.temp }}/integration-source
+          if-no-files-found: error
+          retention-days: 7
