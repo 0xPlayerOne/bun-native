@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "scope": "Explicit callback ownership of retained window unsubscribe handles; unchanged original Solid fixed-GC assertion still requires fresh Windows acceptance.",
+  "defect": "The original unsubscribe closure retained its listener after deleting it from the shared Set. Holding a release handle therefore kept the cancelled callback and its captured owner reachable.",
+  "correction": "Shared lifetime stores revocable registration cells. Cancellation clears the callback binding, and window completion consumes every binding before invocation. Released handles remain idempotent and cannot retain the callback through their cell.",
+  "controls": {
+    "originalRetainedHandles": {
+      "expectedRetainedCount": 0,
+      "observedRetainedCount": 10,
+      "raw": {
+        "sha256": "14a45722cd8700656f2e669381dec4798fc2e0f5cdc1f5c7f50b745cf2afd559",
+        "bytes": 918
+      }
+    },
+    "corrected": "The same retained-handle test passes. A completed-window control also runs ten live callbacks once, retains all release handles and verifies all callback targets collect. Existing observer positive and deliberately broken controls pass.",
+    "collectionProtocol": "New revoker controls use two task-boundary/full-GC checkpoints. Existing Solid tests, timings and retention diagnostics are unchanged."
+  },
+  "source": {
+    "packages/renderer/src/window-lifetime.ts": {
+      "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+      "bytes": 1635
+    },
+    "tests/renderers/revoker-ownership.test.ts": {
+      "sha256": "97743ec90c1a28435e6b4403d6c70f233231ed0462e530f280aed42d8109039b",
+      "bytes": 2080
+    },
+    "tests/renderers/window-lifetime.test.ts": {
+      "sha256": "f217a38fc9147d9beb3cf4c0c8759491b85fe47d183356a370e1c19727f875de",
+      "bytes": 3248
+    },
+    "tests/solid/renderer.test.ts": {
+      "sha256": "e0156a12d48b4a5d4636980bdbc03ba1817ea242cc7b7ff759ed3c7b2740e7ef",
+      "bytes": 19746
+    }
+  },
+  "priorWindowsFailure": {
+    "runId": 41720988114,
+    "jobId": 126213367977,
+    "head": "53d5bcc9dedff61f0efedaa9829b692a82ff1c13",
+    "survivingRootIndex": 9,
+    "artifactId": 13271244637,
+    "artifactSha256": "61d0c2523a6f67c2b336b20d356a9b6a0cd4c3496b5e6468624a2ec4aa302902"
+  },
+  "limits": [
+    "The metadata-only Windows record does not identify its ultimate GC marking root.",
+    "This control establishes a real retained-revoker ownership defect, not proof that every historical #287 observation had this cause.",
+    "Require the unchanged Windows test, actual native workloads and all current protected gates; no tolerated retained count or retry-until-green."
+  ]
+}
