@@ -673,12 +673,22 @@ def qualify(framework, output, host, bun):
                 "observed_identities": audit.snapshot(),
             }
         if app:
-            cleanup = DRIVER.cleanup(app, audit.snapshot() if audit else {})
+            cleanup = (
+                DRIVER.cleanup(app, audit.snapshot())
+                if audit
+                else PROCESS.join_unobserved_child(app)
+            )
             report["cleanup"] = cleanup
+            if not audit:
+                record_failure(
+                    report,
+                    "Process audit did not initialize; descendant cleanup is unverified",
+                )
             if (
                 cleanup["forced_termination"]
                 or cleanup["remaining_observed_pids"]
                 or cleanup["unreaped_observed_pids"]
+                or cleanup.get("direct_child_joined") is False
             ):
                 record_failure(
                     report,
@@ -708,8 +718,11 @@ def qualify(framework, output, host, bun):
                 report["host_compiler_source_unchanged"] = True
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             record_failure(report, error)
-        if project_parent and not report.get("cleanup", {}).get(
-            "remaining_observed_pids"
+        cleanup = report.get("cleanup", {})
+        if (
+            project_parent
+            and not cleanup.get("remaining_observed_pids")
+            and cleanup.get("direct_child_joined") is not False
         ):
             shutil.rmtree(project_parent)
         (output / "result.json").write_text(json.dumps(report, indent=2) + "\n")

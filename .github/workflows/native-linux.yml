@@ -131,7 +131,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -260,6 +260,23 @@ jobs:
                 "$evidence-session" -- python3 tests/native/react-behavior.py \
                 --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
             done
+          done
+      - name: Development and AOT React workspace task flow, scrolling and cleanup
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun "$NATIVE_EVIDENCE/react-workspace-flow-package/development/application.js")
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/react-workspace-flow-package/react-workspace-flow")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-react-workspace"
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
+              --scenario react-workspace --mode "$mode" --host-profile release \
+              --output "$evidence" -- "${command[@]}"
           done
       - name: Development and AOT React update and lifecycle diagnostics
         timeout-minutes: 7

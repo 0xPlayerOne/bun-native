@@ -110,6 +110,85 @@ def owned_processes(root_pid, table):
         owned.update(children)
 
 
+def close_window_probe(window, expected_owner, started):
+    """One read-only X11 observation; neither a close request nor a success gate."""
+    observation = {
+        "window_id": window,
+        "expected_owner": expected_owner,
+        "state": "unknown",
+        "method": "xdotool getwindowpid plus /proc PID/start-ticks identity",
+        "scope": "X11 window presence and owner at observation; not WM close delivery",
+        "clock": "driver_monotonic_relative",
+    }
+    try:
+        if (
+            not isinstance(window, str)
+            or not re.fullmatch(r"[1-9][0-9]{0,9}", window)
+            or int(window) >= 2**32
+            or not isinstance(expected_owner, dict)
+            or any(
+                type(expected_owner.get(key)) is not int or expected_owner[key] <= 0
+                for key in ["pid", "start_ticks"]
+            )
+        ):
+            raise ValueError(
+                "Close probe requires the previously owned window identity"
+            )
+        result = subprocess.run(
+            ["xdotool", "getwindowpid", window],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        observation["command_returncode"] = result.returncode
+        observation["stderr_tail"] = result.stderr[-2000:]
+        if result.returncode:
+            # A generic command error is not evidence that the window vanished.
+            if "BadWindow (invalid Window parameter)" in result.stderr:
+                observation["state"] = "absent"
+        elif re.fullmatch(r"[1-9][0-9]{0,9}\s*", result.stdout):
+            pid = int(result.stdout)
+            identity = process_table().get(pid)
+            observation["observed_owner_pid"] = pid
+            if pid != expected_owner["pid"]:
+                observation["state"] = "present-foreign-owner"
+            elif identity and identity["start_ticks"] == expected_owner["start_ticks"]:
+                observation["state"] = "present-owned"
+            else:
+                observation["state"] = "present-unverified-owner"
+        else:
+            observation["error"] = "Malformed window owner response"
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        observation["error"] = str(error)[-2000:]
+    observation["observed_at_ms"] = (time.monotonic() - started) * 1000
+    return observation
+
+
+def close_process_snapshot(observed, started):
+    """Observe known identities without extending cleanup ownership after exit."""
+    table = process_table()
+    matching = []
+    missing = []
+    reused = []
+    for pid, start_ticks in observed.items():
+        row = table.get(pid)
+        if row is None:
+            missing.append(pid)
+        elif row["start_ticks"] != start_ticks:
+            reused.append(pid)
+        else:
+            matching.append(row)
+    return {
+        "scope": "previously observed PID/start-ticks matches only; no owner discovery",
+        "clock": "driver_monotonic_relative",
+        "observed_at_ms": (time.monotonic() - started) * 1000,
+        "processes": matching,
+        "missing_pids": missing,
+        "reused_pids": reused,
+    }
+
+
 def capture(stream, path, stats):
     with path.open("wb") as output:
         while chunk := stream.read(8192):
@@ -908,7 +987,8 @@ def main():
             }
 
         def focus():
-            if int(run(["xdotool", "getwindowpid", window])) not in sample():
+            owner = int(run(["xdotool", "getwindowpid", window]))
+            if owner not in sample():
                 raise RuntimeError(
                     "Window no longer belongs to the launched application"
                 )
@@ -917,6 +997,7 @@ def main():
                 raise RuntimeError(
                     "Native window did not gain focus; no input was injected"
                 )
+            return {"pid": owner, "start_ticks": observed[owner]}
 
         def screenshot(name):
             path = args.output / name
@@ -1088,11 +1169,14 @@ def main():
         if render is not None:
             report["checks"]["app_render_report"] = "passed" if render_ok else "failed"
         screenshot("after.png")
-        focus()
+        close_owner = focus()
         report["measurements"]["os_close_requested_ms"] = (
             time.monotonic() - started
         ) * 1000
         run(["xdotool", "key", "--clearmodifiers", "alt+F4"])
+        report["measurements"]["os_close_command_returned_ms"] = (
+            time.monotonic() - started
+        ) * 1000
         try:
             app.wait(timeout=5)
             report["measurements"]["application_exit_observed_ms"] = (
@@ -1101,6 +1185,22 @@ def main():
             report["checks"]["os_close"] = "passed" if app.returncode == 0 else "failed"
         except subprocess.TimeoutExpired:
             report["checks"]["os_close"] = "failed"
+        # Observe once after the existing close decision, before forced cleanup.
+        # Missing diagnostics never change that decision or grant extra grace.
+        report["close_diagnostics"] = close_window_probe(window, close_owner, started)
+        try:
+            report["close_diagnostics"]["process_snapshot"] = close_process_snapshot(
+                observed, started
+            )
+            phases = [
+                event
+                for event in read_events(evidence_path, nonce, 0)
+                if event.get("type") in ["native_window_closed", "lifecycle_phase"]
+            ]
+            report["close_diagnostics"]["phases"] = phases[:32]
+            report["close_diagnostics"]["phases_truncated"] = len(phases) > 32
+        except (OSError, ValueError, RuntimeError) as error:
+            report["close_diagnostics"]["snapshot_error"] = str(error)[-2000:]
         if args.event_stress:
             # Re-read after process exit so a duplicate or late input cannot hide
             # behind the earlier matching final paint.

@@ -98,7 +98,9 @@ The [recorded Linux x64 onboarding check](../tests/native/evidence/checkout-cli-
 | React TypeScript | Passed              | Passed                          |
 | React JavaScript | Passed              | Passed                          |
 
-The same check verified TypeScript defaults for both frameworks, compared the supplied host's native sources and pins with the tested checkout, and recorded no invocation of owned `cargo`, `rustc` or `rustup` sentinels. It retained generated sources, command logs and package fingerprints. This is evidence for a clean checkout with an existing package cache and supplied toolchain/host. A cold network installation was not run.
+The same check verified TypeScript defaults for both frameworks, compared the supplied host's native sources and pins with the tested checkout, and recorded no invocation of owned `cargo`, `rustc` or `rustup` sentinels. It retained generated sources, command logs and package fingerprints. This is evidence for a clean checkout with an existing package cache and supplied toolchain/host. That check did not perform a network installation.
+
+A [separate fresh-cache installation check](evidence/cli-fresh-local-cache-install-2026-11-04.json) used the committed Node bootstrap to download the pinned Bun archive, verify its checksum and install the same 72 locked packages with an initially empty local cache. It preserved the toolchain pins and lockfiles, invoked no native compiler, and removed its owned checkout, cache and toolchain afterward. This installation check did not repeat the AOT builds or exercise a native window.
 
 No local GUI launch was attempted because the verification environment's process IDs and `/proc` did not share the namespace required by the native ownership checks. The manifests retain `nativeRendering`, `osInput` and `teardown` as `not-run`. This record does not qualify macOS/Windows templates, independent framework installation or signed distribution. Current hosted native evidence is described separately in [developer tooling](developer-tooling.md).
 

@@ -5,11 +5,13 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "tests/native/cli-watch.py"
@@ -273,6 +275,134 @@ class WatchOracleTests(unittest.TestCase):
             self.assertEqual(report["status"], "unsupported")
             self.assertEqual(report["generations"], [])
             self.assertNotIn("command", report)
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux owned-child failure path")
+    def test_missing_audit_anchor_joins_its_direct_child_before_project_removal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkout = root / "checkout"
+            checkout.mkdir()
+            (checkout / "toolchain.json").write_text(
+                json.dumps({"bun": {"revision": "test-revision"}})
+            )
+            output = root / "evidence"
+            executable = Path(sys.executable).resolve()
+            spawned = []
+            removal_exit_codes = []
+            launch = subprocess.Popen
+            remove = shutil.rmtree
+
+            def create(command, **_options):
+                project = Path(command[4])
+                project.mkdir()
+                (project / "main.tsx").write_text(
+                    'const heading = "Bun Native Solid"\n'
+                    'const title = "Bun Native Solid"\n'
+                )
+                return subprocess.CompletedProcess(command, 0)
+
+            def start_child(_command, **options):
+                child = launch(
+                    [sys.executable, "-c", "import time; time.sleep(30)"], **options
+                )
+                spawned.append(child)
+                return child
+
+            def remove_project(path, *args, **options):
+                if Path(path).name.startswith("native-watch-"):
+                    removal_exit_codes.append(spawned[0].returncode)
+                return remove(path, *args, **options)
+
+            observer = MagicMock()
+            observer.__enter__.return_value = observer
+            observer.begin.return_value = 1
+            try:
+                with (
+                    patch.object(WATCH, "ROOT", checkout),
+                    patch.object(
+                        WATCH.platform, "platform", return_value="test-platform"
+                    ),
+                    patch.dict(os.environ, {"DISPLAY": ":owned-child-test"}),
+                    patch.object(
+                        WATCH.DRIVER, "proc_identity_matches", return_value=True
+                    ),
+                    patch.object(WATCH.DRIVER, "enable_subreaper"),
+                    patch.object(WATCH.DRIVER, "process_table", return_value={}),
+                    patch.object(WATCH.shutil, "which", return_value="test-tool"),
+                    patch.object(WATCH.shutil, "rmtree", side_effect=remove_project),
+                    patch.object(WATCH.TEMPLATES, "source_identity", return_value={}),
+                    patch.object(
+                        WATCH.subprocess,
+                        "check_output",
+                        return_value=b"test-revision\n",
+                    ),
+                    patch.object(WATCH.subprocess, "run", side_effect=create),
+                    patch.object(WATCH.subprocess, "Popen", side_effect=start_child),
+                    patch.object(
+                        WATCH.DRIVER.PAINT_OBSERVER,
+                        "PaintObserver",
+                        return_value=observer,
+                    ),
+                ):
+                    code = WATCH.qualify("solid", output, executable, executable)
+                self.assertEqual(code, 1)
+                self.assertEqual(len(spawned), 1)
+                self.assertEqual(len(removal_exit_codes), 1)
+                self.assertIsNotNone(
+                    removal_exit_codes[0],
+                    "The directly owned child was not joined before project removal",
+                )
+                with self.assertRaises(ChildProcessError):
+                    os.waitpid(spawned[0].pid, os.WNOHANG)
+                report = json.loads((output / "result.json").read_text())
+                self.assertEqual(report["status"], "failed")
+                self.assertIn("Cannot anchor", report["error"])
+                self.assertEqual(report["cleanup"]["direct_child_pid"], spawned[0].pid)
+                self.assertTrue(report["cleanup"]["direct_child_joined"])
+                self.assertFalse(report["cleanup"]["descendant_tree_verified"])
+                self.assertEqual(list((checkout / ".bun-native").iterdir()), [])
+            finally:
+                for child in spawned:
+                    if child.poll() is None:
+                        child.kill()
+                        child.wait(timeout=3)
+
+    def test_unobserved_child_cleanup_never_signals_an_already_joined_child(self):
+        child = MagicMock()
+        child.pid = 200
+        child.wait.return_value = 0
+        child.returncode = 0
+        with patch.object(
+            PROCESS.DRIVER, "process_table", side_effect=AssertionError("No discovery")
+        ):
+            result = PROCESS.join_unobserved_child(child)
+        child.terminate.assert_not_called()
+        child.kill.assert_not_called()
+        child.wait.assert_called_once_with(timeout=0)
+        self.assertTrue(result["direct_child_joined"])
+        self.assertFalse(result["descendant_tree_verified"])
+
+    def test_unobserved_child_cleanup_escalates_with_fixed_bounds(self):
+        child = MagicMock()
+        child.pid = 200
+        child.wait.side_effect = [
+            subprocess.TimeoutExpired("owned-child", 0),
+            subprocess.TimeoutExpired("owned-child", 2),
+            -9,
+        ]
+        child.returncode = -9
+        with patch.object(
+            PROCESS.DRIVER, "process_table", side_effect=AssertionError("No discovery")
+        ):
+            result = PROCESS.join_unobserved_child(child)
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in child.wait.call_args_list], [0, 2, 1]
+        )
+        child.terminate.assert_called_once_with()
+        child.kill.assert_called_once_with()
+        self.assertTrue(result["direct_child_joined"])
+        self.assertTrue(result["forced_termination"])
+        self.assertFalse(result["descendant_tree_verified"])
 
 
 class ImmutableOwnershipTests(unittest.TestCase):

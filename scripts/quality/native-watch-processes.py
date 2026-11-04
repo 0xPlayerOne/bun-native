@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -29,6 +30,41 @@ def require_absent(table, identities):
         row = table.get(identity["pid"])
         if row is not None and row["start_ticks"] == identity["start_ticks"]:
             raise RuntimeError("A previous app or host is still live or unreaped")
+
+
+def join_unobserved_child(app):
+    """Join only the directly spawned child when no process audit was established."""
+    forced = False
+    joined = False
+    errors = []
+    for stop, timeout in ((None, 0), (app.terminate, 2), (app.kill, 1)):
+        if stop is not None:
+            forced = True
+            try:
+                # Popen owns this child. Never infer a process group or discover
+                # descendants from its PID after it may have exited/reaped.
+                stop()
+            except ProcessLookupError:
+                pass
+            except OSError as error:
+                errors.append(str(error))
+        try:
+            app.wait(timeout=timeout)
+            joined = True
+            break
+        except subprocess.TimeoutExpired:
+            continue
+    return {
+        "scope": "Direct Popen child only; no descendant identities were established",
+        "direct_child_pid": app.pid,
+        "direct_child_joined": joined,
+        "descendant_tree_verified": False,
+        "forced_termination": forced,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": app.returncode,
+        "signal_errors": errors,
+    }
 
 
 class Ownership:
