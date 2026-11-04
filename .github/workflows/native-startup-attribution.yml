@@ -1,0 +1,94 @@
+name: Native startup attribution (diagnostic only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  observe:
+    name: Fixed native startup counterfactuals (not qualification)
+    if: vars.CI_BILLING_PAUSED == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Prepare retained evidence
+        run: mkdir "$RUNNER_TEMP/startup-attribution"
+      - name: Read the original failed native startup evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/0xPlayerOne/bun-native/actions/artifacts/13296159799/zip > "$RUNNER_TEMP/startup-failure.zip"
+          python3 - <<'PYARTIFACT'
+          import hashlib, json, os, pathlib, zipfile
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'startup-failure.zip'
+          expected = '0002bf45187f5b772f6e1e6ce99c506c7676db3fd84dce91ca30d5bc667173e9'
+          digest = hashlib.sha256(path.read_bytes()).hexdigest()
+          assert digest == expected, 'Original artifact digest mismatch'
+          selected = {}
+          with zipfile.ZipFile(path) as archive:
+              for name in ('development/lifecycle-events.jsonl', 'development/lifecycle.log', 'toolchain.txt'):
+                  info = archive.getinfo(name)
+                  assert info.file_size <= 4194304
+                  text = archive.read(name).decode('utf-8')
+                  selected[name] = text
+                  print(name, text[-20000:])
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'startup-attribution' / 'original-failure.json'
+          output.write_text(json.dumps({'artifact':13296159799,'sha256':digest,'files':selected}, indent=2))
+          PYARTIFACT
+      - name: Install checksum-pinned runtime
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Install native prerequisites
+        run: |
+          rustup show active-toolchain
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y pkg-config libfontconfig-dev \
+            libglib2.0-dev libssl-dev libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev \
+            libvulkan1 libzstd-dev mesa-vulkan-drivers xvfb xauth x11-utils openbox dbus-x11 fonts-dejavu-core
+          { git rev-parse HEAD; uname -a; bun --revision; rustc --version; \
+            dpkg-query -W mesa-vulkan-drivers libvulkan1 xvfb openbox; } \
+            > "$RUNNER_TEMP/startup-attribution/tools.txt"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - name: Build the unchanged production native host
+        run: |
+          set -o pipefail
+          cargo build --locked --release -p bun-native-host --bin bun-native-host \
+            2>&1 | tee "$RUNNER_TEMP/startup-attribution/build.log"
+      - name: Execute the fixed matrix without retries or changed assertions
+        timeout-minutes: 17
+        run: |
+          mkdir "$RUNNER_TEMP/startup-attribution/matrix"
+          python3 experiments/native-startup-matrix.py \
+            --output "$RUNNER_TEMP/startup-attribution/matrix" \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --bun "$(command -v bun)"
+      - name: Retain every observation and original failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: startup-attribution-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/startup-attribution/
+            !${{ runner.temp }}/startup-attribution/matrix/caches/
+            !${{ runner.temp }}/startup-attribution/matrix/**/runtime/
+          if-no-files-found: error
+          retention-days: 14
