@@ -1,0 +1,692 @@
+{
+  "schema": 1,
+  "archive": {
+    "file": "standalone-packages-7e102937-raw.tar.gz",
+    "bytes": 520469,
+    "sha256": "6d38ce49fa651fa41af27b51cac6b5147c65d2e3281aabc9fbbd40eaa41b6c5c",
+    "members": 170,
+    "rawBytes": 1721825
+  },
+  "files": {
+    "analysis/author-readonly-verification.json": {
+      "bytes": 1577,
+      "sha256": "869dd562d03c84c6cfef63a455e4ba12472ddfb97653a4bc343747ab1c9045c4"
+    },
+    "analysis/installed-cli-readonly-diff.json": {
+      "bytes": 522,
+      "sha256": "fc9cc1dce9ee76fab1cc8e72e114fcb0739ce5a2644d2381bd06ee94f4d8a7c4"
+    },
+    "analysis/installed-local-readonly-diff.json": {
+      "bytes": 2800,
+      "sha256": "6966074bc127d668eaa2a11d2b8d8056d983c42e6465a6407850e71649177ff5"
+    },
+    "analysis/root-readonly-audit.json": {
+      "bytes": 1906,
+      "sha256": "a5b0f60ed500a1d86e82bafd810b5911fb479aefe7f8de3a0114434f62111535"
+    },
+    "owner/cohort.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "owner/cohort.stdout.log": {
+      "bytes": 89,
+      "sha256": "40fc99b30d901df048ba5a45c48d794094b31aae83d43880128027be1ed9109d"
+    },
+    "owner/owner.json": {
+      "bytes": 1427,
+      "sha256": "c5727c4d0aea74b011df5feb0a96fef1a9165b2081c6e142cac40a01463307e7"
+    },
+    "owner/preflight.json": {
+      "bytes": 2395,
+      "sha256": "1b8dd76f770bb24eda695b2d9cd34644bdd1212059545c7487325b98431e936f"
+    },
+    "raw/cache-before.json": {
+      "bytes": 759557,
+      "sha256": "ee743176f9917207afc8acc98b190ff3f569d8e02497ab2bc9b52a256fdcf434"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/.bun-tag": {
+      "bytes": 52,
+      "sha256": "ee9ffef500d7fe8e964b2cc873e2c511980d8d2cbbdbbcd9084c6a0e929b2130"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/README.md": {
+      "bytes": 482,
+      "sha256": "991b763f16da9dc6f2e5f6fe877a5820e792fe68c26fedf8fea348fd1d2796ac"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/bun-native-source.json": {
+      "bytes": 3586,
+      "sha256": "71a93f3d6cc8b5d9ee44a92594f8a518d2e512ed19515492e89024cd570fb454"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/package.json": {
+      "bytes": 401,
+      "sha256": "7f87b0e77cdb8294ced4a5fab208bb66e8adbc90899e6ec6db053b9d290ef813"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/experiments/aot-gpui/compile.ts": {
+      "bytes": 1661,
+      "sha256": "832cec3a32205995551dd270fdda0fd4bd26f0dfdf5b11d65457c73b88ec2b8f"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/experiments/aot-gpui/inspect-runtime.ts": {
+      "bytes": 12491,
+      "sha256": "071d377315ba801faad088a2dcf0140598536d38c7112139fd927a649a1ea285"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/experiments/aot-gpui/inspect.ts": {
+      "bytes": 2383,
+      "sha256": "f80f7ec7e8a070f6e9d8478380d193a0120f9b89dedd88422c7f7fd6b3490d48"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native.ts": {
+      "bytes": 5137,
+      "sha256": "610b5f632ab14a6e36131239b605c0ae3181c843895da7139a14c8247557370f"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/artifact.ts": {
+      "bytes": 423,
+      "sha256": "7962ec01905c67b58cfdbf4bc3a06df247c499fceac9bbdfc036a81aa35f9fb5"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/build.ts": {
+      "bytes": 4103,
+      "sha256": "41612351a60e4ad275134ca1f481a44c3c9504717ea1869a6898426685152f41"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/host.ts": {
+      "bytes": 1885,
+      "sha256": "3c0218e8ae3b09f7c87c8992a2535ef17b1df43795624a38ef5635095b543b36"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/inputs.ts": {
+      "bytes": 2821,
+      "sha256": "c37f7ab8e491d5faab7c9b29f12330fc8d504dbe00d40420c8b5e2bb8476a28b"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/package-archive.ts": {
+      "bytes": 4924,
+      "sha256": "5831a081231615c0c1047447d6ce6011189c03e607a672938611081b628effae"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/package-lock.ts": {
+      "bytes": 9251,
+      "sha256": "424b398b2671ab363ed11db2b62e4023c938bc4894e73f552184b3e70cb8837d"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/package-set.ts": {
+      "bytes": 15426,
+      "sha256": "41313713f9efc40a413099f23e30cef1928b062078074984ccf461d35671984b"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/paths.ts": {
+      "bytes": 578,
+      "sha256": "60a46411b25645dc632711a2f31a703ac912f5071ef3ab933c0c1f763cc6e7b4"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/project.ts": {
+      "bytes": 9459,
+      "sha256": "8591c482620b5a9bdc25ad07b3a7bab3768cd199cb322c74e191eceb50f77674"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/session.ts": {
+      "bytes": 9635,
+      "sha256": "def47965ad2d36d95e0f9a5b1f778443e5d811e8a82b9fb094e4ee79916eb26f"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/standalone.ts": {
+      "bytes": 5215,
+      "sha256": "da7a4a8b61acebcc99a6f761149dc45ace4e4ebf3aa4f5cc68b7f3bc279adefe"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/native/watch.ts": {
+      "bytes": 3793,
+      "sha256": "b5d7f98516135ae1577823ccd6d4647f53d84df7a0f1fa68d4cad5a2c62cdd0f"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/solid-build.ts": {
+      "bytes": 1615,
+      "sha256": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/scripts/solid/transform.ts": {
+      "bytes": 642,
+      "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/toolchain.json": {
+      "bytes": 3012,
+      "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+    },
+    "raw/installed-solid-typescript/@bun-native/cli/src/tsconfig.json": {
+      "bytes": 1052,
+      "sha256": "9a54721332913cddb331e54eefe4279c859a08860896ce3c048c88815bf3ee30"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/.bun-tag": {
+      "bytes": 52,
+      "sha256": "7ac4c069866d09963dc91875de0cb924cd3bad98c72206fe91f018b894687c82"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/README.md": {
+      "bytes": 483,
+      "sha256": "06bb705c428ca6a9ac6cb5706f79f4e499c8725d4ef014e6fb648ae45979ac41"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/bun-native-source.json": {
+      "bytes": 1700,
+      "sha256": "edf9db71fe6e31d9cbacfc68177c5fefd80354562587dc8d8fa7bafa04a9bf58"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/package.json": {
+      "bytes": 380,
+      "sha256": "495d40f9117b5600b38d9d271e30d262386fbef3b10848f0f76d4e5df8a524d7"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/application.ts": {
+      "bytes": 19462,
+      "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/events.ts": {
+      "bytes": 8654,
+      "sha256": "5ad24f8e4b0606405dbbbcff2df4b0424a70cd691fe8e8f36584ef98ec5f5f9f"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/index.ts": {
+      "bytes": 852,
+      "sha256": "8800fc237dd84627a2dcf22368f40029a3331068903d6795b889e77c4e13a2f9"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/services.ts": {
+      "bytes": 3935,
+      "sha256": "e6cb7cef872eb06d5ab6c1dda35c16b770dd6fc9488505b95fc3404bf1a9856c"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/tree.ts": {
+      "bytes": 7898,
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+    },
+    "raw/installed-solid-typescript/@bun-native/core/src/types.ts": {
+      "bytes": 6372,
+      "sha256": "0d63607618894fa1093eb70d60cec676b3c721f894f4a0f9ce348fc287799392"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/.bun-tag": {
+      "bytes": 52,
+      "sha256": "b198bdaabd93899760c5a24ebd807db5b45115b6645234b1ee147a0cb34d9f6f"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/README.md": {
+      "bytes": 487,
+      "sha256": "70b804a87217b94a7de422e04b9a03c458a1178b3cfa4783e11b0e25348e7431"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/bun-native-source.json": {
+      "bytes": 1731,
+      "sha256": "62a2d68baeaa46fcbd06c51b9c56920e8f9d71afa83c2f25fb77942ee2df14d0"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/package.json": {
+      "bytes": 287,
+      "sha256": "1a6d28ab4b299210d68f7ab69d3550afc7d3980d69188fcd749398f20eed1fc2"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/elements.ts": {
+      "bytes": 5003,
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/framing.ts": {
+      "bytes": 2806,
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/index.ts": {
+      "bytes": 604,
+      "sha256": "f8adda80742568813d6d3c342695e04132b275fce54de21e09b000fe840b4af7"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/messages.ts": {
+      "bytes": 15477,
+      "sha256": "6c9c12a5fdf37094257e73737bf5cb1c1c19ff2b2250303dc44a5f08c4e91800"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/services.ts": {
+      "bytes": 2212,
+      "sha256": "2f24e923d526a2f13f279bdd297d3088d6f901d54ed8c1a431e097155febf0c9"
+    },
+    "raw/installed-solid-typescript/@bun-native/protocol/src/values.ts": {
+      "bytes": 1732,
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/.bun-tag": {
+      "bytes": 52,
+      "sha256": "3f5529abd31688572d4c340de34c49e52ef52dd356b1b44532eac28c67c67a1d"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/README.md": {
+      "bytes": 487,
+      "sha256": "99a874d5d205dff43bf54fdcf3b8ff3da4515c65ebf4594438e68fee4a303044"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/bun-native-source.json": {
+      "bytes": 2053,
+      "sha256": "671179cc79d486e14430ca311a73314c54be2cdae379d42805a7fcf03e06842b"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/package.json": {
+      "bytes": 344,
+      "sha256": "1bf75c897762f8d355b20cbabb765cbbb3aae1f9a27f53eb776bf46103953d52"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/event-properties.ts": {
+      "bytes": 2075,
+      "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/index.ts": {
+      "bytes": 925,
+      "sha256": "446be4f582fe9fffa6bfd3d46b22ca9af51571031771b12a76bd68651cdae2e4"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/input-intent.ts": {
+      "bytes": 1698,
+      "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/native-tree.ts": {
+      "bytes": 6235,
+      "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/nodes.ts": {
+      "bytes": 8443,
+      "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/order.ts": {
+      "bytes": 956,
+      "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/root.ts": {
+      "bytes": 10523,
+      "sha256": "e1f9618d3c0cda72fd464674570e3e483873eae2d4eb3a941f9111f0754d09fd"
+    },
+    "raw/installed-solid-typescript/@bun-native/renderer/src/window-lifetime.ts": {
+      "bytes": 1635,
+      "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/.bun-tag": {
+      "bytes": 52,
+      "sha256": "21611acf999eeba0d39aac90c580c9bc66bb0d6169b5921eb73e606889275a02"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/README.md": {
+      "bytes": 486,
+      "sha256": "cd2c8c936f40c378449e7d776c4ad26872860bf0580866abcb5747aef608e68e"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/bun-native-source.json": {
+      "bytes": 1121,
+      "sha256": "3812569772ad940d88435c27defcaddd099ba39b69ce28e771d9ac061f286df2"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/package.json": {
+      "bytes": 347,
+      "sha256": "f557fcadf43193e3be8bef7fc2c4596b2f73298fc9ca48dbdd4f5720a8e0393f"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/src/index.ts": {
+      "bytes": 18518,
+      "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7"
+    },
+    "raw/installed-solid-typescript/@bun-native/runtime/src/startup-trace.ts": {
+      "bytes": 3021,
+      "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/.bun-tag": {
+      "bytes": 52,
+      "sha256": "ea7a2aaadea64ca28c2ab44c77b21c7a79f81fa6e07f252da84220deabef27fb"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/LICENSE": {
+      "bytes": 1075,
+      "sha256": "86673fb485f12fa9aaa3941dfccc9f69a7f8322f8141d0d5c73db4323de10ac5"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/README.md": {
+      "bytes": 484,
+      "sha256": "b6dd9d0ff7e2506c27c228459261d3e4ac116058af482d464f52ec58a0e227ee"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/bun-native-source.json": {
+      "bytes": 1401,
+      "sha256": "ed63ac5abb4da44997e9b381b4affe7ff9e0aca8e4427f45cbd909aa590c068a"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/package.json": {
+      "bytes": 456,
+      "sha256": "1428bdfa08fb007499aaf05e0cf9a6cf68f3551af40e393b3ee78f2dcc281739"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/src/index.ts": {
+      "bytes": 619,
+      "sha256": "5337369926789dc092810cea3b77dc3e32c4640a253764fe28831134eb782760"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/src/jsx.ts": {
+      "bytes": 868,
+      "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/src/mount.ts": {
+      "bytes": 1323,
+      "sha256": "411fa124f9ef0a3aab4333ec6fe8aee57bc8ba4032565e2c1cb361d9d89c3ab2"
+    },
+    "raw/installed-solid-typescript/@bun-native/solid/src/renderer.ts": {
+      "bytes": 1109,
+      "sha256": "a7ef3d1f2f0b0231b92193a6fa97aed6c3d435b36563021c8087337842f7b691"
+    },
+    "raw/logs/create-react-javascript.bun.lock": {
+      "bytes": 19726,
+      "sha256": "cf9efc9cc4f24728794ce2ba776b055b377fad53c6e682d542f4c0ab46e51162"
+    },
+    "raw/logs/create-react-javascript.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/create-react-javascript.stdout.log": {
+      "bytes": 209,
+      "sha256": "fb938d6ebc95eece9f52b885c80506cb38f0881bf9b70c029782100d99f286bb"
+    },
+    "raw/logs/create-react-typescript.bun.lock": {
+      "bytes": 19726,
+      "sha256": "ec6f374a0f82dbefff55dada573bb4593ccfa3f183024b558b9b955b0150911d"
+    },
+    "raw/logs/create-react-typescript.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/create-react-typescript.stdout.log": {
+      "bytes": 209,
+      "sha256": "9e7d82891cec7e2f877f22cedc8556fb576b34d535f9a09c1d6897e6b45c92b0"
+    },
+    "raw/logs/create-solid-javascript.bun.lock": {
+      "bytes": 19067,
+      "sha256": "46423d872ea1e622199a41e60e038c35ca799d25747bd4655c3aa61e226492c8"
+    },
+    "raw/logs/create-solid-javascript.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/create-solid-javascript.stdout.log": {
+      "bytes": 209,
+      "sha256": "d24fe3b94f674661ed59821d4a5e093b69f15ff7a8ef531f8a8a5be99e96e52d"
+    },
+    "raw/logs/create-solid-typescript.bun.lock": {
+      "bytes": 19067,
+      "sha256": "117b737003fe80a79dd40f3909dbff397a3cca7e401ef471e5cb364751f1387f"
+    },
+    "raw/logs/create-solid-typescript.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/create-solid-typescript.stdout.log": {
+      "bytes": 209,
+      "sha256": "3901de85bf6c823085d50099b746f7b6882ea3230021d27c9a59667fc2d5ecf8"
+    },
+    "raw/logs/install-empty-cache.bun.lock": {
+      "bytes": 19067,
+      "sha256": "117b737003fe80a79dd40f3909dbff397a3cca7e401ef471e5cb364751f1387f"
+    },
+    "raw/logs/install-empty-cache.stderr.log": {
+      "bytes": 3191,
+      "sha256": "83b0a8ec06298e7773aebffd8a24c330f50983109fa359d1c16cb59870a3e949"
+    },
+    "raw/logs/install-empty-cache.stdout.log": {
+      "bytes": 40,
+      "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+    },
+    "raw/logs/install-first-solid-typescript.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/install-first-solid-typescript.stdout.log": {
+      "bytes": 367,
+      "sha256": "e122b617910633569cc0aaeea21dfe5f3e5061ab554fb9b66a5ae2d8bd3d5a53"
+    },
+    "raw/logs/package-set.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/logs/package-set.stdout.log": {
+      "bytes": 295,
+      "sha256": "0908e7d957714b45003b3b8a547427767253027e94f464a2617ba1a9271cdc6a"
+    },
+    "raw/original/react-javascript/.gitignore": {
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+    },
+    "raw/original/react-javascript/README.md": {
+      "bytes": 2292,
+      "sha256": "d144446d0fd6aeca8bd12a08887e5fce582b8f29d38b48779b0aaa2709292966"
+    },
+    "raw/original/react-javascript/bun-native.json": {
+      "bytes": 123,
+      "sha256": "e3ad20da92ecd59a570fb15834818cf83c9d38de9a4deee058136d8f7c1afd97"
+    },
+    "raw/original/react-javascript/bun.lock": {
+      "bytes": 19726,
+      "sha256": "cf9efc9cc4f24728794ce2ba776b055b377fad53c6e682d542f4c0ab46e51162"
+    },
+    "raw/original/react-javascript/main.jsx": {
+      "bytes": 1985,
+      "sha256": "32ee9fb11a8edcbb7afe911e1f4315a37b1cbb5756d50c0cb5211927478276e7"
+    },
+    "raw/original/react-javascript/package.json": {
+      "bytes": 1527,
+      "sha256": "490e87a53327afe8fa1bff784db9868e7c7e03345e51cc5fec55a37e86bb12d3"
+    },
+    "raw/original/react-javascript/tsconfig.json": {
+      "bytes": 802,
+      "sha256": "4b5488c1cd8617d7f939e4c287c499c7e6f8ba8449f238aa9baabef7f2baed85"
+    },
+    "raw/original/react-typescript/.gitignore": {
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+    },
+    "raw/original/react-typescript/README.md": {
+      "bytes": 2292,
+      "sha256": "2494bdcd271e6efa31a0d405c521a123aa558e318f17e8b49001edc29ba1e0ed"
+    },
+    "raw/original/react-typescript/bun-native.json": {
+      "bytes": 123,
+      "sha256": "61b81de64b8eded84ba03b040d7eee195a50b3e8e04a932ab593709fb04eb968"
+    },
+    "raw/original/react-typescript/bun.lock": {
+      "bytes": 19726,
+      "sha256": "ec6f374a0f82dbefff55dada573bb4593ccfa3f183024b558b9b955b0150911d"
+    },
+    "raw/original/react-typescript/main.tsx": {
+      "bytes": 1968,
+      "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e"
+    },
+    "raw/original/react-typescript/package.json": {
+      "bytes": 1527,
+      "sha256": "9da311450ac5023bbf6a983b6dfbeb9fdb971d35e24259ead8d33e65d43a24b4"
+    },
+    "raw/original/react-typescript/tsconfig.json": {
+      "bytes": 802,
+      "sha256": "d42cfedabbc8b112214996b9ea9dba3b8c11841f13c627774d171af9e4a9eee4"
+    },
+    "raw/original/solid-javascript/.gitignore": {
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+    },
+    "raw/original/solid-javascript/README.md": {
+      "bytes": 2292,
+      "sha256": "1b0d0554925e83d1483810db6b899aa5370a4eec8acab86b802207e24ef47e05"
+    },
+    "raw/original/solid-javascript/bun-native.json": {
+      "bytes": 123,
+      "sha256": "774670032a8e5662a756410a3a045903f501d30ccb81c297e91650489b664398"
+    },
+    "raw/original/solid-javascript/bun.lock": {
+      "bytes": 19067,
+      "sha256": "46423d872ea1e622199a41e60e038c35ca799d25747bd4655c3aa61e226492c8"
+    },
+    "raw/original/solid-javascript/main.jsx": {
+      "bytes": 1952,
+      "sha256": "efa4405db8555043cfc7c85fbc40b47baed83881be0ec5549fe978679c38902c"
+    },
+    "raw/original/solid-javascript/package.json": {
+      "bytes": 1459,
+      "sha256": "45eae38822f417fc7abf3549f5df056de1273f028bf05ba94c70bb9d4c4aa29f"
+    },
+    "raw/original/solid-javascript/tsconfig.json": {
+      "bytes": 802,
+      "sha256": "e82d6ec86e779fdc45565fc695fe614a715e6f672143f33ae6e866a36b0b1b7f"
+    },
+    "raw/original/solid-typescript/.gitignore": {
+      "bytes": 33,
+      "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+    },
+    "raw/original/solid-typescript/README.md": {
+      "bytes": 2292,
+      "sha256": "74b02bc0a6f6440d7acfe3fe88f823e63bf233a52175cc402a2757bbc0e3cb55"
+    },
+    "raw/original/solid-typescript/bun-native.json": {
+      "bytes": 123,
+      "sha256": "21643d8647c6f11850ed8dd16c59ca237f72e32e1c425d249da89616494a5d23"
+    },
+    "raw/original/solid-typescript/bun.lock": {
+      "bytes": 19067,
+      "sha256": "117b737003fe80a79dd40f3909dbff397a3cca7e401ef471e5cb364751f1387f"
+    },
+    "raw/original/solid-typescript/main.tsx": {
+      "bytes": 1935,
+      "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e"
+    },
+    "raw/original/solid-typescript/package.json": {
+      "bytes": 1459,
+      "sha256": "7227d05141171439ef93b4319a52baf6ccd49b6717a53d90c8cc09eb0c415ca9"
+    },
+    "raw/original/solid-typescript/tsconfig.json": {
+      "bytes": 802,
+      "sha256": "fd6a149d940815fdfff7389e0bb7c562208700d4f9aeeb87f6a9395281f007e2"
+    },
+    "raw/packages/archives/bun-native-cli-0.16.1-7e102937bb7a.tgz": {
+      "bytes": 29807,
+      "sha256": "fffe90c933575f091e4e43e7365722ed9a391cddf607ee57a692386ae2072fe0"
+    },
+    "raw/packages/archives/bun-native-core-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 13940,
+      "sha256": "c9d12f16019e2dad3dd5cb958c42e35f5b304570fa487d2d64f8ee6a5afe0c70"
+    },
+    "raw/packages/archives/bun-native-protocol-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 9208,
+      "sha256": "f294dafee1344c02161eb4ef78421b791684761b417eb129492be1471469a27f"
+    },
+    "raw/packages/archives/bun-native-react-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 7754,
+      "sha256": "20184496cc92f2f8a795cbc1595046903500c2752fb49e9ba3e04d3f27e902fd"
+    },
+    "raw/packages/archives/bun-native-renderer-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 11144,
+      "sha256": "3afa5b73ecb12085ff4f7766c45f872bcf811e34ccfdaf98d43ef43149d307ff"
+    },
+    "raw/packages/archives/bun-native-runtime-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 7752,
+      "sha256": "a71fc89ea7dc108e7b8f586f34321f917441a0420a61d0a5e064e6b2ca25e0c1"
+    },
+    "raw/packages/archives/bun-native-solid-0.0.0-7e102937bb7a.tgz": {
+      "bytes": 3457,
+      "sha256": "b493d507ffd01abeba364d1233f5339253323a28331962e4fb8801ab1abeeab4"
+    },
+    "raw/packages/logs/cli.json": {
+      "bytes": 370,
+      "sha256": "cec860d41d43317146addf55095e05f824a154cac4324b358305cc8759e45829"
+    },
+    "raw/packages/logs/cli.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/cli.stdout.log": {
+      "bytes": 1285,
+      "sha256": "5f4e571044f496ea78d0f009c37a0e3b797dbfa3750679c4472f2c382c41ed14"
+    },
+    "raw/packages/logs/core.json": {
+      "bytes": 379,
+      "sha256": "013a1ae1f0dae85b055e83c7eae54cafc3298297ad5dcf7dea7832e302452537"
+    },
+    "raw/packages/logs/core.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/core.stdout.log": {
+      "bytes": 575,
+      "sha256": "e397903e0d6048afb80f70a32b23da0eda1ec7b628fb8facf5dc1d21010059d5"
+    },
+    "raw/packages/logs/protocol.json": {
+      "bytes": 387,
+      "sha256": "1cc2bb15b83032b1bea911b9a80d43ef2865a78d95ec4251950567b136d374e4"
+    },
+    "raw/packages/logs/protocol.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/protocol.stdout.log": {
+      "bytes": 580,
+      "sha256": "153d85743bae60ab62c8ad445b29206046d7f58670d76c49314ca3a4245b066a"
+    },
+    "raw/packages/logs/react.json": {
+      "bytes": 381,
+      "sha256": "c9fa6b9daa707132cd769d66d0f6a087e4fc8a1d4e6ff7802f44eabe63f94593"
+    },
+    "raw/packages/logs/react.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/react.stdout.log": {
+      "bytes": 614,
+      "sha256": "a75923592cdf67148314f7eb7a7f59908d745fd755f3684c13a5e7ead3a9e4f4"
+    },
+    "raw/packages/logs/renderer.json": {
+      "bytes": 387,
+      "sha256": "4c2b7751cb9ed3b825e21371eb34e88d76579a02ed90c085c9240d8e999bff3d"
+    },
+    "raw/packages/logs/renderer.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/renderer.stdout.log": {
+      "bytes": 655,
+      "sha256": "1ba64e4f2f01750c3729dfd2a7df71ad028fe0e1cd3d58bb634e64534b1eae0d"
+    },
+    "raw/packages/logs/runtime.json": {
+      "bytes": 385,
+      "sha256": "ce2b3c42667764cd8325f1822139ce9d57242e7429cd852628ceb0f506d7a2c4"
+    },
+    "raw/packages/logs/runtime.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/runtime.stdout.log": {
+      "bytes": 466,
+      "sha256": "c25c1bbb17cfd5facd17af9247dc9546d968c08a9c06d3830a29fb018c214e55"
+    },
+    "raw/packages/logs/solid.json": {
+      "bytes": 381,
+      "sha256": "ce36b5a0d8f083e4cfa1875ae7ef4958b047fc7c55a9d463b9d2fa3bf9bd0a42"
+    },
+    "raw/packages/logs/solid.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/packages/logs/solid.stdout.log": {
+      "bytes": 510,
+      "sha256": "59afbdca3e02db298860f5e848a937375dea7673f783c4ba451e618b711a21ae"
+    },
+    "raw/packages/manifest.json": {
+      "bytes": 150415,
+      "sha256": "fd598fc9143ffa88b7d635c3073acbc0b84586b5a9fb6c47d762caecd0bbb62f"
+    },
+    "raw/result.json": {
+      "bytes": 26981,
+      "sha256": "d4028101f6c922dd46be58a49b9fba4abca6f949408eaf6a2918c4496f63ad7c"
+    },
+    "raw/sentinels/cargo": {
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9"
+    },
+    "raw/sentinels/rustc": {
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9"
+    },
+    "raw/sentinels/rustup": {
+      "bytes": 70,
+      "sha256": "227f6bd907ffcd2467a23d47843509c7ddc38ac5f1a9e4ecdf174d178d1d51d9"
+    },
+    "raw/source-after.json": {
+      "bytes": 84479,
+      "sha256": "fe75571450934758db16ea236a132916feff2aa275cf3278fc2705b2bd92fc9b"
+    },
+    "raw/source-before.json": {
+      "bytes": 84479,
+      "sha256": "fe75571450934758db16ea236a132916feff2aa275cf3278fc2705b2bd92fc9b"
+    },
+    "source/docs/standalone-packages-plan.md": {
+      "bytes": 19572,
+      "sha256": "89c7d6827bf7d2a2f9b40d4bf20944eda9eabfb05365c01012665a6672e017a1"
+    },
+    "source/scripts/quality/standalone-package-inspect.ts": {
+      "bytes": 2816,
+      "sha256": "0a1c8e0903cbf0b62b6a8629758561fd327fd5b8de783b21270e4c42f123a7c8"
+    },
+    "source/scripts/quality/standalone-packages.py": {
+      "bytes": 34464,
+      "sha256": "7997fe89ade77752951aa31dd09bad6c72567fb3fe05e52ab0afbaacd818fea9"
+    }
+  }
+}

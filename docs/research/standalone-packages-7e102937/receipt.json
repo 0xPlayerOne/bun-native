@@ -1,0 +1,383 @@
+{
+  "schema": 1,
+  "status": "failed-preserved",
+  "measuredSource": {
+    "commit": "7e102937bb7af362db59bddd1ab92b664386cd52",
+    "tree": "1dea214842f25d93c8c03c61a7fce66ad7d540d5"
+  },
+  "measuredSourceUrl": "https://github.com/0xPlayerOne/bun-native/commit/7e102937bb7af362db59bddd1ab92b664386cd52",
+  "archiveBase": "c4de68deee812cd816316b33f9276786e6eae5c8",
+  "intent": "Data-only research archive; close draft without merging. No rerun or result relabeling.",
+  "earlierRecords": {
+    "firstConsumerFailure": "https://github.com/0xPlayerOne/bun-native/pull/394",
+    "parserFailureAndSeparateFollowup": "https://github.com/0xPlayerOne/bun-native/pull/397"
+  },
+  "system": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "toolchain": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bun": {
+      "bytes": 138468432,
+      "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+    },
+    "host": {
+      "bytes": 29478384,
+      "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b"
+    }
+  },
+  "result": {
+    "member": "raw/result.json",
+    "bytes": 26981,
+    "sha256": "d4028101f6c922dd46be58a49b9fba4abca6f949408eaf6a2918c4496f63ad7c"
+  },
+  "failure": {
+    "stage": "Post-install exact local-package inventory validation, before any installed import/check",
+    "message": "RuntimeError: Installed package inventory differs: @bun-native/cli",
+    "firstReportedPackage": "@bun-native/cli",
+    "installedSourceFilesChanged": false,
+    "unexpectedInstallerMetadata": ".bun-tag"
+  },
+  "observed": {
+    "packCalls": 7,
+    "packExitCodes": [0, 0, 0, 0, 0, 0, 0],
+    "createdProjects": [
+      "solid-typescript",
+      "solid-javascript",
+      "react-typescript",
+      "react-javascript"
+    ],
+    "emptyCacheControl": {
+      "status": "passed",
+      "exit_code": 1,
+      "lock_after_attempt": {
+        "bytes": 19067,
+        "sha256": "117b737003fe80a79dd40f3909dbff397a3cca7e401ef471e5cb364751f1387f"
+      }
+    },
+    "firstPopulatedCacheInstall": {
+      "command": "install-first-solid-typescript",
+      "exitCode": 0,
+      "followedByInventoryFailure": true
+    },
+    "relocations": 0,
+    "projectChecks": 0,
+    "publicImportSmokes": 0,
+    "aotBuilds": 0,
+    "applicationOrNativeExecutions": 0,
+    "invalidInputCasesRun": 0
+  },
+  "commands": [
+    {
+      "name": "package-set",
+      "timeout_seconds": 240,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.7681412449965137,
+      "stdout": {
+        "bytes": 295,
+        "sha256": "0908e7d957714b45003b3b8a547427767253027e94f464a2617ba1a9271cdc6a"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-solid-typescript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06403687899728538,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "3901de85bf6c823085d50099b746f7b6882ea3230021d27c9a59667fc2d5ecf8"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-solid-javascript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06408688399824314,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "d24fe3b94f674661ed59821d4a5e093b69f15ff7a8ef531f8a8a5be99e96e52d"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-react-typescript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.07166772999698878,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "9e7d82891cec7e2f877f22cedc8556fb576b34d535f9a09c1d6897e6b45c92b0"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-react-javascript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06411331500203232,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "fb938d6ebc95eece9f52b885c80506cb38f0881bf9b70c029782100d99f286bb"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "install-empty-cache",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 1,
+      "elapsed_seconds": 0.015750732000014978,
+      "stdout": {
+        "bytes": 40,
+        "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+      },
+      "stderr": {
+        "bytes": 3191,
+        "sha256": "83b0a8ec06298e7773aebffd8a24c330f50983109fa359d1c16cb59870a3e949"
+      }
+    },
+    {
+      "name": "install-first-solid-typescript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.064149884001381,
+      "stdout": {
+        "bytes": 367,
+        "sha256": "e122b617910633569cc0aaeea21dfe5f3e5061ab554fb9b66a5ae2d8bd3d5a53"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "owner": {
+    "utc": "2026-11-04T22:20:35.144295+00:00",
+    "exitCode": 1,
+    "forced": false,
+    "directChildJoined": true,
+    "descendantCleanupVerified": false,
+    "elapsedSeconds": 2.6742698730013217,
+    "outerOwnerLimitSeconds": 1050
+  },
+  "retainedInvariance": {
+    "source": true,
+    "bun": true,
+    "host": true,
+    "sentinels_unused": true,
+    "all_direct_children_joined": true
+  },
+  "cacheCopy": {
+    "policy": "Dereference contained source-cache links into the task-owned copy",
+    "inventory": {
+      "bytes": 759557,
+      "sha256": "ee743176f9917207afc8acc98b190ff3f569d8e02497ab2bc9b52a256fdcf434"
+    },
+    "copyElapsedSeconds": 0.7163026659982279
+  },
+  "independentReadOnlyAudit": {
+    "sourceFilesMatchedPublishedGitObjects": 533,
+    "sourceBeforeAfterByteIdentical": true,
+    "allCommandLogsMatched": true,
+    "allGeneratedProjectFilesMatched": true,
+    "all7PackageArchivesMatchedDeclaredInventoryAndDigest": true,
+    "installedPackages": {
+      "@bun-native/cli": {
+        "declaredFiles": 24,
+        "observedFiles": 25,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "ee9ffef500d7fe8e964b2cc873e2c511980d8d2cbbdbbcd9084c6a0e929b2130",
+          "hex": "7368613235362d2f2f365179544e5858776b65546b506e4e6c6369375a6f35484e3332422b355870704934617549484c2b413d3d",
+          "text": "sha256-//6QyTNXXwkeTkPnNlci7Zo5HN32B+5XppI4auIHL+A=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      },
+      "@bun-native/core": {
+        "declaredFiles": 10,
+        "observedFiles": 11,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "7ac4c069866d09963dc91875de0cb924cd3bad98c72206fe91f018b894687c82",
+          "hex": "7368613235362d79644576466747654c613039316375566a454c6a5831737752584436534830745a506a75616c722b4448413d3d",
+          "text": "sha256-ydEvFgGeLa091cuVjELjX1swRXD6SH0tZPjualr+DHA=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      },
+      "@bun-native/protocol": {
+        "declaredFiles": 10,
+        "observedFiles": 11,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "b198bdaabd93899760c5a24ebd807db5b45115b6645234b1ee147a0cb34d9f6f",
+          "hex": "7368613235362d387054612f75453054414957487254766545496265526145646874426672457053537668527852706f6e383d3d",
+          "text": "sha256-8pTa/uE0TAIWHrTveEIbeRaEdhtBfrEpSSvhRxRpon8=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      },
+      "@bun-native/renderer": {
+        "declaredFiles": 12,
+        "observedFiles": 13,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "3f5529abd31688572d4c340de34c49e52ef52dd356b1b44532eac28c67c67a1d",
+          "hex": "7368613235362d4f767062632b79784949582f5433646d78462b484b382b42486a544d2f612b59314437304d556e54422f383d3d",
+          "text": "sha256-Ovpbc+yxIIX/T3dmxF+HK8+BHjTM/a+Y1D70MUnTB/8=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      },
+      "@bun-native/runtime": {
+        "declaredFiles": 6,
+        "observedFiles": 7,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "21611acf999eeba0d39aac90c580c9bc66bb0d6169b5921eb73e606889275a02",
+          "hex": "7368613235362d70782f496e716663454935376a3168764e4449666b5852426f45494b5964436c3447546d73736f6c344d453d3d",
+          "text": "sha256-px/InqfcEI57j1hvNDIfkXRBoEIKYdCl4GTmssol4ME=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      },
+      "@bun-native/solid": {
+        "declaredFiles": 8,
+        "observedFiles": 9,
+        "declaredFilesUnchanged": true,
+        "extraFiles": [".bun-tag"],
+        "marker": {
+          "bytes": 52,
+          "sha256": "ea7a2aaadea64ca28c2ab44c77b21c7a79f81fa6e07f252da84220deabef27fb",
+          "hex": "7368613235362d744a5056422f2f51477236364e6b30534d2f557a6b6c4d794f69677a47574c6b2b3467427178712b3672513d3d",
+          "text": "sha256-tJPVB//QGr66Nk0SM/UzklMyOigzGWLk+4gBqxq+6rQ=="
+        },
+        "matchesPinnedFormatterAndArchiveHash": true,
+        "matchesCanonicalSha256Sri": false
+      }
+    }
+  },
+  "pinnedMetadataContract": {
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "sources": [
+      {
+        "path": "src/install/extract_tarball.rs",
+        "ranges": [
+          [51, 86],
+          [531, 559]
+        ],
+        "bytes": 31746,
+        "sha256": "5d940d8be55139106831fe65c0eefa4bd26c827c422485719aebf1c8ab4083e6",
+        "git_blob": "6fe47e53e3d9faf108407b473692cd711cf3e808",
+        "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/extract_tarball.rs"
+      },
+      {
+        "path": "src/install/PackageInstall.rs",
+        "ranges": [
+          [1168, 1176],
+          [1210, 1254]
+        ],
+        "bytes": 108895,
+        "sha256": "73d351bedb5b84d281d51818285985032a3e3576e29e0df6d39e47c2583f09c3",
+        "git_blob": "5bea11126c93c988e016126c3b9bc214a61e6f6b",
+        "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/PackageInstall.rs"
+      },
+      {
+        "path": "src/install/integrity.rs",
+        "ranges": [
+          [184, 187],
+          [235, 255]
+        ],
+        "bytes": 14463,
+        "sha256": "bd2cfe6d34459e7517890d7ea8c760599f53a08cad1c1c62929316b4d867af3c",
+        "git_blob": "b4f0c2d74e682c5482f2856f531a93cf8819e4f2",
+        "url": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/integrity.rs"
+      }
+    ],
+    "producer": "Local/remote tarball extraction verifies supported integrity, preserves it, then writes tag.sri to root .bun-tag without a newline.",
+    "reader": "Installed tarball verification compares .bun-tag with the same integrity.sri formatter; empty is accepted only when verification is explicitly skipped.",
+    "formatter": "For SHA256, the pinned implementation writes sha256- plus unpadded base64 plus ==, yielding 52 bytes. Canonical SHA256 SRI has only one padding = and 51 bytes.",
+    "all6ObservedMarkersMatchPinnedFormatterAndTheirArchiveDigest": true,
+    "all6ObservedMarkersDifferFromCanonicalSriByOneTrailingEquals": true,
+    "securityScope": "Installer metadata is not a replacement for exact package contents, hashes, contained paths or complete source inventory."
+  },
+  "archive": {
+    "file": "standalone-packages-7e102937-raw.tar.gz",
+    "bytes": 520469,
+    "sha256": "6d38ce49fa651fa41af27b51cac6b5147c65d2e3281aabc9fbbd40eaa41b6c5c",
+    "members": 170,
+    "rawBytes": 1721825
+  },
+  "analysisRecords": {
+    "analysis/installed-cli-readonly-diff.json": "tooling agent, data-only inspection after failure",
+    "analysis/installed-local-readonly-diff.json": "tooling agent, data-only inspection after failure",
+    "analysis/author-readonly-verification.json": "tooling agent, data-only inspection after failure",
+    "analysis/root-readonly-audit.json": "root agent, independent data-only inspection after failure"
+  },
+  "omissions": [
+    "The Bun executable and native host binary are represented by recorded byte fingerprints and are not included or executed.",
+    "The copied dependency cache and external node_modules registry payloads are omitted; the complete original cache inventory is retained.",
+    "Identical copies of package archives and the package-set manifest under each generated consumer vendor directory are omitted; one original package set is retained and every generated-copy digest was independently checked.",
+    "Full source checkout and obsolete temporary staging directories are omitted; all533 tracked file hashes and exact measured harness/inspector/plan are retained."
+  ],
+  "limits": [
+    "The complete consumer cohort remains failed despite the first populated-cache installer exit0.",
+    "Only the original Solid TypeScript consumer reached an install; other generated consumers stayed created-only.",
+    "No relocation, installed public import/type check, AOT build, invalid-input case, application/native execution or GC workload ran.",
+    "These observations neither qualify the proposed metadata correction nor justify accepting arbitrary extra package files.",
+    "The previous c908 consumer failure and c16 parser failure remain unchanged in their separate archives."
+  ]
+}
