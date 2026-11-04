@@ -359,6 +359,12 @@ recipe, pending its own changed-head hosted results. It does not establish IME
 composition, bidirectional text, accessibility, physical input, high-DPI behavior
 or native macOS/Windows input acceptance.
 
+The [source-bound compilation record](evidence/input-viewport-compile.json)
+retains the release host build identity and both inspected AOT application
+hashes. The host's native source is byte-identical across the explicitly named
+host/application commits. Neither binary was executed during that compilation;
+this record does not qualify the native recipe above.
+
 ## Portable target-host paint smoke
 
 `tests/native/platform-smoke.ts` and `scripts/quality/native-platform-smoke.py`
