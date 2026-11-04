@@ -230,6 +230,7 @@ jobs:
               $report.forcedApplicationTermination -ne $false) {
             throw 'The deliberately invalid native expectation did not fail and clean up precisely'
           }
+          if ($IsWindows) { exit $code }
           $global:LASTEXITCODE = 0
       - name: Compile and inspect the exact native fixture through Bun AOT
         run: |
