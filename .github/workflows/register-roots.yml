@@ -1,0 +1,78 @@
+# Closed research lane only. Never merge or use as Validation / Gate.
+name: Fixed Windows register and address-window observations
+on:
+  push:
+    branches: [test/register-root-observation-20261104]
+permissions:
+  contents: read
+jobs:
+  observe:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: source
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          persist-credentials: false
+      - name: Install the unchanged source toolchain
+        shell: bash
+        working-directory: source
+        run: |
+          test "$(git rev-parse HEAD)" = 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          test "$(git rev-parse 'HEAD^{tree}')" = 39482669d2095b95d3d75a808a188a231937035c
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Frozen dependencies
+        shell: bash
+        working-directory: source
+        run: bun install --frozen-lockfile
+      - name: Build actual Windows observer and native discriminating controls
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $installation) { throw 'C++ toolchain unavailable' }
+          Import-Module (Join-Path $installation 'Common7\Tools\Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          $build = Join-Path $env:RUNNER_TEMP 'register-root-build'
+          New-Item -ItemType Directory -Path $build | Out-Null
+          $producer = Join-Path $env:GITHUB_WORKSPACE 'control\experiments\register-roots'
+          Set-Location $build
+          & cl.exe /nologo /W4 /WX /O2 /TC (Join-Path $producer 'match-test.c') /Fematch-test.exe 2>&1 | Tee-Object -FilePath match-build.log
+          if ($LASTEXITCODE -ne 0) { throw 'Native matcher build failed' }
+          & .\match-test.exe 2>&1 | Tee-Object -FilePath match-test.log
+          if ($LASTEXITCODE -ne 0) { throw 'Native matcher controls failed' }
+          & ml64.exe /nologo /c /Foregister-control.obj (Join-Path $producer 'register-control.asm') 2>&1 | Tee-Object -FilePath assembly.log
+          if ($LASTEXITCODE -ne 0) { throw 'Register control assembly failed' }
+          & cl.exe /nologo /W4 /WX /O2 /LD /TC (Join-Path $producer 'capture.c') register-control.obj /link /EXPORT:register_control /OUT:capture.dll 2>&1 | Tee-Object -FilePath native-build.log
+          if ($LASTEXITCODE -ne 0) { throw 'Windows observer build failed' }
+          & dumpbin.exe /disasm register-control.obj > register-control.disassembly.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Control disassembly failed' }
+          Get-FileHash capture.dll -Algorithm SHA256 | Format-List > binary-sha256.txt
+          "BN_ROOT_CAPTURE_LIBRARY=$(Join-Path $build 'capture.dll')" >> $env:GITHUB_ENV
+      - name: Execute and retain each predeclared source-suite outcome once
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE 'source'
+          $output = Join-Path $env:RUNNER_TEMP 'register-root-evidence'
+          $producer = Join-Path $env:GITHUB_WORKSPACE 'control\experiments\register-roots\run.ts'
+          $bun = (Get-Command bun).Source
+          & $bun $producer $source $output $env:BN_ROOT_CAPTURE_LIBRARY $bun
+          if ($LASTEXITCODE -ne 0) { throw 'Fixed observation orchestration failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ !cancelled() }}
+        with:
+          name: register-root-observations-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/register-root-evidence/
+            ${{ runner.temp }}/register-root-build/*.log
+            ${{ runner.temp }}/register-root-build/*.txt
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false
