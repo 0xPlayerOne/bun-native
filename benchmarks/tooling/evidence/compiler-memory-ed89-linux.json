@@ -1,0 +1,1905 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "scope": "One predeclared compiler-plus-validation control per case; no application/native host/watch/GC experiment or resource acceptance closure.",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/372",
+  "draft_pr": "https://github.com/0xPlayerOne/bun-native/pull/378",
+  "source": {
+    "commit": "ed89bb7660085ded2641ed2884f6535dcc20e8c1",
+    "tree": "a791b8ae6dd37cd4796a6d40cf4a8d1968ffab4c",
+    "tracked_file_count": 494,
+    "full_file_inventory": "result.json in the archive",
+    "invariance": "Supervisor compared all tracked bytes and compiler before/after while the source was immutable; its actual status was passed.",
+    "baseline": "8acd854ec7ad6c49551ebe2c2ca1b19b756fc5ce"
+  },
+  "compiler": {
+    "path": "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+    "expected_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "platform": {
+    "system": "Linux",
+    "release": "6.18.57",
+    "version": "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "logical_cpus": 9
+  },
+  "command": [
+    "python3",
+    "benchmarks/tooling/compiler-memory.py",
+    "--bun",
+    "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+    "--output",
+    "/workspace/scratch/2c5e94c456dd/compiler-memory-control-ed89bb76"
+  ],
+  "supervisor_exit_code": 0,
+  "supervisor_exit_evidence": "Owning exec session61067 returned exit0 after its final passed summary; individual raw stdout/stderr and final status records are retained per worker.",
+  "started_at_utc": "2026-11-04T20:08:58.120514+00:00",
+  "finished_at_utc": "2026-11-04T20:09:35.323101+00:00",
+  "elapsed_seconds": 37.202588715001184,
+  "owned_roots_removed": true,
+  "cleanup_errors": [],
+  "inherited_runtime_option_keys": [],
+  "archive": {
+    "path": "compiler-memory-ed89-linux.tar.gz",
+    "bytes": 478450,
+    "sha256": "bc412436bf19d5431bfb48e4e5e11fc4e8de98148cee60b03a23b138c28a9693",
+    "format": "Deterministic tar+gzip; every raw receipt/row/stderr byte retained under relative regular-file paths.",
+    "members": [
+      {
+        "path": "react-1001/result.json",
+        "bytes": 13510,
+        "sha256": "c055d10b51263e915e00a6283da33f765bce4724e922ab49cf52468e17364735"
+      },
+      {
+        "path": "react-1001/rows.jsonl",
+        "bytes": 792934,
+        "sha256": "7596cd8044f6e2cbb992112d499b28e2c41a1fd7c78eaffdbbc4d573bdda9a06"
+      },
+      {
+        "path": "react-1001/stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "react-101/result.json",
+        "bytes": 11710,
+        "sha256": "224ff4b0ce20a9ebb9e4342118860424792a7716f4d467d69f262e999f4ac8d0"
+      },
+      {
+        "path": "react-101/rows.jsonl",
+        "bytes": 80439,
+        "sha256": "70aabf426e7b8c39acb1d4c783a7a800f50e706d9ab4808d8b00fce11168df06"
+      },
+      {
+        "path": "react-101/stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "result.json",
+        "bytes": 149021,
+        "sha256": "831e063543f673f19a75c308992ef38359408ff4832249ce32791c2748a34e61"
+      },
+      {
+        "path": "solid-1001/result.json",
+        "bytes": 13629,
+        "sha256": "fb1d3acd72c061b4218932fc59778a8590fc6689affbc8db5617a449bdb363f5"
+      },
+      {
+        "path": "solid-1001/rows.jsonl",
+        "bytes": 793460,
+        "sha256": "1a15d127c917fee9000f8d09462b64d06ca84427e9d45eef7e3c830b88d566d3"
+      },
+      {
+        "path": "solid-1001/stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "solid-101/result.json",
+        "bytes": 11818,
+        "sha256": "d9d0714dd4b28690bab7743da77ff5ac05b20340d8d5984b2f94ebfbe1a518f7"
+      },
+      {
+        "path": "solid-101/rows.jsonl",
+        "bytes": 80424,
+        "sha256": "a1284433490b8804a11711507befcc36b830b5d590aaf8bc06706042ecce0f5e"
+      },
+      {
+        "path": "solid-101/stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "started.json",
+        "bytes": 91291,
+        "sha256": "afdc74ca354ff52d7f55544e6143609bf7210b22adafb7ebd29ea3fbd3b60138"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "framework": "solid",
+      "total_successful_bundle_calls": 101,
+      "status": "passed",
+      "pid": 9,
+      "exit_code": 0,
+      "forced_termination": false,
+      "direct_child_joined": true,
+      "elapsed_seconds": 1.773182690001704,
+      "raw_rows": {
+        "path": "solid-101/rows.jsonl",
+        "bytes": 80424,
+        "sha256": "a1284433490b8804a11711507befcc36b830b5d590aaf8bc06706042ecce0f5e",
+        "records": 104
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "memory_before_compiler_imports": {
+        "rss": 22257664,
+        "heapTotal": 1538048,
+        "heapUsed": 1538048,
+        "external": 0,
+        "arrayBuffers": 0
+      },
+      "memory_after_initialization": {
+        "rss": 65667072,
+        "heapTotal": 7553024,
+        "heapUsed": 6763420,
+        "external": 1985228,
+        "arrayBuffers": 0
+      },
+      "memory_after_final_cleanup": {
+        "rss": 166232064,
+        "heapTotal": 19556352,
+        "heapUsed": 21148615,
+        "external": 9731448,
+        "arrayBuffers": 182364
+      },
+      "memory_summaries": {
+        "rss": {
+          "all_builds": {
+            "count": 101,
+            "first": 88817664,
+            "last": 166232064,
+            "minimum": 88817664,
+            "maximum": 167559168,
+            "median": 153894912,
+            "delta": 77414400,
+            "ols_bytes_per_build": 512921.49264997087,
+            "r_squared": 0.8085826750471123
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 88817664,
+              "last": 141877248,
+              "minimum": 88817664,
+              "maximum": 141877248,
+              "median": 130080768,
+              "delta": 53059584,
+              "ols_bytes_per_build": 1923412.283076923,
+              "r_squared": 0.892234736383958
+            },
+            {
+              "count": 25,
+              "first": 142532608,
+              "last": 152125440,
+              "minimum": 142532608,
+              "maximum": 154025984,
+              "median": 148520960,
+              "delta": 9592832,
+              "ols_bytes_per_build": 547742.3261538461,
+              "r_squared": 0.9007736557590189
+            },
+            {
+              "count": 25,
+              "first": 152649728,
+              "last": 159408128,
+              "minimum": 152649728,
+              "maximum": 159408128,
+              "median": 157282304,
+              "delta": 6758400,
+              "ols_bytes_per_build": 263117.5876923077,
+              "r_squared": 0.9422468987470468
+            },
+            {
+              "count": 26,
+              "first": 159539200,
+              "last": 166232064,
+              "minimum": 159539200,
+              "maximum": 167559168,
+              "median": 165578752.0,
+              "delta": 6692864,
+              "ols_bytes_per_build": 66419.61572649573,
+              "r_squared": 0.09370769597256874
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 153698304,
+            "last": 166232064,
+            "minimum": 153698304,
+            "maximum": 167559168,
+            "median": 160915456.0,
+            "delta": 12533760,
+            "ols_bytes_per_build": 286601.5946218487,
+            "r_squared": 0.8459481365563163
+          }
+        },
+        "heapTotal": {
+          "all_builds": {
+            "count": 101,
+            "first": 10250240,
+            "last": 19556352,
+            "minimum": 10250240,
+            "maximum": 19556352,
+            "median": 17164288,
+            "delta": 9306112,
+            "ols_bytes_per_build": 52138.52552125801,
+            "r_squared": 0.7657222304993931
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 10250240,
+              "last": 16689152,
+              "minimum": 10250240,
+              "maximum": 16689152,
+              "median": 16230400,
+              "delta": 6438912,
+              "ols_bytes_per_build": 220175.75384615385,
+              "r_squared": 0.6909447421696133
+            },
+            {
+              "count": 25,
+              "first": 16689152,
+              "last": 17164288,
+              "minimum": 16689152,
+              "maximum": 17164288,
+              "median": 16738304,
+              "delta": 475136,
+              "ols_bytes_per_build": 23177.05846153846,
+              "r_squared": 0.709622938436359
+            },
+            {
+              "count": 25,
+              "first": 17164288,
+              "last": 18507776,
+              "minimum": 17164288,
+              "maximum": 18507776,
+              "median": 17721344,
+              "delta": 1343488,
+              "ols_bytes_per_build": 55088.04923076923,
+              "r_squared": 0.932632509917156
+            },
+            {
+              "count": 26,
+              "first": 18507776,
+              "last": 19556352,
+              "minimum": 18507776,
+              "maximum": 19556352,
+              "median": 18900992.0,
+              "delta": 1048576,
+              "ols_bytes_per_build": 39287.99179487179,
+              "r_squared": 0.8876510612039428
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 17164288,
+            "last": 19556352,
+            "minimum": 17164288,
+            "maximum": 19556352,
+            "median": 18507776.0,
+            "delta": 2392064,
+            "ols_bytes_per_build": 47535.23553421369,
+            "r_squared": 0.9693109207968744
+          }
+        },
+        "heapUsed": {
+          "all_builds": {
+            "count": 101,
+            "first": 6763420,
+            "last": 21148615,
+            "minimum": 6763420,
+            "maximum": 21148615,
+            "median": 16421397,
+            "delta": 14385195,
+            "ols_bytes_per_build": 88965.94948165405,
+            "r_squared": 0.9551649496956969
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 6763420,
+              "last": 14336525,
+              "minimum": 6763420,
+              "maximum": 14336525,
+              "median": 13457849,
+              "delta": 7573105,
+              "ols_bytes_per_build": 146345.4530769231,
+              "r_squared": 0.5371705596357812
+            },
+            {
+              "count": 25,
+              "first": 14336525,
+              "last": 16421397,
+              "minimum": 14336525,
+              "maximum": 16421397,
+              "median": 15245754,
+              "delta": 2084872,
+              "ols_bytes_per_build": 95904.53076923077,
+              "r_squared": 0.9132537273608489
+            },
+            {
+              "count": 25,
+              "first": 16421397,
+              "last": 18463298,
+              "minimum": 16421397,
+              "maximum": 18463298,
+              "median": 17457608,
+              "delta": 2041901,
+              "ols_bytes_per_build": 85037.77846153846,
+              "r_squared": 0.9274105350498223
+            },
+            {
+              "count": 26,
+              "first": 18463298,
+              "last": 21148615,
+              "minimum": 18463298,
+              "maximum": 21148615,
+              "median": 19726974.0,
+              "delta": 2685317,
+              "ols_bytes_per_build": 103172.75623931624,
+              "r_squared": 0.938161071752518
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 16421397,
+            "last": 21148615,
+            "minimum": 16421397,
+            "maximum": 21148615,
+            "median": 18463298.0,
+            "delta": 4727218,
+            "ols_bytes_per_build": 86049.5594237695,
+            "r_squared": 0.9714607900997445
+          }
+        },
+        "external": {
+          "all_builds": {
+            "count": 101,
+            "first": 2111933,
+            "last": 9731448,
+            "minimum": 2111933,
+            "maximum": 10341730,
+            "median": 7724293,
+            "delta": 7619515,
+            "ols_bytes_per_build": 47060.66735002912,
+            "r_squared": 0.9326531562670626
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 2111933,
+              "last": 6289325,
+              "minimum": 2111933,
+              "maximum": 6814594,
+              "median": 6033675,
+              "delta": 4177392,
+              "ols_bytes_per_build": 88162.94076923077,
+              "r_squared": 0.5255784940228869
+            },
+            {
+              "count": 25,
+              "first": 6416030,
+              "last": 7597588,
+              "minimum": 6416030,
+              "maximum": 7788022,
+              "median": 7128135,
+              "delta": 1181558,
+              "ols_bytes_per_build": 47400.54923076923,
+              "r_squared": 0.8634502228411484
+            },
+            {
+              "count": 25,
+              "first": 7724293,
+              "last": 8542019,
+              "minimum": 7710628,
+              "maximum": 8989942,
+              "median": 8356417,
+              "delta": 817726,
+              "ols_bytes_per_build": 42150.446923076925,
+              "r_squared": 0.7469349599616245
+            },
+            {
+              "count": 26,
+              "first": 8668724,
+              "last": 9731448,
+              "minimum": 8668724,
+              "maximum": 10341730,
+              "median": 9358300.0,
+              "delta": 1062724,
+              "ols_bytes_per_build": 50881.45811965812,
+              "r_squared": 0.8416390769748525
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 7850998,
+            "last": 9731448,
+            "minimum": 7710628,
+            "maximum": 10341730,
+            "median": 8834033.5,
+            "delta": 1880450,
+            "ols_bytes_per_build": 42085.87044417767,
+            "r_squared": 0.9194657779472118
+          }
+        },
+        "arrayBuffers": {
+          "all_builds": {
+            "count": 101,
+            "first": 123998,
+            "last": 182364,
+            "minimum": 0,
+            "maximum": 926352,
+            "median": 430360,
+            "delta": 58366,
+            "ols_bytes_per_build": 1619.0193593476995,
+            "r_squared": 0.04196290711488922
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 123998,
+              "last": 58366,
+              "minimum": 0,
+              "maximum": 743988,
+              "median": 371994,
+              "delta": -65632,
+              "ols_bytes_per_build": 9504.772307692308,
+              "r_squared": 0.0988090149203479
+            },
+            {
+              "count": 25,
+              "first": 182364,
+              "last": 306362,
+              "minimum": 182364,
+              "maximum": 802354,
+              "median": 430360,
+              "delta": 123998,
+              "ols_bytes_per_build": -286.14923076923077,
+              "r_squared": 9.811616954474098e-5
+            },
+            {
+              "count": 25,
+              "first": 430360,
+              "last": 182364,
+              "minimum": 58366,
+              "maximum": 802354,
+              "median": 430360,
+              "delta": -247996,
+              "ols_bytes_per_build": -2384.576923076923,
+              "r_squared": 0.005280857104231445
+            },
+            {
+              "count": 26,
+              "first": 306362,
+              "last": 182364,
+              "minimum": 58366,
+              "maximum": 926352,
+              "median": 492359.0,
+              "delta": -123998,
+              "ols_bytes_per_build": 4281.640341880342,
+              "r_squared": 0.018452494008049564
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 554358,
+            "last": 182364,
+            "minimum": 58366,
+            "maximum": 926352,
+            "median": 492359.0,
+            "delta": -371994,
+            "ols_bytes_per_build": 1036.0457142857144,
+            "r_squared": 0.0039081439027223806
+          }
+        }
+      },
+      "final_record": {
+        "stage": "final",
+        "framework": "solid",
+        "count": 101,
+        "nonce": "116c69fab87281376c15aa2eb7bc94cd",
+        "pid": 9,
+        "elapsedMs": 1697.382041,
+        "memory": {
+          "rss": 166232064,
+          "heapTotal": 19556352,
+          "heapUsed": 21148615,
+          "external": 9731448,
+          "arrayBuffers": 182364
+        },
+        "status": "passed",
+        "attempted": 101,
+        "successful": 101,
+        "projectRemoved": true,
+        "bundlesRemoved": true,
+        "cleanupErrors": []
+      },
+      "rows_with_reported_heapUsed_above_heapTotal": 25
+    },
+    {
+      "framework": "react",
+      "total_successful_bundle_calls": 101,
+      "status": "passed",
+      "pid": 31,
+      "exit_code": 0,
+      "forced_termination": false,
+      "direct_child_joined": true,
+      "elapsed_seconds": 2.280821089003439,
+      "raw_rows": {
+        "path": "react-101/rows.jsonl",
+        "bytes": 80439,
+        "sha256": "70aabf426e7b8c39acb1d4c783a7a800f50e706d9ab4808d8b00fce11168df06",
+        "records": 104
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "memory_before_compiler_imports": {
+        "rss": 21733376,
+        "heapTotal": 1538048,
+        "heapUsed": 1538048,
+        "external": 0,
+        "arrayBuffers": 0
+      },
+      "memory_after_initialization": {
+        "rss": 58437632,
+        "heapTotal": 7782400,
+        "heapUsed": 7194079,
+        "external": 1904175,
+        "arrayBuffers": 0
+      },
+      "memory_after_final_cleanup": {
+        "rss": 178339840,
+        "heapTotal": 7672832,
+        "heapUsed": 12174455,
+        "external": 7305320,
+        "arrayBuffers": 637444
+      },
+      "memory_summaries": {
+        "rss": {
+          "all_builds": {
+            "count": 101,
+            "first": 79806464,
+            "last": 178339840,
+            "minimum": 79806464,
+            "maximum": 179257344,
+            "median": 166985728,
+            "delta": 98533376,
+            "ols_bytes_per_build": 591049.5556435643,
+            "r_squared": 0.7422866187236516
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 79806464,
+              "last": 152363008,
+              "minimum": 79806464,
+              "maximum": 152891392,
+              "median": 140726272,
+              "delta": 72556544,
+              "ols_bytes_per_build": 2558616.812307692,
+              "r_squared": 0.8381109638361115
+            },
+            {
+              "count": 25,
+              "first": 152756224,
+              "last": 166391808,
+              "minimum": 150781952,
+              "maximum": 166985728,
+              "median": 157077504,
+              "delta": 13635584,
+              "ols_bytes_per_build": 581027.0523076924,
+              "r_squared": 0.8570687386308108
+            },
+            {
+              "count": 25,
+              "first": 167047168,
+              "last": 173379584,
+              "minimum": 165617664,
+              "maximum": 179257344,
+              "median": 172269568,
+              "delta": 6332416,
+              "ols_bytes_per_build": 322471.7784615385,
+              "r_squared": 0.38475962680610737
+            },
+            {
+              "count": 26,
+              "first": 172687360,
+              "last": 178339840,
+              "minimum": 172146688,
+              "maximum": 178937856,
+              "median": 177029120.0,
+              "delta": 5652480,
+              "ols_bytes_per_build": 191685.7982905983,
+              "r_squared": 0.5701716378599535
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 167440384,
+            "last": 178339840,
+            "minimum": 165617664,
+            "maximum": 179257344,
+            "median": 174757888.0,
+            "delta": 10899456,
+            "ols_bytes_per_build": 175557.41195678271,
+            "r_squared": 0.5342432889642569
+          }
+        },
+        "heapTotal": {
+          "all_builds": {
+            "count": 101,
+            "first": 7865344,
+            "last": 7672832,
+            "minimum": 7671808,
+            "maximum": 7900160,
+            "median": 7672832,
+            "delta": -192512,
+            "ols_bytes_per_build": -1377.3247291788002,
+            "r_squared": 0.4756877446445754
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 7865344,
+              "last": 7671808,
+              "minimum": 7671808,
+              "maximum": 7900160,
+              "median": 7802880,
+              "delta": -193536,
+              "ols_bytes_per_build": -5932.898461538462,
+              "r_squared": 0.5395357592102124
+            },
+            {
+              "count": 25,
+              "first": 7671808,
+              "last": 7672832,
+              "minimum": 7671808,
+              "maximum": 7672832,
+              "median": 7671808,
+              "delta": 1024,
+              "ols_bytes_per_build": 18.116923076923076,
+              "r_squared": 0.22115384615384615
+            },
+            {
+              "count": 25,
+              "first": 7672832,
+              "last": 7672832,
+              "minimum": 7672832,
+              "maximum": 7672832,
+              "median": 7672832,
+              "delta": 0,
+              "ols_bytes_per_build": 0.0,
+              "r_squared": null
+            },
+            {
+              "count": 26,
+              "first": 7672832,
+              "last": 7672832,
+              "minimum": 7672832,
+              "maximum": 7672832,
+              "median": 7672832.0,
+              "delta": 0,
+              "ols_bytes_per_build": 0.0,
+              "r_squared": null
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 7672832,
+            "last": 7672832,
+            "minimum": 7672832,
+            "maximum": 7672832,
+            "median": 7672832.0,
+            "delta": 0,
+            "ols_bytes_per_build": 0.0,
+            "r_squared": null
+          }
+        },
+        "heapUsed": {
+          "all_builds": {
+            "count": 101,
+            "first": 7194079,
+            "last": 12174455,
+            "minimum": 7194079,
+            "maximum": 12174455,
+            "median": 10279619,
+            "delta": 4980376,
+            "ols_bytes_per_build": 43416.739242865464,
+            "r_squared": 0.9752397567836276
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 7194079,
+              "last": 9291017,
+              "minimum": 7194079,
+              "maximum": 9291017,
+              "median": 8579275,
+              "delta": 2096938,
+              "ols_bytes_per_build": 66072.43846153846,
+              "r_squared": 0.7682808645478412
+            },
+            {
+              "count": 25,
+              "first": 9291017,
+              "last": 10279619,
+              "minimum": 9291017,
+              "maximum": 10279619,
+              "median": 9847232,
+              "delta": 988602,
+              "ols_bytes_per_build": 35115.232307692306,
+              "r_squared": 0.8959417629221109
+            },
+            {
+              "count": 25,
+              "first": 10279619,
+              "last": 11366306,
+              "minimum": 10279619,
+              "maximum": 11366306,
+              "median": 11007679,
+              "delta": 1086687,
+              "ols_bytes_per_build": 45014.33153846154,
+              "r_squared": 0.9676251396987046
+            },
+            {
+              "count": 26,
+              "first": 11366306,
+              "last": 12174455,
+              "minimum": 11366306,
+              "maximum": 12174455,
+              "median": 11888477.0,
+              "delta": 808149,
+              "ols_bytes_per_build": 33949.140512820515,
+              "r_squared": 0.9517536561880181
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 10279619,
+            "last": 12174455,
+            "minimum": 10279619,
+            "maximum": 12174455,
+            "median": 11366306.0,
+            "delta": 1894836,
+            "ols_bytes_per_build": 35363.08403361344,
+            "r_squared": 0.9794133617341266
+          }
+        },
+        "external": {
+          "all_builds": {
+            "count": 101,
+            "first": 2452816,
+            "last": 7305320,
+            "minimum": 2452816,
+            "maximum": 8268367,
+            "median": 5832053,
+            "delta": 4852504,
+            "ols_bytes_per_build": 41643.46427489808,
+            "r_squared": 0.8345188551817965
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 2452816,
+              "last": 3955561,
+              "minimum": 2452816,
+              "maximum": 5194692,
+              "median": 4097410,
+              "delta": 1502745,
+              "ols_bytes_per_build": 60746.90846153846,
+              "r_squared": 0.3934446204743115
+            },
+            {
+              "count": 25,
+              "first": 4504202,
+              "last": 5468996,
+              "minimum": 4360078,
+              "maximum": 6293675,
+              "median": 5203401,
+              "delta": 964794,
+              "ols_bytes_per_build": 31778.84076923077,
+              "r_squared": 0.17244469429818324
+            },
+            {
+              "count": 25,
+              "first": 6017637,
+              "last": 6546769,
+              "minimum": 5283412,
+              "maximum": 7485187,
+              "median": 6380694,
+              "delta": 529132,
+              "ols_bytes_per_build": 29703.275384615386,
+              "r_squared": 0.15013950430846837
+            },
+            {
+              "count": 26,
+              "first": 7095410,
+              "last": 7305320,
+              "minimum": 6140360,
+              "maximum": 8268367,
+              "median": 7204363.5,
+              "delta": 209910,
+              "ols_bytes_per_build": 20884.39076923077,
+              "r_squared": 0.08078317732766911
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 6566278,
+            "last": 7305320,
+            "minimum": 5283412,
+            "maximum": 8268367,
+            "median": 6783352.5,
+            "delta": 739042,
+            "ols_bytes_per_build": 33457.19966386555,
+            "r_squared": 0.45333074019377995
+          }
+        },
+        "arrayBuffers": {
+          "all_builds": {
+            "count": 101,
+            "first": 548641,
+            "last": 637444,
+            "minimum": 88803,
+            "maximum": 1757828,
+            "median": 1054752,
+            "delta": 88803,
+            "ols_bytes_per_build": -360.05953407105414,
+            "r_squared": 0.00035263927920898175
+          },
+          "quarters": [
+            {
+              "count": 25,
+              "first": 548641,
+              "last": 88803,
+              "minimum": 88803,
+              "maximum": 1734726,
+              "median": 1054752,
+              "delta": -459838,
+              "ols_bytes_per_build": -628.4476923076919,
+              "r_squared": 6.463691311464295e-5
+            },
+            {
+              "count": 25,
+              "first": 637444,
+              "last": 637444,
+              "minimum": 88803,
+              "maximum": 1734726,
+              "median": 923350,
+              "delta": 0,
+              "ols_bytes_per_build": -2355.591538461539,
+              "r_squared": 0.0009788402834965198
+            },
+            {
+              "count": 25,
+              "first": 1186085,
+              "last": 660546,
+              "minimum": 88803,
+              "maximum": 1734726,
+              "median": 923350,
+              "delta": -525539,
+              "ols_bytes_per_build": -14125.739230769232,
+              "r_squared": 0.032916577971301215
+            },
+            {
+              "count": 26,
+              "first": 1209187,
+              "last": 637444,
+              "minimum": 88803,
+              "maximum": 1757828,
+              "median": 1120453.0,
+              "delta": -571743,
+              "ols_bytes_per_build": -12012.98358974359,
+              "r_squared": 0.02540072044864412
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 1734726,
+            "last": 637444,
+            "minimum": 88803,
+            "maximum": 1757828,
+            "median": 989051.0,
+            "delta": -1097282,
+            "ols_bytes_per_build": -845.614117647059,
+            "r_squared": 0.00045997436948221884
+          }
+        }
+      },
+      "final_record": {
+        "stage": "final",
+        "framework": "react",
+        "count": 101,
+        "nonce": "116c69fab87281376c15aa2eb7bc94cd",
+        "pid": 31,
+        "elapsedMs": 2217.353638,
+        "memory": {
+          "rss": 178339840,
+          "heapTotal": 7672832,
+          "heapUsed": 12174455,
+          "external": 7305320,
+          "arrayBuffers": 637444
+        },
+        "status": "passed",
+        "attempted": 101,
+        "successful": 101,
+        "projectRemoved": true,
+        "bundlesRemoved": true,
+        "cleanupErrors": []
+      },
+      "rows_with_reported_heapUsed_above_heapTotal": 99
+    },
+    {
+      "framework": "solid",
+      "total_successful_bundle_calls": 1001,
+      "status": "passed",
+      "pid": 53,
+      "exit_code": 0,
+      "forced_termination": false,
+      "direct_child_joined": true,
+      "elapsed_seconds": 12.406905140000163,
+      "raw_rows": {
+        "path": "solid-1001/rows.jsonl",
+        "bytes": 793460,
+        "sha256": "1a15d127c917fee9000f8d09462b64d06ca84427e9d45eef7e3c830b88d566d3",
+        "records": 1004
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "memory_before_compiler_imports": {
+        "rss": 21733376,
+        "heapTotal": 1538048,
+        "heapUsed": 1538048,
+        "external": 0,
+        "arrayBuffers": 0
+      },
+      "memory_after_initialization": {
+        "rss": 56754176,
+        "heapTotal": 7782400,
+        "heapUsed": 7192061,
+        "external": 1898941,
+        "arrayBuffers": 0
+      },
+      "memory_after_final_cleanup": {
+        "rss": 192389120,
+        "heapTotal": 24030208,
+        "heapUsed": 30547665,
+        "external": 18792877,
+        "arrayBuffers": 612748
+      },
+      "memory_summaries": {
+        "rss": {
+          "all_builds": {
+            "count": 1001,
+            "first": 83234816,
+            "last": 192532480,
+            "minimum": 83234816,
+            "maximum": 196468736,
+            "median": 189673472,
+            "delta": 109297664,
+            "ols_bytes_per_build": 40671.87694107091,
+            "r_squared": 0.5973097947217791
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 83234816,
+              "last": 177086464,
+              "minimum": 83234816,
+              "maximum": 178741248,
+              "median": 169021440.0,
+              "delta": 93851648,
+              "ols_bytes_per_build": 192715.77251015216,
+              "r_squared": 0.6814637361415317
+            },
+            {
+              "count": 250,
+              "first": 177086464,
+              "last": 193159168,
+              "minimum": 155774976,
+              "maximum": 196157440,
+              "median": 179656704.0,
+              "delta": 16072704,
+              "ols_bytes_per_build": 70507.46224547592,
+              "r_squared": 0.45600979050887835
+            },
+            {
+              "count": 250,
+              "first": 193159168,
+              "last": 189919232,
+              "minimum": 185237504,
+              "maximum": 196468736,
+              "median": 192077824.0,
+              "delta": -3239936,
+              "ols_bytes_per_build": -24472.47400796813,
+              "r_squared": 0.5118675257302907
+            },
+            {
+              "count": 251,
+              "first": 189919232,
+              "last": 192532480,
+              "minimum": 189128704,
+              "maximum": 194920448,
+              "median": 192380928,
+              "delta": 2613248,
+              "ols_bytes_per_build": 17849.54895541643,
+              "r_squared": 0.6485432220402659
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 194514944,
+            "last": 192532480,
+            "minimum": 191889408,
+            "maximum": 194514944,
+            "median": 192864256.0,
+            "delta": -1982464,
+            "ols_bytes_per_build": -18281.633037214888,
+            "r_squared": 0.3252094830872613
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 194207744,
+            "last": 192532480,
+            "minimum": 185237504,
+            "maximum": 196468736,
+            "median": 192280576.0,
+            "delta": -1675264,
+            "ols_bytes_per_build": -346.81553996615986,
+            "r_squared": 0.000576864418678572
+          }
+        },
+        "heapTotal": {
+          "all_builds": {
+            "count": 1001,
+            "first": 10344448,
+            "last": 24030208,
+            "minimum": 10344448,
+            "maximum": 27618304,
+            "median": 21031936,
+            "delta": 13685760,
+            "ols_bytes_per_build": 4134.825579881197,
+            "r_squared": 0.20919834896130138
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 10344448,
+              "last": 19785728,
+              "minimum": 10344448,
+              "maximum": 21194752,
+              "median": 19276800.0,
+              "delta": 9441280,
+              "ols_bytes_per_build": 17791.721254548072,
+              "r_squared": 0.5592146661626715
+            },
+            {
+              "count": 250,
+              "first": 19703808,
+              "last": 25274368,
+              "minimum": 18720768,
+              "maximum": 25274368,
+              "median": 22751232.0,
+              "delta": 5570560,
+              "ols_bytes_per_build": 21049.39059684155,
+              "r_squared": 0.8615745464121495
+            },
+            {
+              "count": 250,
+              "first": 25274368,
+              "last": 21031936,
+              "minimum": 16690176,
+              "maximum": 27618304,
+              "median": 20130816.0,
+              "delta": -4242432,
+              "ols_bytes_per_build": -33761.77457533721,
+              "r_squared": 0.5530879397515097
+            },
+            {
+              "count": 251,
+              "first": 21031936,
+              "last": 24030208,
+              "minimum": 20802560,
+              "maximum": 24046592,
+              "median": 22031360,
+              "delta": 2998272,
+              "ols_bytes_per_build": 14893.083974957313,
+              "r_squared": 0.9414470015430564
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 23669760,
+            "last": 24030208,
+            "minimum": 22719488,
+            "maximum": 24046592,
+            "median": 24046592.0,
+            "delta": 360448,
+            "ols_bytes_per_build": 11951.469099639857,
+            "r_squared": 0.26441053882805027
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 25274368,
+            "last": 24030208,
+            "minimum": 16690176,
+            "maximum": 27618304,
+            "median": 21998592.0,
+            "delta": -1244160,
+            "ols_bytes_per_build": -1931.7574143256572,
+            "r_squared": 0.013017364247886142
+          }
+        },
+        "heapUsed": {
+          "all_builds": {
+            "count": 1001,
+            "first": 7192061,
+            "last": 30547665,
+            "minimum": 7192061,
+            "maximum": 35287804,
+            "median": 24132480,
+            "delta": 23355604,
+            "ols_bytes_per_build": 9113.080835128943,
+            "r_squared": 0.2653485039768756
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 7192061,
+              "last": 20951595,
+              "minimum": 7192061,
+              "maximum": 24348784,
+              "median": 19373405.0,
+              "delta": 13759534,
+              "ols_bytes_per_build": 26702.833565977056,
+              "r_squared": 0.4140173395694527
+            },
+            {
+              "count": 250,
+              "first": 20951595,
+              "last": 31854593,
+              "minimum": 20951595,
+              "maximum": 31854593,
+              "median": 26851497.0,
+              "delta": 10902998,
+              "ols_bytes_per_build": 41493.19620371526,
+              "r_squared": 0.9954422601097779
+            },
+            {
+              "count": 250,
+              "first": 31854593,
+              "last": 23553647,
+              "minimum": 18903715,
+              "maximum": 35287804,
+              "median": 22029611.0,
+              "delta": -8300946,
+              "ols_bytes_per_build": -63156.84003494456,
+              "r_squared": 0.5181861940744135
+            },
+            {
+              "count": 251,
+              "first": 23553647,
+              "last": 30547665,
+              "minimum": 23553647,
+              "maximum": 30547665,
+              "median": 26534521,
+              "delta": 6994018,
+              "ols_bytes_per_build": 31798.70919977234,
+              "r_squared": 0.9869694238181045
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 29901301,
+            "last": 30547665,
+            "minimum": 29901301,
+            "maximum": 30547665,
+            "median": 30298058.0,
+            "delta": 646364,
+            "ols_bytes_per_build": 14407.81286914766,
+            "r_squared": 0.9257915240614989
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 31854593,
+            "last": 30547665,
+            "minimum": 18903715,
+            "maximum": 35287804,
+            "median": 25986909.0,
+            "delta": -1306928,
+            "ols_bytes_per_build": 258.9682953931816,
+            "r_squared": 6.04176671767816e-5
+          }
+        },
+        "external": {
+          "all_builds": {
+            "count": 1001,
+            "first": 2025652,
+            "last": 18792877,
+            "minimum": 2025652,
+            "maximum": 20857474,
+            "median": 14996109,
+            "delta": 16767225,
+            "ols_bytes_per_build": 8032.591516830475,
+            "r_squared": 0.48246030443055454
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 2025652,
+              "last": 13423475,
+              "minimum": 2025652,
+              "maximum": 13423475,
+              "median": 11125263.5,
+              "delta": 11397823,
+              "ols_bytes_per_build": 28204.548825805214,
+              "r_squared": 0.8690249458658972
+            },
+            {
+              "count": 250,
+              "first": 13550186,
+              "last": 18286630,
+              "minimum": 12872187,
+              "maximum": 18687648,
+              "median": 15830739.0,
+              "delta": 4736444,
+              "ols_bytes_per_build": 20676.188303556857,
+              "r_squared": 0.9599989830560989
+            },
+            {
+              "count": 250,
+              "first": 18413341,
+              "last": 14562280,
+              "minimum": 11487861,
+              "maximum": 20857474,
+              "median": 14331465.0,
+              "delta": -3851061,
+              "ols_bytes_per_build": -28715.93545739932,
+              "r_squared": 0.4545077652524924
+            },
+            {
+              "count": 251,
+              "first": 14688991,
+              "last": 18792877,
+              "minimum": 14471597,
+              "maximum": 19451778,
+              "median": 17009118,
+              "delta": 4103886,
+              "ols_bytes_per_build": 16986.464939480175,
+              "r_squared": 0.931420854994392
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 18122154,
+            "last": 18792877,
+            "minimum": 17900840,
+            "maximum": 19451778,
+            "median": 18624565.0,
+            "delta": 670723,
+            "ols_bytes_per_build": 11272.204225690277,
+            "r_squared": 0.18817762466467228
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 18540052,
+            "last": 18792877,
+            "minimum": 11487861,
+            "maximum": 20857474,
+            "median": 16474285.5,
+            "delta": 252825,
+            "ols_bytes_per_build": 2504.899451021804,
+            "r_squared": 0.021962748508876792
+          }
+        },
+        "arrayBuffers": {
+          "all_builds": {
+            "count": 1001,
+            "first": 124002,
+            "last": 612748,
+            "minimum": 0,
+            "maximum": 1415130,
+            "median": 671118,
+            "delta": 488746,
+            "ols_bytes_per_build": 259.83821187196037,
+            "r_squared": 0.04456161399753428
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 124002,
+              "last": 1050386,
+              "minimum": 0,
+              "maximum": 1298390,
+              "median": 554378.0,
+              "delta": 926384,
+              "ols_bytes_per_build": 1315.1382963567416,
+              "r_squared": 0.1046726650140527
+            },
+            {
+              "count": 250,
+              "first": 1174388,
+              "last": 547116,
+              "minimum": 116740,
+              "maximum": 1415130,
+              "median": 736750.0,
+              "delta": -627272,
+              "ols_bytes_per_build": 413.67624518792303,
+              "r_squared": 0.007387796236625769
+            },
+            {
+              "count": 250,
+              "first": 671118,
+              "last": 306374,
+              "minimum": 0,
+              "maximum": 1415130,
+              "median": 678380.0,
+              "delta": -364744,
+              "ols_bytes_per_build": -483.9958104929679,
+              "r_squared": 0.009241527344670809
+            },
+            {
+              "count": 251,
+              "first": 430376,
+              "last": 612748,
+              "minimum": 116740,
+              "maximum": 1356760,
+              "median": 736750,
+              "delta": 182372,
+              "ols_bytes_per_build": 149.81063327641817,
+              "r_squared": 0.0008968586282936943
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 488746,
+            "last": 612748,
+            "minimum": 116740,
+            "maximum": 1356760,
+            "median": 736750.0,
+            "delta": 124002,
+            "ols_bytes_per_build": -1416.7380552220889,
+            "r_squared": 0.0033767854532360266
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 795120,
+            "last": 612748,
+            "minimum": 0,
+            "maximum": 1415130,
+            "median": 736750.0,
+            "delta": -182372,
+            "ols_bytes_per_build": 17.762045864183452,
+            "r_squared": 4.977260961927656e-5
+          }
+        }
+      },
+      "final_record": {
+        "stage": "final",
+        "framework": "solid",
+        "count": 1001,
+        "nonce": "116c69fab87281376c15aa2eb7bc94cd",
+        "pid": 53,
+        "elapsedMs": 12336.50297,
+        "memory": {
+          "rss": 192389120,
+          "heapTotal": 24030208,
+          "heapUsed": 30547665,
+          "external": 18792877,
+          "arrayBuffers": 612748
+        },
+        "status": "passed",
+        "attempted": 1001,
+        "successful": 1001,
+        "projectRemoved": true,
+        "bundlesRemoved": true,
+        "cleanupErrors": []
+      },
+      "rows_with_reported_heapUsed_above_heapTotal": 877
+    },
+    {
+      "framework": "react",
+      "total_successful_bundle_calls": 1001,
+      "status": "passed",
+      "pid": 75,
+      "exit_code": 0,
+      "forced_termination": false,
+      "direct_child_joined": true,
+      "elapsed_seconds": 20.414352244999463,
+      "raw_rows": {
+        "path": "react-1001/rows.jsonl",
+        "bytes": 792934,
+        "sha256": "7596cd8044f6e2cbb992112d499b28e2c41a1fd7c78eaffdbbc4d573bdda9a06",
+        "records": 1004
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "memory_before_compiler_imports": {
+        "rss": 22142976,
+        "heapTotal": 1538048,
+        "heapUsed": 1538048,
+        "external": 0,
+        "arrayBuffers": 0
+      },
+      "memory_after_initialization": {
+        "rss": 57757696,
+        "heapTotal": 7782400,
+        "heapUsed": 7194781,
+        "external": 1904141,
+        "arrayBuffers": 0
+      },
+      "memory_after_final_cleanup": {
+        "rss": 229953536,
+        "heapTotal": 7759872,
+        "heapUsed": 12667035,
+        "external": 8989266,
+        "arrayBuffers": 2500085
+      },
+      "memory_summaries": {
+        "rss": {
+          "all_builds": {
+            "count": 1001,
+            "first": 79519744,
+            "last": 229953536,
+            "minimum": 79519744,
+            "maximum": 237023232,
+            "median": 215855104,
+            "delta": 150433792,
+            "ols_bytes_per_build": 63620.95628692266,
+            "r_squared": 0.6779585943866123
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 79519744,
+              "last": 201445376,
+              "minimum": 79519744,
+              "maximum": 206589952,
+              "median": 180711424.0,
+              "delta": 121925632,
+              "ols_bytes_per_build": 242288.9167301877,
+              "r_squared": 0.7249974665643545
+            },
+            {
+              "count": 250,
+              "first": 201445376,
+              "last": 214671360,
+              "minimum": 195366912,
+              "maximum": 219144192,
+              "median": 208633856.0,
+              "delta": 13225984,
+              "ols_bytes_per_build": 65859.0745805213,
+              "r_squared": 0.7981721134995672
+            },
+            {
+              "count": 250,
+              "first": 217817088,
+              "last": 209698816,
+              "minimum": 206401536,
+              "maximum": 237023232,
+              "median": 228093952.0,
+              "delta": -8118272,
+              "ols_bytes_per_build": 8633.22372313157,
+              "r_squared": 0.01046316586151502
+            },
+            {
+              "count": 251,
+              "first": 212844544,
+              "last": 229953536,
+              "minimum": 212844544,
+              "maximum": 234860544,
+              "median": 224866304,
+              "delta": 17108992,
+              "ols_bytes_per_build": -6764.571586416239,
+              "r_squared": 0.009843743291292876
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 224653312,
+            "last": 229953536,
+            "minimum": 216752128,
+            "maximum": 229998592,
+            "median": 225529856.0,
+            "delta": 5300224,
+            "ols_bytes_per_build": 148244.91025210085,
+            "r_squared": 0.4938464016460419
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 219127808,
+            "last": 229953536,
+            "minimum": 206401536,
+            "maximum": 237023232,
+            "median": 226373632.0,
+            "delta": 10825728,
+            "ols_bytes_per_build": -5323.8195119820475,
+            "r_squared": 0.018760018359640012
+          }
+        },
+        "heapTotal": {
+          "all_builds": {
+            "count": 1001,
+            "first": 7865344,
+            "last": 7759872,
+            "minimum": 7710720,
+            "maximum": 7900160,
+            "median": 7743488,
+            "delta": -105472,
+            "ols_bytes_per_build": -25.980823105038674,
+            "r_squared": 0.09800293797050526
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 7865344,
+              "last": 7743488,
+              "minimum": 7710720,
+              "maximum": 7900160,
+              "median": 7802880.0,
+              "delta": -121856,
+              "ols_bytes_per_build": -393.55692372677964,
+              "r_squared": 0.5938325090072692
+            },
+            {
+              "count": 250,
+              "first": 7743488,
+              "last": 7743488,
+              "minimum": 7743488,
+              "maximum": 7743488,
+              "median": 7743488.0,
+              "delta": 0,
+              "ols_bytes_per_build": 0.0,
+              "r_squared": null
+            },
+            {
+              "count": 250,
+              "first": 7743488,
+              "last": 7727104,
+              "minimum": 7727104,
+              "maximum": 7743488,
+              "median": 7727104.0,
+              "delta": -16384,
+              "ols_bytes_per_build": -97.39958872941968,
+              "r_squared": 0.7430998895982336
+            },
+            {
+              "count": 251,
+              "first": 7727104,
+              "last": 7759872,
+              "minimum": 7727104,
+              "maximum": 7759872,
+              "median": 7759872,
+              "delta": 32768,
+              "ols_bytes_per_build": 22.678365395560615,
+              "r_squared": 0.09672004186289901
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 7759872,
+            "last": 7759872,
+            "minimum": 7759872,
+            "maximum": 7759872,
+            "median": 7759872.0,
+            "delta": 0,
+            "ols_bytes_per_build": 0.0,
+            "r_squared": null
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 7743488,
+            "last": 7759872,
+            "minimum": 7727104,
+            "maximum": 7759872,
+            "median": 7743488.0,
+            "delta": 16384,
+            "ols_bytes_per_build": 64.05907479629919,
+            "r_squared": 0.43579506607748864
+          }
+        },
+        "heapUsed": {
+          "all_builds": {
+            "count": 1001,
+            "first": 7194781,
+            "last": 12667035,
+            "minimum": 7194781,
+            "maximum": 17563898,
+            "median": 12369709,
+            "delta": 5472254,
+            "ols_bytes_per_build": -26.899946496617165,
+            "r_squared": 1.030167206044604e-5
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 7194781,
+              "last": 10513215,
+              "minimum": 7194781,
+              "maximum": 16350025,
+              "median": 11816252.5,
+              "delta": 3318434,
+              "ols_bytes_per_build": 14471.658933422936,
+              "r_squared": 0.1903812657405371
+            },
+            {
+              "count": 250,
+              "first": 10513215,
+              "last": 13669133,
+              "minimum": 8731967,
+              "maximum": 17563898,
+              "median": 12687861.5,
+              "delta": 3155918,
+              "ols_bytes_per_build": -4011.7185910814574,
+              "r_squared": 0.015864250721171563
+            },
+            {
+              "count": 250,
+              "first": 13669133,
+              "last": 16357718,
+              "minimum": 8644391,
+              "maximum": 17127349,
+              "median": 13965472.0,
+              "delta": 2688585,
+              "ols_bytes_per_build": 1746.222110689771,
+              "r_squared": 0.002938272488696451
+            },
+            {
+              "count": 251,
+              "first": 16357718,
+              "last": 12667035,
+              "minimum": 8164101,
+              "maximum": 17034359,
+              "median": 11365486,
+              "delta": -3690683,
+              "ols_bytes_per_build": -1574.881468412066,
+              "r_squared": 0.002598573195075218
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 10470384,
+            "last": 12667035,
+            "minimum": 10470384,
+            "maximum": 12667035,
+            "median": 11630060.0,
+            "delta": 2196651,
+            "ols_bytes_per_build": 47750.43951980792,
+            "r_squared": 0.9919436922717481
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 13832029,
+            "last": 12667035,
+            "minimum": 8164101,
+            "maximum": 17127349,
+            "median": 12420385.0,
+            "delta": -1164994,
+            "ols_bytes_per_build": -5410.381838551354,
+            "r_squared": 0.10100645115487654
+          }
+        },
+        "external": {
+          "all_builds": {
+            "count": 1001,
+            "first": 2452794,
+            "last": 8989266,
+            "minimum": 2452794,
+            "maximum": 13694225,
+            "median": 7844426,
+            "delta": 6536472,
+            "ols_bytes_per_build": 3.7342999635095393,
+            "r_squared": 1.952287949936824e-7
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 2452794,
+              "last": 5155362,
+              "minimum": 2452794,
+              "maximum": 12403424,
+              "median": 7261453.0,
+              "delta": 2702568,
+              "ols_bytes_per_build": 14386.924366149859,
+              "r_squared": 0.18637821674238633
+            },
+            {
+              "count": 250,
+              "first": 5704015,
+              "last": 9313879,
+              "minimum": 3475064,
+              "maximum": 13694225,
+              "median": 8063220.0,
+              "delta": 3609864,
+              "ols_bytes_per_build": -4110.882454567273,
+              "r_squared": 0.01617393447992524
+            },
+            {
+              "count": 250,
+              "first": 9862532,
+              "last": 11386979,
+              "minimum": 3494861,
+              "maximum": 13072725,
+              "median": 9317585.5,
+              "delta": 1524447,
+              "ols_bytes_per_build": 1957.5573937503,
+              "r_squared": 0.003616726298447174
+            },
+            {
+              "count": 251,
+              "first": 11935632,
+              "last": 8989266,
+              "minimum": 3033292,
+              "maximum": 13148974,
+              "median": 6832637,
+              "delta": -2946366,
+              "ols_bytes_per_build": -1896.4452544109276,
+              "r_squared": 0.0036431878094273255
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 5282169,
+            "last": 8989266,
+            "minimum": 5282169,
+            "maximum": 8989266,
+            "median": 6977586.5,
+            "delta": 3707097,
+            "ols_bytes_per_build": 49793.89675870348,
+            "r_squared": 0.6717854581210626
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 8376557,
+            "last": 8989266,
+            "minimum": 3033292,
+            "maximum": 13148974,
+            "median": 7920416.5,
+            "delta": 612709,
+            "ols_bytes_per_build": -5188.505786855148,
+            "r_squared": 0.09176823498270677
+          }
+        },
+        "arrayBuffers": {
+          "all_builds": {
+            "count": 1001,
+            "first": 548653,
+            "last": 2500085,
+            "minimum": 0,
+            "maximum": 3380867,
+            "median": 1383291,
+            "delta": 1951432,
+            "ols_bytes_per_build": 596.2493735605711,
+            "r_squared": 0.061829520226637125
+          },
+          "quarters": [
+            {
+              "count": 250,
+              "first": 548653,
+              "last": 88809,
+              "minimum": 0,
+              "maximum": 2128980,
+              "median": 1097306.0,
+              "delta": -459844,
+              "ols_bytes_per_build": 771.9954687274997,
+              "r_squared": 0.00915325916245593
+            },
+            {
+              "count": 250,
+              "first": 637462,
+              "last": 1800470,
+              "minimum": 131404,
+              "maximum": 2982896,
+              "median": 1425816.0,
+              "delta": 1163008,
+              "ols_bytes_per_build": 559.5030910574569,
+              "r_squared": 0.003923390843554952
+            },
+            {
+              "count": 250,
+              "first": 2349123,
+              "last": 1777503,
+              "minimum": 0,
+              "maximum": 3380867,
+              "median": 1723319.5,
+              "delta": -571620,
+              "ols_bytes_per_build": 528.0506600105601,
+              "r_squared": 0.0030714044099057697
+            },
+            {
+              "count": 251,
+              "first": 2326156,
+              "last": 2500085,
+              "minimum": 0,
+              "maximum": 3029320,
+              "median": 1448923,
+              "delta": 173929,
+              "ols_bytes_per_build": -328.2703107569721,
+              "r_squared": 0.0011457322581008111
+            }
+          ],
+          "last_50_builds": {
+            "count": 50,
+            "first": 548723,
+            "last": 2500085,
+            "minimum": 459914,
+            "maximum": 2500085,
+            "median": 1360184.0,
+            "delta": 1951362,
+            "ols_bytes_per_build": 12330.776134453781,
+            "r_squared": 0.09816343893687865
+          },
+          "last_500_builds": {
+            "count": 500,
+            "first": 726271,
+            "last": 2500085,
+            "minimum": 0,
+            "maximum": 3380867,
+            "median": 1580362.0,
+            "delta": 1773814,
+            "ols_bytes_per_build": -568.6136068064272,
+            "r_squared": 0.01365075311834025
+          }
+        }
+      },
+      "final_record": {
+        "stage": "final",
+        "framework": "react",
+        "count": 1001,
+        "nonce": "116c69fab87281376c15aa2eb7bc94cd",
+        "pid": 75,
+        "elapsedMs": 20318.85313,
+        "memory": {
+          "rss": 229953536,
+          "heapTotal": 7759872,
+          "heapUsed": 12667035,
+          "external": 8989266,
+          "arrayBuffers": 2500085
+        },
+        "status": "passed",
+        "attempted": 1001,
+        "successful": 1001,
+        "projectRemoved": true,
+        "bundlesRemoved": true,
+        "cleanupErrors": []
+      },
+      "rows_with_reported_heapUsed_above_heapTotal": 999
+    }
+  ],
+  "interpretation_limits": [
+    "All four processes import the shared Babel dependency path; only Solid invokes its transform.",
+    "The measured loop also allocates for source edits, streaming output validation, hashing and synchronous JSONL logging.",
+    "Fixed order, uncontrolled caches and one trial per case; no application process, native host, filesystem watcher, malformed-source control, or native input.",
+    "Process memoryUsage fields are copied unchanged; some reported heapUsed values exceed heapTotal. No accounting relationship or retaining object is inferred.",
+    "Finite late slopes do not prove a plateau or unbounded growth. Local control RSS cannot be subtracted from hosted native controller RSS.",
+    "No explicit GC, heap walk or collector setting was changed. Observed counter drops do not identify collector activity.",
+    "Build outputs were validated and removed, and are not included for later reinspection.",
+    "Historical native observations remain a separate source-bound outcome. #243 and #372 resource acceptance remain open."
+  ]
+}

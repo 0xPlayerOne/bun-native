@@ -127,3 +127,8 @@ subtracted from hosted native measurements or interpreted as presentation
 latency. A compiler-only increase may narrow the investigation but cannot by
 itself attribute all native growth, establish a leak, explain a retaining root,
 prove long-term stability or close #243/#372.
+
+The sole execution of this declared matrix is retained in the
+[Linux result report](compiler-memory-results.md), with all raw rows and exact
+source/compiler identities. That report preserves the plan's original scope;
+no additional variants were run.
