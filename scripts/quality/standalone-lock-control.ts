@@ -16,6 +16,27 @@ const compiler = {
   bytes: 138_468_432,
   sha256: 'fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810',
 }
+const previousControl = {
+  source: {
+    commit: 'c16db30583767094cabccbb5875d42ad12af40ac',
+    tree: '75762af6c881bc00e61af4860c1b62eb815105d1',
+  },
+  files: {
+    'result.json': {
+      bytes: 181_790,
+      sha256: 'bb7086c141738015719421b65c7a1fe37b5446c0a6c6c93f006d992c34d45118',
+    },
+    'original-solid.stderr.log': {
+      bytes: 49,
+      sha256: '78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30',
+    },
+    'original-solid.stdout.log': {
+      bytes: 0,
+      sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    },
+  },
+}
+const invalidLockDiagnostic = 'error: failed to parse lockfile: InvalidLockfile\n'
 
 function ensure(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message)
@@ -75,12 +96,18 @@ async function main(): Promise<void> {
     strict: true,
     options: {
       input: { type: 'string' },
+      prior: { type: 'string' },
       outdir: { type: 'string' },
     },
   })
   ensure(
-    values.input && values.outdir && isAbsolute(values.input) && isAbsolute(values.outdir),
-    'Usage: standalone-lock-control.ts --input ABSOLUTE_RETAINED_COHORT --outdir ABSOLUTE_NEW_DIRECTORY'
+    values.input &&
+      values.prior &&
+      values.outdir &&
+      isAbsolute(values.input) &&
+      isAbsolute(values.prior) &&
+      isAbsolute(values.outdir),
+    'Usage: standalone-lock-control.ts --input ABSOLUTE_RETAINED_COHORT --prior ABSOLUTE_C16_FAILED_CONTROL --outdir ABSOLUTE_NEW_DIRECTORY'
   )
   ensure(
     process.platform === 'linux' &&
@@ -91,8 +118,10 @@ async function main(): Promise<void> {
   ensure(isDeepStrictEqual(await fileDigest(process.execPath), compiler), 'Compiler bytes differ')
   const source = await sourceSnapshot()
   const input = await realpath(values.input)
+  const prior = await realpath(values.prior)
   const output = join(await realpath(dirname(values.outdir)), values.outdir.split('/').at(-1)!)
   ensure(output !== input && !inside(input, output), 'Do not write into the retained cohort')
+  ensure(output !== prior && !inside(prior, output), 'Do not write into the prior failed control')
   for (const line of git('worktree', 'list', '--porcelain').split('\n'))
     if (line.startsWith('worktree ')) {
       const root = await realpath(line.slice('worktree '.length))
@@ -114,13 +143,30 @@ async function main(): Promise<void> {
     isDeepStrictEqual(await fileDigest(manifestPath), originalResult.package_set.manifest),
     'Retained package-set bytes differ'
   )
+  const priorInputs: Record<string, FileDigest> = {}
+  for (const [name, expected] of Object.entries(previousControl.files)) {
+    const actual = await fileDigest(join(prior, name))
+    ensure(isDeepStrictEqual(actual, expected), `Prior failed-control bytes differ: ${name}`)
+    priorInputs[name] = actual
+  }
+  const priorResult = await Bun.file(join(prior, 'result.json')).json()
+  ensure(
+    priorResult.source.commit === previousControl.source.commit &&
+      priorResult.source.tree === previousControl.source.tree &&
+      priorResult.status === 'failed' &&
+      priorResult.controls[0].name === 'original-solid' &&
+      priorResult.controls[0].status === 'failed' &&
+      priorResult.controls
+        .slice(1)
+        .every((control: { status: string }) => control.status === 'not-run'),
+    'Prior failure is not the unchanged c16 fail-stop result'
+  )
   await mkdir(output) // An existing result directory is never adopted.
   const inputs: Record<string, FileDigest> = {
     'result.json': await fileDigest(join(input, 'result.json')),
     'packages/manifest.json': await fileDigest(manifestPath),
   }
   const controls = [
-    { name: 'original-solid', framework: 'solid' as const, corrected: false },
     { name: 'original-react', framework: 'react' as const, corrected: false },
     { name: 'corrected-solid', framework: 'solid' as const, corrected: true },
     { name: 'corrected-react', framework: 'react' as const, corrected: true },
@@ -131,8 +177,17 @@ async function main(): Promise<void> {
     inputSource: measuredSource,
     compiler,
     inputs,
+    priorFailure: {
+      source: previousControl.source,
+      status: priorResult.status,
+      error: priorResult.error,
+      inputs: priorInputs,
+      originalSolidStatus: priorResult.controls[0].status,
+      scope: 'Retained failed result; not rerun or counted as a passing control',
+    },
     controls,
-    scope: 'Four read-only lock parser/listing calls; no installation or archive extraction',
+    scope:
+      'Three previously unrun lock parser/listing calls; no installation or archive extraction',
   }
   await json(join(output, 'result.json'), report)
   try {
@@ -250,8 +305,8 @@ async function main(): Promise<void> {
         )
       } else {
         ensure(
-          stderr.includes("Failed to resolve root dev dependency '@bun-native/cli'") &&
-            stderr.includes('failed to parse lockfile: InvalidLockfile'),
+          result.stdout.byteLength === 0 &&
+            result.stderr.equals(Buffer.from(invalidLockDiagnostic)),
           'Missing the expected original lock rejection'
         )
       }
@@ -272,10 +327,16 @@ async function main(): Promise<void> {
           Object.keys(inputs).map(async (name) => [name, await fileDigest(join(input, name))])
         )
       )
+      report['priorInputsAfter'] = Object.fromEntries(
+        await Promise.all(
+          Object.keys(priorInputs).map(async (name) => [name, await fileDigest(join(prior, name))])
+        )
+      )
       ensure(
         isDeepStrictEqual(source, report['sourceAfter']) &&
           isDeepStrictEqual(compiler, report['compilerAfter']) &&
-          isDeepStrictEqual(inputs, report['inputsAfter']),
+          isDeepStrictEqual(inputs, report['inputsAfter']) &&
+          isDeepStrictEqual(priorInputs, report['priorInputsAfter']),
         'Parser control source/compiler/input invariance failed'
       )
     } catch (error) {

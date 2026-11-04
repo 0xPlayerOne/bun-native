@@ -1,10 +1,10 @@
-# Standalone lock correction: four parser-only controls
+# Standalone lock correction: three remaining parser-only controls
 
 This bounded source check follows the failed `c908049` consumer cohort retained in
-[#394](https://github.com/0xPlayerOne/bun-native/pull/394). That cohort remains failed.
-No installation, archive extraction, public import, compilation or application
-acceptance is inferred from the controls below. They do not repeat or replace the
-consumer cohort.
+[#394](https://github.com/0xPlayerOne/bun-native/pull/394) and the separately failed
+first parser control at `c16db305`. Both failures remain unchanged. No installation,
+archive extraction, public import, compilation or application acceptance is inferred
+from these controls. This follow-up does not repeat an already executed command.
 
 ## Pinned contract and correction
 
@@ -37,7 +37,37 @@ optional-peer declarations, remains equal to the retained source data. Runtime
 validation compares all expected local rows and the complete override map, rather
 than ignoring an arbitrary local resolution.
 
-## Read-only command boundary
+## Preserved first parser result
+
+The original four-call plan was committed at
+`c16db30583767094cabccbb5875d42ad12af40ac`, tree
+`75762af6c881bc00e61af4860c1b62eb815105d1`. Its first, original-Solid call exited 1
+without a signal or timeout, but failed the declared oracle because the detailed
+missing-root message was absent. The fail-stop controller did not run original
+React or either corrected seed. Source/compiler/input/owned-file inventories were
+unchanged. Do not relabel this result or count it as a passing control.
+
+The pinned [`pm ls` error helper](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/runtime/cli/package_manager_command.rs#L133-L159)
+prints only the public error name and exits. The parser accumulates the inner
+missing-root diagnostic in its log, but this helper does not print that log.
+The exact observed public stderr was 49 bytes:
+
+```text
+error: failed to parse lockfile: InvalidLockfile
+```
+
+The follow-up requires the immutable prior result and raw first stdout/stderr via
+`--prior`; it validates all three hashes before staging any new control and again
+after the three calls. The original result links the failed expectation, exact
+source, all 533 source file hashes and the three unrun statuses.
+
+| Prior input                 |   Bytes | SHA-256                                                            |
+| --------------------------- | ------: | ------------------------------------------------------------------ |
+| `result.json`               | 181,790 | `bb7086c141738015719421b65c7a1fe37b5446c0a6c6c93f006d992c34d45118` |
+| `original-solid.stderr.log` |      49 | `78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30` |
+| `original-solid.stdout.log` |       0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+
+## Read-only follow-up boundary
 
 The pinned [`pm ls` implementation](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/runtime/cli/package_manager_command.rs)
 loads the lock and lists its in-memory dependency tree. Its `Pm` initialization
@@ -47,34 +77,37 @@ It initializes shared configuration/HTTP infrastructure, so each command receive
 an explicit minimal environment and owned cache. The before/after inventory must
 remain unchanged. No node_modules or extra lock/config file is supplied.
 
-`scripts/quality/standalone-lock-control.ts` will use the existing retained
-`c908049` package-set manifest, original generated Solid/React TypeScript manifests
-and original seed bytes. It computes corrected seeds through the actual corrected
+`scripts/quality/standalone-lock-control.ts` uses the existing retained `c908049`
+package-set manifest, original generated Solid/React TypeScript manifests and
+original seed bytes. It computes corrected seeds through the unchanged corrected
 product functions, preserving those input identities. It stages fresh owned data
-directories outside the source checkout and original experiment directory. It
-requires a clean, normally committed source tree and records that source, the
-compiler, all input/staged file digests and raw command outcomes.
+directories outside every source checkout, the original consumer experiment and
+the prior failed parser result. It requires a clean, normally committed source
+tree and records that source, the compiler, all input/staged file digests and raw
+command outcomes. Its report keeps the prior failed original-Solid result as a
+separate failure reference, never a pass in the follow-up's controls.
 
-Execute exactly these four `bun pm ls --all` calls, once and in this order:
+Execute exactly the three previously unrun `bun pm ls --all` calls, once and in
+this order:
 
-| Control              | Input                                                  | Expected result                                                                                           |
-| -------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Original Solid seed  | Original retained manifest/lock bytes                  | Exit 1, missing root dev dependency `@bun-native/cli` and public `InvalidLockfile`; no installer fallback |
-| Original React seed  | Original retained manifest/lock bytes                  | The same defined lock-parse failure                                                                       |
-| Corrected Solid seed | Original manifest plus complete product-generated lock | Exit 0, listing all selected local packages and the preserved nested helper version                       |
-| Corrected React seed | Original manifest plus complete product-generated lock | The same successful parser/listing contract for React                                                     |
+| Control              | Input                                                  | Expected result                                                                                                  |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Original React seed  | Original retained manifest/lock bytes                  | Exit 1, exactly empty stdout and the exact 49-byte public stderr above; no signal, timeout or installer fallback |
+| Corrected Solid seed | Original manifest plus complete product-generated lock | Exit 0, listing all selected local packages and the preserved nested helper version                              |
+| Corrected React seed | Original manifest plus complete product-generated lock | The same successful parser/listing contract for React                                                            |
 
-Each call has a 10-second limit with explicit `SIGKILL` on timeout; the controller
-records and rejects Bun's `exitedDueToTimeout` flag as well as any signal. Its
-bounded Git reads use the same timeout/kill policy. The overall parser-call window
-is 45 seconds; a call starts only if its full 10-second allowance remains. A forced
-outcome cannot pass. Stop at the first unexpected result, retain every output/status and
-mark later controls unrun. No retry, additional variant, package/install/create/
-build command, lifecycle script, native executable or GC workload is allowed.
+There is no original-Solid command in this follow-up. Each call retains its
+10-second limit with explicit `SIGKILL` on timeout; the controller records and
+rejects Bun's `exitedDueToTimeout` flag as well as any signal. Its bounded Git reads
+use the same timeout/kill policy. The overall parser-call window remains 45 seconds;
+a call starts only if its full 10-second allowance remains. A forced outcome cannot
+pass. Stop at the first unexpected result, retain every output/status and mark
+later controls unrun. No retry, additional variant, package/install/create/build
+command, lifecycle script, native executable or GC workload is allowed.
 
-The corresponding inert metadata tests and cache-error predicate tests run
-separately as source checks. The latter retain the original 869-byte mixed error
-and require exact exit 1, known external-package cache errors, and no invalid-lock
+The corresponding inert metadata tests and cache-error predicate tests are
+separate source checks. The latter retain the original 869-byte mixed error and
+require exact exit 1, known external-package cache errors, and no invalid-lock
 fallback or unrelated errors. The pinned cache code emits either a missing
 registry-manifest diagnostic or `--offline: "package" is not in the cache`; accepting
 both source-backed forms does not turn the original mixed observation into a pass.
