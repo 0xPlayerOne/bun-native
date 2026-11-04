@@ -1,0 +1,59 @@
+name: Temporary quality-tool transport
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths: [.github/workflows/quality-tool-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    if: github.head_ref == 'ops/quality-tool-export-20261104' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Fetch and verify the fixed official Ruff wheel
+        env:
+          OUTPUT: ${{ runner.temp }}/quality-tool-export
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import io
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import urllib.request
+          import zipfile
+
+          url = 'https://files.pythonhosted.org/packages/a7/e7/138b883f0dfe4ad5b76b58bf4ae675f4d2176ac2b24bdd81b4d966b28c61/ruff-0.14.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
+          expected = '0e2f8a0bbcffcfd895df39c9a4ecd59bb80dca03dc43f7fb63e647ed176b741e'
+          with urllib.request.urlopen(url, timeout=45) as response:
+              wheel = response.read(20_000_001)
+          if len(wheel) > 20_000_000 or hashlib.sha256(wheel).hexdigest() != expected:
+              raise RuntimeError('Official wheel size/checksum does not match')
+          output = pathlib.Path(os.environ['OUTPUT'])
+          output.mkdir()
+          with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+              matches = [name for name in archive.namelist() if name.endswith('.data/scripts/ruff')]
+              if len(matches) != 1:
+                  raise RuntimeError('Wheel must have exactly one Ruff executable')
+              executable = archive.read(matches[0])
+          tool = output / 'ruff'
+          tool.write_bytes(executable)
+          tool.chmod(0o755)
+          version = subprocess.run([str(tool), '--version'], check=True, capture_output=True, text=True, timeout=5).stdout.strip()
+          if version != 'ruff 0.14.3':
+              raise RuntimeError('Unexpected Ruff version')
+          (output / 'manifest.json').write_text(json.dumps({
+              'url': url, 'wheelSha256': expected, 'wheelBytes': len(wheel),
+              'executableSha256': hashlib.sha256(executable).hexdigest(),
+              'executableBytes': len(executable), 'version': version,
+              'scope': 'Tool transport only; no repository tests, runtime or native execution'
+          }, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quality-tool-ruff-0.14.3
+          path: ${{ runner.temp }}/quality-tool-export/
+          if-no-files-found: error
+          retention-days: 3
