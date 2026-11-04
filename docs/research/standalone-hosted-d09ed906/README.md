@@ -120,8 +120,8 @@ predeclared plan, and both original protocol ZIPs plus their six unchanged membe
 files.
 
 The archive retains all seven package archives, generated source/configuration
-and locks, available preparation receipts and command logs, four actual AOT
-development modules/maps, and all seven executed native cases' raw
+and locks, available preparation receipts and command logs, four compiler-produced
+JavaScript modules/maps, and all seven executed native cases' raw
 paint/input/process/IPC records, screenshots and logs. The two complete protocol
 environment artifacts are preserved separately:
 
