@@ -658,12 +658,15 @@ def main():
             or any(application["ownership"].values())
         ):
             report["status"] = "failed"
-        if report["status"] == "passed" and args.framework != "core":
-            if not adapter_cleanup_matches(application, args.framework):
-                report["status"] = "failed"
-                report["adapterCleanupError"] = (
-                    "Exact framework ownership was not revoked"
-                )
+        if (
+            report["status"] == "passed"
+            and args.framework != "core"
+            and not adapter_cleanup_matches(application, args.framework)
+        ):
+            report["status"] = "failed"
+            report["adapterCleanupError"] = (
+                "Exact framework ownership was not revoked"
+            )
         report["nativeShutdownAndExitVerified"] = application.get(
             "nativeShutdownAndExitVerified", False
         )
