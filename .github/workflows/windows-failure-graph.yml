@@ -43,6 +43,7 @@ jobs:
           assert revision == 'da867c60bf0bcbf9d6d36994f8ca0efa42075115', revision
           subprocess.run([bun, 'install', '--frozen-lockfile'], cwd=root, check=True, timeout=120)
           assert checked(['git', 'status', '--porcelain']) == ''
+          subprocess.run([bun, str(control / 'scripts/research/graph-controls.mjs'), str(output / 'observer-controls')], cwd=root, check=True, timeout=30)
           target = root / 'tests/solid/renderer.test.ts'
           original = target.read_bytes()
           script = control / 'scripts/research/failure-graph.mjs'
@@ -81,7 +82,7 @@ jobs:
               (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
           assert len(outcomes) == 2 and all(row['exitCode'] == 1 for row in outcomes), 'Expected negative controls did not reproduce; no qualification claim'
           for name in ['unchanged', 'failure-observer']:
-              log = (output / name / 'stderr.log').read_text()
+              log = (output / name / 'stderr.log').read_text(encoding='utf-8')
               assert '580 pass' in log and '1 fail' in log and 'disposed roots are collectable while their native window stays open' in log, 'Unexpected suite outcome'
           assert (output / 'failure-observer/incoming-graph.json').is_file(), 'Failure graph unavailable'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

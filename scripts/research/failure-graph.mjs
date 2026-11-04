@@ -5,15 +5,20 @@ import { writeFileSync } from "node:fs";
 
 const snapshot = Reflect.get(jsc, "generateHeapSnapshotForDebugging");
 const describe = Reflect.get(jsc, "jscDescribe");
+export function normalizePointer(value) {
+  if (typeof value !== "string" || !/^(?:0x)?[0-9a-f]+$/i.test(value))
+    throw new Error("Invalid heap address format");
+  return "0x" + BigInt(/^0x/i.test(value) ? value : "0x" + value).toString(16);
+}
 function address(value) {
   if (
     (typeof value !== "object" || value === null) &&
     typeof value !== "function"
   )
     return null;
-  const found = /: (0x[0-9a-f]+) /.exec(describe(value));
+  const found = /: ((?:0x)?[0-9a-f]+)(?: |$)/i.exec(describe(value));
   if (!found) throw new Error("Cannot identify heap object");
-  return found[1];
+  return normalizePointer(found[1]);
 }
 function identities(references, context) {
   return {
@@ -68,7 +73,7 @@ export function capture(
         className === "Function"
           ? safeName(heap.labels[heap.nodes[i + 4]])
           : "",
-      address: heap.nodes[i + 5],
+      address: normalizePointer(heap.nodes[i + 5]),
       rootReasons: [],
       incomingCount: 0,
     };
