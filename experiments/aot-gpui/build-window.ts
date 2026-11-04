@@ -52,10 +52,12 @@ const entries = {
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
+  'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
+  'react-input-viewport': 'tests/native/react-input-viewport.tsx',
   'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
@@ -71,12 +73,14 @@ const solidEntry =
   entry === 'solid-workspace-flow' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
+  entry === 'solid-input-viewport' ||
   entry === 'solid-services'
 const reactEntry =
   entry === 'react' ||
   entry === 'react-workspace' ||
   entry === 'react-workspace-flow' ||
   entry === 'react-interactions' ||
+  entry === 'react-input-viewport' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
   entry === 'react-workload'
@@ -175,6 +179,8 @@ async function sourceHashes() {
     cwd: source,
   }))
     sources.add(path)
+  if (entry === 'solid-input-viewport' || entry === 'react-input-viewport')
+    sources.add('tests/native/renderer-input-viewport.ts')
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',

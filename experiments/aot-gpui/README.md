@@ -51,30 +51,32 @@ The package directory receives the AOT application, native host, compiler diagno
 
 The same compiler and inspection pipeline supports these explicit entries:
 
-| `--entry`                 | Source                                | Executable           | Native host placement                              |
-| ------------------------- | ------------------------------------- | -------------------- | -------------------------------------------------- |
-| `native-window` (default) | `examples/native-window/main.ts`      | `native-window`      | Copied into the package                            |
-| `input-race`              | `tests/native/input-race.ts`          | `input-race`         | Existing prebuilt host referenced by absolute path |
-| `bridge`                  | `benchmarks/bridge.ts`                | `bridge`             | Existing prebuilt host referenced by absolute path |
-| `javascript`              | `tests/native/javascript.js`          | `javascript`         | Existing prebuilt host referenced by absolute path |
-| `core-lifecycle`          | `tests/native/public-lifecycle.ts`    | `core-lifecycle`     | Existing prebuilt host referenced by absolute path |
-| `event-throughput`        | `tests/native/event-throughput.ts`    | `event-throughput`   | Existing prebuilt host referenced by absolute path |
-| `fault`                   | `tests/native/fault.ts`               | `fault`              | Existing prebuilt host referenced by absolute path |
-| `scheduling`              | `tests/native/scheduling.ts`          | `scheduling`         | Existing prebuilt host referenced by absolute path |
-| `layout`                  | `tests/native/layout.ts`              | `layout`             | Existing prebuilt host referenced by absolute path |
-| `interactions`            | `tests/native/interactions.ts`        | `interactions`       | Existing prebuilt host referenced by absolute path |
-| `services`                | `tests/native/services.ts`            | `services`           | Existing prebuilt host referenced by absolute path |
-| `solid-services`          | `tests/native/solid-services.tsx`     | `solid-services`     | Existing prebuilt host referenced by absolute path |
-| `react-services`          | `tests/native/react-services.tsx`     | `react-services`     | Existing prebuilt host referenced by absolute path |
-| `platform-smoke`          | `tests/native/platform-smoke.ts`      | `platform-smoke`     | Existing prebuilt host referenced by absolute path |
-| `clipboard`               | `tests/native/clipboard.ts`           | `clipboard`          | Existing prebuilt host referenced by absolute path |
-| `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
-| `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |
-| `solid-interactions`      | `tests/native/solid-interactions.tsx` | `solid-interactions` | Existing prebuilt host referenced by absolute path |
-| `react`                   | `examples/react-counter/main.tsx`     | `react`              | Existing prebuilt host referenced by absolute path |
-| `react-interactions`      | `tests/native/react-interactions.tsx` | `react-interactions` | Existing prebuilt host referenced by absolute path |
-| `react-behavior`          | `tests/native/react-behavior.tsx`     | `react-behavior`     | Existing prebuilt host referenced by absolute path |
-| `react-workload`          | `benchmarks/solid/react.tsx`          | `react-workload`     | Existing prebuilt host referenced by absolute path |
+| `--entry`                 | Source                                  | Executable             | Native host placement                              |
+| ------------------------- | --------------------------------------- | ---------------------- | -------------------------------------------------- |
+| `native-window` (default) | `examples/native-window/main.ts`        | `native-window`        | Copied into the package                            |
+| `input-race`              | `tests/native/input-race.ts`            | `input-race`           | Existing prebuilt host referenced by absolute path |
+| `bridge`                  | `benchmarks/bridge.ts`                  | `bridge`               | Existing prebuilt host referenced by absolute path |
+| `javascript`              | `tests/native/javascript.js`            | `javascript`           | Existing prebuilt host referenced by absolute path |
+| `core-lifecycle`          | `tests/native/public-lifecycle.ts`      | `core-lifecycle`       | Existing prebuilt host referenced by absolute path |
+| `event-throughput`        | `tests/native/event-throughput.ts`      | `event-throughput`     | Existing prebuilt host referenced by absolute path |
+| `fault`                   | `tests/native/fault.ts`                 | `fault`                | Existing prebuilt host referenced by absolute path |
+| `scheduling`              | `tests/native/scheduling.ts`            | `scheduling`           | Existing prebuilt host referenced by absolute path |
+| `layout`                  | `tests/native/layout.ts`                | `layout`               | Existing prebuilt host referenced by absolute path |
+| `interactions`            | `tests/native/interactions.ts`          | `interactions`         | Existing prebuilt host referenced by absolute path |
+| `services`                | `tests/native/services.ts`              | `services`             | Existing prebuilt host referenced by absolute path |
+| `solid-services`          | `tests/native/solid-services.tsx`       | `solid-services`       | Existing prebuilt host referenced by absolute path |
+| `react-services`          | `tests/native/react-services.tsx`       | `react-services`       | Existing prebuilt host referenced by absolute path |
+| `platform-smoke`          | `tests/native/platform-smoke.ts`        | `platform-smoke`       | Existing prebuilt host referenced by absolute path |
+| `clipboard`               | `tests/native/clipboard.ts`             | `clipboard`            | Existing prebuilt host referenced by absolute path |
+| `solid`                   | `examples/solid-counter/main.tsx`       | `solid`                | Existing prebuilt host referenced by absolute path |
+| `solid-input-intent`      | `tests/native/solid-input-intent.tsx`   | `solid-input-intent`   | Existing prebuilt host referenced by absolute path |
+| `solid-interactions`      | `tests/native/solid-interactions.tsx`   | `solid-interactions`   | Existing prebuilt host referenced by absolute path |
+| `solid-input-viewport`    | `tests/native/solid-input-viewport.tsx` | `solid-input-viewport` | Existing prebuilt host referenced by absolute path |
+| `react`                   | `examples/react-counter/main.tsx`       | `react`                | Existing prebuilt host referenced by absolute path |
+| `react-interactions`      | `tests/native/react-interactions.tsx`   | `react-interactions`   | Existing prebuilt host referenced by absolute path |
+| `react-input-viewport`    | `tests/native/react-input-viewport.tsx` | `react-input-viewport` | Existing prebuilt host referenced by absolute path |
+| `react-behavior`          | `tests/native/react-behavior.tsx`       | `react-behavior`       | Existing prebuilt host referenced by absolute path |
+| `react-workload`          | `benchmarks/solid/react.tsx`            | `react-workload`       | Existing prebuilt host referenced by absolute path |
 
 All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification; supported invocations that omit it record an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 

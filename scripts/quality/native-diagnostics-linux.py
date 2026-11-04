@@ -56,6 +56,12 @@ SOLID_WORKSPACE_SPEC = importlib.util.spec_from_file_location(
 )
 SOLID_WORKSPACE = importlib.util.module_from_spec(SOLID_WORKSPACE_SPEC)
 SOLID_WORKSPACE_SPEC.loader.exec_module(SOLID_WORKSPACE)
+INPUT_VIEWPORT_SPEC = importlib.util.spec_from_file_location(
+    "native_input_viewport_scenario",
+    ROOT / "scripts/quality/native-input-viewport-scenario.py",
+)
+INPUT_VIEWPORT = importlib.util.module_from_spec(INPUT_VIEWPORT_SPEC)
+INPUT_VIEWPORT_SPEC.loader.exec_module(INPUT_VIEWPORT)
 SCENARIOS = (
     "startup-failure",
     "host-crash",
@@ -66,6 +72,8 @@ SCENARIOS = (
     "clipboard",
     "react-workspace",
     "solid-workspace",
+    "react-input-viewport",
+    "solid-input-viewport",
 )
 
 
@@ -98,6 +106,11 @@ def source_snapshot():
         ROOT / "examples/solid-workspace/app.tsx",
         ROOT / "examples/solid-workspace/model.ts",
         ROOT / "examples/solid-workspace/main.tsx",
+        ROOT / "tests/native/renderer-input-viewport.ts",
+        ROOT / "tests/native/react-input-viewport.tsx",
+        ROOT / "tests/native/solid-input-viewport.tsx",
+        ROOT / "scripts/quality/native-input-viewport-scenario.py",
+        ROOT / "scripts/quality/native-input-viewport-paint.py",
         ROOT / "scripts/solid-build.ts",
         ROOT / "scripts/solid/transform.ts",
         Path(__file__).resolve(),
@@ -183,9 +196,12 @@ def main():
             raise DRIVER.Unsupported(
                 f"Required native diagnostic tool unavailable: {tool}"
             )
-    if args.scenario in ("react-workspace", "solid-workspace") and not shutil.which(
-        "convert"
-    ):
+    if args.scenario in (
+        "react-workspace",
+        "solid-workspace",
+        "react-input-viewport",
+        "solid-input-viewport",
+    ) and not shutil.which("convert"):
         raise DRIVER.Unsupported("Workspace pixel checks require ImageMagick convert")
     args.output.mkdir()
     output = args.output.resolve()
@@ -220,6 +236,8 @@ def main():
         environment["BUN_NATIVE_ISOLATED_CLIPBOARD"] = "1"
     if args.scenario == "startup-failure":
         environment["DISPLAY"] = "bun-native-invalid-display"
+    if args.scenario in ("react-input-viewport", "solid-input-viewport"):
+        environment["BUN_NATIVE_INPUT_VIEWPORT_TRACE"] = "1"
     app = None
     observed = {}
     threads = []
@@ -318,6 +336,8 @@ def main():
                 "clipboard": "Bun Native clipboard",
                 "react-workspace": "Bun Native React Workspace",
                 "solid-workspace": "Bun Native Solid Workspace",
+                "react-input-viewport": "Bun Native React Input Viewport",
+                "solid-input-viewport": "Bun Native Solid Input Viewport",
             }.get(args.scenario, "Bun Native scheduling audit")
             window, owner = wait_for(lambda: owned_window(title), "owned native window")
             report["window"] = {
@@ -355,6 +375,8 @@ def main():
                 "clipboard",
                 "react-workspace",
                 "solid-workspace",
+                "react-input-viewport",
+                "solid-input-viewport",
             ):
 
                 def require_layout_window():
@@ -370,6 +392,8 @@ def main():
                     "clipboard": CLIPBOARD,
                     "react-workspace": WORKSPACE,
                     "solid-workspace": SOLID_WORKSPACE,
+                    "react-input-viewport": INPUT_VIEWPORT,
+                    "solid-input-viewport": INPUT_VIEWPORT,
                 }[args.scenario]
                 scenario_arguments = [DRIVER]
                 if args.scenario in (
@@ -377,6 +401,8 @@ def main():
                     "clipboard",
                     "react-workspace",
                     "solid-workspace",
+                    "react-input-viewport",
+                    "solid-input-viewport",
                 ):
                     scenario_arguments.append(LAYOUT)
                 report[args.scenario + "Observations"] = scenario.run(

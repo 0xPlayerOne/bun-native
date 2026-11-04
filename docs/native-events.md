@@ -136,9 +136,12 @@ records remain unchanged, and the existing 128-node and 65,536-byte bounds still
 apply. These are paint observations; screenshots remain independent evidence of
 displayed pixels.
 
-These controls use fixed glyph advances, so they establish coordinate behavior,
-not real shaping, pixels, composition or assistive-technology acceptance. Native
-development/AOT qualification of the viewport fix remains pending under
+The Rust controls use fixed glyph advances, so they establish coordinate
+behavior rather than real shaping. The
+[shared Solid/React native viewport recipe](../tests/native/README.md#shared-input-viewport-pixels)
+adds actual OS input, complete native paint, independent caret/text/selection
+pixels, resize, restyle and joined cleanup in development and AOT. Its own
+changed-head hosted qualification remains pending under
 [#241](https://github.com/0xPlayerOne/bun-native/issues/241). The earlier short-input
 native evidence below belongs to its recorded source and is not relabeled as
 qualification of this change. RTL, complete IME, accessibility, physical input

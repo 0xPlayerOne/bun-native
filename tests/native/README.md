@@ -315,6 +315,43 @@ runner. The [interaction contract](../../docs/native-events.md) contains exact
 commands, current evidence and unsupported scope. None of these finite tests
 claims DOM event compatibility, native default cancellation or full IME support.
 
+## Shared input viewport pixels
+
+The `solid-input-viewport` and `react-input-viewport` entries share one public
+input/lifetime fixture and one independent owned-X11 controller. Build each with
+`experiments/aot-gpui/build-window.ts --entry ENTRY`; pass its exact generated
+`development/application.js` or inspected AOT executable to
+`scripts/quality/native-diagnostics-linux.py --scenario ENTRY --mode
+development|aot --host-profile release --output NEW_DIRECTORY -- APPLICATION`
+inside the existing isolated session. The runner enables bounded input paint
+observations only for these two scenarios.
+
+The complete native tree, input revision, stable node identity and completed
+paint geometry must match every step. A long blank prefix followed by `TAIL`
+makes missing horizontal translation observable: End must show the tail and
+right-edge caret, while Home must show the left-edge caret and no tail pixels
+either inside the input or in its visible right gutter. Independent screenshot
+predicates check those pixels. Their deterministic RGB controls deliberately
+omit translation, clipping, caret or selection; those synthetic controls are
+not native execution evidence.
+
+Actual OS actions then click the scrolled end, insert `x`, replace a selected
+character with `Y`, resize, change the font through F6, select and clear the
+long value, and type `short`. The retained screenshots also check resized and
+restyled carets, clipped selection and offset reset. Final OS close must revoke
+the observed callback signals, dispose the framework owner and join application
+and native host exit with all seven public ownership counters zero. The driver
+retains failed observations as it progresses.
+
+These four development/AOT cases run after the existing native scenarios,
+baseline and Solid workspace. The step collects independently after an earlier
+failure only when the release host build succeeded and the run is not canceled;
+earlier failures remain failures. Existing first-launch order, 30-second scenario
+and 5-second exit bounds are unchanged. This is a partial #241 qualification
+recipe, pending its own changed-head hosted results. It does not establish IME
+composition, bidirectional text, accessibility, physical input, high-DPI behavior
+or native macOS/Windows input acceptance.
+
 ## Portable target-host paint smoke
 
 `tests/native/platform-smoke.ts` and `scripts/quality/native-platform-smoke.py`
