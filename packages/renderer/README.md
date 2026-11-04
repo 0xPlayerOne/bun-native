@@ -11,6 +11,14 @@ scheduling remains in the adapters.
 
 ## Ownership and commits
 
+`createRenderRoot(window, initialize, { style })` optionally supplies the initial
+native style for the ownership container. The style is copied before initialization
+and validated through the same public-core contract as any other native box.
+Omitting it preserves the existing intrinsic sizing. A full-window consumer can
+use `{ style: { width: 'fill', height: 'fill' } }` so percentage-sized descendants
+have a bounded parent and can contain native scroll regions. This option styles
+only that renderer's container; it does not change the window or sibling roots.
+
 `createRenderRoot(window, initialize)` owns one independently disposable native
 subtree. `initialize` receives its staged `container`, an `onCleanup` registration
 and a terminal `fail` callback. Register framework cleanup before evaluating user

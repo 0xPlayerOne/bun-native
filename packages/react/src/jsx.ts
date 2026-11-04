@@ -12,10 +12,11 @@ export namespace JSX {
   export type IntrinsicAttributes = ReactJSX.IntrinsicAttributes
   export type IntrinsicClassAttributes<T> = ReactJSX.IntrinsicClassAttributes<T>
 
-  type Base<K extends NativeElement['kind']> = EventHandlers & {
-    style?: NonNullable<Extract<NativeElement, { kind: K }>['style']>
-    ref?: Ref<RendererNode>
-  }
+  type Base<K extends NativeElement['kind']> = EventHandlers &
+    ReactJSX.IntrinsicAttributes & {
+      style?: NonNullable<Extract<NativeElement, { kind: K }>['style']>
+      ref?: Ref<RendererNode>
+    }
   type TextContent = { text?: string; children?: ReactNode }
   export interface IntrinsicElements {
     box: Base<'box'> & { children?: ReactNode }

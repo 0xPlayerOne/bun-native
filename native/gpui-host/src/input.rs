@@ -9,7 +9,7 @@ use std::ops::Range;
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, EntityInputHandler, FocusHandle, Focusable,
     KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ShapedLine, SharedString, UTF16Selection, Window, actions, div, point, prelude::*, px, white,
+    ShapedLine, SharedString, UTF16Selection, Window, actions, div, point, prelude::*, px,
 };
 use unicode_segmentation::*;
 
@@ -545,7 +545,6 @@ impl Render for TextInput {
                     .min_h(px(32.))
                     .w_full()
                     .p(px(4.))
-                    .bg(white())
                     .child(TextElement { input: cx.entity() }),
             )
     }

@@ -1,5 +1,9 @@
-import type { JSX } from '@bun-native/solid'
+import type { JSX, RenderOptions } from '@bun-native/solid'
 import { For, Show } from 'solid-js'
+
+export const RootStyle: RenderOptions = { style: { width: 'fill', height: 'fill' } }
+// @ts-expect-error Solid uses the same native dimension contract as the shared renderer.
+export const InvalidRootStyle: RenderOptions = { style: { width: '100%' } }
 
 export function Supported(): JSX.Element {
   return (

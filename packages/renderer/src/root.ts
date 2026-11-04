@@ -3,8 +3,9 @@ import {
   type InputState,
   type NativeNode,
   type NativeWindow,
+  type Style,
 } from '@bun-native/core'
-import { Node, snapshot, visit, type Owner, type Snapshot } from './nodes.ts'
+import { Node, setProperty, snapshot, visit, type Owner, type Snapshot } from './nodes.ts'
 import { commitNativeTree, type Committed, type Counts } from './native-tree.ts'
 import { observeInput } from './input-intent.ts'
 import { watchWindow } from './window-lifetime.ts'
@@ -18,6 +19,11 @@ import {
 type Registration = {
   listener: EventListener
   unsubscribe: () => void
+}
+
+export interface RenderOptions {
+  /** Initial native style of this root's ownership container; omitted preserves intrinsic sizing. */
+  style?: Style
 }
 
 export interface RenderRoot {
@@ -68,8 +74,11 @@ class Root implements RenderRoot, Owner {
 
   constructor(
     private readonly window: NativeWindow,
-    initialize: (context: RenderContext) => void
+    initialize: (context: RenderContext) => void,
+    style: Style | undefined
   ) {
+    // Copy before initialization or asynchronous commits, without publishing an owner yet.
+    setProperty(this.root, 'style', style)
     this.closed = new Promise((resolve, reject) => {
       this.resolveClosed = resolve
       this.rejectClosed = reject
@@ -298,7 +307,12 @@ class Root implements RenderRoot, Owner {
 /** Own one framework's staged tree, atomic native commits and terminal cleanup. */
 export function createRenderRoot(
   window: NativeWindow,
-  initialize: (context: RenderContext) => void
+  initialize: (context: RenderContext) => void,
+  options: RenderOptions = {}
 ): RenderRoot {
-  return new Root(window, initialize)
+  if (!options || typeof options !== 'object' || Array.isArray(options))
+    throw new TypeError('Native render options must be an object')
+  for (const name of Object.keys(options))
+    if (name !== 'style') throw new TypeError('Unknown native render option: ' + name)
+  return new Root(window, initialize, options.style)
 }
