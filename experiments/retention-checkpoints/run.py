@@ -18,6 +18,7 @@ plan = {
     "sourceTestSha256": hashlib.sha256(source_bytes).hexdigest(),
     "order": ["original", "dormant", "pre-collection"],
     "attemptsPerVariant": 1,
+    "priorSetupOnlyFailure": 41765390777,
     "producerAndAssert": "Unchanged test module, full source suite, original two GC calls and zero-survivor assertion",
     "nativeCopy": "16 private 256-KiB snapshots maximum, no target pointer known before collection, no raw stack upload",
 }
@@ -42,16 +43,27 @@ installation = subprocess.check_output(
 vcvars = Path(installation) / "VC/Auxiliary/Build/vcvars64.bat"
 assert vcvars.is_file()
 library = output / "capture.dll"
-command = f'call "{vcvars}" >nul && cl.exe /nologo /W4 /WX /O2 /LD "{root / "experiments/retention-checkpoints/capture.c"}" /link /OUT:"{library}"'
+# A batch file avoids passing CMD syntax through Python's C-runtime argument
+# quoting, which otherwise escapes the quotes in the vcvars path literally.
+command = f'cl.exe /nologo /W4 /WX /O2 /LD "{root / "experiments/retention-checkpoints/capture.c"}" /link /OUT:"{library}"'
+build_script = output / "compile-observer.cmd"
+build_script.write_text(
+    f'@echo off\ncall "{vcvars}" >nul\nif errorlevel 1 exit /b %errorlevel%\n'
+    + command
+    + "\nexit /b %errorlevel%\n",
+    newline="\r\n",
+)
 with (output / "native-build.log").open("w") as log:
     built = subprocess.run(
-        ["cmd.exe", "/d", "/s", "/c", command],
+        ["cmd.exe", "/d", "/c", str(build_script)],
         cwd=output,
         stdout=log,
         stderr=subprocess.STDOUT,
         timeout=90,
         check=False,
     )
+if built.returncode != 0:
+    print((output / "native-build.log").read_text(errors="replace"), flush=True)
 assert built.returncode == 0, "Native observer compilation failed; inspect retained log"
 (output / "native-identity.json").write_text(
     json.dumps(
