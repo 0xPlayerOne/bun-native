@@ -97,6 +97,74 @@ class ProvenanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BASELINE.verify_sources(self.repository, self.manifest)
 
+    def add_vendor_sources(self):
+        # Define the fixture independently of the inventory under test. Assets
+        # and build scripts affect native binaries just as Rust source does.
+        required = {
+            "native/vendor/with-build/Cargo.toml",
+            "native/vendor/with-build/build.rs",
+            "native/vendor/with-build/src/lib.rs",
+            "native/vendor/with-build/src/nested/module.rs",
+            "native/vendor/with-build/src/shaders/clear.frag",
+            "native/vendor/with-build/src/assets/data.bin",
+            "native/vendor/without-build/Cargo.toml",
+            "native/vendor/without-build/src/lib.rs",
+        }
+        excluded = {
+            "native/vendor/with-build/README.md",
+            "native/vendor/with-build/examples/standalone.rs",
+            "native/vendor/with-build/target/generated.rs",
+        }
+        for name in required | excluded:
+            path = self.repository / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"inert fixture for {name}\n")
+        self.manifest["source"]["files"].extend(
+            {"path": name, **BASELINE.fingerprint(self.repository / name)}
+            for name in sorted(required)
+        )
+        return required, excluded
+
+    def test_vendor_compile_inputs_are_complete_without_build_outputs_or_examples(self):
+        required, excluded = self.add_vendor_sources()
+        BASELINE.verify_sources(self.repository, self.manifest)
+        expected = BASELINE.expected_sources(self.repository)
+        self.assertTrue(required <= expected)
+        self.assertFalse(excluded & expected)
+        self.assertNotIn("native/vendor/without-build/build.rs", expected)
+
+    def test_vendor_missing_changed_duplicate_and_unexpected_sources_are_rejected(self):
+        required, excluded = self.add_vendor_sources()
+        records = list(self.manifest["source"]["files"])
+        BASELINE.verify_sources(self.repository, self.manifest)
+        for name in sorted(required):
+            with self.subTest(path=name, change="omitted"):
+                self.manifest["source"]["files"] = [
+                    record for record in records if record["path"] != name
+                ]
+                with self.assertRaisesRegex(ValueError, "every current"):
+                    BASELINE.verify_sources(self.repository, self.manifest)
+            self.manifest["source"]["files"] = records
+            path = self.repository / name
+            original = path.read_bytes()
+            with self.subTest(path=name, change="tampered"):
+                path.write_bytes(original + b"changed after the build\n")
+                with self.assertRaisesRegex(
+                    ValueError, "Source differs from the AOT build"
+                ):
+                    BASELINE.verify_sources(self.repository, self.manifest)
+                path.write_bytes(original)
+        vendor_record = next(record for record in records if record["path"] in required)
+        additions = [vendor_record] + [
+            {"path": name, **BASELINE.fingerprint(self.repository / name)}
+            for name in sorted(excluded)
+        ]
+        for added in additions:
+            with self.subTest(extra=added["path"]):
+                self.manifest["source"]["files"] = [*records, added]
+                with self.assertRaisesRegex(ValueError, "every current"):
+                    BASELINE.verify_sources(self.repository, self.manifest)
+
     def test_native_inventory_helper_identity_is_required_and_cannot_change(self):
         name = "experiments/aot-gpui/native-sources.ts"
         self.assertIn(name, BASELINE.expected_sources(self.repository))
