@@ -375,10 +375,11 @@ impl Render for NativeView {
                         // selected the deepest GPUI hit before default actions.
                         pointer.observe(window, &view);
                         let state = paint_state.borrow();
-                        evidence.painted(window_id, &state.tree);
-                        if let Some(layout) = &layout {
-                            evidence.layout(window_id, state.tree.revision(), layout, window);
-                        }
+                        evidence.painted(
+                            window_id,
+                            &state.tree,
+                            layout.as_ref().map(|layout| layout.snapshot(window)),
+                        );
                     },
                 )
                 .absolute()

@@ -382,7 +382,10 @@ def matches(paint, state):
 
 
 def frame(paint, geometry, state):
-    """Allow suppressed identical geometry, but never geometry newer than paint."""
+    """The producer publishes changed geometry before its correlated paint.
+
+    Reuse deduplicated geometry, but wait while a newer layout lacks its paint.
+    """
     if (
         not paint
         or not isinstance(geometry, dict)

@@ -25,7 +25,7 @@ def state():
     }
 
 
-def records():
+def records(snapshot=None):
     # A complete specimen lets each negative change one relevant property.
     # Actual app/source/paint correspondence is tested by the hosted scenario.
     nodes = []
@@ -39,7 +39,7 @@ def records():
         row["children"] = [flatten(child) for child in tree["children"]]
         return identity
 
-    flatten(PAINT.expected_tree(state()))
+    flatten(PAINT.expected_tree(state() if snapshot is None else snapshot))
     paint = {
         "type": "rendered",
         "stage": "native-paint",
@@ -150,6 +150,53 @@ class SolidWorkspacePaintControls(unittest.TestCase):
             _, damaged = records()
             damage(damaged)
             self.assertIsNone(PAINT.frame(paint, damaged, state()))
+
+    def test_completed_theme_paint_cannot_certify_the_prior_scroll_position(self):
+        previous_paint, previous_geometry = records()
+        previous_geometry["layout"]["scrolls"] = [
+            {
+                "node_id": 1,
+                "offset": [0, -100],
+                "maximum": [0, 100],
+                "viewport": [0, 0, 200, 100],
+            }
+        ]
+        changed_state = state()
+        changed_state["theme"] = "light"
+        changed_paint, _ = records(changed_state)
+        changed_paint["tree_revision"] = 4
+        changed_geometry = copy.deepcopy(previous_geometry)
+        changed_geometry["tree_revision"] = 4
+        changed_geometry["layout"]["scrolls"][0]["offset"] = [0, 0]
+        self.assertEqual(
+            [row["node_id"] for row in previous_paint["nodes"]],
+            [row["node_id"] for row in changed_paint["nodes"]],
+        )
+
+        def observed_scrolls(changes):
+            paint, geometry = previous_paint, previous_geometry
+            observations = []
+            for record in changes:
+                if record["type"] == "rendered":
+                    paint = record
+                else:
+                    geometry = record
+                current = PAINT.frame(paint, geometry, changed_state)
+                if current:
+                    observations.append(current["layout"]["scrolls"][0]["offset"])
+            return observations
+
+        # The Rust writer regression enforces this order on actual file appends.
+        # Every prefix either waits or observes the reset, never preservation.
+        self.assertEqual(observed_scrolls([changed_geometry, changed_paint]), [[0, 0]])
+        # Retain the original false-positive control: reversing publication
+        # order exposes a spurious retained-scroll observation before the reset.
+        self.assertEqual(
+            observed_scrolls([changed_paint, changed_geometry]),
+            [[0, -100], [0, 0]],
+        )
+        # If geometry really is unchanged, the completed paint may reuse it.
+        self.assertEqual(observed_scrolls([changed_paint]), [[0, -100]])
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ struct ScrollLayout {
 }
 
 #[derive(Clone, PartialEq)]
-pub(super) struct LayoutSnapshot {
+pub(crate) struct LayoutSnapshot {
     viewport: [f32; 2],
     scale_factor: f32,
     node_count: usize,
@@ -111,7 +111,7 @@ impl LayoutFrame {
         })
     }
 
-    pub(super) fn snapshot(&self, window: &Window) -> LayoutSnapshot {
+    pub(crate) fn snapshot(&self, window: &Window) -> LayoutSnapshot {
         let viewport = window.viewport_size();
         LayoutSnapshot {
             viewport: [viewport.width.into(), viewport.height.into()],
@@ -156,3 +156,6 @@ impl LayoutSnapshot {
         value
     }
 }
+
+#[cfg(test)]
+mod paint_tests;
