@@ -1,0 +1,421 @@
+{
+  "scope": "actual pinned constructor/drop, fake EGL ABI; no driver, GPU or window",
+  "variant": "baseline",
+  "wgpu_commit": "cddb2f5d80dc0009b2ef6767635140cacf90a007",
+  "pristine_egl_sha256": "2663a1da95a05dc6f0ce33f1479934cf7a67736973dc353c3ac90073260e865b",
+  "ownership_source_sha256": "2663a1da95a05dc6f0ce33f1479934cf7a67736973dc353c3ac90073260e865b",
+  "compiled_egl_sha256": "49bb93ffd9584c9566a8010a6c8b9f4aa577d931cfd90d1326650f7d08dd56a2",
+  "experiment_sha256": {
+    "Cargo.lock": "6447cfd8de554abf0599438ad4acade527b42e216712297c1596849808818f68",
+    "construction-rollback.patch": "b253cf1f2921e2a6c909d67f83936ac8cfccf2d04b6fd9c1eeb4ce46fd25ba7f",
+    "fake-egl.c": "0869ae1e03fbfa8cda9399453ee4fa810947eae9705a2df142e8e466ae4867ef",
+    "main.rs": "77ef7e86861b4f803c60af66445f2e70182e818402766cb8bc2c792412c7c2a7",
+    "ownership-probe.rs": "286d8d39d7eb91cd8a00fa484bf8ecec019fb5ca2a56014fd49fa76beb1f8244",
+    "run.py": "ccb5a5ebea68e7ec14716a02bef10506c2f3d74cdc819ca8db6de711676e9b53"
+  },
+  "binary_sha256": "240fe394696d6e0602827e345f87078c5b02f2ab1919b056088ea11b8576a860",
+  "fixture_sha256": "c6057d32dcbf06a89379430a7fa646cbe386be2a111529fc427b0e3c8aa4b07b",
+  "rust": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "c_compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "cases": [
+    {
+      "case": "initialize-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 0,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize"],
+      "stdout_sha256": "e0eaf46421d0bbe2f9780684f2e9664586c70640a244247d342e6f5206d8533a",
+      "stderr_sha256": "0f74f56b91d08c4aaa7e2d446182a6a8db3f7192f124d2a54e9ee4e36c0f549a"
+    },
+    {
+      "case": "vendor-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize", "query-vendor"],
+      "stdout_sha256": "400dc9ab36a979366db2422529a86c9b435f8b10dfa6807406d2b2d47bacdd2c",
+      "stderr_sha256": "5aad0584093761c0d972bd4b4c46a7eab2efc71040e7f312597c9e97db6bfc28"
+    },
+    {
+      "case": "extensions-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize", "query-vendor", "query-extensions"],
+      "stdout_sha256": "970cc7a6f3a86ab2c8350dafc2ead048f58a7738150f56edb057de25a5888607",
+      "stderr_sha256": "1438863f2fa1b0bb2adfa69b615ab66132b831b3490a406f5cd51d577f29542e"
+    },
+    {
+      "case": "config-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "choose-config",
+        "choose-config"
+      ],
+      "stdout_sha256": "4164d0d4a48cbbb59a2b406dcae868562b77892ae3a7701d85f735d5c1cda776",
+      "stderr_sha256": "1485ed8d812a4e8b5f0ed7417955a6be2272df7db0aa75e943bd1e35f55344c4"
+    },
+    {
+      "case": "client-apis-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis"
+      ],
+      "stdout_sha256": "5110c8757f5942a0df0254f0a6eef4510f5fae937146072e381d26ad4a100c86",
+      "stderr_sha256": "6a130d183dd5575697bef6b27bffc31b525ddb8833219687e114de53bcd0b64f"
+    },
+    {
+      "case": "bind-api-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api"
+      ],
+      "stdout_sha256": "21d73cd4bd8818066f7355cfa3cae6047ba18de114df444253df21aa2d0cbf51",
+      "stderr_sha256": "e8ba7e49019dedf079691a2d418e20a9b191fa7d5f387dd61946673156531b5f"
+    },
+    {
+      "case": "context-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context"
+      ],
+      "stdout_sha256": "8d491315d23c2f6720d5d4923b2c1f20d2858255ce5534f5c923c3bc34eed29a",
+      "stderr_sha256": "0e1c25965be87427dbe3d8863d1e618792a479e31b2ccf7537f825efd351f9e5"
+    },
+    {
+      "case": "pbuffer-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed construction leaves no display reference",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer"
+      ],
+      "stdout_sha256": "e803a64917d5cd2595308ef56481206ba368bf438596369f91a762a9a1676b90",
+      "stderr_sha256": "6738aa846e93f4948204157c613f6ff5b3ffca8941e048b1ba83e0087a369ffd"
+    },
+    {
+      "case": "success",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "owned",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "last-owner-dropped",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 1,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "68fe4182bbeff2d634f865406dea6d605b7aba27de5118cfc0514a028f35da39",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "shared-initialize-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed attempt preserves prior ownership",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "live-owner-after-failure",
+          "display_references": 2,
+          "initialize_calls": 2,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "destroy-context"
+      ],
+      "stdout_sha256": "626529642f90d91542f11873a86961358247112d0ddd72bd5b9639f23f74d522",
+      "stderr_sha256": "0a3b016499c312486c0a9c0210fbe9ae1c30b1f9059b2e08afe2dafea8854962"
+    },
+    {
+      "case": "shared-vendor-failure",
+      "exit_code": 101,
+      "expected_assertion": "failed attempt preserves prior ownership",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "live-owner-after-failure",
+          "display_references": 2,
+          "initialize_calls": 2,
+          "initialize_successes": 2,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "query-vendor",
+        "destroy-context"
+      ],
+      "stdout_sha256": "0537380e55c2f6477d00ab43affff18b0c05d90acc0e63dd87bb0e4e08157989",
+      "stderr_sha256": "33440e80d765064da3dba70bf518956f7c18cfac14c8ee339fc6c19e8fdad7c3"
+    },
+    {
+      "case": "shared-pbuffer-lifetime",
+      "exit_code": 101,
+      "expected_assertion": "dropped owner's pbuffer released",
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "one-owner-remains",
+          "display_references": 1,
+          "initialize_calls": 2,
+          "initialize_successes": 2,
+          "terminate_calls": 0,
+          "contexts_created": 2,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 2
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-context",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "0f29f59972857e9f242ae9012974115e5b78805a2ac0625eea7d23c9356a0b13",
+      "stderr_sha256": "4ed2ebd87317a920ef2c00c81a65f1e2928362e8ed7e9f0b225e4247b7fdefde"
+    }
+  ],
+  "matches_expected_outcomes": true,
+  "evidence_kind": "expected defects reproduced; original case assertion failures preserved",
+  "transcript_sha256": "804d485f59656e690810fa0c645cd1d02916c4aabdb1121328eb3d2f58386a3c",
+  "bun_native_base": "3f3d84904a106e9147ccbd5e7bfa4e52065d83ed",
+  "production_cargo_lock_sha256": "2d8d977816ba49d1c51a5dff16572552cf0c7b937e921e73a1160573f08250ee",
+  "checkpoint_patch_sha256": "a010866b3855f8c3f133e71b54ddcedb9c4c8bfcf247f1d579255a78f80c9b31",
+  "checkpoint_patch_note": "The unused proposed patch had blank context-line spaces removed after baseline capture to satisfy the normal whitespace hook. git apply --check still succeeds; the Rust changes are identical. The capture-time patch hash remains in experiment_sha256."
+}

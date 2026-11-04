@@ -1,0 +1,213 @@
+=== initialize-failure: exit 101 ===
+egl-call initialize
+constructor-error InstanceError { message: "failed to initialize EGL display connection", source: Some(NotInitialized) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":0,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1750) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== vendor-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+constructor-error InstanceError { message: "failed to query EGL vendor", source: Some(BadDisplay) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1751) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== extensions-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+constructor-error InstanceError { message: "failed to query EGL display extensions", source: Some(BadDisplay) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1752) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== config-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call choose-config
+egl-call choose-config
+constructor-error InstanceError { message: "unable to find an acceptable EGL framebuffer configuration", source: None }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1753) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== client-apis-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+constructor-error InstanceError { message: "failed to query EGL client APIs string", source: Some(BadDisplay) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1754) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== bind-api-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+constructor-error InstanceError { message: "unable to create OpenGL or GLES 3.x context", source: Some(BadAlloc) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1755) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== context-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+constructor-error InstanceError { message: "unable to create OpenGL or GLES 3.x context", source: Some(BadAlloc) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":0,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1756) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== pbuffer-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+constructor-error InstanceError { message: "error in create_pbuffer_surface", source: Some(BadAlloc) }
+snapshot {"phase":"failed-construction","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":1,"contexts_destroyed":0,"pbuffers_created":0,"pbuffers_destroyed":0,"live_contexts":1,"live_pbuffers":0}
+--- stderr ---
+
+thread 'main' (1757) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:127:9:
+assertion `left == right` failed: failed construction leaves no display reference
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== success: exit 0 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+snapshot {"phase":"owned","display_references":1,"initialize_calls":1,"initialize_successes":1,"terminate_calls":0,"contexts_created":1,"contexts_destroyed":0,"pbuffers_created":1,"pbuffers_destroyed":0,"live_contexts":1,"live_pbuffers":1}
+egl-call destroy-context
+egl-call terminate
+snapshot {"phase":"last-owner-dropped","display_references":0,"initialize_calls":1,"initialize_successes":1,"terminate_calls":1,"contexts_created":1,"contexts_destroyed":1,"pbuffers_created":1,"pbuffers_destroyed":0,"live_contexts":0,"live_pbuffers":0}
+case-passed success
+--- stderr ---
+
+=== shared-initialize-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+egl-call initialize
+constructor-error InstanceError { message: "failed to initialize EGL display connection", source: Some(NotInitialized) }
+snapshot {"phase":"live-owner-after-failure","display_references":2,"initialize_calls":2,"initialize_successes":1,"terminate_calls":0,"contexts_created":1,"contexts_destroyed":0,"pbuffers_created":1,"pbuffers_destroyed":0,"live_contexts":1,"live_pbuffers":1}
+egl-call destroy-context
+--- stderr ---
+
+thread 'main' (1759) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:159:17:
+assertion `left == right` failed: failed attempt preserves prior ownership
+  left: 2
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== shared-vendor-failure: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+egl-call initialize
+egl-call query-vendor
+constructor-error InstanceError { message: "failed to query EGL vendor", source: Some(BadDisplay) }
+snapshot {"phase":"live-owner-after-failure","display_references":2,"initialize_calls":2,"initialize_successes":2,"terminate_calls":0,"contexts_created":1,"contexts_destroyed":0,"pbuffers_created":1,"pbuffers_destroyed":0,"live_contexts":1,"live_pbuffers":1}
+egl-call destroy-context
+--- stderr ---
+
+thread 'main' (1760) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:159:17:
+assertion `left == right` failed: failed attempt preserves prior ownership
+  left: 2
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+=== shared-pbuffer-lifetime: exit 101 ===
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+egl-call initialize
+egl-call query-vendor
+egl-call query-extensions
+egl-call choose-config
+egl-call query-client-apis
+egl-call bind-api
+egl-call create-context
+egl-call create-pbuffer
+egl-call destroy-context
+snapshot {"phase":"one-owner-remains","display_references":1,"initialize_calls":2,"initialize_successes":2,"terminate_calls":0,"contexts_created":2,"contexts_destroyed":1,"pbuffers_created":2,"pbuffers_destroyed":0,"live_contexts":1,"live_pbuffers":2}
+egl-call destroy-context
+egl-call terminate
+--- stderr ---
+
+thread 'main' (1761) panicked at /private-egl-experiment/wgpu/wgpu-hal/src/gles/bun-native-egl-ownership-probe.rs:185:17:
+assertion `left == right` failed: dropped owner's pbuffer released
+  left: 2
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
