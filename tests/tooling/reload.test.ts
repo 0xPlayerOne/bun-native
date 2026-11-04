@@ -380,23 +380,40 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       'react',
       'typescript'
     )
+    const project = await readProject(repository, path)
+    const original = readFileSync(project.entry, 'utf8')
     const start = lifetimes().length
     const watch = fs.watch
     let callback: unknown
     const observed = spyOn(fs, 'watch').mockImplementation((...args: unknown[]): fs.FSWatcher => {
       callback = args[2]
-      return Reflect.apply(watch, fs, args)
+      // Keep the real watcher/close lifecycle while delivering only the explicit
+      // event shapes below; platform-specific duplicate callbacks cannot mask it.
+      return Reflect.apply(watch, fs, [args[0], args[1], () => {}])
     })
+    const reload = spyOn(DevSession.prototype, 'reload')
     try {
       await withWatcher(path, async ({ output, errors, completion }) => {
         const generations = () =>
           output.filter((line) => line.startsWith('bun-native:ready ')).length
         await until(() => generations() === 1, 'initial missing-filename test generation')
         if (typeof callback !== 'function') throw new Error('Watch callback was not captured')
+        for (const ignored of ['node_modules', '.git', '.bun-native', 'dist', 'build']) {
+          mkdirSync(join(path, ignored))
+          writeFileSync(join(path, ignored, 'ignored.ts'), 'invalid syntax <\n')
+        }
+        writeFileSync(join(path, 'README.md'), 'Ignored documentation edit\n')
+        Reflect.apply(callback, undefined, ['rename', undefined])
+        Reflect.apply(callback, undefined, ['rename', null])
+        await Bun.sleep(100)
+        expect(reload).toHaveBeenCalledTimes(1)
+        expect(generations()).toBe(1)
         // The pinned Bun watcher can omit the filename at runtime, despite the
         // node:fs declaration advertising only string, Buffer or null.
+        writeFileSync(project.entry, original.replaceAll('Bun Native React', 'Unknown event one'))
         Reflect.apply(callback, undefined, ['rename', undefined])
         await until(() => generations() === 2, 'undefined filename rescan')
+        writeFileSync(project.entry, original.replaceAll('Bun Native React', 'Unknown event two'))
         Reflect.apply(callback, undefined, ['rename', null])
         await until(() => generations() === 3, 'null filename rescan')
         process.emit('SIGTERM')
@@ -407,6 +424,75 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       })
     } finally {
       observed.mockRestore()
+      reload.mockRestore()
+    }
+  }, 20_000)
+
+  test('source edits during initial and later builds remain pending after each attempted snapshot', async () => {
+    const path = await createProject(
+      repository,
+      join(directory, 'watch-during-build'),
+      'react',
+      'typescript'
+    )
+    const project = await readProject(repository, path)
+    const original = readFileSync(project.entry, 'utf8')
+    const start = lifetimes().length
+    const watch = fs.watch
+    let callback: unknown
+    const observed = spyOn(fs, 'watch').mockImplementation((...args: unknown[]): fs.FSWatcher => {
+      callback = args[2]
+      return Reflect.apply(watch, fs, [args[0], args[1], () => {}])
+    })
+    const first = { built: false, resume: Promise.withResolvers<void>() }
+    const third = { built: false, resume: Promise.withResolvers<void>() }
+    const build = Bun.build
+    let builds = 0
+    const compiling = spyOn(Bun, 'build').mockImplementation(async (options) => {
+      const result = await build(options)
+      const gate = ++builds === 1 ? first : builds === 3 ? third : undefined
+      if (gate) {
+        gate.built = true
+        await gate.resume.promise
+      }
+      return result
+    })
+    try {
+      await withWatcher(path, async ({ output, errors, completion }) => {
+        const generations = () => output.filter((line) => line.startsWith('bun-native:ready '))
+        const edit = (title: string, filename: string | null | undefined) => {
+          writeFileSync(project.entry, original.replaceAll('Bun Native React', title))
+          if (typeof callback !== 'function') throw new Error('Watch callback was not captured')
+          Reflect.apply(callback, undefined, ['rename', filename])
+        }
+        try {
+          await until(() => first.built, 'initial real bundle held before mount')
+          edit('Edited during initial build', undefined)
+          first.resume.resolve()
+          await until(() => generations().length === 2, 'pending initial-build edit')
+          edit('Third generation', 'main.tsx')
+          await until(() => third.built, 'third real bundle held before replacement')
+          edit('Edited during replacement', null)
+          third.resume.resolve()
+          await until(() => generations().length === 4, 'pending replacement-build edit')
+          const report = JSON.parse(generations()[3]!.slice('bun-native:ready '.length)) as {
+            bundle: string
+          }
+          expect(readFileSync(report.bundle, 'utf8')).toContain('Edited during replacement')
+          process.emit('SIGTERM')
+          await completion
+          expect(errors).toEqual([])
+          expect(builds).toBe(4)
+          assertJoined(lifetimes().slice(start), 4)
+          expect(output.filter((line) => line.startsWith('bun-native:stopped '))).toHaveLength(1)
+        } finally {
+          first.resume.resolve()
+          third.resume.resolve()
+        }
+      })
+    } finally {
+      observed.mockRestore()
+      compiling.mockRestore()
     }
   }, 20_000)
 
