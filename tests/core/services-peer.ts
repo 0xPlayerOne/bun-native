@@ -38,7 +38,11 @@ for await (const chunk of Bun.stdin.stream()) {
               ? REQUIRED_CAPABILITIES.filter((value) => value !== 'window_display_v1')
               : REQUIRED_CAPABILITIES,
           limits: DEFAULT_LIMITS,
-          service_policy: { window_display: mode === 'wrong-policy' ? !allowed : allowed },
+          service_policy: {
+            window_display: mode === 'wrong-policy' ? !allowed : allowed,
+            clipboard_read: false,
+            clipboard_write: false,
+          },
         })
         await emit({ type: 'ack', id: command.id })
         break

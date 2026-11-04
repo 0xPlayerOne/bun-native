@@ -43,6 +43,7 @@ const entries = {
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
   services: 'tests/native/services.ts',
+  clipboard: 'tests/native/clipboard.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -94,6 +95,7 @@ if (
     entry === 'layout' ||
     entry === 'interactions' ||
     entry === 'services' ||
+    entry === 'clipboard' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -190,7 +192,10 @@ async function sourceHashes() {
   if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
+  if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
+    sources.add('tests/native/display-service-policy.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
+  if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
     [...sources].sort().map(async (path) => ({ path, ...(await artifact(join(source, path))) }))

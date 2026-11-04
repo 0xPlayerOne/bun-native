@@ -621,8 +621,10 @@ dependencies = [
  "gpui_platform",
  "log",
  "raw-window-handle",
+ "rustix",
  "serde_json",
  "unicode-segmentation",
+ "x11rb",
 ]
 
 [[package]]

@@ -30,6 +30,7 @@ export async function withApp(
     queuedTransactions: 0,
     queuedCallbacks: 0,
     activeCallbacks: 0,
+    serviceRequests: 0,
   })
 }
 
@@ -48,6 +49,8 @@ export function observeWindow(window: NativeWindow) {
     batch: window.batch.bind(window),
     close: window.close.bind(window),
     displaySnapshot: window.displaySnapshot.bind(window),
+    readClipboardText: window.readClipboardText.bind(window),
+    writeClipboardText: window.writeClipboardText.bind(window),
     input: window.input.bind(window),
     on(node, type, listener, options) {
       if (type === 'input' && node.kind === 'input')

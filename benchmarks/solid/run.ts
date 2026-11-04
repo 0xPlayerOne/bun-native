@@ -1,3 +1,4 @@
+import type { NativeApplication } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import {
@@ -193,7 +194,8 @@ async function checkedResult(build: Built, path: string, nonce: string) {
     queuedTransactions: 0,
     queuedCallbacks: 0,
     activeCallbacks: 0,
-  })
+    serviceRequests: 0,
+  } satisfies NativeApplication['diagnostics'])
   return { item, report: await digest(path) }
 }
 

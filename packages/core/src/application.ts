@@ -1,4 +1,4 @@
-import { ProtocolError, REQUIRED_CAPABILITIES, type Limits } from '@bun-native/protocol'
+import { ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
@@ -12,6 +12,7 @@ import {
   serviceCapabilities,
   serviceSignal,
   type NativeDisplaySnapshot,
+  type NativeClipboardText,
   type ServiceCapabilities,
   type ServiceRequestOptions,
 } from './services.ts'
@@ -39,11 +40,12 @@ class Application implements NativeApplication {
   readonly closed: Promise<void>
   readonly limits: Readonly<Limits>
   // NativeHost.launch has negotiated every mandatory protocol feature.
-  readonly capabilities = REQUIRED_CAPABILITIES
+  readonly capabilities: readonly Capability[]
   readonly serviceCapabilities: Readonly<ServiceCapabilities>
   readonly windows = new Map<number, Window>()
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
+  private readonly services = new Set<Promise<void>>()
   private callbacks: Callback[] = []
   private dispatching: Promise<void> | undefined
   private activeCallbacks = 0
@@ -55,7 +57,8 @@ class Application implements NativeApplication {
 
   constructor(readonly host: NativeHost) {
     this.limits = host.limits
-    this.serviceCapabilities = serviceCapabilities(host.servicePolicy)
+    this.capabilities = host.capabilities
+    this.serviceCapabilities = serviceCapabilities(host.servicePolicy, host.capabilities)
     this.closed = this.consume()
     // Keep background failures observable through closed/shutdown without an
     // unhandled rejection while the application is still installing listeners.
@@ -76,6 +79,7 @@ class Application implements NativeApplication {
       queuedTransactions: this.queued,
       queuedCallbacks: this.callbacks.length,
       activeCallbacks: this.activeCallbacks,
+      serviceRequests: this.services.size,
     })
   }
 
@@ -189,6 +193,31 @@ class Application implements NativeApplication {
     })
   }
 
+  // Clipboard transfers must not hold the shared tree commit queue. This
+  // bounded set joins their results on shutdown while the transport continues
+  // to route independent native acknowledgements and input.
+  service<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.phase !== 'running')
+      return Promise.reject(new NativeStateError('invalid_state', 'Application is shutting down'))
+    if (this.services.size >= this.limits.max_service_requests)
+      return Promise.reject(
+        new NativeStateError('limit_exceeded', 'Native service request limit exceeded')
+      )
+    const result = Promise.resolve().then(() => {
+      if (this.phase !== 'running')
+        throw new NativeStateError('invalid_state', 'Service request cancelled during shutdown')
+      return operation()
+    })
+    const settled = result
+      .then(
+        () => {},
+        () => {}
+      )
+      .finally(() => this.services.delete(settled))
+    this.services.add(settled)
+    return result
+  }
+
   async shutdown(): Promise<void> {
     if (!this.stopping) {
       this.phase = 'stopping'
@@ -196,6 +225,7 @@ class Application implements NativeApplication {
       this.stopping = (async () => {
         await this.tail
         await this.host.shutdown()
+        await Promise.all(this.services)
       })()
     }
     await this.stopping
@@ -220,6 +250,7 @@ class Application implements NativeApplication {
     } finally {
       for (const window of this.windows.values()) window.revoke()
       await this.dispatching
+      await Promise.all(this.services)
       this.phase = 'closed'
     }
     if (this.failure) throw this.failure
@@ -347,10 +378,10 @@ class Window implements NativeWindow {
   async displaySnapshot(options: ServiceRequestOptions = {}): Promise<NativeDisplaySnapshot> {
     const signal = serviceSignal(options)
     this.assertActive()
-    checkServiceCancellation(signal)
+    checkServiceCancellation(signal, 'window_display')
     return this.application.enqueue(async () => {
       this.assertActive()
-      checkServiceCancellation(signal)
+      checkServiceCancellation(signal, 'window_display')
       try {
         const response = await this.application.host.send({
           type: 'display_snapshot',
@@ -359,7 +390,7 @@ class Window implements NativeWindow {
         // Cancellation and owner revocation suppress data after a submitted
         // read, while the transport still drains and validates its response.
         this.assertActive()
-        checkServiceCancellation(signal)
+        checkServiceCancellation(signal, 'window_display')
         return Object.freeze({
           bounds: Object.freeze({ ...response.snapshot.bounds }),
           scaleFactor: response.snapshot.scale_factor,
@@ -367,12 +398,71 @@ class Window implements NativeWindow {
       } catch (error) {
         if (error instanceof ProtocolError) throw error
         this.assertActive()
-        checkServiceCancellation(signal)
+        checkServiceCancellation(signal, 'window_display')
         if (
           error instanceof NativeCommandError &&
           (error.code === 'permission_denied' || error.code === 'service_unavailable')
         )
-          throw new NativeServiceError(error.code, error.message)
+          throw new NativeServiceError('window_display', error.code, error.message)
+        throw error
+      }
+    })
+  }
+
+  async readClipboardText(options: ServiceRequestOptions = {}): Promise<NativeClipboardText> {
+    const signal = serviceSignal(options)
+    return this.clipboard('clipboard_read', signal, async () => {
+      const response = await this.application.host.send({
+        type: 'clipboard_read',
+        window_id: this.id,
+      })
+      return Object.freeze(response.result)
+    })
+  }
+
+  writeClipboardText(text: string): Promise<void> {
+    // Transport validation occurs before native I/O, including JS callers.
+    return this.clipboard('clipboard_write', undefined, async () => {
+      await this.application.host.send({ type: 'clipboard_write', window_id: this.id, text })
+    })
+  }
+
+  private async clipboard<T>(
+    service: 'clipboard_read' | 'clipboard_write',
+    signal: AbortSignal | undefined,
+    operation: () => Promise<T>
+  ): Promise<T> {
+    this.assertActive()
+    checkServiceCancellation(signal, service)
+    return this.application.service(async () => {
+      this.assertActive()
+      checkServiceCancellation(signal, service)
+      try {
+        const result = await operation()
+        this.assertActive()
+        checkServiceCancellation(signal, service)
+        return result
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        checkServiceCancellation(signal, service)
+        if (
+          error instanceof NativeCommandError &&
+          [
+            'permission_denied',
+            'service_unavailable',
+            'cancelled',
+            'native_failure',
+            'operation_timed_out',
+            'payload_too_large',
+            'limit_exceeded',
+          ].includes(error.code)
+        )
+          throw new NativeServiceError(
+            service,
+            error.code as NativeServiceError['code'],
+            error.message
+          )
         throw error
       }
     })

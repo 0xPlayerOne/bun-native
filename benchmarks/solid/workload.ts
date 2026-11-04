@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
+import { expectWindowRootOnly } from './ownership.ts'
 
 export type Row = Readonly<{ id: number; text: string }>
 export type Mutations = { create: number; set: number; insert: number; remove: number }
@@ -134,17 +135,6 @@ function delta(after: Mutations, before: Mutations): Mutations {
     insert: after.insert - before.insert,
     remove: after.remove - before.remove,
   }
-}
-
-function expectWindowRootOnly(application: NativeApplication): void {
-  assert.deepEqual(application.diagnostics, {
-    windows: 1,
-    nodes: 1,
-    callbacks: 0,
-    queuedTransactions: 0,
-    queuedCallbacks: 0,
-    activeCallbacks: 0,
-  })
 }
 
 /** The external controller binds reports to exact development/AOT artifacts. */
@@ -387,7 +377,8 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
           queuedTransactions: 0,
           queuedCallbacks: 0,
           activeCallbacks: 0,
-        })
+          serviceRequests: 0,
+        } satisfies NativeApplication['diagnostics'])
       } catch (error) {
         failure = failure
           ? new AggregateError([failure, error], 'Workload and ownership cleanup failed')

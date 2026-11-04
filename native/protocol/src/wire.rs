@@ -1,9 +1,9 @@
-//! Version 5's private native wire contract. No DOM or renderer-specific types.
+//! Version 6's private native wire contract. No DOM or renderer-specific types.
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 5;
+pub const PROTOCOL_VERSION: u32 = 6;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -368,6 +368,15 @@ pub enum Command {
         id: RequestId,
         window_id: WindowId,
     },
+    ClipboardRead {
+        id: RequestId,
+        window_id: WindowId,
+    },
+    ClipboardWrite {
+        id: RequestId,
+        window_id: WindowId,
+        text: String,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -385,6 +394,9 @@ pub enum ErrorCode {
     NativeFailure,
     PermissionDenied,
     ServiceUnavailable,
+    Cancelled,
+    OperationTimedOut,
+    PayloadTooLarge,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -395,6 +407,7 @@ pub enum Capability {
     LayoutV1,
     InteractionsV1,
     WindowDisplayV1,
+    ClipboardTextV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -407,6 +420,8 @@ pub struct Limits {
     pub max_depth: usize,
     pub max_text_bytes: usize,
     pub max_text_bytes_per_window: usize,
+    pub max_clipboard_bytes: usize,
+    pub max_service_requests: usize,
 }
 
 impl Default for Limits {
@@ -419,6 +434,8 @@ impl Default for Limits {
             max_depth: MAX_DEPTH,
             max_text_bytes: MAX_TEXT_BYTES,
             max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
+            max_clipboard_bytes: crate::MAX_CLIPBOARD_BYTES,
+            max_service_requests: crate::MAX_SERVICE_REQUESTS,
         }
     }
 }
@@ -431,6 +448,8 @@ impl Command {
             | Self::Batch { id, .. }
             | Self::Close { id, .. }
             | Self::DisplaySnapshot { id, .. }
+            | Self::ClipboardRead { id, .. }
+            | Self::ClipboardWrite { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -498,9 +517,11 @@ impl Command {
                     }
                 }
             }
+            Self::ClipboardWrite { text, .. } => crate::validate_clipboard_text(text)?,
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
+            | Self::ClipboardRead { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

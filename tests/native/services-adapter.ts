@@ -11,6 +11,7 @@ import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { recordEvidence } from '../../examples/native-window/content.ts'
+import { assertDisplayServicePolicy } from './display-service-policy.ts'
 
 type Mount = (
   window: NativeWindow,
@@ -33,8 +34,7 @@ export async function runServiceAdapter(framework: 'solid' | 'react', mount: Mou
   let snapshot: NativeDisplaySnapshot | undefined
   let deadline: ReturnType<typeof setTimeout> | undefined
   try {
-    assert.equal(app.serviceCapabilities.windowDisplay.permission, 'allow')
-    assert.equal(app.serviceCapabilities.clipboardText.availability, 'unavailable')
+    assertDisplayServicePolicy(app.serviceCapabilities)
     const window = await app.openWindow({
       title: 'Bun Native desktop services',
       width: 560,

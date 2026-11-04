@@ -1,5 +1,5 @@
 {
-  "protocol": 5,
+  "protocol": 6,
   "capability": "window_display_v1",
   "commands": [
     {
@@ -19,7 +19,7 @@
     },
     {
       "name": "hello cannot grant a service",
-      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":5,\"service_policy\":{\"window_display\":true}}",
+      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":6,\"service_policy\":{\"window_display\":true}}",
       "valid": false
     },
     {
@@ -43,9 +43,9 @@
       "valid": false
     },
     {
-      "name": "clipboard is not an implemented broker service",
+      "name": "clipboard text read is a recognized separately granted service",
       "wire": "{\"id\":1,\"type\":\"clipboard_read\",\"window_id\":1}",
-      "valid": false
+      "valid": true
     }
   ],
   "events": [

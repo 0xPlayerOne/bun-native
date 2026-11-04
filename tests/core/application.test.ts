@@ -31,6 +31,7 @@ async function withApp(run: (app: NativeApplication) => Promise<void>, mode = 'n
     queuedTransactions: 0,
     queuedCallbacks: 0,
     activeCallbacks: 0,
+    serviceRequests: 0,
   })
 }
 
@@ -85,6 +86,7 @@ describe('owned application API (headless subprocess)', () => {
         queuedTransactions: 0,
         queuedCallbacks: 0,
         activeCallbacks: 0,
+        serviceRequests: 0,
       })
       await one.batch((batch) => {
         batch.remove(first.button)

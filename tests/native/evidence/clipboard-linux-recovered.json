@@ -1,0 +1,851 @@
+{
+  "schemaVersion": 1,
+  "recordType": "fresh_reconstructed_source_qualification",
+  "recordedAt": "2026-11-02T17:03:09.577122+00:00",
+  "status": "Both fresh isolated Linux X11 development and inspected AOT runs passed; hosted release-host and additional-platform qualification remain pending.",
+  "sourceBaseCommit": "44a15d2a911106408108ab3cbc4b3fb659158102",
+  "sourceDirtyDuringRun": true,
+  "sourceFiles": {
+    ".bun-version": {
+      "sha256": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+      "bytes": 15
+    },
+    "Cargo.lock": {
+      "sha256": "ba5649952bbec04b43695df529654c0abed3f49532acee2490ff58154e9e52db",
+      "bytes": 160922
+    },
+    "Cargo.toml": {
+      "sha256": "b8718980e5aac042ac274825b7acaafee0827067c7c61708f7a75673d05f29e0",
+      "bytes": 434
+    },
+    "bun.lock": {
+      "sha256": "8b58f36ae2b2e036adab62883847d49f02e0bbfc9286cebbf964342091b161f9",
+      "bytes": 28357
+    },
+    "bunfig.toml": {
+      "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31",
+      "bytes": 147
+    },
+    "examples/native-window/content.ts": {
+      "sha256": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+      "bytes": 1766
+    },
+    "examples/native-window/main.ts": {
+      "sha256": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec",
+      "bytes": 1147
+    },
+    "native/gpui-host/Cargo.toml": {
+      "sha256": "23310c5e6748ddda8a84077f36cdce332f496ddb95f91178e832a23cd694e63f",
+      "bytes": 792
+    },
+    "native/gpui-host/examples/clipboard-peer.rs": {
+      "sha256": "cfb8d817ba37aab3289d0f2baf846a67fb5e1b094c3e83ebe7ce565d9e601824",
+      "bytes": 23705
+    },
+    "native/gpui-host/src/channel.rs": {
+      "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "bytes": 3201
+    },
+    "native/gpui-host/src/evidence.rs": {
+      "sha256": "89d23a859d09be0327709f921a4096da73589ff4406437ce4e9c427b2ee1a072",
+      "bytes": 7542
+    },
+    "native/gpui-host/src/evidence/layout.rs": {
+      "sha256": "5dd5c376770658130ce0d0d8ba0a162555e4b8b6380b5c076f86ab55927db257",
+      "bytes": 5330
+    },
+    "native/gpui-host/src/input.rs": {
+      "sha256": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "bytes": 19158
+    },
+    "native/gpui-host/src/input/binding.rs": {
+      "sha256": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "bytes": 3666
+    },
+    "native/gpui-host/src/input/paint.rs": {
+      "sha256": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "bytes": 5796
+    },
+    "native/gpui-host/src/main.rs": {
+      "sha256": "04b7b3528537824eb687ebf5bda2ff9b04d0a78701f6e3af3b064b72e8c2ae4b",
+      "bytes": 2788
+    },
+    "native/gpui-host/src/services.rs": {
+      "sha256": "d7e4d58362a5ae8aacc8d0958d4d599879793b89026f49141f634a2db52eac6d",
+      "bytes": 3407
+    },
+    "native/gpui-host/src/services/clipboard.rs": {
+      "sha256": "1c0da241472bfe4c91858f829cf317c7dbd71259e12367e0d648d1085fbd0ad2",
+      "bytes": 16079
+    },
+    "native/gpui-host/src/services/clipboard/auth.rs": {
+      "sha256": "501f63c8481db1aedf261c47fe5c1856fbe6b9a7cbaf5623ff95daf6e9998b52",
+      "bytes": 6701
+    },
+    "native/gpui-host/src/services/clipboard/stream.rs": {
+      "sha256": "55afb26d0fcaebd667b9d59c01961d5f6401ddc68404912c5ba551dac61959b5",
+      "bytes": 7808
+    },
+    "native/gpui-host/src/services/clipboard/wake.rs": {
+      "sha256": "33b3c14ebf0c77d0169b3b759c63181f928134f866ed395f5fd92727481b6737",
+      "bytes": 4393
+    },
+    "native/gpui-host/src/services/clipboard/x11.rs": {
+      "sha256": "507d87b395be0ec95ad7a0cf3c4f82d5fc4e94ba58a973d9fbd6a68c88523071",
+      "bytes": 21822
+    },
+    "native/gpui-host/src/services/clipboard_unavailable.rs": {
+      "sha256": "5a902bfe43afb82360a15c0607891769b46f06d47dfc91b38dd25fa8baa8ffcc",
+      "bytes": 1322
+    },
+    "native/gpui-host/src/session.rs": {
+      "sha256": "7e682c1f227e3fb522802d6ea12621d294a1baab9da5b9f98be55366f6118e72",
+      "bytes": 16764
+    },
+    "native/gpui-host/src/state.rs": {
+      "sha256": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "bytes": 388
+    },
+    "native/gpui-host/src/style.rs": {
+      "sha256": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "bytes": 3732
+    },
+    "native/gpui-host/src/view.rs": {
+      "sha256": "81b28afcd89ff390d69140a4dba4a810437cc7860562dbc8a9c79d6a5c1e7416",
+      "bytes": 13370
+    },
+    "native/gpui-host/src/view/interactions.rs": {
+      "sha256": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "bytes": 9592
+    },
+    "native/protocol/Cargo.toml": {
+      "sha256": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "bytes": 225
+    },
+    "native/protocol/src/event_tests.rs": {
+      "sha256": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "bytes": 4925
+    },
+    "native/protocol/src/events.rs": {
+      "sha256": "87661f824ab9f730cc045000a14097bcbfa77e0237e7dab5cd8d7c81cbbd4870",
+      "bytes": 8175
+    },
+    "native/protocol/src/framing.rs": {
+      "sha256": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "bytes": 3838
+    },
+    "native/protocol/src/lib.rs": {
+      "sha256": "8155ec32f7f94d8c43ed2c37aef7964fa949b294e01a08cafe732bc974c190ff",
+      "bytes": 539
+    },
+    "native/protocol/src/security_tests.rs": {
+      "sha256": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "bytes": 2133
+    },
+    "native/protocol/src/service_tests.rs": {
+      "sha256": "1ffacfb1a9ead0fc84bfdd4fbc8b64577862dcd1a2358a2ce929db0e0df18a75",
+      "bytes": 3521
+    },
+    "native/protocol/src/services.rs": {
+      "sha256": "02331b3786a311134e50435b59b1586b69a253f53d2e086802967919e8c0d4a3",
+      "bytes": 2181
+    },
+    "native/protocol/src/tests.rs": {
+      "sha256": "17eb133c665497a206091214c8705220cc634068a174da50daeff49afffa8233",
+      "bytes": 11716
+    },
+    "native/protocol/src/tree.rs": {
+      "sha256": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "bytes": 14549
+    },
+    "native/protocol/src/tree/tests.rs": {
+      "sha256": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "bytes": 13131
+    },
+    "native/protocol/src/wire.rs": {
+      "sha256": "df3d19258ea8beaffe16299caf223d7dabb366c05507909798a6192c3e6b0abe",
+      "bytes": 19117
+    },
+    "package.json": {
+      "sha256": "afe286cec0f6c53abe8a7572b407f97a31fb0b88f6f8669958e546bfe6476f28",
+      "bytes": 1917
+    },
+    "packages/core/package.json": {
+      "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "bytes": 234
+    },
+    "packages/core/src/application.ts": {
+      "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc",
+      "bytes": 19462
+    },
+    "packages/core/src/events.ts": {
+      "sha256": "26202622fc84120c0f89b8936bf86dcda3b1760da8d2a03384ef5db3bf5291bb",
+      "bytes": 7680
+    },
+    "packages/core/src/index.ts": {
+      "sha256": "8800fc237dd84627a2dcf22368f40029a3331068903d6795b889e77c4e13a2f9",
+      "bytes": 852
+    },
+    "packages/core/src/services.ts": {
+      "sha256": "e6cb7cef872eb06d5ab6c1dda35c16b770dd6fc9488505b95fc3404bf1a9856c",
+      "bytes": 3935
+    },
+    "packages/core/src/tree.ts": {
+      "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "bytes": 7898
+    },
+    "packages/core/src/types.ts": {
+      "sha256": "0d63607618894fa1093eb70d60cec676b3c721f894f4a0f9ce348fc287799392",
+      "bytes": 6372
+    },
+    "packages/protocol/package.json": {
+      "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "bytes": 129
+    },
+    "packages/protocol/src/elements.ts": {
+      "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+      "bytes": 5003
+    },
+    "packages/protocol/src/framing.ts": {
+      "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "bytes": 2806
+    },
+    "packages/protocol/src/index.ts": {
+      "sha256": "f8adda80742568813d6d3c342695e04132b275fce54de21e09b000fe840b4af7",
+      "bytes": 604
+    },
+    "packages/protocol/src/messages.ts": {
+      "sha256": "6c9c12a5fdf37094257e73737bf5cb1c1c19ff2b2250303dc44a5f08c4e91800",
+      "bytes": 15477
+    },
+    "packages/protocol/src/services.ts": {
+      "sha256": "2f24e923d526a2f13f279bdd297d3088d6f901d54ed8c1a431e097155febf0c9",
+      "bytes": 2212
+    },
+    "packages/protocol/src/values.ts": {
+      "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "bytes": 1732
+    },
+    "packages/runtime/package.json": {
+      "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "bytes": 195
+    },
+    "packages/runtime/src/index.ts": {
+      "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+      "bytes": 18518
+    },
+    "packages/runtime/src/startup-trace.ts": {
+      "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d",
+      "bytes": 3021
+    },
+    "rust-toolchain.toml": {
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "bytes": 86
+    },
+    "scripts/quality/native-clipboard-scenario.py": {
+      "sha256": "6c6a620030bdba995e87b2615432649d5532188c9ec784a131cf8dd182ba0d6f",
+      "bytes": 12222
+    },
+    "scripts/quality/native-diagnostics-linux.py": {
+      "sha256": "e9e50f61379174a10f4d9a906867658392b4c0d4584706325319897f5ad9d1a8",
+      "bytes": 21192
+    },
+    "scripts/quality/native-input-linux.py": {
+      "sha256": "e9349daecad90d761755df3f1948b853bf920b6232643b42b4cd7ef14db5323b",
+      "bytes": 39034
+    },
+    "scripts/quality/native-interactions-scenario.py": {
+      "sha256": "d0b8b969f63302bbc24567780c518b6480f2424012c5b0fee364eb2a3109bce4",
+      "bytes": 13251
+    },
+    "scripts/quality/native-layout-scenario.py": {
+      "sha256": "1717e7ffa0254b99e8871fb2d3e81ba657dce77761d658ca7a17279d3ff94c5f",
+      "bytes": 12855
+    },
+    "tests/native/clipboard.ts": {
+      "sha256": "c0ab7b5453f0a870e128c0fe7225dbb6a38d9fc89a97c92c2f8dabf28452d039",
+      "bytes": 17611
+    },
+    "tests/native/fault.ts": {
+      "sha256": "2c0ab72ef0ffb5803ef1e5751786327d89390b959f3d050ca2d4390976a1a594",
+      "bytes": 5222
+    },
+    "tests/native/interactions.ts": {
+      "sha256": "4abeb443686c5a90caf34d70f34683f3e612377d46a253a375a56401557e7b42",
+      "bytes": 10546
+    },
+    "tests/native/layout.ts": {
+      "sha256": "ccfd398d06d6172dd32b797d9f73afceec32ca3799c3d98c0194a2ee0809f3c1",
+      "bytes": 7966
+    },
+    "tests/native/scheduling.ts": {
+      "sha256": "668dc7821d03f4878ad8f0a9aaff394cd932c49b692eeec6ef5f6680b52f7d12",
+      "bytes": 7980
+    },
+    "toolchain.json": {
+      "sha256": "cd6be8b67adb3ba5d5cfa2b235f3aff1b11d6fa783dc2f3d1439618d0a574b94",
+      "bytes": 1725
+    },
+    "tsconfig.json": {
+      "sha256": "6df6154fe97b58ca91049e1fa6bdc2f789491cfcc5159f1510e5fd411b155e29",
+      "bytes": 1028
+    }
+  },
+  "sourceAndArtifactHashesRecheckedAfterRuns": true,
+  "compilerAcquisition": {
+    "channel": "official npm package",
+    "package": "@oven/bun-linux-x64",
+    "version": "1.4.4-canary.20261029.1",
+    "gitHead": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "tarball": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261029.1.tgz",
+    "integrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
+    "archive": {
+      "sha256": "b7581eb34632d868a26a7b5cb853abe20416c6dc5d8fb34fedfaec6165639e17",
+      "bytes": 68778347
+    },
+    "executable": {
+      "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+      "bytes": 138468432
+    },
+    "actualRevision": "1.4.4-canary.1+da867c60b",
+    "originalReceipt": {
+      "sha256": "86e98f7f2ae61a5ad9576af0ab616b3e671b523e294e222a5c8909a956126e99",
+      "bytes": 2465
+    },
+    "configurationDistinction": "The qualified source retains schema-1 GitHub asset configuration. That snapshot is not acquisition evidence: this run used the official npm archive recorded here after the old GitHub asset became unavailable. The Bun source/runtime revision is unchanged."
+  },
+  "nativeBuild": {
+    "profile": "dev",
+    "command": [
+      "cargo",
+      "build",
+      "--locked",
+      "--offline",
+      "-p",
+      "bun-native-host",
+      "--bin",
+      "bun-native-host",
+      "--example",
+      "clipboard-peer"
+    ],
+    "environment": {
+      "CARGO_BUILD_JOBS": 2,
+      "CARGO_INCREMENTAL": 0,
+      "CARGO_PROFILE_DEV_DEBUG": 0,
+      "CARGO_BUILD_PIPELINING": false
+    },
+    "rustVersion": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "record": {
+      "sha256": "7dd5cd33815e9cddf99bd842047e609afe1f64091d4ffedf35b755eae4c6b59e",
+      "bytes": 6833
+    }
+  },
+  "artifacts": {
+    "bun-native-host": {
+      "sha256": "b2f7fcb38c34f6680ced9b1e1b4849c79d363d11bfda07ba5ee3ccc59d4d60d9",
+      "bytes": 112537128
+    },
+    "clipboard-peer": {
+      "sha256": "cb7cd34139f21c022f299da7c980a8079984288ba0138a49673e9111ff3cc510",
+      "bytes": 2617160
+    }
+  },
+  "aot": {
+    "application": {
+      "file": "clipboard",
+      "bytes": 71597096,
+      "sha256": "ce068a4a9e72ea4be0bad88666f919e3a8c5e7b62f00fe53f7d3b13cea509ed2",
+      "inspection": {
+        "format": "elf",
+        "payloadOffset": 67510280,
+        "payloadBytes": 4030693,
+        "flags": 16764,
+        "hasCompiledProgram": true
+      },
+      "runtimeFeatures": {
+        "format": "elf64-le",
+        "section": {
+          "name": ".bun_features",
+          "offset": 19504728,
+          "bytes": 536
+        },
+        "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "trimmedProgramFeatures": false,
+        "removedRangeCount": 202,
+        "jit": "unused",
+        "interpreter": "present",
+        "imageCompiler": "unused",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      }
+    },
+    "manifest": {
+      "sha256": "35461886ca305a45c49961134f9ee6d191381ba3531d2aafe19e5f9e55111b50",
+      "bytes": 16207
+    },
+    "compileArguments": [
+      "compile",
+      "--no-script",
+      "--production",
+      "--explain=json",
+      "tests/native/clipboard.ts",
+      "--outfile",
+      "clipboard"
+    ],
+    "sourceFilesMatched": 62,
+    "driverScope": "The native driver does not infer AOT from the declared mode. The separately inspected manifest and rehashed application above establish compiled-program and JIT-removal evidence."
+  },
+  "validation": {
+    "typescriptSourceCheckpoint": {
+      "commit": "44a15d2a911106408108ab3cbc4b3fb659158102",
+      "command": "bun run check",
+      "testsPassed": 512,
+      "assertions": 3098,
+      "checkedFiles": 123,
+      "log": {
+        "sha256": "7c8446fcc635c0e9e929ba6d2750d119347ecf13dee463ebf273a6515a41eda6",
+        "bytes": 51600
+      },
+      "scope": "TypeScript/configuration sources remain byte-identical to the source checkpoint; the new change is native worker ownership plus evidence/docs."
+    },
+    "focusedNativeClipboard": {
+      "command": "cargo test --locked --offline -p bun-native-host --bin bun-native-host -- services::clipboard --nocapture",
+      "testsPassed": 9,
+      "log": {
+        "sha256": "ac3122a08ba4ff93abf3ef910b035703723c0a3ef713fdbb6eb9bfc758e75b05",
+        "bytes": 15284
+      }
+    },
+    "rustWorkspace": {
+      "command": "cargo test --locked --offline --workspace --all-targets",
+      "hostTestsPassed": 12,
+      "protocolTestsPassed": 37,
+      "exampleTests": 0,
+      "log": {
+        "sha256": "6f3e849ed3bfc238105890dfe46d3aebc86bb524c85d61c7e3b20e330987a9ca",
+        "bytes": 5173
+      }
+    },
+    "clippy": {
+      "command": "cargo clippy --locked --offline -p bun-native-host --all-targets -- -D warnings",
+      "status": "passed",
+      "log": {
+        "sha256": "3b4f02faa0d0d42d248961c90f5bcf9be16c401a97fa96f87cc98c0fbb06bfa7",
+        "bytes": 171
+      }
+    },
+    "pythonSourceCheckpoint": {
+      "command": "python3 -m unittest discover -s tests/quality -p 'test_*.py' -v",
+      "testsPassed": 51,
+      "log": {
+        "sha256": "b4c9d0a1b0946328b411531b60ff53f7588ef1f6b72eaa4d2f3e08836fbe92fe",
+        "bytes": 8958
+      }
+    }
+  },
+  "runs": [
+    {
+      "attempt": "development-01",
+      "mode": "development",
+      "status": "passed",
+      "outcomes": {
+        "nativeDefaultDenial": true,
+        "nativeStaleAndUnknownOwners": true,
+        "pendingShutdownJoined": true,
+        "emptySelection": true,
+        "stalledTransferDeadline": true,
+        "inputAndCommitDuringTransfer": true,
+        "ordinary": true,
+        "delayed": true,
+        "incremental": true,
+        "empty-text": true,
+        "oversize": true,
+        "incr-oversize": true,
+        "incr-header-large": true,
+        "invalid-utf8": true,
+        "nul": true,
+        "drop": true,
+        "slow-incr": true,
+        "flood": true,
+        "submittedReadCancellation": true,
+        "preDispatchCancellation": true,
+        "pendingWindowClose": true,
+        "externalReadOfWrite": true,
+        "malformedMultipleRejected": true,
+        "externalEmptyText": true,
+        "writeSurvivesWindowClose": true,
+        "shutdownPreservesNewExternalOwner": true
+      },
+      "joinedPeers": 22,
+      "peerLabels": [
+        "shutdown",
+        "responsive",
+        "ordinary",
+        "delayed",
+        "incremental",
+        "empty-text",
+        "oversize",
+        "incr-oversize",
+        "incr-header-large",
+        "invalid-utf8",
+        "nul",
+        "drop",
+        "slow-incr",
+        "flood",
+        "cancelled",
+        "closed-window",
+        "read-written",
+        "multiple-malformed",
+        "read-empty",
+        "read-after-close",
+        "read-after-shutdown",
+        "replacement"
+      ],
+      "publicOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "nativeInput": {
+        "value": "x",
+        "revision": 1,
+        "sequence": 5,
+        "readPending": true,
+        "injectionDurationMs": 7.892706000347971,
+        "applicationLogObservedAfterInjectionMs": 35.448868999992555
+      },
+      "stalledReadApplicationElapsedMs": 2006.2136410000003,
+      "idle": {
+        "read": {
+          "observedIntervalMs": 224.6095420000529,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "write": {
+          "observedIntervalMs": 308.2862969999951,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "lost-owner": {
+          "observedIntervalMs": 244.28588599994328,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        }
+      },
+      "finalNativePaint": {
+        "type": "rendered",
+        "stage": "native-paint",
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "children": [2, 3, 4],
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "padding": 24,
+                "gap": 12,
+                "background": 16053751
+              }
+            }
+          },
+          {
+            "node_id": 2,
+            "children": [],
+            "element": {
+              "kind": "text",
+              "text": "Bounded native clipboard",
+              "style": {
+                "height": 40,
+                "font_size": 26
+              }
+            }
+          },
+          {
+            "node_id": 3,
+            "children": [],
+            "element": {
+              "kind": "text",
+              "text": "Clipboard checks passed",
+              "style": {
+                "height": 32
+              }
+            }
+          },
+          {
+            "node_id": 4,
+            "children": [],
+            "element": {
+              "kind": "input",
+              "value": "x",
+              "placeholder": "Input remains responsive",
+              "style": {
+                "width": "fill",
+                "height": 44,
+                "font_size": 22
+              }
+            },
+            "input_revision": 1
+          }
+        ]
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawResult": {
+        "file": "development-01/result.json",
+        "sha256": "9e9dff5f60dd49f25becad1c210a47c95024346d16e4edad36d7042d4ac80195",
+        "bytes": 48820
+      },
+      "screenshot": {
+        "file": "development-01/after.png",
+        "sha256": "30f17aa5bd62a786f2ca2845858a2f3e7908fcdfbdf182fbd83f842b11e17485",
+        "bytes": 12051
+      },
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      }
+    },
+    {
+      "attempt": "aot-01",
+      "mode": "aot",
+      "status": "passed",
+      "outcomes": {
+        "nativeDefaultDenial": true,
+        "nativeStaleAndUnknownOwners": true,
+        "pendingShutdownJoined": true,
+        "emptySelection": true,
+        "stalledTransferDeadline": true,
+        "inputAndCommitDuringTransfer": true,
+        "ordinary": true,
+        "delayed": true,
+        "incremental": true,
+        "empty-text": true,
+        "oversize": true,
+        "incr-oversize": true,
+        "incr-header-large": true,
+        "invalid-utf8": true,
+        "nul": true,
+        "drop": true,
+        "slow-incr": true,
+        "flood": true,
+        "submittedReadCancellation": true,
+        "preDispatchCancellation": true,
+        "pendingWindowClose": true,
+        "externalReadOfWrite": true,
+        "malformedMultipleRejected": true,
+        "externalEmptyText": true,
+        "writeSurvivesWindowClose": true,
+        "shutdownPreservesNewExternalOwner": true
+      },
+      "joinedPeers": 22,
+      "peerLabels": [
+        "shutdown",
+        "responsive",
+        "ordinary",
+        "delayed",
+        "incremental",
+        "empty-text",
+        "oversize",
+        "incr-oversize",
+        "incr-header-large",
+        "invalid-utf8",
+        "nul",
+        "drop",
+        "slow-incr",
+        "flood",
+        "cancelled",
+        "closed-window",
+        "read-written",
+        "multiple-malformed",
+        "read-empty",
+        "read-after-close",
+        "read-after-shutdown",
+        "replacement"
+      ],
+      "publicOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "nativeInput": {
+        "value": "x",
+        "revision": 1,
+        "sequence": 5,
+        "readPending": true,
+        "injectionDurationMs": 19.838736000110657,
+        "applicationLogObservedAfterInjectionMs": 21.482149999883404
+      },
+      "stalledReadApplicationElapsedMs": 2046.5427839999998,
+      "idle": {
+        "read": {
+          "observedIntervalMs": 220.73992400009956,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "write": {
+          "observedIntervalMs": 258.0254950003109,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "lost-owner": {
+          "observedIntervalMs": 227.13677999990978,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        }
+      },
+      "finalNativePaint": {
+        "type": "rendered",
+        "stage": "native-paint",
+        "window_id": 1,
+        "tree_revision": 3,
+        "nodes": [
+          {
+            "node_id": 1,
+            "children": [2, 3, 4],
+            "element": {
+              "kind": "box",
+              "style": {
+                "direction": "column",
+                "padding": 24,
+                "gap": 12,
+                "background": 16053751
+              }
+            }
+          },
+          {
+            "node_id": 2,
+            "children": [],
+            "element": {
+              "kind": "text",
+              "text": "Bounded native clipboard",
+              "style": {
+                "height": 40,
+                "font_size": 26
+              }
+            }
+          },
+          {
+            "node_id": 3,
+            "children": [],
+            "element": {
+              "kind": "text",
+              "text": "Clipboard checks passed",
+              "style": {
+                "height": 32
+              }
+            }
+          },
+          {
+            "node_id": 4,
+            "children": [],
+            "element": {
+              "kind": "input",
+              "value": "x",
+              "placeholder": "Input remains responsive",
+              "style": {
+                "width": "fill",
+                "height": 44,
+                "font_size": 22
+              }
+            },
+            "input_revision": 1
+          }
+        ]
+      },
+      "renderer": {
+        "is_software_emulated": true,
+        "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "driver_name": "llvmpipe",
+        "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.2 (LLVM 20.1.2)"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawResult": {
+        "file": "aot-01/result.json",
+        "sha256": "5c15afcc8d7c9679da9ecb58c31098e8862a2ec79f68521f8925eab9d5b5889d",
+        "bytes": 49069
+      },
+      "screenshot": {
+        "file": "aot-01/after.png",
+        "sha256": "30f17aa5bd62a786f2ca2845858a2f3e7908fcdfbdf182fbd83f842b11e17485",
+        "bytes": 12051
+      },
+      "system": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+        "architecture": "x86_64"
+      }
+    }
+  ],
+  "rawEvidenceArchive": {
+    "file": "clipboard-fresh-evidence-01.zip",
+    "sha256": "3819f83d90470c8d199e823587a6a2c5634ede777d24fcccf66ca8a1f098e664",
+    "bytes": 146334,
+    "contains": "Native/application/peer logs, complete results and source hashes, screenshots, compiler/build inspection, acquisition receipt and source/Clippy/test logs. Executables and Xauthority data are excluded."
+  },
+  "retainedIntermediateFailures": [
+    {
+      "file": "join-clippy.log",
+      "reason": "Shared target contained protocol metadata from another worktree. Only bun-native-protocol was cleaned and rebuilt; no protocol source or contract was weakened."
+    },
+    {
+      "file": "join-clippy-rebuilt.log",
+      "reason": "The new regression initially called an unavailable convenience method on the background executor. It was corrected to the pinned scheduler API before the successful test/build/runs."
+    }
+  ],
+  "limitations": [
+    "Local Linux X11 with task-owned Xvfb, XTest and actual llvmpipe software renderer only.",
+    "Native Rust host uses the dev profile; the inspected Bun application uses the production AOT path. Hosted release-host qualification is separate.",
+    "macOS, Windows, Wayland and remote X11 clipboard services remain unavailable.",
+    "Input observations include controller/IPC/log scheduling; they are not presentation latency or comparative performance measurements.",
+    "The total native transfer deadline is two seconds. Application-observed rejection also includes scheduling and response delivery. Trusted local filesystem setup is byte-bounded, not a hard wall-clock guarantee.",
+    "Three short idle observations and zero ownership counters do not establish sustained power consumption or leak freedom.",
+    "The compiled application retains the interpreter; it is not claimed physically absent.",
+    "Historical lost raw artifacts are recorded separately and do not qualify this recovered source."
+  ]
+}

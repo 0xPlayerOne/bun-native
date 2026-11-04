@@ -121,7 +121,7 @@ Every invocation carries the binding's `event.signal`. Unsubscribe, replacement,
 
 `window.close()` is idempotent and revokes listeners immediately before its serialized native close. OS close also revokes the window. `window.closed` observes that local lifetime ending; the application owns the host process until shutdown.
 
-`app.shutdown()` is idempotent and can be awaited inside a listener. Await `app.closed` outside that listener to join event ingestion and callback dispatch without a self-deadlock. Normal shutdown clears all six `app.diagnostics` counters: windows, nodes, callbacks, queued transactions, queued callbacks and active callbacks. These counters describe owned JavaScript resources; they are not a native memory-leak measurement.
+`app.shutdown()` is idempotent and can be awaited inside a listener. Await `app.closed` outside that listener to join event ingestion and callback dispatch without a self-deadlock. Normal shutdown clears all seven `app.diagnostics` counters: windows, nodes, callbacks, queued transactions, queued callbacks, active callbacks and service requests. These counters describe owned JavaScript resources; they are not a native memory-leak measurement.
 
 The public package exports the error classes needed to distinguish failures:
 
@@ -144,7 +144,7 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Clipboard, shortcuts,
+the negotiated permission and `owned_window` scope. Shortcuts,
 menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
 entries explicitly report `unavailable` / `not_implemented`; they have no
 placeholder callable methods. This policy constrains the selected native
@@ -160,10 +160,41 @@ distinct. See the [service contract](../../docs/native-services.md) for exact
 geometry semantics, error scope and platform qualification. In particular,
 the pinned X11 backend reports an X screen, not a physical monitor identity.
 
+### Clipboard text
+
+`window.readClipboardText({ signal? })` returns a frozen `{ kind: 'empty' }`
+when no selection owner exists, or `{ kind: 'text', text }` including a valid
+empty string. `window.writeClipboardText(text)` requires a separate write
+grant. Launch permissions are `clipboardRead` and `clipboardWrite`, each
+`allow` or `deny` with default `deny`. On the implemented local Linux X11
+backend, `app.serviceCapabilities.clipboardText` reports `available`, both
+permissions, `owned_window` scope and backend `x11`. Other targets/backends
+report `unavailable` / `unsupported_platform`.
+
+The current payload bound is 8,192 UTF-8 bytes without NUL. Transfers have their
+own eight-request queue and a two-second total native deadline, so waiting for
+clipboard data does not serialize unrelated tree commits. Read cancellation
+before dispatch sends no request; after dispatch it suppresses delivery after
+the bounded native reply is drained and validated. Close/shutdown revokes
+pending authority. A submitted write has no cancellation option or rollback
+promise: a completed copy remains selected until replaced or the host exits.
+A write acknowledgement confirms native selection ownership; independent
+readers, not cached self-reads, qualify the native transfer.
+
+Clipboard `NativeServiceError.service` is `clipboard_read` or `clipboard_write`.
+Its codes distinguish denial, unavailable backend/text format, cancelled read,
+total transfer timeout, excessive external payload and native failure. Local
+queue saturation and stale handles retain their ordinary `NativeStateError`;
+malformed native replies retain `ProtocolError`. The native worker is joined
+before shutdown completes. `app.diagnostics.serviceRequests` exposes the
+bounded count. See [the full service contract](../../docs/native-services.md).
+This draft's source/contract tests do not yet qualify actual clipboard GUI/AOT
+execution; the existing display evidence describes its previous exact source.
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 5 requires shared layout, interactions and immutable service policy and replaces protocol 4 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 6 requires shared layout, interactions and immutable service policy and replaces protocol 5 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

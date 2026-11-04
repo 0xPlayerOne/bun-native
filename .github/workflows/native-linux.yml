@@ -70,9 +70,11 @@ jobs:
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
         run: |
-          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
+          sha256sum target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-sha256.txt"
+          stat --format='%s bytes' target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-size.txt"
       - name: Lint and test actual native host
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
@@ -108,7 +110,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -117,6 +119,24 @@ jobs:
               --source "$GITHUB_WORKSPACE" \
               --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
               --entry "$entry" --host-profile release --outdir "$outdir"
+          done
+      - name: Development and AOT bounded X11 clipboard service
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_CLIPBOARD_PEER: ${{ github.workspace }}/target/release/examples/clipboard-peer
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/clipboard.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/clipboard-package/clipboard")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-clipboard"
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
+              --output "$evidence" --scenario clipboard --mode "$mode" \
+              --host-profile release -- "${command[@]}"
           done
       - name: Development and AOT native display service through core, Solid and React
         timeout-minutes: 5
@@ -363,6 +383,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/toolchain.txt
             ${{ runner.temp }}/native-evidence/build.log
             ${{ runner.temp }}/native-evidence/binary-*.txt
+            ${{ runner.temp }}/native-evidence/clipboard-peer-*.txt
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
@@ -404,6 +425,7 @@ jobs:
             echo 'The event-throughput fixture requires 1,000 OS-delivered text edits with contiguous event/input revisions and matching final native paint; its observation intervals do not establish input-to-presentation latency.'
             echo 'Startup rollback, an ownership-checked native child crash, final native child reordering, and input delivered during a sustained bounded command stream run in development and inspected AOT. A serial control records the same input observation without the command flood.'
             echo 'The native input checks use isolated X11, XTest and verified Mesa software rendering. Exact paint trees, screenshots, source/artifact hashes and cleanup reports are retained.'
+            echo 'The Linux clipboard service uses an independent owned X11 peer in development and inspected AOT. Required outcomes cover immutable grants, ordinary/delayed/INCR text, payload and metadata rejection, owner loss, bounded stalled transfers with responsive input/commits, cancellation, idle worker sleep, selection persistence and joined cleanup. This does not qualify clipboard support on Wayland, macOS or Windows.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

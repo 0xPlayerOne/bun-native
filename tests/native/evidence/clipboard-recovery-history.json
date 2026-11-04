@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "recordType": "historical_recovery_note",
+  "recordedAt": "2026-11-02",
+  "publishedBase": "70cbf1ea4f2ab233190176f33fb55476eed41098",
+  "status": "raw_artifacts_and_unpublished_snapshot_lost",
+  "reason": "An executor outage restored an older filesystem checkpoint. The published draft survived in Git; the unpublished final snapshot, native binaries and raw test outputs did not.",
+  "historicalSnapshot": {
+    "reportedTree": "927c1a754cec45b906bde753955b60702604e21a",
+    "reportedFiles": 22,
+    "reportedBytes": 334086,
+    "restoredExactly": false,
+    "source": "Prior agent execution summary, not a recovered Git object or raw artifact audit."
+  },
+  "previouslyReportedExecution": {
+    "development": {
+      "status": "passed_before_outage",
+      "outcomes": 26,
+      "joinedPeers": 22,
+      "publicOwnershipCountersZero": 7,
+      "forcedCleanup": false
+    },
+    "aot": {
+      "status": "passed_before_outage",
+      "outcomes": 26,
+      "joinedPeers": 22,
+      "publicOwnershipCountersZero": 7,
+      "forcedCleanup": false,
+      "compiledProgram": true,
+      "jit": "unused",
+      "removedJitRanges": 27,
+      "interpreter": "present"
+    },
+    "artifactsNowUnavailable": {
+      "host": {
+        "sha256": "f912e89ad9ebf37d86cc9f3daf59a4917e32cf2cbc0b31ae229f18f504116d23",
+        "bytes": 112536616,
+        "profile": "dev"
+      },
+      "peer": {
+        "sha256": "334f2034c5dcf7a24c1dabb7ec82b774318113d0f1f0130e23bbf4e39d06801e",
+        "bytes": 2617160
+      },
+      "application": {
+        "sha256": "0611cdaf47b8ffc01898a8efc7be4765bd99132714c99acf9917c2751a4b0df4",
+        "bytes": 71613480
+      }
+    }
+  },
+  "currentEvidencePolicy": "Reconstructed source must pass fresh source, native development and inspected AOT checks under distinct attempt identifiers. The historical identifiers and outcomes above cannot qualify newly reconstructed source, a different artifact or a supported platform."
+}
