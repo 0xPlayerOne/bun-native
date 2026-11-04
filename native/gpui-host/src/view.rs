@@ -294,7 +294,7 @@ impl NativeView {
             }
             NativeElement::Input {
                 style: properties, ..
-            } => style::apply(base, properties)
+            } => style::apply(base.bg(rgb(0xffffff)), properties)
                 .child(
                     self.inputs
                         .get(&node_id)

@@ -168,6 +168,8 @@ def main():
             raise DRIVER.Unsupported(
                 f"Required native diagnostic tool unavailable: {tool}"
             )
+    if args.scenario == "react-workspace" and not shutil.which("convert"):
+        raise DRIVER.Unsupported("Workspace pixel checks require ImageMagick convert")
     args.output.mkdir()
     output = args.output.resolve()
     nonce = secrets.token_hex(16)

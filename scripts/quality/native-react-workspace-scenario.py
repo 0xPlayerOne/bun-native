@@ -16,11 +16,86 @@ INITIAL_TITLES = [
 ]
 
 
+def dark_input_pixels(driver, geometry_tools, screenshot, current):
+    """Observe actual input fill and readable text, beyond semantic tree records."""
+    observations = {}
+    for label, expected_background in (
+        ("Add a task", "222D3C"),
+        ("Search tasks", "222D3C"),
+        ("Task title", "151B24"),
+    ):
+        node = next(
+            item
+            for item in current["paint"]["nodes"]
+            if item["element"]["kind"] == "input"
+            and item["element"]["placeholder"] == label
+        )
+        geometry = next(
+            item
+            for item in current["layout"]["nodes"]
+            if item["node_id"] == node["node_id"]
+        )
+        bounds = geometry_tools.rectangle(geometry["bounds"])
+        if geometry_tools.intersects(bounds, geometry["ancestor_clip"]) != bounds:
+            raise RuntimeError(
+                "Input pixel observation requires the whole native input"
+            )
+        geometry_tools.pointer_point(
+            bounds, geometry["ancestor_clip"], current["layout"]["viewport"]
+        )
+        x, y, width, height = (round(value) for value in bounds)
+        sample = driver.run(
+            [
+                "convert",
+                str(screenshot),
+                "-alpha",
+                "off",
+                "-colorspace",
+                "sRGB",
+                "-depth",
+                "8",
+                "-format",
+                f"%w %h %[hex:p{{{x + width - 2},{y + 2}}}]",
+                "info:",
+            ]
+        ).split()
+        if [int(sample[0]), int(sample[1])] != current["layout"]["viewport"]:
+            raise RuntimeError("Captured pixels differ from the native viewport")
+        # The dark fill and blue caret are below this luminance threshold. Both
+        # placeholder text and an entered title must supply visible foreground.
+        foreground = float(
+            driver.run(
+                [
+                    "convert",
+                    str(screenshot),
+                    "-crop",
+                    f"{min(width - 8, 256)}x{min(height - 8, 28)}+{x + 4}+{y + 4}",
+                    "+repage",
+                    "-alpha",
+                    "off",
+                    "-colorspace",
+                    "Gray",
+                    "-threshold",
+                    "45%",
+                    "-format",
+                    "%[fx:mean]",
+                    "info:",
+                ]
+            )
+        )
+        observations[label] = {
+            "background": sample[2],
+            "expectedBackground": expected_background,
+            "visibleForegroundFraction": foreground,
+        }
+    return observations
+
+
 def run(
     driver,
     geometry_tools,
     window,
-    _output,
+    output,
     native_records,
     application_records,
     wait_for,
@@ -262,6 +337,28 @@ def run(
         "Theme update reset native scroll"
     )
     assert {row["title"]: row["row"] for row in rows(dark)} == original_rows
+
+    def readable_dark_inputs():
+        require_owned()
+        capture(window, "dark.png")
+        pixels = dark_input_pixels(driver, geometry_tools, output / "dark.png", dark)
+        observations["darkInputPixels"] = pixels
+        return (
+            pixels
+            if all(
+                value["background"] == value["expectedBackground"]
+                and value["visibleForegroundFraction"] > 0
+                for value in pixels.values()
+            )
+            else None
+        )
+
+    try:
+        wait_for(readable_dark_inputs, "readable dark input pixels")
+    except RuntimeError as error:
+        raise RuntimeError(
+            f"Dark input pixels did not match: {observations.get('darkInputPixels')}"
+        ) from error
 
     action("windowsize", "--sync", window, "900", "700")
     resized = wait_frame(
