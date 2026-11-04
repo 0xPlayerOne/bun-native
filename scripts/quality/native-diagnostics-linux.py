@@ -50,6 +50,12 @@ WORKSPACE_SPEC = importlib.util.spec_from_file_location(
 )
 WORKSPACE = importlib.util.module_from_spec(WORKSPACE_SPEC)
 WORKSPACE_SPEC.loader.exec_module(WORKSPACE)
+SOLID_WORKSPACE_SPEC = importlib.util.spec_from_file_location(
+    "native_solid_workspace_scenario",
+    ROOT / "scripts/quality/native-solid-workspace-scenario.py",
+)
+SOLID_WORKSPACE = importlib.util.module_from_spec(SOLID_WORKSPACE_SPEC)
+SOLID_WORKSPACE_SPEC.loader.exec_module(SOLID_WORKSPACE)
 SCENARIOS = (
     "startup-failure",
     "host-crash",
@@ -59,6 +65,7 @@ SCENARIOS = (
     "interactions",
     "clipboard",
     "react-workspace",
+    "solid-workspace",
 )
 
 
@@ -85,6 +92,14 @@ def source_snapshot():
         ROOT / "tests/native/react-workspace.tsx",
         ROOT / "examples/react-workspace/app.tsx",
         ROOT / "examples/react-workspace/model.ts",
+        ROOT / "scripts/quality/native-solid-workspace-scenario.py",
+        ROOT / "scripts/quality/native-solid-workspace-paint.py",
+        ROOT / "tests/native/solid-workspace.tsx",
+        ROOT / "examples/solid-workspace/app.tsx",
+        ROOT / "examples/solid-workspace/model.ts",
+        ROOT / "examples/solid-workspace/main.tsx",
+        ROOT / "scripts/solid-build.ts",
+        ROOT / "scripts/solid/transform.ts",
         Path(__file__).resolve(),
         ROOT / "scripts/quality/native-input-linux.py",
     ]
@@ -102,7 +117,7 @@ def source_snapshot():
             "Cargo.lock",
         )
     )
-    for package in ("core", "protocol", "runtime", "renderer", "react"):
+    for package in ("core", "protocol", "runtime", "renderer", "react", "solid"):
         paths.append(ROOT / "packages" / package / "package.json")
         paths.extend((ROOT / "packages" / package / "src").rglob("*.ts"))
     for manifest in (ROOT / "native").glob("*/Cargo.toml"):
@@ -168,7 +183,9 @@ def main():
             raise DRIVER.Unsupported(
                 f"Required native diagnostic tool unavailable: {tool}"
             )
-    if args.scenario == "react-workspace" and not shutil.which("convert"):
+    if args.scenario in ("react-workspace", "solid-workspace") and not shutil.which(
+        "convert"
+    ):
         raise DRIVER.Unsupported("Workspace pixel checks require ImageMagick convert")
     args.output.mkdir()
     output = args.output.resolve()
@@ -300,6 +317,7 @@ def main():
                 "interactions": "Bun Native interactions",
                 "clipboard": "Bun Native clipboard",
                 "react-workspace": "Bun Native React Workspace",
+                "solid-workspace": "Bun Native Solid Workspace",
             }.get(args.scenario, "Bun Native scheduling audit")
             window, owner = wait_for(lambda: owned_window(title), "owned native window")
             report["window"] = {
@@ -336,6 +354,7 @@ def main():
                 "interactions",
                 "clipboard",
                 "react-workspace",
+                "solid-workspace",
             ):
 
                 def require_layout_window():
@@ -350,9 +369,15 @@ def main():
                     "interactions": INTERACTIONS,
                     "clipboard": CLIPBOARD,
                     "react-workspace": WORKSPACE,
+                    "solid-workspace": SOLID_WORKSPACE,
                 }[args.scenario]
                 scenario_arguments = [DRIVER]
-                if args.scenario in ("interactions", "clipboard", "react-workspace"):
+                if args.scenario in (
+                    "interactions",
+                    "clipboard",
+                    "react-workspace",
+                    "solid-workspace",
+                ):
                     scenario_arguments.append(LAYOUT)
                 report[args.scenario + "Observations"] = scenario.run(
                     *scenario_arguments,

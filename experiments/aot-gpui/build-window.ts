@@ -48,6 +48,8 @@ const entries = {
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
   solid: 'examples/solid-counter/main.tsx',
+  'solid-workspace': 'examples/solid-workspace/main.tsx',
+  'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   react: 'examples/react-counter/main.tsx',
@@ -65,6 +67,8 @@ if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(en
 const entryPath = entries[entry]
 const solidEntry =
   entry === 'solid' ||
+  entry === 'solid-workspace' ||
+  entry === 'solid-workspace-flow' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-services'
@@ -199,6 +203,10 @@ async function sourceHashes() {
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
+  if (entry === 'solid-workspace' || entry === 'solid-workspace-flow') {
+    sources.add('examples/solid-workspace/app.tsx')
+    sources.add('examples/solid-workspace/model.ts')
+  }
   if (entry === 'react-workspace' || entry === 'react-workspace-flow') {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/react-workspace/model.ts')

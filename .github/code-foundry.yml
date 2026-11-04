@@ -1,7 +1,7 @@
 # Bun Native: Code Foundry owns draft/release policy; native CI is repository-owned.
 version: 1
 profile: monorepo
-languages: typescript,rust
+languages: typescript,rust,python
 package_manager: bun
 toolchain: native
 runtime_repository: 0xPlayerOne/code-foundry

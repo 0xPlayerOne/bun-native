@@ -145,7 +145,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native host Clippy failed' }
           cargo test --locked --release -p bun-native-host
           if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
-      - name: Verify native macOS backing-layer invalidation
+      - name: Verify native macOS layer invalidation and assigned Metal identity
         if: runner.os == 'macOS'
         timeout-minutes: 3
         run: |
@@ -169,9 +169,11 @@ jobs:
       - name: Development actual native paint and lifecycle
         timeout-minutes: 3
         run: |
+          $telemetry = @()
+          if ($IsMacOS) { $telemetry += '--require-metal-device' }
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
-            --mode development --host-profile release -- bun tests/native/platform-smoke.ts
+            --mode development --host-profile release @telemetry -- bun tests/native/platform-smoke.ts
           if ($LASTEXITCODE -ne 0) { throw 'Development native paint/lifecycle was not verified' }
       - name: Build the bounded macOS OS controller
         if: runner.os == 'macOS'
@@ -207,9 +209,11 @@ jobs:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
           BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
+          $telemetry = @()
+          if ($IsMacOS) { $telemetry += '--require-metal-device' }
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development-input') `
-            --mode development --host-profile release --os-input -- bun tests/native/platform-smoke.ts
+            --mode development --host-profile release --os-input @telemetry -- bun tests/native/platform-smoke.ts
           if ($LASTEXITCODE -ne 0) { throw 'Actual owned window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Prove a wrong native paint expectation fails
         timeout-minutes: 3
@@ -244,9 +248,11 @@ jobs:
       - name: AOT actual native paint and lifecycle
         timeout-minutes: 3
         run: |
+          $telemetry = @()
+          if ($IsMacOS) { $telemetry += '--require-metal-device' }
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot') `
-            --mode aot --host-profile release -- `
+            --mode aot --host-profile release @telemetry -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
       - name: AOT owned native window and OS input
@@ -255,9 +261,11 @@ jobs:
           BUN_NATIVE_POINTER_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
           BUN_NATIVE_STARTUP_TRACE: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: |
+          $telemetry = @()
+          if ($IsMacOS) { $telemetry += '--require-metal-device' }
           & '${{ matrix.python }}' scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot-input') `
-            --mode aot --host-profile release --os-input -- `
+            --mode aot --host-profile release --os-input @telemetry -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'Actual AOT window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
       - name: Retain unsigned native host for reproducibility

@@ -2,13 +2,14 @@
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)] // Test-owned Objective-C objects and borrowed native handles.
 mod control {
-    use bun_native_macos_surface::{InvalidationError, invalidate};
+    use bun_native_macos_surface::{SurfaceError, invalidate, metal_device};
     use objc2::rc::Retained;
     use objc2::runtime::ProtocolObject;
     use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
     use objc2_app_kit::NSView;
     use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
-    use objc2_quartz_core::{CALayer, CALayerDelegate};
+    use objc2_metal::{MTLCreateSystemDefaultDevice, MTLDevice};
+    use objc2_quartz_core::{CALayer, CALayerDelegate, CAMetalLayer};
     use raw_window_handle::{AppKitWindowHandle, RawWindowHandle, WindowHandle};
     use std::cell::Cell;
     use std::ptr::NonNull;
@@ -139,9 +140,30 @@ mod control {
         let raw = AppKitWindowHandle::new(NonNull::from(&*unbacked).cast());
         // SAFETY: unbacked owns this live NSView until after the call.
         let handle = unsafe { WindowHandle::borrow_raw(RawWindowHandle::AppKit(raw)) };
-        assert_eq!(invalidate(handle), Err(InvalidationError::MissingLayer));
+        assert_eq!(invalidate(handle), Err(SurfaceError::MissingLayer));
+        assert_eq!(metal_device(handle), Err(SurfaceError::MissingLayer));
+        assert_eq!(
+            metal_device(target.handle()),
+            Err(SurfaceError::NotMetalLayer)
+        );
+
+        // This independent fixture assigns a device to a test-owned layer. The
+        // production reader must report that assignment and must not fall back
+        // to a system/default device when the assignment is removed.
+        let metal = CAMetalLayer::new();
+        unbacked.setLayer(Some(&metal));
+        unbacked.setWantsLayer(true);
+        assert_eq!(metal_device(handle), Err(SurfaceError::MissingDevice));
+        let assigned = MTLCreateSystemDefaultDevice().expect("control requires a Metal device");
+        metal.setDevice(Some(&assigned));
+        let observed = metal_device(handle).expect("assigned layer device was not observed");
+        assert_eq!(observed.name, assigned.name().to_string());
+        assert_eq!(observed.registry_id, assigned.registryID());
+        assert!(!observed.name.is_empty());
+        metal.setDevice(None);
+        assert_eq!(metal_device(handle), Err(SurfaceError::MissingDevice));
         println!(
-            "Core Animation controls passed: deferred, delegate, isolated, coalesced, rearmed, unbacked"
+            "Core Animation controls passed: deferred, delegate, isolated, coalesced, rearmed, unbacked, assigned Metal identity, missing device, non-Metal layer"
         );
     }
 }
