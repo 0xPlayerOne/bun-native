@@ -7,11 +7,18 @@ associated with that window through GPUI. `readClipboardText()` and
 UI thread. Solid and React use the same public window methods; neither adapter
 owns an OS implementation.
 
-The protocol-5 core, Solid and React display consumers passed actual Linux development/AOT
-qualification on one isolated Xvfb screen with a development-profile host.
-Hosted release-host acceptance is configured separately; macOS and Windows
-service execution remains unverified. Parser and type checks are separate
-evidence. See the [source-bound record](../tests/native/evidence/services-linux-development-aot.json).
+The protocol-6 core, Solid and React display consumers passed all six actual
+Linux development/AOT cases with a release-profile host at main
+`c9ada928eb86ee44abeb85ba13721a68af0057d6` in
+[run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949).
+The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
+binds the artifact, compiler manifests, raw results and source hashes. This
+qualifies one isolated scale-1 Xvfb screen; macOS, Windows, Wayland and
+multi-monitor service behavior remain unverified. The earlier
+[protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
+remains separate historical evidence. Parser and type checks do not substitute
+for either native run.
+
 The recovered protocol-6 clipboard increment passed fresh source, isolated-X11
 development and inspected AOT checks on November 2, 2026. Each native run
 completed 26 outcomes and joined 22 independent peers with no forced cleanup.
@@ -19,7 +26,15 @@ The [fresh record](../tests/native/evidence/clipboard-linux-recovered.json)
 binds the new source and binaries, separately from the
 [historical recovery note](../tests/native/evidence/clipboard-recovery-history.json)
 whose prior raw artifacts were lost. These local runs use a development-profile
-Rust host; hosted release-host acceptance remains pending.
+Rust host. A separate [hosted release-host qualification](../tests/native/evidence/clipboard-linux-hosted-release.json)
+on November 4, 2026 passed development and inspected AOT at main
+`c9ada928eb86ee44abeb85ba13721a68af0057d6`. Both modes completed all 26 outcomes,
+joined all 22 peers and returned all seven public ownership counts to zero.
+The downloaded artifact's checksum, all 75 scenario source fingerprints and
+all 69 compiler source fingerprints were verified against that commit. This
+qualifies the bounded local Linux X11 text implementation in #300; macOS,
+Windows, Wayland, remote X11 and richer clipboard formats remain unavailable.
+Other native services retain the explicit deferrals in the matrix below.
 
 ## Policy and capability contract
 
@@ -229,17 +244,24 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                     | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified locally; release CI pending | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified locally; release CI pending              | Unavailable                  | Unavailable                  | Release-host checks, additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                        |
-| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                                   | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                   | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                   | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                                   | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                   | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                   | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                   | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                             |
+| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                         | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
+| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                         | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+
+For the deferred rows, the exported typed contract is the frozen availability
+record in `ServiceCapabilities`. There is no callable operation, configurable
+grant or promised invocation result for those services yet. Their matrix
+requirements and linked issues define the work needed before exposing an
+invocation API. An unavailable capability must not be replaced with a fake
+success, an adapter-specific OS implementation or a browser fallback.
 
 The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
@@ -252,12 +274,44 @@ authority by itself. An application choosing ordinary Bun process/filesystem
 APIs uses its own trusted authority and must not describe that as a native
 service grant or a sandbox supplied by this framework.
 
+## Foundation acceptance and remaining scope
+
+[Desktop-service foundation #255](https://github.com/0xPlayerOne/bun-native/issues/255)
+permits one real minimal slice plus explicit deferrals. The owned display read
+provides that slice: a typed public result, default-deny native launch policy,
+request/window identity validation, typed denial/unavailability, cancellation
+delivery rules and joined teardown. The core and both framework fixtures use
+the same public window method and native implementation.
+
+The hosted record above contains six passed cases: core, Solid and React,
+each under development Bun and inspected AOT. An XTest click triggers the
+real GPUI display read, its result matches independent `xdpyinfo` geometry,
+and a complete six-node native paint changes from `Display ready` to
+`Display: 1280x800 @1`. Each case then OS-closes, exits without forced cleanup,
+and reports all seven application ownership counters at zero. The two core
+cases also require native denial, queued cancellation, native unknown/stale
+owner rejection, shutdown before dispatch and public stale-handle rejection.
+Both framework cases in each mode require exactly one owner disposal and zero
+renderer nodes/listeners with no pending commit.
+
+This is finite evidence for the shared contract and chosen slice. The AOT
+manifests verify a compiled program and unused JIT; the input driver itself
+does not certify compilation. The original archive excludes the application
+and host binaries, so its recorded binary hashes cannot be independently
+recomputed from that archive. It does not establish physical input, hardware
+rendering, presentation timing, broad platform support or long-term leak
+freedom. [Display follow-up #299](https://github.com/0xPlayerOne/bun-native/issues/299),
+the separate [clipboard acceptance #300](https://github.com/0xPlayerOne/bun-native/issues/300),
+[first-open failure #296](https://github.com/0xPlayerOne/bun-native/issues/296),
+[stress-close failure #358](https://github.com/0xPlayerOne/bun-native/issues/358)
+and the other deferred-service tickets remain independent work.
+
 ## Why the first slice is display information
 
 Display reads give a small real operation with native ownership, explicit
 denial, cancellation delivery and teardown, without changing user data. The
 clipboard worker now supplies a separate native implementation for bounded
-selection transfers; [ADR 0006](decisions/0007-native-clipboard.md) records its
+selection transfers; [ADR 0007](decisions/0007-native-clipboard.md) records its
 explicit scope and verification requirements.
 
 At the exact GPUI pin, the default
