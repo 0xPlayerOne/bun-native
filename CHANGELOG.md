@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/0xPlayerOne/bun-native/compare/v0.14.2...v0.14.3) (2026-11-04)
+
+
+### Bug Fixes
+
+* **core:** release listeners retained by revoked unsubscribe handles ([#341](https://github.com/0xPlayerOne/bun-native/issues/341)) ([aab3a4f](https://github.com/0xPlayerOne/bun-native/commit/aab3a4fa45b235ff213758bce8578ec17129f61c))
+
 ## [0.14.2](https://github.com/0xPlayerOne/bun-native/compare/v0.14.1...v0.14.2) (2026-11-04)
 
 
