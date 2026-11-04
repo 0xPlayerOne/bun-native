@@ -1,0 +1,92 @@
+{
+  "source_commit": "4200185c53a31db131c11749217ae74431d619e5",
+  "source_tree": "2cd7c3f57164d916afdf80caa5ebce4f681dc533",
+  "scope": "actual Linux release compilation and Clippy only; no native app execution",
+  "rust": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "commands": [
+    {
+      "name": "release-build",
+      "argv": ["cargo", "build", "--offline", "--locked", "--release", "-p", "bun-native-host"],
+      "exit_code": 0,
+      "elapsed_seconds": 186.98297632400136,
+      "log_sha256": "ee0be3f4780d906928ef39dc22b813d22bf950d9d00ecfc4e7ec12ccadaefb44"
+    },
+    {
+      "name": "clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.3263380829994276,
+      "log_sha256": "167c7eea8e7bd4b25b81e2466b66d0d9f8548731654c1f72d81163aaf7bec76b"
+    }
+  ],
+  "host": {
+    "bytes": 29500976,
+    "sha256": "ec0bbe8b15a5a4e12c3e0f8c4f01e6c45f61195866c887ecb5ffdeecf6affdbf"
+  },
+  "published_equivalent_commit": "707e58cb02d9552ebe3166109aed408620ef396e",
+  "source_scope_note": "This receipt measures clean4200185c/tree2cd7c3f5 before the provenance-reader follow-up. The follow-up does not change native host sources, vendored HAL compile inputs, Cargo manifests or lockfile. No binary execution, GUI, AOT app, retention or startup qualification is claimed.",
+  "macos_host_cross_check": {
+    "source_commit": "4200185c53a31db131c11749217ae74431d619e5",
+    "scope": "macOS ARM64 host cross-check; no native application execution",
+    "argv": [
+      "cargo",
+      "check",
+      "--offline",
+      "--locked",
+      "-p",
+      "bun-native-host",
+      "--target",
+      "aarch64-apple-darwin"
+    ],
+    "exit_code": 101,
+    "elapsed_seconds": 0.43622252800196293,
+    "log_sha256": "2ff335616c6272ad0ab18449f0ff6182d11a654b9de8347ffb6c47da52ab25d3",
+    "output": "error: failed to download `accesskit_macos v0.26.3`\n\nCaused by:\n  attempting to make an HTTP request, but --offline was specified\n",
+    "status": "unsupported locally: required macOS dependency is absent from offline cache"
+  },
+  "preliminary_macos_hal_invocation": {
+    "source_commit": "4200185c53a31db131c11749217ae74431d619e5",
+    "scope": "macOS ARM64 Metal HAL cross-check only; no native application execution",
+    "argv": [
+      "cargo",
+      "check",
+      "--offline",
+      "--locked",
+      "-p",
+      "wgpu-hal",
+      "--features",
+      "metal",
+      "--target",
+      "aarch64-apple-darwin"
+    ],
+    "exit_code": 101,
+    "elapsed_seconds": 0.08251464400018449,
+    "log_sha256": "e8ba25ea0890bf6630709e9f811ccb71944e489015181c521f81c609f9040c2a",
+    "output": "error: cannot specify features for packages outside of workspace\n",
+    "status": "invalid invocation: Cargo rejects feature selection for a package outside the workspace"
+  },
+  "provenance_reader_controls": {
+    "typescript_original": "0 pass,2 fail; omitted77 actual vendored compile inputs and the isolated fixture inputs",
+    "python_original": "both runner subtests fail; diagnostics omits77 inputs,allocation omits4 GLSL assets",
+    "typescript_corrected": "2 pass,0 fail,6 expectations",
+    "python_corrected": "1 test with2 runner subtests passes;77 actual compile inputs each checked for membership,bytes,SHA256",
+    "log_sha256": {
+      "inventory-typescript-red": "1e54c38018a710448990b62667bbe588a79b8248e0319b07243cf939b251187e",
+      "inventory-python-red": "010c6a5cf506bee48fce198b164e2b1bd563bfbe9ca2ed1fc7b65955c6c99b00",
+      "inventory-typescript-green": "d603f551be8e6eb8b7928f664505dc01173d8833b71bc3a5d7a8794e90d8c3ab",
+      "inventory-python-green": "c9921cc137de3dbc5a1e098ca9c64e5c664017fdc03b581f056c391b22049657"
+    },
+    "original_reader_source": "4200185c53a31db131c11749217ae74431d619e5",
+    "test_source_note": "The new regression tests were applied to the committed original readers for red controls, then formatted with the reader correction for green controls. The raw log hashes preserve both observations; this is a source-inventory check, not a native run."
+  }
+}
