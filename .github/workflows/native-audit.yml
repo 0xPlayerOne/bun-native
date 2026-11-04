@@ -1,0 +1,21 @@
+name: Bun Native Scheduled Audit
+
+on:
+  schedule:
+    - cron: '23 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bun-native-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validation:
+    name: Protected-main validation
+    if: github.ref == 'refs/heads/main' && vars.CI_BILLING_PAUSED == 'false'
+    # A local reusable workflow uses this caller's exact protected-main commit.
+    # No caller-controlled source or runtime ref is accepted.
+    uses: ./.github/workflows/bun-native.yml
