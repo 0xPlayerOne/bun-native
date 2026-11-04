@@ -18,6 +18,7 @@ import { buildProject, bundleProject } from '../../scripts/native/build.ts'
 import { prebuiltHost } from '../../scripts/native/host.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { hostHeader } from './host-fixture.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 const cli = join(repository, 'scripts/native.ts')
@@ -53,32 +54,6 @@ function success(args: string[], cwd?: string) {
   expect(result.signal).toBeNull()
   if (result.code !== 0) throw new Error(result.output)
   return result.output
-}
-
-// Recognizable image headers exercise host selection only. These are deliberately
-// incomplete images, never launched or presented as qualified native hosts.
-function hostHeader(platform: 'linux' | 'darwin' | 'win32', architecture: 'x64' | 'arm64') {
-  const header = Buffer.alloc(256)
-  if (platform === 'linux') {
-    header.write('\x7fELF', 0)
-    header[4] = 2 // ELFCLASS64
-    header[5] = 1 // ELFDATA2LSB
-    header[6] = 1 // EV_CURRENT
-    header.writeUInt16LE(2, 16) // ET_EXEC
-    header.writeUInt16LE(architecture === 'x64' ? 62 : 183, 18)
-    header.writeUInt32LE(1, 20)
-    header.writeUInt16LE(64, 52)
-  } else if (platform === 'darwin') {
-    header.writeUInt32LE(0xfeedfacf, 0) // MH_MAGIC_64
-    header.writeUInt32LE(architecture === 'x64' ? 0x01000007 : 0x0100000c, 4)
-    header.writeUInt32LE(2, 12) // MH_EXECUTE
-  } else {
-    header.write('MZ', 0)
-    header.writeUInt32LE(128, 60)
-    header.write('PE\0\0', 128)
-    header.writeUInt16LE(architecture === 'x64' ? 0x8664 : 0xaa64, 132)
-  }
-  return header
 }
 
 describe('checkout application CLI (real bundler and compiler; no native rendering)', () => {
