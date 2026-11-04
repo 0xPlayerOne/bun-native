@@ -114,6 +114,9 @@ class EvidenceTests(unittest.TestCase):
         }
         keyboard = {**click, "activation": 2, "sequence": 7}
         self.assertTrue(DRIVER.matches(click, DRIVER.fixture_click(1)))
+        self.assertFalse(
+            DRIVER.matches({**click, "activation": True}, DRIVER.fixture_click(1))
+        )
         self.assertFalse(DRIVER.matches(click, DRIVER.fixture_click(2)))
         self.assertTrue(DRIVER.matches(keyboard, DRIVER.fixture_click(2)))
 
