@@ -2,6 +2,7 @@
 
 import copy
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
@@ -283,6 +284,41 @@ class InputViewportPaintControls(unittest.TestCase):
             self.assertFalse(
                 PAINT.pixel_counts(wrong, [160, 60], observation(), "end")["passed"]
             )
+
+    def test_recorded_lcd_glyph_edge_is_not_an_opaque_caret(self):
+        recorded = json.loads(
+            (
+                Path(__file__).parent / "fixtures/input-viewport-lcd-edge.json"
+            ).read_text()
+        )
+        # The retained 5x5 neighborhood includes the original false positive at
+        # (266,133), RGB (32,99,183). Only its placement and the remaining canvas
+        # are synthetic; the recorded glyph fringe must not become a caret.
+        pixels = canvas()
+        fill(pixels, [45, 22, 6, 8], [255, 255, 255])
+        fill(pixels, [68, 10, 2, 30], [0, 0, 255])
+        for y, row in enumerate(recorded["rgb"]):
+            for x, color in enumerate(row):
+                fill(pixels, [43 + x, 15 + y, 1, 1], color)
+        counts = PAINT.pixel_counts(pixels, [160, 60], observation(), "end")
+        self.assertTrue(counts["passed"])
+        self.assertEqual(counts["caret"], 60)
+        self.assertEqual(counts["misplacedCaret"], 0)
+
+        missing = pixels.copy()
+        fill(missing, [68, 10, 2, 30], [24, 36, 48])
+        counts = PAINT.pixel_counts(missing, [160, 60], observation(), "end")
+        self.assertFalse(counts["passed"])
+        self.assertEqual(counts["caret"], 0)
+
+        # Even one genuine opaque caret pixel away from the expected edge must
+        # fail, including when it replaces that exact antialiased fringe pixel.
+        for position in ([45, 17, 1, 1], [80, 17, 1, 1]):
+            misplaced = pixels.copy()
+            fill(misplaced, position, [0, 0, 255])
+            counts = PAINT.pixel_counts(misplaced, [160, 60], observation(), "end")
+            self.assertFalse(counts["passed"])
+            self.assertEqual(counts["misplacedCaret"], 1)
 
     def test_home_pixels_reject_deliberately_unclipped_tail(self):
         view = {

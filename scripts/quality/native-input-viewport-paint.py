@@ -384,7 +384,10 @@ def pixel_counts(pixels, size, observation, mode):
                 and max(red, green) < 100
             )
             counts["outsideSelection"] += int(not inside and selection_tint)
-            if blue >= 180 and red <= 70 and green <= 100:
+            # input/paint.rs fills the scale-1, opaque caret with gpui::blue().
+            # White glyphs have colored LCD fringes (the retained native case
+            # includes RGB 32,99,183), so blue dominance cannot identify it.
+            if (red, green, blue) == (0, 0, 255):
                 caret = expected_caret
                 at_caret = (
                     caret is not None

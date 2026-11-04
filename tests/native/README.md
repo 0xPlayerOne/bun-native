@@ -335,6 +335,17 @@ predicates check those pixels. Their deterministic RGB controls deliberately
 omit translation, clipping, caret or selection; those synthetic controls are
 not native execution evidence.
 
+The scale-1 fixture identifies the caret by its actual opaque `gpui::blue()`
+fill, RGB `(0,0,255)`. Blue-dominant LCD edges of white glyphs are not caret
+pixels. The recorded 5×5 glyph neighborhood in
+`tests/quality/fixtures/input-viewport-lcd-edge.json` preserves the original
+false positive from run `41907537790`, artifact `13361963848`, together with
+the failed head and full screenshot hash. Its regression composes those exact
+pixels with synthetic controls; even one genuine misplaced caret pixel still
+fails, and missing caret, untranslated text, unclipped glyphs and exterior
+selection tint remain failures. Reclassifying retained pixels does not turn
+that failed native run into a passed scenario or qualify its unexecuted phases.
+
 Actual OS actions move one character left from the scrolled end, then click
 back to the final byte. Both a fresh native GPUI down/up capture and the public
 input listener's matching down/up sequence must arrive at that injected logical
