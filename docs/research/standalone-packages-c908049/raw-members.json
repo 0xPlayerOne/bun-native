@@ -1,0 +1,432 @@
+[
+  {
+    "path": "cohort/cache-before.json",
+    "bytes": 759557,
+    "sha256": "ee743176f9917207afc8acc98b190ff3f569d8e02497ab2bc9b52a256fdcf434"
+  },
+  {
+    "path": "cohort/logs/create-react-javascript.bun.lock",
+    "bytes": 17124,
+    "sha256": "7304e71c17ac2cc40296118da18ee4ae957d1322d144b55d9194195c7498c417"
+  },
+  {
+    "path": "cohort/logs/create-react-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/logs/create-react-javascript.stdout.log",
+    "bytes": 209,
+    "sha256": "0494389f37f72547a6e71cb0eaa8332edc457a5aa3c83a4b0c4de115952422af"
+  },
+  {
+    "path": "cohort/logs/create-react-typescript.bun.lock",
+    "bytes": 17124,
+    "sha256": "85b24f5325adda6ee0d159e6b0f1946f33f90ef4277d0c037e180434dd8c3acf"
+  },
+  {
+    "path": "cohort/logs/create-react-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/logs/create-react-typescript.stdout.log",
+    "bytes": 209,
+    "sha256": "ebe16fddcd75c9e4a9f59d7b5f764a5ba50f499346b21c0648911fd5edb69725"
+  },
+  {
+    "path": "cohort/logs/create-solid-javascript.bun.lock",
+    "bytes": 16585,
+    "sha256": "cb6832a3e666be0dc24ad9bb90bc99c7944a471d1c6c74bc67ab9d088264369e"
+  },
+  {
+    "path": "cohort/logs/create-solid-javascript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/logs/create-solid-javascript.stdout.log",
+    "bytes": 209,
+    "sha256": "8c67b5ae97c869d3f725cf7d771d4a88cbdff27f72be839f2b32d5daa3c8e3f6"
+  },
+  {
+    "path": "cohort/logs/create-solid-typescript.bun.lock",
+    "bytes": 16585,
+    "sha256": "982a8a635d5f41eaf2b0e06925815113bcba57cece4c63b25f1d573e4a96b2c9"
+  },
+  {
+    "path": "cohort/logs/create-solid-typescript.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/logs/create-solid-typescript.stdout.log",
+    "bytes": 209,
+    "sha256": "f5a455d97d610aa66ac05ca468d1362e7ba0a80b1be4df79cdab38da04d92b3e"
+  },
+  {
+    "path": "cohort/logs/install-empty-cache.bun.lock",
+    "bytes": 16585,
+    "sha256": "982a8a635d5f41eaf2b0e06925815113bcba57cece4c63b25f1d573e4a96b2c9"
+  },
+  {
+    "path": "cohort/logs/install-empty-cache.stderr.log",
+    "bytes": 869,
+    "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+  },
+  {
+    "path": "cohort/logs/install-empty-cache.stdout.log",
+    "bytes": 40,
+    "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+  },
+  {
+    "path": "cohort/logs/install-first-solid-typescript.stderr.log",
+    "bytes": 869,
+    "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+  },
+  {
+    "path": "cohort/logs/install-first-solid-typescript.stdout.log",
+    "bytes": 40,
+    "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+  },
+  {
+    "path": "cohort/logs/package-set.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/logs/package-set.stdout.log",
+    "bytes": 295,
+    "sha256": "ad2bae316d4e5842d2cea1fafa6c25de09df4d4f30f9a2e46c48ee5b60e59902"
+  },
+  {
+    "path": "cohort/original/react-javascript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+  },
+  {
+    "path": "cohort/original/react-javascript/README.md",
+    "bytes": 2166,
+    "sha256": "96666ebb8596733530c8ec400983c493b43e0bf6429c5ff3bc4ef23175f945d4"
+  },
+  {
+    "path": "cohort/original/react-javascript/bun-native.json",
+    "bytes": 123,
+    "sha256": "e3ad20da92ecd59a570fb15834818cf83c9d38de9a4deee058136d8f7c1afd97"
+  },
+  {
+    "path": "cohort/original/react-javascript/bun.lock",
+    "bytes": 17124,
+    "sha256": "7304e71c17ac2cc40296118da18ee4ae957d1322d144b55d9194195c7498c417"
+  },
+  {
+    "path": "cohort/original/react-javascript/main.jsx",
+    "bytes": 1985,
+    "sha256": "32ee9fb11a8edcbb7afe911e1f4315a37b1cbb5756d50c0cb5211927478276e7"
+  },
+  {
+    "path": "cohort/original/react-javascript/package.json",
+    "bytes": 1527,
+    "sha256": "d166821018de3b273717eba74110d50277c69689c32e0dd608036468df7247fa"
+  },
+  {
+    "path": "cohort/original/react-javascript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "4b5488c1cd8617d7f939e4c287c499c7e6f8ba8449f238aa9baabef7f2baed85"
+  },
+  {
+    "path": "cohort/original/react-typescript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+  },
+  {
+    "path": "cohort/original/react-typescript/README.md",
+    "bytes": 2166,
+    "sha256": "6af8e66c34c946adbdffe93dfa5bc34d634aeca9eb04e9f21ff3056a8e176810"
+  },
+  {
+    "path": "cohort/original/react-typescript/bun-native.json",
+    "bytes": 123,
+    "sha256": "61b81de64b8eded84ba03b040d7eee195a50b3e8e04a932ab593709fb04eb968"
+  },
+  {
+    "path": "cohort/original/react-typescript/bun.lock",
+    "bytes": 17124,
+    "sha256": "85b24f5325adda6ee0d159e6b0f1946f33f90ef4277d0c037e180434dd8c3acf"
+  },
+  {
+    "path": "cohort/original/react-typescript/main.tsx",
+    "bytes": 1968,
+    "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e"
+  },
+  {
+    "path": "cohort/original/react-typescript/package.json",
+    "bytes": 1527,
+    "sha256": "3140941cd1fd18207eef24366a44d6d8de1064cd9508011f6bcbbe6e324e5e83"
+  },
+  {
+    "path": "cohort/original/react-typescript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "d42cfedabbc8b112214996b9ea9dba3b8c11841f13c627774d171af9e4a9eee4"
+  },
+  {
+    "path": "cohort/original/solid-javascript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+  },
+  {
+    "path": "cohort/original/solid-javascript/README.md",
+    "bytes": 2166,
+    "sha256": "0b63a73fe9f3b2f619a4a89d199030c7a9965e191b7692985599db5e2174d6b3"
+  },
+  {
+    "path": "cohort/original/solid-javascript/bun-native.json",
+    "bytes": 123,
+    "sha256": "774670032a8e5662a756410a3a045903f501d30ccb81c297e91650489b664398"
+  },
+  {
+    "path": "cohort/original/solid-javascript/bun.lock",
+    "bytes": 16585,
+    "sha256": "cb6832a3e666be0dc24ad9bb90bc99c7944a471d1c6c74bc67ab9d088264369e"
+  },
+  {
+    "path": "cohort/original/solid-javascript/main.jsx",
+    "bytes": 1952,
+    "sha256": "efa4405db8555043cfc7c85fbc40b47baed83881be0ec5549fe978679c38902c"
+  },
+  {
+    "path": "cohort/original/solid-javascript/package.json",
+    "bytes": 1459,
+    "sha256": "20c07bd8c40a98677ab087d95f65e78837538f0d769023f6a0fd1fad23d5f3a5"
+  },
+  {
+    "path": "cohort/original/solid-javascript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "e82d6ec86e779fdc45565fc695fe614a715e6f672143f33ae6e866a36b0b1b7f"
+  },
+  {
+    "path": "cohort/original/solid-typescript/.gitignore",
+    "bytes": 33,
+    "sha256": "3395b06c573e3f70e61e19521fc5042056915702d04786e59075e6eb0c03bc72"
+  },
+  {
+    "path": "cohort/original/solid-typescript/README.md",
+    "bytes": 2166,
+    "sha256": "4281911899949b79c3755bc81dada9990c377fce6ee362f4b769b4cd7f1ec77a"
+  },
+  {
+    "path": "cohort/original/solid-typescript/bun-native.json",
+    "bytes": 123,
+    "sha256": "21643d8647c6f11850ed8dd16c59ca237f72e32e1c425d249da89616494a5d23"
+  },
+  {
+    "path": "cohort/original/solid-typescript/bun.lock",
+    "bytes": 16585,
+    "sha256": "982a8a635d5f41eaf2b0e06925815113bcba57cece4c63b25f1d573e4a96b2c9"
+  },
+  {
+    "path": "cohort/original/solid-typescript/main.tsx",
+    "bytes": 1935,
+    "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e"
+  },
+  {
+    "path": "cohort/original/solid-typescript/package.json",
+    "bytes": 1459,
+    "sha256": "cde06f33ad9e049f499cec01e864e9f0054986167e1484ce8ca5d549fd0380d6"
+  },
+  {
+    "path": "cohort/original/solid-typescript/tsconfig.json",
+    "bytes": 802,
+    "sha256": "fd6a149d940815fdfff7389e0bb7c562208700d4f9aeeb87f6a9395281f007e2"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-cli-0.16.0-c90804933034.tgz",
+    "bytes": 29015,
+    "sha256": "08847ced2ce362bd0197a5ad2f0ffc613bd73954ce3028cd346f5b1f738e5adf"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-core-0.0.0-c90804933034.tgz",
+    "bytes": 13936,
+    "sha256": "251545820ae5ae21b70dba7ebffbecc171539b93babd47c19f3604f4c3a3ef67"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-protocol-0.0.0-c90804933034.tgz",
+    "bytes": 9208,
+    "sha256": "3280c34be50b9a1ab1aa239edf897c89baf16bb2fba21bd672c79709b511f643"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-react-0.0.0-c90804933034.tgz",
+    "bytes": 7748,
+    "sha256": "aefa07f3c2a8e7ec83737a16d1632758bd63867e8c6b0897eb2ecf95c29768b6"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-renderer-0.0.0-c90804933034.tgz",
+    "bytes": 11145,
+    "sha256": "fa3d593ce36d8f4944498843252ab1d5df4a4a11aea0af7c699ff375f2663c01"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-runtime-0.0.0-c90804933034.tgz",
+    "bytes": 7750,
+    "sha256": "19c957d9279f7d48d837871a1d05b027922afcfcb27c30609862866908e4dea6"
+  },
+  {
+    "path": "cohort/packages/archives/bun-native-solid-0.0.0-c90804933034.tgz",
+    "bytes": 3457,
+    "sha256": "39e81ebb3559a320aea65fe98b5c648a289c9b13355b6530a0d380d7ce161fb3"
+  },
+  {
+    "path": "cohort/packages/logs/cli.json",
+    "bytes": 370,
+    "sha256": "34290fa568c8e1347f685a1642757bdbb673c7768deba3d8d82b1ca233d7b79c"
+  },
+  {
+    "path": "cohort/packages/logs/cli.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/cli.stdout.log",
+    "bytes": 1284,
+    "sha256": "6f305eb65c3129139a898a539b0aec2d8e2b04afc5a12f32b07890fa3a119ac5"
+  },
+  {
+    "path": "cohort/packages/logs/core.json",
+    "bytes": 379,
+    "sha256": "da86ccc6324da0904a96cf484df4b247e3faf94b264ae7dcfb4e6030a10c73db"
+  },
+  {
+    "path": "cohort/packages/logs/core.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/core.stdout.log",
+    "bytes": 575,
+    "sha256": "80a07c76b65c513888e8b95eb85977e8b151c95cd99d6dee832efb72fed8c08c"
+  },
+  {
+    "path": "cohort/packages/logs/protocol.json",
+    "bytes": 387,
+    "sha256": "269f130544111625c92e41c015e7f4115951d356d484526c818a27e7e1955dcc"
+  },
+  {
+    "path": "cohort/packages/logs/protocol.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/protocol.stdout.log",
+    "bytes": 580,
+    "sha256": "204ab06e92a8910fb11b9f8eecc791feef1a8f32fa733e681b2ab4b87d46b406"
+  },
+  {
+    "path": "cohort/packages/logs/react.json",
+    "bytes": 381,
+    "sha256": "8a6bf2d770b7e4699a3e8813403c0af5bcf29d3c16fe5e9a238c137aabdbfaba"
+  },
+  {
+    "path": "cohort/packages/logs/react.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/react.stdout.log",
+    "bytes": 614,
+    "sha256": "a4c2d17f4f5520ca09de90571364d346e9fe269693717477e00147c7991dac94"
+  },
+  {
+    "path": "cohort/packages/logs/renderer.json",
+    "bytes": 387,
+    "sha256": "c82b1cb49d95b8d3b3f0a990d73f0634f012d0da16dce04dbca4a603116eff66"
+  },
+  {
+    "path": "cohort/packages/logs/renderer.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/renderer.stdout.log",
+    "bytes": 655,
+    "sha256": "b57146a0334f19edc284f1fb33565c9280e3f6fe060c06b2f775b27665f11bca"
+  },
+  {
+    "path": "cohort/packages/logs/runtime.json",
+    "bytes": 385,
+    "sha256": "2ac7056934610b570efa77cb1b7b75b32ac0a7a1760a1cb3555f935f758ff75a"
+  },
+  {
+    "path": "cohort/packages/logs/runtime.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/runtime.stdout.log",
+    "bytes": 466,
+    "sha256": "09db5e40b2d52ccb5de94c92e88d38a4e5397130886e5d77f369cab4d767112e"
+  },
+  {
+    "path": "cohort/packages/logs/solid.json",
+    "bytes": 381,
+    "sha256": "95aa6020b5fbbc8e84efca9115b710489ace759e6887870d087f294b6cee3ee3"
+  },
+  {
+    "path": "cohort/packages/logs/solid.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "cohort/packages/logs/solid.stdout.log",
+    "bytes": 510,
+    "sha256": "1cfd746d20e15afa87c69faf6ba49fa2c14e9e968b232e2b86ccb39f15db9868"
+  },
+  {
+    "path": "cohort/packages/manifest.json",
+    "bytes": 149570,
+    "sha256": "698954384e781f170cfeee0dbad186b424d86bd950bb6149da14dfbaffbf8f21"
+  },
+  {
+    "path": "cohort/result.json",
+    "bytes": 26980,
+    "sha256": "ab228f10b4638f701bea3de3d5f9a19757bb149fbc479540f95fa77de30b826e"
+  },
+  {
+    "path": "cohort/source-after.json",
+    "bytes": 83674,
+    "sha256": "148e7c08204515f0f00783166ffbdbe346c02066e927cace0b843fa4bd3f73e6"
+  },
+  {
+    "path": "cohort/source-before.json",
+    "bytes": 83674,
+    "sha256": "148e7c08204515f0f00783166ffbdbe346c02066e927cace0b843fa4bd3f73e6"
+  },
+  {
+    "path": "host/input.json",
+    "bytes": 694,
+    "sha256": "fd4b013e59786e47465f024bd31b0f2814453a81aea632598e5b95559874e617"
+  },
+  {
+    "path": "owner/owner-result.json",
+    "bytes": 560,
+    "sha256": "e0c77ba7427baeb5f440eeb9ead3ffbbb2e95fa4768d8ff22d57b6b5c400263d"
+  },
+  {
+    "path": "owner/owner-running.json",
+    "bytes": 728,
+    "sha256": "472e3f5b386370dbc11c7cfbb8605e8cc2082ec8f058e8fd23ee57fac7fc399f"
+  },
+  {
+    "path": "owner/preflight.json",
+    "bytes": 1863,
+    "sha256": "0301033f738f475e278722c30eae3d1696f76a5e7fe4905239f7d391329732f5"
+  },
+  {
+    "path": "owner/supervisor.stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "owner/supervisor.stdout.log",
+    "bytes": 89,
+    "sha256": "b32ca62f968b3651a6263b524e420b2f4b10ae6fcbc854a929a519e9ba1ca1cb"
+  }
+]

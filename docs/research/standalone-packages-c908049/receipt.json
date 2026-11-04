@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "status": "failed",
+  "measured_source": {
+    "commit": "c90804933034ccc942467de8eb47379d8ee47e71",
+    "tree": "4e944901d40ee3761d163cfc157e75d8f786469b"
+  },
+  "bun": {
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "host": {
+    "bytes": 29478384,
+    "sha256": "55ad891864636ab1e4c11ad4dd9973552f294ecce2adf7e1e39479f79aaeac9b"
+  },
+  "host_executed": false,
+  "source_files": 528,
+  "source_and_tools_invariant": {
+    "source": true,
+    "bun": true,
+    "host": true,
+    "sentinels_unused": true,
+    "all_direct_children_joined": true
+  },
+  "supervisor": {
+    "exit_code": 1,
+    "direct_child_joined": true,
+    "outer_forced_termination": false,
+    "elapsed_seconds": 2.9768771039998683,
+    "output": "/tmp/bun-native-standalone-c90804933034",
+    "final_head": "c90804933034ccc942467de8eb47379d8ee47e71",
+    "final_tree": "4e944901d40ee3761d163cfc157e75d8f786469b",
+    "final_status": "",
+    "stdout": {
+      "bytes": 89,
+      "sha256": "b32ca62f968b3651a6263b524e420b2f4b10ae6fcbc854a929a519e9ba1ca1cb"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "commands": [
+    {
+      "name": "package-set",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "--no-install",
+        "/workspace/scratch/2c5e94c456dd/worktrees/cli-external-projects/scripts/package-native.ts",
+        "--outdir",
+        "/tmp/bun-native-standalone-c90804933034/packages"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/neutral",
+      "timeout_seconds": 240,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 17,
+      "exit_code": 0,
+      "elapsed_seconds": 0.7665234919986688,
+      "stdout": {
+        "bytes": 295,
+        "sha256": "ad2bae316d4e5842d2cea1fafa6c25de09df4d4f30f9a2e46c48ee5b60e59902"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-solid-typescript",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "--no-install",
+        "/tmp/bun-native-standalone-c90804933034/packages/cli/src/scripts/native.ts",
+        "create",
+        "/tmp/bun-native-standalone-c90804933034/original/solid-typescript",
+        "--packages",
+        "/tmp/bun-native-standalone-c90804933034/packages/manifest.json",
+        "--framework",
+        "solid",
+        "--language",
+        "typescript"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/neutral",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 64,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06410798499928205,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "f5a455d97d610aa66ac05ca468d1362e7ba0a80b1be4df79cdab38da04d92b3e"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-solid-javascript",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "--no-install",
+        "/tmp/bun-native-standalone-c90804933034/packages/cli/src/scripts/native.ts",
+        "create",
+        "/tmp/bun-native-standalone-c90804933034/original/solid-javascript",
+        "--packages",
+        "/tmp/bun-native-standalone-c90804933034/packages/manifest.json",
+        "--framework",
+        "solid",
+        "--language",
+        "javascript"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/neutral",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 74,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06409103999976651,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "8c67b5ae97c869d3f725cf7d771d4a88cbdff27f72be839f2b32d5daa3c8e3f6"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-react-typescript",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "--no-install",
+        "/tmp/bun-native-standalone-c90804933034/packages/cli/src/scripts/native.ts",
+        "create",
+        "/tmp/bun-native-standalone-c90804933034/original/react-typescript",
+        "--packages",
+        "/tmp/bun-native-standalone-c90804933034/packages/manifest.json",
+        "--framework",
+        "react",
+        "--language",
+        "typescript"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/neutral",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 85,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06549837500278954,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "ebe16fddcd75c9e4a9f59d7b5f764a5ba50f499346b21c0648911fd5edb69725"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "create-react-javascript",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "--no-install",
+        "/tmp/bun-native-standalone-c90804933034/packages/cli/src/scripts/native.ts",
+        "create",
+        "/tmp/bun-native-standalone-c90804933034/original/react-javascript",
+        "--packages",
+        "/tmp/bun-native-standalone-c90804933034/packages/manifest.json",
+        "--framework",
+        "react",
+        "--language",
+        "javascript"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/neutral",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 96,
+      "exit_code": 0,
+      "elapsed_seconds": 0.06435357800000929,
+      "stdout": {
+        "bytes": 209,
+        "sha256": "0494389f37f72547a6e71cb0eaa8332edc457a5aa3c83a4b0c4de115952422af"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "install-empty-cache",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "install",
+        "--offline",
+        "--ignore-scripts",
+        "--linker",
+        "hoisted",
+        "--backend",
+        "copyfile"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/original/solid-typescript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 107,
+      "exit_code": 1,
+      "elapsed_seconds": 0.007749538002826739,
+      "stdout": {
+        "bytes": 40,
+        "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+      },
+      "stderr": {
+        "bytes": 869,
+        "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+      }
+    },
+    {
+      "name": "install-first-solid-typescript",
+      "argv": [
+        "/workspace/scratch/6e828a40ab37/bun-native-tools/bun",
+        "install",
+        "--offline",
+        "--ignore-scripts",
+        "--linker",
+        "hoisted",
+        "--backend",
+        "copyfile"
+      ],
+      "cwd": "/tmp/bun-native-standalone-c90804933034/original/solid-typescript",
+      "timeout_seconds": 60,
+      "status": "exited",
+      "direct_child_joined": true,
+      "forced_termination": false,
+      "descendant_cleanup_verified": false,
+      "pid": 114,
+      "exit_code": 1,
+      "elapsed_seconds": 0.00765125900215935,
+      "stdout": {
+        "bytes": 40,
+        "sha256": "a87f0d1f4e9f3e3b89eb45512f29f919df9f68c8c880040a4ea10029bf5d5579"
+      },
+      "stderr": {
+        "bytes": 869,
+        "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+      }
+    }
+  ],
+  "planned_vs_attempted": {
+    "package_calls": {
+      "planned": 7,
+      "attempted": 7,
+      "exit_0": 7
+    },
+    "creates": {
+      "planned": 4,
+      "attempted": 4,
+      "exit_0": 4
+    },
+    "empty_cache_install": {
+      "planned": 1,
+      "attempted": 1,
+      "exit_code": 1,
+      "original_harness_classification": "passed",
+      "audited_classification": "not-qualified-mixed-invalid-lock-and-cache-failure"
+    },
+    "populated_initial_installs": {
+      "planned": 4,
+      "attempted": 1,
+      "exit_code": 1
+    },
+    "relocated_frozen_installs": {
+      "planned": 4,
+      "attempted": 0
+    },
+    "lock_only_inspections": {
+      "planned": 4,
+      "attempted": 0
+    },
+    "checks": {
+      "planned": 4,
+      "attempted": 0
+    },
+    "public_import_smokes": {
+      "planned": 4,
+      "attempted": 0
+    },
+    "aot_builds": {
+      "planned": 4,
+      "attempted": 0
+    },
+    "invalid_input_cases": {
+      "planned": 8,
+      "attempted": 0
+    }
+  },
+  "first_unexpected_outcome": "Bun rejects the initial incomplete local-root lock, then ignores it. Both offline install attempts report the same invalid-lock and missing-registry-manifest errors. The populated attempt exits 1 and stops the fixed cohort.",
+  "raw_stderr": {
+    "empty_cache": {
+      "bytes": 869,
+      "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+    },
+    "populated_cache": {
+      "bytes": 869,
+      "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61"
+    },
+    "identical": true,
+    "excerpt": "5 |     \"\": {\n            ^\nerror: Failed to resolve root dev dependency '@bun-native/cli'\n    at bun.lock:5:9\nInvalidLockfile: failed to parse lockfile: 'bun.lock'\n\nwarn: Ignoring lockfile\nResolving dependencies\nResolved, downloaded and extracted [6]\nerror: --offline: no cached manifest for \"@types/bun\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"solid-js\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"@babel/core\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"babel-preset-solid\" (run once online, or use --prefer-offline)\nerror: @types/bun@1.4.4 failed to resolve\nerror: solid-js@1.9.18 failed to resolve\nerror: solid-js@1.9.18 failed to resolve\nerror: @babel/core@7.29.7 failed to resolve\nerror: babel-preset-solid@1.9.16 failed to resolve\n"
+  },
+  "raw_archive": {
+    "file": "raw.tar.gz",
+    "bytes": 421845,
+    "sha256": "fc1d46e58756532017fe67c7accc1eb846b1c96325f7b335668303b8a6a96117",
+    "members": 86,
+    "uncompressed_member_bytes": 1377680,
+    "members_manifest": {
+      "bytes": 14214,
+      "sha256": "947897c0e2a8031fde1326f2d3fe2583e9d3df765a3c2f39b431c137d01412c2"
+    }
+  },
+  "omissions": [
+    "Copied cache package contents (full copied-cache digest inventory retained)",
+    "Duplicate consumer vendor archives/manifests (the single original package set and generated-file digests retained)",
+    "Unpacked bootstrap CLI duplicate (exact CLI tarball retained)",
+    "Native host executable (existing qualified artifact identity retained)",
+    "Original source checkout (public commit/tree and every tracked-file digest retained)"
+  ],
+  "scope": [
+    "No application or native executable launched",
+    "No AOT, watch, native or GC workload attempted",
+    "All directly owned command children joined without forced termination; no independent descendant-process audit",
+    "No failed command retried and no later cohort variant executed",
+    "This record preserves the original raw classification as well as the narrower audited interpretation; original output files were not changed"
+  ]
+}
