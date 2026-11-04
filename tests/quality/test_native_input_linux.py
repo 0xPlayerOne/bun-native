@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/quality/native-input-linux.py"
 SPEC = importlib.util.spec_from_file_location("native_input_linux", SCRIPT)
@@ -140,6 +141,96 @@ class EvidenceTests(unittest.TestCase):
         ):
             with self.subTest(change=change):
                 self.assertFalse(DRIVER.matches({**click, **change}, expected))
+
+    def test_close_probe_does_not_attribute_foreign_or_reused_processes(self):
+        owner = {"pid": 20, "start_ticks": 100}
+        for output, table, expected in [
+            ("20\n", {20: {"start_ticks": 100}}, "present-owned"),
+            ("21\n", {21: {"start_ticks": 100}}, "present-foreign-owner"),
+            ("20\n", {20: {"start_ticks": 101}}, "present-unverified-owner"),
+            ("20\n", {}, "present-unverified-owner"),
+            ("20\n21\n", {}, "unknown"),
+            ("not-a-pid", {}, "unknown"),
+        ]:
+            with (
+                self.subTest(output=output, table=table),
+                patch.object(
+                    DRIVER.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0, output, ""),
+                ) as run,
+                patch.object(DRIVER, "process_table", return_value=table),
+            ):
+                result = DRIVER.close_window_probe("123", owner, 0)
+                self.assertEqual(result["state"], expected)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(
+                    run.call_args.args[0], ["xdotool", "getwindowpid", "123"]
+                )
+                self.assertEqual(run.call_args.kwargs["timeout"], 3)
+
+    def test_close_probe_distinguishes_absence_from_query_failure(self):
+        for stderr, expected in [
+            ("X Error: BadWindow (invalid Window parameter)", "absent"),
+            ("Error: Can't open display", "unknown"),
+            ("window has no pid associated with it", "unknown"),
+        ]:
+            with (
+                self.subTest(stderr=stderr),
+                patch.object(
+                    DRIVER.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 1, "", stderr),
+                ),
+            ):
+                result = DRIVER.close_window_probe(
+                    "123", {"pid": 20, "start_ticks": 100}, 0
+                )
+                self.assertEqual(result["state"], expected)
+        with patch.object(
+            DRIVER.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired("xdotool", 3),
+        ):
+            self.assertEqual(
+                DRIVER.close_window_probe("123", {"pid": 20, "start_ticks": 100}, 0)[
+                    "state"
+                ],
+                "unknown",
+            )
+
+    def test_close_probe_rejects_malformed_target_before_starting_a_process(self):
+        for window, owner in [
+            ("0", {"pid": 20, "start_ticks": 100}),
+            ("4294967296", {"pid": 20, "start_ticks": 100}),
+            ("123 --other-window", {"pid": 20, "start_ticks": 100}),
+            ("123", {"pid": True, "start_ticks": 100}),
+            ("123", {"pid": 20, "start_ticks": -1}),
+        ]:
+            with (
+                self.subTest(window=window, owner=owner),
+                patch.object(DRIVER.subprocess, "run") as run,
+            ):
+                self.assertEqual(
+                    DRIVER.close_window_probe(window, owner, 0)["state"], "unknown"
+                )
+                run.assert_not_called()
+
+    def test_close_snapshot_excludes_recycled_root_and_new_group_members(self):
+        observed = {10: 100, 11: 101, 12: 102}
+        table = {
+            10: {"pid": 10, "start_ticks": 900, "parent_pid": 1, "process_group": 10},
+            11: {"pid": 11, "start_ticks": 101, "parent_pid": 1, "process_group": 10},
+            13: {"pid": 13, "start_ticks": 901, "parent_pid": 10, "process_group": 10},
+        }
+        original_table = copy.deepcopy(table)
+        with patch.object(DRIVER, "process_table", return_value=table):
+            result = DRIVER.close_process_snapshot(observed, 0)
+        self.assertEqual(result["processes"], [table[11]])
+        self.assertEqual(result["reused_pids"], [10])
+        self.assertEqual(result["missing_pids"], [12])
+        self.assertEqual(observed, {10: 100, 11: 101, 12: 102})
+        self.assertEqual(table, original_table)
 
     def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
         DRIVER.validate_input_request(
