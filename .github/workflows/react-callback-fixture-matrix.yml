@@ -42,9 +42,10 @@ jobs:
           subprocess.run([bun,'install','--frozen-lockfile'],cwd=root,check=True,timeout=120)
           assert checked(['git','status','--porcelain']) == ''
           target = root/'tests/react/root-errors.test.ts'
-          old = target.read_text(encoding='utf-8')
+          old_bytes = target.read_bytes()
+          old = old_bytes.decode('utf-8').replace('\r\n', '\n')
           def digest(source):
-              return hashlib.sha256(source.encode('utf-8')).hexdigest()
+              return hashlib.sha256(source if isinstance(source, bytes) else source.encode('utf-8')).hexdigest()
           assert digest(old) == '380454fa58d91dbbc070e0ed1f59b9a52de14224cc663e5283e4ffba1d96cbbd'
           new = old.replace("import { expect, spyOn, test } from 'bun:test'", "import { expect, test } from 'bun:test'")
           old_capture = """    const capture = spyOn(reconciler, 'createContainer').mockImplementation((...args) => {
@@ -60,10 +61,14 @@ jobs:
           assert new.count('      capture.mockRestore()') == 1
           new = new.replace('      capture.mockRestore()', '      reconciler.createContainer = original')
           assert digest(new) == 'adb668a02c74549ed50ac1d97fd61cd1a6f3af05e21b35ca250cd09bb287767f'
+          endings = '\r\n' if b'\r\n' in old_bytes else '\n'
+          assert old_bytes.replace(b'\r\n', b'\n') == old.encode('utf-8')
+          new_bytes = new.replace('\n', endings).encode('utf-8')
           outcomes = []
           try:
-              for lane, content in [('original',old),('manual-try-finally',new)]:
-                  target.write_text(content, encoding='utf-8')
+              for lane, content in [('original',old_bytes),('manual-try-finally',new_bytes)]:
+                  target.write_bytes(content)
+                  assert target.read_bytes() == content, 'Observed test bytes differ from input'
                   run_dir = out/lane
                   run_dir.mkdir()
                   environment = dict(os.environ)
@@ -74,9 +79,10 @@ jobs:
                   outcomes.append(record)
                   print(json.dumps(record))
           finally:
-              target.write_text(old,encoding='utf-8')
+              target.write_bytes(old_bytes)
+              assert target.read_bytes() == old_bytes, 'Original checkout bytes not restored'
               clean = checked(['git','status','--porcelain']) == ''
-              (out/'manifest.json').write_text(json.dumps({'scope':'Exact-head two-process Windows test-fixture comparison only; not qualification','sourceCommit':head,'sourceTree':tree,'bunRevision':revision,'outcomes':outcomes,'originalSourceRestoredAndClean':clean,'originalAssertionsAndCheckpointsUnchanged':True},indent=2)+'\n')
+              (out/'manifest.json').write_text(json.dumps({'scope':'Exact-head two-process Windows test-fixture comparison only; not qualification','sourceCommit':head,'sourceTree':tree,'bunRevision':revision,'outcomes':outcomes,'originalSourceRestoredAndClean':clean,'originalCheckoutBytesSHA256':digest(old_bytes),'originalAssertionsAndCheckpointsUnchanged':True},indent=2)+'\n')
               assert clean
           assert len(outcomes) == 2
           for lane in ['original','manual-try-finally']:
