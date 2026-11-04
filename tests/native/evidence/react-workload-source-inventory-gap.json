@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "status": "historical-source-inventory-gap-preserved",
+  "scope": "Manifest completeness only; no retention cause or native qualification claim.",
+  "source": {
+    "head": "2a882e7ca401dec07a0a4e16f3d9ebcc90f816cf",
+    "testedMerge": "600acfc54a168bebac1e872d91578984875f7a40",
+    "tree": "92ecf1763fd204e51e01d9ef983595e00ad73ca8",
+    "actualBase": "b1a7e5336e3c5a7bb992349ea064b6d87b0cee85",
+    "observedMain": "55855d87a3d3a3ef5470cf2a879ab7e072cc92de"
+  },
+  "run": {
+    "id": 41895798556,
+    "attempt": 1,
+    "jobId": 126804842127,
+    "jobConclusion": "failure",
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41895798556/job/126804842127"
+  },
+  "artifact": {
+    "id": 13356757731,
+    "bytes": 10566164,
+    "sha256": "3835732f39f707630c6dc895c49c6f8f811b621fdb0b34dc7bbaf87c22d86520"
+  },
+  "manifest": {
+    "path": "react-workload-package/manifest.json",
+    "bytes": 22591,
+    "sha256": "e2cab3147c1ed8eb07f9dc4baad0df0909b09b63a12e20bd23278dc6a0b56a6a",
+    "recordedSourceFiles": 87,
+    "missingImportedSource": {
+      "path": "benchmarks/solid/ownership.ts",
+      "bytes": 440,
+      "sha256": "929293594beb5db64678dadf216b01003c4de7d106d3fd1ece3803461822ef20",
+      "binding": "Exact Git blob agrees between failed source and observed main; this hash was absent from the historical manifest."
+    }
+  },
+  "retainedDevelopmentModule": {
+    "bytes": 205898,
+    "sha256": "019b1d3ec0a4957a806151d6f25f33f393dc4f2417e9090efac5b289d1397000",
+    "embeddedOwnershipAssertion": "windows:1,nodes:1,callbacks:0,queuedTransactions:0,queuedCallbacks:0,activeCallbacks:0,serviceRequests:0"
+  },
+  "existingCollectors": {
+    "reactAot": "Explicitly included workload.ts but omitted its imported ownership.ts.",
+    "pairedCoreSolid": "Already included ownership.ts through the benchmark directory glob; now uses the same explicit required snapshot as React."
+  },
+  "correction": {
+    "sharedSnapshot": "benchmarks/solid/sources.ts",
+    "required": [
+      "benchmarks/solid/ownership.ts",
+      "benchmarks/solid/sources.ts",
+      "benchmarks/solid/workload.ts"
+    ],
+    "consumers": [
+      "experiments/aot-gpui/build-window.ts (react-workload entry)",
+      "benchmarks/solid/run.ts (core/Solid paired runner)"
+    ],
+    "unchanged": [
+      "workload and ownership oracle source",
+      "native host and dependencies",
+      "collection/checkpoint behavior",
+      "sample counts and deadlines",
+      "before/after source comparison assertions",
+      "historical manifest/report/module bytes"
+    ],
+    "validation": "Focused source-snapshot controls read files only, include the actual workload local-import scan, reject the old omission, fail on each missing required file and observe changed assertion bytes."
+  },
+  "qualification": "The failed React calibration remains failed with probes [3,5]. Adding the missing manifest source does not explain, fix or rerun it. No application, host, GC, heap snapshot or benchmark was executed for this correction."
+}

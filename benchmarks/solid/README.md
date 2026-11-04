@@ -4,6 +4,15 @@ This runner compares two separate applications against one explicit prebuilt GPU
 
 This tooling was reconstructed after a workspace recycle. Previous repeated-run raw evidence was lost and is not recreated here. Only fresh reports from this source can establish its measurements. The historical native correctness record elsewhere in the repository does not qualify this benchmark or the later renderer fixes.
 
+The core/Solid runner and React AOT builder use the same required source snapshot
+for the shared `workload.ts`, imported `ownership.ts`, and inventory helper
+`sources.ts`. A missing file fails the snapshot; the existing before/after source
+checks detect changed bytes. Other workload and adapter inputs remain recorded
+by their existing collectors. The
+[historical React inventory omission](../../tests/native/evidence/react-workload-source-inventory-gap.json)
+is preserved separately from its unresolved retention observation. This source
+bookkeeping change executes no new comparison or native workload.
+
 ## Workload and verification
 
 Each default trial mounts the tree, warms up 20 acknowledged updates, then measures:

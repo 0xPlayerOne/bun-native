@@ -16,6 +16,7 @@ import { buildSolid } from '../../scripts/solid-build.ts'
 import { inspectBunExecutable } from '../../experiments/aot-gpui/inspect.ts'
 import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
 import { count } from './workload.ts'
+import { sharedWorkloadSources } from './sources.ts'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -84,6 +85,9 @@ function command(
 }
 
 async function sourceFiles() {
+  const workloadSources = new Map(
+    (await sharedWorkloadSources(source)).map((record) => [record.path, record])
+  )
   const paths = new Set([
     'package.json',
     'bun.lock',
@@ -110,8 +114,13 @@ async function sourceFiles() {
     paths.add(path)
   for await (const path of new Bun.Glob('benchmarks/solid/*.{ts,tsx}').scan({ cwd: source }))
     paths.add(path)
+  for (const path of workloadSources.keys()) paths.add(path)
   return Promise.all(
-    [...paths].sort().map(async (path) => ({ path, ...(await digest(join(source, path))) }))
+    [...paths]
+      .sort()
+      .map(
+        async (path) => workloadSources.get(path) ?? { path, ...(await digest(join(source, path))) }
+      )
   )
 }
 
