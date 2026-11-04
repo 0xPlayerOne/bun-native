@@ -5,6 +5,8 @@ and [target artifacts #246](https://github.com/0xPlayerOne/bun-native/issues/246
 Both issues remain open. Linux's existing owned-window/input suite stays required;
 this lane adds genuine target-host compilation and a portable native lifecycle
 fixture for macOS and Windows. It does not infer GUI interaction from compilation.
+The [hosted evidence below](#hosted-paint-os-input-and-assigned-device-evidence)
+qualifies paint/lifecycle and separately enabled OS input on the recorded targets.
 
 ## Paint/lifecycle mode and its claims
 
@@ -12,8 +14,8 @@ The reusable [`Native Platforms` workflow](../.github/workflows/native-platforms
 uses `macos-15` and `windows-2022`, a 60-minute per-target budget and independent
 matrix outcomes. It preserves draft/billing guards and read-only repository
 permissions. Caches contain dependency downloads, not build outputs or secrets.
-Caller/gate integration is separate so existing required checks are not replaced
-before target-native jobs have actual evidence.
+The main validation caller includes both native targets in the existing
+`Validation / Gate`; any non-success dependency result fails that aggregate.
 
 Each target builds the real release GPUI executable with pinned Rust, Bun and
 GPUI sources, runs host Clippy/tests, then executes the same public-core fixture
@@ -94,8 +96,8 @@ resources before final joined native shutdown.
   the exact owned window; even a same-process overlay rejects. Events enter
   the public login-session stream with `CGEventPost(kCGSessionEventTap)` so
   WindowServer performs ordinary routing. Keyboard down/up pairs recheck the
-  owned foreground. This is a controller correction awaiting native delivery
-  verification; an SDK event object or posting call cannot satisfy that gate.
+  owned foreground. The recorded hosted input cases verify delivery through
+  this route; an SDK event object or posting call alone cannot satisfy that gate.
   The helper never requests permissions or changes privacy settings.
 - **Linux:** The same fixture can be checked in the existing isolated Xvfb/DBus
   session. Its small adapter reuses the established process-identity and XTest
@@ -303,9 +305,11 @@ For example, the initial Windows run reported `Microsoft Basic Render Driver`
 alongside `is_software_emulated: false`; both raw values are retained without
 reclassifying the device.
 
-This implementation addresses [#292](https://github.com/0xPlayerOne/bun-native/issues/292);
-actual target CI evidence is still required before declaring it qualified. The
-device identity does not prove GPU utilization, display presentation or hardware
+The [hosted evidence below](#hosted-paint-os-input-and-assigned-device-evidence)
+qualifies the assigned-device identity scope of
+[#292](https://github.com/0xPlayerOne/bun-native/issues/292): all four positive
+macOS paint/input cases require and report the actual layer's Metal device.
+That identity does not prove GPU utilization, display presentation or hardware
 performance. Complete native paints, lifecycle, joined shutdown and separately
 enabled OS-input checks remain required.
 
@@ -361,6 +365,48 @@ distribution claim. The large fixture AOT executable is omitted from ordinary
 evidence upload; its hash and rebuild recipe remain.
 
 ## Evidence and remaining work
+
+### Hosted paint, OS input and assigned-device evidence
+
+[Validation 41904934340](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340)
+passed all twelve required jobs for PR head
+`5bbce3c1c964baae42ef768126c5736b96a4cfaf`. The actual tested merge was
+`4e12e5b5199cc07e7e1e84186bea39ce2fdfdb71`, tree
+`ffa162ed31576260d47ccde23913795a1b800502`. Accepted main later combined that
+change with the CLI integration; this record does not represent a fresh run of
+that combined tree.
+
+| Hosted target             | Native job                                                                                          | Retained artifact                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| macOS 15.8.2 / ARM64      | [126836941712](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340/job/126836941712) | `13359239800`, 3,481,699 bytes, SHA-256 `df1706b2e97eb20351487959ce40057d5e61dd4ff60e2b4a0c34c51580011ba4` |
+| Windows Server 2022 / x64 | [126836941557](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340/job/126836941557) | `13360845884`, 4,015,772 bytes, SHA-256 `8952714a13a10f1030bd4e3d9b5f121611f0d4641e75a8f6a63438006a66c379` |
+
+Each target passed four actual cases: development and inspected AOT, each with
+paint-only and separately enabled OS-input modes. Every case completed three
+windows. Paint-only cases observed six complete populated-tree paints; input
+cases observed nine, three pointer activations and all 96 nonce text edits with
+native Tab/focus delivery. All seven public ownership counters reached zero,
+application exit was zero and native shutdown joined without forced termination.
+The input controllers also completed their cleanup. Both archive digests and all
+122 unique recorded source paths per target were checked against the tested
+merge. Each AOT manifest independently requires compiled-program metadata and
+nonempty removed JIT ranges; its execution-mode label alone supplies no proof.
+
+All four positive macOS cases required `--require-metal-device` and reported
+`CAMetalLayer.device`, including its name and canonical unsigned registry ID.
+The observed name was `Apple Paravirtual device`; driver and emulation fields
+remain unavailable. Windows retained `Microsoft Basic Render Driver` and the
+backend's `is_software_emulated: false` without treating that combination as
+independent hardware evidence.
+
+Each target's deliberate wrong-paint case separately returned exit 1 with
+`NativePaintMismatch`, zero public owners and joined shutdown. CI accepts that
+precise expected failure; it proves oracle rejection, not a deliberately failed
+aggregate job. The separate aggregate-failure acceptance in #256 remains open.
+Screenshots, display presentation, physical input, IME/accessibility, OS close
+buttons and complete descendant enumeration remain unqualified by these cases.
+
+### Earlier records and remaining coverage
 
 Actual Linux development and inspected AOT runs of this portable fixture passed
 three cycles and six complete paints, joined native shutdown, and cleared all
@@ -419,11 +465,12 @@ without qualifying macOS or Windows input. The reused AOT executable and all 49
 build-source hashes were reverified, and each current controller source hash is
 bound to its own report.
 
-Follow-up controllers must independently identify the owned window and its
-process/executable before input, then attest actual keyboard/mouse/OS-close
-results and screenshots where the session permits them. Unavailable hosted
-desktop/GPU or permission capabilities must be reported precisely. No security
-setting change or manual owner intervention is part of this workflow.
+The current input cases independently identify the owned window and its
+process/executable before verifying pointer and keyboard delivery. Follow-up
+coverage must establish OS-close results, screenshots and complete descendant
+cleanup where the session permits them. Unavailable hosted desktop/GPU or
+permission capabilities must be reported precisely. No security setting change
+or manual owner intervention is part of this workflow.
 
 Remaining acceptance also includes clean-machine native library/resource
 resolution, accessibility/IME, signing/install/update behavior and per-platform
