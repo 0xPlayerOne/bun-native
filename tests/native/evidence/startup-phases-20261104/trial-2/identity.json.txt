@@ -1,0 +1,7 @@
+{
+  "hostSha256": "714fda4004e2ef81398820f5a6dc9a6d4d1ba4b380d4a079c844d8db1a0d36c3",
+  "hostBytes": 29507056,
+  "bunRevision": "1.4.4-canary.1+da867c60b",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "scope": "One instrumented release-host observation; not native acceptance"
+}

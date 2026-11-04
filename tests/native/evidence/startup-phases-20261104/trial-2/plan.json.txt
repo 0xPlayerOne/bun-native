@@ -1,0 +1,52 @@
+{
+  "scope": "Instrumented original-backend research only; not qualification",
+  "source": "f143b8d4c4b32813a970c7f581df4a55ccdd8fa1",
+  "priorResearchSource": "055c92bc44d5c63667c6a7360fefcf35074768e5",
+  "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+  "backendSelection": "Vulkan|GL (unchanged)",
+  "trial": 2,
+  "predeclaredTrials": [
+    1,
+    2,
+    3
+  ],
+  "lifecycleProcessesPerTrial": 1,
+  "warmups": 0,
+  "retries": 0,
+  "originalRequestDeadlineMs": 5000,
+  "outerFixtureDeadlineSeconds": 45,
+  "dependency": "/home/runner/work/_temp/startup-phase-2/cargo/git/checkouts/zed-a70e2ad075855582/ba63a02",
+  "sourceSha256": {
+    "toolchain.json": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+    "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+    "Cargo.toml": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+    "Cargo.lock": "e9810fb670c6c5b384fcae08825a04a5a6ac856d02ca7451acb8d138a61c1484",
+    "bun.lock": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+    "packages/runtime/src/index.ts": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+    "tests/native/lifecycle.ts": "4bc71ee7fd52a7da8d136d4b16ad10e68c3941236f5bbe7736aa40f7e8a6877d",
+    "scripts/quality/native-linux-session.sh": "8a764a05433d40e4d4e2e09d821fac2adbdffd90dcdbb53dd1050e5df1c7f4a5",
+    "scripts/quality/native-input-linux.py": "7d3c924f13247e998c91c4463d2323b17ac9743eebf72dbd1739f347cf4ca576",
+    "scripts/quality/native-paint-observer.py": "fc365fbbe4127d2cdafecf18d71897173d4a16654606a8e4cca3847b3c6ed959",
+    ".github/workflows/startup-phases.yml": "f2940d9003a43940d0b368cf220b458504943bd4bdde7bcecbd972001080573f",
+    "experiments/startup-phases/prepare.py": "324dd036c8aeb00c2a09f32c8b0b88f8902e01a65cad05a72f2107e5bf07435d",
+    "experiments/startup-phases/run.py": "464ff4e13a4fa328527b41e070ff2b98475ebeafc314bb4517a633c98df0ba34"
+  },
+  "files": [
+    {
+      "path": "crates/gpui_wgpu/src/wgpu_context.rs",
+      "originalSha256": "a8a9a85509c17168b6d53b919d8d06a0cbe782ffc8ad72f830cb6a14b067cbe5",
+      "instrumentedSha256": "4cb7a7c0252ccc7929cf76e2ca2d06a5eec2920e536c788fe65800e106659fef"
+    },
+    {
+      "path": "crates/gpui_linux/src/linux/x11/window.rs",
+      "originalSha256": "87b737ecda518123196c3f60369120c6a8fb8021b43a4830cc21bf7834eda438",
+      "instrumentedSha256": "2181710ce9367e10d678f08d6aa8253c52324dd6972e589ea0fad16629d767d5"
+    },
+    {
+      "path": "crates/gpui_wgpu/src/wgpu_renderer.rs",
+      "originalSha256": "757d9f2a4d270d4787b192937183c51bf286caf33cd0f4f2bd459338fd8cfcd7",
+      "instrumentedSha256": "63dda9cbe1b7955bbb4f57a22de93c53dbf2d2c07d7a487d237d638b0f24fabf"
+    }
+  ],
+  "patchSha256": "3a2c2abef7d184257b3e1b2736206371526bbd05baf0ddd4585f7c7570ebd45e"
+}

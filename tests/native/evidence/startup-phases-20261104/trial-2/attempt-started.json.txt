@@ -1,0 +1,8 @@
+{
+  "trial": 2,
+  "nonce": "229bc95b4aa85442e31237e55d7e38ee",
+  "command": [
+    "bun",
+    "tests/native/lifecycle.ts"
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "scope": "Research observation, never Validation / Gate qualification",
+  "trial": 3,
+  "status": "passed",
+  "outerDeadlineExceeded": false,
+  "phaseClockWarning": "Native and transport clocks are separately relative",
+  "cleanup": {
+    "forced_termination": false,
+    "remaining_observed_pids": [],
+    "unreaped_observed_pids": [],
+    "application_exit_code": 0
+  },
+  "outputCaptureJoined": true,
+  "exitCode": 0,
+  "durationSeconds": 4.083285262000004,
+  "outputBytes": {
+    "written_bytes": 62,
+    "discarded_bytes": 0
+  },
+  "firstOpen": {
+    "hostPid": 12295,
+    "requestId": 3,
+    "firstOpenTimedOut": false,
+    "firstOpenAcknowledged": true,
+    "nativeOpenCallReturned": true,
+    "captureComplete": true,
+    "phases": [
+      {
+        "phase": "x11_colormap",
+        "boundary": "enter",
+        "elapsedNs": "9802482"
+      },
+      {
+        "phase": "x11_colormap",
+        "boundary": "return",
+        "elapsedNs": "9857175"
+      },
+      {
+        "phase": "x11_setup",
+        "boundary": "enter",
+        "elapsedNs": "9861211"
+      },
+      {
+        "phase": "x11_setup",
+        "boundary": "return",
+        "elapsedNs": "10010211"
+      },
+      {
+        "phase": "renderer",
+        "boundary": "enter",
+        "elapsedNs": "10016189"
+      },
+      {
+        "phase": "instance",
+        "boundary": "enter",
+        "elapsedNs": "10029285"
+      },
+      {
+        "phase": "instance",
+        "boundary": "return",
+        "elapsedNs": "2926936240"
+      },
+      {
+        "phase": "surface_create",
+        "boundary": "enter",
+        "elapsedNs": "2926962098"
+      },
+      {
+        "phase": "surface_create",
+        "boundary": "return",
+        "elapsedNs": "2927079073"
+      },
+      {
+        "phase": "enumerate",
+        "boundary": "enter",
+        "elapsedNs": "2927085608"
+      },
+      {
+        "phase": "enumerate",
+        "boundary": "return",
+        "elapsedNs": "2927760085"
+      },
+      {
+        "phase": "surface_caps",
+        "boundary": "enter",
+        "elapsedNs": "2927789454"
+      },
+      {
+        "phase": "surface_caps",
+        "boundary": "return",
+        "elapsedNs": "2927955010"
+      },
+      {
+        "phase": "device_request",
+        "boundary": "enter",
+        "elapsedNs": "2927964334"
+      },
+      {
+        "phase": "device_request",
+        "boundary": "return",
+        "elapsedNs": "3560053904"
+      },
+      {
+        "phase": "surface_configuration",
+        "boundary": "enter",
+        "elapsedNs": "3560070313"
+      },
+      {
+        "phase": "surface_configuration",
+        "boundary": "return",
+        "elapsedNs": "3560183189"
+      },
+      {
+        "phase": "surface_configure",
+        "boundary": "enter",
+        "elapsedNs": "3560192188"
+      },
+      {
+        "phase": "surface_configure",
+        "boundary": "return",
+        "elapsedNs": "3560530151"
+      },
+      {
+        "phase": "error_scope",
+        "boundary": "enter",
+        "elapsedNs": "3560534499"
+      },
+      {
+        "phase": "error_scope",
+        "boundary": "return",
+        "elapsedNs": "3560539097"
+      },
+      {
+        "phase": "renderer",
+        "boundary": "return",
+        "elapsedNs": "3604770092"
+      }
+    ],
+    "completedPhaseDurations": [
+      {
+        "phase": "x11_colormap",
+        "outcome": "ok",
+        "durationNs": "54693"
+      },
+      {
+        "phase": "x11_setup",
+        "outcome": "ok",
+        "durationNs": "149000"
+      },
+      {
+        "phase": "instance",
+        "outcome": "ok",
+        "durationNs": "2916906955"
+      },
+      {
+        "phase": "surface_create",
+        "outcome": "ok",
+        "durationNs": "116975"
+      },
+      {
+        "phase": "enumerate",
+        "outcome": "ok",
+        "durationNs": "674477"
+      },
+      {
+        "phase": "surface_caps",
+        "outcome": "ok",
+        "durationNs": "165556"
+      },
+      {
+        "phase": "device_request",
+        "outcome": "ok",
+        "durationNs": "632089570"
+      },
+      {
+        "phase": "surface_configuration",
+        "outcome": "ok",
+        "durationNs": "112876"
+      },
+      {
+        "phase": "surface_configure",
+        "outcome": "ok",
+        "durationNs": "337963"
+      },
+      {
+        "phase": "error_scope",
+        "outcome": "ok",
+        "durationNs": "4598"
+      },
+      {
+        "phase": "renderer",
+        "outcome": "ok",
+        "durationNs": "3594753903"
+      }
+    ],
+    "unfinishedPhases": [],
+    "innermostUnfinishedPhase": null,
+    "interpretation": "Unfinished means no return marker was observed, not a proven deadlock. Only native-log timestamps were used for phase durations."
+  },
+  "evidenceStatus": "complete"
+}

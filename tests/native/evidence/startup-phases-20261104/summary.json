@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 1,
+  "scope": "Archival copy of three completed predeclared instrumented observations. Not native qualification, a production fix, or a main-merge candidate.",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/296",
+  "researchPullRequest": "https://github.com/0xPlayerOne/bun-native/pull/359",
+  "observationSource": {
+    "commit": "f143b8d4c4b32813a970c7f581df4a55ccdd8fa1",
+    "tree": "da6792b4a19bc577bbcb1b966a4d0daf6cb79d9e",
+    "base": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "sameTreeAsReviewedLocalCommit": "e370332febde604f109c2f2a2558cfae372c25d7",
+    "changedPathsFromBase": [
+      ".github/workflows/startup-phases.yml",
+      "experiments/startup-phases/README.md",
+      "experiments/startup-phases/prepare.py",
+      "experiments/startup-phases/run.py",
+      "tests/quality/test_startup_phases.py"
+    ],
+    "patchSha256": "3a2c2abef7d184257b3e1b2736206371526bbd05baf0ddd4585f7c7570ebd45e",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "backendSelection": "Vulkan|GL (unchanged)",
+    "sourceSha256": {
+      "toolchain.json": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+      "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "Cargo.toml": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+      "Cargo.lock": "e9810fb670c6c5b384fcae08825a04a5a6ac856d02ca7451acb8d138a61c1484",
+      "bun.lock": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+      "packages/runtime/src/index.ts": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+      "tests/native/lifecycle.ts": "4bc71ee7fd52a7da8d136d4b16ad10e68c3941236f5bbe7736aa40f7e8a6877d",
+      "scripts/quality/native-linux-session.sh": "8a764a05433d40e4d4e2e09d821fac2adbdffd90dcdbb53dd1050e5df1c7f4a5",
+      "scripts/quality/native-input-linux.py": "7d3c924f13247e998c91c4463d2323b17ac9743eebf72dbd1739f347cf4ca576",
+      "scripts/quality/native-paint-observer.py": "fc365fbbe4127d2cdafecf18d71897173d4a16654606a8e4cca3847b3c6ed959",
+      ".github/workflows/startup-phases.yml": "f2940d9003a43940d0b368cf220b458504943bd4bdde7bcecbd972001080573f",
+      "experiments/startup-phases/prepare.py": "324dd036c8aeb00c2a09f32c8b0b88f8902e01a65cad05a72f2107e5bf07435d",
+      "experiments/startup-phases/run.py": "464ff4e13a4fa328527b41e070ff2b98475ebeafc314bb4517a633c98df0ba34"
+    },
+    "modifiedDependencyFiles": [
+      {
+        "path": "crates/gpui_wgpu/src/wgpu_context.rs",
+        "originalSha256": "a8a9a85509c17168b6d53b919d8d06a0cbe782ffc8ad72f830cb6a14b067cbe5",
+        "instrumentedSha256": "4cb7a7c0252ccc7929cf76e2ca2d06a5eec2920e536c788fe65800e106659fef"
+      },
+      {
+        "path": "crates/gpui_linux/src/linux/x11/window.rs",
+        "originalSha256": "87b737ecda518123196c3f60369120c6a8fb8021b43a4830cc21bf7834eda438",
+        "instrumentedSha256": "2181710ce9367e10d678f08d6aa8253c52324dd6972e589ea0fad16629d767d5"
+      },
+      {
+        "path": "crates/gpui_wgpu/src/wgpu_renderer.rs",
+        "originalSha256": "757d9f2a4d270d4787b192937183c51bf286caf33cd0f4f2bd459338fd8cfcd7",
+        "instrumentedSha256": "63dda9cbe1b7955bbb4f57a22de93c53dbf2d2c07d7a487d237d638b0f24fabf"
+      }
+    ]
+  },
+  "run": {
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41872112972",
+    "run_id": 41872112972,
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "event": "push",
+    "head_branch": "test/linux-startup-phases-20261104",
+    "head_sha": "f143b8d4c4b32813a970c7f581df4a55ccdd8fa1",
+    "head_tree": "da6792b4a19bc577bbcb1b966a4d0daf6cb79d9e",
+    "created_at": "2026-11-04T16:53:55Z",
+    "updated_at": "2026-11-04T17:05:21Z",
+    "workflow_path": ".github/workflows/startup-phases.yml"
+  },
+  "plan": {
+    "trialIds": [1, 2, 3],
+    "independentRunnerCount": 3,
+    "lifecycleProcessesPerTrial": 1,
+    "nativeWindowCyclesPerProcess": 5,
+    "warmups": 0,
+    "retries": 0,
+    "requestDeadlineMs": 5000,
+    "outerDeadlineSeconds": 45,
+    "executionMode": "Bun development TypeScript fixture with an instrumented Rust release host; no AOT application qualification"
+  },
+  "archive": {
+    "observationSourceIsNotArchiveCommit": true,
+    "rawRecordPolicy": "Stored byte-for-byte; .json.txt and .jsonl.txt suffixes prevent JSON reformatting. Original hosted runner paths are provenance, not local setup instructions.",
+    "binaryIdentityPolicy": "runner receipt records release binary SHA/size; run source verifies hash again after execution; binary not included in ZIP",
+    "omitted": [
+      "reproducible build.log files",
+      "native host binaries",
+      "original artifact ZIPs",
+      "window-manager setup logs"
+    ],
+    "preservedArtifactZipIdentity": "Each original ZIP byte count and SHA-256 matched GitHub artifact metadata before extraction.",
+    "dependencyPatch": {
+      "path": "dependency.patch.gz",
+      "encoding": "gzip; no filename; mtime 0",
+      "bytes": 2223,
+      "sha256": "a62f087c4cfd717a90091be72d41ec60e5bda7755344d3b2ac1ee5c26b196bcd",
+      "originalMember": "dependency.patch",
+      "originalBytes": 7299,
+      "originalSha256": "3a2c2abef7d184257b3e1b2736206371526bbd05baf0ddd4585f7c7570ebd45e",
+      "sharedByTrials": [1, 2, 3]
+    }
+  },
+  "validation": {
+    "zipSizesAndDigests": "matched GitHub artifact metadata",
+    "sourceHashes": "13 hashes in each artifact matched the exact published Git tree",
+    "modifiedDependencyHashes": "all 3 original and instrumented hashes reconstructed from pinned Git bytes",
+    "patchBytes": "all three patches matched the reviewed transformation byte-for-byte",
+    "rawTrace": "one nonce/app/host; complete indexed transport sequence and five native open/close cycles",
+    "firstOpen": "independently paired all 22 phase boundaries; recomputed durations equal archived result and published parser",
+    "binaryIdentity": "runner receipt records release binary SHA/size; run source verifies hash again after execution; binary not included in ZIP"
+  },
+  "trials": [
+    {
+      "trial": 1,
+      "jobId": 126721709151,
+      "runnerId": 1000143844,
+      "artifact": {
+        "id": 13345816090,
+        "bytes": 18286,
+        "sha256": "89771e08a7112e814b068e0f043970604327ca3e4e21477ee738a2d59f73890d"
+      },
+      "identityReceipt": {
+        "hostSha256": "0f012d8b1497a470af59e9643e395aee145ed7d40bac0b2ced4b39e257be9479",
+        "hostBytes": 29506616,
+        "bunRevision": "1.4.4-canary.1+da867c60b",
+        "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "scope": "One instrumented release-host observation; not native acceptance"
+      },
+      "platform": {
+        "kernel": "Linux runnervm48cm3 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "cpu": "AMD EPYC 9V45 96-Core Processor"
+      },
+      "attempt": {
+        "nonce": "a7a2da80d21464bede666582054c3c24",
+        "applicationPid": 12220,
+        "hostPid": 12229,
+        "lifecycleProcesses": 1
+      },
+      "outcome": {
+        "status": "passed",
+        "nativeWindowCycles": 5,
+        "nativeExitCode": 0,
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "captureJoined": true,
+        "outputDiscardedBytes": 0,
+        "traceRecords": 336,
+        "nativeLoggerRecords": 38,
+        "phaseBoundaries": 22,
+        "completedPhasePairs": 11,
+        "unfinishedPhasePairs": 0,
+        "captureComplete": true,
+        "durationSeconds": 3.4883866199999147
+      },
+      "transportFirstRequestToOpenedMs": 2736.902745,
+      "nativeLoggerPhaseDurationsNs": {
+        "x11_colormap": "41261",
+        "x11_setup": "202833",
+        "instance": "1941897767",
+        "surface_create": "125787",
+        "enumerate": "908558",
+        "surface_caps": "390581",
+        "device_request": "747020529",
+        "surface_configuration": "176623",
+        "surface_configure": "344193",
+        "error_scope": "5158",
+        "renderer": "2735780368"
+      },
+      "records": [
+        {
+          "artifactMember": "plan.json",
+          "path": "trial-1/plan.json.txt",
+          "bytes": 2846,
+          "sha256": "6eb327a386b6917150a178fa351c5b6f8657557be0ab6163e061ffa0af549eef"
+        },
+        {
+          "artifactMember": "identity.json",
+          "path": "trial-1/identity.json.txt",
+          "bytes": 286,
+          "sha256": "3762d3ee4bcf214485dbb622b45f40072764764732e8bf8f6db994e28c5e78ed"
+        },
+        {
+          "artifactMember": "attempt-started.json",
+          "path": "trial-1/attempt-started.json.txt",
+          "bytes": 127,
+          "sha256": "fb74096d00ff671c62081ff705217c24fb0a85375e1424aa9dbac5a09017fd6c"
+        },
+        {
+          "artifactMember": "result.json",
+          "path": "trial-1/result.json.txt",
+          "bytes": 4717,
+          "sha256": "7ed505beb5f1dabf075c5053b7ecece664594db1c30915697084c9261227c4fc"
+        },
+        {
+          "artifactMember": "startup.jsonl",
+          "path": "trial-1/startup.jsonl.txt",
+          "bytes": 91849,
+          "sha256": "1a0a5d429faacc56d29010dc649563f58c4a4e7a9a1de671a4d459b54a771516"
+        },
+        {
+          "artifactMember": "lifecycle.log",
+          "path": "trial-1/lifecycle.jsonl.txt",
+          "bytes": 62,
+          "sha256": "c8af9ab349f442d68e6f94f290b7b510b4a3eb1fe2852248d4beb385b94d8b50"
+        },
+        {
+          "artifactMember": "toolchain.txt",
+          "path": "trial-1/toolchain.txt",
+          "bytes": 4734,
+          "sha256": "95caf7dd8e5fd3b7676b8a75373fd0cca15d64455405122d20b1697d62c5004d"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "jobId": 126721709236,
+      "runnerId": 1000143845,
+      "artifact": {
+        "id": 13346315399,
+        "bytes": 18375,
+        "sha256": "c802e32d84ad7bc9e0344fe8685b8463215b682e02bdde0a00a6909d681c74ac"
+      },
+      "identityReceipt": {
+        "hostSha256": "714fda4004e2ef81398820f5a6dc9a6d4d1ba4b380d4a079c844d8db1a0d36c3",
+        "hostBytes": 29507056,
+        "bunRevision": "1.4.4-canary.1+da867c60b",
+        "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "scope": "One instrumented release-host observation; not native acceptance"
+      },
+      "platform": {
+        "kernel": "Linux runnervm48cm3 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "cpu": "AMD EPYC 9V45 96-Core Processor"
+      },
+      "attempt": {
+        "nonce": "229bc95b4aa85442e31237e55d7e38ee",
+        "applicationPid": 12161,
+        "hostPid": 12170,
+        "lifecycleProcesses": 1
+      },
+      "outcome": {
+        "status": "passed",
+        "nativeWindowCycles": 5,
+        "nativeExitCode": 0,
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "captureJoined": true,
+        "outputDiscardedBytes": 0,
+        "traceRecords": 339,
+        "nativeLoggerRecords": 38,
+        "phaseBoundaries": 22,
+        "completedPhasePairs": 11,
+        "unfinishedPhasePairs": 0,
+        "captureComplete": true,
+        "durationSeconds": 3.04572019699998
+      },
+      "transportFirstRequestToOpenedMs": 2456.311664,
+      "nativeLoggerPhaseDurationsNs": {
+        "x11_colormap": "66079",
+        "x11_setup": "288651",
+        "instance": "1676378245",
+        "surface_create": "102252",
+        "enumerate": "810026",
+        "surface_caps": "303353",
+        "device_request": "735158153",
+        "surface_configuration": "156314",
+        "surface_configure": "301650",
+        "error_scope": "21142",
+        "renderer": "2455077729"
+      },
+      "records": [
+        {
+          "artifactMember": "plan.json",
+          "path": "trial-2/plan.json.txt",
+          "bytes": 2846,
+          "sha256": "e4c1f6e6b7898021e2d05a731d7020fd724bff4aa8cbc203d724758c1affbd36"
+        },
+        {
+          "artifactMember": "identity.json",
+          "path": "trial-2/identity.json.txt",
+          "bytes": 286,
+          "sha256": "c6fe4e7e51ba2bcb6070cd7ae69a1c8b0f1cd7e4e5a051266478d4cadc305fc5"
+        },
+        {
+          "artifactMember": "attempt-started.json",
+          "path": "trial-2/attempt-started.json.txt",
+          "bytes": 127,
+          "sha256": "da2dad36334a0d26ed505a0d42c9e32de261fc307fa54217e64bc2219319f235"
+        },
+        {
+          "artifactMember": "result.json",
+          "path": "trial-2/result.json.txt",
+          "bytes": 4716,
+          "sha256": "034c884f4cccd4b9349420f369041e261f12a097996e56a7384d6ff9c68a1a82"
+        },
+        {
+          "artifactMember": "startup.jsonl",
+          "path": "trial-2/startup.jsonl.txt",
+          "bytes": 93117,
+          "sha256": "e786cf07977e26923a80af1012458af1cadba42327f5c88472b28dcb8f3ef0c5"
+        },
+        {
+          "artifactMember": "lifecycle.log",
+          "path": "trial-2/lifecycle.jsonl.txt",
+          "bytes": 62,
+          "sha256": "c8af9ab349f442d68e6f94f290b7b510b4a3eb1fe2852248d4beb385b94d8b50"
+        },
+        {
+          "artifactMember": "toolchain.txt",
+          "path": "trial-2/toolchain.txt",
+          "bytes": 4734,
+          "sha256": "c232f6dab56f07528fd177966541f215075b0baf6b6240480b4e23dbf5a7f37c"
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "jobId": 126721708835,
+      "runnerId": 1000143846,
+      "artifact": {
+        "id": 13344469690,
+        "bytes": 18413,
+        "sha256": "a697eb1f2c55aa0b80309ad28a91a4cb86bd415f35e12c2a824e8a3cd117f98c"
+      },
+      "identityReceipt": {
+        "hostSha256": "dd4ed08989c795674bfdbe840cfce43a6248957f30a20ecc2ce29f4efa133fa0",
+        "hostBytes": 29507104,
+        "bunRevision": "1.4.4-canary.1+da867c60b",
+        "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+        "scope": "One instrumented release-host observation; not native acceptance"
+      },
+      "platform": {
+        "kernel": "Linux ip-10-0-137-62 7.0.0-1014-aws #14~24.04.1-Ubuntu SMP PREEMPT Fri Sep 18 21:24:59 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+        "cpu": "Intel(R) Xeon(R) 6975P-C"
+      },
+      "attempt": {
+        "nonce": "19ad0e819717ce9d640f54ca8a63c0ff",
+        "applicationPid": 12286,
+        "hostPid": 12295,
+        "lifecycleProcesses": 1
+      },
+      "outcome": {
+        "status": "passed",
+        "nativeWindowCycles": 5,
+        "nativeExitCode": 0,
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "captureJoined": true,
+        "outputDiscardedBytes": 0,
+        "traceRecords": 342,
+        "nativeLoggerRecords": 38,
+        "phaseBoundaries": 22,
+        "completedPhasePairs": 11,
+        "unfinishedPhasePairs": 0,
+        "captureComplete": true,
+        "durationSeconds": 4.083285262000004
+      },
+      "transportFirstRequestToOpenedMs": 3596.096842,
+      "nativeLoggerPhaseDurationsNs": {
+        "x11_colormap": "54693",
+        "x11_setup": "149000",
+        "instance": "2916906955",
+        "surface_create": "116975",
+        "enumerate": "674477",
+        "surface_caps": "165556",
+        "device_request": "632089570",
+        "surface_configuration": "112876",
+        "surface_configure": "337963",
+        "error_scope": "4598",
+        "renderer": "3594753903"
+      },
+      "records": [
+        {
+          "artifactMember": "plan.json",
+          "path": "trial-3/plan.json.txt",
+          "bytes": 2846,
+          "sha256": "2b0b3e74a4773ce2ec3ac404b1f5be162d4d066540ccb0e973d65e31168d38f6"
+        },
+        {
+          "artifactMember": "identity.json",
+          "path": "trial-3/identity.json.txt",
+          "bytes": 286,
+          "sha256": "cdbf0b054436be54d26cab61cb593de32d7a1414244ec3fe5f4ad2563b122513"
+        },
+        {
+          "artifactMember": "attempt-started.json",
+          "path": "trial-3/attempt-started.json.txt",
+          "bytes": 127,
+          "sha256": "5c87acc014324bae0d2dce5637e5390a328300978d2f68bf085efcd7d4378f18"
+        },
+        {
+          "artifactMember": "result.json",
+          "path": "trial-3/result.json.txt",
+          "bytes": 4713,
+          "sha256": "2dafadc7c5201ef50a7a3b27ce126724f3fd1d78fc220867a7c8e36c2c11704a"
+        },
+        {
+          "artifactMember": "startup.jsonl",
+          "path": "trial-3/startup.jsonl.txt",
+          "bytes": 94475,
+          "sha256": "a67a0eaac61eeaecd8e422372b8be0491244ef8cb6e57b2ef9a3fd3f3635feac"
+        },
+        {
+          "artifactMember": "lifecycle.log",
+          "path": "trial-3/lifecycle.jsonl.txt",
+          "bytes": 62,
+          "sha256": "c8af9ab349f442d68e6f94f290b7b510b4a3eb1fe2852248d4beb385b94d8b50"
+        },
+        {
+          "artifactMember": "toolchain.txt",
+          "path": "trial-3/toolchain.txt",
+          "bytes": 4798,
+          "sha256": "30a4bf0cd4db231786f89e8f528d2d75f7121ab83659f771b23a670a0227524c"
+        }
+      ]
+    }
+  ],
+  "interpretation": [
+    "All three original-backend observations passed; no first-open failure or unfinished internal phase was captured.",
+    "These observations do not explain or clear the original failed required check, qualify PR #353, or close issue #296.",
+    "Phase durations use only the native logger clock; transport durations use only the application transport clock.",
+    "Logging, build paths, cache state, scheduling and differing hosted CPUs can affect timing; this is not a controlled performance comparison.",
+    "The three independently built host hashes differ and are preserved; this audit does not claim reproducible binary output.",
+    "No further trial, rerun, source edit, deadline change, or production patch was performed during this audit."
+  ]
+}
