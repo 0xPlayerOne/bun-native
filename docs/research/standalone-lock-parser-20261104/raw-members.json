@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "archives": {
+    "parser-control-c16db305-raw.tar.gz": {
+      "bytes": 75691,
+      "sha256": "ae050f9caf280978947289bb1478983a35900f7d2e0768e981cef921dcab13e6",
+      "memberCount": 17,
+      "rawBytes": 280773,
+      "members": {
+        "owner/controller.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "owner/controller.stdout.log": {
+          "bytes": 262,
+          "sha256": "7cdc3203bd00f5992e0d931e2bf281c3654dcb7adec9cef963835536bcac12da"
+        },
+        "owner/owner.json": {
+          "bytes": 901,
+          "sha256": "5d86502a8fc46b84b8d23aa7055ad5f457c569571946ee6e34d0624f27cf434e"
+        },
+        "owner/preflight.json": {
+          "bytes": 1270,
+          "sha256": "2ce8a02c88a0241e42f2b28645d48614c4a17a7185131eef84c530d835e16155"
+        },
+        "raw/corrected-react/bun.lock": {
+          "bytes": 19726,
+          "sha256": "62f537dd4d475a6e41aeed2323aabe79c87cc3eebe5c094216c61ee85f14a41b"
+        },
+        "raw/corrected-react/package.json": {
+          "bytes": 1527,
+          "sha256": "3140941cd1fd18207eef24366a44d6d8de1064cd9508011f6bcbbe6e324e5e83"
+        },
+        "raw/corrected-solid/bun.lock": {
+          "bytes": 19067,
+          "sha256": "67b8ecdf8cd3003d4fe23c18488948b0862973ee3e9c043fcf29ac39943abe7a"
+        },
+        "raw/corrected-solid/package.json": {
+          "bytes": 1459,
+          "sha256": "cde06f33ad9e049f499cec01e864e9f0054986167e1484ce8ca5d549fd0380d6"
+        },
+        "raw/original-react/bun.lock": {
+          "bytes": 17124,
+          "sha256": "85b24f5325adda6ee0d159e6b0f1946f33f90ef4277d0c037e180434dd8c3acf"
+        },
+        "raw/original-react/package.json": {
+          "bytes": 1527,
+          "sha256": "3140941cd1fd18207eef24366a44d6d8de1064cd9508011f6bcbbe6e324e5e83"
+        },
+        "raw/original-solid.stderr.log": {
+          "bytes": 49,
+          "sha256": "78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30"
+        },
+        "raw/original-solid.stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "raw/original-solid/bun.lock": {
+          "bytes": 16585,
+          "sha256": "982a8a635d5f41eaf2b0e06925815113bcba57cece4c63b25f1d573e4a96b2c9"
+        },
+        "raw/original-solid/package.json": {
+          "bytes": 1459,
+          "sha256": "cde06f33ad9e049f499cec01e864e9f0054986167e1484ce8ca5d549fd0380d6"
+        },
+        "raw/result.json": {
+          "bytes": 181790,
+          "sha256": "bb7086c141738015719421b65c7a1fe37b5446c0a6c6c93f006d992c34d45118"
+        },
+        "source/docs/standalone-lock-parser-plan.md": {
+          "bytes": 6368,
+          "sha256": "ca0722d5f7c6ffd979ca727a744b63f88dcc587ced9e83a4f09dd743ce9ae67b"
+        },
+        "source/scripts/quality/standalone-lock-control.ts": {
+          "bytes": 11659,
+          "sha256": "8fcb49481caaec3796762b4d175623da874d3c1813e01479231092eaafeaa430"
+        }
+      }
+    },
+    "parser-control-39d2b878-raw.tar.gz": {
+      "bytes": 77653,
+      "sha256": "51f0e62895f26dcacf4cb55f99182bad1adb7bcb4de3b823bbbfc200112933ab",
+      "memberCount": 19,
+      "rawBytes": 276327,
+      "members": {
+        "owner/controller.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "owner/controller.stdout.log": {
+          "bytes": 215,
+          "sha256": "02411ccb48f1c46b30b3f068854b9ecdd044237ebf490cea8e1cc025c9dfc8ce"
+        },
+        "owner/owner.json": {
+          "bytes": 960,
+          "sha256": "f445b75cfd29623db72ca01a58d9fc303983c1da7fc5769bc47ade75717076b6"
+        },
+        "owner/preflight.json": {
+          "bytes": 1780,
+          "sha256": "2eb96d695e61196aab38b97d2956975daf2af1813a3d3cb0cab930ec2e950d7f"
+        },
+        "raw/corrected-react.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "raw/corrected-react.stdout.log": {
+          "bytes": 2595,
+          "sha256": "965d80f40694af1a9a8972c3dcfd6fe852146cb6df2920d67850b68de17a94a3"
+        },
+        "raw/corrected-react/bun.lock": {
+          "bytes": 19726,
+          "sha256": "62f537dd4d475a6e41aeed2323aabe79c87cc3eebe5c094216c61ee85f14a41b"
+        },
+        "raw/corrected-react/package.json": {
+          "bytes": 1527,
+          "sha256": "3140941cd1fd18207eef24366a44d6d8de1064cd9508011f6bcbbe6e324e5e83"
+        },
+        "raw/corrected-solid.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "raw/corrected-solid.stdout.log": {
+          "bytes": 2524,
+          "sha256": "c602734496b5009abb5cf00b3b3b58a019d326d1bda290b58be0c832e6600f42"
+        },
+        "raw/corrected-solid/bun.lock": {
+          "bytes": 19067,
+          "sha256": "67b8ecdf8cd3003d4fe23c18488948b0862973ee3e9c043fcf29ac39943abe7a"
+        },
+        "raw/corrected-solid/package.json": {
+          "bytes": 1459,
+          "sha256": "cde06f33ad9e049f499cec01e864e9f0054986167e1484ce8ca5d549fd0380d6"
+        },
+        "raw/original-react.stderr.log": {
+          "bytes": 49,
+          "sha256": "78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30"
+        },
+        "raw/original-react.stdout.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "raw/original-react/bun.lock": {
+          "bytes": 17124,
+          "sha256": "85b24f5325adda6ee0d159e6b0f1946f33f90ef4277d0c037e180434dd8c3acf"
+        },
+        "raw/original-react/package.json": {
+          "bytes": 1527,
+          "sha256": "3140941cd1fd18207eef24366a44d6d8de1064cd9508011f6bcbbe6e324e5e83"
+        },
+        "raw/result.json": {
+          "bytes": 185475,
+          "sha256": "6b56c939d362d605706e05a682e87341eed9bc162f9d45be2d70e127053aeee0"
+        },
+        "source/docs/standalone-lock-parser-plan.md": {
+          "bytes": 8360,
+          "sha256": "575b6e7cfef21b3a0bf4afac0d9bf9a00214245098102dc6e0b6e88756287278"
+        },
+        "source/scripts/quality/standalone-lock-control.ts": {
+          "bytes": 13939,
+          "sha256": "f10bef9be97effca1a0ccb53a35239b1f6c11212b2996ea33505e9eb3ca0f611"
+        }
+      }
+    }
+  }
+}

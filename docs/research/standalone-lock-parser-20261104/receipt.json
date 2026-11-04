@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "scope": "Four distinct parser/listing commands across two immutable controller sources: one preserved failed control, then exactly three previously unrun controls. No install, pack, create, archive extraction, build, app, native or GC qualification.",
+  "archiveBase": {
+    "commit": "c4de68deee812cd816316b33f9276786e6eae5c8",
+    "purpose": "Data-only research branch; the archive commit is not a measured source and is not intended for main."
+  },
+  "originalConsumerSource": {
+    "commit": "c90804933034ccc942467de8eb47379d8ee47e71",
+    "tree": "4e944901d40ee3761d163cfc157e75d8f786469b",
+    "archive": "https://github.com/0xPlayerOne/bun-native/pull/394",
+    "status": "failed-unchanged"
+  },
+  "compiler": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "command": ["<pinned-bun>", "pm", "ls", "--all"],
+  "limits": {
+    "perCommandSeconds": 10,
+    "timeoutSignal": "SIGKILL",
+    "perControllerParserWindowSeconds": 45,
+    "outerOwnerSeconds": 90,
+    "signalOrTimeoutCanPass": false,
+    "unexpectedOutcomeStopsLaterCalls": true
+  },
+  "captures": [
+    {
+      "label": "initial",
+      "source": {
+        "commit": "c16db30583767094cabccbb5875d42ad12af40ac",
+        "tree": "75762af6c881bc00e61af4860c1b62eb815105d1",
+        "trackedFiles": 533
+      },
+      "reportedStatus": "failed",
+      "error": "Error: Missing the expected original lock rejection",
+      "result": {
+        "member": "raw/result.json",
+        "bytes": 181790,
+        "sha256": "bb7086c141738015719421b65c7a1fe37b5446c0a6c6c93f006d992c34d45118"
+      },
+      "controls": [
+        {
+          "name": "original-solid",
+          "framework": "solid",
+          "corrected": false,
+          "status": "failed",
+          "elapsedMs": 5.254295999999954,
+          "exitCode": 1,
+          "signal": null,
+          "exitedDueToTimeout": false,
+          "stdout": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "stderr": {
+            "bytes": 49,
+            "sha256": "78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30"
+          }
+        },
+        {
+          "name": "original-react",
+          "framework": "react",
+          "corrected": false,
+          "status": "not-run"
+        },
+        {
+          "name": "corrected-solid",
+          "framework": "solid",
+          "corrected": true,
+          "status": "not-run"
+        },
+        {
+          "name": "corrected-react",
+          "framework": "react",
+          "corrected": true,
+          "status": "not-run"
+        }
+      ],
+      "owner": {
+        "utc": "2026-11-04T22:09:41.498578+00:00",
+        "exitCode": 1,
+        "joinedDirectChild": true,
+        "forced": false,
+        "elapsedSeconds": 0.8688277029978053
+      },
+      "invariants": {
+        "source": true,
+        "compiler": true,
+        "inputs": true,
+        "executedControlFiles": true
+      },
+      "archive": "parser-control-c16db305-raw.tar.gz"
+    },
+    {
+      "label": "follow-up",
+      "source": {
+        "commit": "39d2b878540f23863b617e42fb6c2f6a8df6ed94",
+        "tree": "e5402f51e1997603481f690bee63df184d7fd9f0",
+        "trackedFiles": 533
+      },
+      "reportedStatus": "passed",
+      "error": null,
+      "result": {
+        "member": "raw/result.json",
+        "bytes": 185475,
+        "sha256": "6b56c939d362d605706e05a682e87341eed9bc162f9d45be2d70e127053aeee0"
+      },
+      "controls": [
+        {
+          "name": "original-react",
+          "framework": "react",
+          "corrected": false,
+          "status": "passed",
+          "elapsedMs": 3.737879000000021,
+          "exitCode": 1,
+          "signal": null,
+          "exitedDueToTimeout": false,
+          "stdout": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "stderr": {
+            "bytes": 49,
+            "sha256": "78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30"
+          }
+        },
+        {
+          "name": "corrected-solid",
+          "framework": "solid",
+          "corrected": true,
+          "status": "passed",
+          "elapsedMs": 4.703320000000019,
+          "exitCode": 0,
+          "signal": null,
+          "exitedDueToTimeout": false,
+          "stdout": {
+            "bytes": 2524,
+            "sha256": "c602734496b5009abb5cf00b3b3b58a019d326d1bda290b58be0c832e6600f42"
+          },
+          "stderr": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "name": "corrected-react",
+          "framework": "react",
+          "corrected": true,
+          "status": "passed",
+          "elapsedMs": 3.5559149999999704,
+          "exitCode": 0,
+          "signal": null,
+          "exitedDueToTimeout": false,
+          "stdout": {
+            "bytes": 2595,
+            "sha256": "965d80f40694af1a9a8972c3dcfd6fe852146cb6df2920d67850b68de17a94a3"
+          },
+          "stderr": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      ],
+      "owner": {
+        "utc": "2026-11-04T22:14:41.507513+00:00",
+        "exitCode": 0,
+        "joinedDirectChild": true,
+        "forced": false,
+        "elapsedSeconds": 0.6158690079973894
+      },
+      "invariants": {
+        "source": true,
+        "compiler": true,
+        "inputs": true,
+        "executedControlFiles": true
+      },
+      "archive": "parser-control-39d2b878-raw.tar.gz"
+    }
+  ],
+  "priorFailureBinding": {
+    "hashesRequiredBeforeAndAfterFollowup": {
+      "result.json": {
+        "bytes": 181790,
+        "sha256": "bb7086c141738015719421b65c7a1fe37b5446c0a6c6c93f006d992c34d45118"
+      },
+      "original-solid.stderr.log": {
+        "bytes": 49,
+        "sha256": "78139af00b6afd9e4dd37f902a714f268be851a531bee979ef33e85d6c985f30"
+      },
+      "original-solid.stdout.log": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "unchanged": true,
+    "initialStatusStillFailed": true,
+    "initialOriginalSolidCommandRepeated": false
+  },
+  "sourceComparison": {
+    "differentFiles": [
+      "docs/standalone-lock-parser-plan.md",
+      "scripts/quality/standalone-lock-control.ts"
+    ],
+    "otherTrackedFileDigestsEqual": 531,
+    "productLockImplementationUnchanged": true,
+    "correctedStagedLocksByteIdenticalAcrossCaptures": true
+  },
+  "readOnlyDataAudit": {
+    "all533FollowupSourceFilesMatchedHistoricalGitObjects": true,
+    "allReferencedOriginalInputDigestsMatchedRetainedBytes": true,
+    "allRawControlLogDigestsMatched": true,
+    "prior17ArchiveMembersMatchedOriginalBytes": true,
+    "correctedSolid": {
+      "registryRows": 55,
+      "localRows": 6,
+      "totalRows": 61
+    },
+    "correctedReact": {
+      "registryRows": 57,
+      "localRows": 6,
+      "totalRows": 63
+    },
+    "registryTuplesAndMetadataEqualOriginalManifest": true,
+    "localResolutionMetadataAndSha256IntegrityEqualOriginalPackageRecords": true,
+    "manifestAndLockOverridesEqual": true,
+    "nestedBabelHelperVersionListed": "7.18.6",
+    "emptyOwnedCachesAndNoNodeModules": true
+  },
+  "archives": {
+    "parser-control-c16db305-raw.tar.gz": {
+      "bytes": 75691,
+      "sha256": "ae050f9caf280978947289bb1478983a35900f7d2e0768e981cef921dcab13e6",
+      "memberCount": 17,
+      "rawBytes": 280773
+    },
+    "parser-control-39d2b878-raw.tar.gz": {
+      "bytes": 77653,
+      "sha256": "51f0e62895f26dcacf4cb55f99182bad1adb7bcb4de3b823bbbfc200112933ab",
+      "memberCount": 19,
+      "rawBytes": 276327
+    }
+  },
+  "omissions": [
+    "Bun executable, package tarball payloads, native host, dependency directories and cache contents are not included.",
+    "The original consumer package-set manifest and consumer cohort are retained separately in #394; their byte hashes remain in both raw results.",
+    "Full product source trees are represented by all 533 tracked-source digests in each raw result; only each exact measured controller and plan are additionally copied into its archive.",
+    "Derived temporary author audit reports are omitted; the original owner, preflight, result, stdout/stderr and staged inputs are retained."
+  ],
+  "limitsOfConclusion": [
+    "The initial c16 result remains failed; its generic public diagnostic does not retroactively satisfy its original detailed-message assertion.",
+    "The follow-up qualifies only parser rejection/listing for the three declared inert inputs on the pinned Linux x64 Bun executable.",
+    "The accepted corrected locks have not been qualified by installation, offline-cache behavior, relocation, import/type closure, AOT or native execution in these controls.",
+    "No application-root, heap-collectability, conservative-GC or runtime-causality conclusion follows from these package-manager records.",
+    "Direct-child join evidence does not establish arbitrary descendant-process cleanup."
+  ]
+}
