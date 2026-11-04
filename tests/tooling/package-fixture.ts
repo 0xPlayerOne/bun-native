@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import toolchain from '../../toolchain.json'
@@ -23,8 +23,11 @@ export async function packageFixture(
     contents: Record<string, Record<string, string>>
   }) => Promise<void>
 ): Promise<void> {
-  const directory = await mkdtemp(join(tmpdir(), 'bun-native-package-unit-'))
+  let directory = await mkdtemp(join(tmpdir(), 'bun-native-package-unit-'))
   try {
+    // Match readProject's canonical consumer root, including OS temp aliases.
+    // Keep resolution inside the owned cleanup boundary if it rejects.
+    directory = await realpath(directory)
     const manifests = await materializedManifests(repository, ['@babel/core', 'babel-preset-solid'])
     const contents: Record<string, Record<string, string>> = {}
     const set: PackageSet = {

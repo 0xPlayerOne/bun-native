@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import {
   cliSourceClosure,
   consumerDefinitions,
@@ -65,7 +65,8 @@ describe('package export/import materialization (source reads only)', () => {
           onlyFiles: true,
         })
       )
-      expect(files).toEqual(independentlyListed.sort())
+      // Glob uses native separators; the archive inventory is portable POSIX.
+      expect(files).toEqual(independentlyListed.map((path) => path.split(sep).join('/')).sort())
       expect(files.length).toBeGreaterThan(0)
     }
     expect(manifests['@bun-native/solid']!.exports).toEqual({
