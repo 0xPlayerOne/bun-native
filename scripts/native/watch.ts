@@ -2,8 +2,9 @@ import { watch } from 'node:fs'
 import type { FSWatcher } from 'node:fs'
 import { DevSession, type RemountReport } from './session.ts'
 
-function relevant(path: string | Buffer | null): boolean {
-  if (path === null) return true
+function relevant(path: string | Buffer | null | undefined): boolean {
+  // Bun can omit a filename at runtime; both absent forms require a rescan.
+  if (path === null || path === undefined) return true
   const name = path.toString().replaceAll('\\', '/')
   if (
     name
@@ -92,6 +93,7 @@ export async function watchProject(
     watcher?.close()
     process.off('SIGINT', stop)
     process.off('SIGTERM', stop)
-    await session.close()
+    const teardown = await session.close()
+    if (teardown) console.log('bun-native:stopped ' + JSON.stringify(teardown))
   }
 }

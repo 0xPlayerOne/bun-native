@@ -1,101 +1,107 @@
-# Getting started with Bun Native
+# Create your first Bun Native app
 
-**Bun Native provides native integration fixtures and checkout-local Solid/React application tooling.** Contributors can create apps, run them against a supplied GPUI host and compile their Bun application with AOT. Published framework packages and the full developer workflow remain under implementation.
+Create a Solid or React application inside a Bun Native checkout, run it against a supplied native host, and compile it with Bun's AOT compiler. TypeScript is the default; checked JavaScript with JSX is also supported. The checkout supplies the framework packages and build tools. Independently published packages and automatic native-host acquisition remain open under [#242](https://github.com/0xPlayerOne/bun-native/issues/242).
 
-## Start with the current implementation task
+## 1. Prepare the checkout
 
-1. Read the [vision](bun-native-vision.md), [architecture](architecture.md), [engineering-quality policy](engineering-quality.md) and [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
-2. Read the [implementation handoff](bun-native-handoff.md) and inspect [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217). BN0 is verified complete; continue BN1 #219 / #271 and the earliest uncompleted dependency. Do not repeat the completed source migration or toolchain investigation.
-3. Inspect the current checkout/branch and any existing PRs. Do not assume obsolete Bun 1.4.4 versions, M1 tests or CEF run commands apply to the new framework.
-4. Open a draft PR with the first useful change, push continuously, run focused tests and enable auto-merge when repository checks permit. No routine human design checkpoint is required.
-
-## Toolchains
-
-You need the exact pinned Bun, a matching target OS/architecture, Rust/native prerequisites for **framework contributors**, and GitHub-hosted CI or a native desktop for verification. `toolchain.json` and `rust-toolchain.toml` are the implemented pins. Linux X11 with Mesa software Vulkan is the first verified GUI environment; other platforms must be qualified explicitly.
-
-The [checkout CLI](developer-tooling.md) implements `create`, `dev` and `build` for repository-local Solid/React projects, with TypeScript by default and checked JavaScript as an option. Supply a prebuilt host explicitly; ordinary app commands do not require Rust. `dev --watch` rebuilds source with a full app/host remount and state reset. Published installation, host acquisition and native reload qualification remain open under [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and [#243](https://github.com/0xPlayerOne/bun-native/issues/243). The public core imports are documented in [the package README](../packages/core/README.md).
-
-To learn the compiler interface, see the official [Bun compiler documentation](https://bun.com/docs/compiler) and [AOT compatibility](https://bun.com/docs/compiler/compatibility). `bun compile` differs from `bun build --compile`: the latter is an ordinary bundled JIT executable and is not accepted as a Bun Native production AOT proof.
-
-## Run the implemented foundation checks
-
-The exact compiler source, artifact checksums and Rust/GPUI versions are in
-`toolchain.json`. Install the pinned Bun without relying on a rolling canary:
+Use Git, Node 22 or newer for the Bun bootstrap, and the exact Bun revision in [`toolchain.json`](../toolchain.json). These commands use a POSIX shell:
 
 ```sh
+git clone https://github.com/0xPlayerOne/bun-native.git
+cd bun-native
 node scripts/install-bun.mjs --destination "$PWD/.bun-native/toolchain"
 export PATH="$PWD/.bun-native/toolchain:$PATH"
 bun install --frozen-lockfile
+```
+
+The installer checks the committed archive integrity and compiler revision. Keep the repository's lockfile unchanged. Install dependencies once at the checkout root; generated projects resolve those workspace packages and do not need a separate install. See [toolchain setup](toolchain.md) for the pin, bootstrap details and Windows paths.
+
+For an existing populated package cache, the pinned Bun supports a cache-only installation:
+
+```sh
+bun install --frozen-lockfile --offline \
+  --cache-dir /absolute/path/to/populated-bun-cache
+```
+
+The cache must already contain the locked packages for the target platform. An empty cache fails explicitly. This restores checkout dependencies; the pinned Bun executable and native host must already be supplied separately. To populate a chosen cache while online, use the same command without `--offline`.
+
+## 2. Supply a native host
+
+Set an absolute path to a prebuilt host for the same OS and CPU:
+
+```sh
+export BUN_NATIVE_PREBUILT_HOST=/absolute/path/to/bun-native-host
+```
+
+For Linux, the [Native Linux workflow](../.github/workflows/native-linux.yml) retains `unsigned-native-host.tar.gz` inside its `native-linux-X64` artifact. Match the extracted executable to `binary-sha256.txt` and that run's source/toolchain records before using it. Inspect the actual run's native checks as well as its build result. The archive is experimental and unsigned, has the workflow's limited retention period, and requires the platform libraries described in the [native host README](../native/gpui-host/README.md).
+
+The `dev` and `build` commands require `--host` and validate the executable's format and CPU before bundling. The shared runtime checks the protocol when the app launches. Creation and source checks run with Bun; packaging copies the supplied host. Rust is needed when a framework contributor builds a host from source; those instructions are in the native host README.
+
+## 3. Create and check an app
+
+From the checkout root, create the default Solid TypeScript app:
+
+```sh
+bun run native create apps/my-app
+cd apps/my-app
 bun run check
-cargo test --locked --manifest-path Cargo.toml -p bun-native-protocol
+cd ../..
 ```
 
-The destination must be an absolute path. On Windows use an absolute Windows
-path and prepend it to that shell's PATH. The installer verifies the platform
-archive SHA-256 and the executable revision. Rust contributors use the exact
-`rust-toolchain.toml` pin. These checks cover protocol, source and architecture;
-the [integration record](bn0-integration.md) distinguishes GUI/AOT evidence from remaining gaps.
+For React, use `bun run native create apps/my-react-app --framework react`. Add `--language javascript` to either creation command for a checked `.jsx` entry; otherwise the entry is `.tsx`. Choose a new destination for each app and keep it inside the checkout. Subsequent examples use `apps/my-app`; substitute your chosen project path.
 
-## Run the real native window
+The generated entry contains a counter built with the public core and selected framework adapter. It owns the window, renderer root and application shutdown. `bun-native.json` selects the framework and entry file; the generated package includes `check`, `dev` and `build` scripts.
 
-To create your own app after installing the checkout dependencies, run:
+## 4. Develop on a native desktop
 
 ```sh
-bun run native create apps/my-app --framework solid
-bun run native dev apps/my-app --host /absolute/path/to/bun-native-host
+bun run native dev apps/my-app --host "$BUN_NATIVE_PREBUILT_HOST"
 ```
 
-Use `--framework react` for React or `--language javascript` for checked JSX. The host must match the current OS and CPU. Development starts once by default; add `--watch` for source watching with full remounts. See [developer tooling](developer-tooling.md) for AOT packaging and the exact support boundary.
-
-Install the platform prerequisites from [the native host README](../native/gpui-host/README.md). The exact Ubuntu build/display package list is in `.github/workflows/native-linux.yml`. Framework contributors build the host explicitly:
+On a desktop with the host's platform prerequisites, this opens the native counter. Edit the entry and restart the command, or add `--watch` for source watching:
 
 ```sh
-cargo build --locked -p bun-native-host
-BUN_NATIVE_HOST="$PWD/target/debug/bun-native-host" \
-  bun examples/native-window/main.ts
+bun run native dev apps/my-app --host "$BUN_NATIVE_PREBUILT_HOST" --watch
 ```
 
-Run this in a desktop session, or use the isolated X11 command in [testing](testing.md). Click Increment, type in the input and close through the window manager. Ordinary TypeScript edits rerun the example with the same prebuilt host; they do not compile Rust.
+Watch rebuilds and remounts the app and host after a successful edit, so component state resets. A rejected source edit leaves the working app running. Closing the native window or interrupting the command ends the session. Keep the template's lifecycle and optional IPC hooks when extending it. The [CLI reference](developer-tooling.md) explains the watch contract and exact native qualification boundaries.
 
-## Compile that application with AOT
+## 5. Build the AOT package
 
-Build an optimized native host once, then compile the application separately:
+From the checkout root, choose a new or empty output directory and declare the supplied host's build profile:
 
 ```sh
-cargo build --locked --release -p bun-native-host
-bun experiments/aot-gpui/build-window.ts \
-  --host "$PWD/target/release/bun-native-host" \
-  --host-profile release --outdir "$PWD/.bun-native/app"
-BUN_NATIVE_HOST="$PWD/.bun-native/app/bun-native-host" \
-  .bun-native/app/native-window
+bun run native build apps/my-app \
+  --host "$BUN_NATIVE_PREBUILT_HOST" \
+  --host-profile release \
+  --outdir "$PWD/.bun-native/my-app-package"
 ```
 
-The output directory must be empty. The recipe checks the exact compiler, inspects the compiled-program metadata and records both executable hashes, source hashes and linkage in `manifest.json`. On Windows native executable filenames use `.exe`; Windows GUI/AOT packaging is not qualified by the Linux record. This recipe creates experimental executables, not a signed installer. GUI verification remains an explicit run against the produced artifacts.
+Use `--host-profile dev` if you supplied a development host. The declaration is recorded provenance; it does not inspect the binary's optimization level.
 
-## First actual app acceptance
+The output contains the AOT `application`, its adjacent `bun-native-host`, a manifest with executable hashes and compiler inspections, and the bundled source plus compiler logs. Keep the two executables together. On the matching native desktop, launch:
 
-The first example, owned by #230 and #227, must:
+```sh
+.bun-native/my-app-package/application
+```
 
-- Launch a **real native GPU/OS window**, with text, a button and editable input, controlled by Bun-authored TypeScript.
-- Send click/keyboard/focus events through the native bridge, update visible UI, close cleanly and repeat without leaked callbacks.
-- Run under normal Bun development mode and a separately verified machine-code AOT executable built from the same source.
-- Record OS/CPU/GPU, Bun and native renderer revisions, source commit, exact command, artifact bytes, memory/startup measurements and failures.
-- Contain no Chromium, CEF or system WebView UI fallback.
+The CLI uses the pinned `bun compile` path and requires compiled-program and JIT-omission evidence. It builds for the current OS and CPU. The generated package is unsigned; installation, signing, updates and target-platform GUI acceptance require their own qualification. Consult the [CLI reference](developer-tooling.md) for output layout, host resolution and error handling.
 
-Do not wait for a human feasibility vote if interop fails. Reproduce, fix or take another genuinely native implementation route and keep building.
+## What the onboarding check proves
 
-## Test locations
+The [recorded Linux x64 onboarding check](../tests/native/evidence/checkout-cli-onboarding-linux.json) began with a clean worktree at `ef1c14a7973ddc907511ccd1a4ff62f6da990475` and no installed dependencies. Its [published equivalent source](https://github.com/0xPlayerOne/bun-native/tree/1406bd3fcbacf4dad3b06c55a270368206e9a4bb) has the identical Git tree `040abd1f0367f9f02ab7feda05060a181213a0b6`; commit metadata differs. It verified the exact compiler and restored 72 packages using `--frozen-lockfile --offline` from a populated cache. An independent empty-cache attempt failed with the expected cache-miss diagnostic. Both attempts preserved the lockfiles and toolchain pins.
 
-Use GitHub Actions Linux/Windows/macOS runners first. For actual macOS GUI, keyboard, text/IME or accessibility testing that hosted runners cannot prove, discover the owner's connected Mac through Remote Desktop Commander. Keep temporary work bounded and avoid persistent Docker/VM disks on the Mac. Label unavailable physical tests **unsupported**, never passed.
+| App              | Strict source check | Actual AOT build and inspection |
+| ---------------- | ------------------- | ------------------------------- |
+| Solid TypeScript | Passed              | Passed                          |
+| Solid JavaScript | Passed              | Passed                          |
+| React TypeScript | Passed              | Passed                          |
+| React JavaScript | Passed              | Passed                          |
 
-## After BN0
+The same check verified TypeScript defaults for both frameworks, compared the supplied host's native sources and pins with the tested checkout, and recorded no invocation of owned `cargo`, `rustc` or `rustup` sentinels. It retained generated sources, command logs and package fingerprints. This is evidence for a clean checkout with an existing package cache and supplied toolchain/host. A cold network installation was not run.
 
-- [BN1](https://github.com/0xPlayerOne/bun-native/issues/219): typed native bridge and public API.
-- [BN2](https://github.com/0xPlayerOne/bun-native/issues/218): SolidJS renderer.
-- [BN3](https://github.com/0xPlayerOne/bun-native/issues/221): React renderer.
-- [BN4](https://github.com/0xPlayerOne/bun-native/issues/222): shared native primitives, OS capabilities and accessibility.
-- [BN5](https://github.com/0xPlayerOne/bun-native/issues/220): supported app authoring CLI, fast reload, CI.
-- [BN6](https://github.com/0xPlayerOne/bun-native/issues/223): native packages, updates, rollback.
-- [BN7](https://github.com/0xPlayerOne/bun-native/issues/224): real app compatibility, performance and public documentation.
+No local GUI launch was attempted because the verification environment's process IDs and `/proc` did not share the namespace required by the native ownership checks. The manifests retain `nativeRendering`, `osInput` and `teardown` as `not-run`. This record does not qualify macOS/Windows templates, independent framework installation or signed distribution. Current hosted native evidence is described separately in [developer tooling](developer-tooling.md).
 
-An agent assigned any later milestone should verify prerequisites and implement missing dependencies itself rather than ask the owner for a checkpoint.
+## Continue developing
+
+Use the [public core API](../packages/core/README.md), [native layout contract](native-layout.md) and [compatibility guide](compatibility.md) when extending an app. Framework contributors should also read the [architecture](architecture.md), [engineering-quality policy](engineering-quality.md), [testing guide](testing.md) and [implementation handoff](bun-native-handoff.md).
