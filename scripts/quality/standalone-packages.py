@@ -3,6 +3,7 @@
 import argparse
 import base64
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -51,19 +52,14 @@ COHORT_ERRORS = (
 )
 
 
-def require(condition, message):
-    if not condition:
-        raise RuntimeError(message)
-
-
-def digest(path):
-    result = hashlib.sha256()
-    size = 0
-    with Path(path).open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            size += len(chunk)
-            result.update(chunk)
-    return {"bytes": size, "sha256": result.hexdigest()}
+EVIDENCE_SPEC = importlib.util.spec_from_file_location(
+    "standalone_package_evidence",
+    Path(__file__).with_name("standalone-package-evidence.py"),
+)
+EVIDENCE = importlib.util.module_from_spec(EVIDENCE_SPEC)
+EVIDENCE_SPEC.loader.exec_module(EVIDENCE)
+require = EVIDENCE.require
+digest = EVIDENCE.digest
 
 
 def write_json(path, value):
@@ -499,74 +495,13 @@ class Cohort:
         }
 
     def build_receipt(self, project):
-        directory = project / "dist"
-        manifest = json.loads((directory / "manifest.json").read_text())
-        require(
-            manifest["packageSet"]["source"] == self.report["source"],
-            "AOT source identity differs",
+        return EVIDENCE.build_receipt(
+            project,
+            self.report["source"],
+            self.packages["toolchain"],
+            HOST_DIGEST,
+            self.bun,
         )
-        require(
-            manifest["packageSet"]["manifest"]
-            == digest(project / "vendor/bun-native/manifest.json"),
-            "AOT package-set identity differs",
-        )
-        require(
-            manifest["toolchain"] == self.packages["toolchain"], "AOT toolchain differs"
-        )
-        require(
-            manifest["application"]["inspection"]["hasCompiledProgram"],
-            "Compiled-program record missing",
-        )
-        runtime = manifest["application"]["runtimeFeatures"]
-        require(
-            runtime["jit"] != "present" and runtime["jitRemovedRanges"]["count"] > 0,
-            "JIT omission evidence missing",
-        )
-        command = manifest["application"]["compileCommand"]
-        require(
-            command[:3] == [str(self.bun), "--no-install", "compile"],
-            "AOT child lost its explicit no-install guard",
-        )
-        for field in ("application", "developmentModule", "host"):
-            item = manifest[field]
-            require(
-                digest(directory / item["file"])
-                == {key: item[key] for key in ("bytes", "sha256")},
-                f"AOT {field} bytes differ",
-            )
-        require(
-            digest(directory / manifest["host"]["file"]) == HOST_DIGEST,
-            "Bundled host differs",
-        )
-        require(
-            all(
-                manifest["verification"][key] == "not-run"
-                for key in ("nativeRendering", "osInput", "teardown")
-            ),
-            "Build overstates native qualification",
-        )
-        source_map = directory / "development/application.js.map"
-        mapping = json.loads(source_map.read_text())
-        require(
-            mapping["version"] == 3 and mapping["sources"], "Missing source-map inputs"
-        )
-        sources = {}
-        for name in mapping["sources"]:
-            target = (source_map.parent / mapping.get("sourceRoot", "") / name).resolve(
-                strict=True
-            )
-            require(
-                target.is_relative_to(project) and target.is_file(),
-                f"Source-map input escapes consumer: {name}",
-            )
-            sources[target.relative_to(project).as_posix()] = digest(target)
-        return {
-            "manifest": manifest,
-            "manifest_digest": digest(directory / "manifest.json"),
-            "source_map": digest(source_map),
-            "mapped_sources": sources,
-            "source_map_limit": "No original Solid TSX line/column fidelity claim",
-        }
 
     def negative(self, name, solid):
         root = self.output / "negatives" / name
