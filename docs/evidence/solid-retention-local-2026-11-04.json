@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "archive_date_utc": "2026-11-04",
+  "investigation": "https://github.com/0xPlayerOne/bun-native/issues/287",
+  "status": "unresolved retention checkpoint observation; original source check failed",
+  "scope": "Read-only preservation and source comparison of one integrated local source-check failure, plus one separately planned coverage invocation. The failing Solid unit test uses real public-core IPC to a headless protocol peer; it is not GPUI/native-rendering evidence.",
+  "no_retries_or_oracle_changes": "The archiving agent ran no test invocation, additional collection, heap snapshot or experimental retry. It changed no production code, test checkpoint, assertion, runtime pin or diagnostic behavior. The coordinator separately ran the one predeclared coverage invocation recorded below.",
+  "source": {
+    "measured_local_head": "fdaf6b52d3ebee3b3b40f255717f4d1545018f7b",
+    "measured_head_git_tree": "3dfb616c47ac390b7ec99586ab781c9d6be4da01",
+    "dirty_working_tree_content_git_tree": "d37f235aaba0e17162c3aebaf20b380349f2237f",
+    "published_equivalent_commit": "f680d8a6b5cd49fe85291e7f066a0683e1d9ca93",
+    "publication_identity": "After both observations and independent archival, the coordinator committed the two existing documentation changes without changing their bytes. The published equivalent retains the exact measured content tree; commit metadata and ancestry differ.",
+    "content_tree_method": "Reconstructed in memory using Git SHA-1 blob/tree serialization and original file modes; algorithm also reproduced the committed HEAD tree. No index or working source was changed.",
+    "tracked_file_count": 474,
+    "full_source_manifest_sha256": "21444623c8e28a4811de3594dcebb4281d84da966fddbba711c8387cef2e6108",
+    "source_manifest_encoding": "Tracked files sorted by repository path, with keys path, mode, bytes and sha256. SHA-256 of UTF-8 JSON with sorted object keys, comma/colon separators, no spaces or newline, ensure_ascii=false.",
+    "capture_consistency": "All 474 file contents and git status were checked twice during archival. Only the two listed documentation/provenance files differed from HEAD. Every recorded source hash was checked again after the coverage run and still matched.",
+    "dirty_files": [
+      {
+        "path": "docs/getting-started.md",
+        "mode": "100644",
+        "head_blob": "e2de297e897f7b9c400f18e45e1fa819dd8ac1bf",
+        "snapshot_blob": "54ec61648b7610556d34b5094faa84bffbd4be3e",
+        "bytes": 7979,
+        "sha256": "db139cbd4c1c8488aacc4b8e27b4f800e7fdd8e1d5bea425d8dcd2fad683b6cf"
+      },
+      {
+        "path": "tests/native/evidence/checkout-cli-onboarding-linux.json",
+        "mode": "100644",
+        "head_blob": "214cf99326ae7f859f0958f10eb323b0061e9805",
+        "snapshot_blob": "5323505fe205232cd537e97ec3231fef2e520cf1",
+        "bytes": 21691,
+        "sha256": "e48b7b6556643e56f66d516d11387b43bf18fe31705c9ec6c84fb63c95b0234c"
+      }
+    ],
+    "snapshot_manifest_digest": {
+      "bytes": 155936,
+      "sha256": "3a11c4b1568bd054f61eab22f3ec6c6c526fb79dd79c3ec16dce6e701cb442c5"
+    },
+    "dirty_content_retention": "Exact dirty-file bytes were copied with the local snapshot before further integration; the content-derived tree ID and file/blob hashes identify them independently of future commits."
+  },
+  "runtime": {
+    "bun_log_identity": "bun test v1.4.4-canary.1 (da867c60b)",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "full_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "executable_path": "$PINNED_BUN",
+    "identity_provenance": "The coordinator confirmed that the original command selected the usual pinned Bun executable through PATH. Its SHA-256 and full Bun.revision were independently read for archival; the original log itself contains the short revision above."
+  },
+  "checkpoint": {
+    "test_name": "disposed roots are collectable while their native window stays open",
+    "source_path": "tests/solid/renderer.test.ts",
+    "assertion_line": 474,
+    "probe_count": 10,
+    "mount_dispose_sequence": [
+      "render a labelled root into the same open window",
+      "await root.ready",
+      "await root.dispose",
+      "return new WeakRef(root)"
+    ],
+    "fixed_post_mount_sequence": [
+      "await Bun.sleep(0)",
+      "Bun.gc(true)",
+      "await Bun.sleep(0)",
+      "Bun.gc(true)",
+      "assert zero dereferenceable WeakRef targets"
+    ],
+    "expected_target_count": 0,
+    "observed_target_count": 1,
+    "survivor_indexes": null,
+    "survivor_diagnostics": null,
+    "marking_or_retaining_path": null,
+    "application_diagnostics_at_failure": null,
+    "post_checkpoint_window_node_assertions": "Not reached in the failed invocation; they follow the throwing weak-target assertion.",
+    "diagnostic_limit": "BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR was disabled for the original invocation, as confirmed by the coordinator. The raw assertion records only cardinality. No index, including index 9 or a last-root identity, may be inferred.",
+    "checkpoint_sha256": "40c3f2d77fac0b5c9d8a93a3f1881dbd014477a1195458582093496b4026f423",
+    "checkpoint_bytes": 1107,
+    "checkpoint_source": "  test('disposed roots are collectable while their native window stays open', () =>\n    withApp(async (app) => {\n      const window = await app.openWindow({ title: 'Solid root retention' })\n      async function cycle(index: number) {\n        const root = render(() => label(String(index)), window)\n        await root.ready\n        await root.dispose()\n        return new WeakRef(root)\n      }\n      const references: WeakRef<RenderRoot>[] = []\n      for (let index = 0; index < 10; index++) references.push(await cycle(index))\n      // WeakRef keeps targets alive until this job ends. Run the pinned Bun's\n      // explicit full collection after that boundary, outside the mount scope.\n      await Bun.sleep(0)\n      Bun.gc(true)\n      await Bun.sleep(0)\n      Bun.gc(true)\n      try {\n        expect(references.filter((reference) => reference.deref() !== undefined)).toHaveLength(0)\n      } catch (failure) {\n        rethrowWithRetentionDiagnostic(failure, references, { application: app, window })\n      }\n      expect(app.diagnostics.windows).toBe(1)\n      expect(app.diagnostics.nodes).toBe(1)\n    }))\n\n"
+  },
+  "source_comparison": {
+    "baseline_commit": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "baseline_url": "https://github.com/0xPlayerOne/bun-native/commit/c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "baseline_scope": "Actual c9ada928 baseline for this failure; later main changes are not substituted.",
+    "baseline_packages_git_tree": "38d8de80fa9366f75f76fbf915dbe848ccfb005f",
+    "measured_packages_git_tree": "38d8de80fa9366f75f76fbf915dbe848ccfb005f",
+    "production_package_file_count": 43,
+    "typescript_production_source_count": 33,
+    "package_path_set_equal": true,
+    "package_modes_blobs_and_bytes_equal": true,
+    "added_package_files": [],
+    "removed_package_files": [],
+    "changed_package_files": [],
+    "production_package_files": [
+      {
+        "path": "packages/core/README.md",
+        "mode": "100644",
+        "bytes": 18909,
+        "sha256": "c12fab8864afd66eeb58be222f1e243f0c413e1df2e6515c92900071f8fa086b"
+      },
+      {
+        "path": "packages/core/package.json",
+        "mode": "100644",
+        "bytes": 234,
+        "sha256": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc"
+      },
+      {
+        "path": "packages/core/src/application.ts",
+        "mode": "100644",
+        "bytes": 19462,
+        "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc"
+      },
+      {
+        "path": "packages/core/src/events.ts",
+        "mode": "100644",
+        "bytes": 8654,
+        "sha256": "5ad24f8e4b0606405dbbbcff2df4b0424a70cd691fe8e8f36584ef98ec5f5f9f"
+      },
+      {
+        "path": "packages/core/src/index.ts",
+        "mode": "100644",
+        "bytes": 852,
+        "sha256": "8800fc237dd84627a2dcf22368f40029a3331068903d6795b889e77c4e13a2f9"
+      },
+      {
+        "path": "packages/core/src/services.ts",
+        "mode": "100644",
+        "bytes": 3935,
+        "sha256": "e6cb7cef872eb06d5ab6c1dda35c16b770dd6fc9488505b95fc3404bf1a9856c"
+      },
+      {
+        "path": "packages/core/src/tree.ts",
+        "mode": "100644",
+        "bytes": 7898,
+        "sha256": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f"
+      },
+      {
+        "path": "packages/core/src/types.ts",
+        "mode": "100644",
+        "bytes": 6372,
+        "sha256": "0d63607618894fa1093eb70d60cec676b3c721f894f4a0f9ce348fc287799392"
+      },
+      {
+        "path": "packages/protocol/package.json",
+        "mode": "100644",
+        "bytes": 129,
+        "sha256": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba"
+      },
+      {
+        "path": "packages/protocol/src/elements.ts",
+        "mode": "100644",
+        "bytes": 5003,
+        "sha256": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a"
+      },
+      {
+        "path": "packages/protocol/src/framing.ts",
+        "mode": "100644",
+        "bytes": 2806,
+        "sha256": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664"
+      },
+      {
+        "path": "packages/protocol/src/index.ts",
+        "mode": "100644",
+        "bytes": 604,
+        "sha256": "f8adda80742568813d6d3c342695e04132b275fce54de21e09b000fe840b4af7"
+      },
+      {
+        "path": "packages/protocol/src/messages.ts",
+        "mode": "100644",
+        "bytes": 15477,
+        "sha256": "6c9c12a5fdf37094257e73737bf5cb1c1c19ff2b2250303dc44a5f08c4e91800"
+      },
+      {
+        "path": "packages/protocol/src/services.ts",
+        "mode": "100644",
+        "bytes": 2212,
+        "sha256": "2f24e923d526a2f13f279bdd297d3088d6f901d54ed8c1a431e097155febf0c9"
+      },
+      {
+        "path": "packages/protocol/src/values.ts",
+        "mode": "100644",
+        "bytes": 1732,
+        "sha256": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0"
+      },
+      {
+        "path": "packages/react/README.md",
+        "mode": "100644",
+        "bytes": 15221,
+        "sha256": "356aeced63fde2a44a3e6e3f2de568a6e5ff5cb722e7b914082737fd17e73085"
+      },
+      {
+        "path": "packages/react/package.json",
+        "mode": "100644",
+        "bytes": 402,
+        "sha256": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec"
+      },
+      {
+        "path": "packages/react/src/commit-barrier.ts",
+        "mode": "100644",
+        "bytes": 987,
+        "sha256": "139f9f2827d3363642fee801e128dd1abf2a754d04550aca7d878493ef19bfd0"
+      },
+      {
+        "path": "packages/react/src/index.ts",
+        "mode": "100644",
+        "bytes": 262,
+        "sha256": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a"
+      },
+      {
+        "path": "packages/react/src/jsx-dev-runtime.ts",
+        "mode": "100644",
+        "bytes": 93,
+        "sha256": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85"
+      },
+      {
+        "path": "packages/react/src/jsx-runtime.ts",
+        "mode": "100644",
+        "bytes": 92,
+        "sha256": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d"
+      },
+      {
+        "path": "packages/react/src/jsx.ts",
+        "mode": "100644",
+        "bytes": 1281,
+        "sha256": "0cb1d27d0e49ff376e78208e2c34077e4c901924c9a0765860c349bebd4af898"
+      },
+      {
+        "path": "packages/react/src/mount.ts",
+        "mode": "100644",
+        "bytes": 6863,
+        "sha256": "2c3a865c84a8d74775d79e5f1046e1de493351fd678ce9d25839596af2591978"
+      },
+      {
+        "path": "packages/react/src/reconciler.ts",
+        "mode": "100644",
+        "bytes": 7440,
+        "sha256": "ff36df62bc07d2f6b226227803907fe51b6a34709c972dcb811c25bdf25fb4d3"
+      },
+      {
+        "path": "packages/renderer/README.md",
+        "mode": "100644",
+        "bytes": 4895,
+        "sha256": "ee07c6319c358a2bb33755332e35a6503bb02cfcd38a434ba0d4592615ecea6e"
+      },
+      {
+        "path": "packages/renderer/package.json",
+        "mode": "100644",
+        "bytes": 192,
+        "sha256": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3"
+      },
+      {
+        "path": "packages/renderer/src/event-properties.ts",
+        "mode": "100644",
+        "bytes": 2075,
+        "sha256": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a"
+      },
+      {
+        "path": "packages/renderer/src/index.ts",
+        "mode": "100644",
+        "bytes": 910,
+        "sha256": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a"
+      },
+      {
+        "path": "packages/renderer/src/input-intent.ts",
+        "mode": "100644",
+        "bytes": 1698,
+        "sha256": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02"
+      },
+      {
+        "path": "packages/renderer/src/native-tree.ts",
+        "mode": "100644",
+        "bytes": 6235,
+        "sha256": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82"
+      },
+      {
+        "path": "packages/renderer/src/nodes.ts",
+        "mode": "100644",
+        "bytes": 8443,
+        "sha256": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c"
+      },
+      {
+        "path": "packages/renderer/src/order.ts",
+        "mode": "100644",
+        "bytes": 956,
+        "sha256": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41"
+      },
+      {
+        "path": "packages/renderer/src/root.ts",
+        "mode": "100644",
+        "bytes": 9861,
+        "sha256": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8"
+      },
+      {
+        "path": "packages/renderer/src/window-lifetime.ts",
+        "mode": "100644",
+        "bytes": 1635,
+        "sha256": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b"
+      },
+      {
+        "path": "packages/runtime/package.json",
+        "mode": "100644",
+        "bytes": 195,
+        "sha256": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a"
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "mode": "100644",
+        "bytes": 18518,
+        "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7"
+      },
+      {
+        "path": "packages/runtime/src/startup-trace.ts",
+        "mode": "100644",
+        "bytes": 3021,
+        "sha256": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d"
+      },
+      {
+        "path": "packages/solid/README.md",
+        "mode": "100644",
+        "bytes": 15249,
+        "sha256": "6148d271abde7844877266f3ab878de5abbe8b4798815894935889dcec836626"
+      },
+      {
+        "path": "packages/solid/package.json",
+        "mode": "100644",
+        "bytes": 310,
+        "sha256": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84"
+      },
+      {
+        "path": "packages/solid/src/index.ts",
+        "mode": "100644",
+        "bytes": 604,
+        "sha256": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef"
+      },
+      {
+        "path": "packages/solid/src/jsx.ts",
+        "mode": "100644",
+        "bytes": 868,
+        "sha256": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6"
+      },
+      {
+        "path": "packages/solid/src/mount.ts",
+        "mode": "100644",
+        "bytes": 1216,
+        "sha256": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f"
+      },
+      {
+        "path": "packages/solid/src/renderer.ts",
+        "mode": "100644",
+        "bytes": 964,
+        "sha256": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6"
+      }
+    ],
+    "checkpoint_and_harness_files": [
+      {
+        "path": "tests/solid/renderer.test.ts",
+        "bytes": 19746,
+        "sha256": "e0156a12d48b4a5d4636980bdbc03ba1817ea242cc7b7ff759ed3c7b2740e7ef",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "tests/solid/retention-diagnostic.ts",
+        "bytes": 5060,
+        "sha256": "d2d0c020d97f34556f3d55c5a2f24ab7e184ba6e92b4eb750f08e8665608b651",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "tests/renderers/support.ts",
+        "bytes": 1984,
+        "sha256": "d069c1e14a4917e4aaa14de764d9159276857ff408801484d9eece720ae8e7e1",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "tests/core/protocol-peer.ts",
+        "bytes": 4715,
+        "sha256": "9f6057ef0f8c0ba762656214e56f9d2685baac12eb08c04ab8786e2c3fb99a5f",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "tests/core/peer-tree.ts",
+        "bytes": 2496,
+        "sha256": "1802fb93c534067a0237ab1bd8a2cccaa01106f5182f042f88bbdf2a1033758a",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "scripts/solid/test-runtime.ts",
+        "bytes": 555,
+        "sha256": "61a95670293c2db96f6b4f4baa3ad073a8895facae8d957f99a19e6ae4c1e02a",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "scripts/solid/transform.ts",
+        "bytes": 642,
+        "sha256": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "bunfig.toml",
+        "bytes": 147,
+        "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "bun.lock",
+        "bytes": 28357,
+        "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+        "identical_to_baseline": true
+      },
+      {
+        "path": "toolchain.json",
+        "bytes": 3012,
+        "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+        "identical_to_baseline": true
+      }
+    ],
+    "assessment": "Every tracked production-package file, the complete Solid renderer test, failure-only diagnostic, shared renderer support, protocol peer/tree, Solid preload/transform, Bun test configuration, lockfile and toolchain pin match the baseline. No edited production-package or checkpoint source explains the failure. This does not compare runtime heap reachability or allocation history, and does not establish whether the expanded full-suite workload has an indirect effect."
+  },
+  "invocations": [
+    {
+      "id": "original-integrated-source-check",
+      "command": ["$PINNED_BUN", "run", "check"],
+      "status": "failed",
+      "exit_code": 1,
+      "retention_diagnostics_enabled": false,
+      "tests_passed": 651,
+      "tests_failed": 1,
+      "tests_total": 652,
+      "test_files": 47,
+      "assertions": 5157,
+      "runner_reported_seconds": 44.41,
+      "log": {
+        "name": "cli-integrated-check.log",
+        "bytes": 72139,
+        "sha256": "b39fd41255fcd58e60c575636204710c105a9e6d64f097b78ef577c7d72ca619"
+      },
+      "raw_assertion_excerpt": "469 |       await Bun.sleep(0)\n470 |       Bun.gc(true)\n471 |       await Bun.sleep(0)\n472 |       Bun.gc(true)\n473 |       try {\n474 |         expect(references.filter((reference) => reference.deref() !== undefined)).toHaveLength(0)\n                                                                                        ^\nerror: expect(received).toHaveLength(expected)\n\nExpected length: 0\nReceived length: 1\n",
+      "excerpt_policy": "Exact contiguous original log lines; machine-specific absolute stack paths following this excerpt are omitted. The full raw-log digest binds the unchanged original log.",
+      "stack_locations": [
+        "tests/solid/renderer.test.ts:474:83",
+        "tests/renderers/support.ts:21:11"
+      ],
+      "raw_summary_excerpt": " 651 pass\n 1 fail\n 5157 expect() calls\nRan 652 tests across 47 files. [44.41s]\nerror: script \"test\" exited with code 1\nerror: script \"check\" exited with code 1",
+      "build_phase": "The chained source-check command stopped at test exit 1 before its final package-build step."
+    },
+    {
+      "id": "separately-planned-coverage-with-existing-failure-logger",
+      "command": ["$PINNED_BUN", "test", "tests", "--coverage"],
+      "command_scope": "Exact argv confirmed from the coordinator's invocation. Only the existing failure-logger environment variable below was newly enabled; the remaining command environment was inherited from the original source check. The raw log itself does not embed argv.",
+      "status": "passed",
+      "exit_code": 0,
+      "retention_diagnostics_enabled": true,
+      "retention_diagnostic_environment": {
+        "BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR": "$OWNED_DIAGNOSTICS_DIRECTORY"
+      },
+      "diagnostic_files_emitted": 0,
+      "diagnostic_count_provenance": "Reported by the coordinator; the original assertion passed on this invocation, so its failure-only catch path emitted no record.",
+      "tests_passed": 652,
+      "tests_failed": 0,
+      "tests_total": 652,
+      "test_files": 47,
+      "assertions": 5159,
+      "runner_reported_seconds": 44.3,
+      "log": {
+        "name": "cli-integrated-coverage.log",
+        "bytes": 74838,
+        "sha256": "d17320e827315caee56b87ab137ac226c3b63260072e119366f044241e57c13a"
+      },
+      "raw_checkpoint_result": "(pass) Solid universal adapter over the public core (headless subprocess) > disposed roots are collectable while their native window stays open [60.43ms]",
+      "raw_summary_excerpt": " 652 pass\n 0 fail\n 5159 expect() calls\nRan 652 tests across 47 files. [44.30s]",
+      "source_identity": "All 474 source files still matched the original captured dirty tree after this invocation.",
+      "interpretation": "This separately configured pass does not explain, erase or clear the original fixed-checkpoint failure."
+    }
+  ],
+  "causal_assessment": {
+    "actual_causal_evidence_found": false,
+    "finding": "The retained log establishes one dereferenceable disposed-root target at the unchanged fixed checkpoint. It does not identify the surviving root, its retaining/marking path, or a CLI-originating reference.",
+    "classification": "An additional observation in the tracked unresolved #287 investigation, not a demonstrated regression caused by the CLI implementation.",
+    "limits": [
+      "No survivor index or failure metadata was recorded in the original invocation.",
+      "No heap/marking-root evidence or original installed-dependency byte inventory was captured.",
+      "Source identity and one separately configured coverage pass are insufficient for causal attribution or for declaring the checkpoint resolved."
+    ]
+  },
+  "retention_note": "This compact record retains exact source/runtime/log identities, the original checkpoint and assertion excerpt, full production-package comparison hashes, and both statuses. Large source manifests and full raw logs are identified by hashes and are not embedded. No future passing run should replace the failed outcome."
+}

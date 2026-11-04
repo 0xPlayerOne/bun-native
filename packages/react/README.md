@@ -270,8 +270,9 @@ latency, release performance or macOS/Windows native support.
 
 ### Error callback lifetime
 
-Root-scoped error callbacks are revoked after disposal finishes, including the
-user-supplied recoverable-error reporter. A reconciler-retained callback cannot
+Root-scoped error callbacks are revoked when framework teardown finishes, before
+pending native removal acknowledges, including the user-supplied recoverable-error
+reporter. Revocation also runs when framework teardown throws. A reconciler-retained callback cannot
 keep its released owner/reporter reachable or report late errors to that owner.
 Errors raised during unmount still propagate through the existing cleanup path;
 this does not weaken the separate strict collectability diagnostics.

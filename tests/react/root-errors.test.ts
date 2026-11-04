@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from 'bun:test'
-import { createElement } from 'react'
+import { createElement, useEffect } from 'react'
 import { reconciler } from '../../packages/react/src/reconciler.ts'
 import { render } from '@bun-native/react'
 import { withApp } from '../renderers/support.ts'
@@ -78,3 +78,75 @@ test('actual root disposal revokes the callbacks supplied to the reconciler', ()
       capture.mockRestore()
     }
   }))
+
+for (const cleanupFails of [false, true]) {
+  test(`framework teardown revokes error owners before native acknowledgement (cleanup failure: ${cleanupFails})`, () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'React disposing callback ownership' })
+      const original = reconciler.createContainer
+      let callbacks: Parameters<typeof original> | undefined
+      const capture = spyOn(reconciler, 'createContainer').mockImplementation((...args) => {
+        callbacks = args
+        return original(...args)
+      })
+      const cleanupError = new Error('original framework cleanup failure')
+      let reports = 0
+      let cleaned = 0
+      function Component() {
+        useEffect(
+          () => () => {
+            cleaned++
+            if (cleanupFails) throw cleanupError
+          },
+          []
+        )
+        return createElement('text', null, 'owned')
+      }
+      let root: ReturnType<typeof render> | undefined
+      let disposal: Promise<void> | undefined
+      try {
+        root = render(createElement(Component), window, {
+          onRecoverableError: () => {
+            reports++
+          },
+        })
+        await root.ready
+        if (!callbacks) throw new Error('The real reconciler did not receive root callbacks')
+        let closed = false
+        void root.closed.then(
+          () => {
+            closed = true
+          },
+          () => {
+            closed = true
+          }
+        )
+        disposal = root.dispose()
+        void disposal.catch(() => {})
+        // No await: framework cleanup has ended, while the original native
+        // removal/closed promise has not acknowledged its completion.
+        expect(cleaned).toBe(1)
+        expect(closed).toBe(false)
+        callbacks[8](new Error('late report after framework teardown'), {})
+        expect(reports).toBe(0)
+        callbacks[6](new Error('late failure after framework teardown'), { componentStack: '' })
+        if (cleanupFails) {
+          await expect(disposal).rejects.toBe(cleanupError)
+          await expect(root.closed).rejects.toBe(cleanupError)
+        } else {
+          await disposal
+          await root.closed
+        }
+        expect(root.diagnostics.nodes).toBe(0)
+        expect(app.diagnostics.callbacks).toBe(0)
+        expect(reports).toBe(0)
+      } finally {
+        try {
+          // The assertions above own the expected failed-cleanup result.
+          await (disposal ?? root?.dispose())?.catch(() => {})
+        } finally {
+          capture.mockRestore()
+        }
+      }
+    }))
+}

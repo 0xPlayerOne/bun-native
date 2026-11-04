@@ -62,13 +62,20 @@ class Root implements ReactRenderRoot {
         )
         onCleanup(() => {
           this.phase = 'disposing'
-          reconciler.updateContainerSync(null, this.fiber, null)
-          reconciler.flushSyncWork()
-          reconciler.flushPassiveEffects()
-          // React reports unmount effect/ref errors through onUncaughtError.
-          // The shared root is already disposing, so forward the synchronous
-          // result here instead of relying on a later terminal-error request.
-          if (this.failure) throw this.failure
+          try {
+            reconciler.updateContainerSync(null, this.fiber, null)
+            reconciler.flushSyncWork()
+            reconciler.flushPassiveEffects()
+            // React reports unmount effect/ref errors through onUncaughtError.
+            // The shared root is already disposing, so forward the synchronous
+            // result here instead of relying on a later terminal-error request.
+            if (this.failure) throw this.failure
+          } finally {
+            // Framework teardown is terminal even while native removal awaits
+            // acknowledgement. Keep unmount errors active until this boundary.
+            this.errors?.release()
+            this.errors = undefined
+          }
         })
         reconciler.updateContainerSync(children, this.fiber, null)
         reconciler.flushSyncWork()
