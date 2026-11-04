@@ -61,12 +61,17 @@ jobs:
           for path in dependencies.rglob('*'):
               if path.is_symlink() and not path.resolve().is_relative_to(source):
                   raise RuntimeError('Dependency symlink escapes owned checkout')
-              if path.name == '.env' or path.name.startswith('.env.') or path.name == '.npmrc':
-                  raise RuntimeError('Refuse environment or credential configuration')
+          excluded = []
+          def dependency_filter(member):
+              name = Path(member.name).name
+              if name == '.env' or name.startswith('.env.') or name in ('.npmrc', '.git'):
+                  excluded.append(member.name)
+                  return None
+              return member
           subprocess.run(['git', 'archive', '--format=tar.gz', '--output=' + str(output / 'source.tar.gz'), 'HEAD'], check=True)
           (output / 'source-tree.txt').write_bytes(subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD']))
           with tarfile.open(output / 'dependencies.tar.gz', 'w:gz', dereference=False) as archive:
-              archive.add(dependencies, arcname='node_modules')
+              archive.add(dependencies, arcname='node_modules', filter=dependency_filter)
           with tarfile.open(output / 'tools.tar.gz', 'w:gz') as archive:
               for name in ('bun', 'actionlint'):
                   archive.add(output / 'tools' / name, arcname='tools/' + name)
@@ -80,7 +85,7 @@ jobs:
           revision = subprocess.check_output([str(output / 'tools/bun'), '--no-script', '--eval', 'console.log(Bun.revision)'], text=True).strip()
           if revision != 'da867c60bf0bcbf9d6d36994f8ca0efa42075115':
               raise RuntimeError('Unexpected runtime revision')
-          report = {'sourceCommit': head, 'sourceTree': tree, 'bunRevision': revision, 'files': files,
+          report = {'sourceCommit': head, 'sourceTree': tree, 'bunRevision': revision, 'files': files, 'excludedDependencyPaths': excluded,
                     'scope': 'Offline source debugging inputs only; no test or merge qualification'}
           (output / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n')
           print(json.dumps(report))
