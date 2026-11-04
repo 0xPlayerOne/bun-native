@@ -1,0 +1,93 @@
+# One-use diagnostic; never merge or substitute for Validation / Gate.
+name: Windows original Solid failure ownership graph
+on:
+  push:
+    branches: [test/windows-solid-owner-graph-20261104]
+permissions:
+  contents: read
+jobs:
+  investigate:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: control
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          path: source
+      - name: Run fixed unchanged and failure-observer full suites
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, platform, subprocess
+          root = pathlib.Path('source').resolve()
+          control = pathlib.Path('control').resolve()
+          output = pathlib.Path(os.environ['RUNNER_TEMP']) / 'bn331-failure-graph'
+          output.mkdir()
+          tools = pathlib.Path(os.environ['RUNNER_TEMP']) / 'bn331-failure-tools'
+          def checked(args):
+              return subprocess.check_output(args, cwd=root, text=True).strip()
+          head = checked(['git', 'rev-parse', 'HEAD'])
+          tree = checked(['git', 'rev-parse', 'HEAD^{tree}'])
+          assert head == '2a9516337fe99e3585ff8f55e97c7392fad2f372', head
+          assert tree == '39482669d2095b95d3d75a808a188a231937035c', tree
+          assert checked(['git', 'status', '--porcelain']) == ''
+          install = checked(['node', 'scripts/install-bun.mjs', '--destination', str(tools)])
+          (output / 'bun-install.json').write_text(install + '\n')
+          bun = str(tools / 'bun.exe')
+          revision = checked([bun, '--no-script', '--eval', 'console.log(Bun.revision)'])
+          assert revision == 'da867c60bf0bcbf9d6d36994f8ca0efa42075115', revision
+          subprocess.run([bun, 'install', '--frozen-lockfile'], cwd=root, check=True, timeout=120)
+          assert checked(['git', 'status', '--porcelain']) == ''
+          target = root / 'tests/solid/renderer.test.ts'
+          original = target.read_bytes()
+          script = control / 'scripts/research/failure-graph.mjs'
+          needle = '        rethrowWithRetentionDiagnostic(failure, references, { application: app, window })'
+          injection = '''        try {
+                    require(process.env['BN_FAILURE_GRAPH_SCRIPT']!).capture(references, { application: app, window })
+                  } catch (observerError) {
+                    console.error('FAILURE_GRAPH_OBSERVER_ERROR', observerError)
+                  }
+          '''.rstrip() + '\n' + needle
+          original_text = original.decode()
+          assert original_text.count(needle) == 1
+          observed = original_text.replace(needle, injection).encode()
+          outcomes = []
+          try:
+              for name, source in [('unchanged', original), ('failure-observer', observed)]:
+                  target.write_bytes(source)
+                  lane = output / name
+                  lane.mkdir()
+                  env = dict(os.environ)
+                  env['BUN_NATIVE_RETENTION_DIAGNOSTICS_DIR'] = str(lane)
+                  if name == 'failure-observer':
+                      env['BN_FAILURE_GRAPH_SCRIPT'] = str(script)
+                      env['BN_FAILURE_GRAPH_OUTPUT'] = str(lane / 'incoming-graph.json')
+                  with (lane / 'stdout.log').open('wb') as stdout, (lane / 'stderr.log').open('wb') as stderr:
+                      result = subprocess.run([bun, 'test', 'tests'], cwd=root, env=env, stdout=stdout, stderr=stderr, timeout=180)
+                  outcomes.append({'lane': name, 'exitCode': result.returncode, 'testSourceSHA256': hashlib.sha256(source).hexdigest()})
+                  print(json.dumps(outcomes[-1]))
+          finally:
+              target.write_bytes(original)
+              assert checked(['git', 'status', '--porcelain']) == ''
+              report = {'scope': 'Fixed two-process Windows failure investigation, not merge/native/AOT qualification',
+                        'sourceCommit': head, 'sourceTree': tree, 'bunRevision': revision,
+                        'platform': platform.platform(), 'observerSHA256': hashlib.sha256(script.read_bytes()).hexdigest(),
+                        'outcomes': outcomes, 'allTrackedSourceRestored': True}
+              (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
+          assert len(outcomes) == 2 and all(row['exitCode'] == 1 for row in outcomes), 'Expected negative controls did not reproduce; no qualification claim'
+          for name in ['unchanged', 'failure-observer']:
+              log = (output / name / 'stderr.log').read_text()
+              assert '580 pass' in log and '1 fail' in log and 'disposed roots are collectable while their native window stays open' in log, 'Unexpected suite outcome'
+          assert (output / 'failure-observer/incoming-graph.json').is_file(), 'Failure graph unavailable'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: windows-solid-owner-graph-${{ github.sha }}
+          path: ${{ runner.temp }}/bn331-failure-graph
+          if-no-files-found: error
+          retention-days: 7
