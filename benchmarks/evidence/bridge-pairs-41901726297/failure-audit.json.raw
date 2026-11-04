@@ -1,0 +1,548 @@
+{
+  "schemaVersion": 1,
+  "status": "failed",
+  "head": "5ca2cac204521216bd94a2203baa59f3694ec0e0",
+  "testedMerge": "93b489fa42da8689909ff5c322ea6ba1be70595b",
+  "archive": {
+    "run": 41901726297,
+    "job": 126825622138,
+    "artifact": 13359367268,
+    "bytes": 386517,
+    "sha256": "1a948baeda1f39e932944dd79c472105f3e1a8d061b0dc5eb82d45f1718a9fe6"
+  },
+  "scope": "Read-only artifact/source audit; no workload replay; historical-source failure is not current HAL runtime evidence",
+  "summary": {
+    "bytes": 94841,
+    "sha256": "2d80c0d24ecb539613c0a2345577aed77787059d6d1c1b63d67cf23520789fcf"
+  },
+  "variants": {
+    "bn1": {
+      "source": "6ea507b58d0249b752ff62691ebc1879f3fcf6da",
+      "sourceFilesRecorded": 49,
+      "host": {
+        "bytes": 29000736,
+        "sha256": "e74733a6f30fa5db2af6d28914d20cf9eab43fd65fc52d1d32df41fd34ff6e32"
+      },
+      "vendorHalPresentInInventory": false,
+      "aotManifest": {
+        "bytes": 13017,
+        "sha256": "cb9b492a99b4614907179fdc4619afa0406fe407f33150b3b4b07f6d1cb04007"
+      },
+      "aotHost": {
+        "file": "/home/runner/work/_temp/bridge-pairs/prepared/bn1/bun-native-host",
+        "placement": "external",
+        "profile": "release",
+        "bytes": 29000736,
+        "sha256": "e74733a6f30fa5db2af6d28914d20cf9eab43fd65fc52d1d32df41fd34ff6e32",
+        "provenance": "Caller-supplied prebuilt host referenced in place, not bundled. Match this hash to native build and interaction evidence."
+      },
+      "sourceByteVerification": "Historical source identity and hashes retained by prepare; this audit verifies retained archive/manifests, not every unavailable local historical blob."
+    },
+    "events": {
+      "source": "4549e75ca5463f136898a2f5fb49d22b58dffa11",
+      "sourceFilesRecorded": 54,
+      "host": {
+        "bytes": 29206992,
+        "sha256": "4fc4c643fb946325bd04eeb91ea1396ab6e4b9b56359a38a7f5793ecc8086f1a"
+      },
+      "vendorHalPresentInInventory": false,
+      "aotManifest": {
+        "bytes": 13923,
+        "sha256": "5e70f62a38f4a0d2e6c5b896e837fdcac0d1d60dc3189d8546d7b5f1b3fe2e22"
+      },
+      "aotHost": {
+        "file": "/home/runner/work/_temp/bridge-pairs/prepared/events/bun-native-host",
+        "placement": "external",
+        "profile": "release",
+        "bytes": 29206992,
+        "sha256": "4fc4c643fb946325bd04eeb91ea1396ab6e4b9b56359a38a7f5793ecc8086f1a",
+        "provenance": "Caller-supplied prebuilt host referenced in place, not bundled. Match this hash to native build and interaction evidence."
+      },
+      "sourceByteVerification": "Historical source identity and hashes retained by prepare; this audit verifies retained archive/manifests, not every unavailable local historical blob."
+    }
+  },
+  "controllerSourceVerified": "2c4c5c73f9ed40bcfc858ee422f730f6c648722e (tree-equivalent to published head)",
+  "controllers": [
+    {
+      "path": "benchmarks/bridge-pairs.py",
+      "bytes": 31677,
+      "sha256": "e2f8ecc60263f330afc21d449ba19509594544705189e628d45d91d33af8da9a"
+    },
+    {
+      "path": "benchmarks/native-baseline.py",
+      "bytes": 22391,
+      "sha256": "79d81b36678d76183b2abeb9ea1c9e74bb4abdbff851799b6497afbec91ef200"
+    },
+    {
+      "path": "scripts/quality/native-input-linux.py",
+      "bytes": 46821,
+      "sha256": "923ee29ce6c2856989adea4746510b6c3e470c49199c8f80e876e57eeed2df65"
+    },
+    {
+      "path": "scripts/quality/native-linux-session.sh",
+      "bytes": 10120,
+      "sha256": "8a764a05433d40e4d4e2e09d821fac2adbdffd90dcdbb53dd1050e5df1c7f4a5"
+    }
+  ],
+  "trialCount": 24,
+  "failedCount": 2,
+  "trials": [
+    {
+      "id": "warmup-01-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "warmup",
+      "status": "failed",
+      "workloadResult": {
+        "bytes": 12013,
+        "sha256": "e547921d2bfa8eeed367e0d9647e2b6b84dcd94b1accc126658cb620fe3f710e"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 1
+      },
+      "error": "Error: Native open request 3 timed out",
+      "stdout": {
+        "bytes": 270,
+        "sha256": "321996a90e282d82d70ce67508d4f5d7e947218772b58326d9c86c513a4f5b96"
+      },
+      "stderr": {
+        "bytes": 828,
+        "sha256": "49c62a5539e9c722179a4da3ba9205b137c7c3408e86c4c403b1aedd5ba87e5f"
+      },
+      "stderrText": "199 |     } catch (error) {\n200 |       return Promise.reject(error)\n201 |     }\n202 |     const result = new Promise<HostResponse>((resolve, reject) => {\n203 |       const timer = setTimeout(\n204 |         () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),\n                                  ^\nerror: Native open request 3 timed out\n      at <anonymous> (/home/runner/work/bun-native/bun-native/.bun-native/performance-sources/bn1/packages/runtime/src/index.ts:204:29)\n\n::error file=.bun-native/performance-sources/bn1/packages/runtime/src/index.ts,line=204,col=29,title=error: Native open request 3 timed out::%0A      at <anonymous> (/home/runner/work/bun-native/bun-native/.bun-native/performance-sources/bn1/packages/runtime/src/index.ts:204:29)\n\nBun v1.4.4-canary.1+da867c60b (Linux x64)\n",
+      "individualSamples": 0,
+      "batchSamples": 0
+    },
+    {
+      "id": "warmup-01-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "warmup",
+      "status": "failed",
+      "workloadResult": {
+        "bytes": 12954,
+        "sha256": "f78d222b51c80e4d07803f1ba3304cdb9a8169c2851f15e42be9f29125e03355"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 1
+      },
+      "error": "Error: Native open request 3 timed out",
+      "stdout": {
+        "bytes": 273,
+        "sha256": "fed10041e8f1c7cdc357f6f49e9c4cc38ebf8e21c4fdfa6a1d876b81cddf23c2"
+      },
+      "stderr": {
+        "bytes": 837,
+        "sha256": "9ef83af437e6e5e940d17cd130606f11f677507022307d23d238ad77955f836a"
+      },
+      "stderrText": "200 |     } catch (error) {\n201 |       return Promise.reject(error)\n202 |     }\n203 |     const result = new Promise<HostResponse>((resolve, reject) => {\n204 |       const timer = setTimeout(\n205 |         () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),\n                                  ^\nerror: Native open request 3 timed out\n      at <anonymous> (/home/runner/work/bun-native/bun-native/.bun-native/performance-sources/events/packages/runtime/src/index.ts:205:29)\n\n::error file=.bun-native/performance-sources/events/packages/runtime/src/index.ts,line=205,col=29,title=error: Native open request 3 timed out::%0A      at <anonymous> (/home/runner/work/bun-native/bun-native/.bun-native/performance-sources/events/packages/runtime/src/index.ts:205:29)\n\nBun v1.4.4-canary.1+da867c60b (Linux x64)\n",
+      "individualSamples": 0,
+      "batchSamples": 0
+    },
+    {
+      "id": "warmup-01-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "warmup",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41397,
+        "sha256": "6035bb344d9369eda2cd2bd5bf7af313969c408944e1204e944e24e5ee2a9289"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "warmup-01-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "warmup",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42329,
+        "sha256": "5c403d7bd734af2fba3469d5c073991a087b2b09c4cda31b77318499b7907083"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-01-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 39344,
+        "sha256": "98bf0d58bff29a79219c9763b11a09ff08720d2f7b827a096e5969dad370aab0"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-01-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 40321,
+        "sha256": "98c578d486f3ce6f691283c6cd9a57da11cc287a80c3d4e93a2b0a011a323302"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-01-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41372,
+        "sha256": "4c0d8fd20729e5398b158f30464a933889f91d954aafccb127b6653a4026697b"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-01-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42314,
+        "sha256": "b85599c4ec6dd4dd68215ffaf709d7e645f8fc809becc7cfacde91690f468d59"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-02-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42308,
+        "sha256": "05755e325499b27d4998c855e0d5d32e5a9b651b72e7a44f3cda71202abe058e"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-02-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41343,
+        "sha256": "8b89b65ea9f1f9b76d2c18a38fefc2628744b1bd82d36fd7ad0bedb592509a06"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-02-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 40307,
+        "sha256": "8047fda4f8a84011d3e0a19a8e80ecfc38ffc8f8aafdda965abd420da9fcff46"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-02-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 39359,
+        "sha256": "767bf196451d32eb4b90c673af35b16f1d6ac14e917de9d993cc956bc267feeb"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-03-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 39372,
+        "sha256": "2d22b2b2ae5632dffff31c8627af495069eaee2351742ce52e74c71e6f3c08ef"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-03-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 40329,
+        "sha256": "33dcfb5618623125156a7d23028b17ba330d0e1031afa17386731d5e87bf589c"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-03-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41387,
+        "sha256": "d067a60aa9da10a9969fa1e4b47b5b7bea6f6e61e28c4af72df458fb5600fd56"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-03-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42306,
+        "sha256": "3109ca82380884cb3f510a63ca951ff829cea60c693e39a9bdcd10c99fc15201"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-04-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42318,
+        "sha256": "c3be1caf80ee76b8490c2a2a7b4b9b26cebd42f16184ab986a5980d212703339"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-04-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41378,
+        "sha256": "8a377409855de724196a43b3464007c5f76f227d6a5fe7e5d0fafe173fce529b"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-04-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 40270,
+        "sha256": "dcfbf72713f1644eb9f66dccd925881250745276bdc0b2f8d5eb41416e31bb10"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-04-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 39383,
+        "sha256": "77474c9ba7b20d61bebfa427d9118f4f3922a5b7aa06415dcb71baa35a4382d8"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-05-development-bn1",
+      "mode": "development",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 39366,
+        "sha256": "92ee2775af966385616d93cc2937eef803ea0d869caad306b490002043bd382e"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-05-development-events",
+      "mode": "development",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 40278,
+        "sha256": "4e00dd381b2c4681271462cf5b120d6829d94f030358350458a3c586cdb4631a"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-05-aot-bn1",
+      "mode": "aot",
+      "variant": "bn1",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 41385,
+        "sha256": "5bd5397b97e62532a1f75dbb3c59a3f35698c8754fa0452d5ccd223ae9a90620"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    },
+    {
+      "id": "measured-05-aot-events",
+      "mode": "aot",
+      "variant": "events",
+      "stage": "measured",
+      "status": "passed",
+      "workloadResult": {
+        "bytes": 42309,
+        "sha256": "3d33243e3769a250a156d250bfcd8f72c493e8a93e852d37ee5560b55cda4679"
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "error": null
+    }
+  ],
+  "acceptedComparison": false,
+  "attribution": "Both initial development warmups timed out at native open request3. Phase attribution is unavailable in historical uninstrumented hosts; this is consistent with the existing startup symptom, not proof of its cause.",
+  "localAuditLimit": "An optional full historical-blob comparison encountered uncached partial-clone objects and was interrupted; no historical source was changed, no native workload was repeated."
+}
