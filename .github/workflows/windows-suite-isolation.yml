@@ -1,0 +1,90 @@
+# One-use research, never merge or substitute for Validation / Gate.
+name: Windows fixed complete-suite isolation contrasts
+on:
+  push:
+    branches: [test/windows-suite-isolation-20261104]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: 2a9516337fe99e3585ff8f55e97c7392fad2f372
+          path: source
+      - name: Five immutable full-suite cohorts on pinned Bun
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, re, subprocess
+          root = pathlib.Path('source').resolve()
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'bn331-isolation'
+          out.mkdir()
+          def checked(args):
+              return subprocess.check_output(args, cwd=root, text=True).strip()
+          head = checked(['git', 'rev-parse', 'HEAD'])
+          tree = checked(['git', 'rev-parse', 'HEAD^{tree}'])
+          assert head == '2a9516337fe99e3585ff8f55e97c7392fad2f372'
+          assert tree == '39482669d2095b95d3d75a808a188a231937035c'
+          assert checked(['git', 'status', '--porcelain']) == ''
+          files = sorted({p.relative_to(root).as_posix() for p in (root / 'tests').rglob('*.test.ts')} | {p.relative_to(root).as_posix() for p in (root / 'tests').rglob('*.test.tsx')})
+          solid = 'tests/solid/renderer.test.ts'
+          assert len(files) == 41 and solid in files and 'tests/react/root-errors.test.ts' in files
+          originals = {f: hashlib.sha256((root / f).read_bytes()).hexdigest() for f in files}
+          (out / 'test-hashes.json').write_text(json.dumps(originals, indent=2) + '\n')
+          tools = pathlib.Path(os.environ['RUNNER_TEMP']) / 'bn331-tools'
+          install = checked(['node', 'scripts/install-bun.mjs', '--destination', str(tools)])
+          (out / 'install.json').write_text(install + '\n')
+          bun = str(tools / 'bun.exe')
+          revision = checked([bun, '--no-script', '--eval', 'console.log(Bun.revision)'])
+          assert revision == 'da867c60bf0bcbf9d6d36994f8ca0efa42075115'
+          subprocess.run([bun, 'install', '--frozen-lockfile'], cwd=root, check=True, timeout=120)
+          assert checked(['git', 'status', '--porcelain']) == ''
+          # All 41 original files/581 tests. No assertion or source changes, no retries.
+          cases = [('original', ['tests']), ('no-isolate', ['--no-isolate', 'tests']),
+                   ('isolate', ['--isolate', 'tests']),
+                   ('reverse', list(reversed(files))),
+                   ('solid-first', [solid, *[f for f in files if f != solid]])]
+          report = {'scope': 'Fixed complete-suite research only, not qualification',
+                    'sourceCommit': head, 'tree': tree, 'bunRevision': revision, 'cases': []}
+          try:
+              for name, args in cases:
+                  lane = out / name
+                  lane.mkdir()
+                  with (lane / 'stdout.log').open('wb') as stdout, (lane / 'stderr.log').open('wb') as stderr:
+                      run = subprocess.run([bun, 'test', *args], cwd=root, stdout=stdout, stderr=stderr, timeout=120)
+                  raw = (lane / 'stderr.log').read_bytes()
+                  log = raw.decode('utf-8', errors='replace')
+                  summary = re.search(r'(?m)^\s*(\d+) pass\s*\n\s*(\d+) fail', log)
+                  assertions = re.search(r'(?m)^\s*(\d+) expect\(\) calls', log)
+                  count = re.search(r'Ran (\d+) tests across (\d+) files', log)
+                  headers = [line for line in log.splitlines() if line.startswith('tests\\') or line.startswith('tests/')]
+                  row = {'lane': name, 'args': args, 'exitCode': run.returncode,
+                         'passed': int(summary.group(1)) if summary else None,
+                         'failed': int(summary.group(2)) if summary else None,
+                         'assertions': int(assertions.group(1)) if assertions else None,
+                         'tests': int(count.group(1)) if count else None,
+                         'files': int(count.group(2)) if count else None,
+                         'firstFileHeaders': headers[:3], 'lastFileHeaders': headers[-3:],
+                         'stderrSHA256': hashlib.sha256(raw).hexdigest()}
+                  report['cases'].append(row)
+                  (out / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+                  print(json.dumps({k: row[k] for k in ['lane', 'exitCode', 'passed', 'failed', 'assertions', 'tests', 'files']}))
+          finally:
+              report['sourceClean'] = checked(['git', 'status', '--porcelain']) == ''
+              report['testFilesUnchanged'] = all(hashlib.sha256((root / f).read_bytes()).hexdigest() == originals[f] for f in files)
+              (out / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+          assert report['sourceClean'] and report['testFilesUnchanged']
+          assert len(report['cases']) == len(cases)
+          assert all(r['tests'] == 581 and r['files'] == 41 and r['passed'] is not None and r['passed'] + r['failed'] == 581 for r in report['cases'])
+          assert report['cases'][0]['exitCode'] == 1 and report['cases'][0]['failed'] == 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: windows-suite-isolation-${{ github.sha }}
+          path: ${{ runner.temp }}/bn331-isolation
+          if-no-files-found: error
+          retention-days: 7
