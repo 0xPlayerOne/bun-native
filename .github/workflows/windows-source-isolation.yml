@@ -1,5 +1,5 @@
 # One-use ownership research, not a required gate. Never merge.
-name: Fixed Windows source-cohort contrast
+name: Fixed Windows explicit-file invocation control
 on:
   push:
     branches: [test/windows-solid-source-isolation-20261104]
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   compare:
-    name: Compare fixed original source-test cohorts (not qualification)
+    name: Compare unchanged 41-vs-40 explicit source files (not qualification)
     if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
     runs-on: windows-2022
     timeout-minutes: 15
@@ -82,12 +82,11 @@ jobs:
               raise RuntimeError('Expected exact 8 React test files')
           solid = 'tests/solid/renderer.test.ts'
           without_error_file = [path for path in pr_files if path != 'tests/react/root-errors.test.ts']
-          cases = [('pr-root-errors-plus-solid', 'pr', ['tests/react/root-errors.test.ts', solid]),
-                   ('pr-react-plus-solid', 'pr', [*react_files, solid]),
-                   ('pr-original-40-file-subset', 'pr', without_error_file)]
+          cases = [('pr-all-41-explicit', 'pr', pr_files),
+                   ('pr-40-explicit', 'pr', without_error_file)]
           plan = {'sourceShas': heads, 'solidProducerSha256': solid_hash, 'bunRevision': pinned,
                   'fixedOrder': [case for case, _, _ in cases], 'attemptsPerCase': 1,
-                  'scope': 'Second fixed diagnostic; subset results never qualify required full-suite gate',
+                  'scope': 'Third fixed control: distinguish explicit file-list invocation from directory discovery; no subset is Gate qualification',
                   'unchanged': 'original source, GC checkpoints, assertions, timeout, JIT, and required workflows'}
           (evidence / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
           outcomes = []
@@ -143,7 +142,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: windows-source-cohorts-fixed
+          name: windows-explicit-invocation-control
           path: windows-source-isolation/
           if-no-files-found: warn
           retention-days: 14
