@@ -25,6 +25,58 @@ function label(text: string) {
 }
 
 describe('Solid universal adapter over the public core (headless subprocess)', () => {
+  test('compiler null markers keep adjacent conditional and keyed regions independent', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid adjacent dynamic regions' })
+      const box = createElement('box')
+      const before = label('Before')
+      const conditional = label('Conditional')
+      const a = label('A')
+      const b = label('B')
+      const [shown, setShown] = createSignal(false)
+      const [items, setItems] = createSignal<SolidNode[]>([a, b])
+      const root = render(() => {
+        insertNode(box, before)
+        // These exact null markers are emitted by the pinned universal JSX
+        // compiler for <box><text/><Show/><For/></box>.
+        insert(box, () => (shown() ? conditional : null), null)
+        insert(box, items, null)
+        return box
+      }, window)
+      const order = () =>
+        asNode(box).children.map((node) =>
+          node.kind === 'text-node' ? node.data : node.properties.text
+        )
+      try {
+        await root.ready
+        expect(order()).toEqual(['Before', '', 'A', 'B'])
+        const foreignParent = createElement('box')
+        const foreignAnchor = label('Foreign anchor')
+        insertNode(foreignParent, foreignAnchor)
+        expect(() => insertNode(box, label('Rejected'), foreignAnchor)).toThrow(
+          'Insertion anchor belongs to another parent'
+        )
+        expect(order()).toEqual(['Before', '', 'A', 'B'])
+        setShown(true)
+        setItems([b, a])
+        await root.flush()
+        expect(order()).toEqual(['Before', 'Conditional', 'B', 'A'])
+        setShown(false)
+        setItems([])
+        await root.flush()
+        expect(order()).toEqual(['Before', '', ''])
+        setShown(true)
+        setItems([a])
+        await root.flush()
+        expect(order()).toEqual(['Before', 'Conditional', 'A'])
+      } finally {
+        await root.dispose()
+      }
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(root.diagnostics.listeners).toBe(0)
+      expect(app.diagnostics.nodes).toBe(1)
+    }))
+
   test('dynamic regions replace text and keyed children without consuming adjacent siblings', () =>
     withApp(async (app) => {
       const window = await app.openWindow({ title: 'Solid dynamic region' })

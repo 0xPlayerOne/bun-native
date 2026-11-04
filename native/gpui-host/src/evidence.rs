@@ -153,29 +153,6 @@ impl Evidence {
         }
     }
 
-    pub(crate) fn layout(
-        &self,
-        window_id: WindowId,
-        revision: u64,
-        frame: &LayoutFrame,
-        window: &gpui::Window,
-    ) {
-        let Some(log) = &self.0 else {
-            return;
-        };
-        let snapshot = frame.snapshot(window);
-        let mut log = log.borrow_mut();
-        if log.last_layout.get(&window_id) == Some(&snapshot) {
-            return;
-        }
-        let record = json!({"nonce":log.nonce,"type":"layout","stage":"native-paint","window_id":window_id,"tree_revision":revision,"layout":snapshot.json()});
-        if let Err(error) = append(&mut log.file, &record) {
-            eprintln!("Bun Native layout evidence unavailable: {error}");
-        } else {
-            log.last_layout.insert(window_id, snapshot);
-        }
-    }
-
     pub(crate) fn renderer(&self, window_id: WindowId, window: &gpui::Window) {
         let Some(log) = &self.0 else {
             return;
@@ -245,11 +222,25 @@ impl Evidence {
         }
     }
 
-    pub(crate) fn painted(&self, window_id: WindowId, tree: &Tree) {
+    /// A new rendered record follows any changed geometry from this paint.
+    /// Identical geometry is reused; geometry-only frames still publish layout.
+    pub(crate) fn painted(&self, window_id: WindowId, tree: &Tree, layout: Option<LayoutSnapshot>) {
         let Some(log) = &self.0 else {
             return;
         };
         let mut log = log.borrow_mut();
+        if let Some(snapshot) = layout
+            && log.last_layout.get(&window_id) != Some(&snapshot)
+        {
+            let record = json!({"nonce":log.nonce,"type":"layout","stage":"native-paint","window_id":window_id,"tree_revision":tree.revision(),"layout":snapshot.json()});
+            if let Err(error) = append(&mut log.file, &record) {
+                eprintln!("Bun Native layout evidence unavailable: {error}");
+                // Never certify a new paint against stale geometry after a
+                // failed append. Leave both caches eligible for publication.
+                return;
+            }
+            log.last_layout.insert(window_id, snapshot);
+        }
         let version = (
             tree.revision(),
             tree.nodes()

@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
 
-struct TemporaryLog(PathBuf);
+pub(super) struct TemporaryLog(pub(super) PathBuf);
 
 impl Drop for TemporaryLog {
     fn drop(&mut self) {
@@ -12,7 +12,7 @@ impl Drop for TemporaryLog {
     }
 }
 
-fn make_log(enabled: bool) -> (TemporaryLog, Evidence) {
+pub(super) fn make_log(enabled: bool) -> (TemporaryLog, Evidence) {
     let path = std::env::temp_dir().join(format!(
         "bun-native-frame-test-{}-{}.jsonl",
         std::process::id(),
