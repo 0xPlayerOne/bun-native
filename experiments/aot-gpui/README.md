@@ -49,6 +49,15 @@ Use `--host-profile dev` when qualifying a development host; omitting it records
 
 The package directory receives the AOT application, native host, compiler diagnostics, native linkage logs and a manifest with exact toolchain, source/lockfile hashes, dirty-worktree status, artifact hashes and sizes. Native rendering, OS input, teardown, installation and signing start as **not verified** in this build record; actual execution evidence is separate. The build itself cannot turn those checks into passes.
 
+The React workload entry and the paired core/Solid workload runner share an
+explicit source snapshot for `workload.ts`, its imported `ownership.ts` oracle,
+and the snapshot helper itself. Missing shared inputs fail before compilation;
+changed bytes are caught by the existing source comparisons. The
+[preserved inventory gap](../../tests/native/evidence/react-workload-source-inventory-gap.json)
+records the older React manifest's omitted oracle. Its failed retention result
+is unchanged; recording the missing source does not establish a retention cause
+or a new native result.
+
 The same compiler and inspection pipeline supports these explicit entries:
 
 | `--entry`                 | Source                                | Executable           | Native host placement                              |
