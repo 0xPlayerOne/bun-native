@@ -3,6 +3,7 @@ import { createRenderRoot, type RenderRoot } from '@bun-native/renderer'
 import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
 import { reconciler } from './reconciler.ts'
+import { createCommitBarrier } from './commit-barrier.ts'
 
 type FiberRoot = ReturnType<typeof reconciler.createContainer>
 
@@ -25,7 +26,7 @@ class Root implements ReactRenderRoot {
   private phase: 'active' | 'disposing' | 'closed' = 'active'
   private failure: Error | undefined
   private disposal: Promise<void> | undefined
-  private readonly barriers = new Set<{ resolve: () => void; reject: (error: unknown) => void }>()
+  private readonly barriers = new Set<ReturnType<typeof createCommitBarrier>>()
 
   constructor(
     children: ReactNode,
@@ -129,12 +130,19 @@ class Root implements ReactRenderRoot {
         reject(new NativeStateError('limit_exceeded', 'React commit barrier queue is full'))
         return
       }
-      const barrier = { resolve, reject }
-      this.barriers.add(barrier)
-      reconciler.updateContainer(this.element, this.fiber, null, () => {
-        this.barriers.delete(barrier)
-        resolve()
+      const barrier = createCommitBarrier({
+        release: () => this.barriers.delete(barrier),
+        resolve,
+        reject,
       })
+      this.barriers.add(barrier)
+      try {
+        reconciler.updateContainer(this.element, this.fiber, null, barrier.complete)
+      } catch (cause) {
+        // A rejected submission owns no future commit. Release its capacity and
+        // callback bindings now instead of poisoning all later flushes.
+        barrier.reject(cause)
+      }
     })
     // Native failure cleanup may already have entered disposal. Join it before
     // checking local lifetime so the triggering operation preserves its cause.
