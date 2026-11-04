@@ -78,7 +78,11 @@ function TaskDetails({
       <button
         text="Save title"
         disabled={!validTitle || validTitle === task.title}
-        style={{ height: 40, color: palette.text, background: palette.accent }}
+        style={{
+          height: 40,
+          color: validTitle && validTitle !== task.title ? palette.text : palette.muted,
+          background: validTitle && validTitle !== task.title ? palette.accent : palette.background,
+        }}
         onClick={save}
       />
       <text style={{ color: palette.muted }}>
@@ -153,7 +157,13 @@ export function Workspace({
           ref={composer}
           value={draft}
           placeholder="Add a task"
-          style={{ flex_grow: 1, min_width: 0, color: palette.text, background: palette.panel }}
+          style={{
+            width: 0,
+            flex_grow: 1,
+            min_width: 0,
+            color: palette.text,
+            background: palette.panel,
+          }}
           onInput={setDraft}
           onKeyDown={(event) => {
             if (event.key === 'enter') addTask()
@@ -162,7 +172,12 @@ export function Workspace({
         <button
           text="Add task"
           disabled={!canAdd}
-          style={{ width: 120, flex_shrink: 0, color: palette.text, background: palette.accent }}
+          style={{
+            width: 120,
+            flex_shrink: 0,
+            color: canAdd ? palette.text : palette.muted,
+            background: canAdd ? palette.accent : palette.panel,
+          }}
           onClick={addTask}
         />
       </box>
@@ -184,19 +199,26 @@ export function Workspace({
           ref={searchInput}
           value={search}
           placeholder="Search tasks"
-          style={{ flex_grow: 1, min_width: 0, color: palette.text, background: palette.panel }}
+          style={{
+            width: 0,
+            flex_grow: 1,
+            min_width: 0,
+            color: palette.text,
+            background: palette.panel,
+          }}
           onInput={(event) => {
             setSearch(event)
             dispatch({ type: 'search', query: event.value })
           }}
         />
       </box>
-      <box style={{ direction: 'row', gap: 16, flex_grow: 1, min_height: 0 }}>
+      <box style={{ direction: 'row', gap: 16, height: 0, flex_grow: 1, min_height: 0 }}>
         <box
           style={{
             direction: 'column',
             gap: 8,
             padding: 12,
+            width: 0,
             flex_grow: 1,
             min_width: 200,
             overflow: 'scroll_y',
@@ -221,8 +243,10 @@ export function Workspace({
                 <button
                   text={task.title}
                   style={{
+                    width: 0,
                     flex_grow: 1,
                     min_width: 0,
+                    overflow: 'hidden',
                     color: palette.text,
                     background: task.id === state.selectedId ? palette.accent : palette.background,
                   }}

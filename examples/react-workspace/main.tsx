@@ -21,7 +21,9 @@ try {
     width: 1000,
     height: 760,
   })
-  root = render(<Workspace onChange={changed} />, window)
+  root = render(<Workspace onChange={changed} />, window, {
+    style: { width: 'fill', height: 'fill' },
+  })
   await root.ready
   recordEvidence({ type: 'workspace-mounted', diagnostics: root.diagnostics })
   await Promise.race([window.closed, root.closed])

@@ -44,6 +44,12 @@ CLIPBOARD_SPEC = importlib.util.spec_from_file_location(
 )
 CLIPBOARD = importlib.util.module_from_spec(CLIPBOARD_SPEC)
 CLIPBOARD_SPEC.loader.exec_module(CLIPBOARD)
+WORKSPACE_SPEC = importlib.util.spec_from_file_location(
+    "native_react_workspace_scenario",
+    ROOT / "scripts/quality/native-react-workspace-scenario.py",
+)
+WORKSPACE = importlib.util.module_from_spec(WORKSPACE_SPEC)
+WORKSPACE_SPEC.loader.exec_module(WORKSPACE)
 SCENARIOS = (
     "startup-failure",
     "host-crash",
@@ -52,6 +58,7 @@ SCENARIOS = (
     "layout",
     "interactions",
     "clipboard",
+    "react-workspace",
 )
 
 
@@ -74,6 +81,10 @@ def source_snapshot():
         ROOT / "scripts/quality/native-layout-scenario.py",
         ROOT / "scripts/quality/native-interactions-scenario.py",
         ROOT / "scripts/quality/native-clipboard-scenario.py",
+        ROOT / "scripts/quality/native-react-workspace-scenario.py",
+        ROOT / "tests/native/react-workspace.tsx",
+        ROOT / "examples/react-workspace/app.tsx",
+        ROOT / "examples/react-workspace/model.ts",
         Path(__file__).resolve(),
         ROOT / "scripts/quality/native-input-linux.py",
     ]
@@ -91,7 +102,7 @@ def source_snapshot():
             "Cargo.lock",
         )
     )
-    for package in ("core", "protocol", "runtime"):
+    for package in ("core", "protocol", "runtime", "renderer", "react"):
         paths.append(ROOT / "packages" / package / "package.json")
         paths.extend((ROOT / "packages" / package / "src").rglob("*.ts"))
     for manifest in (ROOT / "native").glob("*/Cargo.toml"):
@@ -286,6 +297,7 @@ def main():
                 "layout": "Bun Native layout",
                 "interactions": "Bun Native interactions",
                 "clipboard": "Bun Native clipboard",
+                "react-workspace": "Bun Native React Workspace",
             }.get(args.scenario, "Bun Native scheduling audit")
             window, owner = wait_for(lambda: owned_window(title), "owned native window")
             report["window"] = {
@@ -317,7 +329,12 @@ def main():
             if DRIVER.run(["xdotool", "getwindowfocus"]) != window:
                 raise RuntimeError("The owned native window did not gain focus")
             capture_window(window, "before.png")
-            if args.scenario in ("layout", "interactions", "clipboard"):
+            if args.scenario in (
+                "layout",
+                "interactions",
+                "clipboard",
+                "react-workspace",
+            ):
 
                 def require_layout_window():
                     require_owned_host(app, observed, owner, host)
@@ -330,9 +347,10 @@ def main():
                     "layout": LAYOUT,
                     "interactions": INTERACTIONS,
                     "clipboard": CLIPBOARD,
+                    "react-workspace": WORKSPACE,
                 }[args.scenario]
                 scenario_arguments = [DRIVER]
-                if args.scenario in ("interactions", "clipboard"):
+                if args.scenario in ("interactions", "clipboard", "react-workspace"):
                     scenario_arguments.append(LAYOUT)
                 report[args.scenario + "Observations"] = scenario.run(
                     *scenario_arguments,

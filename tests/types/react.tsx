@@ -84,6 +84,7 @@ export function nativeReactContract(): JSX.Element {
   // @ts-expect-error A renderer reference does not expose a core native handle.
   const handle: NativeNode | null = reference.current
   const options: ReactRenderOptions = {
+    style: { width: 'fill', height: 'fill', overflow: 'hidden' },
     onRecoverableError(error, info) {
       void error
       info.componentStack?.trim()
@@ -91,6 +92,8 @@ export function nativeReactContract(): JSX.Element {
   }
   // @ts-expect-error Recovery reporting is a callable contract.
   const invalidOptions: ReactRenderOptions = { onRecoverableError: true }
+  // @ts-expect-error Root container dimensions use the shared native style contract.
+  const invalidRootStyle: ReactRenderOptions = { style: { height: '100%' } }
   void [
     browser,
     invalidKey,
@@ -104,6 +107,7 @@ export function nativeReactContract(): JSX.Element {
     handle,
     options,
     invalidOptions,
+    invalidRootStyle,
   ]
   return accepted
 }

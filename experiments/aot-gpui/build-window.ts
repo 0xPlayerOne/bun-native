@@ -52,6 +52,7 @@ const entries = {
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
+  'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
@@ -70,6 +71,7 @@ const solidEntry =
 const reactEntry =
   entry === 'react' ||
   entry === 'react-workspace' ||
+  entry === 'react-workspace-flow' ||
   entry === 'react-interactions' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
@@ -197,7 +199,7 @@ async function sourceHashes() {
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
   if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
-  if (entry === 'react-workspace') {
+  if (entry === 'react-workspace' || entry === 'react-workspace-flow') {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/react-workspace/model.ts')
   }

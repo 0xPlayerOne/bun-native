@@ -24,7 +24,8 @@ test('workspace public adapter supports editing, filtering, themes, and window t
           changes++
         }}
       />,
-      window
+      window,
+      { style: { width: 'fill', height: 'fill' } }
     )
     async function event(type: 'click' | 'input' | 'key_down', target: string) {
       const before = changes
@@ -85,6 +86,84 @@ test('workspace public adapter supports editing, filtering, themes, and window t
       expect(root.diagnostics.listeners).toBe(0)
       expect(app.diagnostics.callbacks).toBe(0)
     } finally {
+      await root.dispose()
+    }
+  }, 'events-peer.ts'))
+
+test('workspace submits one task when Enter is queued during the native input clear', () =>
+  withApp(async (app) => {
+    const actual = await app.openWindow({ title: 'Workspace repeated submission' })
+    const marker = await actual.batch((batch) => {
+      const node = batch.create({ kind: 'text', text: 'Marker' })
+      batch.append(actual.root, node)
+      return node
+    })
+    const { window, observations } = observeWindow(actual)
+    const entered = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    let holdNextCommit = false
+    window.batch = async (operation) => {
+      if (holdNextCommit) {
+        holdNextCommit = false
+        entered.resolve()
+        await release.promise
+      }
+      return actual.batch(operation)
+    }
+    let state: WorkspaceState | undefined
+    let keys = 0
+    actual.on(
+      actual.root,
+      'key_down',
+      () => {
+        keys++
+      },
+      { capture: true }
+    )
+    const root = render(
+      <Workspace
+        onChange={(next) => {
+          state = next
+        }}
+      />,
+      window
+    )
+    const emit = (type: 'input' | 'key_down') =>
+      actual.batch((batch) =>
+        batch.set(marker, {
+          kind: 'text',
+          text: `event:${JSON.stringify({ type, target: 'Add a task' })}`,
+        })
+      )
+    try {
+      await root.ready
+      await emit('input')
+      await until(
+        () =>
+          actual.input(observations.inputs[0]!).revision > 0 &&
+          app.diagnostics.activeCallbacks === 0 &&
+          app.diagnostics.queuedCallbacks === 0
+      )
+      await root.flush()
+      holdNextCommit = true
+      await emit('key_down')
+      await entered.promise
+      expect(actual.input(observations.inputs[0]!).value).toBe('native edit')
+      await emit('key_down')
+      await until(() => app.diagnostics.queuedCallbacks > 0)
+      release.resolve()
+      await until(
+        () =>
+          keys === 2 &&
+          app.diagnostics.activeCallbacks === 0 &&
+          app.diagnostics.queuedCallbacks === 0
+      )
+      await root.flush()
+      expect(state?.tasks).toHaveLength(13)
+      expect(state?.nextId).toBe(14)
+      expect(actual.input(observations.inputs[0]!).value).toBe('')
+    } finally {
+      release.resolve()
       await root.dispose()
     }
   }, 'events-peer.ts'))
