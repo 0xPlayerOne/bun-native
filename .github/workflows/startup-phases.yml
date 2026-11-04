@@ -1,0 +1,105 @@
+# Research #296 only. This never emits or replaces Validation / Gate.
+name: Linux first-window phase observation
+
+on:
+  push:
+    branches: [test/linux-startup-phases-20261104]
+    paths:
+      - '.github/workflows/startup-phases.yml'
+      - 'experiments/startup-phases/**'
+      - 'tests/quality/test_startup_phases.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: startup-phases-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    name: Research trial ${{ matrix.trial }} (not qualification)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        trial: [1, 2, 3]
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      BUN_NATIVE_HOST_PROFILE: release
+      PYTHONDONTWRITEBYTECODE: 1
+      STARTUP_PHASE_TRIAL: ${{ matrix.trial }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Allocate private dependencies and evidence for the declared trial
+        run: |
+          root="$RUNNER_TEMP/startup-phase-$STARTUP_PHASE_TRIAL"
+          mkdir "$root"
+          mkdir "$root/cargo"
+          printf 'STARTUP_PHASE_ROOT=%s\nCARGO_HOME=%s/cargo\n' "$root" "$root" >> "$GITHUB_ENV"
+      - name: Install checksum-pinned Bun and the locked workspace
+        run: |
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Install the same native prerequisites as the required Linux job
+        run: |
+          rustup show active-toolchain
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
+            dbus-x11 fonts-dejavu-core heaptrack binutils
+      - name: Select the installed package-owned Lavapipe ICD as on current main
+        run: |
+          mapfile -t manifests < <(dpkg-query -L mesa-vulkan-drivers | grep -E '/lvp_icd[^/]*\.json$' || true)
+          if (( ${#manifests[@]} != 1 )); then
+            echo "::error::Expected exactly one Mesa Lavapipe ICD, found ${#manifests[@]}" >&2
+            exit 1
+          fi
+          manifest=${manifests[0]}
+          test -r "$manifest"
+          dpkg-query -S "$manifest"
+          printf 'VK_DRIVER_FILES=%s\n' "$manifest" >> "$GITHUB_ENV"
+      - name: Verify and fingerprint the private original-backend instrumentation
+        run: |
+          cargo fetch --locked
+          python3 experiments/startup-phases/prepare.py
+          {
+            git rev-parse HEAD
+            uname -a
+            lscpu
+            bun --revision
+            rustc --version --verbose
+            cargo --version
+            cc --version
+            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick heaptrack libheaptrack binutils
+            printf 'Vulkan ICD: %s\n' "${VK_DRIVER_FILES:?}"
+            sha256sum "$VK_DRIVER_FILES"
+            printf 'Scope: three fixed fresh runners; one original lifecycle each; no warmups or retries\nBackends: original Vulkan|GL\nRequest deadline: 5000 ms\nOuter lifecycle deadline: 45 seconds\n'
+          } > "$STARTUP_PHASE_ROOT/evidence/toolchain.txt"
+      - name: Build, lint and test the actual instrumented release host
+        run: |
+          cargo build --locked --release -p bun-native-host 2>&1 | tee "$STARTUP_PHASE_ROOT/evidence/build.log"
+          cargo clippy --locked --release -p bun-native-host --all-targets -- -D warnings
+          cargo test --locked --release -p bun-native-host
+      - name: Observe the original lifecycle exactly once
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$STARTUP_PHASE_ROOT/evidence/session" -- python3 experiments/startup-phases/run.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.0
+        if: ${{ !cancelled() }}
+        with:
+          name: startup-phases-trial-${{ matrix.trial }}-${{ github.sha }}
+          path: ${{ runner.temp }}/startup-phase-${{ matrix.trial }}/evidence/
+          if-no-files-found: error
+          retention-days: 14
