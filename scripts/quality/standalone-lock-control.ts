@@ -26,8 +26,12 @@ function git(...args: string[]): string {
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: 10_000,
+    killSignal: 'SIGKILL',
   })
-  ensure(result.exitCode === 0, `git ${args[0]} failed: ${result.stderr}`)
+  ensure(
+    !result.exitedDueToTimeout && !result.signalCode && result.exitCode === 0,
+    `git ${args[0]} failed: ${result.stderr}`
+  )
   return result.stdout.toString()
 }
 
@@ -202,6 +206,7 @@ async function main(): Promise<void> {
         stdout: 'pipe',
         stderr: 'pipe',
         timeout: 10_000,
+        killSignal: 'SIGKILL',
       })
       await writeFile(join(output, `${control.name}.stdout.log`), result.stdout, { flag: 'wx' })
       await writeFile(join(output, `${control.name}.stderr.log`), result.stderr, { flag: 'wx' })
@@ -212,6 +217,7 @@ async function main(): Promise<void> {
         elapsedMs: performance.now() - begin,
         exitCode: result.exitCode,
         signal: result.signalCode ?? null,
+        exitedDueToTimeout: result.exitedDueToTimeout ?? false,
         before,
         after,
         stdout: await fileDigest(join(output, `${control.name}.stdout.log`)),
@@ -226,7 +232,9 @@ async function main(): Promise<void> {
       const stdout = result.stdout.toString()
       const stderr = result.stderr.toString()
       ensure(
-        !result.signalCode && result.exitCode === (control.corrected ? 0 : 1),
+        !result.exitedDueToTimeout &&
+          !result.signalCode &&
+          result.exitCode === (control.corrected ? 0 : 1),
         `Unexpected parser exit: ${control.name}`
       )
       ensure(

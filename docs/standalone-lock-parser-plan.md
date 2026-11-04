@@ -64,9 +64,11 @@ Execute exactly these four `bun pm ls --all` calls, once and in this order:
 | Corrected Solid seed | Original manifest plus complete product-generated lock | Exit 0, listing all selected local packages and the preserved nested helper version                       |
 | Corrected React seed | Original manifest plus complete product-generated lock | The same successful parser/listing contract for React                                                     |
 
-Each call has a 10-second limit. The overall parser-call window is 45 seconds; a
-call starts only if its full 10-second allowance remains. A forced/signal outcome
-cannot pass. Stop at the first unexpected result, retain every output/status and
+Each call has a 10-second limit with explicit `SIGKILL` on timeout; the controller
+records and rejects Bun's `exitedDueToTimeout` flag as well as any signal. Its
+bounded Git reads use the same timeout/kill policy. The overall parser-call window
+is 45 seconds; a call starts only if its full 10-second allowance remains. A forced
+outcome cannot pass. Stop at the first unexpected result, retain every output/status and
 mark later controls unrun. No retry, additional variant, package/install/create/
 build command, lifecycle script, native executable or GC workload is allowed.
 
