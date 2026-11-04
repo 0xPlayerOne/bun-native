@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "scope": "Source-bound audit of one original hosted execution; no rerun. All4 viewport cases qualified within recorded Linux software-GPU scope; required overall Validation remains failed.",
+  "source": {
+    "head": "d4a1db9ae1067e694062b8590870fea384166232",
+    "testedMerge": "78bb6d62426a3a7133c5c72db1696e21e09b81cc",
+    "tree": "6b4eeeb8d08fe9d25e9923cbd2448006c8ba1d64",
+    "equivalentLocalCommit": "9c84b7abe3596aef8eddc08344e4027e0e8e87e7",
+    "clean": true
+  },
+  "qualification": {
+    "validationRun": 41912545706,
+    "nativeLinuxJob": 126863607390,
+    "nativeLinuxStatus": "failed",
+    "failedStep": 27,
+    "viewportStep": 41,
+    "viewportStepStatus": "success",
+    "implementationJobsPassed": 10,
+    "implementationJobsFailed": 1,
+    "aggregateGate": "failed",
+    "codeqlRun": 41912546455,
+    "fourActualCodeqlAnalyses": "passed",
+    "codeqlAggregate": {
+      "id": 126864139368,
+      "status": "passed"
+    }
+  },
+  "artifact": {
+    "id": 13364356955,
+    "bytes": 24886325,
+    "sha256": "725bffb7800c227f3133d3810d848fa1464abb8e335164643cf3f03ecfa87537",
+    "members": 1615
+  },
+  "nativeHost": {
+    "bytes": 29507712,
+    "sha256": "4dd3f8da1fad4caf6c56f85f32d4f2a92c516ab6f0a527b2f0602d024f1ba075",
+    "profile": "release",
+    "actualArchivedBinaryBytesMatch": true
+  },
+  "viewport": {
+    "cases": [
+      {
+        "framework": "Solid",
+        "mode": "development",
+        "status": "passed",
+        "framesVerified": 11,
+        "screenshotPredicatesVerified": 7,
+        "sourceFilesVerified": 117,
+        "nativeEventCount": 43,
+        "edits": 8,
+        "restyles": 1,
+        "observedSignalsRevoked": 6,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "result": {
+          "path": "raw/diagnostics-development-solid-input-viewport/result.json",
+          "bytes": 162394,
+          "sha256": "6884e80db45ff608a4b87d4fe1b7c6ddd861e5b36916ff6b8ee70b34da92bc7f"
+        }
+      },
+      {
+        "framework": "Solid",
+        "mode": "aot",
+        "status": "passed",
+        "framesVerified": 11,
+        "screenshotPredicatesVerified": 7,
+        "sourceFilesVerified": 117,
+        "nativeEventCount": 43,
+        "edits": 8,
+        "restyles": 1,
+        "observedSignalsRevoked": 6,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "result": {
+          "path": "raw/diagnostics-aot-solid-input-viewport/result.json",
+          "bytes": 162369,
+          "sha256": "5696449b328f58036b29a1cd9403a746fea820602fd5501825c85f1049370b38"
+        }
+      },
+      {
+        "framework": "React",
+        "mode": "development",
+        "status": "passed",
+        "framesVerified": 11,
+        "screenshotPredicatesVerified": 7,
+        "sourceFilesVerified": 117,
+        "nativeEventCount": 43,
+        "edits": 8,
+        "restyles": 1,
+        "observedSignalsRevoked": 6,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "result": {
+          "path": "raw/diagnostics-development-react-input-viewport/result.json",
+          "bytes": 162394,
+          "sha256": "44a84b29d0f1e794b34f616ac6b20b2d12c032e67e42decfc63d4dfab6c674ae"
+        }
+      },
+      {
+        "framework": "React",
+        "mode": "aot",
+        "status": "passed",
+        "framesVerified": 11,
+        "screenshotPredicatesVerified": 7,
+        "sourceFilesVerified": 117,
+        "nativeEventCount": 43,
+        "edits": 8,
+        "restyles": 1,
+        "observedSignalsRevoked": 6,
+        "finalOwnership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "result": {
+          "path": "raw/diagnostics-aot-react-input-viewport/result.json",
+          "bytes": 162369,
+          "sha256": "3e47bb6dde0717bfa5d0e6b7e1172bd5274778ecd040d0a7df6790c958997e96"
+        }
+      }
+    ],
+    "completeNativeTreeStateAndFreshPointerPairsVerified": true,
+    "actualPixelsRecomputedFromOriginalPNGs": 28,
+    "sourceManifestRecordsPerPackage": 89,
+    "cleanSourceAndGeneratedModuleHashesVerified": true,
+    "aot": "Both build manifests report genuine compiled programs and JIT omission; each AOT command executed its inspected application path. The driver itself does not independently repeat binary inspection; AOT binaries are not retained in this ZIP.",
+    "limits": "Linux x64 isolated X11/XTest/software llvmpipe only. No physical hardware, high-DPI, IME composition, bidi, accessibility, native macOS/Windows viewport or long-soak claim."
+  },
+  "reactCalibrationFailure": {
+    "status": "failed",
+    "assertion": "Disposed view/callback targets remain observable",
+    "actual": 2,
+    "expected": 0,
+    "source": "benchmarks/solid/workload.ts:352",
+    "workload": {
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "warmup": 20
+    },
+    "retentionObservation": {
+      "firstReachable": [
+        3,
+        5
+      ],
+      "stillReachable": [
+        3,
+        5
+      ],
+      "probesPerMount": 3,
+      "probeKinds": [
+        "render root",
+        "content node",
+        "listener"
+      ],
+      "collectionCheckpoints": 2,
+      "quiescence": "empty core transaction queue fence; no additional native command"
+    },
+    "sourceProbeMapping": {
+      "3": "second mount render root",
+      "5": "second mount listener"
+    },
+    "mappingLimit": "Index mapping follows the recorded fixed three-probe order; the retaining root/cause is unknown.",
+    "lifecycles": {
+      "count": 2,
+      "p50Ms": 1.3401230000000055,
+      "p95Ms": 2.801343000000003,
+      "p99Ms": 2.801343000000003,
+      "totalMs": 4.141466000000008,
+      "samplesMs": [
+        2.801343000000003,
+        1.3401230000000055
+      ],
+      "rowsCreated": 64,
+      "rowsDisposed": 64,
+      "acknowledgedUpdates": 2,
+      "retainedWeakRefObjects": 6
+    },
+    "cleanup": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0,
+      "serviceRequests": 0
+    },
+    "cleanupLimit": "Application diagnostics after shutdown are all zero. That does not satisfy the failed WeakRef collectability assertion.",
+    "sourceParityWithAcceptedMain274": [
+      "packages",
+      "benchmarks/solid/react.tsx",
+      "benchmarks/solid/workload.ts",
+      "benchmarks/solid/ownership.ts",
+      "benchmarks/solid/sources.ts"
+    ],
+    "sourceParityAllByteIdentical": true,
+    "unexecuted": [
+      "development 1000-mount workload",
+      "AOT calibration",
+      "AOT 1000-mount workload"
+    ],
+    "records": [
+      {
+        "path": "raw/react-workload/calibration-development-session/window-manager.log",
+        "bytes": 85,
+        "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.json",
+        "bytes": 36881,
+        "sha256": "bfe0b5695cf323d7312f4358e89b23eb24a41d9a2c099de9f3a8f3de5db8a4d8"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.jsonl",
+        "bytes": 32483,
+        "sha256": "5383005a9c4ba3f82828e52130081405405037acb5447475f6565a13f051752a"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.log",
+        "bytes": 883,
+        "sha256": "76f2fc90c4899cd7ffcd6f60100734b017e8e4951844756763ec771ff72eda80"
+      }
+    ]
+  },
+  "jobLog": {
+    "path": "job-126863607390.log",
+    "bytes": 1207048,
+    "sha256": "2782525255ed2dfd9bf0c595d12a03492e2710418d14b1c9f78d4658356aa751"
+  },
+  "detailedAudit": {
+    "file": "qualification-audit.json",
+    "bytes": 71388,
+    "sha256": "5bd84ee5fecec332a3f302596d068af149348604fd05025d0e826ab5145947ba"
+  },
+  "previousFailures": {
+    "head": "af956a154fff0c0afcc5e26adbe55f5af76f9f1b",
+    "protocolArchive": 383,
+    "nativeArchive": 385,
+    "status": "Original failures unchanged; current viewport success does not explain retention failures."
+  }
+}

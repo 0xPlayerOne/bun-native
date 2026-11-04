@@ -1,0 +1,2335 @@
+{
+  "schemaVersion": 1,
+  "scope": "Read-only audit of original hosted records and PNG pixels. No native/application/GC workload or failed job repeated.",
+  "source": {
+    "head": "d4a1db9ae1067e694062b8590870fea384166232",
+    "testedMerge": "78bb6d62426a3a7133c5c72db1696e21e09b81cc",
+    "tree": "6b4eeeb8d08fe9d25e9923cbd2448006c8ba1d64",
+    "equivalentLocalCommit": "9c84b7abe3596aef8eddc08344e4027e0e8e87e7",
+    "clean": true
+  },
+  "qualification": {
+    "validationRun": 41912545706,
+    "nativeLinuxJob": 126863607390,
+    "nativeLinuxStatus": "failed",
+    "failedStep": 27,
+    "viewportStep": 41,
+    "viewportStepStatus": "success",
+    "implementationJobsPassed": 10,
+    "implementationJobsFailed": 1,
+    "aggregateGate": "failed",
+    "codeqlRun": 41912546455,
+    "fourActualCodeqlAnalyses": "passed",
+    "codeqlAggregate": {
+      "id": 126864139368,
+      "status": "passed"
+    }
+  },
+  "artifact": {
+    "id": 13364356955,
+    "bytes": 24886325,
+    "sha256": "725bffb7800c227f3133d3810d848fa1464abb8e335164643cf3f03ecfa87537",
+    "members": 1615
+  },
+  "host": {
+    "bytes": 29507712,
+    "sha256": "4dd3f8da1fad4caf6c56f85f32d4f2a92c516ab6f0a527b2f0602d024f1ba075",
+    "profile": "release",
+    "actualArchivedBinaryBytesMatch": true
+  },
+  "packages": {
+    "solid-input-viewport": {
+      "source": {
+        "files": 89,
+        "all_bytes_and_sha256_match": true
+      },
+      "manifest": {
+        "path": "raw/solid-input-viewport-package/manifest.json",
+        "bytes": 22813,
+        "sha256": "dd5b8380d5f74b9c10bd6d05f4ea35a6d5476b8b3d04ca65b4cb84466990f1ee"
+      },
+      "module": {
+        "path": "raw/solid-input-viewport-package/development/application.js",
+        "bytes": 130376,
+        "sha256": "e5fde7fbb9b133cee78ae58c717899c17023e6c496af11effb2e9d50399084a7"
+      },
+      "application": {
+        "file": "solid-input-viewport",
+        "bytes": 71859240,
+        "sha256": "258ebeb7cd5793f6f041e08141ff17b3d3d121efa8c74b3f60ce7d73b0beb804",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 4292852,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "host": {
+        "bytes": 29507712,
+        "sha256": "4dd3f8da1fad4caf6c56f85f32d4f2a92c516ab6f0a527b2f0602d024f1ba075",
+        "profile": "release"
+      },
+      "clean_source_receipts_match_tested_merge": true,
+      "aot_inspection": "compiled program present; JIT unused"
+    },
+    "react-input-viewport": {
+      "source": {
+        "files": 89,
+        "all_bytes_and_sha256_match": true
+      },
+      "manifest": {
+        "path": "raw/react-input-viewport-package/manifest.json",
+        "bytes": 23036,
+        "sha256": "3a81a1c0823c503d98c857cae47ef5442ccb01244c52a56db2266f6332e953fd"
+      },
+      "module": {
+        "path": "raw/react-input-viewport-package/development/application.js",
+        "bytes": 201979,
+        "sha256": "b4aed61f52fc90cd72d79a7d6e5c2e2247185a071bf88b1ab8004f2d9a9537fd"
+      },
+      "application": {
+        "file": "react-input-viewport",
+        "bytes": 72825896,
+        "sha256": "5f83d573d8d8493d75e40c6ef42343802fb6e3036df63221250556be4f708fec",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5259508,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "host": {
+        "bytes": 29507712,
+        "sha256": "4dd3f8da1fad4caf6c56f85f32d4f2a92c516ab6f0a527b2f0602d024f1ba075",
+        "profile": "release"
+      },
+      "clean_source_receipts_match_tested_merge": true,
+      "aot_inspection": "compiled program present; JIT unused"
+    },
+    "react-workload": {
+      "source": {
+        "files": 91,
+        "all_bytes_and_sha256_match": true
+      },
+      "manifest": {
+        "path": "raw/react-workload-package/manifest.json",
+        "bytes": 23310,
+        "sha256": "719f4e378f02ec6d086b0faff7e0ef56cb56e2eec1faf3c430bf7ddf6a2183bc"
+      },
+      "module": {
+        "path": "raw/react-workload-package/development/application.js",
+        "bytes": 205898,
+        "sha256": "019b1d3ec0a4957a806151d6f25f33f393dc4f2417e9090efac5b289d1397000"
+      },
+      "application": {
+        "file": "react-workload",
+        "bytes": 72825896,
+        "sha256": "863bf7b09a438d7490183eb19be241b5e2f1f042a0d617ca0bf05d61fe28258e",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5259502,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "elf64-le",
+          "section": {
+            "name": ".bun_features",
+            "offset": 19504728,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000ca000000286069feffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 202,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 27,
+            "virtualBytes": 14297303
+          }
+        }
+      },
+      "host": {
+        "bytes": 29507712,
+        "sha256": "4dd3f8da1fad4caf6c56f85f32d4f2a92c516ab6f0a527b2f0602d024f1ba075",
+        "profile": "release"
+      },
+      "clean_source_receipts_match_tested_merge": true,
+      "aot_inspection": "compiled program present; JIT unused"
+    }
+  },
+  "viewport": {
+    "cases": [
+      {
+        "framework": "Solid",
+        "mode": "development",
+        "status": "passed",
+        "result": {
+          "path": "raw/diagnostics-development-solid-input-viewport/result.json",
+          "bytes": 162394,
+          "sha256": "6884e80db45ff608a4b87d4fe1b7c6ddd861e5b36916ff6b8ee70b34da92bc7f"
+        },
+        "source_validation": {
+          "files": 117,
+          "all_bytes_and_sha256_match": true
+        },
+        "command": [
+          "bun",
+          "/home/runner/work/_temp/native-evidence/solid-input-viewport-package/development/application.js"
+        ],
+        "window": {
+          "id": "4194305",
+          "pid": 33465,
+          "startTicks": 74456
+        },
+        "renderer": {
+          "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+          "type": "renderer",
+          "window_id": 1,
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+          }
+        },
+        "frames": [
+          {
+            "phase": "initial",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "initial-end",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "home",
+            "paint_line": 7,
+            "layout_line": 8,
+            "input_revision": 0,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "before-pointer",
+            "paint_line": 7,
+            "layout_line": 10,
+            "input_revision": 0,
+            "cursor_byte": 99,
+            "selected_bytes": [
+              99,
+              99
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "one-character-selection",
+            "paint_line": 17,
+            "layout_line": 18,
+            "input_revision": 1,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 297.53515625
+          },
+          {
+            "phase": "resized-end",
+            "paint_line": 21,
+            "layout_line": 22,
+            "input_revision": 2,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              32.0
+            ],
+            "offset": 375.259765625
+          },
+          {
+            "phase": "restyled-end",
+            "paint_line": 25,
+            "layout_line": 24,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "clipped-selection",
+            "paint_line": 25,
+            "layout_line": 26,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              0,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "empty",
+            "paint_line": 29,
+            "layout_line": 28,
+            "input_revision": 4,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "short",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "final",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          }
+        ],
+        "pointer": {
+          "application": [
+            {
+              "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+              "type": "viewport-event",
+              "framework": "Solid",
+              "event": "pointer_down",
+              "sequence": 12,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            },
+            {
+              "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+              "type": "viewport-event",
+              "framework": "Solid",
+              "event": "pointer_up",
+              "sequence": 13,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            }
+          ],
+          "native": [
+            {
+              "event": "down",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "first_mouse": false,
+              "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 3,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            },
+            {
+              "event": "up",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 4,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            }
+          ],
+          "applicationOffset": 24,
+          "nativeOffset": 10,
+          "position": [
+            395,
+            124
+          ]
+        },
+        "pixels": [
+          {
+            "phase": "initial-end",
+            "counts": {
+              "insideGlyph": 172,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 23,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/initial-end.png",
+              "bytes": 18274,
+              "sha256": "22acb39fe3f05b27d166919f737a3a8312190bd16085235f8c7ba45d4c9ddfd9"
+            }
+          },
+          {
+            "phase": "home",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/home.png",
+              "bytes": 17784,
+              "sha256": "2aed958d4a53e11bf42976cf85226aaa0f31948065da64a5283b615f29578f5b"
+            }
+          },
+          {
+            "phase": "resized-end",
+            "counts": {
+              "insideGlyph": 212,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 37,
+              "selectionArea": 6672,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/resized-end.png",
+              "bytes": 18158,
+              "sha256": "1bbf053c1a60b7bf3046bdb1d8bafe9ea7dbaa9e90cead3ec9931491ae161955"
+            }
+          },
+          {
+            "phase": "restyled-end",
+            "counts": {
+              "insideGlyph": 293,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 33,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/restyled-end.png",
+              "bytes": 18765,
+              "sha256": "7363de1916c5c7ff8af3939b1e7f81e96a11fd94c353d9a012e32c41a5167925"
+            }
+          },
+          {
+            "phase": "clipped-selection",
+            "counts": {
+              "insideGlyph": 299,
+              "outsideGlyph": 0,
+              "caret": 0,
+              "misplacedCaret": 0,
+              "selection": 8179,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/clipped-selection.png",
+              "bytes": 18768,
+              "sha256": "8131710a8be2f918e80da44e4e58a4e039b351c597bb5eb197147c16d36e501a"
+            }
+          },
+          {
+            "phase": "empty",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/empty.png",
+              "bytes": 17901,
+              "sha256": "fb51c6dd937f00613e3eafe5742f6731f811b73d53886ac21e410edf6420cd01"
+            }
+          },
+          {
+            "phase": "short",
+            "counts": {
+              "insideGlyph": 273,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 72,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-solid-input-viewport/short.png",
+              "bytes": 19172,
+              "sha256": "6b954363a89c6705470bd7ea65ac24cdd8f0e5bac4ec50ed62b29d546f1a0d0a"
+            }
+          }
+        ],
+        "disposed": {
+          "nonce": "88df9e9a933cea2e2b4cc944e7ce4775",
+          "type": "disposed",
+          "framework": "Solid",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 10,
+            "mutations": {
+              "create": 8,
+              "set": 10,
+              "insert": 8,
+              "remove": 0
+            }
+          },
+          "observedSignalsRevoked": 6
+        },
+        "application": {
+          "schemaVersion": 1,
+          "status": "passed",
+          "scenario": "solid-input-viewport",
+          "framework": "Solid",
+          "edits": 8,
+          "restyles": 1,
+          "events": 43,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0,
+            "serviceRequests": 0
+          }
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "record_hashes": [
+          {
+            "path": "raw/diagnostics-development-solid-input-viewport/application.jsonl",
+            "bytes": 22008,
+            "sha256": "929d1ae9546589d75fb13daede4c44ffef788a7e0c17ef3f93d4f7af0b28a15a"
+          },
+          {
+            "path": "raw/diagnostics-development-solid-input-viewport/native.jsonl",
+            "bytes": 38918,
+            "sha256": "3de18ba6e3dcc8973c57b29a96a506ff504b52bd23dd9ec35a8871b960a48a7f"
+          },
+          {
+            "path": "raw/diagnostics-development-solid-input-viewport/input-viewport-observations.json",
+            "bytes": 130207,
+            "sha256": "92503ed2bc21407b1e0b1845cd6ba39a0d0a40d8b997cd0ecf68d294b8dca415"
+          },
+          {
+            "path": "raw/diagnostics-development-solid-input-viewport/application-result.json",
+            "bytes": 338,
+            "sha256": "72c2ededa63917df4fbf58b534e90616561c64b5efb851575fb24a112249123c"
+          }
+        ]
+      },
+      {
+        "framework": "Solid",
+        "mode": "aot",
+        "status": "passed",
+        "result": {
+          "path": "raw/diagnostics-aot-solid-input-viewport/result.json",
+          "bytes": 162369,
+          "sha256": "5696449b328f58036b29a1cd9403a746fea820602fd5501825c85f1049370b38"
+        },
+        "source_validation": {
+          "files": 117,
+          "all_bytes_and_sha256_match": true
+        },
+        "command": [
+          "/home/runner/work/_temp/native-evidence/solid-input-viewport-package/solid-input-viewport"
+        ],
+        "window": {
+          "id": "4194305",
+          "pid": 33677,
+          "startTicks": 74607
+        },
+        "renderer": {
+          "nonce": "0d78672d71303924712598166e5ed49a",
+          "type": "renderer",
+          "window_id": 1,
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+          }
+        },
+        "frames": [
+          {
+            "phase": "initial",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "initial-end",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "home",
+            "paint_line": 7,
+            "layout_line": 8,
+            "input_revision": 0,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "before-pointer",
+            "paint_line": 7,
+            "layout_line": 10,
+            "input_revision": 0,
+            "cursor_byte": 99,
+            "selected_bytes": [
+              99,
+              99
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "one-character-selection",
+            "paint_line": 17,
+            "layout_line": 18,
+            "input_revision": 1,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 297.53515625
+          },
+          {
+            "phase": "resized-end",
+            "paint_line": 21,
+            "layout_line": 22,
+            "input_revision": 2,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              32.0
+            ],
+            "offset": 375.259765625
+          },
+          {
+            "phase": "restyled-end",
+            "paint_line": 25,
+            "layout_line": 24,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "clipped-selection",
+            "paint_line": 25,
+            "layout_line": 26,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              0,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "empty",
+            "paint_line": 29,
+            "layout_line": 28,
+            "input_revision": 4,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "short",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "final",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          }
+        ],
+        "pointer": {
+          "application": [
+            {
+              "nonce": "0d78672d71303924712598166e5ed49a",
+              "type": "viewport-event",
+              "framework": "Solid",
+              "event": "pointer_down",
+              "sequence": 12,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            },
+            {
+              "nonce": "0d78672d71303924712598166e5ed49a",
+              "type": "viewport-event",
+              "framework": "Solid",
+              "event": "pointer_up",
+              "sequence": 13,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            }
+          ],
+          "native": [
+            {
+              "event": "down",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "first_mouse": false,
+              "nonce": "0d78672d71303924712598166e5ed49a",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 3,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            },
+            {
+              "event": "up",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "nonce": "0d78672d71303924712598166e5ed49a",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 4,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            }
+          ],
+          "applicationOffset": 24,
+          "nativeOffset": 10,
+          "position": [
+            395,
+            124
+          ]
+        },
+        "pixels": [
+          {
+            "phase": "initial-end",
+            "counts": {
+              "insideGlyph": 172,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 23,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/initial-end.png",
+              "bytes": 18274,
+              "sha256": "22acb39fe3f05b27d166919f737a3a8312190bd16085235f8c7ba45d4c9ddfd9"
+            }
+          },
+          {
+            "phase": "home",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/home.png",
+              "bytes": 17784,
+              "sha256": "2aed958d4a53e11bf42976cf85226aaa0f31948065da64a5283b615f29578f5b"
+            }
+          },
+          {
+            "phase": "resized-end",
+            "counts": {
+              "insideGlyph": 212,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 37,
+              "selectionArea": 6672,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/resized-end.png",
+              "bytes": 18158,
+              "sha256": "1bbf053c1a60b7bf3046bdb1d8bafe9ea7dbaa9e90cead3ec9931491ae161955"
+            }
+          },
+          {
+            "phase": "restyled-end",
+            "counts": {
+              "insideGlyph": 293,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 33,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/restyled-end.png",
+              "bytes": 18765,
+              "sha256": "7363de1916c5c7ff8af3939b1e7f81e96a11fd94c353d9a012e32c41a5167925"
+            }
+          },
+          {
+            "phase": "clipped-selection",
+            "counts": {
+              "insideGlyph": 299,
+              "outsideGlyph": 0,
+              "caret": 0,
+              "misplacedCaret": 0,
+              "selection": 8179,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/clipped-selection.png",
+              "bytes": 18768,
+              "sha256": "8131710a8be2f918e80da44e4e58a4e039b351c597bb5eb197147c16d36e501a"
+            }
+          },
+          {
+            "phase": "empty",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/empty.png",
+              "bytes": 17901,
+              "sha256": "fb51c6dd937f00613e3eafe5742f6731f811b73d53886ac21e410edf6420cd01"
+            }
+          },
+          {
+            "phase": "short",
+            "counts": {
+              "insideGlyph": 273,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 72,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-solid-input-viewport/short.png",
+              "bytes": 19172,
+              "sha256": "6b954363a89c6705470bd7ea65ac24cdd8f0e5bac4ec50ed62b29d546f1a0d0a"
+            }
+          }
+        ],
+        "disposed": {
+          "nonce": "0d78672d71303924712598166e5ed49a",
+          "type": "disposed",
+          "framework": "Solid",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 10,
+            "mutations": {
+              "create": 8,
+              "set": 10,
+              "insert": 8,
+              "remove": 0
+            }
+          },
+          "observedSignalsRevoked": 6
+        },
+        "application": {
+          "schemaVersion": 1,
+          "status": "passed",
+          "scenario": "solid-input-viewport",
+          "framework": "Solid",
+          "edits": 8,
+          "restyles": 1,
+          "events": 43,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0,
+            "serviceRequests": 0
+          }
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "record_hashes": [
+          {
+            "path": "raw/diagnostics-aot-solid-input-viewport/application.jsonl",
+            "bytes": 22008,
+            "sha256": "cde05a3f5a395105e0b0e7c7fcc5cad6577f48296dd4c1dbcfa9944744b11291"
+          },
+          {
+            "path": "raw/diagnostics-aot-solid-input-viewport/native.jsonl",
+            "bytes": 38918,
+            "sha256": "75e9fe4eb31a2374decfcd936a2cdcce2a630abe84195e5aaeff7ca02d18fb01"
+          },
+          {
+            "path": "raw/diagnostics-aot-solid-input-viewport/input-viewport-observations.json",
+            "bytes": 130207,
+            "sha256": "139a0c0a10c5a016a06d9886a4808aefb963c74ad6e10fa014e898ddfd0741cb"
+          },
+          {
+            "path": "raw/diagnostics-aot-solid-input-viewport/application-result.json",
+            "bytes": 338,
+            "sha256": "72c2ededa63917df4fbf58b534e90616561c64b5efb851575fb24a112249123c"
+          }
+        ]
+      },
+      {
+        "framework": "React",
+        "mode": "development",
+        "status": "passed",
+        "result": {
+          "path": "raw/diagnostics-development-react-input-viewport/result.json",
+          "bytes": 162394,
+          "sha256": "44a84b29d0f1e794b34f616ac6b20b2d12c032e67e42decfc63d4dfab6c674ae"
+        },
+        "source_validation": {
+          "files": 117,
+          "all_bytes_and_sha256_match": true
+        },
+        "command": [
+          "bun",
+          "/home/runner/work/_temp/native-evidence/react-input-viewport-package/development/application.js"
+        ],
+        "window": {
+          "id": "4194305",
+          "pid": 33956,
+          "startTicks": 75116
+        },
+        "renderer": {
+          "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+          "type": "renderer",
+          "window_id": 1,
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+          }
+        },
+        "frames": [
+          {
+            "phase": "initial",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "initial-end",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "home",
+            "paint_line": 7,
+            "layout_line": 8,
+            "input_revision": 0,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "before-pointer",
+            "paint_line": 7,
+            "layout_line": 10,
+            "input_revision": 0,
+            "cursor_byte": 99,
+            "selected_bytes": [
+              99,
+              99
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "one-character-selection",
+            "paint_line": 17,
+            "layout_line": 18,
+            "input_revision": 1,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 297.53515625
+          },
+          {
+            "phase": "resized-end",
+            "paint_line": 21,
+            "layout_line": 22,
+            "input_revision": 2,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              32.0
+            ],
+            "offset": 375.259765625
+          },
+          {
+            "phase": "restyled-end",
+            "paint_line": 25,
+            "layout_line": 24,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "clipped-selection",
+            "paint_line": 25,
+            "layout_line": 26,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              0,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "empty",
+            "paint_line": 29,
+            "layout_line": 28,
+            "input_revision": 4,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "short",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "final",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          }
+        ],
+        "pointer": {
+          "application": [
+            {
+              "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+              "type": "viewport-event",
+              "framework": "React",
+              "event": "pointer_down",
+              "sequence": 12,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            },
+            {
+              "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+              "type": "viewport-event",
+              "framework": "React",
+              "event": "pointer_up",
+              "sequence": 13,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            }
+          ],
+          "native": [
+            {
+              "event": "down",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "first_mouse": false,
+              "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 3,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            },
+            {
+              "event": "up",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 4,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            }
+          ],
+          "applicationOffset": 24,
+          "nativeOffset": 10,
+          "position": [
+            395,
+            124
+          ]
+        },
+        "pixels": [
+          {
+            "phase": "initial-end",
+            "counts": {
+              "insideGlyph": 172,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 23,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/initial-end.png",
+              "bytes": 18029,
+              "sha256": "65fccc36646105f3e4bb11bbf11a853c30d8bc2fc66a352cd9ccbd6257a83070"
+            }
+          },
+          {
+            "phase": "home",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/home.png",
+              "bytes": 17534,
+              "sha256": "be474e1fdaa88e4931a1081b7e4e72a89c8451654a3ca4a94a8d5ecc9a3f61c9"
+            }
+          },
+          {
+            "phase": "resized-end",
+            "counts": {
+              "insideGlyph": 212,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 37,
+              "selectionArea": 6672,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/resized-end.png",
+              "bytes": 17926,
+              "sha256": "fd724ac9678d68363ecb4e141b0cbdb232e94eba14f82fb14814100ee1c84598"
+            }
+          },
+          {
+            "phase": "restyled-end",
+            "counts": {
+              "insideGlyph": 293,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 33,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/restyled-end.png",
+              "bytes": 18531,
+              "sha256": "c12d2211dec160a130ef5260bc79aa88e3ab68b97cbfbcb626160ffcbc19e9f9"
+            }
+          },
+          {
+            "phase": "clipped-selection",
+            "counts": {
+              "insideGlyph": 299,
+              "outsideGlyph": 0,
+              "caret": 0,
+              "misplacedCaret": 0,
+              "selection": 8179,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/clipped-selection.png",
+              "bytes": 18534,
+              "sha256": "0eeb50b42680efe2a706c192fa2688606f5357224296aa6eacd651d086cb3038"
+            }
+          },
+          {
+            "phase": "empty",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/empty.png",
+              "bytes": 17664,
+              "sha256": "bc507a8619e192d0d6974d8433e12d939ae49cbace50bcdaf3d2292774feb9af"
+            }
+          },
+          {
+            "phase": "short",
+            "counts": {
+              "insideGlyph": 273,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 72,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-development-react-input-viewport/short.png",
+              "bytes": 18937,
+              "sha256": "ebb4f70fe1df1c5f8c7596a26d5f3a2b9ba24068359929f29a747834df0e4552"
+            }
+          }
+        ],
+        "disposed": {
+          "nonce": "95d8d3465bcf6ad63279fc8e535787de",
+          "type": "disposed",
+          "framework": "React",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 10,
+            "mutations": {
+              "create": 8,
+              "set": 10,
+              "insert": 8,
+              "remove": 0
+            }
+          },
+          "observedSignalsRevoked": 6
+        },
+        "application": {
+          "schemaVersion": 1,
+          "status": "passed",
+          "scenario": "react-input-viewport",
+          "framework": "React",
+          "edits": 8,
+          "restyles": 1,
+          "events": 43,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0,
+            "serviceRequests": 0
+          }
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "record_hashes": [
+          {
+            "path": "raw/diagnostics-development-react-input-viewport/application.jsonl",
+            "bytes": 21913,
+            "sha256": "b45f16859cc21dfbff6c53edd2345768363c65c50d5c23445d4c14bb138cf8a5"
+          },
+          {
+            "path": "raw/diagnostics-development-react-input-viewport/native.jsonl",
+            "bytes": 38919,
+            "sha256": "5647c0e87e6c15a7c3f88fc79f60a84ee3caf13db15e332b3ac53ce71e867735"
+          },
+          {
+            "path": "raw/diagnostics-development-react-input-viewport/input-viewport-observations.json",
+            "bytes": 130207,
+            "sha256": "46d740119edc0f8d8b2a08c649d7226ae8d54e20a667102de4c680941dc12f68"
+          },
+          {
+            "path": "raw/diagnostics-development-react-input-viewport/application-result.json",
+            "bytes": 338,
+            "sha256": "388e260394d96359ed574c857a70a345522c63e78f071feb1ace542c7d43d5cf"
+          }
+        ]
+      },
+      {
+        "framework": "React",
+        "mode": "aot",
+        "status": "passed",
+        "result": {
+          "path": "raw/diagnostics-aot-react-input-viewport/result.json",
+          "bytes": 162369,
+          "sha256": "3e47bb6dde0717bfa5d0e6b7e1172bd5274778ecd040d0a7df6790c958997e96"
+        },
+        "source_validation": {
+          "files": 117,
+          "all_bytes_and_sha256_match": true
+        },
+        "command": [
+          "/home/runner/work/_temp/native-evidence/react-input-viewport-package/react-input-viewport"
+        ],
+        "window": {
+          "id": "4194305",
+          "pid": 34170,
+          "startTicks": 75268
+        },
+        "renderer": {
+          "nonce": "360082ad07f0fa58a34a67a653048c69",
+          "type": "renderer",
+          "window_id": 1,
+          "gpu": {
+            "is_software_emulated": true,
+            "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+            "driver_name": "llvmpipe",
+            "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+          }
+        },
+        "frames": [
+          {
+            "phase": "initial",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "initial-end",
+            "paint_line": 7,
+            "layout_line": 6,
+            "input_revision": 0,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              100
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "home",
+            "paint_line": 7,
+            "layout_line": 8,
+            "input_revision": 0,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "before-pointer",
+            "paint_line": 7,
+            "layout_line": 10,
+            "input_revision": 0,
+            "cursor_byte": 99,
+            "selected_bytes": [
+              99,
+              99
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 285.69921875
+          },
+          {
+            "phase": "one-character-selection",
+            "paint_line": 17,
+            "layout_line": 18,
+            "input_revision": 1,
+            "cursor_byte": 100,
+            "selected_bytes": [
+              100,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              368.0,
+              32.0
+            ],
+            "offset": 297.53515625
+          },
+          {
+            "phase": "resized-end",
+            "paint_line": 21,
+            "layout_line": 22,
+            "input_revision": 2,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              32.0
+            ],
+            "offset": 375.259765625
+          },
+          {
+            "phase": "restyled-end",
+            "paint_line": 25,
+            "layout_line": 24,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              101,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "clipped-selection",
+            "paint_line": 25,
+            "layout_line": 26,
+            "input_revision": 3,
+            "cursor_byte": 101,
+            "selected_bytes": [
+              0,
+              101
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 507.51171875
+          },
+          {
+            "phase": "empty",
+            "paint_line": 29,
+            "layout_line": 28,
+            "input_revision": 4,
+            "cursor_byte": 0,
+            "selected_bytes": [
+              0,
+              0
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "short",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          },
+          {
+            "phase": "final",
+            "paint_line": 44,
+            "layout_line": 43,
+            "input_revision": 9,
+            "cursor_byte": 5,
+            "selected_bytes": [
+              5,
+              5
+            ],
+            "viewport": [
+              28.0,
+              108.0,
+              288.0,
+              39.0
+            ],
+            "offset": 0.0
+          }
+        ],
+        "pointer": {
+          "application": [
+            {
+              "nonce": "360082ad07f0fa58a34a67a653048c69",
+              "type": "viewport-event",
+              "framework": "React",
+              "event": "pointer_down",
+              "sequence": 12,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            },
+            {
+              "nonce": "360082ad07f0fa58a34a67a653048c69",
+              "type": "viewport-event",
+              "framework": "React",
+              "event": "pointer_up",
+              "sequence": 13,
+              "treeRevision": 1,
+              "target": "input",
+              "x": 395.00604248046875,
+              "y": 124.00189208984375,
+              "button": "left"
+            }
+          ],
+          "native": [
+            {
+              "event": "down",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "first_mouse": false,
+              "nonce": "360082ad07f0fa58a34a67a653048c69",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 3,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            },
+            {
+              "event": "up",
+              "position": [
+                395.00604248046875,
+                124.00189208984375
+              ],
+              "button": "Left",
+              "nonce": "360082ad07f0fa58a34a67a653048c69",
+              "type": "pointer_trace",
+              "stage": "gpui-window-input",
+              "window_id": 1,
+              "trace_index": 4,
+              "trace_limit": 64,
+              "limit_reached": false,
+              "viewport": [
+                760.0,
+                400.0
+              ],
+              "window_active": true
+            }
+          ],
+          "applicationOffset": 24,
+          "nativeOffset": 10,
+          "position": [
+            395,
+            124
+          ]
+        },
+        "pixels": [
+          {
+            "phase": "initial-end",
+            "counts": {
+              "insideGlyph": 172,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 23,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/initial-end.png",
+              "bytes": 18029,
+              "sha256": "65fccc36646105f3e4bb11bbf11a853c30d8bc2fc66a352cd9ccbd6257a83070"
+            }
+          },
+          {
+            "phase": "home",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8592,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/home.png",
+              "bytes": 17534,
+              "sha256": "be474e1fdaa88e4931a1081b7e4e72a89c8451654a3ca4a94a8d5ecc9a3f61c9"
+            }
+          },
+          {
+            "phase": "resized-end",
+            "counts": {
+              "insideGlyph": 212,
+              "outsideGlyph": 0,
+              "caret": 64,
+              "misplacedCaret": 0,
+              "selection": 37,
+              "selectionArea": 6672,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/resized-end.png",
+              "bytes": 17926,
+              "sha256": "fd724ac9678d68363ecb4e141b0cbdb232e94eba14f82fb14814100ee1c84598"
+            }
+          },
+          {
+            "phase": "restyled-end",
+            "counts": {
+              "insideGlyph": 293,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 33,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/restyled-end.png",
+              "bytes": 18531,
+              "sha256": "c12d2211dec160a130ef5260bc79aa88e3ab68b97cbfbcb626160ffcbc19e9f9"
+            }
+          },
+          {
+            "phase": "clipped-selection",
+            "counts": {
+              "insideGlyph": 299,
+              "outsideGlyph": 0,
+              "caret": 0,
+              "misplacedCaret": 0,
+              "selection": 8179,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/clipped-selection.png",
+              "bytes": 18534,
+              "sha256": "0eeb50b42680efe2a706c192fa2688606f5357224296aa6eacd651d086cb3038"
+            }
+          },
+          {
+            "phase": "empty",
+            "counts": {
+              "insideGlyph": 0,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 0,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/empty.png",
+              "bytes": 17664,
+              "sha256": "bc507a8619e192d0d6974d8433e12d939ae49cbace50bcdaf3d2292774feb9af"
+            }
+          },
+          {
+            "phase": "short",
+            "counts": {
+              "insideGlyph": 273,
+              "outsideGlyph": 0,
+              "caret": 78,
+              "misplacedCaret": 0,
+              "selection": 72,
+              "selectionArea": 8618,
+              "outsideSelection": 0,
+              "passed": true
+            },
+            "screenshot": {
+              "path": "raw/diagnostics-aot-react-input-viewport/short.png",
+              "bytes": 18937,
+              "sha256": "ebb4f70fe1df1c5f8c7596a26d5f3a2b9ba24068359929f29a747834df0e4552"
+            }
+          }
+        ],
+        "disposed": {
+          "nonce": "360082ad07f0fa58a34a67a653048c69",
+          "type": "disposed",
+          "framework": "React",
+          "diagnostics": {
+            "nodes": 0,
+            "listeners": 0,
+            "pending": false,
+            "commits": 10,
+            "mutations": {
+              "create": 8,
+              "set": 10,
+              "insert": 8,
+              "remove": 0
+            }
+          },
+          "observedSignalsRevoked": 6
+        },
+        "application": {
+          "schemaVersion": 1,
+          "status": "passed",
+          "scenario": "react-input-viewport",
+          "framework": "React",
+          "edits": 8,
+          "restyles": 1,
+          "events": 43,
+          "ownership": {
+            "windows": 0,
+            "nodes": 0,
+            "callbacks": 0,
+            "queuedTransactions": 0,
+            "queuedCallbacks": 0,
+            "activeCallbacks": 0,
+            "serviceRequests": 0
+          }
+        },
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "record_hashes": [
+          {
+            "path": "raw/diagnostics-aot-react-input-viewport/application.jsonl",
+            "bytes": 21913,
+            "sha256": "6233489bef48915b626c6e51e488d70e877a20b819f08c7c0ef8cba6014629f4"
+          },
+          {
+            "path": "raw/diagnostics-aot-react-input-viewport/native.jsonl",
+            "bytes": 38918,
+            "sha256": "686ad7830a747d0a0cd9d7c3b2868ea020b5e6a349a268ced40c21aff5248ea0"
+          },
+          {
+            "path": "raw/diagnostics-aot-react-input-viewport/input-viewport-observations.json",
+            "bytes": 130207,
+            "sha256": "0503f8e531fa952fdbd5cb5c07689ecf41eaad635c2164b6fe885ed4a267c6c5"
+          },
+          {
+            "path": "raw/diagnostics-aot-react-input-viewport/application-result.json",
+            "bytes": 338,
+            "sha256": "388e260394d96359ed574c857a70a345522c63e78f071feb1ace542c7d43d5cf"
+          }
+        ]
+      }
+    ],
+    "caseCount": 4,
+    "verifiedFrames": 44,
+    "verifiedScreenshotPredicates": 28,
+    "uniqueNonces": 4,
+    "sourceFilesVerifiedPerCase": 117,
+    "visualSamples": [
+      "development Solid restyled-end",
+      "AOT Solid clipped-selection",
+      "development React restyled-end",
+      "AOT React short"
+    ],
+    "limits": "Linux x64 isolated X11/XTest/software llvmpipe only. No physical hardware, high-DPI, IME composition, bidi, accessibility, native macOS/Windows viewport or long-soak claim."
+  },
+  "reactCalibrationFailure": {
+    "status": "failed",
+    "assertion": "Disposed view/callback targets remain observable",
+    "actual": 2,
+    "expected": 0,
+    "source": "benchmarks/solid/workload.ts:352",
+    "workload": {
+      "iterations": 10,
+      "rotations": 10,
+      "mounts": 2,
+      "rows": 32,
+      "warmup": 20
+    },
+    "retentionObservation": {
+      "firstReachable": [
+        3,
+        5
+      ],
+      "stillReachable": [
+        3,
+        5
+      ],
+      "probesPerMount": 3,
+      "probeKinds": [
+        "render root",
+        "content node",
+        "listener"
+      ],
+      "collectionCheckpoints": 2,
+      "quiescence": "empty core transaction queue fence; no additional native command"
+    },
+    "sourceProbeMapping": {
+      "3": "second mount render root",
+      "5": "second mount listener"
+    },
+    "mappingLimit": "Index mapping follows the recorded fixed three-probe order; the retaining root/cause is unknown.",
+    "lifecycles": {
+      "count": 2,
+      "p50Ms": 1.3401230000000055,
+      "p95Ms": 2.801343000000003,
+      "p99Ms": 2.801343000000003,
+      "totalMs": 4.141466000000008,
+      "samplesMs": [
+        2.801343000000003,
+        1.3401230000000055
+      ],
+      "rowsCreated": 64,
+      "rowsDisposed": 64,
+      "acknowledgedUpdates": 2,
+      "retainedWeakRefObjects": 6
+    },
+    "cleanup": {
+      "windows": 0,
+      "nodes": 0,
+      "callbacks": 0,
+      "queuedTransactions": 0,
+      "queuedCallbacks": 0,
+      "activeCallbacks": 0,
+      "serviceRequests": 0
+    },
+    "cleanupLimit": "Application diagnostics after shutdown are all zero. That does not satisfy the failed WeakRef collectability assertion.",
+    "sourceParityWithAcceptedMain274": [
+      "packages",
+      "benchmarks/solid/react.tsx",
+      "benchmarks/solid/workload.ts",
+      "benchmarks/solid/ownership.ts",
+      "benchmarks/solid/sources.ts"
+    ],
+    "sourceParityAllByteIdentical": true,
+    "unexecuted": [
+      "development 1000-mount workload",
+      "AOT calibration",
+      "AOT 1000-mount workload"
+    ],
+    "records": [
+      {
+        "path": "raw/react-workload/calibration-development-session/window-manager.log",
+        "bytes": 85,
+        "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.json",
+        "bytes": 36881,
+        "sha256": "bfe0b5695cf323d7312f4358e89b23eb24a41d9a2c099de9f3a8f3de5db8a4d8"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.jsonl",
+        "bytes": 32483,
+        "sha256": "5383005a9c4ba3f82828e52130081405405037acb5447475f6565a13f051752a"
+      },
+      {
+        "path": "raw/react-workload/calibration-development.log",
+        "bytes": 883,
+        "sha256": "76f2fc90c4899cd7ffcd6f60100734b017e8e4951844756763ec771ff72eda80"
+      }
+    ]
+  },
+  "jobLog": {
+    "path": "job-126863607390.log",
+    "bytes": 1207048,
+    "sha256": "2782525255ed2dfd9bf0c595d12a03492e2710418d14b1c9f78d4658356aa751"
+  },
+  "previousFailures": {
+    "head": "af956a154fff0c0afcc5e26adbe55f5af76f9f1b",
+    "protocolArchive": 383,
+    "nativeArchive": 385,
+    "status": "Original failures unchanged; current viewport success does not explain retention failures."
+  }
+}
