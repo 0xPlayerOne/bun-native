@@ -235,6 +235,80 @@ def matches_paint(event, expected):
     )
 
 
+def validate_native_pointer_request(click, keys, text, expectations, initial, final):
+    """Opt-in evidence for unchanged apps, separate from app callback evidence."""
+    if (
+        click is None
+        or keys
+        or text is not None
+        or expectations
+        or not isinstance(initial, dict)
+        or not isinstance(final, dict)
+        or not isinstance(initial.get("nodes"), list)
+        or not initial["nodes"]
+        or not isinstance(final.get("nodes"), list)
+        or not final["nodes"]
+        or initial["nodes"] == final["nodes"]
+        or type(initial.get("window_id")) is not int
+        or initial["window_id"] < 1
+        or type(final.get("window_id")) is not int
+        or initial["window_id"] != final.get("window_id")
+        or type(initial.get("tree_revision")) is not int
+        or type(final.get("tree_revision")) is not int
+        or not 0 < initial["tree_revision"] < final["tree_revision"]
+    ):
+        raise ValueError(
+            "Native pointer evidence requires one click, no app-event expectations "
+            "or other input, and different complete initial/final trees for one window"
+        )
+
+
+def native_pointer_click_observed(events, window_id, position):
+    """Require down then up in the injected logical pixel after the input offset."""
+    if (
+        not isinstance(position, list)
+        or len(position) != 2
+        or any(type(coordinate) is not int for coordinate in position)
+    ):
+        return False
+    down_index = None
+    expected = {
+        "type": "pointer_trace",
+        "stage": "gpui-window-input",
+        "window_id": window_id,
+        "button": "Left",
+        "window_active": True,
+        "limit_reached": False,
+    }
+    for event in events:
+        index = event.get("trace_index")
+        coordinates = event.get("position")
+        if (
+            not matches(event, expected)
+            or type(index) is not int
+            or not 1 <= index < 64
+            or not isinstance(coordinates, list)
+            or len(coordinates) != 2
+            # Pinned GPUI converts XInput16.16 with divisor 65535: the injected
+            # 100,130 becomes f32 100.001526,130.001984 at scale 1. Require the
+            # same integer pixel, rejecting ambiguous half-pixel boundaries.
+            or not all(
+                type(value) in (int, float)
+                and (type(value) is int or math.isfinite(value))
+                and abs(value - target) < 0.5
+                for value, target in zip(coordinates, position)
+            )
+        ):
+            continue
+        if event.get("event") == "down":
+            down_index = index
+        elif (
+            event.get("event") == "up" and down_index is not None and index > down_index
+        ):
+            return True
+    return False
+
+
 def validate_input_request(event_stress, title, text, keys, click):
     """The larger workload is explicit and fixed; ordinary smoke limits remain."""
     if event_stress:
@@ -553,6 +627,16 @@ def main():
         "--expect-event", action="append", default=[], help="JSON object subset"
     )
     parser.add_argument(
+        "--expect-native-pointer",
+        action="store_true",
+        help="Require native down/up capture plus changed complete paint, without an app callback probe",
+    )
+    parser.add_argument(
+        "--require-unforced-cleanup",
+        action="store_true",
+        help="Fail if process-tree cleanup needs to terminate a remaining owned process",
+    )
+    parser.add_argument(
         "--expect-render", help="JSON subset with type=rendered; app-reported only"
     )
     parser.add_argument(
@@ -616,6 +700,7 @@ def main():
             "window": "not-run",
             "os_input": "not-run",
             "app_input_event": "unsupported",
+            "native_pointer_input": "not-required",
             "app_initial_render_report": "not-required",
             "app_render_report": "unsupported",
             "native_paint_file_observation": "not-required",
@@ -739,6 +824,16 @@ def main():
                 raise RuntimeError(
                     f"{name} must describe type=rendered from native-paint, never an acknowledgement"
                 )
+        if args.expect_native_pointer:
+            validate_native_pointer_request(
+                args.click, args.key, args.text, expectations, initial_render, render
+            )
+            report["checks"]["native_pointer_input"] = "failed"
+            report["checks"]["app_input_event"] = "not-required"
+            report["verification_scope"] = (
+                "owned X11 window, OS-injected click, native GPUI pointer capture, "
+                "changed complete native paint and close; no application callback probe"
+            )
         if args.event_stress and (
             initial_render != event_stress_fixture_paint("")
             or render != event_stress_fixture_paint(EVENT_STRESS_TEXT)
@@ -763,6 +858,7 @@ def main():
             if args.text is not None
             else None,
             "expected_events": expectations,
+            "native_pointer_required": args.expect_native_pointer,
             "expected_initial_render": initial_render,
             "expected_render": render,
         }
@@ -775,6 +871,8 @@ def main():
             BUN_NATIVE_EVIDENCE_LOG=str(evidence_path),
             BUN_NATIVE_EVIDENCE_NONCE=nonce,
         )
+        if args.expect_native_pointer:
+            environment["BUN_NATIVE_POINTER_TRACE"] = "1"
         started = time.monotonic()
         deadline = started + args.timeout
         app = subprocess.Popen(
@@ -1007,6 +1105,10 @@ def main():
             input_ok = bool(expectations) and all(
                 any(matches(event, item) for event in events) for item in expectations
             )
+            if args.expect_native_pointer:
+                input_ok = native_pointer_click_observed(
+                    events, initial_render["window_id"], args.click
+                )
             if args.event_stress:
                 stress = event_stress_observations(events)
                 report["measurements"]["event_stress"] = stress
@@ -1015,7 +1117,12 @@ def main():
                 matches_paint(event, render) for event in events
             )
             for matched, key in [
-                (input_ok, "input_start_to_matching_app_event_observed_ms"),
+                (
+                    input_ok,
+                    "input_start_to_native_pointer_observed_ms"
+                    if args.expect_native_pointer
+                    else "input_start_to_matching_app_event_observed_ms",
+                ),
                 (render_ok, "input_start_to_matching_paint_report_observed_ms"),
             ]:
                 if matched and key not in report["measurements"]:
@@ -1055,6 +1162,10 @@ def main():
             report["checks"]["renderer"] = "passed" if software_gpu else "failed"
         if expectations:
             report["checks"]["app_input_event"] = "passed" if input_ok else "failed"
+        if args.expect_native_pointer:
+            report["checks"]["native_pointer_input"] = (
+                "passed" if input_ok else "failed"
+            )
         if render is not None:
             report["checks"]["app_render_report"] = "passed" if render_ok else "failed"
         screenshot("after.png")
@@ -1147,10 +1258,14 @@ def main():
                 if (
                     report["cleanup"]["remaining_observed_pids"]
                     or report["cleanup"]["unreaped_observed_pids"]
+                    or (
+                        args.require_unforced_cleanup
+                        and report["cleanup"]["forced_termination"]
+                    )
                 ):
                     report.update(
                         status="failed",
-                        error="Observed application processes remain after cleanup",
+                        error="Observed application processes remain or required forced cleanup",
                     )
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
                 report.update(

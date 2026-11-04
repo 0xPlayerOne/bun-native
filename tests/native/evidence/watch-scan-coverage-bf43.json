@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "scope": "Preserved Source quality coverage failure and focused regression evidence. Original hosted job remains failed; no whole-suite, native or GC replay was performed for this follow-up.",
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/243",
+  "pull_request": "https://github.com/0xPlayerOne/bun-native/pull/360",
+  "hosted_failure": {
+    "run_id": 41900102525,
+    "attempt": 1,
+    "job_id": 126820054951,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41900102525/job/126820054951",
+    "job_conclusion": "failure",
+    "failing_step": "TypeScript tests and coverage",
+    "command": ["bun", "test", "tests", "--coverage"],
+    "published_head": "bf43c76f51b785a076d17037a3f076ed0e96fbbf",
+    "executed_commit": "d0ff6d54ceec0140ba73d7e265969e4fe99ddf14",
+    "executed_tree": "309a3ffde181d06cedaf0f33d483d29b70d5ed11",
+    "equivalent_local_commit": "aacad35cae05ddacaf277f4f142f744a8425617e",
+    "selected_source": {
+      "scripts/native/inputs.ts": {
+        "bytes": 2821,
+        "sha256": "c37f7ab8e491d5faab7c9b29f12330fc8d504dbe00d40420c8b5e2bb8476a28b"
+      },
+      "scripts/native/watch.ts": {
+        "bytes": 3793,
+        "sha256": "b5d7f98516135ae1577823ccd6d4647f53d84df7a0f1fa68d4cad5a2c62cdd0f"
+      },
+      "tests/tooling/reload.test.ts": {
+        "bytes": 23694,
+        "sha256": "98c396da078d208ad6dabe977962e587955aef5246856cc2bb1f9c18531505f9"
+      },
+      "bunfig.toml": {
+        "bytes": 147,
+        "sha256": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31"
+      },
+      "toolchain.json": {
+        "bytes": 3012,
+        "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+      }
+    },
+    "compiler": {
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "executable_sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+      "identity_origin": "Pinned installer receipt in job log"
+    },
+    "log": {
+      "bytes": 132703,
+      "sha256": "2019f4eb4a8116fa73a0cdeaee77180f78c675910a89d5927f38314a66787d3f"
+    },
+    "raw_selected_lines": "2026-11-04T19:46:25.1510172Z Production package source reachability and internal value exports verified\n2026-11-04T19:47:05.3187773Z All files                                  |   99.16 |   97.54 |\n2026-11-04T19:47:05.3207688Z  scripts/native/inputs.ts                  |  100.00 |  100.00 | \n2026-11-04T19:47:05.3209441Z  scripts/native/watch.ts                   |   85.71 |   98.78 | 92\n2026-11-04T19:47:05.3217157Z  702 pass\n2026-11-04T19:47:05.3217477Z  0 fail\n2026-11-04T19:47:05.3217810Z  5445 expect() calls\n2026-11-04T19:47:05.3218181Z Ran 702 tests across 54 files. [40.11s]\n2026-11-04T19:47:05.3290232Z ##[error]Process completed with exit code 1.\n",
+    "tests": {
+      "passed": 702,
+      "failed": 0,
+      "assertions": 5445,
+      "files": 54,
+      "seconds": 40.11
+    },
+    "coverage": {
+      "all_files": {
+        "functions_percent": 99.16,
+        "lines_percent": 97.54
+      },
+      "scripts/native/inputs.ts": {
+        "functions_percent": 100,
+        "lines_percent": 100
+      },
+      "scripts/native/watch.ts": {
+        "functions_percent": 85.71,
+        "lines_percent": 98.78
+      },
+      "unchanged_thresholds": {
+        "functions": 0.9,
+        "lines": 0.8
+      }
+    },
+    "preceding_checks": "Format, lint, 168-file typecheck, package boundaries, source health and package build passed.",
+    "classification": "Coverage gate failed; there were no failing test assertions or retained-root diagnostic failures in this invocation."
+  },
+  "followup": {
+    "product_source_changed": false,
+    "thresholds_or_exclusions_changed": false,
+    "test_file": "tests/tooling/reload.test.ts",
+    "test_file_at_focused_run": {
+      "bytes": 27597,
+      "sha256": "4b7a7696a9c49b018db870deeab762ec6aeb8edcf793d942e7f27a4681a038f3"
+    },
+    "new_case": "watch cancellation joins a late scan rejection before reporting the final stopped app",
+    "scope": "The test performs a real fingerprint/read stream, then holds only its result boundary. It observes the closed stream, abort signal and removed watcher signal listener, verifies no premature final stopped record, releases a late scan rejection and requires actual zero-resource IPC, child/peer join and temporary-root removal. The separate existing input test covers cancellation while a real stream is active.",
+    "single_test": {
+      "exit_code": 0,
+      "passed": 1,
+      "failed": 0,
+      "assertions": 14,
+      "log": {
+        "bytes": 343,
+        "sha256": "3e0b15a9c1c792e6b4a158edb7599a4d12489d7385225f2bd5452cc5b7fdb8df",
+        "raw_text": "bun test v1.4.4-canary.1 (da867c60b)\n\ntests/tooling/reload.test.ts:\n(pass) development remounts (real Bun processes and headless protocol peer, no GPUI) > watch cancellation joins a late scan rejection before reporting the final stopped app [169.21ms]\n\n 1 pass\n 14 filtered out\n 0 fail\n 14 expect() calls\nRan 1 test across 1 file. [1217.00ms]\n"
+      }
+    },
+    "focused_coverage": {
+      "exit_code": 1,
+      "status": "tests passed; filtered invocation fails unchanged coverage gates on other imported modules",
+      "command": [
+        "bun",
+        "test",
+        "tests/tooling/watch-inputs.test.ts",
+        "tests/tooling/reload.test.ts",
+        "--coverage",
+        "-t",
+        "unknown and directory|fingerprints|file links|file removed|vanished directory|cancelling an in-flight|watches imported components|watch cancellation joins a late scan|watch cancellation reports uncooperative"
+      ],
+      "passed": 9,
+      "failed": 0,
+      "assertions": 62,
+      "watch_functions_percent": 100,
+      "watch_lines_percent": 95.12,
+      "inputs_functions_percent": 100,
+      "inputs_lines_percent": 100,
+      "log": {
+        "bytes": 2690,
+        "sha256": "4b1357b0b3fc60db66f30774e15eba63c8e129d62e1e6b19bc69502409571312",
+        "raw_text": "bun test v1.4.4-canary.1 (da867c60b)\n\ntests/tooling/watch-inputs.test.ts:\n(pass) unknown and directory notifications request a scan; excluded paths do not [0.50ms]\n(pass) fingerprints track relevant bytes and paths, while ignored changes leave them unchanged [12.12ms]\n(pass) file links include resolved target identity and bytes; directory links are not traversed [2.70ms]\n(pass) a file removed after enumeration is absent; later recreation has a new fingerprint [1.98ms]\n(pass) a vanished directory is absent, while unrelated IO failures propagate [0.92ms]\n(pass) cancelling an in-flight source stream joins its destruction and rejects the snapshot [2.13ms]\n\ntests/tooling/reload.test.ts:\n(pass) development remounts (real Bun processes and headless protocol peer, no GPUI) > watches imported components, retains failed edits and coalesces rapid saves [694.83ms]\n(pass) development remounts (real Bun processes and headless protocol peer, no GPUI) > watch cancellation joins a late scan rejection before reporting the final stopped app [154.42ms]\n(pass) development remounts (real Bun processes and headless protocol peer, no GPUI) > watch cancellation reports uncooperative teardown and cleans its temporary root [5016.33ms]\n-----------------------------------------|---------|---------|-------------------\nFile                                     | % Funcs | % Lines | Uncovered Line #s\n-----------------------------------------|---------|---------|-------------------\nAll files                                |   85.17 |   79.91 |\n experiments/aot-gpui/compile.ts         |  100.00 |   91.89 | 31,35,38\n experiments/aot-gpui/inspect-runtime.ts |   71.43 |   50.00 | 24,40,44,63,76-78,80,83-84,87-88,91-95,97-138,140-149,152,154-155,158-169,171-196,203-211,233,235,239,250,268,284\n experiments/aot-gpui/inspect.ts         |  100.00 |   85.42 | 23-27,62,64\n scripts/native/build.ts                 |   25.00 |   16.92 | 20-50,53-56,58,78-81,84-88,90-99,101-113,115-154\n scripts/native/inputs.ts                |  100.00 |  100.00 | \n scripts/native/project.ts               |  100.00 |   84.76 | 97,104-108,112,116,155-157,167,177-179,182\n scripts/native/session.ts               |   90.48 |   89.25 | 21,38,103,201,211-213,248-252,277-287\n scripts/native/watch.ts                 |  100.00 |   95.12 | 80-82,92\n scripts/solid-build.ts                  |  100.00 |   83.78 | 9,38-42\n scripts/solid/test-runtime.ts           |   50.00 |   81.82 | 11-12\n scripts/solid/transform.ts              |  100.00 |  100.00 | \n-----------------------------------------|---------|---------|-------------------\n\n 9 pass\n 12 filtered out\n 0 fail\n 62 expect() calls\nRan 9 tests across 2 files. [7.03s]\n"
+      }
+    },
+    "qualification_limit": "Only affected-source coverage is established locally. Passing current-head whole Source quality remains a required hosted gate."
+  }
+}

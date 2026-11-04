@@ -13,8 +13,7 @@ import { arch, platform, release } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { inspectBunExecutable } from './inspect'
-import { inspectBunRuntime } from './inspect-runtime'
+import { compileApplication } from './compile'
 import { nativeSourcePaths } from './native-sources'
 import toolchain from '../../toolchain.json'
 
@@ -256,26 +255,12 @@ if (solidEntry || reactEntry) {
   }
 }
 
-const compileCommand = [
-  process.execPath,
-  'compile',
-  '--no-script',
-  '--production',
-  ...(values.trim ? ['--trim'] : []),
-  '--explain=json',
+const { compileCommand, buildMs, inspection, runtimeFeatures } = compileApplication(
   compileInput,
-  '--outfile',
   application,
-]
-const start = performance.now()
-command('compile-aot', compileCommand)
-const buildMs = performance.now() - start
-const inspection = inspectBunExecutable(application)
-if (!inspection.hasCompiledProgram)
-  throw new Error('Compiler output has no compiled-program record')
-const runtimeFeatures = inspectBunRuntime(application)
-if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
-  throw new Error('Compiler output does not record removal of the JIT compiler')
+  source,
+  values.trim
+)
 if (bundledHost) {
   copyFileSync(values.host, host)
   if (process.platform !== 'win32') chmodSync(host, 0o755)

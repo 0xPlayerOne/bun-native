@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "archive_date_utc": "2026-11-04",
+  "status": "passed",
+  "scope": "One fresh local-cache network installation using the actual committed Node bootstrap script and an isolated clean worktree. This is installation evidence, not a controlled cold-start performance test, GUI/native-host qualification or an additional AOT application build.",
+  "cache_scope": "The Bun toolchain destination and explicitly selected Bun package cache were newly created and empty; node_modules did not exist. OS filesystem caches, DNS, proxies, registry/CDN caches and network conditions were not reset or controlled.",
+  "timing_policy": "Elapsed milliseconds are single-run controller observations including subprocess, network and filesystem overhead. They are retained for traceability, not presented as benchmark results.",
+  "path_policy": "Commands and the bootstrap executable field use portable placeholders for owned absolute paths. Log and receipt SHA-256 digests bind the original unmodified bytes, including their original absolute paths.",
+  "source": {
+    "measured_local_commit": "2446973a74f5113f6e048c4daca73f87ea35b679",
+    "git_tree": "6d3b0015907d5fb4f679797b7e5b91aa74c365ee",
+    "equivalent_github_source_commit": "bac9f49faf3ecb587b29275a1a3809051bebad0a",
+    "equivalent_github_source_url": "https://github.com/0xPlayerOne/bun-native/commit/bac9f49faf3ecb587b29275a1a3809051bebad0a",
+    "equivalence_note": "Tree-equivalent GitHub source snapshot verified by the integrating agent; this is separate from the measured local commit. The installer, helpers, toolchain pin, package manifest and frozen lock were hashed before and after installation.",
+    "source_files_unchanged": {
+      "scripts/install-bun.mjs": {
+        "bytes": 3846,
+        "sha256": "70e854aabf212ebb006a8689112f08121631a57fa8ead8202de93ad7577e0703"
+      },
+      "scripts/install-bun/download.mjs": {
+        "bytes": 7008,
+        "sha256": "0145244349f0838ca6e49ccf0b0e9d162d12b5b479a74767cc888e1d84ae3ade"
+      },
+      "scripts/install-bun/archive.mjs": {
+        "bytes": 4977,
+        "sha256": "d3ba1233d0db5b00afec039d3507d594efec503b485c7a27c47bff51df0fd357"
+      },
+      "toolchain.json": {
+        "bytes": 3012,
+        "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+      },
+      "package.json": {
+        "bytes": 1956,
+        "sha256": "6948c1522ccd1bff6b2502c1cb5976ab2395281a5ce362dfec23a57c10cac36f"
+      },
+      "bun.lock": {
+        "bytes": 28357,
+        "sha256": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684"
+      }
+    }
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "node_version": "v24.22.1",
+    "cwd": "$CHECKOUT",
+    "package_cache_variable": {
+      "BUN_INSTALL_CACHE_DIR": "$PACKAGE_CACHE"
+    },
+    "owned_path_prefix": ["$RUST_SENTINEL", "$TOOLCHAIN", "$NODE_DIRECTORY"],
+    "sentinel_tools": ["cargo", "rustc", "rustup"],
+    "sentinel_behavior": "Append attempted invocation to the owned log and exit 97.",
+    "existing_ci_path_file_inherited": false
+  },
+  "initial_state": {
+    "package_cache_entries": 0,
+    "toolchain_entries": 0,
+    "node_modules_exists": false,
+    "tracked_or_unignored_changes": ""
+  },
+  "attempts": {
+    "bootstrap_command_invocations": 1,
+    "frozen_install_command_invocations": 1,
+    "controller_retries": 0,
+    "fallbacks": 0,
+    "bootstrap_archive_policy": "The committed download helper performs one exact public npm request with no credentials, redirects, retries or fallback and a 120-second request/body deadline.",
+    "dependency_network_policy": "Normal Bun frozen-install behavior; the command was invoked once with the empty explicit package cache. No alternate registry, cache fallback or pin change was introduced by the controller."
+  },
+  "bun_pin": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "cli_revision": "1.4.4-canary.1+da867c60b",
+    "package": {
+      "name": "@oven/bun-linux-x64",
+      "version": "1.4.4-canary.20261029.1+da867c6",
+      "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261029.1.tgz",
+      "integrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
+      "unpackedSize": 138468972
+    }
+  },
+  "bootstrap_receipt": {
+    "executable": "$TOOLCHAIN/bun",
+    "revision": "1.4.4-canary.1+da867c60b",
+    "reusedExisting": false,
+    "package": "@oven/bun-linux-x64",
+    "packageVersion": "1.4.4-canary.20261029.1+da867c6",
+    "downloadedIntegrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
+    "executableSha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "bootstrap_http_event": {
+    "bunDownload": {
+      "phase": "npm-archive",
+      "status": 200
+    }
+  },
+  "verified_compiler": {
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "full_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "receipt_hash_matches": true,
+    "archive_integrity_validated_by_committed_installer": true,
+    "sha256_unchanged_after_dependency_install": true
+  },
+  "steps": [
+    {
+      "name": "bootstrap",
+      "command": ["$NODE", "scripts/install-bun.mjs", "--destination", "$TOOLCHAIN"],
+      "deadline_seconds": 140,
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_observed_ms": 10601.45732,
+      "stdout": {
+        "bytes": 424,
+        "sha256": "12f3e28635367259a9efecde33f5c0ee19cab6f5052502c35e91a254aed71b43"
+      },
+      "stderr": {
+        "bytes": 53,
+        "sha256": "5413f1546974d4296a8c3e69375bfea99cde5c924cd848f79a716ed8e51726d6"
+      }
+    },
+    {
+      "name": "full-revision",
+      "command": ["$TOOLCHAIN/bun", "--print", "Bun.revision"],
+      "deadline_seconds": 10,
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_observed_ms": 7.998596,
+      "stdout": {
+        "bytes": 41,
+        "sha256": "c2a40c7f3d71d7023582bc1d5a9f74801106eca52c29f6bf3e0de155f93a7ce2"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "frozen-dependencies",
+      "command": ["$TOOLCHAIN/bun", "install", "--frozen-lockfile"],
+      "deadline_seconds": 150,
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_observed_ms": 4939.334089,
+      "stdout": {
+        "bytes": 315,
+        "sha256": "b02fb7189dd9e26752714b5f1b3d2f252ee13ac54126f40201456ab6ecd52e7c"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "dependencies": {
+    "frozen_install_exit": 0,
+    "pin_manifest_and_lock_unchanged": true,
+    "checkout_clean": true,
+    "node_modules_created": true,
+    "cache_entries_after": 76
+  },
+  "raw_dependency_install_stdout": "bun install v1.4.4-canary.1 (da867c60b)\n\n+ @babel/core@7.29.7\n+ @types/babel__core@7.20.5\n+ @types/bun@1.4.4\n+ @types/react@19.3.0\n+ @types/react-reconciler@0.34.1\n+ babel-preset-solid@1.9.16\n+ code-foundry@1.53.6\n+ oxc-parser@0.156.0\n+ oxlint@1.90.0\n+ react@19.3.1\n+ solid-js@1.9.18\n\n72 packages installed [4.90s]\n",
+  "native_build_tool_invocations": 0,
+  "native_build_sentinel_digest": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final_tracked_or_unignored_changes": "",
+  "raw_evidence_digests": {
+    "result.json": {
+      "bytes": 6083,
+      "sha256": "4774c0afc96178f8f61acc3500e1a968e8747fd9b218386f210fb5567c852a1c"
+    },
+    "controller.py": {
+      "bytes": 6984,
+      "sha256": "8fd4780228c9fde2f67859b92fda6ca7fd940611a58298f4d325ffc28d78063d"
+    },
+    "pipeline-console.log": {
+      "bytes": 1513,
+      "sha256": "72392f0b73fb5a58a89eccf3d0c6f7aac2dfbec164eae3db3ba2fa253fa041b3"
+    }
+  },
+  "retention_note": "This portable file retains the command/source/outcome and digests. The downloaded executable, package cache and installed dependency tree are not committed. Raw stdout/stderr and the full local receipt remain identified by the listed hashes.",
+  "cleanup": {
+    "owned_worktree_removed": true,
+    "owned_download_destination_removed_after_hash_capture": true,
+    "owned_package_cache_removed_after_receipt_capture": true,
+    "raw_logs_and_receipt_retained": true
+  }
+}

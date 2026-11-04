@@ -328,6 +328,140 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "4 MiB"):
                 DRIVER.read_events(path, "run", 0)
 
+    def test_native_pointer_mode_requires_changed_complete_paint_and_no_callback_probe(
+        self,
+    ):
+        initial = {
+            "type": "rendered",
+            "window_id": 1,
+            "tree_revision": 1,
+            "nodes": [{"node_id": 1, "element": {"kind": "text", "text": "Clicks: 0"}}],
+        }
+        final = {
+            **initial,
+            "tree_revision": 2,
+            "nodes": [{"node_id": 1, "element": {"kind": "text", "text": "Clicks: 1"}}],
+        }
+        valid = {
+            "click": [100, 130],
+            "keys": [],
+            "text": None,
+            "expectations": [],
+            "initial": initial,
+            "final": final,
+        }
+        DRIVER.validate_native_pointer_request(**valid)
+        for change in [
+            {"click": None},
+            {"keys": ["Return"]},
+            {"text": "text"},
+            {"expectations": [{"type": "click", "stage": "bun-application"}]},
+            {"initial": None},
+            {"initial": {**initial, "nodes": []}},
+            {"final": {**final, "nodes": initial["nodes"]}},
+            {"final": {**final, "window_id": True}},
+            {"final": {**final, "window_id": 2}},
+            {"final": {**final, "tree_revision": 1}},
+            {"final": {**final, "tree_revision": True}},
+        ]:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                DRIVER.validate_native_pointer_request(**{**valid, **change})
+
+    def test_native_pointer_requires_ordered_native_down_up_at_the_injected_point(self):
+        down = {
+            "type": "pointer_trace",
+            "stage": "gpui-window-input",
+            "window_id": 1,
+            "event": "down",
+            "position": [100.0, 130.0],
+            "button": "Left",
+            "window_active": True,
+            "trace_index": 3,
+            "limit_reached": False,
+        }
+        up = {**down, "event": "up", "trace_index": 4}
+        self.assertTrue(DRIVER.native_pointer_click_observed([down, up], 1, [100, 130]))
+        # GPUI capture is not an application callback acknowledgement.
+        self.assertFalse(
+            DRIVER.matches(up, {"type": "click", "stage": "bun-application"})
+        )
+        for events in [[], [down], [up], [up, down]]:
+            self.assertFalse(
+                DRIVER.native_pointer_click_observed(events, 1, [100, 130])
+            )
+        for change in [
+            {"type": "click"},
+            {"stage": "bun-application"},
+            {"position": [101, 130]},
+            {"window_id": True},
+            {"button": "Right"},
+            {"trace_index": 3},
+            {"trace_index": True},
+            {"trace_index": 64},
+            {"window_active": False},
+            {"limit_reached": True},
+        ]:
+            with self.subTest(change=change):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed(
+                        [down, {**up, **change}], 1, [100, 130]
+                    )
+                )
+
+    def test_native_pointer_accepts_preserved_xinput_quantization_in_same_pixel(self):
+        evidence = json.loads(
+            (
+                Path(__file__).resolve().parents[1]
+                / "native/evidence/template-pointer-x11-quantization.json"
+            ).read_text()
+        )
+        down, up = evidence["raw_pointer_records"]
+        expected = evidence["expected_position"]
+        self.assertEqual(down["position"], [100.00152587890625, 130.00198364257812])
+        self.assertTrue(DRIVER.native_pointer_click_observed([down, up], 1, expected))
+        for position in (
+            [99.5, 130],
+            [100.5, 130],
+            [100, 129.5],
+            [100, 130.5],
+            [101.00152587890625, 130.00198364257812],
+            [100, 131],
+            [float("nan"), 130],
+            [100, float("inf")],
+            [100, -float("inf")],
+            [True, 130],
+            [100, False],
+            ["100", 130],
+            [100],
+            [100, 130, 0],
+            None,
+        ):
+            with self.subTest(position=position):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed(
+                        [down, {**up, "position": position}], 1, expected
+                    )
+                )
+        for events in (
+            [up, down],
+            [down, {**up, "trace_index": 3}],
+            [down, {**up, "window_id": 2}],
+        ):
+            with self.subTest(events=events):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed(events, 1, expected)
+                )
+        # Boolean coordinates must also fail when their numeric value would
+        # otherwise be the requested zero/one pixel.
+        for position in ([True, 0], [1, False]):
+            records = [{**event, "position": position} for event in (down, up)]
+            self.assertFalse(DRIVER.native_pointer_click_observed(records, 1, [1, 0]))
+        for request in ([True, 130], [100, False], [100.0, 130], [100], None):
+            with self.subTest(request=request):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed([down, up], 1, request)
+                )
+
     def test_output_is_drained_but_disk_capture_is_bounded(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stdout.log"

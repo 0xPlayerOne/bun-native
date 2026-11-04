@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "scope": "Preserved first hosted generated-template qualification failure; replaying its raw records is a regression control, not a new native run or a change to the original outcome.",
+  "pull_request": 360,
+  "run_id": 41873565470,
+  "run_attempt": 1,
+  "job_id": 126726856543,
+  "pull_request_head": "96a12a6974b35f66d574996cac8ecb21981f3fe5",
+  "pull_request_tree": "5452f7496256660122dbf039fc96237006654d7a",
+  "tested_merge": "7f5540199b21625afb2854fda6a48c9396261a24",
+  "artifact": {
+    "id": 13346018870,
+    "bytes": 23222685,
+    "sha256": "5c9cd7d3dfd2a326acc98390695c541324c3ec83936b1a391d8b4cbfc653eb5a"
+  },
+  "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "host_sha256": "d245a59210599931267d047268006f6b1b520b5a9722bafb0519f16394805743",
+  "expected_position": [100, 130],
+  "original_exact_coordinate_equality": false,
+  "gpui_conversion": {
+    "repository": "https://github.com/zed-industries/zed",
+    "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "path": "crates/gpui_linux/src/linux/x11/client.rs",
+    "source_sha256": "9312432f6a5cea2e816dea192395faf92fe8e88bc52d35e0eb13d090283fc6b4",
+    "events": ["XinputButtonPress", "XinputButtonRelease"],
+    "expression": "event.event_x as f32 / u16::MAX as f32 / state.scale_factor",
+    "scale_factor": 1,
+    "derivation": "XInput16.16 integers 100*65536 and 130*65536 divided by 65535, rounded to f32, produce the exact preserved coordinates."
+  },
+  "raw_pointer_records_source": "cli-templates/solid-typescript/development/app-events.jsonl",
+  "raw_pointer_records": [
+    {
+      "event": "down",
+      "position": [100.00152587890625, 130.00198364257812],
+      "button": "Left",
+      "first_mouse": false,
+      "nonce": "0aa5d17fd6e1a04ea89da4cf9fc76885",
+      "type": "pointer_trace",
+      "stage": "gpui-window-input",
+      "window_id": 1,
+      "trace_index": 3,
+      "trace_limit": 64,
+      "limit_reached": false,
+      "viewport": [640.0, 480.0],
+      "window_active": true
+    },
+    {
+      "event": "up",
+      "position": [100.00152587890625, 130.00198364257812],
+      "button": "Left",
+      "nonce": "0aa5d17fd6e1a04ea89da4cf9fc76885",
+      "type": "pointer_trace",
+      "stage": "gpui-window-input",
+      "window_id": 1,
+      "trace_index": 4,
+      "trace_limit": 64,
+      "limit_reached": false,
+      "viewport": [640.0, 480.0],
+      "window_active": true
+    }
+  ],
+  "cases": [
+    {
+      "case": "solid-typescript",
+      "mode": "development",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 243058,
+          "sha256": "dd80c051ccb8ecfb8658feedbcbe4f7168956f13dc35020be6bad853ad413da7"
+        },
+        "lifecycle.json": {
+          "bytes": 2341,
+          "sha256": "64bd2c0529a7b6322a64494db24ff142788085e6aabbf515d46a300a005f1746"
+        },
+        "app-events.jsonl": {
+          "bytes": 5139,
+          "sha256": "968681dccbb70bfe0d887b9c5bd29cdaeba23f54a9a3d47d8a9b1a4fd2eef22b"
+        }
+      }
+    },
+    {
+      "case": "solid-typescript",
+      "mode": "aot",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 242466,
+          "sha256": "9c4aa9c625c966eabe45487be4cc5d7e7f4fe484e087e1b889d5b7cbeca5b665"
+        },
+        "lifecycle.json": {
+          "bytes": 2293,
+          "sha256": "8d4720a6933983ed07159f5aeb9afff643f5d056c8491b98f877dddbb64d73ab"
+        },
+        "app-events.jsonl": {
+          "bytes": 5138,
+          "sha256": "fe69f79ba4b13ff987ca7169fc1aa948597d04126e272888b577cf25c75ffaa2"
+        }
+      }
+    },
+    {
+      "case": "solid-javascript",
+      "mode": "development",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 243039,
+          "sha256": "df1194d95c9b645c316c97255e781c68dc8194a65d423ae2666ca4b7e215df7c"
+        },
+        "lifecycle.json": {
+          "bytes": 2341,
+          "sha256": "ce36dc69a5c50f17f0f104a153cc3b2355a0572ab7cdacebc1e5178c15d13fca"
+        },
+        "app-events.jsonl": {
+          "bytes": 5138,
+          "sha256": "eff3a0d5d4465898dde59d205923fb3b655cfc0ae480d65ee4ebe6d56fa6f6af"
+        }
+      }
+    },
+    {
+      "case": "solid-javascript",
+      "mode": "aot",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 242443,
+          "sha256": "40a6073b2dcaf2b27012a446825b7cd58d09834b0514b137a7161d3afa53b9af"
+        },
+        "lifecycle.json": {
+          "bytes": 2279,
+          "sha256": "855a0f91a084f44f8f7e516592cf2adca457b28154d041c1cacedcdf646486e3"
+        },
+        "app-events.jsonl": {
+          "bytes": 5138,
+          "sha256": "27e38d0f4308c76d90e8091fba4f9ce59b4b88d6ecbf722b81865799828f29c3"
+        }
+      }
+    },
+    {
+      "case": "react-typescript",
+      "mode": "development",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 243036,
+          "sha256": "eaf78b37784bae7b9599e69561bdb5c77497577c983e1dab365e9b7fdde72d7c"
+        },
+        "lifecycle.json": {
+          "bytes": 2333,
+          "sha256": "0a80e8f16db2594ba74d5d85564758a23b70f77bb2a54d39093d709c376fdcd4"
+        },
+        "app-events.jsonl": {
+          "bytes": 5139,
+          "sha256": "70fa3dcfad1c9bb9febf31e7e58fca44b1737637f8c76ef8ada8aa6d0836aee8"
+        }
+      }
+    },
+    {
+      "case": "react-typescript",
+      "mode": "aot",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 242459,
+          "sha256": "d634bf3cafd62586bb9961b44522aa1acbde3ecb185bdb522de2737615db290c"
+        },
+        "lifecycle.json": {
+          "bytes": 2287,
+          "sha256": "a00c06142e6bff4eac7cc25f20443ab6dc8a9391ae23571389e95f5d8d3fed62"
+        },
+        "app-events.jsonl": {
+          "bytes": 5139,
+          "sha256": "ab19687eadac43ec161b240646f540e215371471bc03484201295572b67fbfc4"
+        }
+      }
+    },
+    {
+      "case": "react-javascript",
+      "mode": "development",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 243054,
+          "sha256": "7c93606f1350dedc4af42583e1ede05c7a05d37a514f834bb481e360e1d0b4d7"
+        },
+        "lifecycle.json": {
+          "bytes": 2341,
+          "sha256": "7572b87252d63524eb6a2554d44a7192c8d63365cba40323620eb82e98869c2c"
+        },
+        "app-events.jsonl": {
+          "bytes": 5138,
+          "sha256": "97b473565849bad22bf82ba76ed39de75b80c5523cb1b5dcccf2af56f5131862"
+        }
+      }
+    },
+    {
+      "case": "react-javascript",
+      "mode": "aot",
+      "original_status": "failed",
+      "original_pointer_check": "failed",
+      "initial_and_counter_one_paint": {
+        "app_initial_render_report": "passed",
+        "app_render_report": "passed",
+        "native_paint_file_observation": "passed"
+      },
+      "os_close": "passed",
+      "lifecycle": {
+        "status": "passed",
+        "ready_count": 1,
+        "stopped_count": 1,
+        "zero_resources": true,
+        "process_joined": true,
+        "ipc_disconnected": true,
+        "exit_code": 0
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "files": {
+        "result.json": {
+          "bytes": 242485,
+          "sha256": "0a4486cd4f301ec3f1402da12748a655390f44faf8483c05c747732fc9629beb"
+        },
+        "lifecycle.json": {
+          "bytes": 2287,
+          "sha256": "0ddef69453353c5e602b75ce058a1a90e05b724efc7f377bb535e02fc6a528dd"
+        },
+        "app-events.jsonl": {
+          "bytes": 5138,
+          "sha256": "a6527efcac504a2a9173e1189283492c7969ed43f00b2a7a0b723ec7d4ef252f"
+        }
+      }
+    }
+  ]
+}
