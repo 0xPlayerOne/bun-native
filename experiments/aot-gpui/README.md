@@ -67,6 +67,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `solid-services`          | `tests/native/solid-services.tsx`     | `solid-services`     | Existing prebuilt host referenced by absolute path |
 | `react-services`          | `tests/native/react-services.tsx`     | `react-services`     | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`      | `platform-smoke`     | Existing prebuilt host referenced by absolute path |
+| `clipboard`               | `tests/native/clipboard.ts`           | `clipboard`          | Existing prebuilt host referenced by absolute path |
 | `solid`                   | `examples/solid-counter/main.tsx`     | `solid`              | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx` | `solid-input-intent` | Existing prebuilt host referenced by absolute path |
 | `solid-interactions`      | `tests/native/solid-interactions.tsx` | `solid-interactions` | Existing prebuilt host referenced by absolute path |
@@ -128,6 +129,15 @@ The [native platform qualification](../../docs/native-platforms.md) records its
 separate build, native paint, AOT and opt-in `--os-input` controller scope. The
 same compiled fixture serves both modes; target OS input is qualified only by
 the separate owned-window/event/paint run.
+
+`--entry clipboard` fingerprints the core/native service fixture and independent
+`native/gpui-host/examples/clipboard-peer.rs` source, requires an explicit host
+profile, and references the existing host without copying it. Build the peer
+once alongside the host, then run the same isolated-X11 clipboard diagnostic
+against development Bun and the inspected executable. Its 26 outcomes include
+independent readers, INCR, stalled-owner input/paint, malformed/flood responses,
+cancellation and worker teardown. Compilation alone does not qualify any of
+those behaviors; follow the [native fixture recipe](../../tests/native/README.md#isolated-clipboard-diagnostic).
 
 ## Solid development and AOT inputs
 

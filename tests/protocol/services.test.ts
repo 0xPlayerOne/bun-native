@@ -36,9 +36,18 @@ describe('shared native service boundary', () => {
       limits: DEFAULT_LIMITS,
     }
     for (const allowed of [false, true])
-      expect(parseEvent({ ...ready, service_policy: { window_display: allowed } })).toEqual({
+      expect(
+        parseEvent({
+          ...ready,
+          service_policy: {
+            window_display: allowed,
+            clipboard_read: false,
+            clipboard_write: false,
+          },
+        })
+      ).toEqual({
         ...ready,
-        service_policy: { window_display: allowed },
+        service_policy: { window_display: allowed, clipboard_read: false, clipboard_write: false },
       })
     for (const service_policy of [
       undefined,
@@ -50,7 +59,11 @@ describe('shared native service boundary', () => {
     ])
       expect(() => parseEvent({ ...ready, service_policy })).toThrow()
     expect(() =>
-      parseEvent({ ...ready, protocol: 4, service_policy: { window_display: false } })
+      parseEvent({
+        ...ready,
+        protocol: 4,
+        service_policy: { window_display: false, clipboard_read: false, clipboard_write: false },
+      })
     ).toThrow('version mismatch')
   })
 

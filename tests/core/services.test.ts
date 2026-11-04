@@ -32,7 +32,7 @@ async function withService(
     writeFileSync(join(directory, 'release'), '')
     await app?.shutdown().catch(() => {})
     await app?.closed.catch(() => {})
-    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0])
+    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
     rmSync(directory, { recursive: true, force: true })
   }
 }
@@ -85,7 +85,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
       })
       for (const [name, value] of Object.entries(app.serviceCapabilities)) {
         expect(Object.isFrozen(value)).toBe(true)
-        if (name !== 'windowDisplay')
+        if (name === 'clipboardText')
+          expect(value).toEqual({ availability: 'unavailable', reason: 'unsupported_platform' })
+        else if (name !== 'windowDisplay')
           expect(value).toEqual({ availability: 'unavailable', reason: 'not_implemented' })
       }
       const window = await app.openWindow({ title: 'Denied service' })

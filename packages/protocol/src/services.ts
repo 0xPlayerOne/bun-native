@@ -1,8 +1,27 @@
 import { ProtocolError } from './framing.ts'
-import { keys, number, object } from './values.ts'
+import { keys, number, object, string } from './values.ts'
+
+// Worst-case JSON escaping still leaves room within the 64KiB frame.
+export const MAX_CLIPBOARD_BYTES = 8_192
+export const MAX_SERVICE_REQUESTS = 8
 
 export interface ServicePolicy {
   window_display: boolean
+  clipboard_read: boolean
+  clipboard_write: boolean
+}
+
+export type ClipboardText = { kind: 'empty' } | { kind: 'text'; text: string }
+
+export function parseClipboardText(value: unknown): ClipboardText {
+  const data = object(value)
+  if (data['kind'] === 'empty') {
+    keys(data, ['kind'])
+    return { kind: 'empty' }
+  }
+  keys(data, ['kind', 'text'])
+  if (data['kind'] !== 'text') throw new ProtocolError('Unknown clipboard text result')
+  return { kind: 'text', text: string(data['text'], 'clipboard text', MAX_CLIPBOARD_BYTES) }
 }
 
 interface DisplayBounds {
@@ -19,12 +38,17 @@ export interface DisplaySnapshot {
 
 export function parseServicePolicy(value: unknown): ServicePolicy {
   const data = object(value)
-  keys(data, ['window_display'])
-  if (typeof data['window_display'] !== 'boolean')
-    throw new ProtocolError(
-      'Native service policy must explicitly grant or deny window display access'
-    )
-  return { window_display: data['window_display'] }
+  keys(data, ['window_display', 'clipboard_read', 'clipboard_write'])
+  const grant = (key: keyof ServicePolicy) => {
+    if (typeof data[key] !== 'boolean')
+      throw new ProtocolError('Native service policy must explicitly grant or deny each operation')
+    return data[key]
+  }
+  return {
+    window_display: grant('window_display'),
+    clipboard_read: grant('clipboard_read'),
+    clipboard_write: grant('clipboard_write'),
+  }
 }
 
 export function parseDisplaySnapshot(value: unknown): DisplaySnapshot {
