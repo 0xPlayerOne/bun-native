@@ -53,7 +53,7 @@ try {
   })
   view = render(${solid ? 'App' : '<App />'}, window)
   await view.ready
-  await Promise.race([window.closed, stopped.promise])
+  await Promise.race([window.closed, view.closed, stopped.promise])
 } finally {
   process.off('SIGINT', stop)
   process.off('SIGTERM', stop)

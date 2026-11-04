@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { inspectBunExecutable } from './inspect.ts'
-import { inspectBunRuntime } from './inspect-runtime.ts'
+import { inspectBunExecutable } from './inspect'
+import { inspectBunRuntime } from './inspect-runtime'
 import toolchain from '../../toolchain.json'
 
 /** Shared real AOT compiler and executable checks for fixtures and application tooling. */

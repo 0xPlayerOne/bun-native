@@ -13,7 +13,7 @@ import { arch, platform, release } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { compileApplication } from './compile.ts'
+import { compileApplication } from './compile'
 import { nativeSourcePaths } from './native-sources'
 import toolchain from '../../toolchain.json'
 

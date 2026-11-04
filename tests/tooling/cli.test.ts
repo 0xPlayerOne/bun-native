@@ -14,8 +14,8 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { bundleProject } from '../../scripts/native/build.ts'
-import { readProject } from '../../scripts/native/project.ts'
+import { buildProject, bundleProject, prebuiltHost } from '../../scripts/native/build.ts'
+import { createProject, readProject } from '../../scripts/native/project.ts'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 
 const repository = resolve(import.meta.dir, '../..')
@@ -60,7 +60,9 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
       test(`creates, typechecks and bundles ${framework} ${language}`, async () => {
         await fixture(async (directory) => {
           const projectPath = join(directory, 'new app')
-          success([cli, 'create', projectPath, '--framework', framework, '--language', language])
+          expect(await createProject(repository, projectPath, framework, language)).toBe(
+            projectPath
+          )
           const project = await readProject(repository, projectPath)
           expect(project.framework).toBe(framework)
           expect(project.entry.endsWith(language === 'typescript' ? '.tsx' : '.jsx')).toBe(true)
@@ -159,16 +161,96 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
     })
   }, 130_000)
 
+  test('generated templates terminate and clean up after a post-readiness renderer failure', async () => {
+    await fixture(async (directory) => {
+      const peer = join(directory, process.platform === 'win32' ? 'peer.exe' : 'peer')
+      compileApplication(join(repository, 'tests/core/protocol-peer.ts'), peer, repository)
+      for (const framework of ['solid', 'react']) {
+        for (const language of ['typescript', 'javascript']) {
+          const path = join(directory, framework + '-' + language)
+          success([cli, 'create', path, '--framework', framework, '--language', language])
+          const project = await readProject(repository, path)
+          const original = readFileSync(project.entry, 'utf8')
+          const state = `const [clicks, setClicks] = ${framework === 'solid' ? 'createSignal' : 'useState'}(0)`
+          const deadline =
+            language === 'typescript'
+              ? 'let failureDeadline: ReturnType<typeof setTimeout> | undefined'
+              : 'let failureDeadline'
+          // Trigger a real adapter/native-style rejection after the first mounted
+          // acknowledgement, without closing the still-healthy native window.
+          // The deadline releases the unfixed fixture cleanly but is never a pass.
+          writeFileSync(
+            project.entry,
+            `let failAfterReady = () => {}\n${deadline}\nconst initialSignals = ['SIGINT', 'SIGTERM'].map((name) => process.listenerCount(name))\n` +
+              original
+                .replace(state, state + '\n  failAfterReady = () => setClicks(1)')
+                .replace(
+                  'width: 160, height: 44',
+                  `width: ${framework === 'solid' ? 'clicks()' : 'clicks'} ? -1 : 160, height: 44`
+                )
+                .replace(
+                  'await view.ready',
+                  `await view.ready
+  void view.closed.catch((error) => {
+    console.log('post-ready-root-failure:' + JSON.stringify({ message: String(error), windows: application.diagnostics.windows, nodes: view?.diagnostics.nodes }))
+    failureDeadline = setTimeout(() => { console.log('renderer-failure-deadline'); stop() }, 1000)
+  })
+  queueMicrotask(failAfterReady)`
+                )
+                .replace(
+                  "process.off('SIGINT', stop)",
+                  "clearTimeout(failureDeadline)\n  process.off('SIGINT', stop)"
+                )
+                .replace(
+                  'await application.closed',
+                  `await application.closed
+    console.log('post-failure-cleanup:' + JSON.stringify({ core: application.diagnostics, nodes: view?.diagnostics.nodes, signals: ['SIGINT', 'SIGTERM'].map((name, index) => process.listenerCount(name) - initialSignals[index]) }))`
+                )
+          )
+          const result = run([cli, 'dev', path, '--host', peer])
+          expect(result.signal).toBeNull()
+          expect(result.code).toBe(1)
+          expect(result.output).not.toContain('renderer-failure-deadline')
+          const failure = result.output
+            .split('\n')
+            .find((line) => line.startsWith('post-ready-root-failure:'))
+          const cleanup = result.output
+            .split('\n')
+            .find((line) => line.startsWith('post-failure-cleanup:'))
+          if (!failure || !cleanup) throw new Error(`${framework}/${language}: ${result.output}`)
+          expect(JSON.parse(failure.slice('post-ready-root-failure:'.length))).toMatchObject({
+            windows: 1,
+            nodes: 0,
+          })
+          expect(JSON.parse(cleanup.slice('post-failure-cleanup:'.length))).toEqual({
+            core: {
+              windows: 0,
+              nodes: 0,
+              callbacks: 0,
+              queuedTransactions: 0,
+              queuedCallbacks: 0,
+              activeCallbacks: 0,
+              serviceRequests: 0,
+            },
+            nodes: 0,
+            signals: [0, 0],
+          })
+          expect(readdirSync(join(path, '.bun-native'))).toEqual([])
+        }
+      }
+    })
+  }, 130_000)
+
   test('rejects existing/outside destinations and invalid project or command options without overwriting', async () => {
     await fixture(async (directory) => {
       const path = join(directory, 'app')
       success([cli, 'create', path])
       const original = readFileSync(join(path, 'main.tsx'), 'utf8')
-      expect(run([cli, 'create', path]).code).not.toBe(0)
+      await expect(createProject(repository, path, 'solid', 'typescript')).rejects.toThrow()
       expect(readFileSync(join(path, 'main.tsx'), 'utf8')).toBe(original)
-      expect(run([cli, 'create', join(tmpdir(), 'outside-checkout-project')]).output).toContain(
-        'inside this Bun Native checkout'
-      )
+      await expect(
+        createProject(repository, join(tmpdir(), 'outside-checkout-project'), 'solid', 'typescript')
+      ).rejects.toThrow('inside this Bun Native checkout')
       expect(
         run([cli, 'create', join(directory, 'invalid'), '--framework', 'vue']).output
       ).toContain('--framework must be')
@@ -181,22 +263,25 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
         join(path, 'bun-native.json'),
         JSON.stringify({ schemaVersion: 1, framework: 'solid', entry: 'main.tsx', typo: true })
       )
-      expect(run([cli, 'dev', path, '--host', process.execPath]).output).toContain(
-        'bun-native.json requires'
-      )
+      await expect(readProject(repository, path)).rejects.toThrow('bun-native.json requires')
       writeFileSync(join(directory, 'outside.ts'), 'console.log(42)\n')
       writeFileSync(
         join(path, 'bun-native.json'),
         JSON.stringify({ schemaVersion: 1, framework: 'solid', entry: '../outside.ts' })
       )
-      expect(run([cli, 'dev', path, '--host', process.execPath]).output).toContain(
-        'inside the project'
-      )
+      await expect(readProject(repository, path)).rejects.toThrow('inside the project')
+      writeFileSync(join(path, 'bun-native.json'), 'null\n')
+      await expect(readProject(repository, path)).rejects.toThrow('Invalid bun-native.json')
       if (process.platform !== 'win32') {
         symlinkSync(tmpdir(), join(directory, 'outside-link'), 'dir')
-        expect(
-          run([cli, 'create', join(directory, 'outside-link', 'new-project')]).output
-        ).toContain('outside this Bun Native checkout')
+        await expect(
+          createProject(
+            repository,
+            join(directory, 'outside-link', 'new-project'),
+            'solid',
+            'typescript'
+          )
+        ).rejects.toThrow('outside this Bun Native checkout')
       }
     })
   })
@@ -205,21 +290,22 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
     await fixture(async (directory) => {
       const path = join(directory, 'app')
       success([cli, 'create', path])
-      for (const args of [[], ['--host', 'relative-host']]) {
-        const rejected = run([cli, 'dev', path, ...args])
-        expect(rejected.code).not.toBe(0)
-        expect(rejected.output).toContain('--host must be an absolute path')
-        expect(rejected.output).toContain('never runs Cargo')
-      }
-      expect(run([cli, 'dev', path, '--host', join(directory, 'missing-host')]).code).not.toBe(0)
-      expect(run([cli, 'dev', path, '--host', directory]).output).toContain('must be a file')
+      expect(await prebuiltHost(process.execPath)).toBe(process.execPath)
+      for (const host of [undefined, 'relative-host'])
+        await expect(prebuiltHost(host)).rejects.toThrow('--host must be an absolute path')
+      // Keep command parsing/error propagation coverage beside in-process API checks.
+      const missingOption = run([cli, 'dev', path])
+      expect(missingOption.code).not.toBe(0)
+      expect(missingOption.output).toContain('never runs Cargo')
+      await expect(prebuiltHost(join(directory, 'missing-host'))).rejects.toThrow()
+      await expect(prebuiltHost(directory)).rejects.toThrow('must be a file')
       const host = join(directory, 'wrong-host')
       writeFileSync(host, Buffer.alloc(128))
       chmodSync(host, 0o755)
-      expect(run([cli, 'dev', path, '--host', host]).output).toContain('executable')
+      await expect(prebuiltHost(host)).rejects.toThrow('executable')
       if (process.platform !== 'win32') {
         chmodSync(host, 0o644)
-        expect(run([cli, 'dev', path, '--host', host]).code).not.toBe(0)
+        await expect(prebuiltHost(host)).rejects.toThrow()
       }
       expect(run([cli, 'build', path, '--host', process.execPath]).output).toContain(
         'requires --host-profile'
@@ -238,15 +324,11 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
         join(path, 'main.tsx'),
         "console.log(JSON.stringify({ answer: 42, host: process.env['BUN_NATIVE_HOST'] }))\n"
       )
-      const result = run(
-        [cli, 'build', path, '--host', process.execPath, '--host-profile', 'release'],
-        repository,
-        120_000
-      )
-      expect(result.signal).toBeNull()
-      if (result.code !== 0) throw new Error(result.output)
       const outdir = join(path, 'dist')
-      const manifest = JSON.parse(readFileSync(join(outdir, 'manifest.json'), 'utf8'))
+      const project = await readProject(repository, path)
+      const host = await prebuiltHost(process.execPath)
+      const manifest = await buildProject(project, host, outdir, 'release')
+      expect(JSON.parse(readFileSync(join(outdir, 'manifest.json'), 'utf8'))).toEqual(manifest)
       expect(manifest.application.inspection.hasCompiledProgram).toBe(true)
       expect(manifest.application.runtimeFeatures.jit).not.toBe('present')
       expect(manifest.application.runtimeFeatures.jitRemovedRanges.count).toBeGreaterThan(0)
@@ -254,9 +336,9 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
         createHash('sha256').update(readFileSync(process.execPath)).digest('hex')
       )
       expect(manifest.verification.nativeRendering).toBe('not-run')
-      expect(
-        run([cli, 'build', path, '--host', process.execPath, '--host-profile', 'release']).output
-      ).toContain('Output directory must be empty')
+      await expect(buildProject(project, host, outdir, 'release')).rejects.toThrow(
+        'Output directory must be empty'
+      )
       const moved = join(directory, 'relocated')
       renameSync(outdir, moved)
       const { BUN_NATIVE_HOST: _host, ...env } = process.env
