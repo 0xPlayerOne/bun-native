@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/0xPlayerOne/bun-native/compare/v0.13.0...v0.13.1) (2026-11-04)
+
+
+### Performance
+
+* compare native bridge releases with predeclared paired runs ([#308](https://github.com/0xPlayerOne/bun-native/issues/308)) ([28cd933](https://github.com/0xPlayerOne/bun-native/commit/28cd9336aaa704010c715ade04d974b39b281c54))
+
 ## [0.13.0](https://github.com/0xPlayerOne/bun-native/compare/v0.12.2...v0.13.0) (2026-11-03)
 
 
