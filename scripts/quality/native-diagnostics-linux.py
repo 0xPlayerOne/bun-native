@@ -238,6 +238,7 @@ def main():
         environment["DISPLAY"] = "bun-native-invalid-display"
     if args.scenario in ("react-input-viewport", "solid-input-viewport"):
         environment["BUN_NATIVE_INPUT_VIEWPORT_TRACE"] = "1"
+        environment["BUN_NATIVE_POINTER_TRACE"] = "1"
     app = None
     observed = {}
     threads = []

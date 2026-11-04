@@ -109,6 +109,10 @@ export async function runInputViewport(
     signals.add(event.signal)
     assert.equal(event.node.kind, 'input')
     assert.equal(event.currentTarget, event.node)
+    assert.deepEqual(
+      event.path.map((node) => node.kind),
+      ['box', 'box', 'box', 'box', 'input']
+    )
     if (identity) assert.equal(event.node, identity, 'Resize/restyle retain the same native input')
     else identity = event.node
     const details: Record<string, unknown> = {}
@@ -132,7 +136,13 @@ export async function runInputViewport(
       assert.equal(event.button, 'left')
       Object.assign(details, { x: event.x, y: event.y, button: event.button })
     }
-    record('viewport-event', { event: event.type, sequence, ...details })
+    record('viewport-event', {
+      event: event.type,
+      sequence,
+      treeRevision: event.treeRevision,
+      target: 'input',
+      ...details,
+    })
     try {
       await view.root.flush()
     } catch (error) {
@@ -173,7 +183,14 @@ export async function runInputViewport(
     assert.equal(view.state().input.revision, 9)
     assert.equal(view.state().edits, 8)
     assert.equal(view.state().restyled, true)
-    for (const key of ['home:false', 'end:false', 'left:true', 'f6:false', 'backspace:false'])
+    for (const key of [
+      'home:false',
+      'end:false',
+      'left:false',
+      'left:true',
+      'f6:false',
+      'backspace:false',
+    ])
       assert(keys.has(`key_down:${key}`), `The owned OS controller must deliver ${key}`)
     assert.equal(view.root.diagnostics.nodes, 0)
     assert.equal(view.root.diagnostics.listeners, 0)

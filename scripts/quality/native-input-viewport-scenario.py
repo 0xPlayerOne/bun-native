@@ -166,18 +166,45 @@ def run(
         lambda row: edge(row, "home") and state_is(row, PAINT.INITIAL_VALUE, 0, 0),
     )
     end = key("end", "End", lambda row: edge(row, "end"))
+    before_pointer = key(
+        "left",
+        "Left",
+        lambda row: (
+            row["input"]["cursor_byte"] == 99
+            and row["input"]["selected_bytes"] == [99, 99]
+            and row["input"]["offset"] == end["input"]["offset"]
+        ),
+    )
+    observations["before-pointer"] = before_pointer
+    app_offset = len(application_records())
+    native_offset = len(native_records())
     # Click the visible caret's last pixel. Without inverse viewport translation
     # the native edit lands in the blank prefix and fails the exact value oracle.
     x, y, width, height = end["input"]["viewport"]
+    point = [math.floor(x + width - 1), math.floor(y + height / 2)]
     action(
         "mousemove",
         "--window",
         window,
-        str(math.floor(x + width - 1)),
-        str(math.floor(y + height / 2)),
+        str(point[0]),
+        str(point[1]),
         "click",
         "1",
     )
+    observations["pointerDelivery"] = wait_for(
+        lambda: PAINT.pointer_delivery(
+            application_records(),
+            native_records(),
+            app_offset,
+            native_offset,
+            end["paint"]["nonce"],
+            point,
+            end["paint"]["tree_revision"],
+            framework,
+        ),
+        "fresh native and public-listener pointer down/up at the injected pixel",
+    )
+    retain()
     wait_frame(
         "actual pointer mapped to the final text byte", lambda row: edge(row, "end")
     )

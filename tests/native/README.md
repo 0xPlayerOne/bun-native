@@ -335,10 +335,17 @@ predicates check those pixels. Their deterministic RGB controls deliberately
 omit translation, clipping, caret or selection; those synthetic controls are
 not native execution evidence.
 
-Actual OS actions then click the scrolled end, insert `x`, replace a selected
+Actual OS actions move one character left from the scrolled end, then click
+back to the final byte. Both a fresh native GPUI down/up capture and the public
+input listener's matching down/up sequence must arrive at that injected logical
+pixel; stale events, missing pairs and half-pixel ties fail. Starting away from
+the target also prevents a delivered but ignored click from preserving an
+already-correct caret. Actions then insert `x`, replace a selected
 character with `Y`, resize, change the font through F6, select and clear the
 long value, and type `short`. The retained screenshots also check resized and
-restyled carets, clipped selection and offset reset. Final OS close must revoke
+restyled carets, clipped selection and offset reset. The empty right gutter must
+contain neither glyph pixels nor selection tint, including the darker alpha
+blend over the exterior background. Final OS close must revoke
 the observed callback signals, dispose the framework owner and join application
 and native host exit with all seven public ownership counters zero. The driver
 retains failed observations as it progresses.

@@ -236,6 +236,107 @@ def screenshot(path, size):
     return pixels
 
 
+def pointer_delivery(
+    application, native, app_offset, native_offset, nonce, point, revision, framework
+):
+    """One fresh native capture and public input-listener down/up pair.
+
+    X11's pinned 16.16 conversion can produce a small f32 fraction at integer
+    coordinates. Require the same logical pixel with strict half-pixel bounds;
+    non-numbers, non-finite values and half-pixel ties cannot qualify.
+    """
+    if (
+        type(app_offset) is not int
+        or not 0 <= app_offset <= len(application)
+        or type(native_offset) is not int
+        or not 0 <= native_offset <= len(native)
+    ):
+        return None
+
+    def same_point(position):
+        return (
+            isinstance(position, list)
+            and len(position) == 2
+            and all(
+                number(value) and type(target) is int and abs(value - target) < 0.5
+                for value, target in zip(position, point, strict=True)
+            )
+        )
+
+    app_rows = [
+        row
+        for row in application[app_offset:]
+        if row.get("type") == "viewport-event"
+        and row.get("event") in ("pointer_down", "pointer_up")
+    ]
+    native_rows = [
+        row
+        for row in native[native_offset:]
+        if row.get("type") == "pointer_trace" and row.get("event") in ("down", "up")
+    ]
+    if len(app_rows) != 2 or len(native_rows) != 2:
+        return None
+    for row, event in zip(app_rows, ("pointer_down", "pointer_up"), strict=True):
+        if (
+            row.get("event") != event
+            or row.get("nonce") != nonce
+            or row.get("framework") != framework
+            or row.get("target") != "input"
+            or row.get("button") != "left"
+            or type(row.get("sequence")) is not int
+            or row["sequence"] <= 0
+            or type(row.get("treeRevision")) is not int
+            or row["treeRevision"] != revision
+            or not same_point([row.get("x"), row.get("y")])
+        ):
+            return None
+    for row, event in zip(native_rows, ("down", "up"), strict=True):
+        if (
+            row.get("event") != event
+            or row.get("nonce") != nonce
+            or row.get("stage") != "gpui-window-input"
+            or type(row.get("window_id")) is not int
+            or row["window_id"] != 1
+            or row.get("button") != "Left"
+            or row.get("window_active") is not True
+            or type(row.get("trace_index")) is not int
+            or not 1 <= row["trace_index"] < 64
+            or type(row.get("trace_limit")) is not int
+            or row["trace_limit"] != 64
+            or row.get("limit_reached") is not False
+            or not same_point(row.get("position"))
+        ):
+            return None
+    if (
+        app_rows[0]["sequence"] >= app_rows[1]["sequence"]
+        or native_rows[0]["trace_index"] >= native_rows[1]["trace_index"]
+    ):
+        return None
+    prior_sequences = [
+        row.get("sequence")
+        for row in application[:app_offset]
+        if row.get("type") == "viewport-event"
+    ]
+    prior_indices = [
+        row.get("trace_index")
+        for row in native[:native_offset]
+        if row.get("type") == "pointer_trace"
+    ]
+    if (
+        any(type(value) is not int for value in prior_sequences + prior_indices)
+        or app_rows[0]["sequence"] <= max(prior_sequences, default=0)
+        or native_rows[0]["trace_index"] <= max(prior_indices, default=0)
+    ):
+        return None
+    return {
+        "application": app_rows,
+        "native": native_rows,
+        "applicationOffset": app_offset,
+        "nativeOffset": native_offset,
+        "position": point,
+    }
+
+
 def pixel_counts(pixels, size, observation, mode):
     """Detect actual white glyphs/blue caret, including the unclipped tail gutter.
 
@@ -259,6 +360,7 @@ def pixel_counts(pixels, size, observation, mode):
         "misplacedCaret": 0,
         "selection": 0,
         "selectionArea": 0,
+        "outsideSelection": 0,
     }
     if mode == "home":
         expected_caret = [x, y, 2, h]
@@ -273,6 +375,15 @@ def pixel_counts(pixels, size, observation, mode):
             inside = x <= px + 0.5 < x + w
             glyph = min(red, green, blue) >= 170
             counts["insideGlyph" if inside else "outsideGlyph"] += int(glyph)
+            # The same translucent selection over the dark exterior gutter is
+            # approximately (23,23,74), darker than its input-background color.
+            selection_tint = (
+                blue >= 60
+                and blue > red + 25
+                and blue > green + 25
+                and max(red, green) < 100
+            )
+            counts["outsideSelection"] += int(not inside and selection_tint)
             if blue >= 180 and red <= 70 and green <= 100:
                 caret = expected_caret
                 at_caret = (
@@ -290,6 +401,7 @@ def pixel_counts(pixels, size, observation, mode):
                 )
     counts["passed"] = (
         counts["outsideGlyph"] == 0
+        and counts["outsideSelection"] == 0
         and counts["misplacedCaret"] == 0
         and (
             counts["insideGlyph"] == 0

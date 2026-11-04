@@ -93,7 +93,118 @@ def fill(pixels, bounds, color):
             pixels[offset : offset + 3] = bytes(color)
 
 
+def pointer_records():
+    position = [100.00152587890625, 130.00198364257812]
+    application = [
+        {
+            "type": "viewport-event",
+            "framework": "React",
+            "nonce": "owned",
+            "target": "input",
+            "event": event,
+            "sequence": sequence,
+            "treeRevision": 3,
+            "x": position[0],
+            "y": position[1],
+            "button": "left",
+        }
+        for event, sequence in (("pointer_down", 12), ("pointer_up", 13))
+    ]
+    native = [
+        {
+            "type": "pointer_trace",
+            "nonce": "owned",
+            "stage": "gpui-window-input",
+            "window_id": 1,
+            "event": event,
+            "trace_index": index,
+            "trace_limit": 64,
+            "limit_reached": False,
+            "window_active": True,
+            "position": position.copy(),
+            "button": "Left",
+        }
+        for event, index in (("down", 3), ("up", 4))
+    ]
+    return application, native
+
+
 class InputViewportPaintControls(unittest.TestCase):
+    def test_pointer_requires_fresh_native_and_public_down_up_pairs(self):
+        application, native = pointer_records()
+
+        def observed(app=application, host=native, app_offset=0, native_offset=0):
+            return PAINT.pointer_delivery(
+                app, host, app_offset, native_offset, "owned", [100, 130], 3, "React"
+            )
+
+        self.assertIsNotNone(observed())
+        for app, host, app_offset, native_offset in (
+            ([], native, 0, 0),
+            (application, [], 0, 0),
+            (application, native, 2, 0),
+            (application, native, 0, 2),
+            (application[:1], native, 0, 0),
+            (application, native[:1], 0, 0),
+            (list(reversed(application)), native, 0, 0),
+            (application, list(reversed(native)), 0, 0),
+        ):
+            self.assertIsNone(observed(app, host, app_offset, native_offset))
+        self.assertIsNone(observed(application + application, native + native, 2, 2))
+        fresh_app, fresh_native = pointer_records()
+        for row in fresh_app:
+            row["sequence"] += 2
+        for row in fresh_native:
+            row["trace_index"] += 2
+        self.assertIsNotNone(
+            observed(application + fresh_app, native + fresh_native, 2, 2)
+        )
+
+    def test_pointer_rejects_foreign_targets_wrong_pixels_and_malformed_metadata(self):
+        application, native = pointer_records()
+        for field, value in (
+            ("nonce", "foreign"),
+            ("target", "button"),
+            ("treeRevision", True),
+            ("treeRevision", 4),
+            ("sequence", 0),
+            ("x", True),
+            ("x", float("nan")),
+            ("x", 99.5),
+            ("x", 100.5),
+            ("x", 101),
+            ("button", "right"),
+        ):
+            changed = copy.deepcopy(application)
+            changed[0][field] = value
+            self.assertIsNone(
+                PAINT.pointer_delivery(
+                    changed, native, 0, 0, "owned", [100, 130], 3, "React"
+                )
+            )
+        for field, value in (
+            ("nonce", "foreign"),
+            ("window_id", 2),
+            ("window_id", True),
+            ("stage", "application"),
+            ("trace_index", True),
+            ("trace_index", 4),
+            ("trace_limit", 65),
+            ("limit_reached", True),
+            ("window_active", False),
+            ("position", [float("inf"), 130]),
+            ("position", [100, True]),
+            ("position", [100, 129.5]),
+            ("position", [100, 130.5]),
+        ):
+            changed = copy.deepcopy(native)
+            changed[0][field] = value
+            self.assertIsNone(
+                PAINT.pointer_delivery(
+                    application, changed, 0, 0, "owned", [100, 130], 3, "React"
+                )
+            )
+
     def test_complete_tree_revision_identity_and_current_input_are_required(self):
         for framework in ("Solid", "React"):
             paint, geometry, state = records(framework)
@@ -202,6 +313,11 @@ class InputViewportPaintControls(unittest.TestCase):
         self.assertTrue(
             PAINT.pixel_counts(pixels, [160, 60], view, "selection")["passed"]
         )
+        overflow = pixels.copy()
+        fill(overflow, [80, 10, 30, 30], [23, 23, 74])
+        leaked = PAINT.pixel_counts(overflow, [160, 60], view, "selection")
+        self.assertFalse(leaked["passed"])
+        self.assertGreater(leaked["outsideSelection"], 0)
         missing = canvas()
         fill(missing, [50, 20, 6, 8], [255, 255, 255])
         self.assertFalse(
