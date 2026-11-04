@@ -162,10 +162,19 @@ def run_owned(
     started = time.monotonic()
     previous = signal.getsignal(signal.SIGTERM)
     cancellation = None
+    termination_signal = None
 
     def interrupted(signum, _frame):
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        raise InterruptedError(f"Paired measurement received signal {signum}")
+        nonlocal termination_signal
+        # Raising inside Popen or thread.start can strand an internal lock.
+        # Record cancellation and raise only at a safe supervision boundary.
+        termination_signal = signum
+
+    def check_interrupted():
+        if termination_signal is not None:
+            raise InterruptedError(
+                f"Paired measurement received signal {termination_signal}"
+            )
 
     signal.signal(signal.SIGTERM, interrupted)
     try:
@@ -189,6 +198,7 @@ def run_owned(
             thread.start()
             threads.append((thread, stream))
         while True:
+            check_interrupted()
             own_snapshot(
                 app, observed, expected_host, report["observed_native_processes"]
             )
@@ -203,6 +213,7 @@ def run_owned(
             if any(stats["discarded_bytes"] for stats in report["logs"].values()):
                 raise RuntimeError("Command log exceeded the 4 MiB stream bound")
             time.sleep(0.1)
+        check_interrupted()
         require(app.returncode == 0, f"Command exited {app.returncode}")
         if expected_host is not None:
             require(
