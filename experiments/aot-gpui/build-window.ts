@@ -16,6 +16,7 @@ import { parseArgs } from 'node:util'
 import { inspectBunExecutable } from './inspect'
 import { inspectBunRuntime } from './inspect-runtime'
 import { nativeSourcePaths } from './native-sources'
+import { sharedWorkloadSources } from '../../benchmarks/solid/sources'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -151,6 +152,12 @@ async function artifact(path: string) {
 }
 
 async function sourceHashes() {
+  const workloadSources = new Map(
+    (entry === 'react-workload' ? await sharedWorkloadSources(source) : []).map((record) => [
+      record.path,
+      record,
+    ])
+  )
   const sources = new Set([
     entryPath,
     'examples/native-window/main.ts',
@@ -202,7 +209,7 @@ async function sourceHashes() {
     sources.add('tests/native/services-adapter.ts')
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
-  if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
+  for (const path of workloadSources.keys()) sources.add(path)
   if (entry === 'solid-workspace' || entry === 'solid-workspace-flow') {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
@@ -214,7 +221,12 @@ async function sourceHashes() {
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
-    [...sources].sort().map(async (path) => ({ path, ...(await artifact(join(source, path))) }))
+    [...sources]
+      .sort()
+      .map(
+        async (path) =>
+          workloadSources.get(path) ?? { path, ...(await artifact(join(source, path))) }
+      )
   )
 }
 
