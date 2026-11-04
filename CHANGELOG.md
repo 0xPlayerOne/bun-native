@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.15.0](https://github.com/0xPlayerOne/bun-native/compare/v0.14.4...v0.15.0) (2026-11-04)
+
+
+### Features
+
+* **macos:** report the native window's assigned Metal device ([#356](https://github.com/0xPlayerOne/bun-native/issues/356)) ([3f3d849](https://github.com/0xPlayerOne/bun-native/commit/3f3d84904a106e9147ccbd5e7bfa4e52065d83ed))
+* **quality:** audit production source reachability and internal exports ([#351](https://github.com/0xPlayerOne/bun-native/issues/351)) ([07d3c9e](https://github.com/0xPlayerOne/bun-native/commit/07d3c9ed5d5cbb2260158eaf4918917fe010fe77))
+* **react:** add a native workspace reference and root sizing ([#354](https://github.com/0xPlayerOne/bun-native/issues/354)) ([8b9e379](https://github.com/0xPlayerOne/bun-native/commit/8b9e3793fac93edc422d72be8d44914444630d99))
+* **solid:** add native conversation workspace and coherent paint evidence ([b1a7e53](https://github.com/0xPlayerOne/bun-native/commit/b1a7e5336e3c5a7bb992349ea064b6d87b0cee85))
+
+
+### Tests
+
+* **native:** preserve OS-close failure and trace shutdown boundaries ([#361](https://github.com/0xPlayerOne/bun-native/issues/361)) ([d083ecb](https://github.com/0xPlayerOne/bun-native/commit/d083ecbce4b2d045cf70a39130f49379d42469a4))
+
+
+### CI
+
+* **codeql:** include Python native tooling in language detection ([#362](https://github.com/0xPlayerOne/bun-native/issues/362)) ([5b49755](https://github.com/0xPlayerOne/bun-native/commit/5b49755556136af89ec7941d5452b23fabb8037a))
+* **linux:** record package-owned Mesa Lavapipe driver provenance ([#338](https://github.com/0xPlayerOne/bun-native/issues/338)) ([c9ada92](https://github.com/0xPlayerOne/bun-native/commit/c9ada928eb86ee44abeb85ba13721a68af0057d6))
+
 ## [0.14.4](https://github.com/0xPlayerOne/bun-native/compare/v0.14.3...v0.14.4) (2026-11-04)
 
 
