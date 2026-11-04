@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import { createElement, useEffect } from 'react'
 import { reconciler } from '../../packages/react/src/reconciler.ts'
 import { render } from '@bun-native/react'
@@ -131,8 +132,8 @@ for (const cleanupFails of [false, true]) {
         expect(reports).toBe(0)
         callbacks[6](new Error('late failure after framework teardown'), { componentStack: '' })
         if (cleanupFails) {
-          await expect(disposal).rejects.toBe(cleanupError)
-          await expect(root.closed).rejects.toBe(cleanupError)
+          await assert.rejects(disposal, (actual: unknown) => actual === cleanupError)
+          await assert.rejects(root.closed, (actual: unknown) => actual === cleanupError)
         } else {
           await disposal
           await root.closed
