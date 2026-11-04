@@ -1,6 +1,6 @@
-# Developer workflow (target)
+# Developer workflow
 
-**Status: the Bun Native CLI is not implemented yet.** This document describes the intended developer experience, not executable commands available in the current legacy checkout. [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220) owns implementation and should replace placeholders with tested instructions as features land.
+**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, bundles and starts them against an explicitly supplied prebuilt host, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies. Published installation, host acquisition, hot reload and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
 
 ## The expected workflow
 
@@ -10,9 +10,11 @@
 4. **Package:** use Bun's experimental machine-code AOT `bun compile` and pinned native host artifacts. Do not silently substitute JIT `bun build --compile` in a claimed AOT release.
 5. **Diagnose:** expose exact Bun/native host versions, renderer ABI, OS/arch, cache/asset state, logs, unsupported capabilities and reproducible failures.
 
-The CLI names, package exports and templates are **proposals until BN5 commits and verifies them**. Avoid untested `bun-native` commands in documentation.
+The executable commands are `bun run native create`, `bun run native dev` and `bun run native build` from the repository root. See [their complete contract and tests](developer-tooling.md). The broader workflow above remains the target; there is no published `bun-native` executable yet.
 
 ## Reload and state
+
+The current `dev` command starts once and does not watch source. Stop and rerun it after edits. Generated applications dispose their framework root and shut down the owned host on window close or SIGINT/SIGTERM. No state survives this restart. Fast reload remains [#243](https://github.com/0xPlayerOne/bun-native/issues/243).
 
 A source-only TS/JS edit should not recompile Rust, replace a native binary or destroy the whole app unnecessarily. Host/version/config changes may require a full restart. Each reload must retire old owners/listeners safely and either preserve documented state or clearly remount. Test rapid saves, errors, partial source, cancellation and 100+ reload cycles with memory/resource tracking.
 

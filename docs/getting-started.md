@@ -1,6 +1,6 @@
 # Getting started with Bun Native
 
-**Bun Native currently provides a working native integration fixture, not an installable general-purpose framework.** Contributors can run the real GPUI window and compile its Bun application with AOT. Solid/React adapters, a public app CLI and supported release packages are still being implemented.
+**Bun Native provides native integration fixtures and checkout-local Solid/React application tooling.** Contributors can create apps, run them against a supplied GPUI host and compile their Bun application with AOT. Published framework packages and the full developer workflow remain under implementation.
 
 ## Start with the current implementation task
 
@@ -13,7 +13,7 @@
 
 You need the exact pinned Bun, a matching target OS/architecture, Rust/native prerequisites for **framework contributors**, and GitHub-hosted CI or a native desktop for verification. `toolchain.json` and `rust-toolchain.toml` are the implemented pins. Linux X11 with Mesa software Vulkan is the first verified GUI environment; other platforms must be qualified explicitly.
 
-The developer command contract (create/dev/build/test/doctor) is designed in [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and **does not exist yet**. The implemented workspace core imports are documented in [the package README](../packages/core/README.md); there is no published general-purpose installation command yet.
+The [checkout CLI](developer-tooling.md) implements `create`, `dev` and `build` for repository-local Solid/React projects, with TypeScript by default and checked JavaScript as an option. Supply a prebuilt host explicitly; ordinary app commands do not require Rust. Published installation, host acquisition and hot reload remain open under [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242) and [#243](https://github.com/0xPlayerOne/bun-native/issues/243). The public core imports are documented in [the package README](../packages/core/README.md).
 
 To learn the compiler interface, see the official [Bun compiler documentation](https://bun.com/docs/compiler) and [AOT compatibility](https://bun.com/docs/compiler/compatibility). `bun compile` differs from `bun build --compile`: the latter is an ordinary bundled JIT executable and is not accepted as a Bun Native production AOT proof.
 
@@ -37,6 +37,15 @@ archive SHA-256 and the executable revision. Rust contributors use the exact
 the [integration record](bn0-integration.md) distinguishes GUI/AOT evidence from remaining gaps.
 
 ## Run the real native window
+
+To create your own app after installing the checkout dependencies, run:
+
+```sh
+bun run native create apps/my-app --framework solid
+bun run native dev apps/my-app --host /absolute/path/to/bun-native-host
+```
+
+Use `--framework react` for React or `--language javascript` for checked JSX. The host must match the current OS and CPU. Development starts once; restart after source edits. See [developer tooling](developer-tooling.md) for AOT packaging and the exact support boundary.
 
 Install the platform prerequisites from [the native host README](../native/gpui-host/README.md). The exact Ubuntu build/display package list is in `.github/workflows/native-linux.yml`. Framework contributors build the host explicitly:
 
