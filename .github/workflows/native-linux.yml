@@ -45,6 +45,12 @@ jobs:
             libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
             mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
             dbus-x11 fonts-dejavu-core heaptrack binutils
+      - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
+        run: |
+          manifest=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+          test -r "$manifest"
+          dpkg-query -S "$manifest"
+          printf 'VK_DRIVER_FILES=%s\n' "$manifest" >> "$GITHUB_ENV"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -64,6 +70,8 @@ jobs:
             cargo --version
             cc --version
             dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick heaptrack libheaptrack binutils
+            printf 'Vulkan ICD: %s\n' "${VK_DRIVER_FILES:?}"
+            sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
       - name: Check native source formatting
