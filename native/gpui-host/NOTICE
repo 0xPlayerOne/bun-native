@@ -5,3 +5,9 @@ Copyright the Zed contributors. Licensed under Apache License 2.0.
 
 Bun Native changes: bounded text, command-driven value updates, bounded event
 channel, source split by editing versus paint, and input key bindings.
+
+Bun Native's bounded X11 authority parser adapts x11rb-protocol 0.13.2:
+https://github.com/psychon/x11rb/blob/1b73245acc5dce4c4987c80dd7589e7b60af3532/x11rb-protocol/src/xauth.rs
+Copyright 2019 x11rb Contributers. Licensed under the MIT license, retained in
+LICENSE-MIT-x11rb. Matching follows the pinned parser; Bun Native reads one
+nonblocking-opened, size-checked regular file and rejects truncated entries.

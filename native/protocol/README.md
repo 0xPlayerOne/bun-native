@@ -1,10 +1,10 @@
-# Private native protocol 5
+# Private native protocol 6
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 5
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 6
 requires shared `layout_v1`, `interactions_v1` and `window_display_v1` contracts
-and replaces protocol 4 outright.
+and replaces protocol 5 outright.
 Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors
@@ -22,14 +22,14 @@ Structurally valid requests that fail a lifecycle, ownership, revision or
 resource rule receive `error` with the request ID and a finite code:
 `invalid_command`, `version_mismatch`, `invalid_state`, `invalid_handle`,
 `stale_revision`, `limit_exceeded`, `native_failure`, `permission_denied` or
-`service_unavailable`. Such errors do not
+`service_unavailable`, `cancelled`, `operation_timed_out` or `payload_too_large`. Such errors do not
 partially mutate a window. The session may continue with a newer request ID.
 Unexpected native window creation/update failures never become successful
 responses.
 
 ## Session and identifiers
 
-The first successful request is `hello` with `protocol: 5`. It returns `ready`
+The first successful request is `hello` with `protocol: 6`. It returns `ready`
 with mandatory capabilities `tree`, `input_revisions`, `layout_v1`,
 `interactions_v1` and `window_display_v1`, the limits below and immutable native
 `service_policy`, then `ack`. The runtime rejects a host missing any mandatory
@@ -58,6 +58,15 @@ neither changes tree revisions nor emits a UI sequence. No wire command can
 grant a service; unsupported service selectors remain invalid. See the
 [shared service contract](../../docs/native-services.md) for ranges,
 cancellation and platform semantics.
+
+The optional `clipboard_text_v1` capability enables window-owned `clipboard_read`
+and `clipboard_write` commands under independent immutable read/write grants.
+They complete outside the tree command queue with `clipboard_text` (explicit
+empty or bounded text) and `clipboard_written` replies. Eight requests and
+8,192 UTF-8 bytes per payload are the negotiated maxima. Native shutdown
+cancels outstanding requests, joins the worker off the UI thread and only then
+flushes the terminal acknowledgement. Unsupported platforms do not advertise
+the capability. No per-message grant is accepted.
 
 | Resource                                      |            Limit |
 | --------------------------------------------- | ---------------: |

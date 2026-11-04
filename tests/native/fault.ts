@@ -53,6 +53,7 @@ function zeroOwnership(app: NativeApplication): void {
     queuedTransactions: 0,
     queuedCallbacks: 0,
     activeCallbacks: 0,
+    serviceRequests: 0,
   })
 }
 let app: NativeApplication | undefined

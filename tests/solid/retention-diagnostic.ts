@@ -92,6 +92,7 @@ export function rethrowWithRetentionDiagnostic(
           queuedTransactions: state.queuedTransactions,
           queuedCallbacks: state.queuedCallbacks,
           activeCallbacks: state.activeCallbacks,
+          serviceRequests: state.serviceRequests,
         },
         window: {
           revision: context.window.revision,
