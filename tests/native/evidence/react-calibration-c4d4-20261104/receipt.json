@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "kind": "retained-hosted-failure-archive",
+  "status": "failed",
+  "source": {
+    "head": "c4d4c2e74d561ce19621e3e3940469d33bf3f118",
+    "testedCommit": "b04503e5f9e741b32ac213e65b2af96715081263",
+    "testedTree": "7ce2cfdb841f3c616a14a3d6a12a51a3b3c79a25",
+    "manifestFiles": 166,
+    "verifiedManifestSources": "Every recorded size/hash matched the exact tested tree; unique paths include ownership.ts, workload.ts and sources.ts.",
+    "ownershipOracle": {
+      "benchmarks/solid/ownership.ts": {
+        "path": "benchmarks/solid/ownership.ts",
+        "bytes": 440,
+        "sha256": "929293594beb5db64678dadf216b01003c4de7d106d3fd1ece3803461822ef20"
+      },
+      "benchmarks/solid/workload.ts": {
+        "path": "benchmarks/solid/workload.ts",
+        "bytes": 15059,
+        "sha256": "f69a56ff925da41ef4c297f9eb190ed7aa92d941ee84d75a851fc2a1f91acf02"
+      },
+      "benchmarks/solid/sources.ts": {
+        "path": "benchmarks/solid/sources.ts",
+        "bytes": 789,
+        "sha256": "9f9333cad004625a546b028700a004b90fe8105e86416e9fc9f4dc1c3b2650d5"
+      }
+    }
+  },
+  "validation": {
+    "run": 41909084088,
+    "attempt": 1,
+    "nativeLinuxJob": 126851519250,
+    "gateJob": 126860280913,
+    "step": {
+      "number": 27,
+      "name": "Development and AOT React update and lifecycle diagnostics",
+      "exitCode": 1,
+      "timeUtc": "2026-11-04T20:55:29.2186378Z"
+    },
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41909084088/job/126851519250"
+  },
+  "originalArtifact": {
+    "id": 13362328077,
+    "name": "native-linux-X64",
+    "bytes": 23852426,
+    "sha256": "8bcd22c992f3966938beec69d5eaf7aef6322a6e6e108875148294f294941caa"
+  },
+  "runtime": {
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rust": "1.98.1 (48a229cea 2026-09-01)",
+    "target": {
+      "os": "linux",
+      "architecture": "x64",
+      "osRelease": "7.0.0-1017-azure"
+    },
+    "host": {
+      "profile": "release",
+      "bytes": 29479320,
+      "sha256": "6b7d6593b9734c2590f37ad06ab5d898de58ce7715703c8e40298f7488bc9e34"
+    }
+  },
+  "workload": {
+    "iterations": 10,
+    "rotations": 10,
+    "mounts": 2,
+    "rows": 32,
+    "warmup": 20
+  },
+  "retentionObservation": {
+    "firstReachable": [3, 5],
+    "stillReachable": [3, 5],
+    "probesPerMount": 3,
+    "probeKinds": ["render root", "content node", "listener"],
+    "collectionCheckpoints": 2,
+    "quiescence": "empty core transaction queue fence; no additional native command"
+  },
+  "assertion": "AssertionError [ERR_ASSERTION]: Disposed view/callback targets remain observable\n\n2 !== 0\n\n    at Ap (/home/runner/work/bun-native/bun-native/benchmarks/solid/workload.ts:352:12)",
+  "timingDistinction": {
+    "collectionCheckpoint": {
+      "assertedOwners": {
+        "windows": 1,
+        "nodes": 1,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "meaning": "expectWindowRootOnly passes immediately before the WeakRef assertion; the live application window and native root node are intentionally still owned. This is an asserted checkpoint contract, not an independently sampled owner snapshot."
+    },
+    "laterCleanup": {
+      "reportedOwners": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "meaning": "After the retention assertion fails, finally awaits active disposal, application.shutdown and application.closed, then captures and asserts all seven zero. This later shutdown does not turn the earlier WeakRef observation into a pass."
+    }
+  },
+  "developmentModule": {
+    "bytes": 205898,
+    "sha256": "019b1d3ec0a4957a806151d6f25f33f393dc4f2417e9090efac5b289d1397000",
+    "byteIdenticalPriorRecords": [
+      {
+        "pr": 353,
+        "run": 41895798556,
+        "testedCommit": "600acfc54a168bebac1e872d91578984875f7a40",
+        "status": "failed",
+        "probes": [3, 5]
+      },
+      {
+        "pr": 379,
+        "run": 41904934340,
+        "testedCommit": "4e12e5b5199cc07e7e1e84186bea39ce2fdfdb71",
+        "status": "passed",
+        "probes": []
+      }
+    ]
+  },
+  "codeql": {
+    "run": 41909085055,
+    "analyses": ["TypeScript", "Python", "Actions", "Rust"],
+    "analysesStatus": "success",
+    "aggregate": 126852650481,
+    "aggregateStatus": "success"
+  },
+  "otherOutcomes": {
+    "otherValidationJobs": "All ten other nonaggregate Validation jobs passed.",
+    "laterIndependentSteps": [
+      {
+        "number": 38,
+        "name": "Solid local-stream workspace development and AOT native flow",
+        "status": "success"
+      },
+      {
+        "number": 39,
+        "name": "Generated Solid and React templates in development and inspected AOT",
+        "status": "success"
+      },
+      {
+        "number": 40,
+        "name": "Native CLI watch with 101 source-edit remounts per framework",
+        "status": "success"
+      }
+    ],
+    "skipped": "Steps 28\u201337, including AOT core input, lifecycle/throughput, allocation/bridge diagnostics and baseline/preflight; the corrected baseline inventory preflight was not exercised."
+  },
+  "archive": {
+    "file": "raw-evidence.tar.gz",
+    "bytes": 434274,
+    "sha256": "5e329a1ab375d88433ccbc60e42119d534d5796c9898ee6be8de36b3bbf0f59a",
+    "uncompressedTar": {
+      "bytes": 1873920,
+      "sha256": "36d5d42bca83801e4109f20dea3b1dad0496d880c072ff79ec4d8d01309b3d9c"
+    },
+    "format": "Deterministic gzip (mtime 0, empty filename) of PAX tar with sorted regular-file members; mode 0644, uid/gid 0, empty owner names and mtime 0.",
+    "verification": "Decompressed tar and all seven members compared byte-for-byte with retained inputs.",
+    "members": {
+      "calibration-development.json": {
+        "bytes": 36857,
+        "sha256": "2d1fc94ea0eb41cc926075c3b0c019e0990f3c5c7ea8e54c88780dd1acfb01fe"
+      },
+      "calibration-development.jsonl": {
+        "bytes": 36361,
+        "sha256": "fe620619eb75d11ac4154da6af0ffd637408acb2885e9380f22db58e9c247ee6"
+      },
+      "calibration-development.log": {
+        "bytes": 883,
+        "sha256": "76f2fc90c4899cd7ffcd6f60100734b017e8e4951844756763ec771ff72eda80"
+      },
+      "native-job-steps.json": {
+        "bytes": 7279,
+        "sha256": "174a880e667796e49b385253381ddc4d13d4273fd74d106f70e262ce07831d6a"
+      },
+      "native-job.log": {
+        "bytes": 1746680,
+        "sha256": "8fc9eba5fecab09be1165d25a332f552b6e53b236a58849be69020e7aa1683b6"
+      },
+      "react-workload-manifest.json": {
+        "bytes": 37492,
+        "sha256": "a5a455adf781d96f3822030f00b8d2a4c7be2055761d0094687661ae0898baa8"
+      },
+      "toolchain.txt": {
+        "bytes": 1402,
+        "sha256": "e4a8ce81958698a4f81272b0f8fa1d0d61fea8c2a37da4e8724211e5d58b3d37"
+      }
+    }
+  },
+  "logEncoding": "native-job.log preserves the complete decoded UTF-8 string returned by the GitHub job-log connector, including its original characters/newlines. Calibration, native JSONL, toolchain and manifest members are original ZIP bytes. native-job-steps.json preserves the recorded connector step response.",
+  "omissions": [
+    "The complete 23,852,426-byte original artifact ZIP is identified above but not duplicated.",
+    "Native/AOT executables, generated JavaScript/source map bytes, unrelated scenario output/screenshots and window-manager session logs are omitted.",
+    "The module comparison retains exact sizes/hashes and byte-equality results; none of the generated modules or native executables was executed during this audit."
+  ],
+  "scope": [
+    "No retry, runtime change, workload, new GC checkpoint or snapshot was performed during audit.",
+    "[3,5] denotes second mount render-root/listener probe targets; it does not identify a retaining strong edge or root.",
+    "Byte-identical generated JavaScript has both retained passing and failing observations; this does not establish an engine, scheduler, HAL or RenderDoc cause.",
+    "Successful CodeQL hardening qualification remains distinct from the required Linux retention failure; #374 stays blocked.",
+    "This archival commit is based on accepted main and is not the executed source. It is intended for a draft research PR closed unmerged; it changes no runtime, workflow, test assertion or GC policy."
+  ]
+}
