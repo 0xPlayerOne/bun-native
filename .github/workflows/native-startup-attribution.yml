@@ -2,6 +2,9 @@ name: Native startup attribution (diagnostic only)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [diagnostic/native-startup-matrix-20261104]
+    paths: [.github/workflows/native-startup-attribution.yml]
 
 permissions:
   contents: read
