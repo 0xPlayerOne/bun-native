@@ -118,17 +118,26 @@ class TemplateScenarioTests(unittest.TestCase):
                     command = SCENARIO.scenario(root, case, mode, root / "evidence")
                     self.assertIn("--expect-native-pointer", command)
                     self.assertNotIn("--expect-event", command)
-                    self.assertIn(
-                        str(SCENARIO.REPOSITORY / "tests/native/cli-template-owner.ts"),
-                        command,
-                    )
                     if mode == "development":
-                        self.assertEqual(
-                            command[-2:],
-                            [str(bun), str(package / "development/application.js")],
+                        self.assertIn(
+                            str(SCENARIO.REPOSITORY / "tests/native/cli-dev-owner.ts"),
+                            command,
                         )
-                        self.assertEqual(os.environ["BUN_NATIVE_HOST"], str(host))
+                        self.assertEqual(
+                            command[-4:], ["--source", str(source), "--host", str(host)]
+                        )
+                        self.assertNotIn(
+                            str(package / "development/application.js"), command
+                        )
+                        self.assertNotIn("BUN_NATIVE_HOST", os.environ)
                     else:
+                        self.assertIn(
+                            str(
+                                SCENARIO.REPOSITORY
+                                / "tests/native/cli-template-owner.ts"
+                            ),
+                            command,
+                        )
                         self.assertEqual(command[-1], str(package / "application"))
                         self.assertNotIn("BUN_NATIVE_HOST", os.environ)
                 for path in [

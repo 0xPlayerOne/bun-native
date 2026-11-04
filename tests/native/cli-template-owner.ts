@@ -25,7 +25,8 @@ export async function observeTemplate(
   command: string[],
   environment: Record<string, string | undefined>,
   artifacts: readonly string[],
-  timeoutMs = 35_000
+  timeoutMs = 35_000,
+  inspectReady?: () => void
 ) {
   if (command.length === 0 || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 35_000)
     throw new Error('A command and a timeout between 1 and 35000 milliseconds are required')
@@ -55,6 +56,13 @@ export async function observeTemplate(
         readyCount++
         readyMs ??= performance.now() - started
         if (readyCount !== 1 || stoppedCount !== 0) error ??= 'Out-of-order readiness'
+        else {
+          try {
+            inspectReady?.()
+          } catch (cause) {
+            error ??= cause instanceof Error ? cause.message : String(cause)
+          }
+        }
       } else if (value?.['type'] === 'bun-native:stopped') {
         stoppedCount++
         stoppedMs ??= performance.now() - started

@@ -2,8 +2,8 @@
 """Qualify unchanged checkout CLI templates with one owned X11 scenario.
 
 Preparation uses the actual create/check/build commands. Run replaces itself
-with the existing input supervisor; the small Bun IPC owner observes the
-template's ready/stopped hooks without inserting an application callback.
+with the existing input supervisor; its Bun IPC owner runs the exact dev command
+or inspected AOT app without inserting an application callback.
 """
 
 import argparse
@@ -68,7 +68,7 @@ def require_artifact(path, expected):
 
 
 def prepare(output, host, bun):
-    """Compile once per template; both modes execute this exact bundled source."""
+    """Compile once per template; retain the exact generated source for dev too."""
     output.mkdir(parents=True, exist_ok=False)
     source = source_identity()
     pin = json.loads((REPOSITORY / "toolchain.json").read_text())
@@ -226,27 +226,33 @@ def scenario(package_root, case, mode, output):
     for key in ("application", "developmentModule", "host"):
         require_artifact(package / manifest[key]["file"], manifest[key])
     executable = package / manifest["application"]["file"]
-    module = package / manifest["developmentModule"]["file"]
     os.environ["BUN_NATIVE_HOST_PROFILE"] = "release"
+    os.environ.pop("BUN_NATIVE_HOST", None)
     if mode == "development":
-        os.environ["BUN_NATIVE_HOST"] = str(host)
-        command = [str(bun), str(module)]
+        owner = REPOSITORY / "tests/native/cli-dev-owner.ts"
+        command = []
     else:
         # Exercise adjacent-host resolution in the actual compiled launcher.
-        os.environ.pop("BUN_NATIVE_HOST", None)
         host = package / manifest["host"]["file"]
         command = [str(executable)]
-    owner = REPOSITORY / "tests/native/cli-template-owner.ts"
+        owner = REPOSITORY / "tests/native/cli-template-owner.ts"
     owned = [str(bun), str(owner), "--report", str(output / "lifecycle.json")]
     for path in [
         bun,
         host,
-        executable if mode == "aot" else module,
+        *([executable] if mode == "aot" else []),
         provenance_path,
         package / "manifest.json",
         owner,
     ]:
         owned += ["--artifact", str(path)]
+    if mode == "development":
+        owned += [
+            "--source",
+            str(package_root / case / "source"),
+            "--host",
+            str(host),
+        ]
     driver = REPOSITORY / "scripts/quality/native-input-linux.py"
     return [
         sys.executable,
@@ -271,8 +277,7 @@ def scenario(package_root, case, mode, output):
         json.dumps(counter_paint(framework, 1)),
         "--",
         *owned,
-        "--",
-        *command,
+        *(["--", *command] if command else []),
     ]
 
 

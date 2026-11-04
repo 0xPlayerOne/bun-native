@@ -317,6 +317,60 @@ class EvidenceTests(unittest.TestCase):
                     )
                 )
 
+    def test_native_pointer_accepts_preserved_xinput_quantization_in_same_pixel(self):
+        evidence = json.loads(
+            (
+                Path(__file__).resolve().parents[1]
+                / "native/evidence/template-pointer-x11-quantization.json"
+            ).read_text()
+        )
+        down, up = evidence["raw_pointer_records"]
+        expected = evidence["expected_position"]
+        self.assertEqual(down["position"], [100.00152587890625, 130.00198364257812])
+        self.assertTrue(DRIVER.native_pointer_click_observed([down, up], 1, expected))
+        for position in (
+            [99.5, 130],
+            [100.5, 130],
+            [100, 129.5],
+            [100, 130.5],
+            [101.00152587890625, 130.00198364257812],
+            [100, 131],
+            [float("nan"), 130],
+            [100, float("inf")],
+            [100, -float("inf")],
+            [True, 130],
+            [100, False],
+            ["100", 130],
+            [100],
+            [100, 130, 0],
+            None,
+        ):
+            with self.subTest(position=position):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed(
+                        [down, {**up, "position": position}], 1, expected
+                    )
+                )
+        for events in (
+            [up, down],
+            [down, {**up, "trace_index": 3}],
+            [down, {**up, "window_id": 2}],
+        ):
+            with self.subTest(events=events):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed(events, 1, expected)
+                )
+        # Boolean coordinates must also fail when their numeric value would
+        # otherwise be the requested zero/one pixel.
+        for position in ([True, 0], [1, False]):
+            records = [{**event, "position": position} for event in (down, up)]
+            self.assertFalse(DRIVER.native_pointer_click_observed(records, 1, [1, 0]))
+        for request in ([True, 130], [100, False], [100.0, 130], [100], None):
+            with self.subTest(request=request):
+                self.assertFalse(
+                    DRIVER.native_pointer_click_observed([down, up], 1, request)
+                )
+
     def test_output_is_drained_but_disk_capture_is_bounded(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stdout.log"

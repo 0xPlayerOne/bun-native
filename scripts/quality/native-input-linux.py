@@ -185,23 +185,40 @@ def validate_native_pointer_request(click, keys, text, expectations, initial, fi
 
 
 def native_pointer_click_observed(events, window_id, position):
-    """Require native capture of down then up after the driver's input offset."""
+    """Require down then up in the injected logical pixel after the input offset."""
+    if (
+        not isinstance(position, list)
+        or len(position) != 2
+        or any(type(coordinate) is not int for coordinate in position)
+    ):
+        return False
     down_index = None
     expected = {
         "type": "pointer_trace",
         "stage": "gpui-window-input",
         "window_id": window_id,
-        "position": position,
         "button": "Left",
         "window_active": True,
         "limit_reached": False,
     }
     for event in events:
         index = event.get("trace_index")
+        coordinates = event.get("position")
         if (
             not matches(event, expected)
             or type(index) is not int
             or not 1 <= index < 64
+            or not isinstance(coordinates, list)
+            or len(coordinates) != 2
+            # Pinned GPUI converts XInput16.16 with divisor 65535: the injected
+            # 100,130 becomes f32 100.001526,130.001984 at scale 1. Require the
+            # same integer pixel, rejecting ambiguous half-pixel boundaries.
+            or not all(
+                type(value) in (int, float)
+                and (type(value) is int or math.isfinite(value))
+                and abs(value - target) < 0.5
+                for value, target in zip(coordinates, position)
+            )
         ):
             continue
         if event.get("event") == "down":
