@@ -174,12 +174,33 @@ impl Evidence {
         }
     }
 
-    pub(crate) fn renderer(&self, window_id: WindowId, gpu: Option<gpui::GpuSpecs>) {
+    pub(crate) fn renderer(&self, window_id: WindowId, window: &gpui::Window) {
         let Some(log) = &self.0 else {
             return;
         };
         let mut log = log.borrow_mut();
-        let record = json!({"nonce":log.nonce,"type":"renderer","window_id":window_id,"gpu":gpu});
+        let record = json!({"nonce":log.nonce,"type":"renderer","window_id":window_id,"gpu":window.gpu_specs()});
+        #[cfg(target_os = "macos")]
+        let record = {
+            let mut record = record;
+            let device = raw_window_handle::HasWindowHandle::window_handle(window)
+                .map_err(|_| "native window handle is unavailable".to_string())
+                .and_then(|handle| {
+                    bun_native_macos_surface::metal_device(handle)
+                        .map_err(|error| error.to_string())
+                });
+            record["metal_device"] = match device {
+                Ok(device) => json!({
+                    "status": "reported", "source": "CAMetalLayer.device",
+                    "device_name": device.name, "registry_id": device.registry_id.to_string(),
+                    "is_software_emulated": null, "driver_name": null, "driver_info": null
+                }),
+                Err(reason) => json!({
+                    "status": "unavailable", "source": "CAMetalLayer.device", "reason": reason
+                }),
+            };
+            record
+        };
         if let Err(error) = append(&mut log.file, &record) {
             eprintln!("Bun Native renderer evidence unavailable: {error}");
         }

@@ -38,15 +38,76 @@ class NativePaintMismatch(RuntimeError):
     """A complete expected native paint did not arrive within its deadline."""
 
 
-def renderer_telemetry(renderer, operating_system, gpui_revision):
+def metal_device_telemetry(metal, operating_system):
+    """Only the device assigned to the actual layer qualifies as Metal identity."""
+    if (
+        operating_system != "Darwin"
+        or not isinstance(metal, dict)
+        or metal.get("source") != "CAMetalLayer.device"
+    ):
+        raise RuntimeError("Actual native Metal device metadata is malformed")
+    if metal.get("status") == "unavailable":
+        if (
+            set(metal) != {"status", "source", "reason"}
+            or not isinstance(metal["reason"], str)
+            or not metal["reason"].strip()
+            or len(metal["reason"]) > 512
+        ):
+            raise RuntimeError("Actual native Metal unavailability is malformed")
+        return metal
+    name = metal.get("device_name")
+    registry_id = metal.get("registry_id")
+    if (
+        set(metal)
+        != {
+            "status",
+            "source",
+            "device_name",
+            "registry_id",
+            "is_software_emulated",
+            "driver_name",
+            "driver_info",
+        }
+        or metal.get("status") != "reported"
+        or not isinstance(name, str)
+        or not name.strip()
+        or len(name) > 256
+        or any(ord(char) < 32 or ord(char) == 127 for char in name)
+        or not isinstance(registry_id, str)
+        or not registry_id.isascii()
+        or not registry_id.isdecimal()
+        or len(registry_id) > 20
+        or int(registry_id) > 2**64 - 1
+        or any(
+            metal[field] is not None
+            for field in ("is_software_emulated", "driver_name", "driver_info")
+        )
+    ):
+        raise RuntimeError("Actual native Metal device metadata is malformed")
+    return metal
+
+
+def renderer_telemetry(
+    renderer, operating_system, gpui_revision, *, require_metal_device=False
+):
     """Validate the actual window record without inventing unavailable metadata."""
     if (
-        renderer.get("type") != "renderer"
+        not isinstance(renderer, dict)
+        or renderer.get("type") != "renderer"
         or type(renderer.get("window_id")) is not int
         or renderer["window_id"] <= 0
         or "gpu" not in renderer
     ):
         raise RuntimeError("Actual native renderer record is malformed")
+    metal = (
+        metal_device_telemetry(renderer["metal_device"], operating_system)
+        if "metal_device" in renderer
+        else None
+    )
+    if require_metal_device and (metal is None or metal["status"] != "reported"):
+        raise RuntimeError(
+            "Actual native renderer did not report its assigned Metal device"
+        )
     gpu = renderer["gpu"]
     if gpu is None:
         if (
@@ -54,6 +115,8 @@ def renderer_telemetry(renderer, operating_system, gpui_revision):
             or gpui_revision != MACOS_GPU_TELEMETRY_UNAVAILABLE_REVISION
         ):
             raise RuntimeError("Actual native renderer did not report its adapter")
+        if metal is not None:
+            return {"window_id": renderer["window_id"], **metal}
         return {
             "window_id": renderer["window_id"],
             "status": "unavailable",
@@ -266,10 +329,13 @@ def main():
     parser.add_argument("--host-profile", required=True, choices=("dev", "release"))
     parser.add_argument("--negative-paint-check", action="store_true")
     parser.add_argument("--os-input", action="store_true")
+    parser.add_argument("--require-metal-device", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.os_input and args.negative_paint_check:
         parser.error("Run the negative paint guard separately from actual OS input")
+    if args.require_metal_device and platform.system() != "Darwin":
+        parser.error("--require-metal-device requires an actual macOS host")
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     host = Path(os.environ.get("BUN_NATIVE_HOST", ""))
     if not command or not host.is_absolute() or not host.is_file():
@@ -298,6 +364,7 @@ def main():
         "sourceFiles": sources,
         "negativePaintCheck": args.negative_paint_check,
         "osInputRequested": args.os_input,
+        "metalDeviceRequired": args.require_metal_device,
         "scope": "Actual GPUI lifecycle, a native renderer record with explicit adapter telemetry availability, and complete paint traversal; --os-input additionally requires independently owned visible windows and native pointer/Tab/text delivery. No display-presentation, hardware-input, screenshot or complete process-tree claim.",
         "osWindowVisibility": "unverified",
         "osInput": "not-attempted",
@@ -386,7 +453,12 @@ def main():
                 "actual native renderer record",
             )
             report["rendererTelemetry"].append(
-                renderer_telemetry(renderer, platform.system(), gpui_revision)
+                renderer_telemetry(
+                    renderer,
+                    platform.system(),
+                    gpui_revision,
+                    require_metal_device=args.require_metal_device,
+                )
             )
             report["renderers"].append(renderer)
             for updated in (False, True):
