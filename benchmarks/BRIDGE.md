@@ -1,5 +1,10 @@
 # Native bridge benchmark
 
+For the source-pinned, alternating BN1/native-events comparison in #297, see
+[Historical bridge pairs](BRIDGE_PAIRS.md). It reuses each recorded revision's
+unchanged workload and retains every failed attempt; it adds no performance
+claim before hosted collection.
+
 `bridge.ts` exercises the real Bun process, bounded native pipes, Rust transaction
 model and GPUI host. It requires an explicit **prebuilt** native executable and
 a working native display. It never builds Rust or substitutes a protocol peer.
