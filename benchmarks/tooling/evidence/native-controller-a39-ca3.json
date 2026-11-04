@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "scope": "Lossless selected scalar columns from original post-input process snapshots; native outcomes are separate from unexecuted compiler-only controls. RSS is not reachability or proof of a heap cause.",
+  "source": {
+    "published_head": "a39a32a48393f6355591ddafd2ff71f0c857eae1",
+    "executed_commit": "ca3c70772edabba52fca5327dec7997fac8d9ad0",
+    "executed_tree": "1a19094ec033a8a254c67e4bfca13eeda7458292"
+  },
+  "run": {
+    "id": 41889147789,
+    "attempt": 1,
+    "job_id": 126781660872,
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41889147789/job/126781660872",
+    "native_linux_status": "passed"
+  },
+  "artifact": {
+    "id": 13354916536,
+    "bytes": 26480540,
+    "sha256": "eed2077c958b17f391fc495253c4683cc92a24b6d1aa4238710f5ee663bf239a"
+  },
+  "compiler": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "bytes": 138468432,
+    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810"
+  },
+  "host": {
+    "profile": "release",
+    "bytes": 29478168,
+    "sha256": "6ab9fd414c911782ce4114c7f0397cbfe1df8d11ba9ecc065330758b313ec893"
+  },
+  "projection": {
+    "file": "native-controller-a39-ca3.tsv",
+    "columns": [
+      "framework",
+      "generation",
+      "observed_ns",
+      "outer_pid",
+      "outer_start_ticks",
+      "outer_rss_bytes",
+      "inner_pid",
+      "inner_start_ticks",
+      "inner_rss_bytes",
+      "app_pid",
+      "app_start_ticks",
+      "app_rss_bytes",
+      "host_pid",
+      "host_start_ticks",
+      "host_rss_bytes",
+      "tree_rss_bytes"
+    ],
+    "rows": 204,
+    "bytes": 25160,
+    "sha256": "32c4547db8230d3c1e03d2e76649a25effa88d029a38227dd67f35751bb01467"
+  },
+  "frameworks": {
+    "solid": {
+      "original_result": {
+        "bytes": 958514,
+        "sha256": "65455332e5104c53014107d053e982f860d4811944a5f6543fff3b9b928ce517"
+      },
+      "nonce": "513a0fd91793d5c48f02c56eb2876619",
+      "samples": 102,
+      "inner_controller": {
+        "pid": 25521,
+        "start_ticks": 123849
+      },
+      "inner_rss_bytes": {
+        "count": 102,
+        "first": 84414464,
+        "last": 114167808,
+        "minimum": 84414464,
+        "maximum": 121466880,
+        "median": 106485760.0,
+        "delta": 29753344,
+        "ols_bytes_per_generation": 265213.51601065305,
+        "r_squared": 0.8211869792403084
+      },
+      "valid_edit_quarters": {
+        "1-25": {
+          "count": 25,
+          "first": 85463040,
+          "last": 99524608,
+          "minimum": 85463040,
+          "maximum": 99524608,
+          "median": 95555584,
+          "delta": 14061568,
+          "ols_bytes_per_generation": 486822.2030769231,
+          "r_squared": 0.8944655747372664
+        },
+        "26-50": {
+          "count": 25,
+          "first": 99201024,
+          "last": 105820160,
+          "minimum": 99201024,
+          "maximum": 106110976,
+          "median": 103890944,
+          "delta": 6619136,
+          "ols_bytes_per_generation": 306182.3015384615,
+          "r_squared": 0.9571647585113616
+        },
+        "51-75": {
+          "count": 25,
+          "first": 106860544,
+          "last": 116326400,
+          "minimum": 106860544,
+          "maximum": 119898112,
+          "median": 112017408,
+          "delta": 9465856,
+          "ols_bytes_per_generation": 129792.7876923077,
+          "r_squared": 0.06869457545312331
+        },
+        "76-101": {
+          "count": 26,
+          "first": 117252096,
+          "last": 114167808,
+          "minimum": 110526464,
+          "maximum": 121466880,
+          "median": 113276928.0,
+          "delta": -3084288,
+          "ols_bytes_per_generation": -137121.47692307693,
+          "r_squared": 0.12299673056494898
+        }
+      },
+      "final_50_generations_52_through_101": {
+        "count": 50,
+        "first": 107905024,
+        "last": 114167808,
+        "minimum": 107905024,
+        "maximum": 121466880,
+        "median": 112961536.0,
+        "delta": 6262784,
+        "ols_bytes_per_generation": 26839.86362545018,
+        "r_squared": 0.014193608333932026
+      },
+      "outer_controller_rss_bytes": {
+        "count": 102,
+        "first": 17629184,
+        "last": 17629184,
+        "minimum": 17629184,
+        "maximum": 17629184,
+        "median": 17629184.0,
+        "delta": 0,
+        "ols_bytes_per_generation": 0.0,
+        "r_squared": null
+      }
+    },
+    "react": {
+      "original_result": {
+        "bytes": 1012359,
+        "sha256": "9d7c4793297ad8dfe7a7349c6f29ae3e3dd05ace9d242fcf51d28fc66a530e8c"
+      },
+      "nonce": "c1721d99e94b6e4e36453005313aeeb9",
+      "samples": 102,
+      "inner_controller": {
+        "pid": 31038,
+        "start_ticks": 130210
+      },
+      "inner_rss_bytes": {
+        "count": 102,
+        "first": 70832128,
+        "last": 73228288,
+        "minimum": 70139904,
+        "maximum": 74125312,
+        "median": 73084928.0,
+        "delta": 2396160,
+        "ols_bytes_per_generation": 19840.323526584525,
+        "r_squared": 0.680537177598062
+      },
+      "valid_edit_quarters": {
+        "1-25": {
+          "count": 25,
+          "first": 70139904,
+          "last": 72998912,
+          "minimum": 70139904,
+          "maximum": 72998912,
+          "median": 72314880,
+          "delta": 2859008,
+          "ols_bytes_per_generation": 56616.17230769231,
+          "r_squared": 0.4692086510213251
+        },
+        "26-50": {
+          "count": 25,
+          "first": 72802304,
+          "last": 72839168,
+          "minimum": 72294400,
+          "maximum": 73670656,
+          "median": 72900608,
+          "delta": 36864,
+          "ols_bytes_per_generation": 25199.85230769231,
+          "r_squared": 0.2079314965098794
+        },
+        "51-75": {
+          "count": 25,
+          "first": 72687616,
+          "last": 73535488,
+          "minimum": 72548352,
+          "maximum": 73728000,
+          "median": 73113600,
+          "delta": 847872,
+          "ols_bytes_per_generation": 26375.08923076923,
+          "r_squared": 0.339883822328001
+        },
+        "76-101": {
+          "count": 26,
+          "first": 73740288,
+          "last": 73228288,
+          "minimum": 73228288,
+          "maximum": 74125312,
+          "median": 73738240.0,
+          "delta": -512000,
+          "ols_bytes_per_generation": -2150.925128205128,
+          "r_squared": 0.005308621974532613
+        }
+      },
+      "final_50_generations_52_through_101": {
+        "count": 50,
+        "first": 72687616,
+        "last": 73228288,
+        "minimum": 72548352,
+        "maximum": 74125312,
+        "median": 73545728.0,
+        "delta": 540672,
+        "ols_bytes_per_generation": 19239.300456182475,
+        "r_squared": 0.504650864335837
+      },
+      "outer_controller_rss_bytes": {
+        "count": 102,
+        "first": 17629184,
+        "last": 17629184,
+        "minimum": 17629184,
+        "maximum": 17629184,
+        "median": 17629184.0,
+        "delta": 0,
+        "ols_bytes_per_generation": 0.0,
+        "r_squared": null
+      }
+    }
+  },
+  "limits": [
+    "Each framework has initial launch plus101 valid edits and one separate malformed edit; TSV has102 post-input snapshots.",
+    "The two controller identities are classified by the original role and parent relationship.",
+    "Other raw event/paint/process-transition fields are not copied into this projection.",
+    "The finite late Solid RSS curve does not prove continued early linear growth or a plateau; no heap cause or collectability claim follows."
+  ]
+}
