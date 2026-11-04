@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/358",
+  "scope": "Preserved first AOT public-lifecycle OS-close failure. No retry, cause attribution, or later success inferred.",
+  "failedRun": {
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41864425687/job/126694832363",
+    "pullRequest": 351,
+    "headCommit": "9e9f9a6401b72e26486d11f37027c4a5f428c1c7",
+    "testedMergeCommit": "67032a5aaf997a2996024ff434e80e663e52ee47",
+    "artifactId": 13343335060,
+    "artifactBytes": 6470868,
+    "artifactSha256": "0cb720734c82f52800d1b11d5bc2f8697947348bac3b8b9377bf6928eeafd85a"
+  },
+  "platform": {
+    "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "display": ":99",
+    "display_protocol": "X11",
+    "physical_input_tested": false,
+    "vulkan_driver_files": "/usr/share/vulkan/icd.d/lvp_icd.json",
+    "software_gl_requested": "1",
+    "child_subreaper": true
+  },
+  "renderer": {
+    "status": "reported-by-native-window",
+    "gpu": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+    }
+  },
+  "toolchain": {
+    "manifest_sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+    "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "application": {
+    "file": "core-lifecycle",
+    "bytes": 71367720,
+    "sha256": "4ff66cef15a044cd8b3f248ddb4a55015f348c898ab7c992187274848a088d53",
+    "inspection": {
+      "format": "elf",
+      "payloadOffset": 67510280,
+      "payloadBytes": 3801336,
+      "flags": 16764,
+      "hasCompiledProgram": true
+    }
+  },
+  "runtimeFeatures": {
+    "jit": "unused",
+    "jitRemovedRanges": {
+      "count": 27,
+      "virtualBytes": 14297303
+    }
+  },
+  "nativeHost": {
+    "profile": "release",
+    "bytes": 29475224,
+    "sha256": "fcc7d08f9b0e061afe19eb0787d0c60472873c36bdee37c17fa7488a8a95d146"
+  },
+  "observedOutcome": {
+    "checks": {
+      "window": "passed",
+      "os_input": "injected-through-XTest",
+      "app_input_event": "passed",
+      "app_initial_render_report": "passed",
+      "app_render_report": "passed",
+      "native_paint_file_observation": "passed",
+      "pixel_or_text_assertion": "unsupported",
+      "os_close": "failed",
+      "renderer": "passed",
+      "event_stress": "not-required"
+    },
+    "completedCycles": 1000,
+    "lastNativePaintRevision": 3002,
+    "lastNativePaintCompleteExpectedTree": true,
+    "osCloseRequestedMs": 1434.6263850000014,
+    "closeWaitSeconds": 5,
+    "fixtureDeadlineMs": 45000,
+    "cleanup": {
+      "forced_termination": true,
+      "remaining_observed_pids": [],
+      "unreaped_observed_pids": [],
+      "application_exit_code": -15
+    },
+    "stdoutBytes": 0,
+    "stderrBytes": 0,
+    "finalPublicLifecycleReport": "absent"
+  },
+  "controls": {
+    "scope": "Separate unchanged-source observations; elapsed time includes xdotool command and driver scheduling, not WM delivery latency. These passes do not clear the failed run.",
+    "sameRunDevelopment": {
+      "status": "passed",
+      "sourceCommit": "67032a5aaf997a2996024ff434e80e663e52ee47",
+      "osClose": "passed",
+      "closeRequestedMs": 1588.7767440000289,
+      "applicationExitObservedMs": 1625.598114000013,
+      "requestToExitObservedMs": 36.8213699999842,
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "resultSha256": "4da2843911eb92a5a6babdadf1ec60977d1a97bb8f7df95ec0049b70c016ed9d"
+    },
+    "priorMain": {
+      "runUrl": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686",
+      "artifactSha256": "d2fe33c6a18ce7d8be79fa6c810104598cfd54ff3309f1bc10684c556a3a5a31",
+      "aot": {
+        "status": "passed",
+        "sourceCommit": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+        "osClose": "passed",
+        "closeRequestedMs": 1392.394152999941,
+        "applicationExitObservedMs": 1428.2573030000094,
+        "requestToExitObservedMs": 35.863150000068345,
+        "cleanup": {
+          "forced_termination": false,
+          "remaining_observed_pids": [],
+          "unreaped_observed_pids": [],
+          "application_exit_code": 0
+        },
+        "resultSha256": "1ab41c4c9528f174a53ef9cb562d5de97c3148e29ae9a1a9c604e3ec11ae860b"
+      }
+    }
+  },
+  "sourceComparison": {
+    "referenceCommit": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "method": "SHA-256 compare each native/, packages/, and tests/native/ source listed in the failed AOT manifest against both the saved passing main manifest and the reference git tree. Driver hashes are recorded separately by each result.json.",
+    "comparedFileCount": 56,
+    "differentPaths": [],
+    "manifestMemberSha256": "932aef8596fe899986c9dd28badc89a76975bfe2cc607dad9e100dffbce992c6",
+    "harnessFiles": [
+      {
+        "path": "scripts/quality/native-input-linux.py",
+        "sha256": "7d3c924f13247e998c91c4463d2323b17ac9743eebf72dbd1739f347cf4ca576"
+      },
+      {
+        "path": "scripts/quality/native-paint-observer.py",
+        "sha256": "fc365fbbe4127d2cdafecf18d71897173d4a16654606a8e4cca3847b3c6ed959"
+      }
+    ],
+    "keySources": [
+      {
+        "path": "native/gpui-host/src/channel.rs",
+        "bytes": 3201,
+        "sha256": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329"
+      },
+      {
+        "path": "native/gpui-host/src/session.rs",
+        "bytes": 16764,
+        "sha256": "7e682c1f227e3fb522802d6ea12621d294a1baab9da5b9f98be55366f6118e72"
+      },
+      {
+        "path": "packages/core/src/application.ts",
+        "bytes": 19462,
+        "sha256": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc"
+      },
+      {
+        "path": "packages/core/src/events.ts",
+        "bytes": 8654,
+        "sha256": "5ad24f8e4b0606405dbbbcff2df4b0424a70cd691fe8e8f36584ef98ec5f5f9f"
+      },
+      {
+        "path": "packages/runtime/src/index.ts",
+        "bytes": 18518,
+        "sha256": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7"
+      },
+      {
+        "path": "tests/native/public-lifecycle.ts",
+        "bytes": 14893,
+        "sha256": "df77b0c55fa66ebb9a826652437577f5b5ab03d2b842b1b4f4f9adccc7d4cb70"
+      }
+    ]
+  },
+  "originalFiles": [
+    {
+      "path": "core-lifecycle-package/manifest.json",
+      "bytes": 18468,
+      "sha256": "932aef8596fe899986c9dd28badc89a76975bfe2cc607dad9e100dffbce992c6"
+    },
+    {
+      "path": "lifecycle-aot/lifecycle/result.json",
+      "bytes": 1038212,
+      "sha256": "e6b2366e26a0341cbeb5d564a90a21da5ae533ae3c7b209a0783d7b426c02249"
+    },
+    {
+      "path": "lifecycle-aot/lifecycle/app-events.jsonl",
+      "bytes": 639857,
+      "sha256": "ac7ad3ed1c3bcd4f400b41369f2d2f25a4e35f6eeff3631b1d2b781eecb9b161"
+    },
+    {
+      "path": "lifecycle-aot/lifecycle/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lifecycle-aot/lifecycle/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lifecycle-aot/window-manager.log",
+      "bytes": 85,
+      "sha256": "6f748c3cd02a858c087697c3afac639205c62b7b206558bd40d1bcbd98165a5c"
+    }
+  ],
+  "review": {
+    "callbackPath": "Native-event ingestion is independent of callback dispatch. A closed event synchronously revokes bindings; dispatch races application listener work against binding/plan cancellation. No active-callback deadlock was established from source review.",
+    "evidenceGap": "The original native closed hook only cleared paint/pointer state; it wrote no close record. The fixture wrote its ownership report only after complete shutdown. A returned xdotool command is not evidence of WM delivery.",
+    "unresolvedBoundaries": [
+      "WM close request delivery and native window removal",
+      "Native closed event transmission and public window revocation",
+      "Application/transport shutdown completion"
+    ],
+    "diagnosticChange": "Bounded observations are added separately at existing boundaries; the original assertions, 5-second close wait, 45-second fixture deadline and one invocation remain unchanged."
+  }
+}

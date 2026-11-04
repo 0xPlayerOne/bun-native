@@ -62,6 +62,25 @@ let launchInvocations = 0
 let workloadMs: number | undefined
 let failure: Error | undefined
 const app = await createApplication({ executable: resolve(executable) })
+let closeEvidenceUnavailable = false
+
+/** Fixed fixture boundaries; diagnostic I/O must never replace the original outcome. */
+function closePhase(phase: string): void {
+  if (closeEvidenceUnavailable) return
+  try {
+    recordEvidence({
+      type: 'lifecycle_phase',
+      phase,
+      pid: process.pid,
+      clock: 'fixture_initialization_relative',
+      elapsedMs: performance.now() - started,
+      ownership: app.diagnostics,
+    })
+  } catch {
+    closeEvidenceUnavailable = true
+    console.error('Bun Native lifecycle phase evidence unavailable')
+  }
+}
 
 function fail(cause: unknown): Error {
   const error = cause instanceof Error ? cause : new Error(String(cause))
@@ -256,6 +275,7 @@ try {
           'abort',
           () => {
             launchAborted = true
+            closePhase('launch_callback_aborted')
           },
           { once: true }
         )
@@ -267,6 +287,7 @@ try {
         })
         assert.equal(window.revision, CYCLES * 3 + 2)
         await checkpoint('waiting-for-os-close')
+        closePhase('waiting_for_os_close')
         // Deliberately unresolved application work. OS-close ingestion must
         // still revoke this listener and release dispatch without awaiting it.
         await new Promise<void>(() => {})
@@ -278,6 +299,7 @@ try {
     window.onClick(startButton, listener)
   }
   await window.closed
+  closePhase('public_window_closed')
   assert.equal(completedCycles, CYCLES)
   assert.equal(launchAborted, true, 'OS close must abort the active listener registration')
 } catch (cause) {
@@ -286,8 +308,11 @@ try {
 
 clearTimeout(deadline)
 try {
+  closePhase('shutdown_requested')
   await app.shutdown()
+  closePhase('shutdown_resolved')
   await app.closed
+  closePhase('application_closed')
   assert.deepEqual(observe(), {
     windows: 0,
     nodes: 0,
@@ -390,6 +415,7 @@ const result = {
   error: failure ? { name: failure.name, message: failure.message } : undefined,
 }
 const json = JSON.stringify(result, null, 2) + '\n'
+closePhase('final_report_ready')
 const evidenceLog = process.env['BUN_NATIVE_EVIDENCE_LOG']
 if (evidenceLog)
   writeFileSync(join(dirname(evidenceLog), 'public-lifecycle.json'), json, { flag: 'wx' })
