@@ -141,7 +141,9 @@ def own_snapshot(app, observed, expected_host, native):
                 }
 
 
-def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=None):
+def run_owned(
+    command, cwd, output, timeout, *, expected_host=None, environment=None, observe=None
+):
     """Bounded command capture; all PID authority/termination uses the shared driver."""
     output.mkdir()
     report = {
@@ -160,10 +162,19 @@ def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=
     started = time.monotonic()
     previous = signal.getsignal(signal.SIGTERM)
     cancellation = None
+    termination_signal = None
 
     def interrupted(signum, _frame):
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        raise InterruptedError(f"Paired measurement received signal {signum}")
+        nonlocal termination_signal
+        # Raising inside Popen or thread.start can strand an internal lock.
+        # Record cancellation and raise only at a safe supervision boundary.
+        termination_signal = signum
+
+    def check_interrupted():
+        if termination_signal is not None:
+            raise InterruptedError(
+                f"Paired measurement received signal {termination_signal}"
+            )
 
     signal.signal(signal.SIGTERM, interrupted)
     try:
@@ -187,9 +198,14 @@ def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=
             thread.start()
             threads.append((thread, stream))
         while True:
+            check_interrupted()
             own_snapshot(
                 app, observed, expected_host, report["observed_native_processes"]
             )
+            if observe is not None:
+                # Read-only diagnostic observations share the existing bounded
+                # supervisor. Rejection still executes its normal owned cleanup.
+                observe(app, report["observed_native_processes"])
             if app.poll() is not None:
                 break
             if time.monotonic() - started > timeout:
@@ -197,6 +213,7 @@ def run_owned(command, cwd, output, timeout, *, expected_host=None, environment=
             if any(stats["discarded_bytes"] for stats in report["logs"].values()):
                 raise RuntimeError("Command log exceeded the 4 MiB stream bound")
             time.sleep(0.1)
+        check_interrupted()
         require(app.returncode == 0, f"Command exited {app.returncode}")
         if expected_host is not None:
             require(

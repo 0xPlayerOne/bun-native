@@ -1,0 +1,19 @@
+[package]
+name = "bun-native-allocation-diagnostic"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Standalone, std-only diagnostic. Historical production dependency graphs stay
+# unchanged; the controlled recipe supplies this hashed rlib with --extern.
+[workspace]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = "warn"
+
+[profile.release]
+debug = 1
