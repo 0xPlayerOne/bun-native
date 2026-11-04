@@ -1,0 +1,519 @@
+{
+  "scope": "actual pinned constructor/drop, fake EGL ABI; no driver, GPU or window",
+  "variant": "complete-ownership",
+  "wgpu_commit": "cddb2f5d80dc0009b2ef6767635140cacf90a007",
+  "pristine_egl_sha256": "2663a1da95a05dc6f0ce33f1479934cf7a67736973dc353c3ac90073260e865b",
+  "ownership_source_sha256": "b2dd2b061084c588711b9170ae541340e554ece5d307b71a38cae07f25b78dee",
+  "compiled_egl_sha256": "ffe13786b99b40427e29c1450838afb142f30d5840d487de62d8ad78395a54e2",
+  "experiment_sha256": {
+    "Cargo.lock": "6447cfd8de554abf0599438ad4acade527b42e216712297c1596849808818f68",
+    "construction-rollback.patch": "a010866b3855f8c3f133e71b54ddcedb9c4c8bfcf247f1d579255a78f80c9b31",
+    "fake-egl.c": "0869ae1e03fbfa8cda9399453ee4fa810947eae9705a2df142e8e466ae4867ef",
+    "main.rs": "77ef7e86861b4f803c60af66445f2e70182e818402766cb8bc2c792412c7c2a7",
+    "ownership-probe.rs": "286d8d39d7eb91cd8a00fa484bf8ecec019fb5ca2a56014fd49fa76beb1f8244",
+    "pbuffer-owner-release.patch": "7942be1eccd5758721ddaa8b6931c68517802f5c03f31f172a0a9c24b1ce73a4",
+    "run.py": "f05433eb618dfd26d837833a6166814d5b11f9a55e7b4a8cf94c101d2d3a2402"
+  },
+  "binary_sha256": "1ef9e70f065d56a3b7d2ced18789b3c66282d23b2211ac568b51c40c8ce74bfb",
+  "fixture_sha256": "c6057d32dcbf06a89379430a7fa646cbe386be2a111529fc427b0e3c8aa4b07b",
+  "rust": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "c_compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "cases": [
+    {
+      "case": "initialize-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 0,
+          "terminate_calls": 0,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize"],
+      "stdout_sha256": "a4ee6f02bc2598834046e66053108ff681b86f29bca462f68260b47caea35bd9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "vendor-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize", "query-vendor", "terminate"],
+      "stdout_sha256": "a3c5572ee78ed9ee0d28e0e68b312f6ca3e36392cd17d39deb092c2b6cb1fb6e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "extensions-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": ["initialize", "query-vendor", "query-extensions", "terminate"],
+      "stdout_sha256": "582b6ffc5eb1d51d2bd47633165e0d7c5f5d5ee8ea0f103ec7926f7de1d6efc6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "config-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "choose-config",
+        "choose-config",
+        "terminate"
+      ],
+      "stdout_sha256": "58a2498e54b42a774f0513b235ba6a17e9c47eef854e3d20108d375eb9c50244",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "client-apis-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "terminate"
+      ],
+      "stdout_sha256": "e293caac66d6e05b59d369bdab2c6c42ec632425c14754ce00d03d9866a4d597",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "bind-api-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "terminate"
+      ],
+      "stdout_sha256": "a393b20c3065396f9084a5e6cdf70ac65ee1bd769d17a511b1c2582fab0d8d6e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "context-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 0,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "terminate"
+      ],
+      "stdout_sha256": "ddde93ddc0185d6afaa27966c1a789181b39ee68bf55e09e7775be23a7ad8a43",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "pbuffer-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "failed-construction",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 1,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 0,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "8763d702ab4326b85b6d7449fece427fd5905eb552cfae3ff856a027bed316ed",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "success",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "owned",
+          "display_references": 1,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "last-owner-dropped",
+          "display_references": 0,
+          "initialize_calls": 1,
+          "initialize_successes": 1,
+          "terminate_calls": 1,
+          "contexts_created": 1,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 1,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "38e37982511de0f0be4f3230bae6563541a7d09b77b377ca7964acdf6cd3fbc0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "shared-initialize-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "live-owner-after-failure",
+          "display_references": 1,
+          "initialize_calls": 2,
+          "initialize_successes": 1,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "one-owner-remains",
+          "display_references": 1,
+          "initialize_calls": 3,
+          "initialize_successes": 2,
+          "terminate_calls": 0,
+          "contexts_created": 2,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 1,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "last-owner-dropped",
+          "display_references": 0,
+          "initialize_calls": 3,
+          "initialize_successes": 2,
+          "terminate_calls": 1,
+          "contexts_created": 2,
+          "contexts_destroyed": 2,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 2,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-pbuffer",
+        "destroy-context",
+        "destroy-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "6a3cae14dbe6b8fcbcc4e62b4ef3a79614d3d7fef691dcc525c5940effd1c05b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "shared-vendor-failure",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "live-owner-after-failure",
+          "display_references": 1,
+          "initialize_calls": 2,
+          "initialize_successes": 2,
+          "terminate_calls": 0,
+          "contexts_created": 1,
+          "contexts_destroyed": 0,
+          "pbuffers_created": 1,
+          "pbuffers_destroyed": 0,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "one-owner-remains",
+          "display_references": 1,
+          "initialize_calls": 3,
+          "initialize_successes": 3,
+          "terminate_calls": 0,
+          "contexts_created": 2,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 1,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "last-owner-dropped",
+          "display_references": 0,
+          "initialize_calls": 3,
+          "initialize_successes": 3,
+          "terminate_calls": 1,
+          "contexts_created": 2,
+          "contexts_destroyed": 2,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 2,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "query-vendor",
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-pbuffer",
+        "destroy-context",
+        "destroy-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "2a478e67e5d556dd2ab1fdade73c68c8ffca712544b8f48be8318b26d16bc3ea",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "shared-pbuffer-lifetime",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "matches_expected_outcome": true,
+      "snapshots": [
+        {
+          "phase": "one-owner-remains",
+          "display_references": 1,
+          "initialize_calls": 2,
+          "initialize_successes": 2,
+          "terminate_calls": 0,
+          "contexts_created": 2,
+          "contexts_destroyed": 1,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 1,
+          "live_contexts": 1,
+          "live_pbuffers": 1
+        },
+        {
+          "phase": "last-owner-dropped",
+          "display_references": 0,
+          "initialize_calls": 2,
+          "initialize_successes": 2,
+          "terminate_calls": 1,
+          "contexts_created": 2,
+          "contexts_destroyed": 2,
+          "pbuffers_created": 2,
+          "pbuffers_destroyed": 2,
+          "live_contexts": 0,
+          "live_pbuffers": 0
+        }
+      ],
+      "calls": [
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "initialize",
+        "query-vendor",
+        "query-extensions",
+        "choose-config",
+        "query-client-apis",
+        "bind-api",
+        "create-context",
+        "create-pbuffer",
+        "destroy-pbuffer",
+        "destroy-context",
+        "destroy-pbuffer",
+        "destroy-context",
+        "terminate"
+      ],
+      "stdout_sha256": "d5964bc00aeae49a736b19c4baa08749fe7b0075f5e1f3c5cf6504e3ecf075b2",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "matches_expected_outcomes": true,
+  "evidence_kind": "private ownership controls; no driver/GPU/window execution",
+  "transcript_sha256": "c8ac1412182d35985a9745d0365b52bebd0e75de47fa053eb80e2d06ed4e414e",
+  "baseline_checkpoint_commit": "e004ca8e8f2c06894e680a0bb0449661a9cb8984",
+  "bun_native_base": "3f3d84904a106e9147ccbd5e7bfa4e52065d83ed",
+  "production_cargo_lock_sha256": "2d8d977816ba49d1c51a5dff16572552cf0c7b937e921e73a1160573f08250ee"
+}

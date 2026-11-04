@@ -84,16 +84,19 @@ def prepare(source, output, variant, env):
     egl = wgpu / EGL_PATH
     if digest(egl) != EGL_SHA256:
         raise RuntimeError("pinned EGL source hash mismatch")
-    if variant == "construction-rollback":
+    patches = [] if variant == "baseline" else ["construction-rollback.patch"]
+    if variant == "complete-ownership":
+        patches.append("pbuffer-owner-release.patch")
+    for patch in patches:
         command(
             [
                 "git",
                 "apply",
-                str(EXPERIMENT / "construction-rollback.patch"),
+                str(EXPERIMENT / patch),
             ],
             cwd=wgpu,
             env=env,
-            log=output / "patch",
+            log=output / patch,
         )
     ownership_source_sha256 = digest(egl)
     manifest = wgpu / "wgpu-hal/Cargo.toml"
@@ -122,7 +125,7 @@ def prepare(source, output, variant, env):
 
 
 def expected_assertion(variant, case):
-    if case == "shared-pbuffer-lifetime":
+    if case == "shared-pbuffer-lifetime" and variant != "complete-ownership":
         return "dropped owner's pbuffer released"
     if variant != "baseline" or case == "success":
         return None
@@ -140,7 +143,9 @@ def main():
         "--output", type=Path, required=True, help="new owned output directory"
     )
     parser.add_argument(
-        "--variant", choices=("baseline", "construction-rollback"), required=True
+        "--variant",
+        choices=("baseline", "construction-rollback", "complete-ownership"),
+        required=True,
     )
     args = parser.parse_args()
     source, output = args.source.resolve(), args.output.resolve()
