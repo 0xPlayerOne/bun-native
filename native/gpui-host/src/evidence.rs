@@ -23,6 +23,7 @@ type PaintVersion = (u64, Vec<(NodeId, u64)>);
 struct Log {
     file: File,
     nonce: String,
+    started: Instant,
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
     pointer: Option<pointer::PointerTrace>,
@@ -56,6 +57,7 @@ impl Evidence {
             Ok(file) => Self(Some(Rc::new(RefCell::new(Log {
                 file,
                 nonce,
+                started: Instant::now(),
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
                 pointer: pointer::PointerTrace::from_environment(),
@@ -204,6 +206,20 @@ impl Evidence {
             log.last_layout.remove(&window_id);
             if let Some(trace) = &mut log.pointer {
                 trace.closed(window_id);
+            }
+            // This existing callback observes native removal, not WM delivery
+            // or transport receipt. Reuse the bounded optional evidence writer.
+            let record = json!({
+                "nonce": log.nonce,
+                "type": "native_window_closed",
+                "stage": "native-lifecycle",
+                "pid": std::process::id(),
+                "window_id": window_id,
+                "clock": "native_evidence_initialization_relative",
+                "elapsed_ns": log.started.elapsed().as_nanos().to_string(),
+            });
+            if let Err(error) = append(&mut log.file, &record) {
+                eprintln!("Bun Native close evidence unavailable: {error}");
             }
         }
     }

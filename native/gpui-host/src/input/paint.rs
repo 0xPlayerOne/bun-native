@@ -3,7 +3,7 @@
 use super::*;
 use gpui::{
     ElementId, ElementInputHandler, Entity, GlobalElementId, LayoutId, PaintQuad, Style, TextRun,
-    UnderlineStyle, fill, hsla, relative, rgba, size,
+    UnderlineStyle, fill, relative, rgba, size,
 };
 
 pub(super) struct TextElement {
@@ -65,7 +65,7 @@ impl Element for TextElement {
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {
-            (input.placeholder.clone(), hsla(0., 0., 0., 0.2))
+            (input.placeholder.clone(), style.color.opacity(0.6))
         } else {
             (content, style.color)
         };
