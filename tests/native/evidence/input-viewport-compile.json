@@ -4,14 +4,16 @@
   "status": "compile-only",
   "applicationSource": {
     "commit": "64ae9e5a33e41af61ce48b50d4cf7575e075100e",
-    "tree": "12ddda261fb2f696e9d7563aacfd6925f7562e23"
+    "tree": "12ddda261fb2f696e9d7563aacfd6925f7562e23",
+    "publicEquivalentCommit": "4aa17ae36c1246cfba4ff10f15eeec6405d5a425"
   },
   "nativeSource": {
     "commit": "8e4fc12d3c0f1a8011bb4c6c53161020852e2bf4",
     "tree": "e243b7c0758ab91be65c742e2b5765ac4a12fea0",
     "nativeSubtree": "237e77421e3c22f40c84b621fcc348c8ca340532",
     "identicalAtApplicationCommit": true,
-    "equivalence": "git diff --quiet 8e4fc12d 64ae9e5 -- native Cargo.toml Cargo.lock rust-toolchain.toml"
+    "equivalence": "git diff --quiet 8e4fc12d 64ae9e5 -- native Cargo.toml Cargo.lock rust-toolchain.toml",
+    "publicEquivalentCommit": "7917a679403d41c2d10f69da7985efc7140eb799"
   },
   "toolchain": {
     "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
@@ -173,5 +175,12 @@
     "The host was built at the explicitly recorded earlier whole-repository commit; its complete native subtree, Cargo inputs and toolchain are byte-identical at the AOT application source.",
     "Actual Linux development/AOT viewport pixels/input/OS close remain pending hosted qualification.",
     "No current GUI/GC/long-soak, IME composition, RTL, accessibility, physical hardware, high-DPI or macOS/Windows input acceptance is claimed."
-  ]
+  ],
+  "postCompileIntegration": {
+    "acceptedMain": "77c842faa3137e8155b24c1d123d16c1ed5b76ed",
+    "acceptedMainTree": "2389f8c39219037f99059ed9fab7812f74471391",
+    "scope": "Ordinary main integration after these measurements; production native/Cargo/toolchain and viewport fixture/oracle sources remain byte-identical to the recorded application commit.",
+    "changedBuildInputs": "Accepted main extracts the existing AOT compile/inspection logic into compile.ts and adds CLI tooling and release metadata. These host/application artifacts are prior-whole-repository-source evidence, not builds of the integrated tree.",
+    "additionalExecution": "No native, AOT application, GUI or GC workload was executed for this integration."
+  }
 }

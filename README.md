@@ -37,7 +37,7 @@ The active packages contain the new core API, protocol, runtime and native host.
 
 - [Product vision](docs/bun-native-vision.md) — scope, goals and non-goals
 - [Architecture](docs/architecture.md) — native host, framework renderers and runtime boundaries
-- [Getting started](docs/getting-started.md) — contributor setup, current limits and first implementation tasks
+- [Getting started](docs/getting-started.md) — create, check and package a Solid/React app with the pinned Bun and a prebuilt host
 - [Developer workflow](docs/development.md) — intended CLI, hot reload, package boundaries
 - [Toolchain and AOT](docs/toolchain.md) — Bun compilation, versioning and compatibility
 - [Compatibility](docs/compatibility.md) — Solid/React, CSS/DOM and platform support boundaries

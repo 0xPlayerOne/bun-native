@@ -1,0 +1,623 @@
+{
+  "schema_version": 1,
+  "archive_date_utc": "2026-11-04",
+  "scope": "Headless real checkout CLI source-watch, bundle, adapter and IPC lifecycle evidence. These runs used a compiled test protocol peer; they did not exercise GPUI, X11, native paint, OS input, native process-tree/RSS monitoring, or display presentation.",
+  "status_policy": "The failed run remains failed. A genuine zero-resource stopped record is insufficient for success: the watcher must also exit zero and pass final ownership/temp-root assertions.",
+  "timing_policy": "Numeric durations and monotonic receipt times are original headless observations with controller/compiler/IPC overhead. They are not controlled cold-start benchmarks, native presentation times or performance acceptance.",
+  "path_policy": "Commands use portable placeholders for the original absolute Bun, checkout, project, peer and session-temporary paths. Only the bundle prefix in copied ready records is normalized. Raw-log digests and final-line digests cover the original unmodified bytes, including line terminators. PIDs and numeric observations are original run values.",
+  "source_manifest_encoding": "All tracked regular files sorted by repository path; each entry contains path, bytes and sha256. Digest is SHA-256 of UTF-8 JSON with sorted object keys, separators comma and colon, no spaces/newline, ensure_ascii=false. Git tree IDs additionally bind the complete committed tree and file modes.",
+  "method": {
+    "cwd": "$CHECKOUT",
+    "create_command": [
+      "$BUN",
+      "run",
+      "native",
+      "create",
+      "$PROJECT",
+      "--framework",
+      "$FRAMEWORK",
+      "--language",
+      "typescript"
+    ],
+    "watch_command": [
+      "$BUN",
+      "run",
+      "native",
+      "dev",
+      "$PROJECT",
+      "--host",
+      "$HEADLESS_PEER",
+      "--watch"
+    ],
+    "frameworks": ["solid", "react"],
+    "initial_generations_per_framework": 1,
+    "valid_source_edit_remounts_per_framework": 101,
+    "total_generations_per_framework": 102,
+    "rejected_malformed_edits_per_framework": 1,
+    "source_edits": "Only the generated heading and window title change to Framework 0123abcd NNN; normal counter and lifecycle code stay unchanged. The malformed edit is const incomplete = < followed by a newline.",
+    "headless_oracle": "Every generation logs its unique heading with Clicks: 0, then Clicks: 1 after a test-peer protocol click. Generation 0 is clicked after the rejected malformed edit. Previous bundle retirement, validated zero-resource acknowledgements, and strictly alternating peer started/exited events are checked.",
+    "final_close": "The owning controller writes a test-peer control file that emits the normal closed protocol event; this is not an OS window-close test.",
+    "native_build_sentinel": ["cargo", "rustc", "rustup"],
+    "product_deadlines": "Existing five-second application readiness/shutdown bounds were unchanged."
+  },
+  "runs": [
+    {
+      "id": "original-undefined-filename-failure",
+      "status": "failed",
+      "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "source": {
+        "launch_reported_local_commit": "58b78e61acbad14561816f2d0d2f1edc3025df9c",
+        "launch_reported_dirty": true,
+        "local_commit_with_matching_run_bytes": "856e4e93d71fce36953a43629a9dc1e890fe1f1f",
+        "git_tree": "94704c8a58d95f5986a625d2e566b6979c1b2bca",
+        "equivalent_github_source_commit": "f2346f6114b2919b7779c18b7eaaba6de58ae92b",
+        "equivalent_github_source_url": "https://github.com/0xPlayerOne/bun-native/commit/f2346f6114b2919b7779c18b7eaaba6de58ae92b",
+        "github_equivalence_note": "The integrating agent verified identical Git tree identity when creating this GitHub commit object. It is an equivalent source snapshot, not the measured local commit. The objects are intended to remain ancestors of the integrated PR #360 head; its ref update was pending when this archive was prepared.",
+        "tracked_regular_file_count": 470,
+        "tracked_source_manifest_sha256": "53bd09d2baa1d50a4cf0808847bc410ef1d976760871ea89c59a56d9de473bed",
+        "relevant_source_files": [
+          {
+            "path": "scripts/native/project.ts",
+            "bytes": 8126,
+            "sha256": "ea58bf5e19a5f0fd7b785b815bb6953ba2948da2f40dbfb9df052de20fcd1bea"
+          },
+          {
+            "path": "scripts/native/session.ts",
+            "bytes": 9635,
+            "sha256": "def47965ad2d36d95e0f9a5b1f778443e5d811e8a82b9fb094e4ee79916eb26f"
+          },
+          {
+            "path": "scripts/native/watch.ts",
+            "bytes": 3249,
+            "sha256": "44864f686e0aeec93eea8ccacff3ed9d3206ccfdcbea1451f01614278a1dc633"
+          },
+          {
+            "path": "scripts/quality/native-watch-processes.py",
+            "bytes": 12116,
+            "sha256": "47996522777bad7238360af75b9d82ba46e42e7402da6cd64dc77452f786fc95"
+          },
+          {
+            "path": "tests/core/peer-tree.ts",
+            "bytes": 2496,
+            "sha256": "1802fb93c534067a0237ab1bd8a2cccaa01106f5182f042f88bbdf2a1033758a"
+          },
+          {
+            "path": "tests/core/protocol-peer.ts",
+            "bytes": 4715,
+            "sha256": "9f6057ef0f8c0ba762656214e56f9d2685baac12eb08c04ab8786e2c3fb99a5f"
+          },
+          {
+            "path": "tests/native/cli-watch.py",
+            "bytes": 29438,
+            "sha256": "0d9d5ab717ab8156a538dd76ceb78977794404bb3920912910079b936fe78c54"
+          },
+          {
+            "path": "tests/tooling/reload.test.ts",
+            "bytes": 17724,
+            "sha256": "2fc7ebdaa56eafa9f99ac2f869e0d95296b8b7545c9a29a6d8edfa26dbc327f5"
+          },
+          {
+            "path": "toolchain.json",
+            "bytes": 3012,
+            "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+          }
+        ],
+        "dirty_to_equivalent_source_note": "The only tracked working change at launch preserved report errors; it was committed unchanged as 856e4e93 during the pipeline. The source archive was reconstructed after failure from that exact commit. Generated peer source was reconstructed from the retained controller. No failed result was replaced.",
+        "launch_reported_git_tree": "fe388868fbf51e59508f299309891c9df439d776"
+      },
+      "receipt": {
+        "name": "failure-manifest.json",
+        "bytes": 5258,
+        "sha256": "4e15840961b7bf5b12acc78bcff6897a1262abe12f24b94fb28d68e38c5f4924",
+        "launch_console_line_sha256": "321c4d4fc3b1c13fcb1efd0e10062a1c116a6eb2f486caf20aa7de22fe034d09",
+        "provenance": "failure-manifest.json was written after failure; it preserves the original failed outcome and identifies the reconstructed matching source archive. No overall successful receipt exists for this run."
+      },
+      "raw_artifact_digests": {
+        "controller.py": {
+          "bytes": 11145,
+          "sha256": "a412729d7478eb076e9c1206e141de9b6562fb8e48356ff2c9e696994d28aa8c"
+        },
+        "headless-peer.ts": {
+          "bytes": 6284,
+          "sha256": "5090f0432856014a84bd1a57d52574702265d50181ffde77fb118489cb32bfd9"
+        },
+        "headless-peer": {
+          "bytes": 68910120,
+          "sha256": "703f7a3c1ca178b392afaec5243d05477018907e10af5afb8a10d57d2770ac19"
+        },
+        "compile.log": {
+          "bytes": 1812,
+          "sha256": "09063e6484c33765153d347bbe345edafdafcab5df21baa98db22cf75c55cab3"
+        },
+        "compile-aot.stdout.log": {
+          "bytes": 85448,
+          "sha256": "b938e3acdb4e7346fb9f4647cc4c6049bed10b2353694e5376aa292c07caec22"
+        },
+        "compile-aot.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "source-tree.tar.gz": {
+          "bytes": 1397513,
+          "sha256": "39047d4514df9fb9f3953caf922ab603f106890ba6c2b2f312768b870dacc82d"
+        }
+      },
+      "pipeline_console_digest": {
+        "bytes": 1091,
+        "sha256": "fd24e001b8c443818769b69a676122ea02f6106c664decf057eae0a13c55952a"
+      },
+      "framework_results": [
+        {
+          "framework": "solid",
+          "status": "passed",
+          "ready_records": 102,
+          "source_edit_remounts_completed": 101,
+          "malformed_edit_build_errors": 1,
+          "stopped_records": 1,
+          "cli_exit_code": 0,
+          "cli_exit_evidence": "Original framework result.json cli_exit field.",
+          "last_ready_record": {
+            "value": {
+              "generation": 102,
+              "pid": 1834,
+              "bundle": "$SESSION_TEMP/generation-htLQZO/application.js",
+              "bundleMs": 21.740443999999115,
+              "shutdownMs": 10.54699200000141,
+              "mountMs": 35.3030949999993,
+              "editToReadyMs": 124.323531,
+              "previous": {
+                "pid": 1817,
+                "clean": true,
+                "application": {
+                  "windows": 0,
+                  "nodes": 0,
+                  "callbacks": 0,
+                  "queuedTransactions": 0,
+                  "queuedCallbacks": 0,
+                  "activeCallbacks": 0,
+                  "serviceRequests": 0
+                },
+                "nodes": 0
+              }
+            },
+            "raw_log_line_sha256": "c39a0b240cfcacbb10bd5072812008726a9fdd8ec4c5893bc0a35a193ea6bed4"
+          },
+          "final_stopped_record": {
+            "value": {
+              "pid": 1834,
+              "clean": true,
+              "application": {
+                "windows": 0,
+                "nodes": 0,
+                "callbacks": 0,
+                "queuedTransactions": 0,
+                "queuedCallbacks": 0,
+                "activeCallbacks": 0,
+                "serviceRequests": 0
+              },
+              "nodes": 0
+            },
+            "raw_log_line_sha256": "c836c17d6fad49a7a3c9c391531fe5c478663b2183c48688d503d773a3eeab6b"
+          },
+          "peer_lifetimes_from_raw_log": {
+            "started": 102,
+            "exited_zero": 102,
+            "strictly_alternating_matching_pids": true,
+            "remaining_logged_peers": 0
+          },
+          "unique_headless_reset_and_click_response_pairs_from_raw_log": 102,
+          "rust_tool_invocations": 0,
+          "temporary_root_removed": true,
+          "final_cleanup_assertion_status": "passed by original controller",
+          "digests": {
+            "original-main.tsx": {
+              "bytes": 1935,
+              "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e"
+            },
+            "stdout.log": {
+              "bytes": 43071,
+              "sha256": "bbdbfd3a16aabdb64a3c953b1d66accf93697b172faf4e33a3dcced2aba5c3c1"
+            },
+            "stderr.log": {
+              "bytes": 491,
+              "sha256": "c4ab8fad6fcececefbba99b0d8db46e31a140e1b8a0f12cca1c95bb31586a13c"
+            },
+            "peer.jsonl": {
+              "bytes": 35504,
+              "sha256": "a37faabc684b951f5e3d3b764c79b2ef316547ba049b930f29d0ce0542553425"
+            },
+            "sentinel/invocations.log": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result.json": {
+              "bytes": 108123,
+              "sha256": "536ab2a102690aa9ef50bea6e38ee62e0a1e5ac3b6576ed70331ddef1c0b2492"
+            }
+          },
+          "final_stopped_observed_ns": 10561480961313
+        },
+        {
+          "framework": "react",
+          "status": "failed",
+          "ready_records": 102,
+          "source_edit_remounts_completed": 101,
+          "malformed_edit_build_errors": 1,
+          "stopped_records": 1,
+          "cli_exit_code": 1,
+          "cli_exit_evidence": "Original stderr explicitly reports script exit code 1; the controller failed its final CLI status check.",
+          "last_ready_record": {
+            "value": {
+              "generation": 102,
+              "pid": 3670,
+              "bundle": "$SESSION_TEMP/generation-jbgm30/application.js",
+              "bundleMs": 27.6801480000031,
+              "shutdownMs": 16.308704999999463,
+              "mountMs": 38.40668299999743,
+              "editToReadyMs": 133.24510699999882,
+              "previous": {
+                "pid": 3652,
+                "clean": true,
+                "application": {
+                  "windows": 0,
+                  "nodes": 0,
+                  "callbacks": 0,
+                  "queuedTransactions": 0,
+                  "queuedCallbacks": 0,
+                  "activeCallbacks": 0,
+                  "serviceRequests": 0
+                },
+                "nodes": 0
+              }
+            },
+            "raw_log_line_sha256": "bdc42ac73b298065916f15daef692efe3f3b493c7fc34930ce1d6b200d324c79"
+          },
+          "final_stopped_record": {
+            "value": {
+              "pid": 3670,
+              "clean": true,
+              "application": {
+                "windows": 0,
+                "nodes": 0,
+                "callbacks": 0,
+                "queuedTransactions": 0,
+                "queuedCallbacks": 0,
+                "activeCallbacks": 0,
+                "serviceRequests": 0
+              },
+              "nodes": 0
+            },
+            "raw_log_line_sha256": "43293073df13114c18b66b65cb7a353807f9414374645fc3f168d7ad0523da28"
+          },
+          "peer_lifetimes_from_raw_log": {
+            "started": 102,
+            "exited_zero": 102,
+            "strictly_alternating_matching_pids": true,
+            "remaining_logged_peers": 0
+          },
+          "unique_headless_reset_and_click_response_pairs_from_raw_log": 102,
+          "rust_tool_invocations": 0,
+          "temporary_root_removed": null,
+          "final_cleanup_assertion_status": "not reached: final CLI exit-status assertion failed; zero stopped counters and raw peer exits do not convert this outcome to passed",
+          "digests": {
+            "original-main.tsx": {
+              "bytes": 1968,
+              "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e"
+            },
+            "stdout.log": {
+              "bytes": 43176,
+              "sha256": "a16869178ce011a8203f9991f0bcd1290213e82c58e71177f175553f732eecd8"
+            },
+            "stderr.log": {
+              "bytes": 1119,
+              "sha256": "0e6075b9ad1c700ceadbb87bf23457087cb4b6911d8b7decdac243229bc5fbd8"
+            },
+            "peer.jsonl": {
+              "bytes": 36044,
+              "sha256": "bde1e4440847b5d4e1cad7d963815c14a2c9ca98d745b7513a5ee3440099a25e"
+            },
+            "sentinel/invocations.log": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          }
+        }
+      ],
+      "failure": {
+        "controller_error": "Final protocol close did not cleanly stop CLI",
+        "raw_stderr_excerpt": "2 | import type { FSWatcher } from 'node:fs'\n3 | import { DevSession, type RemountReport } from './session.ts'\n4 | \n5 | function relevant(path: string | Buffer | null): boolean {\n6 |   if (path === null) return true\n7 |   const name = path.toString().replaceAll('\\\\', '/')\n                   ^\nTypeError: undefined is not an object (evaluating 'path.toString')",
+        "excerpt_policy": "Exact contiguous original stderr lines; machine-specific absolute stack paths following this excerpt are omitted.",
+        "raw_cli_exit_line": "error: script \"native\" exited with code 1",
+        "repository_stack_locations": [
+          "scripts/native/watch.ts:7:16",
+          "scripts/native/watch.ts:66:23"
+        ],
+        "fix_local_commit": "2446973a74f5113f6e048c4daca73f87ea35b679",
+        "fix": "Treat an undefined fs.watch filename like the already-supported null filename: conservatively rescan. The fixed run retains the same counts and final exit/cleanup assertions."
+      }
+    },
+    {
+      "id": "fixed-omitted-filename-run",
+      "status": "passed",
+      "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "source": {
+        "launch_reported_local_commit": "2446973a74f5113f6e048c4daca73f87ea35b679",
+        "launch_reported_dirty": false,
+        "local_commit_with_matching_run_bytes": "2446973a74f5113f6e048c4daca73f87ea35b679",
+        "git_tree": "6d3b0015907d5fb4f679797b7e5b91aa74c365ee",
+        "equivalent_github_source_commit": "bac9f49faf3ecb587b29275a1a3809051bebad0a",
+        "equivalent_github_source_url": "https://github.com/0xPlayerOne/bun-native/commit/bac9f49faf3ecb587b29275a1a3809051bebad0a",
+        "github_equivalence_note": "The integrating agent verified identical Git tree identity when creating this GitHub commit object. It is an equivalent source snapshot, not the measured local commit. The objects are intended to remain ancestors of the integrated PR #360 head; its ref update was pending when this archive was prepared.",
+        "tracked_regular_file_count": 470,
+        "tracked_source_manifest_sha256": "df05416d16a0265b1a3cfc8cedb886eeac98e3026b80d1dc685c802d1f28711b",
+        "relevant_source_files": [
+          {
+            "path": "scripts/native/project.ts",
+            "bytes": 8126,
+            "sha256": "ea58bf5e19a5f0fd7b785b815bb6953ba2948da2f40dbfb9df052de20fcd1bea"
+          },
+          {
+            "path": "scripts/native/session.ts",
+            "bytes": 9635,
+            "sha256": "def47965ad2d36d95e0f9a5b1f778443e5d811e8a82b9fb094e4ee79916eb26f"
+          },
+          {
+            "path": "scripts/native/watch.ts",
+            "bytes": 3360,
+            "sha256": "8b8756d717a98a0c14df8d73355767ac8adf00f670a86c4fe3ef408913a2e70a"
+          },
+          {
+            "path": "scripts/quality/native-watch-processes.py",
+            "bytes": 12116,
+            "sha256": "47996522777bad7238360af75b9d82ba46e42e7402da6cd64dc77452f786fc95"
+          },
+          {
+            "path": "tests/core/peer-tree.ts",
+            "bytes": 2496,
+            "sha256": "1802fb93c534067a0237ab1bd8a2cccaa01106f5182f042f88bbdf2a1033758a"
+          },
+          {
+            "path": "tests/core/protocol-peer.ts",
+            "bytes": 4715,
+            "sha256": "9f6057ef0f8c0ba762656214e56f9d2685baac12eb08c04ab8786e2c3fb99a5f"
+          },
+          {
+            "path": "tests/native/cli-watch.py",
+            "bytes": 29438,
+            "sha256": "0d9d5ab717ab8156a538dd76ceb78977794404bb3920912910079b936fe78c54"
+          },
+          {
+            "path": "tests/tooling/reload.test.ts",
+            "bytes": 19387,
+            "sha256": "5ebab3b5205a951cac94cdf8a679fb19be191168bd087920dbf845b91efd1dcc"
+          },
+          {
+            "path": "toolchain.json",
+            "bytes": 3012,
+            "sha256": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1"
+          }
+        ]
+      },
+      "receipt": {
+        "name": "result.json",
+        "bytes": 88212,
+        "sha256": "1f00dd9138ce60f57cc97f110023733b0064fed0a397867db3fdedf0b89852a2",
+        "launch_console_line_sha256": "915bf549071b31b3d5b13613457fd86b660f834abc417da1e53fc8cf51dd670b",
+        "provenance": "Original successful overall receipt, including all 470 tracked-source SHA-256/byte entries; each entry was independently compared with the clean measured local commit."
+      },
+      "raw_artifact_digests": {
+        "controller.py": {
+          "bytes": 11508,
+          "sha256": "192fcbe329d501444265084962c1005de747c4110a195ed07af85a9353b78c67"
+        },
+        "headless-peer.ts": {
+          "bytes": 6284,
+          "sha256": "5090f0432856014a84bd1a57d52574702265d50181ffde77fb118489cb32bfd9"
+        },
+        "headless-peer": {
+          "bytes": 68910120,
+          "sha256": "fa744e08805fd34035a8b65c4a01cf995ef2cf1988fc97047250c961b7399006"
+        },
+        "compile.log": {
+          "bytes": 1805,
+          "sha256": "6a88d4d6d2a852d90d3cee2f7d3338053e58ba65657f4938aca0c61e8700a7fd"
+        },
+        "compile-aot.stdout.log": {
+          "bytes": 85448,
+          "sha256": "05e22d0cf668d0ae8dd87661888ae817364a2025957e0ceb4c7fba1ab0bc2ad8"
+        },
+        "compile-aot.stderr.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "pipeline_console_digest": {
+        "bytes": 998,
+        "sha256": "c3c21e351b80678f270e4de19338c9e2df60a441941165654c651eaf5b0ff6b1"
+      },
+      "framework_results": [
+        {
+          "framework": "solid",
+          "status": "passed",
+          "ready_records": 102,
+          "source_edit_remounts_completed": 101,
+          "malformed_edit_build_errors": 1,
+          "stopped_records": 1,
+          "cli_exit_code": 0,
+          "cli_exit_evidence": "Original framework result.json cli_exit field.",
+          "last_ready_record": {
+            "value": {
+              "generation": 102,
+              "pid": 1837,
+              "bundle": "$SESSION_TEMP/generation-xhzJcq/application.js",
+              "bundleMs": 12.492537999998603,
+              "shutdownMs": 9.113930000001346,
+              "mountMs": 26.19444399999884,
+              "editToReadyMs": 98.60864399999991,
+              "previous": {
+                "pid": 1820,
+                "clean": true,
+                "application": {
+                  "windows": 0,
+                  "nodes": 0,
+                  "callbacks": 0,
+                  "queuedTransactions": 0,
+                  "queuedCallbacks": 0,
+                  "activeCallbacks": 0,
+                  "serviceRequests": 0
+                },
+                "nodes": 0
+              }
+            },
+            "raw_log_line_sha256": "33f12e2f751b7a393de963dbd068330a7739be976acb0437e732a184981df45f"
+          },
+          "final_stopped_record": {
+            "value": {
+              "pid": 1837,
+              "clean": true,
+              "application": {
+                "windows": 0,
+                "nodes": 0,
+                "callbacks": 0,
+                "queuedTransactions": 0,
+                "queuedCallbacks": 0,
+                "activeCallbacks": 0,
+                "serviceRequests": 0
+              },
+              "nodes": 0
+            },
+            "raw_log_line_sha256": "746f1d1c1cdcdc03ae79c52ef7ac86751acda3db93ea5643b1168529bfcc2a84"
+          },
+          "peer_lifetimes_from_raw_log": {
+            "started": 102,
+            "exited_zero": 102,
+            "strictly_alternating_matching_pids": true,
+            "remaining_logged_peers": 0
+          },
+          "unique_headless_reset_and_click_response_pairs_from_raw_log": 102,
+          "rust_tool_invocations": 0,
+          "temporary_root_removed": true,
+          "final_cleanup_assertion_status": "passed by original controller",
+          "digests": {
+            "original-main.tsx": {
+              "bytes": 1935,
+              "sha256": "26a90da512ba81444685656e1539ad027113b4cfed3bfaa6d94853f87ed6b30e"
+            },
+            "stdout.log": {
+              "bytes": 43138,
+              "sha256": "6c114507fa3e2279efa375814cd999c8e71f24d48b239d5a15e1f67c85d1000f"
+            },
+            "stderr.log": {
+              "bytes": 491,
+              "sha256": "86ec17c77508d308551f025c725ffcf21c6aa089f5bb8b966c5e1d92ab5399a0"
+            },
+            "peer.jsonl": {
+              "bytes": 35504,
+              "sha256": "e695d99d290080f799a870402d79aec50cbc0413357f891888f8e496f3b43cb1"
+            },
+            "sentinel/invocations.log": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result.json": {
+              "bytes": 108190,
+              "sha256": "457b7ba066bd4ca297b87827ead8c9491d023292f7b044bb594bafebf282e237"
+            }
+          },
+          "final_stopped_observed_ns": 10792405390587
+        },
+        {
+          "framework": "react",
+          "status": "passed",
+          "ready_records": 102,
+          "source_edit_remounts_completed": 101,
+          "malformed_edit_build_errors": 1,
+          "stopped_records": 1,
+          "cli_exit_code": 0,
+          "cli_exit_evidence": "Original framework result.json cli_exit field.",
+          "last_ready_record": {
+            "value": {
+              "generation": 102,
+              "pid": 3662,
+              "bundle": "$SESSION_TEMP/generation-MtojG7/application.js",
+              "bundleMs": 39.44957799999975,
+              "shutdownMs": 17.895449999999983,
+              "mountMs": 48.74737500000083,
+              "editToReadyMs": 156.8488180000004,
+              "previous": {
+                "pid": 3645,
+                "clean": true,
+                "application": {
+                  "windows": 0,
+                  "nodes": 0,
+                  "callbacks": 0,
+                  "queuedTransactions": 0,
+                  "queuedCallbacks": 0,
+                  "activeCallbacks": 0,
+                  "serviceRequests": 0
+                },
+                "nodes": 0
+              }
+            },
+            "raw_log_line_sha256": "71f6636ef6394e0c7a7f2b992517d98643d76a2fe08c2696d9d11bb76d3d17df"
+          },
+          "final_stopped_record": {
+            "value": {
+              "pid": 3662,
+              "clean": true,
+              "application": {
+                "windows": 0,
+                "nodes": 0,
+                "callbacks": 0,
+                "queuedTransactions": 0,
+                "queuedCallbacks": 0,
+                "activeCallbacks": 0,
+                "serviceRequests": 0
+              },
+              "nodes": 0
+            },
+            "raw_log_line_sha256": "a9047a5007640fce79b93b034d0775b09381f0af8ec12be0f69946a0ecbff47c"
+          },
+          "peer_lifetimes_from_raw_log": {
+            "started": 102,
+            "exited_zero": 102,
+            "strictly_alternating_matching_pids": true,
+            "remaining_logged_peers": 0
+          },
+          "unique_headless_reset_and_click_response_pairs_from_raw_log": 102,
+          "rust_tool_invocations": 0,
+          "temporary_root_removed": true,
+          "final_cleanup_assertion_status": "passed by original controller",
+          "digests": {
+            "original-main.tsx": {
+              "bytes": 1968,
+              "sha256": "83e5fac9de7cdc4913a6c9ddf8c1c3117c0f36511f5162f7ce11ffaee87d6c8e"
+            },
+            "stdout.log": {
+              "bytes": 43208,
+              "sha256": "793bfb4cd17c412415f40581514928db7e77eb562cd47538bfb5abe0b31c6e43"
+            },
+            "stderr.log": {
+              "bytes": 426,
+              "sha256": "9c2f9c5f24cddaad4da834ea8951cdb4b50d6cd39af4cc2ce1c4b17a90e89946"
+            },
+            "peer.jsonl": {
+              "bytes": 36044,
+              "sha256": "0ee5717135bd28a29ddec0162b9b66028130ceae0155e81eefc21b31128a6ff8"
+            },
+            "sentinel/invocations.log": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result.json": {
+              "bytes": 108314,
+              "sha256": "9d615f07df04ea6e46ba56844141786066dc273e3bbf4b9449b28cc82ccda34d"
+            }
+          },
+          "final_stopped_observed_ns": 10808205938540
+        }
+      ]
+    }
+  ],
+  "retention_note": "This archive contains summaries, final records, one exact error excerpt and digests. The large binaries, complete source tarball, full 470-file manifests, per-generation receipts and raw logs are deliberately not embedded. Their hashes identify the originally retained files; the GitHub commits above preserve the corresponding repository source trees. The headless controller and protocol-peer source hashes describe local audit fixtures, not production runtime changes."
+}
