@@ -11,6 +11,13 @@ The implementation starts from accepted commit
 `c9ba430d2100841ff7c336bd4cad33a4bc4bcdf4`, tree
 `c6db8d921a859cc2d7ccc5a4b6edb989553bb3b1`. Its CLI, six library packages,
 dependency lock and toolchain match the accepted CLI foundation in `77c842f`.
+Before the first consumer cohort, the branch normally integrates accepted release
+commit `27405939ce1007d4142e1bb67e9ecc6ca3ce0411`. That accepted change updates only
+the release manifest, changelog and root package version to `0.16.0`; the local
+CLI archive consequently uses that current release version. Library exports,
+dependency resolutions, compiler and native source are unchanged by the merge.
+The initial implementation checkpoint and this release integration are source
+preparation, not prior consumer packaging, installation or build experiments.
 The eventual experiment must name the clean, published implementation commit,
 tree and full tracked-source hashes before its first package/install command.
 This plan does not describe an experiment that has already run.
