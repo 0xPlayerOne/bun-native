@@ -31,6 +31,7 @@ fn make_log(enabled: bool) -> (TemporaryLog, Evidence) {
         pointer: None,
         startup_started: enabled.then(Instant::now),
         startup_records: 0,
+        started: Instant::now(),
     };
     (
         TemporaryLog(path),
