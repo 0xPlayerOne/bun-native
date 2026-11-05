@@ -477,9 +477,24 @@ def main():
             )
             return value.lower()[:6]
 
-        report["pixels"] = {"before": pixel("before.png")}
-        if report["pixels"]["before"] != DARK_BACKGROUND:
-            raise RuntimeError("The dark theme token did not reach native pixels")
+        def wait_pixel(name, expected, description):
+            # A paint callback precedes presentation; poll the actual pixels.
+            until = time.monotonic() + 5
+            while True:
+                value = pixel(name)
+                if value == expected or time.monotonic() > until:
+                    report["pixels"][name.removesuffix(".png")] = value
+                    if value != expected:
+                        raise RuntimeError(description)
+                    return value
+                time.sleep(0.1)
+
+        report["pixels"] = {}
+        wait_pixel(
+            "before.png",
+            DARK_BACKGROUND,
+            "The dark theme token did not reach native pixels",
+        )
         record_processes("idle")
         (output / "start").touch()
         wait_for(lambda: application_record("stream-start"), "stream start")
@@ -503,10 +518,11 @@ def main():
         wait_for(lambda: application_record("pointer-selection"), "pointer selection")
         pace(0.5, "detached")
         key("f7", "F7", "theme")
-        pace(0.3, "theme")
-        report["pixels"]["light"] = pixel("light.png")
-        if report["pixels"]["light"] != LIGHT_BACKGROUND:
-            raise RuntimeError("The light theme token did not reach native pixels")
+        wait_pixel(
+            "light.png",
+            LIGHT_BACKGROUND,
+            "The light theme token did not reach native pixels",
+        )
         key("f8", "F8", "density")
         key("pageup", "Page_Up", "navigate")
         key("home", "Home", "navigate")
@@ -531,9 +547,11 @@ def main():
             pace(0.25, "following")
         report["streamComplete"] = application_record("stream-complete")
         pace(0.5, "settled")
-        report["pixels"]["after"] = pixel("after.png")
-        if report["pixels"]["after"] != LIGHT_BACKGROUND:
-            raise RuntimeError("The final native frame lost the selected theme")
+        wait_pixel(
+            "after.png",
+            LIGHT_BACKGROUND,
+            "The final native frame lost the selected theme",
+        )
         require_owned()
         DRIVER.run(["xdotool", "key", "--clearmodifiers", "alt+F4"])
         wait_for(lambda: app.poll() is not None, "fixture exit", 10)
