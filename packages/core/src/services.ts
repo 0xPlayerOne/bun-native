@@ -66,7 +66,8 @@ export interface ServiceCapabilities {
         /** Launch roots by ID; each caps the access a grant may request. */
         roots: Readonly<Record<string, Readonly<{ access: 'read' | 'read_write' }>>>
         scope: 'owned_window'
-        backend: 'openat2'
+        /** Linux resolves with `openat2`; macOS walks one name at a time with `openat(O_NOFOLLOW)`. */
+        backend: 'openat2' | 'openat_walk'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly ptyProcess: UnavailableService
@@ -152,7 +153,7 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: 'openat2',
+          backend: process.platform === 'darwin' ? 'openat_walk' : 'openat2',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     ptyProcess: unavailable,

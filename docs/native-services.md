@@ -347,17 +347,27 @@ Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
 normalized path and `read` or `read_write` access; at most eight are accepted.
 A grant requests at most its root's access and defaults to `read`. Readiness
 reports the same ordered roots, and the frozen capability record lists them by
-ID with `backend: 'openat2'`. The optional `filesystem_grants_v1` feature is
-advertised only on Linux with `openat2`; other targets report `unavailable` /
+ID with `backend: 'openat2'` on Linux or `backend: 'openat_walk'` on macOS.
+The optional `filesystem_grants_v1` feature is advertised only by a host built
+with one of those backends whose kernel probe succeeds: Linux with `openat2`
+(5.6 and later) and macOS. Windows and other targets report `unavailable` /
 `unsupported_platform`. No run-time path, dropped file name or model text can
 create a root or a grant.
 
 Paths are relative to the grant: `''` is the root itself and other paths are
 `/`-joined names without empty, `.`, `..` or control-character components (at
 most 1,024 bytes and 32 components). The host opens the root once as a
-directory descriptor and resolves every request beneath it with
-`openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`, so
-symbolic links are never followed, inside or out of the grant. `stat` and
+directory descriptor and resolves every request beneath it, so symbolic links
+are never followed, inside or out of the grant. Linux uses
+`openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`. macOS
+has no `openat2`; it walks the validated path one name at a time, each step an
+`openat(dirfd, name, O_NOFOLLOW | O_NOFOLLOW_ANY | O_CLOEXEC)` relative to the
+descriptor the previous step returned (intermediate steps add `O_DIRECTORY`),
+so no step can name anything but a direct child of a directory reached from the
+grant. On macOS every intermediate directory must be readable, not only
+searchable, and names resolve as the volume does (APFS is usually
+case-insensitive), always within the grant. macOS evidence comes only from
+the hosted `macos-15` Native Platforms job; it has not been run on a local Mac. `stat` and
 `list` report link entries as `symlink`; `remove` deletes the link, not its
 target. Renaming the root after a grant opens keeps that grant on the same
 directory. Reads and writes refuse anything but a regular file before any byte
@@ -410,7 +420,7 @@ already exists. The linked follow-ups belong to
 | Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
 | Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | Unavailable                  | Unavailable                  | OS file selection and dropped files as explicit user grants, macOS/Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                           |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | `openat` walk; CI-only       | Unavailable                  | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                 |
 | PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
 
 For the deferred rows, the exported typed contract is the frozen availability

@@ -28,8 +28,10 @@ futures-lite = "=2.6.1"
 zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+base64 = "=0.22.1"
 bun-native-macos-surface = { path = "../macos-surface" }
 raw-window-handle = "=0.6.2"
+rustix = { version = "=1.1.6", features = ["fs"] }
 
 [lints]
 workspace = true

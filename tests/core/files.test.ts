@@ -62,7 +62,7 @@ describe('filesystem grants through the public core (headless subprocess)', () =
         availability: 'available',
         roots: { work: { access: 'read_write' }, docs: { access: 'read' } },
         scope: 'owned_window',
-        backend: 'openat2',
+        backend: process.platform === 'darwin' ? 'openat_walk' : 'openat2',
       })
       expect(Object.isFrozen(app.serviceCapabilities.filesystemGrants)).toBe(true)
       const window = await app.openWindow({ title: 'Grants' })
