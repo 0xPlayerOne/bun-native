@@ -13,9 +13,9 @@ import { arch, platform, release } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { inspectBunExecutable } from './inspect'
-import { inspectBunRuntime } from './inspect-runtime'
+import { compileApplication } from './compile'
 import { nativeSourcePaths } from './native-sources'
+import { sharedWorkloadSources } from '../../benchmarks/solid/sources'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -47,6 +47,8 @@ const entries = {
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
+  'solid-platform': 'tests/native/solid-platform.tsx',
+  'react-platform': 'tests/native/react-platform.tsx',
   solid: 'examples/solid-counter/main.tsx',
   'solid-workspace': 'examples/solid-workspace/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
@@ -71,6 +73,7 @@ const solidEntry =
   entry === 'solid-workspace-flow' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
+  entry === 'solid-platform' ||
   entry === 'solid-services'
 const reactEntry =
   entry === 'react' ||
@@ -79,6 +82,7 @@ const reactEntry =
   entry === 'react-interactions' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
+  entry === 'react-platform' ||
   entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
@@ -151,6 +155,12 @@ async function artifact(path: string) {
 }
 
 async function sourceHashes() {
+  const workloadSources = new Map(
+    (entry === 'react-workload' ? await sharedWorkloadSources(source) : []).map((record) => [
+      record.path,
+      record,
+    ])
+  )
   const sources = new Set([
     entryPath,
     'examples/native-window/main.ts',
@@ -197,12 +207,14 @@ async function sourceHashes() {
     }))
       sources.add(path)
   }
+  if (entry === 'solid-platform' || entry === 'react-platform')
+    sources.add('tests/native/platform-adapter.ts')
   if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
-  if (entry === 'react-workload') sources.add('benchmarks/solid/workload.ts')
+  for (const path of workloadSources.keys()) sources.add(path)
   if (entry === 'solid-workspace' || entry === 'solid-workspace-flow') {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
@@ -214,7 +226,12 @@ async function sourceHashes() {
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
-    [...sources].sort().map(async (path) => ({ path, ...(await artifact(join(source, path))) }))
+    [...sources]
+      .sort()
+      .map(
+        async (path) =>
+          workloadSources.get(path) ?? { path, ...(await artifact(join(source, path))) }
+      )
   )
 }
 
@@ -256,26 +273,12 @@ if (solidEntry || reactEntry) {
   }
 }
 
-const compileCommand = [
-  process.execPath,
-  'compile',
-  '--no-script',
-  '--production',
-  ...(values.trim ? ['--trim'] : []),
-  '--explain=json',
+const { compileCommand, buildMs, inspection, runtimeFeatures } = compileApplication(
   compileInput,
-  '--outfile',
   application,
-]
-const start = performance.now()
-command('compile-aot', compileCommand)
-const buildMs = performance.now() - start
-const inspection = inspectBunExecutable(application)
-if (!inspection.hasCompiledProgram)
-  throw new Error('Compiler output has no compiled-program record')
-const runtimeFeatures = inspectBunRuntime(application)
-if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
-  throw new Error('Compiler output does not record removal of the JIT compiler')
+  source,
+  values.trim
+)
 if (bundledHost) {
   copyFileSync(values.host, host)
   if (process.platform !== 'win32') chmodSync(host, 0o755)

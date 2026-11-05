@@ -1,18 +1,19 @@
 {
   "name": "bun-native-workspace",
-  "version": "0.14.4",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run check:boundaries && bun run test && bun run build",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run check:boundaries && bun run check:health && bun run test && bun run build",
     "format": "bun fmt --no-script .",
     "format:check": "bun fmt --no-script --check .",
     "lint": "oxlint --deny-warnings packages scripts tests examples benchmarks experiments",
     "typecheck": "bun --check --tsconfig-override tsconfig.json",
     "check:boundaries": "bun scripts/quality/boundaries.ts",
+    "check:health": "bun scripts/quality/source-health.ts",
     "test": "bun test tests",
     "build": "bun scripts/build.ts",
     "native:check": "cargo check --locked --workspace --all-targets",
@@ -23,7 +24,8 @@
     "lint:native": "cargo clippy --locked --workspace --all-targets -- -D warnings",
     "foundry:doctor": "bun --bun code-foundry doctor",
     "example": "bun examples/native-window/main.ts",
-    "solid:build": "bun scripts/solid-build.ts"
+    "solid:build": "bun scripts/solid-build.ts",
+    "native": "bun scripts/native.ts"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
