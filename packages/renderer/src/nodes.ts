@@ -33,6 +33,7 @@ type Properties = EventListeners & {
   value?: string | InputIntent
   placeholder?: string
   disabled?: boolean
+  readOnly?: boolean
 }
 
 const nodes = new WeakSet<object>()
@@ -166,10 +167,17 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else throw new TypeError('Native input placeholder must be a string')
       break
     case 'disabled':
-      if (node.kind !== 'button') throw new TypeError('Only buttons accept disabled')
+      if (node.kind !== 'button' && node.kind !== 'input')
+        throw new TypeError('Only buttons and inputs accept disabled')
       if (value === undefined) delete props.disabled
       else if (typeof value === 'boolean') props.disabled = value
       else throw new TypeError('Native disabled must be boolean')
+      break
+    case 'readOnly':
+      if (node.kind !== 'input') throw new TypeError('Only inputs accept readOnly')
+      if (value === undefined) delete props.readOnly
+      else if (typeof value === 'boolean') props.readOnly = value
+      else throw new TypeError('Native readOnly must be boolean')
       break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
@@ -207,6 +215,8 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
         kind: 'input',
         value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
         ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
+        ...(props.disabled ? { disabled: true } : {}),
+        ...(props.readOnly ? { read_only: true } : {}),
         ...style,
       }
     else {

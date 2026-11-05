@@ -1,4 +1,10 @@
-import { parseElement, type Element, type Limits, type Operation } from '@bun-native/protocol'
+import {
+  parseElement,
+  type Capability,
+  type Element,
+  type Limits,
+  type Operation,
+} from '@bun-native/protocol'
 import {
   NativeStateError,
   UnsupportedFeatureError,
@@ -20,6 +26,17 @@ function normalize(element: Element): Element {
   )
     throw new UnsupportedFeatureError('element:' + element.kind)
   return parseElement(element)
+}
+
+/** Optional element features fail locally instead of reaching a host that lacks them. */
+function supported(element: Element, capabilities: readonly Capability[]): Element {
+  if (
+    element.kind === 'input' &&
+    (element.disabled === true || element.read_only === true) &&
+    !capabilities.includes('input_states_v1')
+  )
+    throw new UnsupportedFeatureError('input:' + (element.disabled ? 'disabled' : 'read_only'))
+  return element
 }
 
 export interface NodeState {
@@ -68,7 +85,8 @@ export class Transaction implements NativeBatch {
     current: ReadonlyMap<number, NodeState>,
     private readonly rootId: number,
     private readonly allocateId: () => number,
-    private readonly limits: Readonly<Limits>
+    private readonly limits: Readonly<Limits>,
+    private readonly capabilities: readonly Capability[]
   ) {
     this.nodes = new Map(
       [...current].map(([id, node]) => [id, { ...node, children: [...node.children] }])
@@ -90,7 +108,7 @@ export class Transaction implements NativeBatch {
     this.check()
     if (this.nodes.size >= this.limits.max_nodes_per_window)
       throw new NativeStateError('limit_exceeded', 'Window node limit exceeded')
-    const normalized = normalize(element)
+    const normalized = supported(normalize(element), this.capabilities)
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.set(node.id, node)
     this.operations.push({ type: 'create', node_id: node.id, element: node.element })
@@ -109,7 +127,7 @@ export class Transaction implements NativeBatch {
   set(handle: NativeNode, value: Element, expectedInputRevision?: number): void {
     this.check()
     const node = own(this.nodes, handle)
-    const element = normalize(value)
+    const element = supported(normalize(value), this.capabilities)
     if (element.kind !== node.element.kind)
       throw new NativeStateError(
         'invalid_state',

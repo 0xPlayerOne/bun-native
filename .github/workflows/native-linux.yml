@@ -44,7 +44,8 @@ jobs:
             pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
             libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
             mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
-            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+            dbus-x11 dunst fonts-dejavu-core heaptrack binutils \
+            x11-xkb-utils x11-xserver-utils xclip at-spi2-core gir1.2-atspi-2.0 python3-gi
       - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
         run: |
           echo 'Installed Mesa Vulkan ICD files:'
@@ -132,7 +133,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts notifications filesystem-grants solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts notifications filesystem-grants text-input solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -177,6 +178,30 @@ jobs:
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      - name: Development and AOT X11 text, focus, Unicode, composition, AT-SPI and scaling
+        timeout-minutes: 5
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          # The system Python carries PyGObject and the Atspi typelib.
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          for mode in development aot; do
+            for scale in 1 2; do
+              command=(bun tests/native/text-input.ts)
+              if [[ "$mode" == aot ]]; then
+                command=("$NATIVE_EVIDENCE/text-input-package/text-input")
+              fi
+              evidence="$NATIVE_EVIDENCE/text-input-$mode-scale-$scale"
+              mkdir "$evidence"
+              # The session pins scale 1; pass the host environment explicitly after it.
+              BUN_NATIVE_TEXT_EVIDENCE="$evidence" BUN_NATIVE_TEXT_MODE="$mode" \
+                xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" LC_CTYPE=C.UTF-8 \
+                "${command[@]}" 2>&1 | tee "$evidence/run.log"
+              test -s "$evidence/result.json"
+            done
           done
       - name: Development and AOT freedesktop notifications
         timeout-minutes: 3
@@ -611,6 +636,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/clipboard-peer-*.txt
             ${{ runner.temp }}/native-evidence/shortcut-peer-sha256.txt
             ${{ runner.temp }}/native-evidence/global-shortcuts-*/
+            ${{ runner.temp }}/native-evidence/text-input-*/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/development/

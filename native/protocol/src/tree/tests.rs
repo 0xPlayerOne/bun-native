@@ -18,6 +18,8 @@ fn input(value: &str) -> Element {
     Element::Input {
         value: value.into(),
         placeholder: String::new(),
+        disabled: false,
+        read_only: false,
         style: Style::default(),
     }
 }

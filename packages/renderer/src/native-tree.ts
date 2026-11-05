@@ -42,9 +42,14 @@ function updateInput(
     }
   }
   const appearance = (element: Extract<Element, { kind: 'input' }>) =>
-    JSON.stringify({ placeholder: element.placeholder ?? '', style: element.style ?? {} })
+    JSON.stringify({
+      placeholder: element.placeholder ?? '',
+      disabled: element.disabled === true,
+      read_only: element.read_only === true,
+      style: element.style ?? {},
+    })
   if (appearance(old.element) === appearance(state.element)) return false
-  // A style-only update preserves the current native value; this never upgrades
+  // An appearance/state-only update preserves the current native value; this never upgrades
   // an older application value intent to a newer revision.
   const current = window.input(old.handle as NativeNode<'input'>)
   batch.set(

@@ -18,6 +18,10 @@ export namespace JSX {
     input: Base<'input'> & {
       value?: string | InputState
       placeholder?: string
+      /** Requires the host's `input_states_v1` capability. */
+      disabled?: boolean
+      /** Requires the host's `input_states_v1` capability. */
+      readOnly?: boolean
     }
   }
 }

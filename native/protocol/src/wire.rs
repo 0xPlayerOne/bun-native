@@ -307,6 +307,13 @@ pub enum Element {
         value: String,
         #[serde(default)]
         placeholder: String,
+        /// Requires `input_states_v1`. Not focusable, editable or selectable.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        disabled: bool,
+        /// Requires `input_states_v1`. Focusable, selectable and copyable;
+        /// native edits, paste, cut and composition are rejected.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        read_only: bool,
         #[serde(default)]
         style: Style,
     },
@@ -464,6 +471,7 @@ pub enum Capability {
     GlobalShortcutsV1,
     NotificationsV1,
     FilesystemGrantsV1,
+    InputStatesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

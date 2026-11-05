@@ -335,3 +335,59 @@ fn absent_error_id_is_not_null() {
         "{\"type\":\"error\",\"code\":\"invalid_state\",\"message\":\"hello required\"}\n"
     );
 }
+
+#[test]
+fn input_states_are_optional_booleans_and_absent_when_false() {
+    for (element, disabled, read_only) in [
+        (json!({"kind":"input","value":"a"}), false, false),
+        (
+            json!({"kind":"input","value":"a","disabled":true}),
+            true,
+            false,
+        ),
+        (
+            json!({"kind":"input","value":"a","read_only":true}),
+            false,
+            true,
+        ),
+        (
+            json!({"kind":"input","value":"a","disabled":true,"read_only":true}),
+            true,
+            true,
+        ),
+    ] {
+        let Some(Command::Batch { operations, .. }) = read_json(&batch(element.clone())).unwrap()
+        else {
+            panic!("expected a batch for {element}");
+        };
+        let Operation::Create {
+            element: created, ..
+        } = &operations[0]
+        else {
+            panic!("expected a create for {element}");
+        };
+        assert!(matches!(
+            created,
+            Element::Input { disabled: d, read_only: r, .. } if *d == disabled && *r == read_only
+        ));
+        // Ordinary inputs keep their exact earlier wire form.
+        let encoded = serde_json::to_value(created).unwrap();
+        assert_eq!(encoded.get("disabled").is_some(), disabled);
+        assert_eq!(encoded.get("read_only").is_some(), read_only);
+    }
+    for element in [
+        json!({"kind":"input","value":"","disabled":null}),
+        json!({"kind":"input","value":"","read_only":"yes"}),
+        json!({"kind":"input","value":"","readOnly":true}),
+        json!({"kind":"text","text":"t","read_only":true}),
+    ] {
+        assert!(
+            read_json(&batch(element.clone())).is_err(),
+            "accepted {element}"
+        );
+    }
+    assert_eq!(
+        serde_json::to_value(Capability::InputStatesV1).unwrap(),
+        json!("input_states_v1")
+    );
+}

@@ -1,13 +1,13 @@
 use crate::{
     channel::EventSink,
     evidence::{Evidence, LayoutFrame},
-    input::{InputBinding, TextInput},
+    input::{EditPolicy, InputBinding, TextInput},
     state::SharedWindowState,
     style,
 };
 use bun_native_protocol::{Element as NativeElement, Event, NodeId, Overflow, Tree, WindowId};
 use gpui::{
-    AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
+    AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton, Role,
     ScrollHandle, SharedString, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
 };
 use std::collections::BTreeMap;
@@ -34,6 +34,10 @@ pub(crate) struct NativeView {
     /// Text and button labels as shared strings, reused across batches while
     /// unchanged, so each render bumps a refcount instead of copying text.
     labels: BTreeMap<NodeId, SharedString>,
+    /// Never a tab stop or reported node. Holding it keeps the window's key
+    /// context on the dispatch path, so Tab still works after a focused
+    /// control is disabled or removed, or before any control is focused.
+    root_focus: FocusHandle,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     _subscriptions: [Subscription; 2],
@@ -65,6 +69,7 @@ impl NativeView {
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
             labels: BTreeMap::new(),
+            root_focus: cx.focus_handle(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             _subscriptions: [keyboard, focus_lost],
@@ -129,7 +134,7 @@ impl NativeView {
                 return true;
             }
             if input.focus_handle(cx).is_focused(window) {
-                window.blur(cx);
+                window.focus(&self.root_focus, cx);
             }
             false
         });
@@ -144,19 +149,30 @@ impl NativeView {
                 )
             });
             if !enabled && focus.is_focused(window) {
-                window.blur(cx);
+                window.focus(&self.root_focus, cx);
             }
             controls.contains_key(id)
         });
         for (node_id, node) in controls {
             match node.element() {
                 NativeElement::Input {
-                    value, placeholder, ..
+                    value,
+                    placeholder,
+                    disabled,
+                    read_only,
+                    ..
                 } => {
+                    let policy = EditPolicy {
+                        disabled: *disabled,
+                        read_only: *read_only,
+                    };
                     if let Some(input) = self.inputs.get(&node_id) {
                         input.update(cx, |input, cx| {
-                            input.set_properties(value, placeholder, window, cx)
+                            input.set_properties(value, placeholder, policy, window, cx)
                         });
+                        if policy.disabled && input.focus_handle(cx).is_focused(window) {
+                            window.focus(&self.root_focus, cx);
+                        }
                     } else {
                         let binding = InputBinding {
                             state: Rc::downgrade(&self.state),
@@ -165,9 +181,13 @@ impl NativeView {
                             events: self.events.clone(),
                         };
                         let input = cx.new(|cx| {
-                            TextInput::new(value.clone(), placeholder.clone(), binding, cx)
+                            TextInput::new(value.clone(), placeholder.clone(), policy, binding, cx)
                         });
-                        if window.focused(cx).is_none() {
+                        if !policy.disabled
+                            && window
+                                .focused(cx)
+                                .is_none_or(|focus| focus == self.root_focus)
+                        {
                             window.focus(&input.focus_handle(cx), cx);
                         }
                         self.inputs.insert(node_id, input);
@@ -180,6 +200,9 @@ impl NativeView {
                 }
                 NativeElement::Box { .. } | NativeElement::Text { .. } => {}
             }
+        }
+        if window.focused(cx).is_none() {
+            window.focus(&self.root_focus, cx);
         }
         self.reconcile_focus(window, cx);
         cx.notify();
@@ -276,6 +299,9 @@ impl NativeView {
             NativeElement::Text {
                 style: properties, ..
             } => style::apply(base, properties)
+                // AccessKit names labels from their value.
+                .role(Role::Label)
+                .aria_value(self.label(node_id))
                 .child(self.label(node_id))
                 .into_any_element(),
             NativeElement::Button {
@@ -293,7 +319,14 @@ impl NativeView {
                         .text_color(rgb(0xffffff)),
                     properties,
                 )
+                .role(Role::Button)
+                .aria_label(self.label(node_id))
                 .child(self.label(node_id));
+                if *disabled {
+                    button = button.a11y_synthetic_children(|builder| {
+                        builder.parent_node().set_disabled();
+                    });
+                }
                 if !disabled {
                     let focus = self
                         .buttons
@@ -315,15 +348,20 @@ impl NativeView {
                 button.into_any_element()
             }
             NativeElement::Input {
-                style: properties, ..
-            } => style::apply(base.bg(rgb(0xffffff)), properties)
-                .child(
-                    self.inputs
-                        .get(&node_id)
-                        .expect("input reconciled before render")
-                        .clone(),
-                )
-                .into_any_element(),
+                disabled,
+                style: properties,
+                ..
+            } => style::apply(
+                base.bg(rgb(if *disabled { 0xe5e7eb } else { 0xffffff })),
+                properties,
+            )
+            .child(
+                self.inputs
+                    .get(&node_id)
+                    .expect("input reconciled before render")
+                    .clone(),
+            )
+            .into_any_element(),
         }
     }
 }
@@ -391,6 +429,7 @@ impl Render for NativeView {
             .text_color(rgb(0x17212b))
             .text_size(px(18.))
             .key_context("NativeWindow")
+            .track_focus(&self.root_focus)
             .capture_key_up(cx.listener(|view, event: &gpui::KeyUpEvent, window, cx| {
                 view.key(&event.keystroke, false, window, cx)
             }))

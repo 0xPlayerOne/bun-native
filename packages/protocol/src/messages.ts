@@ -186,6 +186,7 @@ const CAPABILITIES = [
   'global_shortcuts_v1',
   'notifications_v1',
   'filesystem_grants_v1',
+  'input_states_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 

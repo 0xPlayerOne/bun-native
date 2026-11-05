@@ -27,7 +27,16 @@ export type Element =
   | { kind: 'box'; style?: Style }
   | { kind: 'text'; text: string; style?: LeafStyle }
   | { kind: 'button'; text: string; disabled?: boolean; style?: LeafStyle }
-  | { kind: 'input'; value: string; placeholder?: string; style?: LeafStyle }
+  | {
+      kind: 'input'
+      value: string
+      placeholder?: string
+      /** Requires `input_states_v1`. Not focusable, editable or selectable. */
+      disabled?: boolean
+      /** Requires `input_states_v1`. Focusable and copyable; native edits are rejected. */
+      read_only?: boolean
+      style?: LeafStyle
+    }
 
 function choice<T extends string>(value: unknown, name: string, values: readonly T[]): T {
   for (const candidate of values) if (candidate === value) return candidate
@@ -131,15 +140,22 @@ export function parseElement(value: unknown): Element {
         style,
       }
     }
-    case 'input':
-      keys(element, ['kind', 'value', 'placeholder', 'style'])
+    case 'input': {
+      keys(element, ['kind', 'value', 'placeholder', 'disabled', 'read_only', 'style'])
       requireLeafStyle(style)
+      for (const name of ['disabled', 'read_only'])
+        if (name in element && typeof element[name] !== 'boolean')
+          throw new ProtocolError(name + ' must be a boolean')
+      // Only true states are carried, so ordinary inputs keep their exact wire form.
       return {
         kind: 'input',
         value: string(element['value'], 'value'),
         placeholder: 'placeholder' in element ? string(element['placeholder'], 'placeholder') : '',
+        ...(element['disabled'] === true ? { disabled: true } : {}),
+        ...(element['read_only'] === true ? { read_only: true } : {}),
         style,
       }
+    }
     default:
       throw new ProtocolError('Unknown native element kind')
   }
