@@ -54,6 +54,10 @@ for attempt in {1..50}; do
   sleep 0.1
 done
 xprop -root _NET_SUPPORTING_WM_CHECK | grep -q 'window id'
+# The first XTest key on a fresh server switches the keyboard device, and
+# openbox regrabs every binding in response. Settle that before any test key,
+# so a click-only test's Alt+F4 never races the regrab (#358).
+python3 scripts/quality/native-x11-input-prime.py --report "$evidence_dir/input-prime.json"
 
 if [[ "$mode" == -- ]]; then
   "$@"
