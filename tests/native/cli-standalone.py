@@ -151,7 +151,22 @@ def run_owned(
         # original outer bound. Native driver/IPC/close deadlines stay unchanged.
         app.wait(timeout=remaining)
         require(app.returncode == 0, f"Command exited {app.returncode}: {name}")
+        # A wrapper can exit before its already-observed servers finish.
+        # Join those identities and their pipes within the ORIGINAL command
+        # deadline, before emergency cleanup decides whether signals are needed.
+        audit.wait_for_exit(started + timeout)
+        for capture in captures:
+            capture.thread.join(timeout=max(0, started + timeout - time.monotonic()))
+            require(
+                not capture.thread.is_alive() and not capture.error,
+                capture.error or "Command log pipe exceeded the command bound",
+            )
+        require(
+            time.monotonic() <= started + timeout,
+            "Command completion exceeded its bound",
+        )
         audit.check()
+        record["natural_exit_joined"] = True
         record["status"] = "passed"
     except ERRORS as error:
         failure(record, f"{type(error).__name__}: {error}")

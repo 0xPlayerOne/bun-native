@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import subprocess
 import threading
 import time
@@ -277,6 +278,44 @@ class ProcessAudit:
     def snapshot(self):
         with self.lock:
             return dict(self.observed)
+
+    def wait_for_exit(self, deadline):
+        """Join only observed identities, without signals or a new time budget."""
+        if self.app.poll() is None:
+            raise RuntimeError("The direct command must exit before descendant join")
+        with self.lock:
+            # Root exit permanently ends discovery. A sampled old root or a
+            # recycled PID/PGID must never authorize new descendants here.
+            self.ownership.discovering = False
+            observed = dict(self.observed)
+        while True:
+            self.check()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    "Observed command descendants exceeded the command bound"
+                )
+            table = DRIVER.process_table()
+            owned = [
+                row
+                for pid, started in observed.items()
+                if (row := table.get(pid)) is not None and row["start_ticks"] == started
+            ]
+            if not owned:
+                return
+            for row in owned:
+                if (
+                    row["pid"] != self.app.pid
+                    and row["parent_pid"] == os.getpid()
+                    and row["state"] == "Z"
+                ):
+                    try:
+                        os.waitpid(row["pid"], os.WNOHANG)
+                    except ChildProcessError:
+                        # Another child handler may have reaped the exact child.
+                        # Only the next identity snapshot can establish absence.
+                        pass
+            time.sleep(min(0.01, remaining))
 
     def resource_snapshot(self, application, host):
         self.check()
