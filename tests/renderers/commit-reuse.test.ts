@@ -43,6 +43,7 @@ function recordSets(window: NativeWindow) {
     writeClipboardText: window.writeClipboardText.bind(window),
     registerGlobalShortcut: window.registerGlobalShortcut.bind(window),
     postNotification: window.postNotification.bind(window),
+    openFileGrant: window.openFileGrant.bind(window),
     input: window.input.bind(window),
     on: window.on.bind(window),
     onClick: window.onClick.bind(window),
