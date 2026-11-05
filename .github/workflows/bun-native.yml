@@ -208,10 +208,19 @@ jobs:
     # This exact check context is required by the existing protected-main ruleset.
     name: Validation / Gate
     needs: [source, protocol, aot, native, native-platforms, security]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    # Never skip: GitHub counts a skipped required check as passing, so a
+    # draft-stage run would let auto-merge fire the moment a PR is marked
+    # ready, before the ready-stage implementation jobs exist. A draft run
+    # fails here instead; the ready-stage run replaces it on the same head.
+    if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
+      - name: Refuse draft-stage validation
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft
+        run: |
+          echo '::error::Draft pull requests are not validated. Mark the PR ready for review to run the required checks.'
+          exit 1
       - name: Require every implementation check to pass
         env:
           RESULTS: ${{ toJSON(needs) }}
