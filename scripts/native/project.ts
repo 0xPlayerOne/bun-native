@@ -134,7 +134,8 @@ export async function createProject(
             private: true,
             type: 'module',
             scripts: {
-              dev: `bun ${JSON.stringify(cli)} dev .`,
+              // See docs/developer-tooling.md "Controller memory".
+              dev: `MIMALLOC_PURGE_DELAY=0 bun ${JSON.stringify(cli)} dev .`,
               build: `bun ${JSON.stringify(cli)} build .`,
               check: 'bun check --no-script --no-pretty',
             },

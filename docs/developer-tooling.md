@@ -57,6 +57,14 @@ Readiness is the renderer's bridge acknowledgement. It is not a measurement of G
 
 Watch bundles live in a fresh, session-owned OS temporary directory. At rest there is one live generation; a candidate can coexist with it during compilation. Failed candidates and joined old generations are removed, and closing the session removes its owned temporary directory. Closing also cancels and joins any active source scan. The source directory is only watched and read by this reload machinery.
 
+### Controller memory
+
+The watch controller is one persistent Bun process that calls `Bun.build` for every generation. With the pinned runtime's default mimalloc `purge_delay` of 100 ms, pages freed by the bundler's idle worker threads stay resident after each build, so controller RSS grows across reloads even though the JavaScript heap stays small (about 7 MB for React) and no build output is retained. A full `Bun.gc(true)`, which also runs the allocator's collection, bounds it; a JavaScriptCore-only full collection does not. Setting `MIMALLOC_PURGE_DELAY=0` returns those pages promptly without any forced collection.
+
+The checkout `native` script and both generated templates' `dev` scripts therefore start the CLI with `MIMALLOC_PURGE_DELAY=0`. The `bun run` launcher keeps its default; generated `build` scripts are unchanged, and AOT application binaries do not inherit this setting. Watch-mode app processes inherit the CLI environment. Invoking `bun scripts/native.ts dev --watch` directly uses whatever the caller sets.
+
+[`benchmarks/tooling/controller-allocator.ts`](../benchmarks/tooling/controller-allocator.ts) is the matched compiler-only control: fresh processes, the production `bundleProject` path, one distinct edit per build and no app, host or forced collection. Its [Linux results](../benchmarks/tooling/README.md) show that React's 401-build final RSS roughly halves and Solid's drops by about a fifth, at about 6–8 ms more median bundle time. The remaining Solid growth follows JavaScriptCore garbage from the Babel transform, which this setting does not address. These are finite observations; no plateau or leak-freedom claim follows.
+
 The native watch scenario below supplies separate input, paint and repeated-cycle evidence when its hosted run passes. [#243](https://github.com/0xPlayerOne/bun-native/issues/243) also tracks qualification on the other supported platforms, matched performance measurements and any finer-grained reload strategy.
 
 No app command invokes Cargo, downloads a host, installs dependencies or changes toolchain pins. With the pinned Bun, installed dependency tree and supplied host already present, these commands operate offline. Building a native host from source remains a separate framework-contributor task documented in [getting started](getting-started.md).
