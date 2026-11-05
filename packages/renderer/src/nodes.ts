@@ -45,6 +45,8 @@ export class Node implements RendererNode {
   owner: Owner | undefined
   scope: object | undefined
   data = ''
+  /** Last immutable capture; cleared by every mutation that can change it. */
+  captured: Snapshot | undefined
 
   constructor(readonly kind: Element['kind'] | 'text-node') {
     nodes.add(this)
@@ -67,6 +69,11 @@ export function createTextNode(value: string): Node {
   const node = new Node('text-node')
   node.data = String(value)
   return node
+}
+
+/** Discard a cached capture after changing this node's own snapshot inputs. */
+export function invalidate(node: Node | undefined): void {
+  if (node) node.captured = undefined
 }
 
 export function visit(node: Node, fn: (node: Node) => void): void {
@@ -96,9 +103,14 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   const previousOwner = node.owner
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
   if (node.parent) node.parent.children.splice(node.parent.children.indexOf(node), 1)
+  invalidate(node.parent)
+  invalidate(parent)
   node.parent = parent
   parent.children.splice(anchor ? parent.children.indexOf(anchor) : parent.children.length, 0, node)
+  // Adapters may clear detached nodes directly, so a reinserted subtree is
+  // always captured again from its current state.
   visit(node, (child) => {
+    invalidate(child)
     child.owner = owner
     if (owner) child.scope = owner.token
   })
@@ -112,8 +124,11 @@ export function removeNode(parent: Node, node: Node): void {
   const owner = parent.owner
   owner?.detached(node)
   parent.children.splice(parent.children.indexOf(node), 1)
+  invalidate(parent)
   node.parent = undefined
+  // A detached capture would otherwise retain listeners an adapter releases.
   visit(node, (child) => {
+    invalidate(child)
     child.owner = undefined
   })
   owner?.changed()
@@ -124,6 +139,9 @@ export function replaceText(node: Node, value: string): void {
     throw new NativeStateError('invalid_state', 'Text replacement requires a text node')
   if (node.data === value) return
   node.data = value
+  invalidate(node)
+  // Text and button elements join their text-node children.
+  invalidate(node.parent)
   node.owner?.changed()
 }
 
@@ -135,6 +153,7 @@ export function setProperty(node: Node, name: string, value: unknown): void {
     if (value === undefined) delete props[name]
     else if (typeof value === 'function') props[name] = value as EventListener
     else throw new TypeError(`Native ${name} must be a function`)
+    invalidate(node)
     node.owner?.changed()
     return
   }
@@ -174,17 +193,19 @@ export function setProperty(node: Node, name: string, value: unknown): void {
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
+  invalidate(node)
   node.owner?.changed()
 }
 
-export type Snapshot = {
+/** Immutable once captured: unchanged nodes share it across commits. */
+export type Snapshot = Readonly<{
   element: Element
   children: readonly Node[]
   parent: Node | undefined
   events: Readonly<EventListeners>
   initialValue: string | undefined
   inputIntent: InputIntent | undefined
-}
+}>
 
 function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
   const { overflow, ...rest } = style
@@ -193,10 +214,22 @@ function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>
   return { ...rest, ...(overflow === undefined ? {} : { overflow }) }
 }
 
-/** Capture values before awaiting the core queue; later effects form another batch. */
+/**
+ * Capture values before awaiting the core queue; later effects form another batch.
+ * An unchanged node reuses its previous immutable capture, so the diff can skip
+ * it by identity instead of reserializing its element.
+ */
 export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
+  const reuse = (node: Node, parent: Node | undefined): boolean => {
+    const captured = node.captured
+    if (!captured || captured.parent !== parent) return false
+    result.set(node, captured)
+    for (const child of captured.children) capture(child, node)
+    return true
+  }
   const capture = (node: Node, parent?: Node): void => {
+    if (reuse(node, parent)) return
     const props = node.properties
     const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
     let element: Element
@@ -227,14 +260,16 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
           : { kind: 'text', text, ...style }
     }
     const children = node.kind === 'box' ? [...node.children] : []
-    result.set(node, {
+    const captured: Snapshot = {
       element,
       children,
       parent,
       events: listeners(props),
       initialValue: typeof props.value === 'string' ? props.value : undefined,
       inputIntent: typeof props.value === 'object' ? props.value : undefined,
-    })
+    }
+    node.captured = captured
+    result.set(node, captured)
     for (const child of children) capture(child, node)
   }
   capture(root)

@@ -50,3 +50,8 @@ workflow failed Windows protocol checks. The [BN0 audit](../docs/bn0-audit.md)
 explains that distinction, the later passing/merged native integration and the
 baseline PR's remaining checks and merge. Original
 JSON uses `.json.raw` so source formatting cannot alter artifact fingerprints.
+
+## Renderer commit path
+
+The [shared renderer commit micro benchmark](renderer/README.md) isolates the
+JavaScript snapshot/diff cost of one acknowledged commit from IPC and native work.
