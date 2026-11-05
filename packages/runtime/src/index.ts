@@ -173,6 +173,20 @@ type Pending = {
   timer: ReturnType<typeof setTimeout>
 }
 
+/** Diagnostic only: when the serialized stdin write and flush of one request settled. */
+type RequestWrite = { readonly queuedAt: number; writtenAt?: number; flushedAt?: number }
+
+function describeWrite(write: RequestWrite): string {
+  const at = (time: number) => '+' + Math.round(time - write.queuedAt) + 'ms'
+  const state =
+    write.flushedAt !== undefined ? 'flushed' : write.writtenAt !== undefined ? 'written' : 'queued'
+  return (
+    `write ${state}: queued +0ms` +
+    (write.writtenAt === undefined ? '' : ', written ' + at(write.writtenAt)) +
+    (write.flushedAt === undefined ? '' : ', flushed ' + at(write.flushedAt))
+  )
+}
+
 type WaitingReader = {
   resolve: (value: IteratorResult<WindowEvent>) => void
   reject: (error: Error) => void
@@ -407,9 +421,15 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     } catch (error) {
       return Promise.reject(error)
     }
+    const write: RequestWrite = { queuedAt: performance.now() }
     const result = new Promise<HostResponse>((resolve, reject) => {
       const timer = setTimeout(
-        () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),
+        () =>
+          this.fail(
+            new Error(
+              `Native ${command.type} request ${command.id} timed out (${describeWrite(write)})`
+            )
+          ),
         this.timeout
       )
       this.pending.set(command.id, {
@@ -426,9 +446,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         if (this.phase === 'closed') return
         this.startupTrace?.request('stdin_write_enter', command, this.process.pid)
         this.process.stdin.write(frame)
+        write.writtenAt = performance.now()
         this.startupTrace?.request('stdin_write_returned', command, this.process.pid)
         this.startupTrace?.request('stdin_flush_enter', command, this.process.pid)
         await this.process.stdin.flush()
+        write.flushedAt = performance.now()
         this.startupTrace?.request('stdin_flushed', command, this.process.pid)
       })
       .catch((error: unknown) => this.fail(error))
