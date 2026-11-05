@@ -93,7 +93,7 @@ pub(crate) fn install_from_environment() {
         && output
             .emit(json!({
                 "phase": "logger_installed", "targets": TARGETS,
-                "maximum_level": "INFO", "debug_targets": DEBUG_TARGETS, "max_records": MAX_RECORDS,
+                "maximum_level": "DEBUG", "debug_targets": DEBUG_TARGETS, "max_records": MAX_RECORDS,
                 "max_record_bytes": MAX_RECORD_BYTES, "max_total_bytes": MAX_TOTAL_BYTES,
                 "max_message_bytes": MAX_MESSAGE_BYTES,
             }))
