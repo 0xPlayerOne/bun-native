@@ -13,6 +13,11 @@ import type {
   ServiceCapabilities,
   ServiceRequestOptions,
 } from './services.ts'
+import type {
+  GlobalShortcutEvent,
+  GlobalShortcutOptions,
+  NativeGlobalShortcut,
+} from './shortcuts.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -147,6 +152,15 @@ export interface NativeWindow {
   readClipboardText(options?: ServiceRequestOptions): Promise<NativeClipboardText>
   /** A submitted write can change the OS clipboard even if ownership is subsequently revoked. */
   writeClipboardText(text: string): Promise<void>
+  /**
+   * OS-wide activation, delivered even while another window or application is
+   * focused. Requires the immutable globalShortcuts launch grant. A combination
+   * already held by another client fails with `conflict`; nothing is approximated.
+   */
+  registerGlobalShortcut(
+    options: GlobalShortcutOptions,
+    listener: (event: GlobalShortcutEvent) => void | Promise<void>
+  ): Promise<NativeGlobalShortcut>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

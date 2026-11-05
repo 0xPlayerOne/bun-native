@@ -86,11 +86,12 @@ jobs:
       - name: Build native executable
         id: native-build
         run: |
-          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
           sha256sum target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-sha256.txt"
           stat --format='%s bytes' target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-size.txt"
+          sha256sum target/release/examples/shortcut-peer > "$NATIVE_EVIDENCE/shortcut-peer-sha256.txt"
       - name: Lint and test actual native host
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
@@ -131,7 +132,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -158,6 +159,24 @@ jobs:
               "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
               --output "$evidence" --scenario clipboard --mode "$mode" \
               --host-profile release -- "${command[@]}"
+          done
+      - name: Development and AOT X11 global shortcuts
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_SHORTCUT_PEER: ${{ github.workspace }}/target/release/examples/shortcut-peer
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/global-shortcuts.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/global-shortcuts-package/global-shortcuts")
+            fi
+            evidence="$NATIVE_EVIDENCE/global-shortcuts-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_SHORTCUT_EVIDENCE="$evidence" BUN_NATIVE_SHORTCUT_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT native display service through core, Solid and React
         timeout-minutes: 5
@@ -556,6 +575,8 @@ jobs:
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/application
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/bun-native-host
             ${{ runner.temp }}/native-evidence/clipboard-peer-*.txt
+            ${{ runner.temp }}/native-evidence/shortcut-peer-sha256.txt
+            ${{ runner.temp }}/native-evidence/global-shortcuts-*/
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
@@ -600,6 +621,7 @@ jobs:
             echo 'All four unchanged CLI templates (Solid/React × TypeScript/JavaScript) are created, checked and compiled by the checkout CLI, then run from an unrelated working directory in development and inspected AOT. Each requires native pointer down/up, the complete counter paint changing from zero to one, native OS close, exactly one ready/zero-resource stopped IPC pair, and joined app/host cleanup. This is one bounded interaction per variant and mode, not native reload-cycle or independent-installation qualification.'
             echo 'The exact CLI dev --watch command performs an initial native launch and 101 source-edit remounts for each Solid/React TypeScript template. Every generation requires a unique source label, a complete reset counter paint, real XTest click/down/up and counter-one paint, validated zero-resource previous teardown, immutable app/host process identities and no observed overlap. A rejected syntax edit preserves a responsive working app; final OS close must exit watch with zero resources and remove its owned temporary root. A PATH sentinel and unchanged host/compiler hashes guard ordinary edits against native rebuilds. Edit-to-ready/paint/input-confirmed-paint intervals are instrumented observations, not presentation or cross-framework performance claims.'
             echo 'The Linux clipboard service uses an independent owned X11 peer in development and inspected AOT. Required outcomes cover immutable grants, ordinary/delayed/INCR text, payload and metadata rejection, owner loss, bounded stalled transfers with responsive input/commits, cancellation, idle worker sleep, selection persistence and joined cleanup. This does not qualify clipboard support on Wayland, macOS or Windows.'
+            echo 'Linux X11 global shortcuts run in development and inspected AOT: default denial, delivery while another owned window is focused, Num Lock independence, real conflicts with an independent X11 client, and verified OS grab release after unregistration, owner close and shutdown. This does not qualify global shortcuts on Wayland, macOS or Windows.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

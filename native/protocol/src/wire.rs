@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 6;
+pub const PROTOCOL_VERSION: u32 = 7;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -55,6 +55,7 @@ identifier!(RequestId);
 identifier!(WindowId);
 identifier!(NodeId);
 identifier!(EventSequence);
+identifier!(ShortcutId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -377,6 +378,18 @@ pub enum Command {
         window_id: WindowId,
         text: String,
     },
+    RegisterGlobalShortcut {
+        id: RequestId,
+        window_id: WindowId,
+        shortcut_id: ShortcutId,
+        key: String,
+        modifiers: crate::ShortcutModifiers,
+    },
+    UnregisterGlobalShortcut {
+        id: RequestId,
+        window_id: WindowId,
+        shortcut_id: ShortcutId,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -397,6 +410,7 @@ pub enum ErrorCode {
     Cancelled,
     OperationTimedOut,
     PayloadTooLarge,
+    Conflict,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -408,6 +422,7 @@ pub enum Capability {
     InteractionsV1,
     WindowDisplayV1,
     ClipboardTextV1,
+    GlobalShortcutsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -422,6 +437,7 @@ pub struct Limits {
     pub max_text_bytes_per_window: usize,
     pub max_clipboard_bytes: usize,
     pub max_service_requests: usize,
+    pub max_global_shortcuts: usize,
 }
 
 impl Default for Limits {
@@ -436,6 +452,7 @@ impl Default for Limits {
             max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
             max_clipboard_bytes: crate::MAX_CLIPBOARD_BYTES,
             max_service_requests: crate::MAX_SERVICE_REQUESTS,
+            max_global_shortcuts: crate::MAX_GLOBAL_SHORTCUTS,
         }
     }
 }
@@ -450,6 +467,8 @@ impl Command {
             | Self::DisplaySnapshot { id, .. }
             | Self::ClipboardRead { id, .. }
             | Self::ClipboardWrite { id, .. }
+            | Self::RegisterGlobalShortcut { id, .. }
+            | Self::UnregisterGlobalShortcut { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -518,10 +537,14 @@ impl Command {
                 }
             }
             Self::ClipboardWrite { text, .. } => crate::validate_clipboard_text(text)?,
+            Self::RegisterGlobalShortcut { key, modifiers, .. } => {
+                crate::validate_global_shortcut(key, *modifiers)?
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
             | Self::ClipboardRead { .. }
+            | Self::UnregisterGlobalShortcut { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

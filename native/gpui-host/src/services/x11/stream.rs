@@ -15,13 +15,13 @@ use x11rb::reexports::x11rb_protocol::xauth::Family;
 use x11rb::rust_connection::{DefaultStream, PollMode, Stream};
 use x11rb::utils::RawFdContainer;
 
-pub(super) struct BoundedStream {
+pub(crate) struct BoundedStream {
     inner: DefaultStream,
     budget: RefCell<Budget>,
 }
 
 impl BoundedStream {
-    pub(super) fn local(path: &str, budget: &Budget) -> Result<(Self, (Family, Vec<u8>)), Failure> {
+    pub(crate) fn local(path: &str, budget: &Budget) -> Result<(Self, (Family, Vec<u8>)), Failure> {
         budget.check()?;
         let abstract_address =
             SocketAddrUnix::new_abstract_name(path.as_bytes()).map_err(|_| budget.failure())?;
@@ -60,7 +60,7 @@ impl BoundedStream {
         ))
     }
 
-    pub(super) fn set_budget(&self, budget: &Budget) {
+    pub(crate) fn set_budget(&self, budget: &Budget) {
         self.budget.replace(budget.clone());
     }
 

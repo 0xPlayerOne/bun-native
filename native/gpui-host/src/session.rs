@@ -3,12 +3,13 @@ use crate::{
     evidence::Evidence,
     services,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::shortcuts::Shortcuts,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
     Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, Operation,
-    PROTOCOL_VERSION, RequestId, ServicePolicy, Tree, WindowId,
+    PROTOCOL_VERSION, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -42,6 +43,7 @@ pub(crate) struct Session {
     evidence: Evidence,
     policy: ServicePolicy,
     clipboard: Clipboard,
+    shortcuts: Shortcuts,
 }
 
 impl Session {
@@ -54,12 +56,14 @@ impl Session {
         let windows = Rc::new(RefCell::new(BTreeMap::<WindowId, WindowEntry>::new()));
         let finishing = Rc::new(Cell::new(false));
         let clipboard = Clipboard::new(events.clone(), cx);
+        let shortcuts = Shortcuts::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
             let events = events.clone();
             let evidence = evidence.clone();
             let clipboard = clipboard.clone();
+            let shortcuts = shortcuts.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -76,6 +80,7 @@ impl Session {
                         "clipboard owner window was closed",
                         cx,
                     );
+                    shortcuts.close_window(window_id, cx);
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -100,6 +105,7 @@ impl Session {
             evidence,
             policy,
             clipboard,
+            shortcuts,
         }
     }
 
@@ -157,6 +163,9 @@ impl Session {
                 if self.clipboard.available() {
                     capabilities.push(Capability::ClipboardTextV1);
                 }
+                if self.shortcuts.available() {
+                    capabilities.push(Capability::GlobalShortcutsV1);
+                }
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
@@ -212,6 +221,24 @@ impl Session {
             Command::ClipboardWrite {
                 window_id, text, ..
             } => self.clipboard_request(id, window_id, ClipboardOperation::Write(text), cx),
+            Command::RegisterGlobalShortcut {
+                window_id,
+                shortcut_id,
+                key,
+                modifiers,
+                ..
+            } => self.register_shortcut((id, window_id, shortcut_id), &key, modifiers, cx),
+            Command::UnregisterGlobalShortcut {
+                window_id,
+                shortcut_id,
+                ..
+            } => {
+                if let Err((code, message)) =
+                    self.shortcuts.unregister(id, window_id, shortcut_id, cx)
+                {
+                    self.error(id, code, message, cx);
+                }
+            }
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -423,6 +450,7 @@ impl Session {
                 "clipboard owner window was closed",
                 cx,
             );
+            self.shortcuts.close_window(window_id, cx);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -475,6 +503,43 @@ impl Session {
         }
     }
 
+    fn register_shortcut(
+        &self,
+        request: (RequestId, WindowId, ShortcutId),
+        key: &str,
+        modifiers: ShortcutModifiers,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if !self.policy.global_shortcuts {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "global shortcuts were not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        if !handle
+            .update(cx, |_, window, _| Shortcuts::supports_window(window))
+            .unwrap_or(false)
+        {
+            self.error(
+                id,
+                ErrorCode::ServiceUnavailable,
+                "global shortcuts are unavailable for this native window backend",
+                cx,
+            );
+            return;
+        }
+        if let Err((code, message)) = self.shortcuts.register(request, key, modifiers, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -482,30 +547,44 @@ impl Session {
         }
     }
 
-    pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
+    /// Revoke ownership and stop every service worker. Each returned join
+    /// must complete before the final reply or process exit.
+    fn stop_services(&self, cx: &mut App) -> Vec<gpui::Task<()>> {
         self.revoke();
+        [self.clipboard.stop(cx), self.shortcuts.stop(cx)]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
+        let joins = self.stop_services(cx);
         let events = self.events.clone();
-        if let Some(joined) = self.clipboard.stop(cx) {
+        if joins.is_empty() {
+            flush_and_quit(events, final_event, cx);
+        } else {
             cx.spawn(async move |cx| {
-                joined.await;
+                for joined in joins {
+                    joined.await;
+                }
                 cx.update(|cx| flush_and_quit(events, final_event, cx));
             })
             .detach();
-        } else {
-            flush_and_quit(events, final_event, cx);
         }
     }
 
     pub(crate) fn disconnect(&self, cx: &mut App) {
-        self.revoke();
-        if let Some(joined) = self.clipboard.stop(cx) {
+        let joins = self.stop_services(cx);
+        if joins.is_empty() {
+            cx.quit();
+        } else {
             cx.spawn(async move |cx| {
-                joined.await;
+                for joined in joins {
+                    joined.await;
+                }
                 cx.update(|cx| cx.quit());
             })
             .detach();
-        } else {
-            cx.quit();
         }
     }
 }

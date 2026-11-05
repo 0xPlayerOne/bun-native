@@ -9,7 +9,7 @@ import {
   type NativeUIEvent,
 } from './types.ts'
 
-export type RoutedEvent = Exclude<WindowEvent, { type: 'closed' }>
+export type RoutedEvent = Exclude<WindowEvent, { type: 'closed' | 'global_shortcut' }>
 const eventTypes: readonly string[] = [
   'click',
   'input',

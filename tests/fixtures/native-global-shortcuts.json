@@ -1,0 +1,168 @@
+{
+  "protocol": 7,
+  "capability": "global_shortcuts_v1",
+  "commands": [
+    {
+      "name": "control+alt+k owned registration",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": true
+    },
+    {
+      "name": "platform+shift+f12 registration",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"f12\",\"modifiers\":{\"control\":false,\"alt\":false,\"shift\":true,\"platform\":true}}",
+      "valid": true
+    },
+    {
+      "name": "alt+digit registration",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"0\",\"modifiers\":{\"control\":false,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": true
+    },
+    {
+      "name": "owned unregistration",
+      "wire": "{\"type\":\"unregister_global_shortcut\",\"id\":4,\"window_id\":1,\"shortcut_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "no modifier is not global",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":false,\"alt\":false,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "shift alone is not global",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":false,\"alt\":false,\"shift\":true,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "uppercase key is not a layout key",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"K\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "unsupported named key",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"space\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "f13 is outside the closed set",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"f13\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "f0 is not a function key",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"f0\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "empty key",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "modifier list is not a fallback",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":[\"control\",\"alt\"]}",
+      "valid": false
+    },
+    {
+      "name": "modifier state is explicit",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true}}",
+      "valid": false
+    },
+    {
+      "name": "unknown modifier",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":false,\"shift\":false,\"platform\":false,\"hyper\":true}}",
+      "valid": false
+    },
+    {
+      "name": "registration cannot grant itself",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false},\"grant\":true}",
+      "valid": false
+    },
+    {
+      "name": "registration has no callback",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false},\"callback\":\"code\"}",
+      "valid": false
+    },
+    {
+      "name": "registration owner is required",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"shortcut_id\":1,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "registration identity must be positive",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":0,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "registration identity is safe",
+      "wire": "{\"type\":\"register_global_shortcut\",\"id\":3,\"window_id\":1,\"shortcut_id\":9007199254740992,\"key\":\"k\",\"modifiers\":{\"control\":true,\"alt\":true,\"shift\":false,\"platform\":false}}",
+      "valid": false
+    },
+    {
+      "name": "unregistration names its registration",
+      "wire": "{\"type\":\"unregister_global_shortcut\",\"id\":4,\"window_id\":1}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "registered",
+      "wire": "{\"type\":\"global_shortcut_registered\",\"id\":3,\"window_id\":1,\"shortcut_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "unregistered",
+      "wire": "{\"type\":\"global_shortcut_unregistered\",\"id\":4,\"window_id\":1,\"shortcut_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "activation",
+      "wire": "{\"type\":\"global_shortcut\",\"sequence\":1,\"window_id\":1,\"shortcut_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "activation carries no key text",
+      "wire": "{\"type\":\"global_shortcut\",\"sequence\":1,\"window_id\":1,\"shortcut_id\":1,\"key\":\"k\"}",
+      "valid": false
+    },
+    {
+      "name": "activation requires a sequence",
+      "wire": "{\"type\":\"global_shortcut\",\"window_id\":1,\"shortcut_id\":1}",
+      "valid": false
+    },
+    {
+      "name": "activation names its registration",
+      "wire": "{\"type\":\"global_shortcut\",\"sequence\":1,\"window_id\":1}",
+      "valid": false
+    },
+    {
+      "name": "registration response names its registration",
+      "wire": "{\"type\":\"global_shortcut_registered\",\"id\":3,\"window_id\":1}",
+      "valid": false
+    },
+    {
+      "name": "typed conflict",
+      "wire": "{\"type\":\"error\",\"id\":3,\"code\":\"conflict\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed permission_denied",
+      "wire": "{\"type\":\"error\",\"id\":3,\"code\":\"permission_denied\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed service_unavailable",
+      "wire": "{\"type\":\"error\",\"id\":3,\"code\":\"service_unavailable\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "typed limit_exceeded",
+      "wire": "{\"type\":\"error\",\"id\":3,\"code\":\"limit_exceeded\",\"message\":\"Bounded native service outcome\"}",
+      "valid": true
+    },
+    {
+      "name": "unknown outcome",
+      "wire": "{\"type\":\"error\",\"id\":3,\"code\":\"grab_failed\",\"message\":\"Bounded native service outcome\"}",
+      "valid": false
+    }
+  ]
+}

@@ -1,13 +1,11 @@
 //! ICCCM CLIPBOARD selection over the same local X server as the owned GPUI
 //! window. The external owner and its properties are untrusted bounded input.
 
-use super::stream::BoundedStream;
-use super::{Budget, Failure, WORKER_POLL, auth};
+use crate::services::x11::{Budget, Display, Failure, WORKER_POLL, XConnection};
 use bun_native_protocol::{ClipboardText, ErrorCode, MAX_CLIPBOARD_BYTES, validate_clipboard_text};
 use gpui::App;
 use std::collections::VecDeque;
 use std::os::fd::{AsFd, BorrowedFd};
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use x11rb::connection::Connection;
 use x11rb::protocol::Event;
@@ -15,69 +13,20 @@ use x11rb::protocol::xproto::{
     self, Atom, AtomEnum, ConnectionExt, CreateWindowAux, EventMask, PropMode, Property,
     SelectionNotifyEvent, SelectionRequestEvent, Window, WindowClass,
 };
-use x11rb::reexports::x11rb_protocol::parse_display::parse_display;
-use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
-type XConnection = RustConnection<BoundedStream>;
 const EVENT_BUDGET: usize = 64;
 
 #[derive(Clone)]
-pub(super) struct Config {
-    display: u16,
-    screen: usize,
-}
+pub(super) struct Config(Display);
 
 impl Config {
     pub(super) fn from_app(cx: &App) -> Option<Self> {
-        if cx.compositor_name() != "X11" {
-            return None;
-        }
-        let environment = cx.graphical_environment()?;
-        let display = environment.x11_display?.into_string().ok()?;
-        let parsed = parse_display(Some(&display)).ok()?;
-        // No implicit TCP/DNS session change. SSH-forwarded and remote X11
-        // clipboard transports remain unavailable in this first slice.
-        if (!parsed.host.is_empty() && parsed.host != "unix")
-            || parsed
-                .protocol
-                .as_deref()
-                .is_some_and(|protocol| protocol != "unix")
-        {
-            return None;
-        }
-        Some(Self {
-            display: parsed.display,
-            screen: usize::from(parsed.screen),
-        })
+        Display::from_app(cx).map(Self)
     }
 
     fn connect(&self, budget: &Budget) -> Result<Context, Failure> {
-        let (stream, (family, address)) =
-            BoundedStream::local(&format!("/tmp/.X11-unix/X{}", self.display), budget)?;
-        // Authentication remains local session setup, never a clipboard grant.
-        // The same opened regular file is validated and read, with a fixed
-        // byte cap. Local filesystem setup remains trusted, not a hard
-        // wall-clock I/O guarantee. No credentials enter evidence.
-        let authority = std::env::var_os("XAUTHORITY")
-            .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".Xauthority"))
-            });
-        let authentication = auth::get(authority.as_deref(), family, &address, self.display);
-        budget.check()?;
-        let (name, data) = authentication
-            .map_err(|_| {
-                (
-                    ErrorCode::ServiceUnavailable,
-                    "X11 authority setup is not a valid bounded regular file",
-                )
-            })?
-            .unwrap_or_default();
-        let connection =
-            RustConnection::connect_to_stream_with_auth_info(stream, self.screen, name, data)
-                .map_err(|_| budget.failure())?;
-        Context::new(connection, self.screen, budget)
+        Context::new(self.0.connect(budget)?, self.0.screen, budget)
     }
 }
 
