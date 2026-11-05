@@ -41,7 +41,7 @@ export async function projectFingerprint(directory: string, signal?: AbortSignal
       const path = join(folder, entry.name)
       const name = prefix + entry.name
       if (entry.isDirectory()) await visit(path, name + '/')
-      else if (/\.[jt]sx?$|\.json$/.test(name)) {
+      else if (/\.(?:[cm]?[jt]s|[jt]sx|jsonc?|toml)$/.test(name)) {
         try {
           // File links are hashed through their targets. Do not follow directory
           // links: recursive aliases can escape the project or introduce cycles.

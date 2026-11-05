@@ -476,6 +476,25 @@ jobs:
             fi
           done
           exit "$watch_status"
+      - name: Prepare four installed external Solid and React consumers
+        id: standalone-prepare
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          python3 tests/native/cli-standalone.py prepare \
+            --output "$NATIVE_EVIDENCE/cli-standalone" \
+            --bun "$(command -v bun)" --cache "$HOME/.bun/install/cache" \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
+            --host-sha256-file "$NATIVE_EVIDENCE/binary-sha256.txt" \
+            --source-commit "$(git rev-parse HEAD)" --source-tree "$(git rev-parse 'HEAD^{tree}')"
+      - name: Installed external consumers in development and inspected AOT
+        if: ${{ !cancelled() && steps.standalone-prepare.outcome == 'success' }}
+        timeout-minutes: 6
+        run: python3 tests/native/cli-standalone.py run --output "$NATIVE_EVIDENCE/cli-standalone"
+      - name: Finalize owned standalone consumer cleanup
+        if: ${{ always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome) }}
+        timeout-minutes: 1
+        run: python3 tests/native/cli-standalone.py cleanup --output "$NATIVE_EVIDENCE/cli-standalone"
       - name: Shared input viewport pixels through Solid and React in development and AOT
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 4
@@ -521,6 +540,10 @@ jobs:
             ${{ runner.temp }}/native-evidence/unsigned-native-host.tar.gz*
             ${{ runner.temp }}/native-evidence/cli-templates/
             ${{ runner.temp }}/native-evidence/cli-watch-*/
+            ${{ runner.temp }}/native-evidence/cli-standalone/
+            !${{ runner.temp }}/native-evidence/cli-standalone/owned/**
+            !${{ runner.temp }}/native-evidence/cli-standalone/packages/cli/**
+            !${{ runner.temp }}/native-evidence/cli-standalone/packages/staging/**
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/application
             !${{ runner.temp }}/native-evidence/cli-templates/*/package/bun-native-host
             ${{ runner.temp }}/native-evidence/clipboard-peer-*.txt

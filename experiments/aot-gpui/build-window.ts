@@ -47,6 +47,8 @@ const entries = {
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
+  'solid-platform': 'tests/native/solid-platform.tsx',
+  'react-platform': 'tests/native/react-platform.tsx',
   solid: 'examples/solid-counter/main.tsx',
   'solid-workspace': 'examples/solid-workspace/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
@@ -74,6 +76,7 @@ const solidEntry =
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
+  entry === 'solid-platform' ||
   entry === 'solid-services'
 const reactEntry =
   entry === 'react' ||
@@ -83,6 +86,7 @@ const reactEntry =
   entry === 'react-input-viewport' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
+  entry === 'react-platform' ||
   entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
@@ -209,6 +213,8 @@ async function sourceHashes() {
     }))
       sources.add(path)
   }
+  if (entry === 'solid-platform' || entry === 'react-platform')
+    sources.add('tests/native/platform-adapter.ts')
   if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
   if (entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/services-adapter.ts')
