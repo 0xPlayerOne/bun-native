@@ -148,7 +148,13 @@ describe('package-set contract violations (inert fixtures)', () => {
       const file = join(directory, 'regular-file')
       await writeFile(file, 'not a consumer directory')
       const error = await verifyInstalledPackages(file, set, 'solid').catch((cause) => cause)
-      expect((error as Error & { code?: string }).code).toBe('ENOTDIR')
+      if (process.platform === 'win32') {
+        // Windows reports a path below a regular file as missing (ENOENT), which
+        // the verifier turns into its not-installed guidance.
+        expect((error as Error).message).toContain('Standalone dependencies are not installed')
+      } else {
+        expect((error as Error & { code?: string }).code).toBe('ENOTDIR')
+      }
 
       const project = join(directory, 'project')
       await createProject(repository, project, 'solid', 'typescript', manifest)
